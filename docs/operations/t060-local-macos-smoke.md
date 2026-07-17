@@ -121,7 +121,7 @@ t060-macos-<run-id>/
 
 `manifest.json` binds the local-machine platform, exact Git commit, canonical reviewed-state digest, clean-before/after facts, Codex/runtime identities, authorization reference, one observed spend, controller mode, timeout, and SHA-256 hashes of the copied preflight/result/report/progress files. The append-only authority subtree supplies the matching grant, reservation, spend, and controller-published terminal evidence.
 
-The external `campaign-authority.json` enables the already-implemented campaign path for this T060 proof while the repository's checked-in mode remains `legacy`. It is not the later one-way production cutover commit.
+The external `campaign-authority.json` enabled the already-implemented campaign path for this pre-cutover T060 proof while the repository's checked-in mode was still `legacy`. It is distinct from the later persisted disabled barrier and production campaign cutover.
 
 ## 6. Validate after returning the package
 

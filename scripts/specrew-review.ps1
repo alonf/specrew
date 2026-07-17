@@ -769,7 +769,8 @@ if ($Live) {
 
     # T051 / FR-057 / FR-065: the existing public surface delegates to exactly one authority path.
     # Campaign failure never falls back to the historical service, and the historical service never
-    # promotes after campaign cutover. The checked-in mode stays legacy until T060's proved cutover.
+    # promotes after campaign cutover. T060 persisted the disabled barrier and then activated the
+    # checked-in campaign mode; the legacy branch below remains only for historical configurations.
     if ([bool]$authorityDecision.campaign_authority_enabled) {
         try {
             . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
