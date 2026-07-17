@@ -33,6 +33,13 @@ Describe 'T060 local Windows and Linux smoke package' {
         $script:Source | Should -Match 'every further attempt requires a new run ID'
     }
 
+    It 'keeps the serialized T060 smoke scoped to code review rather than downstream gate completion' {
+        $script:Source | Should -Match '-ReviewScope \$t060ReviewScope'
+        $script:Source | Should -Match 'external provider-quota constraint as execution context, not code-review'
+        $script:Source | Should -Match 'Do not\s+review project-completion or gate status in this code-review run'
+        $script:Source | Should -Match 'grounded defect in the frozen code makes that\s+step unsafe or impossible'
+    }
+
     It 'fails closed on authority, repository, contract, and clean-result evidence' {
         $script:Source | Should -Match 't060-origin-repository-mutated'
         $script:Source | Should -Match 't060-provider-authority-count-invalid'

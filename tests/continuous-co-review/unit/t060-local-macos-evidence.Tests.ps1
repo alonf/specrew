@@ -187,5 +187,8 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
         $source | Should -Match 'provider_invoked = \$false'
         ([regex]::Matches($source, '(?m)^\$campaignRun\s*=\s*Invoke-ReviewCampaignCommand\b')).Count | Should -Be 1
         $source | Should -Not -Match 'Start-Job|Start-ThreadJob|Register-ObjectEvent'
+        $source | Should -Match '-ReviewScope \$t060ReviewScope'
+        $source | Should -Match 'external provider-quota constraint as execution context, not code-review'
+        $source | Should -Match 'Do not\s+review project-completion or gate status in this code-review run'
     }
 }

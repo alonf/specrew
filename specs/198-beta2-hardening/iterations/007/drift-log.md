@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total local drift events**: 7
-**Resolution rate**: 100% (7/7 resolved in code; clean live verification pending for event 007, while Cursor proof is externally quota-blocked)
+**Total local drift events**: 8
+**Resolution rate**: 100% (8/8 resolved in code; clean live verification pending for event 008, while Cursor proof is externally quota-blocked)
 **Specification drift**: Local dogfood findings are resolved without changing approved product scope
 
 ## Inherited Open Drift
@@ -87,10 +87,20 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-007 — Antigravity live review exposed reviewer-suppression leakage into bounded verification
 
-- **Status**: resolved in code; commit, CI, exact-commit preflight, and clean Antigravity rerun pending
+- **Status**: resolved and independently re-reviewed; run 02 found no recurrence of either defect
 - **Severity**: major verification-integrity defect
 - **Requirements**: FR-010, FR-059, FR-060, FR-063, SC-019, NFR-002
 - **Evidence**: authorized run `run-t060-antigravity-windows-c711799f-01` reviewed commit `c711799fdec8f0e995b4e84e1c525b800360efe8` and digest `773f6c9603ca73995bfedcf4a41fbd8309bdc0cb` under Antigravity CLI `1.1.3` and verified Windows Job Object containment. It reached the 900-second bound, the controller verified termination, and its strict partial candidate preserved two current major findings. The first showed that `Invoke-ContinuousCoReviewBoundedVerification` removed `SPECREW_REFOCUS_DISABLE` but leaked `SPECREW_DISABLE_EVENTS` into its governance-sensitive child. The second reproduced the same leak in the production hook-health integration fixture, causing deliberate dispatcher children to no-op under a surrounding reviewer session.
 - **Drift classification**: `incomplete`. The approved verification-integrity contract requires the supported bounded child to execute governance normally; clearing only one of two reviewer suppressions allowed false-green verification. The integration failure was a deterministic witness of the same production omission, not a new feature request.
 - **Correction**: the bounded verification helper now removes both reviewer-only suppression variables from its child environment. Arbitrary reviewer-spawned children still inherit suppression by design. The production-path integration fixture explicitly clears inherited suppressions for deliberate system-under-test dispatcher children unless a case supplies an override itself. The paired governed-fixture test asserts both child variables are empty before the real dispatcher emits its expected marker.
-- **Closure evidence**: before correction, the exact reviewer environment produced nine production-path integration failures and one bounded-helper unit failure. After correction, that same environment passes the full integration suite and the paired unit. The adjacent bounded-verification, invocation-integrity, and suppression group passes 27/27; all 56 registered F-198 suites pass in 534.5 seconds. No provider was invoked by the correction.
+- **Closure evidence**: before correction, the exact reviewer environment produced nine production-path integration failures and one bounded-helper unit failure. After correction, that same environment passes the full integration suite and the paired unit. The adjacent bounded-verification, invocation-integrity, and suppression group passes 27/27; all 56 registered F-198 suites pass in 534.5 seconds, scoped governance passes, and CI run `29598904494` is green. Exact-commit preflight passed at commit `d9d4ee9e141f56add723ea20d1d43a31011eb948` and digest `5206249669fcfa89b8007c48e29d1ce060b32c40`. Antigravity run 02 completed without repeating either code defect; its five findings were exclusively planned/downstream status observations and are recorded as the scope ambiguity in `DRIFT-198-I007-008`.
+
+### DRIFT-198-I007-008 — T060 code-review scope allowed downstream gate status to masquerade as code findings
+
+- **Status**: resolved in code; commit, CI, exact-commit preflight, and clean live verification pending
+- **Severity**: moderate review-scope/evidence-integrity defect
+- **Requirements**: FR-059, FR-060, FR-063, FR-064, SC-019, SC-020, NFR-002
+- **Evidence**: correction run `run-t060-antigravity-windows-d9d4ee9e-02` invoked once under verified Windows Job Object containment, completed in 798000 ms, preserved a clean/current target, and published a strict valid partial candidate. It did not repeat either run-01 code defect. Instead, all five findings restated truthful status already present in the iteration artifacts: Cursor free-credit exhaustion, the Antigravity correction proof then in progress, later Copilot and T061 runs, and the deliberately deferred campaign cutover. No finding identified a defect in executable code or tests.
+- **Drift classification**: `ambiguous`. The shared prompt correctly requested code-review findings, but the T060 wrapper's generic scope did not explain the approved serialized phase. A reviewer could therefore mistake explicitly scheduled later gates for defects in the current frozen code, creating a catch-22 in which an early smoke could never pass because later smokes and cutover had not happened yet.
+- **Correction**: both T060 execution packages now pass the same explicit phase-aware scope into the production campaign command. Reviewers still inspect the full frozen code/tests against resolved design context, but accurate entries for later T060 harnesses, cutover, T061, retro/closeout, or an external provider-quota constraint are context rather than code findings. A pending/deferred item remains reportable whenever a grounded frozen-code defect makes it unsafe/impossible or contradicts an approved requirement. The generic production reviewer prompt and strict ingress remain unchanged.
+- **Closure evidence**: paired package tests require both Windows/Linux and macOS T060 runners to pass the scope explicitly, preserve the single synchronous provider call, and retain no-retry/strict-result behavior. Both package/evidence suites pass 13/13, both runner scripts parse cleanly, and all 56 registered F-198 suites pass in 610.7 seconds. No provider was invoked by the correction.
