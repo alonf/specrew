@@ -65,6 +65,12 @@ function Invoke-Dispatcher {
     $env0 = @{ SPECREW_MODULE_PATH = $repoRoot }
     if (-not [string]::IsNullOrWhiteSpace($PathPrepend)) { $env0['PATH'] = $PathPrepend + [System.IO.Path]::PathSeparator + $env:PATH }
     foreach ($k in $ExtraEnv.Keys) { $env0[$k] = $ExtraEnv[$k] }
+    # This suite drives the dispatcher as the system under test. A surrounding live-review session suppresses its
+    # own hooks, but that reviewer-only environment must not silently turn these deliberate child invocations into
+    # no-ops. Clear inherited suppression unless a case explicitly supplies the key through ExtraEnv.
+    foreach ($suppressionKey in @('SPECREW_REFOCUS_DISABLE', 'SPECREW_DISABLE_EVENTS')) {
+        if (-not $env0.ContainsKey($suppressionKey)) { $env0[$suppressionKey] = $null }
+    }
     $saved = @{}
     foreach ($k in $env0.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k); [Environment]::SetEnvironmentVariable($k, $env0[$k]) }
     try {

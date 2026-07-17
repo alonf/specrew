@@ -801,16 +801,18 @@ function Invoke-ContinuousCoReviewBoundedVerification {
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.UseShellExecute = $false
-        # STRICT BOUNDED CONTRACT (codex finding f1 verification-environment-contamination, 2026-07-12): the
-        # reviewer process runs with SPECREW_REFOCUS_DISABLE=1 so the reviewer host's OWN lifecycle hooks no-op
-        # (a reviewer must not govern itself). That var is inherited by ANY child. This helper is the ONLY
-        # SUPPORTED path for governance-sensitive verification launched under a reviewer session, so it
-        # EXPLICITLY REMOVES the suppression from every verification child's environment - a governance/hook the
-        # child invokes then executes NORMALLY (no false-green). ProcessStartInfo.Environment is pre-seeded from
-        # this process; dropping the key means the child never inherits the reviewer's suppression. (This does NOT
-        # claim complete isolation: an arbitrary reviewer-spawned child that is NOT launched through this helper
-        # still inherits suppression - intentional, to prevent recursive governance; see reviewer-spawn-contract.md.)
+        # STRICT BOUNDED CONTRACT (codex finding f1 verification-environment-contamination, 2026-07-12; completed
+        # for the event-scoped suppression by Antigravity finding 934e5314, 2026-07-17): the reviewer process runs
+        # with both broad and event-scoped hook suppression so the reviewer host's OWN lifecycle hooks no-op (a
+        # reviewer must not govern itself). Those vars are inherited by ANY child. This helper is the ONLY SUPPORTED
+        # path for governance-sensitive verification launched under a reviewer session, so it EXPLICITLY REMOVES
+        # both suppressions from every verification child's environment - a governance/hook the child invokes then
+        # executes NORMALLY (no false-green). ProcessStartInfo.Environment is pre-seeded from this process; dropping
+        # the keys means the child never inherits the reviewer's suppression. (This does NOT claim complete
+        # isolation: an arbitrary reviewer-spawned child that is NOT launched through this helper still inherits
+        # suppression - intentional, to prevent recursive governance; see reviewer-spawn-contract.md.)
         [void]$psi.Environment.Remove('SPECREW_REFOCUS_DISABLE')
+        [void]$psi.Environment.Remove('SPECREW_DISABLE_EVENTS')
         $proc = [System.Diagnostics.Process]::Start($psi)
         $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         $timedOut = $false
