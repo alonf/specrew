@@ -4,15 +4,20 @@ These tests belong to Proposal 197's reviewer-domain spine. They intentionally s
 
 ## Local invocation
 
-From the repository root:
+The Beta2 release gate is the explicit, process-isolated F-198 registry. From the repository root:
 
 ```powershell
-$testTemp = New-Item -ItemType Directory -Force -Path '.scratch/tmp'
-$env:TEMP = $testTemp.FullName
-$env:TMP = $testTemp.FullName
-$env:SPECREW_MODULE_PATH = 'C:\Dev\197-continuous-co-review'
-Import-Module 'C:\Dev\197-continuous-co-review\Specrew.psd1' -Force
-Invoke-Pester -Path 'tests/continuous-co-review'
+pwsh -NoProfile -File ./tests/f198-regression-suite.ps1
+```
+
+That bounded manifest runs each suite in a fresh child process and names the exact contracts on which the Beta2 honesty bar depends. Do not substitute `Invoke-Pester -Path 'tests/continuous-co-review'`: the directory also retains pre-campaign legacy characterization files and intentionally non-gating proposal tests whose assumptions are incompatible in one shared Pester process after the one-way campaign-authority cutover.
+
+For one current Pester file, invoke that file directly in a fresh PowerShell process, for example:
+
+```powershell
+$env:SPECREW_MODULE_PATH = (Get-Location).Path
+$result = Invoke-Pester -Path 'tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1' -Output Detailed -PassThru
+exit ([int]$result.FailedCount)
 ```
 
 For the Iteration 001 contract slice only:
