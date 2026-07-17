@@ -4,7 +4,7 @@ This runner owns the three remaining T060 allocations only: Cursor on Windows, A
 
 `Preflight` performs repository, digest, CLI/auth-readiness, harness, and OS-containment checks without invoking a model. `Invoke` requires an exact run ID, authorization reference, and acknowledgement; it contains one synchronous provider-capable call and no retry. Every second attempt therefore requires a new run ID and a new human grant.
 
-Run from a clean detached worktree at the supplied 40-character commit. Put every output directory outside that worktree. The runner places transient Windows target and candidate staging under short sibling directories (`.t060-targets` and `.t060-staging`) so deeply nested repository fixtures remain below the legacy Windows path boundary; terminal cleanup removes them when empty.
+Run from a clean detached worktree at the supplied 40-character commit. Put every output directory outside that worktree. The runner places transient Windows target and candidate staging under short sibling directories (`.t060-targets` and `.t060-staging`). The target port uses a fixed-length token in its disposable directory name while retaining the complete run ID in authority metadata, keeping every currently tracked path below the legacy Windows boundary; terminal cleanup removes the transient roots when empty.
 
 ## Windows preflight
 

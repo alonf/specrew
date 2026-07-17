@@ -51,6 +51,13 @@ function Test-ReviewTargetPathUnderRoot {
     return $pathFull.Equals($rootFull, $comparison) -or $pathFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, $comparison)
 }
 
+function Get-ReviewTargetRunToken {
+    param([Parameter(Mandatory)][string]$RunId)
+    $bytes = [Text.Encoding]::UTF8.GetBytes($RunId)
+    $digest = [Security.Cryptography.SHA256]::HashData($bytes)
+    return [Convert]::ToHexString($digest).ToLowerInvariant().Substring(0, 16)
+}
+
 function Get-GitReviewTargetOriginEvidence {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$OriginRepo)
@@ -88,7 +95,10 @@ function New-GitReviewTargetSnapshot {
         throw 'review-target-external-root-inside-origin'
     }
     [IO.Directory]::CreateDirectory($externalFull) | Out-Null
-    $workspaceRoot = Join-Path $externalFull ('review-target-{0}-{1}' -f $RunId, [guid]::NewGuid().ToString('N'))
+    # The full run ID remains in immutable authority metadata. A fixed-length token keeps the disposable
+    # filesystem name bounded even when the approved run identifier and tracked repository paths are long.
+    $runToken = Get-ReviewTargetRunToken -RunId $RunId
+    $workspaceRoot = Join-Path $externalFull ('rt-{0}-{1}' -f $runToken, [guid]::NewGuid().ToString('N'))
     $added = $false
     try {
         # Create a genuine linked worktree (shared objects), then checkout the canonical current-state

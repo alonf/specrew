@@ -31,6 +31,9 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-target -ExternalRoot $external
         try {
             (Test-ReviewTargetPathUnderRoot -Path $snapshot.workspace_root -Root $origin) | Should -BeFalse
+            (Split-Path -Leaf $snapshot.workspace_root) | Should -Match '^rt-[0-9a-f]{16}-[0-9a-f]{32}$'
+            (Split-Path -Leaf $snapshot.workspace_root) | Should -Not -Match 'run-target'
+            $snapshot.run_id | Should -Be 'run-target' -Because 'the full authority identity stays in metadata, not the bounded filesystem leaf'
             Test-Path -LiteralPath (Join-Path $snapshot.workspace_root '.git') | Should -BeTrue -Because 'this is a genuine linked git worktree sharing the object database'
             (Get-Content -LiteralPath (Join-Path $snapshot.snapshot_path 'tracked.txt') -Raw) | Should -Be 'dirty-current'
             (Get-Content -LiteralPath (Join-Path $snapshot.snapshot_path 'untracked.txt') -Raw) | Should -Be 'untracked-current'
@@ -70,6 +73,14 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         New-TargetRepo -Path $origin
         { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-contained -ExternalRoot (Join-Path $origin 'reviews') } | Should -Throw -ExpectedMessage '*external-root-inside-origin*'
         Test-Path -LiteralPath (Join-Path $origin 'reviews') | Should -BeFalse
+    }
+
+    It 'derives a stable fixed-length token without collapsing distinct run identities' {
+        $one = Get-ReviewTargetRunToken -RunId run-target-one
+        $two = Get-ReviewTargetRunToken -RunId run-target-two
+        $one | Should -Match '^[0-9a-f]{16}$'
+        $one | Should -Be (Get-ReviewTargetRunToken -RunId run-target-one)
+        $one | Should -Not -Be $two
     }
 
     It 'exposes the same neutral port fields for the thin non-code fixture' {

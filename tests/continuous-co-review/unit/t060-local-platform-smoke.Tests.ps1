@@ -6,6 +6,7 @@ Describe 'T060 local Windows and Linux smoke package' {
         $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
         $script:RunnerPath = Join-Path $script:RepoRoot 'scripts/t060-local-platform-smoke.ps1'
         $script:Source = Get-Content -LiteralPath $script:RunnerPath -Raw
+        $script:TargetPortSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1') -Raw
     }
 
     It 'restricts the runner to the three planned host and platform allocations' {
@@ -45,11 +46,13 @@ Describe 'T060 local Windows and Linux smoke package' {
         $script:Source | Should -Match '-Ports \$ports'
         $script:Source | Should -Not -Match "GetTempPath\(\).*specrew-review-targets"
 
-        $longFixture = 'tests/integration/fixtures/feature-017-dashboard/closeout-repository/extensions/specrew-speckit/scripts/shared-governance.ps1'
-        $oldPrefix = 'C:\Users\maintainer\AppData\Local\Temp\specrew-review-targets\review-target-run-t060-cursor-windows-deadbeef-01-00000000000000000000000000000000'
-        $shortPrefix = 'C:\Dev\.t060-targets\review-target-run-t060-cursor-windows-deadbeef-01-00000000000000000000000000000000'
-        (Join-Path $oldPrefix $longFixture).Length | Should -BeGreaterThan 259
-        (Join-Path $shortPrefix $longFixture).Length | Should -BeLessThan 260
+        $trackedPaths = @(& git -C $script:RepoRoot ls-tree -r --name-only HEAD)
+        $longestTrackedPath = @($trackedPaths | Sort-Object Length -Descending | Select-Object -First 1)[0]
+        $legacyPrefix = 'C:\Dev\.t060-targets\review-target-run-t060-cursor-windows-maximum-identifier-01-00000000000000000000000000000000'
+        $boundedPrefix = 'C:\Dev\.t060-targets\rt-0000000000000000-00000000000000000000000000000000'
+        (Join-Path $legacyPrefix $longestTrackedPath).Length | Should -BeGreaterThan 259
+        (Join-Path $boundedPrefix $longestTrackedPath).Length | Should -BeLessThan 260
+        $script:TargetPortSource | Should -Match ([regex]::Escape('''rt-{0}-{1}'' -f $runToken'))
     }
 
     It 'throttles non-semantic heartbeats while preserving every progress event' {

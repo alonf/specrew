@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Codex/local macOS is complete. Cursor/Windows attempt 01 failed before provider spend on Windows path length; DRIFT-198-I007-003 corrects the short external roots and failure-report packaging with 66 focused tests green. Cursor/Windows, Antigravity/Windows, Copilot/Linux, support truth, and campaign cutover remain under the scoped minimum-budget standing authority."
+    blocked_reason: "Codex/local macOS is complete. Cursor/Windows attempts 01/02 both failed before provider invocation and consumed no free credit; DRIFT-198-I007-003 now combines short external roots, a fixed-length disposable target token, and complete failure-report packaging. All 93 focused tests and all 56 F-198 suites are green; scoped governance passes. CI and fresh exact-commit preflights precede attempt 03. Cursor/Windows, Antigravity/Windows, Copilot/Linux, support truth, and campaign cutover remain under the scoped minimum-budget standing authority."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"
