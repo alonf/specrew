@@ -249,11 +249,12 @@ function New-ReviewCampaignProductionPorts {
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [string]$ReviewerHost,
+        [string]$Model,
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900
     )
     $target = New-GitReviewTargetPort -OriginRepo $RepoRoot
     $harness = if (Get-Command -Name 'New-ReviewProductionHarnessPort' -ErrorAction SilentlyContinue) {
-        New-ReviewProductionHarnessPort -HostName $ReviewerHost -TimeoutSeconds $TimeoutSeconds
+        New-ReviewProductionHarnessPort -HostName $ReviewerHost -Model $Model -TimeoutSeconds $TimeoutSeconds
     }
     else { New-ReviewUnavailableHarnessPort -HarnessId $(if ($ReviewerHost) { $ReviewerHost } else { 'unselected-harness' }) -Reason 'production-harness-catalog-not-installed' }
     $runtime = if (Get-Command -Name 'New-ReviewProductionRuntimePort' -ErrorAction SilentlyContinue) {
@@ -274,6 +275,7 @@ function Invoke-ReviewCampaignCommand {
         [string]$IterationNumber,
         [string]$RunId,
         [string]$ReviewerHost,
+        [string]$Model,
         [string]$GrantAuthorizationRef,
         [AllowEmptyCollection()][string[]]$DesignContextRefs = @(),
         [string]$ReviewScope = 'Review the complete frozen target and return the versioned candidate JSON contract.',
@@ -348,7 +350,7 @@ function Invoke-ReviewCampaignCommand {
             throw "review-store-corruption:grant-identity-mismatch:$grantId"
         }
     }
-    if ($null -eq $Ports) { $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -TimeoutSeconds $TimeoutSeconds }
+    if ($null -eq $Ports) { $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -Model $Model -TimeoutSeconds $TimeoutSeconds }
     $run = Invoke-ReviewCampaignRun -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $identity.campaign_id -RunId $identity.run_id `
         -ReservationId $identity.reservation_id -TargetLineage $identity.target_lineage -TargetPort $Ports.target -HarnessPort $Ports.harness `
         -RuntimePort $Ports.runtime -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `

@@ -118,12 +118,14 @@ function New-ReviewWindowsRuntimePort {
     param(
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900,
         [ValidateRange(0, 10)][int]$TerminationGraceSeconds = 5,
-        [scriptblock]$CapabilityProbe
+        [scriptblock]$CapabilityProbe,
+        [scriptblock]$ContainmentFactory
     )
     if (-not $CapabilityProbe) { $CapabilityProbe = ${function:Test-ReviewWindowsJobObjectAvailability} }
+    if (-not $ContainmentFactory) { $ContainmentFactory = ${function:New-SpecrewProcessContainment} }
     $validateSpecCommand = ${function:Test-ReviewRuntimeProcessSpec}
     $initializeContainmentCommand = ${function:Initialize-SpecrewProcessContainmentRuntime}
-    $newContainmentCommand = ${function:New-SpecrewProcessContainment}
+    $newContainmentCommand = $ContainmentFactory
     $stopContainmentCommand = ${function:Stop-SpecrewProcessContainment}
     $closeContainmentCommand = ${function:Close-SpecrewProcessContainment}
     $waitJobEmptyCommand = ${function:Wait-ReviewWindowsJobEmpty}
@@ -173,6 +175,11 @@ function New-ReviewWindowsRuntimePort {
             $stdoutDrain = $process.StandardOutput.BaseStream.CopyToAsync([IO.Stream]::Null)
             $stderrDrain = $process.StandardError.BaseStream.CopyToAsync([IO.Stream]::Null)
             $containment = & $newContainmentCommand -ChildPid $process.Id
+            if ($containment.mode -cne 'job-object') {
+                & $stopContainmentCommand -Containment $containment -GraceSeconds 0
+                [void]$process.WaitForExit(5000); $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
+                return [pscustomobject]@{ runtime_outcome = 'containment-violated'; termination_verified = ($streamsClosed -and (& $testProcessDeadCommand -ProcessId $process.Id)); containment = 'violated'; failure_reason = ('windows-job-object-assignment-failed:' + [string]$containment.degraded_reason); process_tree_live = $false; output_activity = [IO.File]::Exists([string]$spec.candidate_result_path) }
+            }
             try { & $onStarted }
             catch {
                 & $stopContainmentCommand -Containment $containment -GraceSeconds 0
@@ -180,11 +187,6 @@ function New-ReviewWindowsRuntimePort {
                 $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
                 $jobEmpty = if ($containment.mode -ceq 'job-object') { & $waitJobEmptyCommand -JobHandle $containment.job_handle } else { $false }
                 return [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = ($streamsClosed -and $jobEmpty -and (& $testProcessDeadCommand -ProcessId $process.Id)); containment = $(if ($containment.mode -ceq 'job-object') { 'verified' } else { 'unknown' }); failure_reason = ('runtime-start-callback-failed:' + $_.Exception.Message); process_tree_live = $false; output_activity = [IO.File]::Exists([string]$spec.candidate_result_path) }
-            }
-            if ($containment.mode -cne 'job-object') {
-                & $stopContainmentCommand -Containment $containment -GraceSeconds 0
-                [void]$process.WaitForExit(5000); $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
-                return [pscustomobject]@{ runtime_outcome = 'containment-violated'; termination_verified = ($streamsClosed -and (& $testProcessDeadCommand -ProcessId $process.Id)); containment = 'violated'; failure_reason = ('windows-job-object-assignment-failed:' + [string]$containment.degraded_reason); process_tree_live = $false; output_activity = [IO.File]::Exists([string]$spec.candidate_result_path) }
             }
             if ([string]$spec.prompt_transport -ceq 'stdin') {
                 try { $process.StandardInput.Write([string]$spec.stdin_text) } catch { $null = $_ }

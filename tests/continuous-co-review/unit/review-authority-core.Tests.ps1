@@ -135,6 +135,22 @@ Describe 'Review authority closed contracts (T042)' {
         ($validation.errors -join ';') | Should -Match 'too-many:findings:100'
     }
 
+    It 'rejects duplicate candidate local IDs and accepts distinct IDs' {
+        $duplicate = New-Candidate -Verdict findings -Findings @(
+            (New-CandidateFinding -LocalId 'reviewer-1'),
+            (New-CandidateFinding -LocalId 'reviewer-1' -Title 'Second bug')
+        )
+        $duplicateValidation = Test-ReviewAuthorityContractObject -ContractName ReviewerCandidate -InputObject $duplicate
+        $duplicateValidation.valid | Should -BeFalse
+        ($duplicateValidation.errors -join ';') | Should -Match 'duplicate-value:findings\[1\]\.local_id'
+
+        $distinct = New-Candidate -Verdict findings -Findings @(
+            (New-CandidateFinding -LocalId 'reviewer-1'),
+            (New-CandidateFinding -LocalId 'reviewer-2' -Title 'Second bug')
+        )
+        (Test-ReviewAuthorityContractObject -ContractName ReviewerCandidate -InputObject $distinct).valid | Should -BeTrue
+    }
+
     It 'rejects agent-created allowance and an approval claim missing its prerequisites' {
         $grant = New-Grant -AuthorityKind 'agent'
         (Test-ReviewAuthorityContractObject -ContractName GrantFact -InputObject $grant).valid | Should -BeFalse

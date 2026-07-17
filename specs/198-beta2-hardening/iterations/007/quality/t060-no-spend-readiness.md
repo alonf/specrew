@@ -97,7 +97,7 @@ After this no-spend failure, the maintainer authorized all remaining requirement
 
 | Order | Task | Platform | Harness | Rationale | Authorization state |
 | --- | --- | --- | --- | --- | --- |
-| 1 | T060 | Windows | Cursor | already installed, authenticated, and accepted by the bounded Windows shim resolver | next base attempt covered by minimum-budget standing authority |
+| 1 | T060 | Windows | Cursor | Free/Auto completed a current review; three findings corrected locally | corrected run 06 authorized after no-spend gates |
 | 2 | T060 | Windows | Antigravity | already installed, authenticated, native, and model-list probed | one base attempt covered by minimum-budget standing authority |
 | 3 | T060 | Linux | Copilot | native CLI plus PowerShell and transient delegated cgroup production preflight are ready | one base attempt covered by minimum-budget standing authority |
 | 4 | T060 | macOS | Codex | clean correction run 2 at exact commit/digest; run 1 preserved as partial evidence | complete |
@@ -113,6 +113,14 @@ Cursor's local transcript evidence resolves the opaque exit: all four branches e
 
 `DRIFT-198-I007-004` makes a Cursor model explicit and evidence-bearing. The no-spend preflight must find the exact ID in the authenticated account-visible model list; the process receives `--model gpt-5.4-mini-low`; preflight and manifest record it; and the shared prompt prohibits model-backed subagent delegation. This is a lower-cost smoke choice visible to the free account, not a claim that Cursor guarantees it as a free model. Attempt 03 is one spent incomplete invocation and is never retried under its old grant.
 
+## Windows Cursor Attempts 04–05 — Free/Auto Proof and Findings
+
+Commit `11a0129e94ba471da8126b28c19fd875ca0feb87`, digest `fce377ffeb2ed7ff65f9b7cc4389dbefa7e637a3`, passed all local gates, CI run `29588052164`, and exact-commit no-spend preflight. Authorized attempt 04, `run-t060-cursor-windows-11a0129e-04`, selected `gpt-5.4-mini-low` and was rejected immediately by Cursor: Free plans can only use Auto. That result is preserved and was not retried under the same ID or authorization.
+
+A separate no-spend preflight recorded `auto`, after which authorized attempt 05, `run-t060-cursor-windows-11a0129e-05`, invoked exactly once. Cursor completed in 251687 ms, wrote the raw candidate file, preserved clean/current origin identity, and returned valid evidence with verified Job Object containment and termination. It published three current findings: the public campaign path dropped `--model`, the Windows runtime could write its spend fact before checking for Job Object degradation, and ingress did not enforce unique candidate `local_id` values.
+
+`DRIFT-198-I007-005` corrects all three. The public path now carries the model into production-port construction; Windows rejects and reaps degraded containment before `onStarted`; and strict candidate validation rejects duplicate ordinal local IDs. Paired regressions plus adjacent authority/campaign/public/runtime/harness/T060 suites pass 105/105, all 56 F-198 suites pass in 529.8 seconds, and scoped Iteration 007 governance passes with historical warnings only. No provider was invoked. The maintainer authorized these corrections and one remaining Free/Auto run 06 after CI and exact-commit preflight complete the no-spend gates.
+
 ## Current Decision
 
-Preserve the clean Mac result and use the scoped minimum-budget standing authority for the serialized Cursor/Windows, Antigravity/Windows, Copilot/Linux, and T061 Claude base proofs. Stop the sequence on any non-clean result. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.
+Preserve the clean Mac result and every immutable Cursor attempt. Finish full no-spend correction gates, then spend only authorized Cursor Free/Auto run 06. A clean run advances to the serialized Antigravity/Windows, Copilot/Linux, and T061 Claude proofs; any non-clean result stops. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.

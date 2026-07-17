@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Codex/local macOS is complete. Cursor attempts 01/02 stopped before provider invocation; attempt 03 invoked once but the inherited Composer 2.5 Fast selection hit its usage limit before producing a candidate. DRIFT-198-I007-004 pins and records gpt-5.4-mini-low, verifies account visibility without spend, and prevents subagent delegation. All 95 focused tests and all 56 F-198 suites are green; scoped governance passes. CI and a fresh preflight precede any separately authorized Cursor proof. Antigravity/Windows, Copilot/Linux, support truth, and campaign cutover remain."
+    blocked_reason: "Codex/local macOS is complete. Cursor attempt 04 proved Free requires Auto; attempt 05 completed a current file-primary review and returned three corroborated findings. DRIFT-198-I007-005 corrections pass the adjacent 105-test group, all 56 F-198 suites in 529.8 seconds, and scoped governance. CI, exact-commit preflight, and authorized run 06 remain before Cursor can count clean. Antigravity/Windows, Copilot/Linux, support truth, and campaign cutover remain."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"

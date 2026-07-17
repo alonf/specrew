@@ -290,6 +290,23 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         Test-Path -LiteralPath $store | Should -BeFalse
     }
 
+    It 'passes the requested model through campaign production-port construction' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'production-model')
+        Mock -CommandName New-ReviewProductionHarnessPort -MockWith {
+            [pscustomobject]@{ id = 'cursor-cli-file-primary'; configured_model = $Model }
+        }
+        Mock -CommandName New-ReviewProductionRuntimePort -MockWith {
+            [pscustomobject]@{ id = 'fixture-runtime' }
+        }
+
+        $ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost cursor -Model auto -TimeoutSeconds 600
+
+        $ports.harness.configured_model | Should -Be 'auto'
+        Assert-MockCalled -CommandName New-ReviewProductionHarnessPort -Times 1 -Exactly -ParameterFilter {
+            $HostName -ceq 'cursor' -and $Model -ceq 'auto' -and $TimeoutSeconds -eq 600
+        }
+    }
+
     It 'wires the existing public live surface to campaign delegation before the legacy diagnostic path' {
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
         $campaignBranch = $source.IndexOf('if ([bool]$authorityDecision.campaign_authority_enabled)')
@@ -301,6 +318,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Not -Match 'Start-ContinuousCoReviewServiceRun'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "campaignRun.status -cne 'terminal'"
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match 'DesignContextRefs' -Because 'the public parser output must reach campaign validation'
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-Model\s+\(\[string\]\$parsedArgs\.Model\)' -Because 'the public model selection must reach campaign production-port construction'
 
         $remediationBranch = $source.IndexOf("if (-not [string]::IsNullOrWhiteSpace([string]`$parsedArgs.Remediate))")
         $legacyRemediation = $source.IndexOf("internal/continuous-co-review/worktree-review-orchestrator.ps1", $remediationBranch)

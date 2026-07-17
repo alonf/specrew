@@ -364,8 +364,17 @@ function Test-ReviewAuthorityContractObject {
             else {
                 $array = @($findings)
                 if ($array.Count -gt 100) { Add-ReviewAuthorityError -Errors $errors -Message 'too-many:findings:100' }
+                $candidateLocalIds = $null
+                if ($ContractName -ceq 'ReviewerCandidate') { $candidateLocalIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal) }
                 for ($i = 0; $i -lt [Math]::Min($array.Count, 100); $i++) {
                     Test-ReviewAuthorityFinding -Finding $array[$i] -Kind $(if ($ContractName -ceq 'ReviewerCandidate') { 'candidate' } else { 'terminal' }) -Errors $errors -Index $i
+                    if ($null -ne $candidateLocalIds) {
+                        $localId = Get-ReviewAuthorityProperty -Object $array[$i] -Name 'local_id'
+                        if ($localId -is [string] -and -not [string]::IsNullOrWhiteSpace($localId)) {
+                            $isNewLocalId = $candidateLocalIds.Add([string]$localId)
+                            if (-not $isNewLocalId) { Add-ReviewAuthorityError -Errors $errors -Message "duplicate-value:findings[$i].local_id" }
+                        }
+                    }
                 }
             }
         }

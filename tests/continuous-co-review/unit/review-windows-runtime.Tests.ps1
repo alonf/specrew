@@ -106,6 +106,30 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $started.Count | Should -Be 0
     }
 
+    It 'fails closed before onStarted when Job Object assignment degrades after process creation' {
+        $root = Join-Path $TestDrive 'assignment-degraded'; $invocation = New-T056Invocation -Root $root
+        $spec = [pscustomobject][ordered]@{
+            schema_version = '1.0'; harness_id = 'fixture-process'; command = $script:PwshPath
+            argument_list = @('-NoProfile', '-Command', 'Start-Sleep -Seconds 30')
+            prompt_transport = 'argument'; stdin_text = $null; working_directory = $invocation.snapshot_path
+            environment_delta = [ordered]@{}; candidate_result_path = $invocation.candidate_result_path
+            deadline = $invocation.deadline; timeout_seconds = 5; result_transport = 'file-primary'; stdout_authority = $false
+        }
+        $harness = [pscustomobject]@{ id = 'fixture-process'; build_process = { param($i, $e) $spec }.GetNewClosure() }
+        $degradedContainment = {
+            param($ChildPid)
+            [pscustomobject]@{ mode = 'tree-kill'; child_pid = $ChildPid; child_pgid = $null; job_handle = $null; degraded_reason = 'fixture-assignment-failed' }
+        }.GetNewClosure()
+        $started = [Collections.Generic.List[string]]::new(); $onStarted = { $started.Add('started') | Out-Null }.GetNewClosure()
+
+        $result = & (New-ReviewWindowsRuntimePort -TimeoutSeconds 5 -TerminationGraceSeconds 0 -ContainmentFactory $degradedContainment).invoke $harness $invocation $onStarted @{}
+
+        $result.runtime_outcome | Should -Be 'containment-violated'
+        $result.containment | Should -Be 'violated'
+        $result.failure_reason | Should -Be 'windows-job-object-assignment-failed:fixture-assignment-failed'
+        $started.Count | Should -Be 0 -Because 'spend authority starts only after required containment is verified'
+    }
+
     It 'reaps a background descendant and closes inherited streams after a clean root exit' {
         $root = Join-Path $TestDrive 'clean'; $invocation = New-T056Invocation -Root $root
         $scripts = New-T056FixtureScripts -Root $root
