@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Codex/local macOS is complete. Cursor clean proof waits for free credit. Antigravity runs 01-04 remain immutable correction evidence. Run 04 validated the location-type prompt and found the stale host-neutral governance guard omitted from the 56-suite registry. DRIFT-198-I007-010 repairs it with a closed named host-bound seam, adds Cursor to the forbidden set, and registers it as suite 57; focused proof passes 3/3, all 57 registered suites pass in 605.4 seconds, and scoped governance passes. Commit/CI/preflight/Antigravity verification, Copilot/Linux, support truth, and cutover remain."
+    blocked_reason: "Codex/local macOS and Antigravity/Windows are clean exact-digest proofs. Antigravity run 05 closed DRIFT-198-I007-010 at commit f39178e6/digest d3314ee2 after all 57 suites, scoped governance, CI 29606585387, and exact preflight passed. Cursor clean proof waits for free credit. Copilot/Linux, support truth, and cutover remain."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"
