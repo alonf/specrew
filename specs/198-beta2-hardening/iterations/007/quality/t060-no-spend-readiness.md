@@ -2,17 +2,18 @@
 
 **Schema**: v1
 **Task**: T060
-**Status**: in progress — Windows and WSL Linux are provisioned; local-macOS native preflight passed and run 1 returned valid partial evidence under correction
+**Status**: in progress — local-macOS Codex proof is clean; Windows and WSL Linux remain provisioned for the three unspent T060 harnesses
 **Evidence Date**: 2026-07-17
 **Readiness Baseline Commit**: `55cf338a6565ce4a2a846473da5f8f51b29e31fa`
 **Mac Run 1 Commit**: `6708bf058b708df1c6b6f7492f46bb856154434a`
-**Correction Target**: exact pushed commit containing this correction; supplied in the next local-Mac handoff
-**Provider Spend**: one Codex/local-Mac invocation (`run-t060-codex-macos-6708bf05-01`)
-**Invocation Authorization**: run 1 exact grant recorded; standing maintainer grant now covers the bounded Mac correction sequence only
+**Correction Target**: `b1ae8b47aece4e0f4a017dc1e8896708fc2c8700`
+**Mac Run 2 Digest**: `7dcc6b4da0bf006f24b7c8fa5ed08c56fa42704c`
+**Provider Spend**: two Codex/local-Mac invocations (immutable partial run 1; clean correction run 2)
+**Invocation Authorization**: the bounded standing Mac grant is fulfilled; non-Mac slots remain ungranted
 
-## Safety Boundary
+## No-spend Readiness Boundary
 
-These checks used command resolution, production preflight functions, version/status/help commands, the Antigravity model-list command, GitHub runner metadata, and secret/runner-name metadata only. No review prompt was submitted, no candidate result was requested, no campaign grant or spend fact was created, and no provider invocation occurred. Authentication output was reduced to non-secret readiness facts; email, organization, and credential values were not persisted.
+The readiness checks used command resolution, production preflight functions, version/status/help commands, the Antigravity model-list command, GitHub runner metadata, and secret/runner-name metadata only. Those checks did not invoke providers. The two separately identified Mac live runs are recorded below. Authentication output was reduced to non-secret readiness facts; email, organization, and credential values were not persisted.
 
 ## Windows Readiness
 
@@ -78,6 +79,8 @@ The bounded correction makes the clean pinned repository an explicit validator i
 
 After run 1, the maintainer granted all authority needed to finish the Mac tests. This is a scoped standing grant for the Mac correction sequence: each attempt must still have a fresh run ID and recorded reference, invoke once, never retry secretly, and preserve every prior result. It does not authorize the other harness slots.
 
+Correction run `run-t060-codex-macos-b1ae8b47-02` used authorization reference `standing-mac-grant-20260717-attempt-02` against exact commit `b1ae8b47aece4e0f4a017dc1e8896708fc2c8700` and digest `7dcc6b4da0bf006f24b7c8fa5ed08c56fa42704c`. It invoked exactly once, completed in 210898 ms, and returned complete/pass/current/valid evidence with verified containment/termination and zero findings. Independent validation exited `0` with `package_valid=true`, `smoke_clean=true`, and no errors. The invoke exited `0`; the ZIP SHA-256 is `9e359c121ffae46bb24ed8761749a11492a7d58adad4591f43a3e703d6d09351`. The Mac proof is complete, and run 1 remains immutable partial evidence.
+
 ## Proposed Five-Run Allocation
 
 | Order | Task | Platform | Harness | Rationale | Authorization state |
@@ -85,11 +88,11 @@ After run 1, the maintainer granted all authority needed to finish the Mac tests
 | 1 | T060 | Windows | Cursor | already installed, authenticated, and accepted by the bounded Windows shim resolver | not granted |
 | 2 | T060 | Windows | Antigravity | already installed, authenticated, native, and model-list probed | not granted |
 | 3 | T060 | Linux | Copilot | native CLI plus PowerShell and transient delegated cgroup production preflight are ready | not granted |
-| 4 | T060 | macOS | Codex | native preflight passed; run 1 is valid partial and the bounded correction sequence has standing authority | correction rerun pending |
+| 4 | T060 | macOS | Codex | clean correction run 2 at exact commit/digest; run 1 preserved as partial evidence | complete |
 | 5 | T061 | Windows | Claude | strongest installed reviewer independent of the Codex code-writer; reserved for exact-digest signoff | not granted |
 
-The non-Mac sequence remains execution planning, not a grant. The maintainer's later standing instruction supersedes the per-reply requirement only for finishing the Mac correction sequence; unique run identity, recorded authority, serialization, and no-hidden-retry remain mandatory.
+The non-Mac sequence remains execution planning, not a grant. The standing Mac instruction is fulfilled; unique run identity, recorded authority, serialization, and no-hidden-retry remain mandatory for all later slots.
 
 ## Current Decision
 
-Commit and push the deterministically verified run-1 corrections, then run one native local-Mac correction attempt with a fresh run ID under the standing scoped grant. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.
+Preserve the clean Mac result and proceed only after separate human grants for Cursor/Windows, Antigravity/Windows, and Copilot/Linux. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.

@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Mac native preflight passed. Run run-t060-codex-macos-6708bf05-01 spent one slot and returned immutable valid partial evidence with a digest-binding major finding plus DESIGN_CONTEXT_EMPTY. Both corrections pass focused tests and all 55 registered suites; correction commit/push and a new pinned Mac run under the scoped standing grant remain."
+    blocked_reason: "Codex/local macOS is complete: run 1 remains immutable partial evidence and correction run run-t060-codex-macos-b1ae8b47-02 is complete/pass/current/valid with zero findings and clean independent package validation. Cursor/Windows, Antigravity/Windows, Copilot/Linux, support truth, and campaign cutover remain; their provider slots are not granted."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"
