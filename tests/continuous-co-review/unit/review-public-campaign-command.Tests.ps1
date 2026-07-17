@@ -309,6 +309,9 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
     It 'passes the requested model through campaign production-port construction' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'production-model')
+        Mock -CommandName New-GitReviewTargetPort -MockWith {
+            [pscustomobject]@{ kind = 'git'; origin_repo = $OriginRepo; external_root = $ExternalRoot }
+        }
         Mock -CommandName New-ReviewProductionHarnessPort -MockWith {
             [pscustomobject]@{ id = 'cursor-cli-file-primary'; configured_model = $Model }
         }
@@ -319,6 +322,11 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost cursor -Model auto -TimeoutSeconds 600
 
         $ports.harness.configured_model | Should -Be 'auto'
+        $ports.target.external_root | Should -Be (Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($root))) '.specrew-targets')
+        (Split-Path -Leaf $ports.target.external_root) | Should -Be '.specrew-targets' -Because 'deep Windows target paths need the short sibling root proven by T060'
+        Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 1 -Exactly -ParameterFilter {
+            $OriginRepo -ceq $root -and $ExternalRoot -ceq (Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($root))) '.specrew-targets')
+        }
         Assert-MockCalled -CommandName New-ReviewProductionHarnessPort -Times 1 -Exactly -ParameterFilter {
             $HostName -ceq 'cursor' -and $Model -ceq 'auto' -and $TimeoutSeconds -eq 600
         }

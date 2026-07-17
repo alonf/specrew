@@ -263,7 +263,13 @@ function New-ReviewCampaignProductionPorts {
         [string]$Model,
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900
     )
-    $target = New-GitReviewTargetPort -OriginRepo $RepoRoot
+    # Keep the disposable checkout beside the repository instead of under Windows' long per-user
+    # temp prefix. The target port still rejects any root inside the source repository, and its
+    # fixed run token + random leaf preserves concurrent-run isolation without exposing run IDs.
+    # This mirrors the path proven by the T060 Windows package and leaves materially more of the
+    # legacy MAX_PATH budget for deeply nested tracked fixtures.
+    $targetRoot = Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($RepoRoot))) '.specrew-targets'
+    $target = New-GitReviewTargetPort -OriginRepo $RepoRoot -ExternalRoot $targetRoot
     $harness = if (Get-Command -Name 'New-ReviewProductionHarnessPort' -ErrorAction SilentlyContinue) {
         New-ReviewProductionHarnessPort -HostName $ReviewerHost -Model $Model -TimeoutSeconds $TimeoutSeconds
     }
