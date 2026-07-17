@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total local drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
+**Total local drift events**: 3
+**Resolution rate**: 100% (3/3 resolved)
 **Specification drift**: Both local dogfood gaps are resolved without changing approved product scope
 
 ## Inherited Open Drift
@@ -42,5 +42,15 @@
 - **Root cause**: the stable material-surface hash retained the transient `; N new commit(s): ...` handover annotation. The first Stop after a commit contained the suffix; a later routine discussion over the exact same `HEAD` and file surface did not. That suffix-only transition looked like new material work even though the turn changed nothing.
 - **Correction**: canonicalization removes only the transient new-commit observation before hashing. The concrete `HEAD`, commit title, dirty-file identity, and counts remain, so a genuinely different commit or file surface still creates a new obligation. Refocus guidance also states explicitly that clarify ambiguity and workshop questions are not packet stops.
 - **Closure evidence**: the paired live-reproduction fixture proves same `HEAD`/files with the suffix disappearing stays conversational, while a different `HEAD` still demands the five-section packet. Existing substantial-work, long-read-only, rendered-packet, workshop, boundary-precedence, dispatcher, and deployed-binding cases remain green. Focused suites pass and all 55 F-198 suites pass in 630.5 seconds.
+
+### DRIFT-198-I007-003 — first Windows live-smoke target exceeded the legacy path boundary before provider spend
+
+- **Status**: resolved in code; clean exact-commit preflight and live rerun pending
+- **Severity**: moderate infrastructure
+- **Requirements**: FR-059, FR-061, FR-064, SC-018, SC-019, SC-021
+- **Evidence**: `run-t060-cursor-windows-f1e69d0a-01` reserved one authorized slot, then failed after 17468 ms while checking out the canonical target because the default Windows temp prefix plus the repository's deepest tracked fixture exceeded the legacy 260-character boundary. The controller published and preserved a `preflight-failed` result/report, released the reservation, recorded no spend fact, and never invoked Cursor or consumed free credit.
+- **Secondary packaging gap**: the pre-invocation controller result exposed `result_path` but omitted the already-published `report_path`, causing the outer T060 package to stop before copying its terminal projection even though the authority subtree retained it.
+- **Correction**: the local Windows/Linux runner supplies the real production target port with short sibling `.t060-targets` and `.t060-staging` roots, preserving external isolation while removing 35 path characters in the reproduced fixture. Every pre-invocation terminal return now carries both immutable result and generated report paths.
+- **Closure evidence**: a paired deterministic length fixture crosses the old boundary and remains below it with the short root; preflight, runtime-preflight, launch-failure, long-exception, and claim-contention paths expose readable reports. All 66 focused target/harness/orchestrator/Windows-runtime tests pass, followed by all 56 registered F-198 suites in 622.3 seconds and scoped Iteration 007 governance with historical warnings only. No provider invocation was used for the correction.
 
 T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS but does not replace T060 live evidence. The inherited Iteration 006 event still requires T061 independent verification.

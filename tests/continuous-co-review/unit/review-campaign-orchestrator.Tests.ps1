@@ -155,14 +155,18 @@ Stdout is telemetry and is never parsed for authority.
         $preflight = Invoke-OrchestratorFixture -Context $context -Run run-one -Reservation res-one -Target $target -Harness (New-ReviewFixtureHarnessPort -PreflightPass $false) -Runtime (New-ReviewFixtureRuntimePort)
         $preflight.invoked | Should -BeFalse
         $preflight.result.runtime_outcome | Should -Be 'preflight-failed'
+        Test-Path -LiteralPath $preflight.result_path -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath $preflight.report_path -PathType Leaf | Should -BeTrue
 
         $runtimePreflight = Invoke-OrchestratorFixture -Context $context -Run run-two -Reservation res-two -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-two)) -Runtime (New-ReviewFixtureRuntimePort -PreflightPass $false)
         $runtimePreflight.invoked | Should -BeFalse
         $runtimePreflight.reason | Should -Be 'preflight-failed:runtime'
+        Test-Path -LiteralPath $runtimePreflight.report_path -PathType Leaf | Should -BeTrue
 
         $launch = Invoke-OrchestratorFixture -Context $context -Run run-three -Reservation res-three -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-three)) -Runtime (New-ReviewFixtureRuntimePort -Outcome launch-failed)
         $launch.invoked | Should -BeFalse
         $launch.result.runtime_outcome | Should -Be 'launch-failed'
+        Test-Path -LiteralPath $launch.report_path -PathType Leaf | Should -BeTrue
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 0
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 3
     }
@@ -179,6 +183,7 @@ Stdout is telemetry and is never parsed for authority.
         $result.status | Should -Be 'failed'
         $result.invoked | Should -BeFalse
         $result.result.runtime_outcome | Should -Be 'preflight-failed'
+        Test-Path -LiteralPath $result.report_path -PathType Leaf | Should -BeTrue
         $result.result.failure_reason.Length | Should -Be 2000
         $result.result.failure_reason | Should -Match '\.\.\.\[truncated\]$'
         $release = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases)

@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Codex/local macOS is complete: run 1 remains immutable partial evidence and correction run run-t060-codex-macos-b1ae8b47-02 is complete/pass/current/valid with zero findings and clean independent package validation. Cursor/Windows, Antigravity/Windows, Copilot/Linux, support truth, and campaign cutover remain; their provider slots are not granted."
+    blocked_reason: "Codex/local macOS is complete. Cursor/Windows attempt 01 failed before provider spend on Windows path length; DRIFT-198-I007-003 corrects the short external roots and failure-report packaging with 66 focused tests green. Cursor/Windows, Antigravity/Windows, Copilot/Linux, support truth, and campaign cutover remain under the scoped minimum-budget standing authority."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"

@@ -472,7 +472,7 @@ function Invoke-ReviewCampaignRun {
                 $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
                 $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome preflight-failed
                 Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
-                return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path }
+                return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path }
             }
         }
         catch {
@@ -480,7 +480,7 @@ function Invoke-ReviewCampaignRun {
             $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
             $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $placeholderDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome preflight-failed
             Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
-            return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path }
+            return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path }
         }
 
         Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage preflighted -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -State preflighted) | Out-Null
@@ -502,7 +502,7 @@ function Invoke-ReviewCampaignRun {
             $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
             $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason ('claim-not-acquired:' + $claim.reason) -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome claim-contended -Containment verified
             Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message ('claim-not-acquired:' + $claim.reason) -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
-            return [pscustomobject]@{ status = 'not-started'; reason = ('claim-not-acquired:' + $claim.reason); invoked = $false; result = $failed.result; result_path = $failed.result_path }
+            return [pscustomobject]@{ status = 'not-started'; reason = ('claim-not-acquired:' + $claim.reason); invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path }
         }
         Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage claimed -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -State claimed) | Out-Null
         Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'preflighted' -Message 'target, store, contract, containment, harness, and runtime preflight passed' -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
@@ -542,7 +542,7 @@ function Invoke-ReviewCampaignRun {
             $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends $spends -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome launch-failed -Containment unknown
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition abandoned -ObservedAt $endedAt | Out-Null
             Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
-            return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path }
+            return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path }
         }
 
         $observedUsage = if ($runtimeResult.PSObject.Properties['usage']) { $runtimeResult.usage } else { $null }

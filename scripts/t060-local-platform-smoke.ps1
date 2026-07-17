@@ -213,7 +213,16 @@ if ($Mode -ceq 'Preflight') {
 $authorityConfigPath = Join-Path $output 'campaign-authority.json'
 Write-T060LocalJsonFile -Path $authorityConfigPath -Value ([pscustomobject][ordered]@{ schema_version = '1.0'; mode = 'campaign' })
 $storeRoot = Join-Path $output 'authority'
-$stagingRoot = Join-Path $output '.staging'
+$externalParent = Split-Path -Parent $root
+$targetRoot = Join-Path $externalParent '.t060-targets'
+$stagingRoot = Join-Path $externalParent '.t060-staging'
+$ports = [pscustomobject][ordered]@{
+    target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot $targetRoot
+    harness = $harness
+    runtime = $runtime
+    clock = New-ReviewSystemClockPort
+    prompt_path = (Join-Path $root 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md')
+}
 $progressEvents = [Collections.Generic.List[object]]::new()
 $lastHeartbeatPrinted = -60000L
 $progressSink = {
@@ -231,7 +240,7 @@ $progressSink = {
 # retry; every further attempt requires a new run ID and a new explicit human authorization.
 $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '198-beta2-hardening' -IterationNumber '007' `
     -RunId $RunId -ReviewerHost $HostName -GrantAuthorizationRef $AuthorizationRef -TimeoutSeconds $TimeoutSeconds `
-    -AuthorityConfigPath $authorityConfigPath -StoreRoot $storeRoot -StagingRoot $stagingRoot -ProgressSink $progressSink
+    -AuthorityConfigPath $authorityConfigPath -StoreRoot $storeRoot -StagingRoot $stagingRoot -Ports $ports -ProgressSink $progressSink
 
 $progressPath = Join-Path $output 'progress.json'
 Write-T060LocalJsonFile -Path $progressPath -Value @($progressEvents)
@@ -293,6 +302,9 @@ $manifest = [pscustomobject][ordered]@{
 }
 Write-T060LocalJsonFile -Path (Join-Path $output 'manifest.json') -Value $manifest
 Remove-Item -LiteralPath $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue
+if ([IO.Directory]::Exists($targetRoot) -and @(Get-ChildItem -LiteralPath $targetRoot -Force).Count -eq 0) {
+    Remove-Item -LiteralPath $targetRoot -Force -ErrorAction SilentlyContinue
+}
 
 if (-not $headUnchanged -or -not $cleanAfter) { throw 't060-origin-repository-mutated' }
 if ($grants.Count -ne 1 -or $reservations.Count -ne 1 -or $spends.Count -ne 1) { throw "t060-provider-authority-count-invalid:grants=$($grants.Count):reservations=$($reservations.Count):spends=$($spends.Count)" }

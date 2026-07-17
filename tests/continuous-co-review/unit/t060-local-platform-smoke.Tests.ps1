@@ -37,6 +37,21 @@ Describe 'T060 local Windows and Linux smoke package' {
         $script:Source | Should -Match 'Get-ContinuousCoReviewReviewedStateDigest'
     }
 
+    It 'uses short sibling target and staging roots instead of the long Windows temp prefix' {
+        $script:Source | Should -Match '\$externalParent = Split-Path -Parent \$root'
+        $script:Source | Should -Match '\$targetRoot\s*=\s*Join-Path\s+\$externalParent\s+''\.t060-targets'''
+        $script:Source | Should -Match '\$stagingRoot\s*=\s*Join-Path\s+\$externalParent\s+''\.t060-staging'''
+        $script:Source | Should -Match 'New-GitReviewTargetPort -OriginRepo \$root -ExternalRoot \$targetRoot'
+        $script:Source | Should -Match '-Ports \$ports'
+        $script:Source | Should -Not -Match "GetTempPath\(\).*specrew-review-targets"
+
+        $longFixture = 'tests/integration/fixtures/feature-017-dashboard/closeout-repository/extensions/specrew-speckit/scripts/shared-governance.ps1'
+        $oldPrefix = 'C:\Users\maintainer\AppData\Local\Temp\specrew-review-targets\review-target-run-t060-cursor-windows-deadbeef-01-00000000000000000000000000000000'
+        $shortPrefix = 'C:\Dev\.t060-targets\review-target-run-t060-cursor-windows-deadbeef-01-00000000000000000000000000000000'
+        (Join-Path $oldPrefix $longFixture).Length | Should -BeGreaterThan 259
+        (Join-Path $shortPrefix $longFixture).Length | Should -BeLessThan 260
+    }
+
     It 'throttles non-semantic heartbeats while preserving every progress event' {
         $script:Source | Should -Match '\$progressEvents\.Add\(\$event\)'
         $script:Source | Should -Match '60000'

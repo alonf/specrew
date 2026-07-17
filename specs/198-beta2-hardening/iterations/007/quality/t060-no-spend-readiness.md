@@ -9,7 +9,7 @@
 **Correction Target**: `b1ae8b47aece4e0f4a017dc1e8896708fc2c8700`
 **Mac Run 2 Digest**: `7dcc6b4da0bf006f24b7c8fa5ed08c56fa42704c`
 **Provider Spend**: two Codex/local-Mac invocations (immutable partial run 1; clean correction run 2)
-**Invocation Authorization**: the bounded standing Mac grant is fulfilled; non-Mac slots remain ungranted
+**Invocation Authorization**: the bounded standing Mac grant is fulfilled; the later minimum-budget standing authority covers one required base proof for each remaining harness
 
 ## No-spend Readiness Boundary
 
@@ -81,18 +81,26 @@ After run 1, the maintainer granted all authority needed to finish the Mac tests
 
 Correction run `run-t060-codex-macos-b1ae8b47-02` used authorization reference `standing-mac-grant-20260717-attempt-02` against exact commit `b1ae8b47aece4e0f4a017dc1e8896708fc2c8700` and digest `7dcc6b4da0bf006f24b7c8fa5ed08c56fa42704c`. It invoked exactly once, completed in 210898 ms, and returned complete/pass/current/valid evidence with verified containment/termination and zero findings. Independent validation exited `0` with `package_valid=true`, `smoke_clean=true`, and no errors. The invoke exited `0`; the ZIP SHA-256 is `9e359c121ffae46bb24ed8761749a11492a7d58adad4591f43a3e703d6d09351`. The Mac proof is complete, and run 1 remains immutable partial evidence.
 
+## Windows Cursor Attempt 01 — No Provider Spend
+
+At commit `f1e69d0a9f1b32237ec56ba24d596b67bddc86fe` and canonical digest `51d677696810999d09179ba726f7aae425e680c1`, both Windows harness/runtime preflights and the Linux delegated-cgroup preflight passed with `provider_invoked=false`. Authorized run `run-t060-cursor-windows-f1e69d0a-01` then failed before provider invocation while the production target port checked out a deeply nested tracked fixture beneath its default Windows temp prefix. The controller published `preflight-failed`, released the reservation, retained result/report authority, and recorded zero spend facts; Cursor free credit was not consumed.
+
+`DRIFT-198-I007-003` uses short sibling `.t060-targets` and `.t060-staging` roots and exposes the generated report path for every pre-invocation terminal result. The deterministic old prefix exceeds 259 characters for the reproduced tracked path; the short prefix remains below 260. All 66 focused tests and all 56 registered F-198 suites pass without provider use; scoped Iteration 007 governance also passes with historical warnings only. A new exact-commit three-platform preflight is required before the next attempt.
+
+After this no-spend failure, the maintainer authorized all remaining requirements subject to the minimum required budget. This standing authority covers one successful required base proof per remaining harness, each with a unique run ID and authorization reference. It does not cover speculative probes, duplicate clean reviews, or hidden retries; any non-clean result stops the serialized sequence.
+
 ## Proposed Five-Run Allocation
 
 | Order | Task | Platform | Harness | Rationale | Authorization state |
 | --- | --- | --- | --- | --- | --- |
-| 1 | T060 | Windows | Cursor | already installed, authenticated, and accepted by the bounded Windows shim resolver | not granted |
-| 2 | T060 | Windows | Antigravity | already installed, authenticated, native, and model-list probed | not granted |
-| 3 | T060 | Linux | Copilot | native CLI plus PowerShell and transient delegated cgroup production preflight are ready | not granted |
+| 1 | T060 | Windows | Cursor | already installed, authenticated, and accepted by the bounded Windows shim resolver | next base attempt covered by minimum-budget standing authority |
+| 2 | T060 | Windows | Antigravity | already installed, authenticated, native, and model-list probed | one base attempt covered by minimum-budget standing authority |
+| 3 | T060 | Linux | Copilot | native CLI plus PowerShell and transient delegated cgroup production preflight are ready | one base attempt covered by minimum-budget standing authority |
 | 4 | T060 | macOS | Codex | clean correction run 2 at exact commit/digest; run 1 preserved as partial evidence | complete |
-| 5 | T061 | Windows | Claude | strongest installed reviewer independent of the Codex code-writer; reserved for exact-digest signoff | not granted |
+| 5 | T061 | Windows | Claude | strongest installed reviewer independent of the Codex code-writer; reserved for exact-digest signoff | one base attempt covered by minimum-budget standing authority |
 
-The non-Mac sequence remains execution planning, not a grant. The standing Mac instruction is fulfilled; unique run identity, recorded authority, serialization, and no-hidden-retry remain mandatory for all later slots.
+The standing Mac instruction is fulfilled. The later minimum-budget authority covers only the required remaining base sequence; unique run identity, recorded authority, serialization, and no-hidden-retry remain mandatory.
 
 ## Current Decision
 
-Preserve the clean Mac result and proceed only after separate human grants for Cursor/Windows, Antigravity/Windows, and Copilot/Linux. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.
+Preserve the clean Mac result and use the scoped minimum-budget standing authority for the serialized Cursor/Windows, Antigravity/Windows, Copilot/Linux, and T061 Claude base proofs. Stop the sequence on any non-clean result. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.
