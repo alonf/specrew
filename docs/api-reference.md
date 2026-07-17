@@ -104,6 +104,8 @@ Flags:
 - `--code-writer-host <h>` names the implementing harness so independence can be labelled
 - `--timeout-seconds <n>` sets the reviewer budget; `--effort <tier>`, `--model <id>` are recorded
   as requested metadata
+- `--run-root <absolute-external-path>` overrides the campaign snapshot root when the default
+  external location is unavailable; it must remain outside the Git repository
 - `--ack-degraded <run-id> --ack-reason "<why>"` records the first-class human ack that lets
   partial / same-host / unverified evidence satisfy the review-signoff gate
 - `--remediate <more-time|different-host|narrow-scope|accept-partial|override-block>` records a
@@ -114,6 +116,11 @@ Flags:
 
 Behavior:
 
+- campaign snapshots prefer the short sibling `.specrew-targets` root. If that parent is not
+  writable, Windows uses `%USERPROFILE%\.sr\<repo-token>` and POSIX uses a repo-token directory
+  under the user temp root. Individual `rt-*` worktrees are removed after each run; the empty
+  repo-token namespace is intentionally retained (at most one per resolved repository identity)
+  to avoid racing concurrent runs during root cleanup. Use `--run-root` for constrained layouts
 - durable evidence lands under `.specrew/review/inline/<run-id>/` (`findings-result.json`,
   `review-run.json`, `gate-verdict.json`); the review-signoff gate checks digest freshness, lineage,
   and the evidence-tier labels (completeness / independence / budget)

@@ -381,6 +381,15 @@ the reviewer-host catalog. Specrew honours your request or fails — it never su
 harness silently. Either authorize/install that harness or re-run without `--host` to let selection
 pick the strongest authorized independent reviewer.
 
+### `review-campaign-target-root-unavailable` or `review-campaign-target-root-unusable`
+
+The campaign could not create a writable snapshot root outside the Git repository. The default is
+the sibling `.specrew-targets`; Windows falls back to `%USERPROFILE%\.sr\<repo-token>`, while POSIX
+falls back under the user temp directory. These repo-token namespace directories are deliberately
+retained and individual `rt-*` worktrees are removed after each run. Supply a short writable
+external location with `specrew review --live --run-root <absolute-path> ...`; a path inside the
+repository is rejected before provider spend.
+
 ### `no-parseable-findings-json` (reviewer returned nothing)
 
 The reviewer CLI exited 0 with EMPTY output twice (the built-in retry also came back empty). The run

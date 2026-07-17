@@ -356,16 +356,26 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             [pscustomobject]@{ kind = 'git'; origin_repo = $OriginRepo; external_root = $ExternalRoot }
         }
 
-        $port = New-ReviewCampaignTargetPort -RepoRoot $root
-        $gitRoot = (& git -C $root rev-parse --show-toplevel).Trim()
-        $token = Get-ReviewCampaignRepositoryToken -GitRoot $gitRoot
-        $expected = if ([OperatingSystem]::IsWindows()) {
-            Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)) ('.sr/' + $token)
-        }
-        else { Join-Path ([IO.Path]::GetTempPath()) ('specrew-review-targets/' + $token) }
+        $port = $null
+        try {
+            $port = New-ReviewCampaignTargetPort -RepoRoot $root
+            $gitRoot = (& git -C $root rev-parse --show-toplevel).Trim()
+            $token = Get-ReviewCampaignRepositoryToken -GitRoot $gitRoot
+            $expected = if ([OperatingSystem]::IsWindows()) {
+                Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)) ('.sr/' + $token)
+            }
+            else { Join-Path ([IO.Path]::GetTempPath()) ('specrew-review-targets/' + $token) }
 
-        $port.external_root | Should -Be ([IO.Path]::GetFullPath($expected))
-        Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 1 -Exactly -ParameterFilter { $ExternalRoot -ceq ([IO.Path]::GetFullPath($expected)) }
+            $port.external_root | Should -Be ([IO.Path]::GetFullPath($expected))
+            Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 1 -Exactly -ParameterFilter { $ExternalRoot -ceq ([IO.Path]::GetFullPath($expected)) }
+        }
+        finally {
+            # The production root is deliberately retained per repository, but this fixture's
+            # TestDrive-derived token is unique on every run and must not leak into the real home.
+            if ($null -ne $port -and [IO.Directory]::Exists([string]$port.external_root) -and @(Get-ChildItem -LiteralPath ([string]$port.external_root) -Force).Count -eq 0) {
+                [IO.Directory]::Delete([string]$port.external_root, $false)
+            }
+        }
     }
 
     It 'normalizes repository token identity and candidate dedup for case-insensitive Windows paths' -Skip:(-not [OperatingSystem]::IsWindows()) {
@@ -397,6 +407,19 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $second.ok | Should -BeTrue
         Test-Path -LiteralPath $otherRun -PathType Leaf | Should -BeTrue
         @(Get-ChildItem -LiteralPath $root -Filter '.specrew-write-probe-*' -Force).Count | Should -Be 0
+    }
+
+    It 'documents retained namespace roots and avoids the automatic PROFILE variable name' {
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
+        $api = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'docs/api-reference.md') -Raw
+        $troubleshooting = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'docs/troubleshooting.md') -Raw
+
+        $source | Should -Not -Match '\$profile\s*='
+        $source | Should -Match 'one per resolved repository identity'
+        $api | Should -Match '%USERPROFILE%\\\.sr\\<repo-token>'
+        $api | Should -Match 'intentionally retained'
+        $troubleshooting | Should -Match 'review-campaign-target-root-unavailable'
+        $troubleshooting | Should -Match '--run-root <absolute-path>'
     }
 
     It 'wires the existing public live surface to campaign delegation before the legacy diagnostic path' {

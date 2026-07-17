@@ -242,10 +242,13 @@ function Resolve-ReviewCampaignTargetExternalRoot {
     if (-not [string]::IsNullOrWhiteSpace($parent)) { $candidates.Add((Join-Path $parent '.specrew-targets')) | Out-Null }
     if ([OperatingSystem]::IsWindows()) {
         # AppData\Local\Temp reproduced MAX_PATH failure on this repository. Keep the fallback
-        # under the writable user profile with a deliberately short leaf; --run-root remains the
-        # escape hatch for unusually long profiles or constrained layouts.
-        $profile = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
-        if (-not [string]::IsNullOrWhiteSpace($profile)) { $candidates.Add((Join-Path $profile ".sr/$repoToken")) | Out-Null }
+        # under the writable user home with a deliberately short leaf; --run-root remains the
+        # escape hatch for unusually long homes or constrained layouts. The repo-token namespace
+        # directory is intentionally retained (at most one per resolved repository identity):
+        # deleting a shared empty-looking root races concurrent runs. Individual rt-* worktrees
+        # are still removed by the target port.
+        $userHome = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+        if (-not [string]::IsNullOrWhiteSpace($userHome)) { $candidates.Add((Join-Path $userHome ".sr/$repoToken")) | Out-Null }
     }
     else {
         $candidates.Add((Join-Path ([IO.Path]::GetTempPath()) "specrew-review-targets/$repoToken")) | Out-Null
@@ -355,7 +358,7 @@ function New-ReviewCampaignProductionPorts {
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900
     )
     # The one target-root policy is reused by live execution and reconciliation. It prefers the
-    # short sibling root proven by T060, falls back to a writable user temp root when the parent is
+    # short sibling root proven by T060, falls back to a writable platform root when the parent is
     # unavailable, supports an explicit external override, and fails with a domain-named reason.
     $target = New-ReviewCampaignTargetPort -RepoRoot $RepoRoot -RequestedRoot $TargetRoot
     $harness = if (Get-Command -Name 'New-ReviewProductionHarnessPort' -ErrorAction SilentlyContinue) {
