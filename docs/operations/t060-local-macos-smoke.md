@@ -59,7 +59,7 @@ The script independently repeats the origin URL, exact HEAD, reviewed-state dige
 
 ## 3. Run the no-spend production preflight
 
-Choose a new external directory. The command fails if the directory is nonempty.
+Choose a new external directory. Run the command directly at a native Terminal shell prompt, not as a tool command inside an interactive Codex session: Codex's command sandbox is a different containment layer and cannot establish native process-group readiness. The command fails if the directory is nonempty.
 
 ```bash
 PREFLIGHT_OUT="$HOME/t060-macos-preflight-$PINNED_COMMIT"
@@ -75,7 +75,7 @@ Expected: `preflight.json` reports `provider_invoked: false`, `evidence_source: 
 
 ## 4. Run exactly one authorized smoke
 
-Do not run this section under the current provisioning grant. Wait for an explicit human slot containing exact values for `RUN_ID` and `AUTHORIZATION_REF`. Then run this command once:
+Do not run this section until human authorization provides or covers exact values for `RUN_ID` and `AUTHORIZATION_REF`. Then run this command once from the same native Terminal shell, not by asking Codex to execute it:
 
 ```bash
 RUN_ID='<RUN_ID_FROM_EXPLICIT_SLOT_GRANT>'
@@ -129,6 +129,7 @@ Unpack the directory outside the repository, then validate it from the same pinn
 
 ```powershell
 pwsh -NoProfile -File ./scripts/validate-t060-local-macos-evidence.ps1 `
+  -RepoRoot "$PWD" `
   -PackagePath '<UNPACKED_RUN_PACKAGE>' `
   -ExpectedCommit '<PROVISIONING_COMMIT_FROM_T060_HANDOFF>' `
   -ExpectedRunId '<RUN_ID_FROM_EXPLICIT_SLOT_GRANT>' `
@@ -136,3 +137,5 @@ pwsh -NoProfile -File ./scripts/validate-t060-local-macos-evidence.ps1 `
 ```
 
 `package_valid: true` means the closed shapes, hashes, source attribution, Git identity, result contract, copied authority evidence, grant, reservation, and exactly one spend agree. `smoke_clean: true` additionally requires a complete/pass/current/valid result, verified containment and termination, and zero findings. A valid findings result intentionally returns `package_valid: true` and `smoke_clean: false`; it remains useful evidence, but work stops for human review instead of calling the smoke clean or rerunning it.
+
+The validator requires the clean pinned checkout as a separate input, verifies its origin and exact `HEAD`, recomputes its canonical reviewed-state digest, and compares that independent value with the manifest, preflight, result, and authority evidence. Agreement inside the returned package alone is not sufficient.

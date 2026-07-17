@@ -119,6 +119,45 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $captured.invocation.review_scope | Should -Not -Match ([regex]::Escape($root)) -Because 'the prompt gets repo-relative refs, never the mutable origin path'
     }
 
+    It 'auto-resolves design context from the campaign FeatureId in a clean repo with multiple feature specs' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'design-feature-id')
+        New-Item -ItemType Directory -Path (Join-Path $root 'specs/999-distractor') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root 'specs/999-distractor/spec.md'), '# Wrong feature', [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'add distractor feature' 2>&1 | Out-Null
+
+        $config = New-CampaignConfig -Root $root
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-design-feature-id'
+        $prompt = Join-Path $root 'prompt.md'; [IO.File]::WriteAllText($prompt, 'bounded fixture prompt')
+        $origin = Get-GitReviewTargetOriginEvidence -OriginRepo $root
+        $captured = [pscustomobject]@{ invocation = $null }
+        $candidate = New-CampaignCandidate -RunId $identity.run_id -Digest $origin.reviewed_state_digest
+        $harness = [pscustomobject]@{
+            id = 'fixture-design-feature-id'
+            preflight = { param($invocation) $captured.invocation = $invocation; [pscustomobject]@{ ok = $true; reason = 'fixture-ready' } }.GetNewClosure()
+            invoke = {
+                param($invocation, $environment)
+                [IO.File]::WriteAllText([string]$invocation.candidate_result_path, ($candidate | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
+                [pscustomobject]@{ exit_code = 0; output_activity = $true }
+            }.GetNewClosure()
+        }
+        $ports = [pscustomobject]@{
+            target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'design-feature-id-external')
+            harness = $harness; runtime = New-ReviewFixtureRuntimePort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
+        }
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
+            -GrantAuthorizationRef 'human-slot-design-feature-id' -AuthorityConfigPath $config `
+            -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
+
+        $run.status | Should -Be 'terminal' -Because $run.reason
+        $run.result.completion | Should -Be 'complete'
+        $run.design_context | Should -Be 'resolved'
+        @($run.resolved_design_context) | Should -Be @('specs/001-demo/spec.md')
+        $captured.invocation.review_scope | Should -Match ([regex]::Escape('specs/001-demo/spec.md'))
+        $captured.invocation.review_scope | Should -Not -Match ([regex]::Escape('specs/999-distractor/spec.md'))
+        $captured.invocation.review_scope | Should -Not -Match 'DESIGN_CONTEXT_EMPTY'
+    }
+
     It 'turns an omitted unresolved design context into bounded partial evidence even when the reviewer candidate says pass' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'design-empty') -WithoutDesignContext
         $config = New-CampaignConfig -Root $root

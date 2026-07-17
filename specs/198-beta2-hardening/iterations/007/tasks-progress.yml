@@ -41,10 +41,10 @@ tasks:
     blocked_reason: ""
   T052:
     title: "Workshop-aware intermediate Stop"
-    status: "done"
+    status: "needs-rework"
     started_at: "2026-07-16T20:02:24+03:00"
-    completed_at: "2026-07-16T20:40:22+03:00"
-    blocked_reason: ""
+    completed_at: ""
+    blocked_reason: "DRIFT-198-I007-002: after the Mac test sequence, tighten ordinary Stop materiality so routine discussion does not emit a full handoff packet; preserve substantial-work and lifecycle-boundary packets."
   T053:
     title: "Shared production harness contract/catalog and complete malformed-output matrix"
     status: "done"
@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Provisioning commit in progress: Windows is ready; Ubuntu 24.04 PowerShell plus transient delegated cgroup production preflight now pass; hosted-macOS provider workflow/secret are dropped and the pinned local-Mac Codex package/validator are prepared. The Mac no-spend preflight and every provider invocation still require their stated authorization; this grant authorizes zero provider slots."
+    blocked_reason: "Mac native preflight passed. Run run-t060-codex-macos-6708bf05-01 spent one slot and returned immutable valid partial evidence with a digest-binding major finding plus DESIGN_CONTEXT_EMPTY. Both corrections pass focused tests and all 55 registered suites; correction commit/push and a new pinned Mac run under the scoped standing grant remain."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"

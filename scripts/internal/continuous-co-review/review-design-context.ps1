@@ -48,11 +48,20 @@ function Resolve-ContinuousCoReviewWorktreeDesignContext {
     # Auto-resolve the active feature spec, latest design analysis, and formal contracts. The
     # result is repo-relative; a genuinely unresolved context returns an empty array so callers
     # can apply the explicit DESIGN_CONTEXT_EMPTY partial-evidence degrade.
-    param([Parameter(Mandatory)][string]$RepoRoot)
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [ValidatePattern('^[0-9]+-[a-z0-9][a-z0-9-]*$')][string]$FeatureId
+    )
     $out = New-Object System.Collections.Generic.List[string]
-    $featureDir = $null
+    # A public campaign already carries an exact FeatureId. Prefer that immutable command
+    # identity over ignored, mutable session files so a clean detached review worktree resolves
+    # the same design context as the origin. Legacy callers omit it and retain the existing
+    # feature.json -> start-context -> single-unambiguous-spec fallback chain.
+    $featureIdentitySupplied = -not [string]::IsNullOrWhiteSpace($FeatureId)
+    $featureDir = if ($featureIdentitySupplied) { 'specs/' + $FeatureId } else { $null }
+    if ($featureIdentitySupplied -and -not (Test-Path -LiteralPath (Join-Path $RepoRoot $featureDir) -PathType Container)) { return @() }
     $fj = Join-Path $RepoRoot '.specify/feature.json'
-    if (Test-Path -LiteralPath $fj -PathType Leaf) {
+    if ([string]::IsNullOrWhiteSpace($featureDir) -and (Test-Path -LiteralPath $fj -PathType Leaf)) {
         try { $featureDir = ([string]((Get-Content $fj -Raw -Encoding UTF8 | ConvertFrom-Json).feature_directory)).Replace('\', '/').TrimEnd('/') } catch { $featureDir = $null }
     }
     if ([string]::IsNullOrWhiteSpace($featureDir)) {
@@ -81,8 +90,10 @@ function Resolve-ContinuousCoReviewWorktreeDesignContext {
     if (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path $featureDir 'spec.md')) -PathType Leaf) { [void]$out.Add("$featureDir/spec.md") }
     $iterRoot = Join-Path $RepoRoot (Join-Path $featureDir 'iterations')
     if (Test-Path -LiteralPath $iterRoot -PathType Container) {
-        $latest = @(Get-ChildItem -LiteralPath $iterRoot -Directory -EA SilentlyContinue | Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } -Descending | Select-Object -First 1)
-        if ($latest -and (Test-Path -LiteralPath (Join-Path $latest[0].FullName 'design-analysis.md') -PathType Leaf)) {
+        $latest = @(Get-ChildItem -LiteralPath $iterRoot -Directory -EA SilentlyContinue |
+            Where-Object { $_.Name -match '^\d+$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'design-analysis.md') -PathType Leaf) } |
+            Sort-Object { [int]$_.Name } -Descending | Select-Object -First 1)
+        if ($latest) {
             [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, (Join-Path $latest[0].FullName 'design-analysis.md')).Replace('\', '/')))
         }
     }
@@ -99,10 +110,19 @@ function Resolve-ContinuousCoReviewDesignContextSelection {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [AllowEmptyCollection()][string[]]$DesignContextFiles = @()
+        [AllowEmptyCollection()][string[]]$DesignContextFiles = @(),
+        [ValidatePattern('^[0-9]+-[a-z0-9][a-z0-9-]*$')][string]$FeatureId
     )
     $explicit = ($null -ne $DesignContextFiles -and @($DesignContextFiles).Count -gt 0)
-    $resolved = if ($explicit) { @($DesignContextFiles) } else { @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
+    $resolved = if ($explicit) {
+        @($DesignContextFiles)
+    }
+    elseif ([string]::IsNullOrWhiteSpace($FeatureId)) {
+        @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot)
+    }
+    else {
+        @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot -FeatureId $FeatureId)
+    }
     $resolved = @($resolved)
     $unresolved = [System.Collections.Generic.List[string]]::new()
     if ($explicit) {

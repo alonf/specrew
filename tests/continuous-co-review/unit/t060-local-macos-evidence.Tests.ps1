@@ -6,11 +6,24 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
         $script:ValidatorPath = Join-Path $script:RepoRoot 'scripts/validate-t060-local-macos-evidence.ps1'
         $script:RunnerPath = Join-Path $script:RepoRoot 'scripts/t060-local-macos-smoke.ps1'
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
-        $script:Commit = '0123456789abcdef0123456789abcdef01234567'
         $script:RunId = 'run-t060-macos-fixture'
         $script:CampaignId = 'cmp-198-beta2-hardening-i007'
         $script:AuthorizationRef = 'human-slot-t060-macos-fixture'
-        $script:Digest = '89abcdef0123456789abcdef0123456789abcdef'
+
+        function script:New-T060FixtureRepo {
+            param([Parameter(Mandatory)][string]$Root)
+            [IO.Directory]::CreateDirectory($Root) | Out-Null
+            & git -C $Root init -q 2>&1 | Out-Null
+            & git -C $Root branch -m main 2>&1 | Out-Null
+            [IO.File]::WriteAllText((Join-Path $Root 'app.txt'), 'pinned target', [Text.UTF8Encoding]::new($false))
+            & git -C $Root -c user.name=t060 -c user.email=t060@example.invalid add -A 2>&1 | Out-Null
+            & git -C $Root -c user.name=t060 -c user.email=t060@example.invalid commit -qm initial 2>&1 | Out-Null
+            & git -C $Root remote add origin https://github.com/alonf/specrew.git 2>&1 | Out-Null
+            $commit = ([string](& git -C $Root rev-parse 'HEAD^{commit}')).Trim()
+            $digestEvidence = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root
+            $digestEvidence.ok | Should -BeTrue -Because $digestEvidence.failure_reason
+            return [pscustomobject]@{ root = $Root; commit = $commit; digest = [string]$digestEvidence.tree_id }
+        }
 
         function script:Write-T060FixtureJson {
             param([string]$Path, $Value)
@@ -26,9 +39,13 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
         function script:New-T060FixturePackage {
             param(
                 [Parameter(Mandatory)][string]$Root,
+                [Parameter(Mandatory)]$TargetRepo,
                 [ValidateSet('pass', 'findings')][string]$Verdict = 'pass',
-                [string]$EvidenceSource = 'local-machine'
+                [string]$EvidenceSource = 'local-machine',
+                [string]$DigestOverride
             )
+            $targetCommit = [string]$TargetRepo.commit
+            $targetDigest = if ([string]::IsNullOrWhiteSpace($DigestOverride)) { [string]$TargetRepo.digest } else { $DigestOverride }
             [IO.Directory]::CreateDirectory($Root) | Out-Null
             $store = Join-Path $Root 'authority'
             $grant = [pscustomobject][ordered]@{
@@ -53,7 +70,7 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
                 })
             }
             $result = [pscustomobject][ordered]@{
-                schema_version = '1.0'; campaign_id = $script:CampaignId; run_id = $script:RunId; target_digest = $script:Digest
+                schema_version = '1.0'; campaign_id = $script:CampaignId; run_id = $script:RunId; target_digest = $targetDigest
                 harness_id = 'codex-cli-file-primary'; completion = 'complete'; verdict = $Verdict; runtime_outcome = 'completed'
                 termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
                 can_approve_current = ($Verdict -ceq 'pass'); failure_reason = $null; summary = 'Fixture terminal result.'; findings = $findings
@@ -71,7 +88,7 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
             $preflight = [pscustomobject][ordered]@{
                 schema_version = '1.0'; evidence_kind = 't060-local-macos-preflight'; evidence_source = $EvidenceSource
                 generated_at = '2026-07-17T08:59:00Z'; provider_invoked = $false
-                target = [pscustomobject][ordered]@{ repository_url = 'https://github.com/alonf/specrew.git'; head_commit = $script:Commit; reviewed_state_digest = $script:Digest; clean = $true }
+                target = [pscustomobject][ordered]@{ repository_url = 'https://github.com/alonf/specrew.git'; head_commit = $targetCommit; reviewed_state_digest = $targetDigest; clean = $true }
                 platform = $platform
                 harness = [pscustomobject][ordered]@{ host = 'codex'; harness_id = 'codex-cli-file-primary'; cli_version = 'codex-cli 0.fixture'; auth_status = 'authenticated'; ready = $true; reason = 'codex-file-primary-ready' }
                 runtime = [pscustomobject][ordered]@{ runtime_id = 'macos-process-group-runtime'; ready = $true; reason = 'macos-process-group-ready' }
@@ -82,7 +99,7 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
             Write-T060FixtureJson -Path $authorityConfigPath -Value ([pscustomobject][ordered]@{ schema_version = '1.0'; mode = 'campaign' })
             $manifest = [pscustomobject][ordered]@{
                 schema_version = '1.0'; evidence_kind = 't060-local-macos-smoke'; evidence_source = $EvidenceSource; generated_at = '2026-07-17T09:01:03Z'
-                target = [pscustomobject][ordered]@{ repository_url = 'https://github.com/alonf/specrew.git'; head_commit = $script:Commit; reviewed_state_digest = $script:Digest; clean_before = $true; clean_after = $true; head_unchanged = $true }
+                target = [pscustomobject][ordered]@{ repository_url = 'https://github.com/alonf/specrew.git'; head_commit = $targetCommit; reviewed_state_digest = $targetDigest; clean_before = $true; clean_after = $true; head_unchanged = $true }
                 platform = $platform
                 harness = [pscustomobject][ordered]@{ host = 'codex'; harness_id = 'codex-cli-file-primary'; cli_version = 'codex-cli 0.fixture'; auth_status = 'authenticated' }
                 authorization = [pscustomobject][ordered]@{ reference = $script:AuthorizationRef; invocation_count = 1 }
@@ -103,16 +120,18 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
         }
 
         function script:Invoke-T060FixtureValidator {
-            param([Parameter(Mandatory)][string]$Root, [string]$Commit = $script:Commit, [string]$Run = $script:RunId, [string]$Authorization = $script:AuthorizationRef)
-            $text = (& pwsh -NoProfile -File $script:ValidatorPath -PackagePath $Root -ExpectedCommit $Commit -ExpectedRunId $Run -ExpectedAuthorizationRef $Authorization 2>&1 | Out-String).Trim()
+            param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)]$TargetRepo, [string]$Commit, [string]$Run = $script:RunId, [string]$Authorization = $script:AuthorizationRef)
+            if ([string]::IsNullOrWhiteSpace($Commit)) { $Commit = [string]$TargetRepo.commit }
+            $text = (& pwsh -NoProfile -File $script:ValidatorPath -RepoRoot ([string]$TargetRepo.root) -PackagePath $Root -ExpectedCommit $Commit -ExpectedRunId $Run -ExpectedAuthorizationRef $Authorization 2>&1 | Out-String).Trim()
             $exitCode = $LASTEXITCODE
             return [pscustomobject]@{ exit_code = $exitCode; result = ($text | ConvertFrom-Json -Depth 20) }
         }
     }
 
     It 'accepts a raw local-machine package bound to the expected commit, digest, run, grant, and one spend' {
-        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'valid')
-        $validated = Invoke-T060FixtureValidator -Root $fixture.root
+        $target = New-T060FixtureRepo -Root (Join-Path $TestDrive 'valid-target')
+        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'valid') -TargetRepo $target
+        $validated = Invoke-T060FixtureValidator -Root $fixture.root -TargetRepo $target
         $validated.exit_code | Should -Be 0
         $validated.result.package_valid | Should -BeTrue -Because ($validated.result.errors -join ',')
         $validated.result.smoke_clean | Should -BeTrue
@@ -121,8 +140,9 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
     }
 
     It 'keeps a valid findings result as usable evidence without misreporting a clean smoke' {
-        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'findings') -Verdict findings
-        $validated = Invoke-T060FixtureValidator -Root $fixture.root
+        $target = New-T060FixtureRepo -Root (Join-Path $TestDrive 'findings-target')
+        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'findings') -TargetRepo $target -Verdict findings
+        $validated = Invoke-T060FixtureValidator -Root $fixture.root -TargetRepo $target
         $validated.exit_code | Should -Be 0
         $validated.result.package_valid | Should -BeTrue -Because ($validated.result.errors -join ',')
         $validated.result.smoke_clean | Should -BeFalse
@@ -131,20 +151,32 @@ Describe 'T060 local-macOS smoke package and digest-bound validator' {
     }
 
     It 'rejects result tampering even when the JSON remains schema-valid' {
-        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'tampered')
+        $target = New-T060FixtureRepo -Root (Join-Path $TestDrive 'tampered-target')
+        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'tampered') -TargetRepo $target
         Add-Content -LiteralPath $fixture.result_path -Value ' ' -NoNewline
-        $validated = Invoke-T060FixtureValidator -Root $fixture.root
+        $validated = Invoke-T060FixtureValidator -Root $fixture.root -TargetRepo $target
         $validated.exit_code | Should -Be 1
         $validated.result.package_valid | Should -BeFalse
         $validated.result.errors | Should -Contain 'result-hash-mismatch'
     }
 
     It 'rejects hosted-runner attribution and a mismatched expected commit' {
-        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'hosted') -EvidenceSource hosted-runner
-        $validated = Invoke-T060FixtureValidator -Root $fixture.root -Commit '1111111111111111111111111111111111111111'
+        $target = New-T060FixtureRepo -Root (Join-Path $TestDrive 'hosted-target')
+        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'hosted') -TargetRepo $target -EvidenceSource hosted-runner
+        $validated = Invoke-T060FixtureValidator -Root $fixture.root -TargetRepo $target -Commit '1111111111111111111111111111111111111111'
         $validated.exit_code | Should -Be 1
         $validated.result.errors | Should -Contain 'evidence-source-must-be-local-machine'
         $validated.result.errors | Should -Contain 'commit-mismatch'
+        $validated.result.errors | Should -Contain 'repository-checkout-commit-mismatch'
+    }
+
+    It 'rejects a self-consistent package digest that does not match the pinned checkout' {
+        $target = New-T060FixtureRepo -Root (Join-Path $TestDrive 'wrong-digest-target')
+        $forgedDigest = '1111111111111111111111111111111111111111'
+        $fixture = New-T060FixturePackage -Root (Join-Path $TestDrive 'wrong-digest') -TargetRepo $target -DigestOverride $forgedDigest
+        $validated = Invoke-T060FixtureValidator -Root $fixture.root -TargetRepo $target
+        $validated.exit_code | Should -Be 1
+        $validated.result.errors | Should -Contain 'repository-digest-mismatch'
     }
 
     It 'keeps preflight non-spending and exposes exactly one deliberate provider-capable call' {

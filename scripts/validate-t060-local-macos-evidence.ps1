@@ -2,6 +2,9 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
+    [string] $RepoRoot,
+
+    [Parameter(Mandatory)]
     [string] $PackagePath,
 
     [Parameter(Mandatory)]
@@ -93,10 +96,32 @@ $result = $null
 $findingCount = $null
 $resultVerdict = $null
 $packageRoot = $null
+$targetRepoRoot = $null
+$targetRepoDigest = $null
 try {
+    $targetRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
     $packageRoot = (Resolve-Path -LiteralPath $PackagePath).Path
     $loadPath = Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1'
     . $loadPath
+
+    $actualCommitOutput = @(& git -C $targetRepoRoot rev-parse 'HEAD^{commit}' 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw 'repository-checkout-head-unavailable' }
+    $actualCommit = (($actualCommitOutput | ForEach-Object { [string]$_ }) -join "`n").Trim().ToLowerInvariant()
+    if ($actualCommit -cne $ExpectedCommit) { $errors.Add('repository-checkout-commit-mismatch') | Out-Null }
+    $actualOriginOutput = @(& git -C $targetRepoRoot remote get-url origin 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw 'repository-checkout-origin-unavailable' }
+    $actualOrigin = (($actualOriginOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
+    if ($actualOrigin -cne $ExpectedRepositoryUrl) { $errors.Add('repository-checkout-origin-mismatch') | Out-Null }
+    $actualStatus = ((@(& git -C $targetRepoRoot status --porcelain=v1 --untracked-files=all 2>&1) | ForEach-Object { [string]$_ }) -join "`n").Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'repository-checkout-status-unavailable' }
+    if (-not [string]::IsNullOrEmpty($actualStatus)) { $errors.Add('repository-checkout-not-clean') | Out-Null }
+    $digestEvidence = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $targetRepoRoot
+    if ($null -eq $digestEvidence -or -not [bool]$digestEvidence.ok -or [string]$digestEvidence.tree_id -cnotmatch '^[0-9a-f]{40}$') {
+        $why = if ($null -ne $digestEvidence -and $digestEvidence.PSObject.Properties['failure_reason']) { [string]$digestEvidence.failure_reason } else { 'unknown' }
+        throw "repository-digest-unavailable:$why"
+    }
+    $targetRepoDigest = [string]$digestEvidence.tree_id
+
     $manifestPath = Join-Path $packageRoot 'manifest.json'
     $preflightPath = Join-Path $packageRoot 'preflight.json'
     $resultPath = Join-Path $packageRoot 'result.json'
@@ -128,6 +153,7 @@ try {
     if ([string]$manifest.target.head_commit -cne $ExpectedCommit -or [string]$preflight.target.head_commit -cne $ExpectedCommit) { $errors.Add('commit-mismatch') | Out-Null }
     if (-not [bool]$manifest.target.clean_before -or -not [bool]$manifest.target.clean_after -or -not [bool]$manifest.target.head_unchanged -or -not [bool]$preflight.target.clean) { $errors.Add('repository-integrity-invalid') | Out-Null }
     if ([string]$manifest.target.reviewed_state_digest -cne [string]$preflight.target.reviewed_state_digest) { $errors.Add('preflight-digest-mismatch') | Out-Null }
+    if ([string]$manifest.target.reviewed_state_digest -cne $targetRepoDigest) { $errors.Add('repository-digest-mismatch') | Out-Null }
     if ([string]$manifest.platform.os -cne 'macos' -or [string]$preflight.platform.os -cne 'macos') { $errors.Add('platform-must-be-macos') | Out-Null }
     if ([string]$manifest.harness.host -cne 'codex' -or [string]$manifest.harness.harness_id -cne 'codex-cli-file-primary') { $errors.Add('harness-identity-invalid') | Out-Null }
     if ([string]$preflight.harness.host -cne 'codex' -or [string]$preflight.harness.harness_id -cne 'codex-cli-file-primary' -or -not [bool]$preflight.harness.ready) { $errors.Add('harness-preflight-invalid') | Out-Null }

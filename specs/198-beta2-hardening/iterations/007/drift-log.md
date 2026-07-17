@@ -4,9 +4,9 @@
 
 ## Summary
 
-**Total local drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected through completed T059 local and hosted three-OS implementation evidence
+**Total local drift events**: 2
+**Resolution rate**: 0% (0/2 resolved)
+**Specification drift**: Two live-dogfood gaps are explicit below; neither changes approved product scope
 
 ## Inherited Open Drift
 
@@ -23,4 +23,23 @@
 
 ## Events
 
-No Iteration 007-local specification, plan, task, or implementation drift has been detected through T059 completion. The shared selector remains an extraction of the landed behavior plus the planned campaign compatibility seam, not a reimplementation or scope expansion. T059's fake-provider workflow is green on hosted Windows, Ubuntu, and macOS but does not claim live-harness support. T060 retains the explicit live current-digest evidence obligation. Add local events here when execution diverges. The inherited event has a scoped T033 disposition; do not claim independent closure until T061 verifies the final tree.
+### DRIFT-198-I007-001 — local-Mac live proof exposed incomplete target/context binding
+
+- **Status**: correction implemented; all 55 registered deterministic suites green; new committed Mac rerun pending
+- **Severity**: major
+- **Requirements**: FR-012, FR-017, FR-059, FR-064, SC-018
+- **Evidence**: local-machine run `run-t060-codex-macos-6708bf05-01` at commit `6708bf058b708df1c6b6f7492f46bb856154434a` and canonical digest `f668677ff652e84f7a05c81964d1a14721a39131` returned valid/current/contained/terminated partial evidence with `finding-d36b4c66cb3c1e56` and `finding-8d4f2649e461481c`.
+- **Observed drift**: the returned-package validator checked only mutually agreeing package digests instead of recomputing the clean pinned checkout; separately, campaign auto-resolution ignored its explicit `FeatureId`, so a clean detached worktree with ignored session files and multiple feature specs degraded to `DESIGN_CONTEXT_EMPTY`.
+- **Correction**: validation now takes a clean pinned repository input, verifies origin and exact `HEAD`, independently recomputes the canonical digest, and fails on mismatch. Campaign selection now resolves spec/latest design analysis/formal contracts from the command's validated feature identity before any mutable-session fallback.
+- **Closure rule**: the paired regressions and full 55-suite registry are green; a complete valid local-Mac rerun on the correction commit is still required. Run 1 remains immutable partial evidence and is never retroactively promoted.
+
+### DRIFT-198-I007-002 — ordinary conversational turns are over-classified as material Stop handoffs
+
+- **Status**: open; explicitly deferred until the Mac test sequence completes
+- **Severity**: moderate UX/governance friction
+- **Requirements**: FR-055, FR-056, NFR-002, NFR-007
+- **Evidence**: during the T060 Mac setup and live-run discussion, short operational answers repeatedly rendered the full five-section non-boundary packet. The human clarified that context packets are for substantial completed work or real handoff stops, not ordinary back-and-forth every few seconds.
+- **Scope**: T052's workshop-intermediate exception is insufficient because this failure is the ordinary Stop materiality classifier. The later correction must preserve lifecycle-boundary packets and genuine substantial-work handoffs while leaving direct discussion smooth.
+- **Guard**: do not suppress Stop evidence globally and do not weaken boundary precedence. Add paired routine-discussion versus substantial-work fixtures before closing this event.
+
+T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS but does not replace T060 live evidence. The inherited Iteration 006 event still requires T061 independent verification.

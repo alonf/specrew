@@ -1,12 +1,14 @@
-# T060 No-Spend Live-Smoke Readiness
+# T060 Live-Smoke Readiness and Evidence
 
 **Schema**: v1
 **Task**: T060
-**Status**: in progress — Windows and WSL Linux are provisioned; local-macOS package prepared but not executed
+**Status**: in progress — Windows and WSL Linux are provisioned; local-macOS native preflight passed and run 1 returned valid partial evidence under correction
 **Evidence Date**: 2026-07-17
-**Target Commit**: `55cf338a6565ce4a2a846473da5f8f51b29e31fa`
-**Provider Spend**: zero
-**Invocation Authorization**: none
+**Readiness Baseline Commit**: `55cf338a6565ce4a2a846473da5f8f51b29e31fa`
+**Mac Run 1 Commit**: `6708bf058b708df1c6b6f7492f46bb856154434a`
+**Correction Target**: exact pushed commit containing this correction; supplied in the next local-Mac handoff
+**Provider Spend**: one Codex/local-Mac invocation (`run-t060-codex-macos-6708bf05-01`)
+**Invocation Authorization**: run 1 exact grant recorded; standing maintainer grant now covers the bounded Mac correction sequence only
 
 ## Safety Boundary
 
@@ -59,22 +61,22 @@ Inside that service, systemd owns the parent boundary and delegates its cgroup s
 
 The transient unit was collected after the command. A future live run still requires its own explicit provider slot and must use the same bounded systemd delegation.
 
-## macOS Readiness
+## macOS Readiness and Run 1
 
-The hosted-provider workflow and GitHub Actions credential-secret plan are dropped. T059's successful GitHub-hosted macOS process-group/fake-provider proof remains deterministic evidence only.
+The hosted-provider workflow and GitHub Actions credential-secret plan are dropped. T059's successful GitHub-hosted macOS process-group/fake-provider proof remains deterministic evidence only; T060 evidence is honestly labeled `local-machine`.
 
-T060 now supplies a local-machine package at `scripts/t060-local-macos-smoke.ps1`, a strict returned-package validator at `scripts/validate-t060-local-macos-evidence.ps1`, and exact setup/handoff instructions at `docs/operations/t060-local-macos-smoke.md`. The package:
+Native-Terminal preflight passed on macOS 15.5 x64 at exact commit `6708bf058b708df1c6b6f7492f46bb856154434a` and canonical digest `f668677ff652e84f7a05c81964d1a14721a39131`. Codex CLI `0.144.5` was authenticated/file-primary ready, the macOS process-group runtime was ready, the tree was clean, and `provider_invoked` was false. A prior preflight executed inside Codex's own command sandbox failed membership; it spent no review slot and is not native-runtime evidence.
 
-- requires a clean detached clone at the handoff's exact 40-character commit;
-- verifies the public origin URL, canonical reviewed-state digest, Codex CLI/auth status, file-primary harness, and real macOS process-group runtime before spend;
-- separates `Preflight` from an explicitly acknowledged `Invoke` mode;
-- invokes the synchronous production campaign command at most once with the human-provided run ID and authorization reference;
-- labels evidence `local-machine`, preserves the append-only grant/reservation/spend/result store, and hashes the copied preflight/result/report/progress artifacts; and
-- accepts valid findings evidence without misreporting it as a clean smoke.
+The separately authorized run `run-t060-codex-macos-6708bf05-01` used authorization reference `human-grant-t060-codex-macos-20260717-slot-1`. It invoked exactly once, completed in 101491 ms, verified containment and termination, remained current and clean at the same commit/digest, and published a schema-valid terminal result. The returned package ZIP SHA-256 is `6bcacd8ebd51253821132af718f6165cb650ec4b5be246e3089e3deaeb8e903f`.
 
-The package has not run on the Mac and therefore promotes no macOS live support. Its preflight and its later one-provider invocation are separate actions; the current grant authorizes neither provider use nor a retry.
+Run 1 is immutable valid partial evidence, not a clean smoke and not support promotion:
 
-The five-case package/validator fixture suite passes valid-pass, valid-findings, tampered-result, false hosted-source/wrong-commit, and single-deliberate-call cases. The complete explicit F-198 registry passes all 55 suites in 603.2 seconds. These are deterministic no-provider tests, not a Mac execution claim.
+- major `finding-d36b4c66cb3c1e56`: the returned-package validator trusted mutually agreeing manifest/preflight/result digests instead of independently recomputing the pinned checkout;
+- note `finding-8d4f2649e461481c`: campaign auto-resolution produced `DESIGN_CONTEXT_EMPTY` because ignored session files were absent and the selector did not use the command's explicit feature identity.
+
+The bounded correction makes the clean pinned repository an explicit validator input, verifies its origin and exact `HEAD`, independently recomputes the canonical reviewed-state digest, and compares it with every returned authority surface. The campaign selector now resolves context from validated `FeatureId` before mutable-session fallbacks, including the latest available design analysis rather than only the newest iteration directory. A self-consistent forged-digest fixture now fails closed, and a clean multi-feature repository resolves only the requested feature. Focused paired suites pass 21/21, the context suite passes 18/18 with one expected case-sensitive-platform skip, and all 55 registered F-198 suites pass in 569.4 seconds. The correction commit/push and new live Mac rerun remain pending.
+
+After run 1, the maintainer granted all authority needed to finish the Mac tests. This is a scoped standing grant for the Mac correction sequence: each attempt must still have a fresh run ID and recorded reference, invoke once, never retry secretly, and preserve every prior result. It does not authorize the other harness slots.
 
 ## Proposed Five-Run Allocation
 
@@ -83,11 +85,11 @@ The five-case package/validator fixture suite passes valid-pass, valid-findings,
 | 1 | T060 | Windows | Cursor | already installed, authenticated, and accepted by the bounded Windows shim resolver | not granted |
 | 2 | T060 | Windows | Antigravity | already installed, authenticated, native, and model-list probed | not granted |
 | 3 | T060 | Linux | Copilot | native CLI plus PowerShell and transient delegated cgroup production preflight are ready | not granted |
-| 4 | T060 | macOS | Codex | run on the maintainer's local Mac; package/validator are prepared and source is labeled `local-machine` | not granted |
+| 4 | T060 | macOS | Codex | native preflight passed; run 1 is valid partial and the bounded correction sequence has standing authority | correction rerun pending |
 | 5 | T061 | Windows | Claude | strongest installed reviewer independent of the Codex code-writer; reserved for exact-digest signoff | not granted |
 
-The sequence is proposed execution planning, not a grant. Each row requires a fresh explicit human authorization immediately before the provider invocation. A finding, invalid result, timeout, or other post-invocation failure stops the sequence; no hidden retry or automatic correction is allowed.
+The non-Mac sequence remains execution planning, not a grant. The maintainer's later standing instruction supersedes the per-reply requirement only for finishing the Mac correction sequence; unique run identity, recorded authority, serialization, and no-hidden-retry remain mandatory.
 
 ## Current Decision
 
-Do not spend a provider slot yet. Commit and push this provisioning surface, run the package's no-spend preflight on the local Mac, then request the first explicit provider slot against the exact committed digest. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.
+Commit and push the deterministically verified run-1 corrections, then run one native local-Mac correction attempt with a fresh run ID under the standing scoped grant. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.

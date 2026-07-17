@@ -297,7 +297,7 @@ function Invoke-ReviewCampaignCommand {
     # T034b: reject every invalid explicit ref before grant persistence, harness selection,
     # reservation, snapshot creation, or provider spend. Omitted refs use the same auto resolver
     # as legacy review and carry an explicit bounded partial-evidence degrade when none resolve.
-    $designContext = Resolve-ContinuousCoReviewDesignContextSelection -RepoRoot $root -DesignContextFiles $DesignContextRefs
+    $designContext = Resolve-ContinuousCoReviewDesignContextSelection -RepoRoot $root -DesignContextFiles $DesignContextRefs -FeatureId $FeatureId
     if (-not $designContext.valid) {
         return [pscustomobject][ordered]@{
             status = 'not-started'; reason = [string]$designContext.reason; invoked = $false; result = $null
