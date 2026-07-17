@@ -636,10 +636,14 @@ if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.Review
 if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) { $parsedArgs.SchemaRoot = $SchemaRoot }
 if (-not [string]::IsNullOrWhiteSpace($RunRoot)) { $parsedArgs.RunRoot = $RunRoot }
 if ($TimeoutSeconds -gt 0) { $parsedArgs.TimeoutSeconds = $TimeoutSeconds }
-if (@($DesignContextRef).Count -gt 0) { $parsedArgs.DesignContextRefs = @($parsedArgs.DesignContextRefs) + @($DesignContextRef) }
-if (@($AllowedPath).Count -gt 0) { $parsedArgs.AllowedPaths = @($parsedArgs.AllowedPaths) + @($AllowedPath) }
-if (@($ForbiddenPath).Count -gt 0) { $parsedArgs.ForbiddenPaths = @($parsedArgs.ForbiddenPaths) + @($ForbiddenPath) }
-if (@($ExcludePath).Count -gt 0) { $parsedArgs.ExcludedPathPatterns = @($parsedArgs.ExcludedPathPatterns) + @($ExcludePath) }
+$boundDesignContextRefs = @($DesignContextRef | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+$boundAllowedPaths = @($AllowedPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+$boundForbiddenPaths = @($ForbiddenPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+$boundExcludedPaths = @($ExcludePath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+if ($boundDesignContextRefs.Count -gt 0) { $parsedArgs.DesignContextRefs = @($parsedArgs.DesignContextRefs) + $boundDesignContextRefs }
+if ($boundAllowedPaths.Count -gt 0) { $parsedArgs.AllowedPaths = @($parsedArgs.AllowedPaths) + $boundAllowedPaths }
+if ($boundForbiddenPaths.Count -gt 0) { $parsedArgs.ForbiddenPaths = @($parsedArgs.ForbiddenPaths) + $boundForbiddenPaths }
+if ($boundExcludedPaths.Count -gt 0) { $parsedArgs.ExcludedPathPatterns = @($parsedArgs.ExcludedPathPatterns) + $boundExcludedPaths }
 if ($PreserveDebug.IsPresent) { $parsedArgs.PreserveDebug = $true }
 
 $ProjectPath = $parsedArgs.ProjectPath
@@ -812,7 +816,11 @@ if ($Live) {
                 if ([string]$usage.status -ceq 'available') {
                     Write-Host ("Usage detail: input={0} output={1} total={2} cost_usd={3}" -f $usage.input_tokens, $usage.output_tokens, $usage.total_tokens, $usage.cost_usd)
                 }
-                Write-Host ("Authority store: {0}" -f $campaignRun.store_root)
+                $authorityStoreText = if ($campaignRun.PSObject.Properties['store_root'] -and -not [string]::IsNullOrWhiteSpace([string]$campaignRun.store_root)) {
+                    [string]$campaignRun.store_root
+                }
+                else { 'unavailable (run ended before authority-store creation)' }
+                Write-Host ("Authority store: {0}" -f $authorityStoreText)
             }
             if ([string]$campaignRun.status -cne 'terminal') { exit 1 }
             exit 0

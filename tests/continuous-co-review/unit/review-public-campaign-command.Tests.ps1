@@ -85,6 +85,23 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         Test-Path -LiteralPath $store | Should -BeFalse -Because 'invalid caller input cannot mint a grant or touch campaign authority state'
     }
 
+    It 'preserves the public pre-store design-context failure instead of masking it with a renderer property error' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-design-invalid-render')
+        $publicScript = Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'
+        $pwsh = (Get-Process -Id $PID).Path
+        $output = @(& $pwsh -NoProfile -File $publicScript -ProjectPath $root -FeatureId '001-demo' -IterationNumber '007' `
+            -Live -ReviewerHost claude -RunId 'run-public-design-invalid' -AuthorizationRef 'human-slot-public-design-invalid' `
+            -DesignContextRef 'specs/001-demo/missing.md' -TimeoutSeconds 30 2>&1)
+        $exitCode = $LASTEXITCODE
+        $text = ($output | Out-String)
+
+        $exitCode | Should -Be 1
+        $text | Should -Match 'design-context-unresolved:'
+        $text | Should -Match 'Authority store: unavailable \(run ended before authority-store creation\)'
+        $text | Should -Not -Match "property 'store_root' cannot be found"
+        Test-Path -LiteralPath (Join-Path $root '.specrew/review/authority') | Should -BeFalse -Because 'invalid explicit context fails before grant or store creation'
+    }
+
     It 'passes validated repo-relative design context through the frozen campaign invocation without changing target identity' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'design-valid')
         $config = New-CampaignConfig -Root $root
@@ -318,6 +335,8 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Not -Match 'Start-ContinuousCoReviewServiceRun'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "campaignRun.status -cne 'terminal'"
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match 'DesignContextRefs' -Because 'the public parser output must reach campaign validation'
+        $source | Should -Match '\$boundDesignContextRefs\s*=\s*@\(\$DesignContextRef\s*\|\s*Where-Object' -Because 'an omitted named array must not become one empty explicit design-context ref'
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "PSObject\.Properties\['store_root'\]" -Because 'a pre-store not-started result must render without a second property error'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-Model\s+\(\[string\]\$parsedArgs\.Model\)' -Because 'the public model selection must reach campaign production-port construction'
         $source | Should -Match '--reconcile-run'
         $source | Should -Match 'Invoke-ReviewRunReconciliation' -Because 'the public recovery surface must execute the immutable reconciliation plan'
