@@ -51,13 +51,13 @@ Describe 'Review authority cutover is singular and fail closed' {
         $decision.campaign_authority_enabled | Should -BeFalse
     }
 
-    It 'ships in explicit legacy construction mode and never derives authority from environment variables' {
+    It 'ships in the explicit disabled cutover barrier and never derives authority from environment variables' {
         $env:SPECREW_REVIEW_AUTHORITY_MODE = 'campaign'
         try {
             $decision = Get-ContinuousCoReviewAuthorityDecision
             $decision.valid | Should -BeTrue
-            $decision.mode | Should -Be 'legacy'
-            $decision.legacy_promotion_enabled | Should -BeTrue
+            $decision.mode | Should -Be 'disabled'
+            $decision.legacy_promotion_enabled | Should -BeFalse
             $decision.campaign_authority_enabled | Should -BeFalse
         }
         finally {
