@@ -59,7 +59,8 @@ function New-ReviewPosixRuntimePort {
         [Parameter(Mandatory)][scriptblock]$VerifyContainment,
         [Parameter(Mandatory)][scriptblock]$StopContainment,
         [Parameter(Mandatory)][scriptblock]$WaitContainmentEmpty,
-        [Parameter(Mandatory)][scriptblock]$CleanupContainment
+        [Parameter(Mandatory)][scriptblock]$CleanupContainment,
+        [Parameter(Mandatory)][scriptblock]$RecoverContainment
     )
     $validateSpecCommand = ${function:Test-ReviewRuntimeProcessSpec}
     $resolveExecutableCommand = ${function:Resolve-ReviewPosixExecutable}
@@ -121,7 +122,13 @@ function New-ReviewPosixRuntimePort {
             $containmentVerified = [bool](& $VerifyContainment $descriptor $ready $process.Id)
             if (-not $containmentVerified) { throw "$Platform-containment-verification-failed" }
 
-            try { & $onStarted }
+            $containmentId = if ($Containment -ceq 'cgroup-v2') { [string]$descriptor.path } else { [string]$descriptor.pgid }
+            $runtimeReceipt = [pscustomobject][ordered]@{
+                schema_version = '1.0'; runtime_id = $RuntimeId; platform = $Platform; containment_kind = $Containment
+                containment_id = $containmentId; process_id = $process.Id
+                process_started_at = $process.StartTime.ToUniversalTime().ToString('o')
+            }
+            try { & $onStarted $runtimeReceipt }
             catch { throw ('runtime-start-callback-failed:' + $_.Exception.Message) }
 
             $environmentDelta = [ordered]@{}
@@ -194,5 +201,7 @@ function New-ReviewPosixRuntimePort {
         }
     }.GetNewClosure()
 
-    return [pscustomobject]@{ id = $RuntimeId; platform = $Platform; containment = $Containment; preflight = $preflight; invoke = $invoke }
+    $recover = { param($receipt) & $RecoverContainment $receipt }.GetNewClosure()
+
+    return [pscustomobject]@{ id = $RuntimeId; platform = $Platform; containment = $Containment; preflight = $preflight; invoke = $invoke; recover = $recover }
 }

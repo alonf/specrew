@@ -110,6 +110,7 @@ function New-ReviewMacOSRuntimePort {
     $membershipCommand = ${function:Test-ReviewMacProcessGroupMembership}
     $stopCommand = ${function:Stop-ReviewMacProcessGroup}
     $waitCommand = ${function:Wait-ReviewMacProcessGroupEmpty}
+    $getGroupCommand = ${function:Get-ReviewMacProcessGroupPids}
     if (-not $CapabilityProbe) { $CapabilityProbe = ${function:Test-ReviewMacProcessGroupAvailability} }
     $setup = { param($invocation) [pscustomobject]@{ pgid = 0; mode = 'process-group' } }
     $verify = {
@@ -120,7 +121,41 @@ function New-ReviewMacOSRuntimePort {
     $stop = { param($descriptor, $grace) & $stopCommand -Descriptor $descriptor -GraceSeconds $grace }.GetNewClosure()
     $wait = { param($descriptor, $timeout) & $waitCommand -Descriptor $descriptor -TimeoutMilliseconds $timeout }.GetNewClosure()
     $cleanup = { param($descriptor) & $waitCommand -Descriptor $descriptor -TimeoutMilliseconds 1000 }.GetNewClosure()
+    $recover = {
+        param($receipt)
+        if ($null -eq $receipt -or [string]$receipt.runtime_id -cne 'macos-process-group-runtime' -or [string]$receipt.platform -cne 'macos' -or [string]$receipt.containment_kind -cne 'process-group') {
+            return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'macos-recovery-receipt-mismatch' }
+        }
+        try {
+            $pgid = 0
+            if (-not [int]::TryParse([string]$receipt.containment_id, [ref]$pgid) -or $pgid -lt 1 -or $pgid -ne [int]$receipt.process_id) {
+                return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'macos-recovery-process-group-invalid' }
+            }
+            $root = Get-Process -Id ([int]$receipt.process_id) -ErrorAction SilentlyContinue
+            if ($null -ne $root) {
+                $start = $root.StartTime.ToUniversalTime()
+                $expectedStart = try { ([DateTimeOffset]$receipt.process_started_at).UtcDateTime } catch { $null }
+                if ($null -eq $expectedStart) { return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'macos-recovery-process-identity-unreadable' } }
+                if ($start.Ticks -ne $expectedStart.Ticks) {
+                    return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'macos-recovery-process-identity-reused' }
+                }
+            }
+            $observed = & $getGroupCommand -ProcessGroupId $pgid
+            if (-not $observed.ok) { return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'macos-recovery-process-group-unreadable' } }
+            if (@($observed.pids).Count -eq 0) { return [pscustomobject]@{ termination_verified = $true; containment = 'verified'; process_tree_live = $false; failure_reason = $null } }
+            $descriptor = [pscustomobject]@{ pgid = $pgid; mode = 'process-group' }
+            & $stopCommand -Descriptor $descriptor -GraceSeconds $TerminationGraceSeconds
+            $empty = [bool](& $waitCommand -Descriptor $descriptor -TimeoutMilliseconds 5000)
+            return [pscustomobject]@{
+                termination_verified = $empty; containment = $(if ($empty) { 'verified' } else { 'unknown' })
+                process_tree_live = (-not $empty); failure_reason = $(if ($empty) { $null } else { 'macos-recovery-process-group-still-live' })
+            }
+        }
+        catch {
+            return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = ('macos-recovery-failed:' + $_.Exception.Message) }
+        }
+    }.GetNewClosure()
     return New-ReviewPosixRuntimePort -RuntimeId 'macos-process-group-runtime' -Platform macos -Containment process-group -HostMode process-group `
         -TimeoutSeconds $TimeoutSeconds -TerminationGraceSeconds $TerminationGraceSeconds -CapabilityProbe $CapabilityProbe `
-        -SetupContainment $setup -VerifyContainment $verify -StopContainment $stop -WaitContainmentEmpty $wait -CleanupContainment $cleanup
+        -SetupContainment $setup -VerifyContainment $verify -StopContainment $stop -WaitContainmentEmpty $wait -CleanupContainment $cleanup -RecoverContainment $recover
 }

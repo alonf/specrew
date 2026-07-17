@@ -136,13 +136,42 @@ function New-ReviewLinuxRuntimePort {
     $stopCommand = ${function:Stop-ReviewLinuxCgroup}
     $waitCommand = ${function:Wait-ReviewLinuxCgroupEmpty}
     $cleanupCommand = ${function:Remove-ReviewLinuxCgroup}
+    $resolveRootCommand = ${function:Resolve-ReviewLinuxCgroupRoot}
     if (-not $CapabilityProbe) { $CapabilityProbe = { & $availabilityCommand -CgroupRoot $CgroupRoot }.GetNewClosure() }
     $setup = { param($invocation) & $newDescriptorCommand -CgroupRoot $CgroupRoot }.GetNewClosure()
     $verify = { param($descriptor, $ready, $processId) & $membershipCommand -Descriptor $descriptor -Ready $ready -ProcessId $processId }.GetNewClosure()
     $stop = { param($descriptor, $grace) & $stopCommand -Descriptor $descriptor -GraceSeconds $grace }.GetNewClosure()
     $wait = { param($descriptor, $timeout) & $waitCommand -Descriptor $descriptor -TimeoutMilliseconds $timeout }.GetNewClosure()
     $cleanup = { param($descriptor) & $cleanupCommand -Descriptor $descriptor }.GetNewClosure()
+    $recover = {
+        param($receipt)
+        if ($null -eq $receipt -or [string]$receipt.runtime_id -cne 'linux-cgroup-v2-runtime' -or [string]$receipt.platform -cne 'linux' -or [string]$receipt.containment_kind -cne 'cgroup-v2') {
+            return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'linux-recovery-receipt-mismatch' }
+        }
+        try {
+            $root = [IO.Path]::GetFullPath((& $resolveRootCommand -CgroupRoot $CgroupRoot)).TrimEnd([IO.Path]::DirectorySeparatorChar)
+            $path = [IO.Path]::GetFullPath([string]$receipt.containment_id)
+            $prefix = $root + [IO.Path]::DirectorySeparatorChar
+            if (-not $path.StartsWith($prefix, [StringComparison]::Ordinal) -or [IO.Path]::GetDirectoryName($path) -cne $root -or [IO.Path]::GetFileName($path) -cnotmatch '^specrew-review-[a-f0-9]{32}$') {
+                return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'linux-recovery-cgroup-path-invalid' }
+            }
+            if (-not [IO.Directory]::Exists($path)) {
+                return [pscustomobject]@{ termination_verified = $true; containment = 'verified'; process_tree_live = $false; failure_reason = $null }
+            }
+            $descriptor = [pscustomobject]@{ path = $path; root = $root; mode = 'cgroup-v2' }
+            & $stopCommand -Descriptor $descriptor -GraceSeconds $TerminationGraceSeconds
+            $empty = [bool](& $waitCommand -Descriptor $descriptor -TimeoutMilliseconds 5000)
+            $clean = $empty -and [bool](& $cleanupCommand -Descriptor $descriptor)
+            return [pscustomobject]@{
+                termination_verified = $clean; containment = $(if ($clean) { 'verified' } else { 'unknown' })
+                process_tree_live = (-not $empty); failure_reason = $(if ($clean) { $null } else { 'linux-recovery-cgroup-not-empty-or-not-cleaned' })
+            }
+        }
+        catch {
+            return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = ('linux-recovery-failed:' + $_.Exception.Message) }
+        }
+    }.GetNewClosure()
     return New-ReviewPosixRuntimePort -RuntimeId 'linux-cgroup-v2-runtime' -Platform linux -Containment cgroup-v2 -HostMode linux-cgroup `
         -TimeoutSeconds $TimeoutSeconds -TerminationGraceSeconds $TerminationGraceSeconds -CapabilityProbe $CapabilityProbe `
-        -SetupContainment $setup -VerifyContainment $verify -StopContainment $stop -WaitContainmentEmpty $wait -CleanupContainment $cleanup
+        -SetupContainment $setup -VerifyContainment $verify -StopContainment $stop -WaitContainmentEmpty $wait -CleanupContainment $cleanup -RecoverContainment $recover
 }

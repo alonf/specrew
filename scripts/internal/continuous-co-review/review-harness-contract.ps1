@@ -40,7 +40,8 @@ function Test-ReviewFilePrimaryPromptTemplate {
         @{ name = 'no-prose'; pattern = '(?is)no\s+prose' },
         @{ name = 'no-fences'; pattern = '(?is)no\s+Markdown\s+fences' },
         @{ name = 'stdout-non-authority'; pattern = '(?is)stdout.+never\s+parsed\s+for\s+authority' },
-        @{ name = 'source-read-only'; pattern = '(?is)do\s+not\s+modify\s+the\s+source' }
+        @{ name = 'source-read-only'; pattern = '(?is)do\s+not\s+modify\s+the\s+source' },
+        @{ name = 'single-reviewer-session'; pattern = '(?is)do\s+not\s+delegate\s+to\s+subagents\s+or\s+start\s+other\s+model-backed\s+reviewers' }
     )) {
         if ($Template -notmatch $rule.pattern) { $errors.Add(('prompt-contract-missing:' + $rule.name)) | Out-Null }
     }

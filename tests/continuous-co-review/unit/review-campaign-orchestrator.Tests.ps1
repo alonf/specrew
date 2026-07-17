@@ -58,6 +58,7 @@ The run is __RUN_ID__ and the target digest is __TARGET_DIGEST__.
 Review scope: __REVIEW_SCOPE__
 Deadline: __DEADLINE__
 Do not modify the source. The file must contain ONLY the raw JSON object: no prose and no Markdown fences.
+Do not delegate to subagents or start other model-backed reviewers.
 Stdout is telemetry and is never parsed for authority.
 '@)
             $candidateText = if ($FileCandidate -is [string]) { $FileCandidate } else { $FileCandidate | ConvertTo-Json -Depth 20 -Compress }
@@ -283,9 +284,51 @@ Stdout is telemetry and is never parsed for authority.
         Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/result.json') | Should -BeFalse
         (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('publish-spent-abandoned-result', 'retire-claim-abandoned')
 
-        $recovered = Invoke-ReviewResultIngress -StoreRoot $context.store -StagingRoot $context.staging -CampaignId cmp-demo -RunId run-one -TargetDigest digest-one -HarnessId fixture-harness -RuntimeOutcome abandoned -Invoked $true -TerminationVerified $true -Containment verified -Currentness current -StartedAt '2026-07-16T00:00:05Z' -EndedAt '2026-07-16T00:01:00Z' -DurationMs 55000 -FailureReason 'recovered after terminal state verified'
-        $recovered.published | Should -BeTrue
-        Complete-ReviewAuthorityClaim -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code -Disposition abandoned -ObservedAt '2026-07-16T00:01:00Z' | Out-Null
+        $recoveryClock = New-ReviewFixtureClockPort -UtcValues @('2026-07-16T00:01:00Z') -MonotonicValues @(55100)
+        $recovered = Invoke-ReviewRunReconciliation -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code `
+            -TargetPort $observedTarget -RuntimePort (New-ReviewFixtureRuntimePort) -ClockPort $recoveryClock
+        $recovered.status | Should -Be 'terminal'
+        $recovered.result.runtime_outcome | Should -Be 'abandoned'
+        $recovered.result.termination_verified | Should -BeTrue
+        $recovered.result.can_approve_current | Should -BeFalse
+        $disposeLog.Count | Should -Be 1
+        (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('complete')
+    }
+
+    It 'fails restart reconciliation closed when the immutable recovery receipt is unavailable' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'crash-no-receipt')
+        $fixtureTarget = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
+        $disposeLog = [Collections.Generic.List[string]]::new()
+        $target = [pscustomobject]@{
+            kind = $fixtureTarget.kind; prepare = $fixtureTarget.prepare; currentness = $fixtureTarget.currentness; integrity = $fixtureTarget.integrity
+            dispose = { param($snapshot) $disposeLog.Add([string]$snapshot.snapshot_path) | Out-Null }.GetNewClosure()
+        }
+        $run = Invoke-OrchestratorFixture -Context $context -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) `
+            -Runtime (New-ReviewFixtureRuntimePort -Outcome abandoned -TerminationVerified $false -Containment unknown -FailureReason 'fixture controller crash')
+        $run.status | Should -Be 'awaiting-termination-verification'
+        Remove-Item -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/recovery.json') -Force
+
+        $recovered = Invoke-ReviewRunReconciliation -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code `
+            -TargetPort $target -RuntimePort (New-ReviewFixtureRuntimePort) -ClockPort (New-OrchestratorClock)
+        $recovered.status | Should -Be 'blocked'
+        $recovered.reason | Should -Be 'reconciliation-recovery-fact-missing'
+        $disposeLog.Count | Should -Be 0
+        Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/result.json') | Should -BeFalse
+    }
+
+    It 'continues an interrupted validating boundary and retires its claim in one recovery call' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'crash-validating')
+        $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
+        $run = Invoke-OrchestratorFixture -Context $context -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) `
+            -Runtime (New-ReviewFixtureRuntimePort -Outcome abandoned -TerminationVerified $false -Containment unknown -FailureReason 'fixture validating crash')
+        $run.status | Should -Be 'awaiting-termination-verification'
+        Write-ReviewRunAuthorityFact -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -Stage validating `
+            -Fact (New-ReviewRunStateFact -CampaignId cmp-demo -RunId run-one -TargetDigest digest-one -HarnessId fixture-harness -State validating) | Out-Null
+        (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('continue-validation-and-classification')
+
+        $recovered = Invoke-ReviewRunReconciliation -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code `
+            -TargetPort $target -RuntimePort (New-ReviewFixtureRuntimePort) -ClockPort (New-OrchestratorClock)
+        $recovered.status | Should -Be 'terminal'
         (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('complete')
     }
 

@@ -71,6 +71,14 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         (Test-ReviewFilePrimaryPromptTemplate -Template ($template + ('x' * 33000))).valid | Should -BeFalse
     }
 
+    It 'rejects a prompt that drops the single-reviewer-session prohibition' {
+        $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
+        $weakened = [regex]::Replace($template, '(?is)do not delegate to\s+subagents or start other model-backed reviewers\.', 'work independently.')
+        $validation = Test-ReviewFilePrimaryPromptTemplate -Template $weakened
+        $validation.valid | Should -BeFalse
+        $validation.errors | Should -Contain 'prompt-contract-missing:single-reviewer-session'
+    }
+
     It 'catalogs all five production vectors under the same file-primary contract without implementing absent adapters' {
         $expected = @('claude', 'codex', 'copilot', 'cursor-agent', 'antigravity')
         foreach ($hostName in $expected) {

@@ -10,6 +10,7 @@ if (-not (Get-Command -Name 'New-GitReviewTargetSnapshot' -ErrorAction SilentlyC
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-authority-cutover.ps1') }
 if (-not (Get-Command -Name 'New-ReviewProgressEvent' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-progress-projection.ps1') }
 if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewDesignContextSelection' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-design-context.ps1') }
+if (-not (Get-Command -Name 'New-ReviewRunRecoveryFact' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-run-reconciler.ps1') }
 
 function New-ReviewSystemClockPort {
     return [pscustomobject]@{
@@ -138,7 +139,11 @@ function New-ReviewFixtureRuntimePort {
     $invoke = {
         param($harness, $invocation, $onStarted, $environment, $progress)
         if ($Outcome -ceq 'launch-failed') { return [pscustomobject]@{ runtime_outcome = 'launch-failed'; termination_verified = $true; containment = 'unknown'; failure_reason = $(if ($FailureReason) { $FailureReason } else { 'fixture launch failed' }); process_tree_live = $false; output_activity = $false } }
-        & $onStarted
+        & $onStarted ([pscustomobject][ordered]@{
+            schema_version = '1.0'; runtime_id = 'fixture-runtime'; platform = 'fixture'; containment_kind = 'fixture'
+            containment_id = 'fixture-contained-process'; process_id = $PID
+            process_started_at = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o')
+        })
         if ($null -ne $progress) { try { & $progress ([pscustomobject]@{ process_tree_live = $true; output_activity = $false }) } catch { $null = $_ } }
         $harnessResult = & $harness.invoke $invocation $environment
         return [pscustomobject]@{
@@ -147,7 +152,12 @@ function New-ReviewFixtureRuntimePort {
             usage = $Usage
         }
     }.GetNewClosure()
-    return [pscustomobject]@{ id = 'fixture-runtime'; preflight = $preflight; invoke = $invoke }
+    $recover = {
+        param($receipt)
+        $valid = $null -ne $receipt -and [string]$receipt.runtime_id -ceq 'fixture-runtime' -and [string]$receipt.containment_kind -ceq 'fixture'
+        return [pscustomobject]@{ termination_verified = $valid; containment = $(if ($valid) { 'verified' } else { 'unknown' }); process_tree_live = $false; failure_reason = $(if ($valid) { $null } else { 'fixture-recovery-receipt-mismatch' }) }
+    }
+    return [pscustomobject]@{ id = 'fixture-runtime'; platform = 'fixture'; containment = 'fixture'; preflight = $preflight; invoke = $invoke; recover = $recover }
 }
 
 function Complete-ReviewPreInvocationFailure {
@@ -241,7 +251,8 @@ function New-ReviewUnavailableRuntimePort {
     param([string]$Reason = 'production-runtime-unavailable')
     $preflight = { param($invocation) [pscustomobject]@{ ok = $false; reason = $Reason } }.GetNewClosure()
     $invoke = { param($harness, $invocation, $onStarted, $environment) throw $Reason }.GetNewClosure()
-    return [pscustomobject]@{ id = 'unavailable-runtime'; preflight = $preflight; invoke = $invoke }
+    $recover = { param($receipt) [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = $Reason } }.GetNewClosure()
+    return [pscustomobject]@{ id = 'unavailable-runtime'; platform = 'unknown'; containment = 'unknown'; preflight = $preflight; invoke = $invoke; recover = $recover }
 }
 
 function New-ReviewCampaignProductionPorts {
@@ -502,7 +513,7 @@ function Invoke-ReviewCampaignRun {
         $claim = Request-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort)
         if (-not $claim.acquired) {
             $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
-            $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason ('claim-not-acquired:' + $claim.reason) -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome claim-contended -Containment verified
+            $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason ('claim-not-acquired:' + $claim.reason) -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome claim-contended -Containment unknown
             Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message ('claim-not-acquired:' + $claim.reason) -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
             return [pscustomobject]@{ status = 'not-started'; reason = ('claim-not-acquired:' + $claim.reason); invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path }
         }
@@ -515,9 +526,16 @@ function Invoke-ReviewCampaignRun {
         $writeSpendCommand = Get-Command -Name 'Write-ReviewCampaignSpendFact' -CommandType Function
         $writeRunCommand = Get-Command -Name 'Write-ReviewRunAuthorityFact' -CommandType Function
         $newRunFactCommand = Get-Command -Name 'New-ReviewRunStateFact' -CommandType Function
+        $newRecoveryFactCommand = Get-Command -Name 'New-ReviewRunRecoveryFact' -CommandType Function
+        $writeRecoveryFactCommand = Get-Command -Name 'Write-ReviewRunRecoveryFact' -CommandType Function
         $writeProgressCommand = Get-Command -Name 'Write-ReviewOrchestrationProgress' -CommandType Function
         $onStarted = {
+            param($runtimeReceipt)
             $startedAt = & $readClockCommand -ClockPort $ClockPort
+            $recoveryFact = & $newRecoveryFactCommand -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) `
+                -TargetLineage $TargetLineage -RuntimeReceipt $runtimeReceipt -Snapshot $snapshot -StagingRoot $StagingRoot `
+                -InvocationStartedAt $startedAt -InvocationStartedMonotonicMs $attemptMono
+            & $writeRecoveryFactCommand -StoreRoot $StoreRoot -Fact $recoveryFact | Out-Null
             $existingSpends = @(& $getFactsCommand -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind spend)
             $existingReleases = @(& $getFactsCommand -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind releases)
             $spendDecision = & $resolveSpendCommand -Reservation $reservation -InvocationStartedAt $startedAt -Preflight $preflight -Spends $existingSpends -Releases $existingReleases

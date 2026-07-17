@@ -78,6 +78,13 @@ Describe 'Review authority closed contracts (T042)' {
             @{ name = 'SpendFact'; object = (New-Spend) }
             @{ name = 'ReleaseFact'; object = (New-Release) }
             @{ name = 'ClaimFact'; object = [pscustomobject][ordered]@{ schema_version = '1.0'; fact_type = 'claim-held'; campaign_id = 'cmp-demo'; run_id = 'run-one'; target_lineage = 'lin-code'; generation = 1; disposition = 'held'; observed_at = '2026-07-16T00:00:01Z' } }
+            @{ name = 'RecoveryFact'; object = [pscustomobject][ordered]@{
+                schema_version = '1.0'; fact_type = 'recovery'; campaign_id = 'cmp-demo'; run_id = 'run-one'; target_digest = 'digest-one'; harness_id = 'fixture'
+                target_lineage = 'lin-code'; runtime_id = 'fixture-runtime'; platform = 'fixture'; containment_kind = 'fixture'; containment_id = 'fixture-contained-process'
+                process_id = 42; process_started_at = '2026-07-16T00:00:02Z'; invocation_started_at = '2026-07-16T00:00:02Z'; invocation_started_monotonic_ms = 100
+                target_kind = 'fixture'; snapshot_path = 'C:\review\snapshot'; workspace_root = 'C:\review\snapshot'; origin_repo = 'not-applicable'
+                git_root = 'not-applicable'; origin_head_before = 'not-applicable'; staging_root = 'C:\review\staging'
+            } }
         )
         foreach ($case in $cases) {
             $result = Test-ReviewAuthorityContractObject -ContractName $case.name -InputObject $case.object

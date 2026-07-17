@@ -4,9 +4,9 @@
 
 ## Summary
 
-**Total local drift events**: 4
-**Resolution rate**: 100% (4/4 resolved in code; live verification pending for events 003–004)
-**Specification drift**: Both local dogfood gaps are resolved without changing approved product scope
+**Total local drift events**: 6
+**Resolution rate**: 100% (6/6 resolved in code; clean live verification pending for event 006)
+**Specification drift**: Local dogfood findings are resolved without changing approved product scope
 
 ## Inherited Open Drift
 
@@ -68,9 +68,19 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-005 — Cursor live review exposed public model-plumbing, pre-spend containment, and finding-ID validation gaps
 
-- **Status**: correction implemented; full no-spend gates, CI, and clean run 06 pending
+- **Status**: resolved and independently re-reviewed; run 06 found no recurrence of these three defects
 - **Severity**: major trust/cost integrity (two major findings, one minor contract finding)
 - **Requirements**: FR-057, FR-059, FR-060, FR-061, FR-063, FR-064, FR-065, SC-018, SC-019, SC-020, SC-021, NFR-002
 - **Evidence**: authorized Free/Auto run `run-t060-cursor-windows-11a0129e-05` reviewed exact commit `11a0129e94ba471da8126b28c19fd875ca0feb87` and digest `fce377ffeb2ed7ff65f9b7cc4389dbefa7e637a3`. It invoked once, completed in 251687 ms, preserved clean/current origin state, verified Job Object containment and termination, and published a strict authoritative candidate with three current findings. The findings showed that the public campaign path dropped parsed `--model`, the Windows runtime called the spend-authority callback before verifying that containment had not degraded to tree-kill, and candidate ingress did not enforce the prompt contract's unique `local_id` rule.
 - **Correction**: the public live command now passes model selection through `Invoke-ReviewCampaignCommand` and `New-ReviewCampaignProductionPorts` into the production harness factory. The Windows runtime rejects degraded containment and reaps the process before `onStarted`, so no spend fact can be written without required Job Object assignment. Candidate validation uses ordinal uniqueness over bounded `local_id` values and fails closed on duplicates.
-- **Verification**: paired regressions prove public model propagation, deterministic post-start containment degradation with zero callback, duplicate-ID rejection, and distinct-ID acceptance. The adjacent authority, campaign, public-command, Windows runtime, shared harness, Cursor/Antigravity, and T060 package suites pass 105/105; all 56 explicit F-198 registry suites pass in 529.8 seconds; scoped Iteration 007 governance passes with historical warnings only. Comparing the correction to FR-057/059/060/061/063/064/065 and SC-018..021 finds no additional gold-plating, omission, or contradiction, so no further drift event is required. No provider was invoked by the correction gates; CI, exact-commit preflight, and run 06 remain.
+- **Verification**: paired regressions prove public model propagation, deterministic post-start containment degradation with zero callback, duplicate-ID rejection, and distinct-ID acceptance. The adjacent authority, campaign, public-command, Windows runtime, shared harness, Cursor/Antigravity, and T060 package suites pass 105/105; all 56 explicit F-198 registry suites pass in 529.8 seconds; scoped Iteration 007 governance passes with historical warnings only. Authorized run 06 did not repeat any of these findings, but exposed the separate restart-execution/prompt-enforcement gaps recorded as `DRIFT-198-I007-006`.
+
+### DRIFT-198-I007-006 — Cursor run 06 exposed a planned-only restart path and two evidence-contract gaps
+
+- **Status**: resolved in code; CI, exact-commit preflight, and clean Cursor rerun pending
+- **Severity**: major recovery completeness plus two minor evidence-contract defects
+- **Requirements**: FR-060, FR-061, FR-062, FR-063, SC-017, SC-020, SC-021, NFR-007
+- **Evidence**: authorized Free/Auto run `run-t060-cursor-windows-09a89e45-06` reviewed commit `09a89e45820be4b48e3c4d09487a0c4faf8c21fb` at digest `df6cb180e89f79545886ca2439c8cb1341dac3dd`. It invoked once, completed in 257156 ms, preserved a clean/current target, verified Job Object containment and termination, and published three current findings. The major finding established that `Get-ReviewRunReconciliationPlan` named recovery actions but no production executor or public command performed them. Minor findings showed claim contention publishing `containment=verified` before any process existed, and the shared prompt's single-session rule was prose-only rather than part of template validation.
+- **Drift classification**: `incomplete`. The approved architecture required deterministic restart reconciliation and enforced one-reviewer execution; planned action names and unenforced prompt text did not deliver those requirements. No unauthorized scope was added and no requirement text changed.
+- **Correction**: every invoked run now persists one closed immutable recovery fact after native containment verification and before spend. Windows records a PID/start identity under its KILL_ON_JOB_CLOSE Job Object guarantee; Linux records the unique delegated cgroup; macOS records the verified process group. Each production runtime exposes a recovery operation that kills or verifies the recorded identity without trusting a reused PID. `Invoke-ReviewRunReconciliation` executes every plan branch, preserves any valid staged findings as advisory abandoned evidence, publishes exactly one non-approving terminal result, retires the claim, then removes the frozen target. `specrew review --reconcile-run <run-id>` exposes that no-provider operation. Claim contention now records unknown containment, and prompt validation fails if the no-subagent/no-secondary-reviewer rule is removed.
+- **Closure evidence**: paired recovery tests cover successful interrupted-run closure, one-call validating-boundary completion, missing-receipt fail-closed behavior, replayed timestamp identity, real Windows process-tree kill, and native POSIX empty-containment recovery. Prompt and claim-contention regressions are paired. Focused authority/runtime/orchestration/public/adapter suites pass, the packaged-artifact release blocker passes, all 56 F-198 registry suites pass in 572.9 seconds, and scoped Iteration 007 governance passes with historical warnings only. The drift check against FR-060..FR-063 and SC-017/020/021 finds no gold-plating or contradiction; the remaining proof is the already-authorized clean Cursor rerun after CI and exact-commit preflight.

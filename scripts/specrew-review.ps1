@@ -93,6 +93,7 @@ Usage:
                  [--design-context-ref <path>] [--allowed-path <path>] [--forbidden-path <path>]
                  [--exclude-path <pattern>] [--reviewer-config <path>] [--schema-root <path>]
                  [--run-root <path>] [--timeout-seconds <seconds>] [--quiet | --json]
+  specrew review --reconcile-run <run-id> [--feature <id>] [--iteration <NNN>] [--json]
 
 Options:
   --project-path <path>  Target Specrew project (default: current directory)
@@ -127,6 +128,7 @@ Options:
   --run-root             Temporary immutable request-bundle workspace root
   --timeout-seconds      Reviewer host timeout in seconds (default: 120)
   --preserve-debug       Keep temporary request-bundle workspaces after live review
+  --reconcile-run        Resume one interrupted campaign run without invoking a provider
   --quiet                Emit only the stable machine-parseable digest line
   --json                 Emit JSON summary instead of the visual reviewer summary
   --open                 Open reviewer-index.md and review-diagrams.md when present
@@ -175,6 +177,7 @@ function Convert-UnixStyleArguments {
         ForbiddenPaths  = @()
         ExcludedPathPatterns = @()
         AckDegradedRunId = $null
+        ReconcileRunId = $null
         AckReason       = $null
         Remediate       = $null
         Scope           = $null
@@ -186,7 +189,7 @@ function Convert-UnixStyleArguments {
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
-            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope|fix-evidence-ref)(?:=(?<value>.+))?$' {
+            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|reconcile-run|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope|fix-evidence-ref)(?:=(?<value>.+))?$' {
                 $name = $Matches['name']
                 $value = $Matches['value']
                 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -200,6 +203,7 @@ function Convert-UnixStyleArguments {
                     'trunk' { $result.TrunkName = $value }
                     'checkpoint-id' { $result.CheckpointId = $value }
                     'run-id' { $result.RunId = $value }
+                    'reconcile-run' { $result.ReconcileRunId = $value }
                     'host' { $result.Host = $value }
                     'model' { $result.Model = $value }
                     'effort' { $result.Effort = $value }
@@ -661,6 +665,31 @@ $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     Write-Error ("Project path does not exist: {0}" -f $resolvedProjectPath)
     exit 1
+}
+
+# FR-062: restart reconciliation is a first-class public operation. It never grants or
+# invokes a provider; it only executes the immutable plan for one already-recorded run.
+if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) {
+    try {
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        $authority = Get-ContinuousCoReviewAuthorityDecision
+        if (-not $authority.valid -or -not [bool]$authority.campaign_authority_enabled) { throw ('review-reconciliation-requires-campaign-authority:' + $authority.reason) }
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.ReconcileRunId)
+        $timeout = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { 900 }
+        $store = Join-Path $resolvedProjectPath '.specrew/review/authority'
+        $target = New-GitReviewTargetPort -OriginRepo $resolvedProjectPath
+        $runtime = New-ReviewProductionRuntimePort -TimeoutSeconds $timeout
+        $reconciled = Invoke-ReviewRunReconciliation -StoreRoot $store -CampaignId $identity.campaign_id -RunId $identity.run_id `
+            -TargetLineage $identity.target_lineage -TargetPort $target -RuntimePort $runtime -ClockPort (New-ReviewSystemClockPort)
+        if ($Json) { $reconciled | ConvertTo-Json -Depth 30 }
+        else {
+            Write-Host ("review-reconciliation campaign={0} run_id={1} status={2} reason={3}" -f $identity.campaign_id, $identity.run_id, $reconciled.status, $reconciled.reason)
+            if ($null -ne $reconciled.result) { Write-Host ("verdict={0} completion={1} runtime_outcome={2}" -f $reconciled.result.verdict, $reconciled.result.completion, $reconciled.result.runtime_outcome) }
+        }
+        if ([string]$reconciled.status -notin @('complete', 'terminal')) { exit 1 }
+        exit 0
+    }
+    catch { Write-Error $_.Exception.Message; exit 1 }
 }
 
 # T094/FR-036: record the FIRST-CLASS human acknowledgement of degraded review evidence, then exit

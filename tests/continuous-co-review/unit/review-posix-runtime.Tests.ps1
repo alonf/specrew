@@ -118,6 +118,28 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         else { $runtime.id | Should -Be 'unavailable-runtime' }
     }
 
+    It 'treats an already-empty persisted native containment identity as recovered' -Skip:$IsWindows {
+        if ($IsLinux) {
+            $root = Resolve-ReviewLinuxCgroupRoot
+            $receipt = [pscustomobject]@{
+                runtime_id = 'linux-cgroup-v2-runtime'; platform = 'linux'; containment_kind = 'cgroup-v2'
+                containment_id = (Join-Path $root ('specrew-review-' + ('a' * 32))); process_id = 2147483000
+                process_started_at = '2026-07-17T00:00:00Z'
+            }
+            $port = New-ReviewLinuxRuntimePort -CgroupRoot $root
+        }
+        else {
+            $receipt = [pscustomobject]@{
+                runtime_id = 'macos-process-group-runtime'; platform = 'macos'; containment_kind = 'process-group'
+                containment_id = '2147483000'; process_id = 2147483000; process_started_at = '2026-07-17T00:00:00Z'
+            }
+            $port = New-ReviewMacOSRuntimePort
+        }
+        $recovered = & $port.recover $receipt
+        $recovered.termination_verified | Should -BeTrue -Because $recovered.failure_reason
+        $recovered.containment | Should -Be 'verified'
+    }
+
     It 'exercises the native process-group mechanism on Unix without promoting cross-OS support' -Skip:$IsWindows {
         $root = Join-Path $TestDrive 'portable-pgid'; $invocation = New-T057Invocation -Root $root
         $scripts = New-T057FixtureScripts -Root $root; $harness = New-T057Harness -Invocation $invocation -Scripts $scripts -Mode timeout -TimeoutSeconds 1

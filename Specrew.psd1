@@ -272,6 +272,7 @@
         'scripts/internal/continuous-co-review/review-result-ingestor.ps1',
         'scripts/internal/continuous-co-review/review-progress-projection.ps1',
         'scripts/internal/continuous-co-review/review-retro-projection.ps1',
+        'scripts/internal/continuous-co-review/review-run-reconciler.ps1',
         'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1',
         'scripts/internal/continuous-co-review/review-claude-harness-port.ps1',
         'scripts/internal/continuous-co-review/review-codex-harness-port.ps1',

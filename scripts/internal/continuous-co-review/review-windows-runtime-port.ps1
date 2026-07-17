@@ -130,6 +130,8 @@ function New-ReviewWindowsRuntimePort {
     $closeContainmentCommand = ${function:Close-SpecrewProcessContainment}
     $waitJobEmptyCommand = ${function:Wait-ReviewWindowsJobEmpty}
     $testProcessDeadCommand = ${function:Test-ReviewProcessDead}
+    $getDescendantsCommand = ${function:Get-SpecrewProcessTreeDescendants}
+    $stopTreeCommand = ${function:Stop-SpecrewProcessTree}
     $resolveLaunchCommand = ${function:Resolve-ReviewWindowsProcessLaunch}
     $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
     $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
@@ -180,7 +182,12 @@ function New-ReviewWindowsRuntimePort {
                 [void]$process.WaitForExit(5000); $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
                 return [pscustomobject]@{ runtime_outcome = 'containment-violated'; termination_verified = ($streamsClosed -and (& $testProcessDeadCommand -ProcessId $process.Id)); containment = 'violated'; failure_reason = ('windows-job-object-assignment-failed:' + [string]$containment.degraded_reason); process_tree_live = $false; output_activity = [IO.File]::Exists([string]$spec.candidate_result_path) }
             }
-            try { & $onStarted }
+            $runtimeReceipt = [pscustomobject][ordered]@{
+                schema_version = '1.0'; runtime_id = 'windows-job-object-runtime'; platform = 'windows'
+                containment_kind = 'job-object'; containment_id = ('job-object-process-' + $process.Id)
+                process_id = $process.Id; process_started_at = $process.StartTime.ToUniversalTime().ToString('o')
+            }
+            try { & $onStarted $runtimeReceipt }
             catch {
                 & $stopContainmentCommand -Containment $containment -GraceSeconds 0
                 [void]$process.WaitForExit(5000)
@@ -249,5 +256,37 @@ function New-ReviewWindowsRuntimePort {
         }
     }.GetNewClosure()
 
-    return [pscustomobject]@{ id = 'windows-job-object-runtime'; platform = 'windows'; containment = 'job-object'; preflight = $preflight; invoke = $invoke }
+    $recover = {
+        param($receipt)
+        if ($null -eq $receipt -or [string]$receipt.runtime_id -cne 'windows-job-object-runtime' -or [string]$receipt.platform -cne 'windows' -or [string]$receipt.containment_kind -cne 'job-object') {
+            return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'windows-recovery-receipt-mismatch' }
+        }
+        $rootId = [int]$receipt.process_id
+        $process = Get-Process -Id $rootId -ErrorAction SilentlyContinue
+        if ($null -eq $process) {
+            # The verified Job Object was configured KILL_ON_JOB_CLOSE before the receipt was
+            # written. Controller death closes its last handle, so an absent identity proves the
+            # contained tree was reaped without reopening an untrusted PID.
+            return [pscustomobject]@{ termination_verified = $true; containment = 'verified'; process_tree_live = $false; failure_reason = $null }
+        }
+        $observedStart = try { $process.StartTime.ToUniversalTime() } catch { $null }
+        $expectedStart = try { ([DateTimeOffset]$receipt.process_started_at).UtcDateTime } catch { $null }
+        if ($null -eq $observedStart -or $null -eq $expectedStart) {
+            return [pscustomobject]@{ termination_verified = $false; containment = 'unknown'; process_tree_live = $null; failure_reason = 'windows-recovery-process-identity-unreadable' }
+        }
+        if ($observedStart.Ticks -ne $expectedStart.Ticks) {
+            return [pscustomobject]@{ termination_verified = $true; containment = 'verified'; process_tree_live = $false; failure_reason = $null }
+        }
+        $descendants = @(& $getDescendantsCommand -RootPid $rootId)
+        if ($descendants.Count -eq 1 -and $descendants[0] -is [array]) { $descendants = @($descendants[0]) }
+        $observedIds = @($rootId) + @($descendants)
+        & $stopTreeCommand -RootPid $rootId -GraceSeconds $TerminationGraceSeconds
+        $live = @($observedIds | Where-Object { -not (& $testProcessDeadCommand -ProcessId ([int]$_)) })
+        return [pscustomobject]@{
+            termination_verified = ($live.Count -eq 0); containment = $(if ($live.Count -eq 0) { 'verified' } else { 'unknown' })
+            process_tree_live = ($live.Count -gt 0); failure_reason = $(if ($live.Count -eq 0) { $null } else { 'windows-recovery-process-tree-still-live' })
+        }
+    }.GetNewClosure()
+
+    return [pscustomobject]@{ id = 'windows-job-object-runtime'; platform = 'windows'; containment = 'job-object'; preflight = $preflight; invoke = $invoke; recover = $recover }
 }

@@ -66,7 +66,7 @@ function Write-ReviewAuthorityImmutableFact {
         [Parameter(Mandatory)]$Fact,
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact'
         )][string]$ContractName,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
@@ -104,7 +104,7 @@ function Read-ReviewAuthorityFactFile {
         [Parameter(Mandatory)][string]$Path,
         [ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact'
         )][string]$ContractName,
         [int]$MaxBytes = 1048576
     )
@@ -328,12 +328,27 @@ function Get-ReviewRunAuthorityFact {
         [Parameter(Mandatory)][string]$StoreRoot,
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$RunId,
-        [Parameter(Mandatory)][ValidateSet('requested', 'reserved', 'preflighted', 'claimed', 'invoked', 'validating', 'result')][string]$Stage
+        [Parameter(Mandatory)][ValidateSet('requested', 'reserved', 'preflighted', 'claimed', 'invoked', 'validating', 'recovery', 'result')][string]$Stage
     )
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/runs/$RunId/$Stage.json"
     $path = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
     if (-not [System.IO.File]::Exists($path)) { return $null }
-    return Read-ReviewAuthorityFactFile -Path $path -ContractName $(if ($Stage -ceq 'result') { 'ReviewResult' } else { 'ReviewRun' })
+    $contract = if ($Stage -ceq 'result') { 'ReviewResult' } elseif ($Stage -ceq 'recovery') { 'RecoveryFact' } else { 'ReviewRun' }
+    return Read-ReviewAuthorityFactFile -Path $path -ContractName $contract
+}
+
+function Write-ReviewRunRecoveryFact {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)]$Fact
+    )
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+    $targetDigest = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'target_digest')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/runs/$runId/recovery.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName RecoveryFact `
+        -ExpectedCampaignId $campaignId -ExpectedRunId $runId -ExpectedTargetDigest $targetDigest
 }
 
 function Get-ReviewAuthorityClaimFacts {

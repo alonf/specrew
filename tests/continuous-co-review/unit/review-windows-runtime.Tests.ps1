@@ -166,6 +166,26 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         (Get-Process -Id $childPid -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
     }
 
+    It 'recovers an interrupted receipt by killing the recorded process identity' {
+        $process = Start-Process -FilePath $script:PwshPath -ArgumentList @('-NoProfile', '-Command', 'Start-Sleep -Seconds 30') -PassThru -WindowStyle Hidden
+        try {
+            $receipt = [pscustomobject]@{
+                runtime_id = 'windows-job-object-runtime'; platform = 'windows'; containment_kind = 'job-object'
+                containment_id = ('job-object-process-' + $process.Id); process_id = $process.Id
+                process_started_at = $process.StartTime.ToUniversalTime().ToString('o')
+            }
+            $replayedReceipt = ($receipt | ConvertTo-Json -Compress) | ConvertFrom-Json
+            $recovered = & (New-ReviewWindowsRuntimePort -TimeoutSeconds 5 -TerminationGraceSeconds 0).recover $replayedReceipt
+            $recovered.termination_verified | Should -BeTrue -Because $recovered.failure_reason
+            $recovered.containment | Should -Be 'verified'
+            (Get-Process -Id $process.Id -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
+        }
+        finally {
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+            $process.Dispose()
+        }
+    }
+
     It 'publishes timeout authority only after the runtime has verified the process tree dead' {
         $root = Join-Path $TestDrive 'ingress-order'; $invocation = New-T056Invocation -Root $root
         $scripts = New-T056FixtureScripts -Root $root

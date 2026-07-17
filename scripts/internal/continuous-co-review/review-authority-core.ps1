@@ -234,7 +234,7 @@ function Test-ReviewAuthorityContractObject {
     param(
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -255,6 +255,12 @@ function Test-ReviewAuthorityContractObject {
         'ReleaseFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'reason', 'observed_at') }
         'ClaimFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_lineage', 'generation', 'disposition', 'observed_at') }
         'HumanDispositionFact' { @('schema_version', 'fact_type', 'disposition_id', 'campaign_id', 'run_id', 'target_digest', 'decision', 'authority_kind', 'authorized_by', 'authorization_ref', 'rationale', 'observed_at') }
+        'RecoveryFact' { @(
+            'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'target_lineage',
+            'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',
+            'invocation_started_at', 'invocation_started_monotonic_ms', 'target_kind', 'snapshot_path',
+            'workspace_root', 'origin_repo', 'git_root', 'origin_head_before', 'staging_root'
+        ) }
     }
     if (-not (Test-ReviewAuthorityClosedShape -Object $InputObject -Allowed $fields -Errors $errors)) {
         return [pscustomobject]@{ valid = $false; category = 'schema-invalid'; errors = @($errors) }
@@ -348,6 +354,23 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'authorization_ref' -Errors $errors -MaxLength 256
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'rationale' -Errors $errors -MaxLength 2000
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
+        }
+        'RecoveryFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('recovery')
+            Test-ReviewAuthorityIdField -Object $InputObject -Name 'target_lineage' -Kind lineage -Errors $errors
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'runtime_id' -Errors $errors -MaxLength 64
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'platform' -Errors $errors -MaxLength 16 -Enum @('fixture', 'windows', 'linux', 'macos')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'containment_kind' -Errors $errors -MaxLength 32 -Enum @('fixture', 'job-object', 'cgroup-v2', 'process-group')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'containment_id' -Errors $errors -MaxLength 4096
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'process_id' -Errors $errors -Minimum 1 -Maximum ([int]::MaxValue)
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'process_started_at' -Errors $errors -MaxLength 64
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'invocation_started_at' -Errors $errors -MaxLength 64
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'invocation_started_monotonic_ms' -Errors $errors -Minimum 0
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'target_kind' -Errors $errors -MaxLength 64
+            foreach ($name in @('snapshot_path', 'workspace_root', 'origin_repo', 'git_root', 'staging_root')) {
+                Test-ReviewAuthorityStringField -Object $InputObject -Name $name -Errors $errors -MaxLength 4096
+            }
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'origin_head_before' -Errors $errors -MaxLength 128
         }
     }
 

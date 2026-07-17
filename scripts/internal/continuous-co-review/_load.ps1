@@ -54,6 +54,8 @@ $proposal197ReviewerModules = @(
     # Both are non-authoritative and load before the orchestrator that composes them.
     'review-progress-projection.ps1'
     'review-retro-projection.ps1'
+    # FR-062 restart executor: immutable recovery receipt + real reconciliation operation.
+    'review-run-reconciler.ps1'
     # F-198 iter-006 / T048: synchronous port-composed campaign/run orchestration + fixtures.
     'review-campaign-orchestrator.ps1'
     # Shared file-primary production harness contract, followed by thin provider adapters.
