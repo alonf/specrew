@@ -79,6 +79,14 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $validation.errors | Should -Contain 'prompt-contract-missing:single-reviewer-session'
     }
 
+    It 'rejects a prompt that leaves the optional finding location type ambiguous' {
+        $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
+        $weakened = [regex]::Replace($template, '(?is)`location`, when present,.+?grounded source location\.', '`location` is optional.')
+        $validation = Test-ReviewFilePrimaryPromptTemplate -Template $weakened
+        $validation.valid | Should -BeFalse
+        $validation.errors | Should -Contain 'prompt-contract-missing:location-string-type'
+    }
+
     It 'catalogs all five production vectors under the same file-primary contract without implementing absent adapters' {
         $expected = @('claude', 'codex', 'copilot', 'cursor-agent', 'antigravity')
         foreach ($hostName in $expected) {
@@ -171,6 +179,8 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         @{ name = 'malformed'; text = '{"schema_version":"1.0",}'; category = 'invalid-json' }
         @{ name = 'unknown-top'; text = '{"schema_version":"1.0","run_id":"run-one","target_digest":"digest-one","completion":"complete","verdict":"pass","summary":"x","findings":[],"extra":true}'; category = 'unknown-field' }
         @{ name = 'unknown-finding'; text = '{"schema_version":"1.0","run_id":"run-one","target_digest":"digest-one","completion":"complete","verdict":"findings","summary":"x","findings":[{"local_id":"a","severity":"major","title":"t","description":"d","extra":true}]}'; category = 'unknown-field' }
+        @{ name = 'location-object'; text = '{"schema_version":"1.0","run_id":"run-one","target_digest":"digest-one","completion":"complete","verdict":"findings","summary":"x","findings":[{"local_id":"a","severity":"major","title":"t","description":"d","location":{"path":"src/a.ps1","line":4}}]}'; category = 'schema-invalid' }
+        @{ name = 'location-array'; text = '{"schema_version":"1.0","run_id":"run-one","target_digest":"digest-one","completion":"complete","verdict":"findings","summary":"x","findings":[{"local_id":"a","severity":"major","title":"t","description":"d","location":["src/a.ps1:4"]}]}'; category = 'schema-invalid' }
         @{ name = 'missing'; text = '{"schema_version":"1.0","run_id":"run-one","target_digest":"digest-one","completion":"complete","verdict":"pass","summary":"x"}'; category = 'schema-invalid' }
         @{ name = 'wrong-run'; text = '{"schema_version":"1.0","run_id":"run-other","target_digest":"digest-one","completion":"complete","verdict":"pass","summary":"x","findings":[]}'; category = 'identity-mismatch' }
         @{ name = 'wrong-digest'; text = '{"schema_version":"1.0","run_id":"run-one","target_digest":"digest-other","completion":"complete","verdict":"pass","summary":"x","findings":[]}'; category = 'identity-mismatch' }

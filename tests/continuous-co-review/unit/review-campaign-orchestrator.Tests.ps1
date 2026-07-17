@@ -60,6 +60,7 @@ Deadline: __DEADLINE__
 Do not modify the source. The file must contain ONLY the raw JSON object: no prose and no Markdown fences.
 Do not delegate to subagents or start other model-backed reviewers.
 Stdout is telemetry and is never parsed for authority.
+`location`, when present, must be one plain JSON string; never an object, array, number, or boolean.
 '@)
             $candidateText = if ($FileCandidate -is [string]) { $FileCandidate } else { $FileCandidate | ConvertTo-Json -Depth 20 -Compress }
             $agentInvoker = {

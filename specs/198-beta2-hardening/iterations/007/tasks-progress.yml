@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Codex/local macOS is complete. Cursor runs 05/06 returned corrected findings; run 07 hit the exhausted free-account limit, so clean Cursor proof waits for free credit. Antigravity run 01 produced two corrected defects; run 02 did not repeat them but reported five scheduled downstream status items because T060's code-review scope omitted phase context. DRIFT-198-I007-008 applies the phase-aware scope to both T060 packages; 13 paired tests and all 56 F-198 suites in 610.7 seconds pass. Commit/CI/preflight/Antigravity verification, Copilot/Linux, support truth, and cutover remain."
+    blocked_reason: "Codex/local macOS is complete. Cursor clean proof waits for free credit. Antigravity runs 01/02 produced corrected implementation/scope findings. Run 03 was strictly rejected because its two finding locations were not strings; no candidate is salvaged. DRIFT-198-I007-009 makes the string type mandatory in the shared prompt/template contract and adds object/array malformed fixtures; 40 adjacent tests and all 56 F-198 suites in 609.7 seconds pass. Commit/CI/preflight/Antigravity verification, Copilot/Linux, support truth, and cutover remain."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"

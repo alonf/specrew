@@ -28,6 +28,8 @@ summary = bounded plain text
 findings = array of objects with exactly: local_id, severity, title, description, and optional location
 
 Each `severity` is one of `blocking`, `major`, `minor`, or `note`. Use unique, run-local `local_id` values.
+`location`, when present, must be one plain JSON string such as `path/to/file:line`; never an object,
+array, number, or boolean. Omit it when there is no grounded source location.
 A complete pass has `completion="complete"`, `verdict="pass"`, and an empty findings array. A complete
 result with findings uses `verdict="findings"`. A partial result always uses `verdict="incomplete"`.
 Report only code-review findings grounded in the frozen workspace. Never invent a clean result to satisfy

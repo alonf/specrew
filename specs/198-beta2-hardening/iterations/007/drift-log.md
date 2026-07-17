@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total local drift events**: 8
-**Resolution rate**: 100% (8/8 resolved in code; clean live verification pending for event 008, while Cursor proof is externally quota-blocked)
+**Total local drift events**: 9
+**Resolution rate**: 100% (9/9 resolved in code; clean live verification pending for event 009, while Cursor proof is externally quota-blocked)
 **Specification drift**: Local dogfood findings are resolved without changing approved product scope
 
 ## Inherited Open Drift
@@ -97,10 +97,20 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-008 — T060 code-review scope allowed downstream gate status to masquerade as code findings
 
-- **Status**: resolved in code; commit, CI, exact-commit preflight, and clean live verification pending
+- **Status**: resolved in code; run 03 did not publish downstream-status findings, but its candidate was invalid for the separate location-type ambiguity
 - **Severity**: moderate review-scope/evidence-integrity defect
 - **Requirements**: FR-059, FR-060, FR-063, FR-064, SC-019, SC-020, NFR-002
 - **Evidence**: correction run `run-t060-antigravity-windows-d9d4ee9e-02` invoked once under verified Windows Job Object containment, completed in 798000 ms, preserved a clean/current target, and published a strict valid partial candidate. It did not repeat either run-01 code defect. Instead, all five findings restated truthful status already present in the iteration artifacts: Cursor free-credit exhaustion, the Antigravity correction proof then in progress, later Copilot and T061 runs, and the deliberately deferred campaign cutover. No finding identified a defect in executable code or tests.
 - **Drift classification**: `ambiguous`. The shared prompt correctly requested code-review findings, but the T060 wrapper's generic scope did not explain the approved serialized phase. A reviewer could therefore mistake explicitly scheduled later gates for defects in the current frozen code, creating a catch-22 in which an early smoke could never pass because later smokes and cutover had not happened yet.
 - **Correction**: both T060 execution packages now pass the same explicit phase-aware scope into the production campaign command. Reviewers still inspect the full frozen code/tests against resolved design context, but accurate entries for later T060 harnesses, cutover, T061, retro/closeout, or an external provider-quota constraint are context rather than code findings. A pending/deferred item remains reportable whenever a grounded frozen-code defect makes it unsafe/impossible or contradicts an approved requirement. The generic production reviewer prompt and strict ingress remain unchanged.
-- **Closure evidence**: paired package tests require both Windows/Linux and macOS T060 runners to pass the scope explicitly, preserve the single synchronous provider call, and retain no-retry/strict-result behavior. Both package/evidence suites pass 13/13, both runner scripts parse cleanly, and all 56 registered F-198 suites pass in 610.7 seconds. No provider was invoked by the correction.
+- **Closure evidence**: paired package tests require both Windows/Linux and macOS T060 runners to pass the scope explicitly, preserve the single synchronous provider call, and retain no-retry/strict-result behavior. Both package/evidence suites pass 13/13, both runner scripts parse cleanly, all 56 registered F-198 suites pass in 610.7 seconds, scoped governance passes, and CI run `29601394317` is green. Exact-commit preflight passed at commit `ac731737fc6be92ea9248019c429bdc8e66eaccc` and digest `a30f1aa1511c8c3c9c9cbf148b9658ff973ae4d3`. Run 03 produced no validated downstream-status finding, but strict ingress rejected its two-finding candidate for non-string locations; that separate output-contract ambiguity is `DRIFT-198-I007-009`.
+
+### DRIFT-198-I007-009 — prompt called location optional without stating its required JSON type
+
+- **Status**: resolved in code; commit, CI, exact-commit preflight, and live verification pending
+- **Severity**: moderate adapter-contract defect
+- **Requirements**: FR-060, FR-063, FR-064, SC-019, SC-020, NFR-002
+- **Evidence**: run `run-t060-antigravity-windows-ac731737-03` invoked once under verified Windows Job Object containment and preserved a clean/current exact target. The reviewer returned after 450343 ms, but strict ingress rejected the candidate with `findings[0].wrong-type:location:string` and `findings[1].wrong-type:location:string`. Authority correctly published `runtime_outcome=invalid-output`, `validation=invalid`, `completion=none`, zero validated findings, and no approval. The raw candidate is not salvaged or retroactively accepted.
+- **Drift classification**: `ambiguous`. The closed schema already requires optional `location` to be a string, and strict ingress behaved correctly. The shared prompt merely listed “optional location” without stating the JSON type, leaving adapters dependent on provider guesswork; earlier providers happened to choose strings.
+- **Correction**: the single shared prompt now requires one plain JSON string such as `path/to/file:line`, forbids object/array/number/boolean locations, and tells the reviewer to omit the field when no source location is grounded. Prompt-template validation mechanically requires that rule for every adapter. Strict ingress remains unchanged and continues to reject wrong types; there is no salvage/extraction path or hidden retry.
+- **Closure evidence**: a paired prompt regression fails when the type sentence is removed. The malformed-output matrix now deterministically rejects both object and array locations, while the existing string-location findings candidate remains accepted. The shared contract plus updated custom-prompt orchestration fixture pass 40/40. The first aggregate run honestly exposed the stale fixture; after correction all 56 registered F-198 suites pass in 609.7 seconds. No provider was invoked by the correction.
