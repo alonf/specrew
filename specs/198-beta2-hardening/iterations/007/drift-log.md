@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total local drift events**: 9
-**Resolution rate**: 100% (9/9 resolved in code; clean live verification pending for event 009, while Cursor proof is externally quota-blocked)
+**Total local drift events**: 10
+**Resolution rate**: 100% (10/10 resolved in code; clean live verification pending for event 010, while Cursor proof is externally quota-blocked)
 **Specification drift**: Local dogfood findings are resolved without changing approved product scope
 
 ## Inherited Open Drift
@@ -107,10 +107,20 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-009 — prompt called location optional without stating its required JSON type
 
-- **Status**: resolved in code; commit, CI, exact-commit preflight, and live verification pending
+- **Status**: resolved and independently re-reviewed; run 04 did not repeat the location-type defect
 - **Severity**: moderate adapter-contract defect
 - **Requirements**: FR-060, FR-063, FR-064, SC-019, SC-020, NFR-002
 - **Evidence**: run `run-t060-antigravity-windows-ac731737-03` invoked once under verified Windows Job Object containment and preserved a clean/current exact target. The reviewer returned after 450343 ms, but strict ingress rejected the candidate with `findings[0].wrong-type:location:string` and `findings[1].wrong-type:location:string`. Authority correctly published `runtime_outcome=invalid-output`, `validation=invalid`, `completion=none`, zero validated findings, and no approval. The raw candidate is not salvaged or retroactively accepted.
 - **Drift classification**: `ambiguous`. The closed schema already requires optional `location` to be a string, and strict ingress behaved correctly. The shared prompt merely listed “optional location” without stating the JSON type, leaving adapters dependent on provider guesswork; earlier providers happened to choose strings.
 - **Correction**: the single shared prompt now requires one plain JSON string such as `path/to/file:line`, forbids object/array/number/boolean locations, and tells the reviewer to omit the field when no source location is grounded. Prompt-template validation mechanically requires that rule for every adapter. Strict ingress remains unchanged and continues to reject wrong types; there is no salvage/extraction path or hidden retry.
-- **Closure evidence**: a paired prompt regression fails when the type sentence is removed. The malformed-output matrix now deterministically rejects both object and array locations, while the existing string-location findings candidate remains accepted. The shared contract plus updated custom-prompt orchestration fixture pass 40/40. The first aggregate run honestly exposed the stale fixture; after correction all 56 registered F-198 suites pass in 609.7 seconds. No provider was invoked by the correction.
+- **Closure evidence**: a paired prompt regression fails when the type sentence is removed. The malformed-output matrix now deterministically rejects both object and array locations, while the existing string-location findings candidate remains accepted. The shared contract plus updated custom-prompt orchestration fixture pass 40/40. The first aggregate run honestly exposed the stale fixture; after correction all 56 registered F-198 suites passed in 609.7 seconds. Commit `ba639e84589e3a89fc8440616e8a1112b6ea4c51`, CI `29604077312`, and exact-commit preflight passed. Run 04 returned a schema-valid candidate with a string location and did not repeat the defect; its separate governance finding is event 010.
+
+### DRIFT-198-I007-010 — stale host-neutral governance guard rejected approved host-bound seams and was absent from the aggregate registry
+
+- **Status**: resolved in code; deterministic gates complete, live verification pending
+- **Severity**: minor governance/regression-coverage defect
+- **Requirements**: FR-016, FR-060, SC-019, SC-022, NFR-007
+- **Evidence**: exact-commit Antigravity run `run-t060-antigravity-windows-ba639e84-04` reviewed commit `ba639e84589e3a89fc8440616e8a1112b6ea4c51` and digest `7e9333dbb73c8e74f0f7e36c957804facfb69d16` under verified Windows Job Object containment. It completed in 790453 ms with a valid/current/contained candidate and one minor finding. Running `tests/continuous-co-review/governance/host-neutral-core.Tests.ps1` directly confirmed the failure: the 2026-07-08 guard allowed only `reviewer-host-catalog.ps1`, while the approved architecture now has thin host adapters and explicit support/containment boundaries in the same directory. The explicit F-198 registry did not include this governance suite, allowing all 56 registered suites to pass while the guard failed.
+- **Drift classification**: `stale`. The architectural invariant remains valid for generic selection policy and orchestration, but the test encoded the superseded claim that every host literal must live only in the catalog. Broadly disabling the rule would weaken the invariant.
+- **Correction**: the guard now excludes only a closed, named set of existing catalog, adapter, support, and containment-boundary scripts; rejects duplicate or missing allowlist rows; adds Cursor to the forbidden host-token set; and continues scanning every other core script's code. The governance suite is an explicit row in the aggregate F-198 registry, increasing it from 56 to 57 suites.
+- **Closure evidence**: the corrected focused governance suite passes 3/3, all 57 registered F-198 suites pass in 605.4 seconds, and scoped Iteration 007 governance passes with historical warnings only. CI, exact-commit preflight, and one Antigravity verification run remain required before closure.
