@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Task**: T060
-**Status**: in progress — four live harness paths are truthfully proved across macOS, Windows, and Linux; campaign cutover exact-commit verification remains
+**Status**: complete — four live harness paths are truthfully proved across macOS, Windows, and Linux; one-way campaign cutover and exact-commit verification are green
 **Evidence Date**: 2026-07-17
 **Readiness Baseline Commit**: `55cf338a6565ce4a2a846473da5f8f51b29e31fa`
 **Mac Run 1 Commit**: `6708bf058b708df1c6b6f7492f46bb856154434a`
@@ -179,4 +179,4 @@ Support here means that the real harness, file-primary contract, and native cont
 
 ## Current Decision
 
-Preserve the clean Mac result, every immutable Cursor attempt, all five Antigravity runs, and all four Copilot runs. Cursor clean proof is explicitly unavailable until free credit resets; do not use paid on-demand credit or retry an unchanged exhausted account. The four T060 harness/OS paths are now truthfully proved at their pinned digests. Persist the one-way `legacy -> disabled -> campaign` cutover, verify its exact commit, and then run T061 Claude as the final independent exact-digest signoff. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.
+Preserve the clean Mac result, every immutable Cursor attempt, all five Antigravity runs, and all four Copilot runs. Cursor clean proof is explicitly unavailable until free credit resets; do not use paid on-demand credit or retry an unchanged exhausted account. The four T060 harness/OS paths are truthfully proved at their pinned digests. The one-way transition is persisted through disabled commit `233de034ddd13382dc1f58ba7323ff7b89a1c0b0` and campaign commit `fc52b6d1d9c6a4c17489f87dbfd9e4534300c0a7`; the DRIFT-013 follow-up passes focused 13/13, all 57 suites, scoped governance, and hosted three-OS CI `29612794643`. T061 Claude now owns final independent exact-digest signoff. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.

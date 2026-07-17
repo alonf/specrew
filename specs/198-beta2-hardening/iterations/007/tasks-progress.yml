@@ -89,13 +89,13 @@ tasks:
     blocked_reason: ""
   T060:
     title: "First four live harness smokes across three OSes, support truth, campaign cutover, and docs"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-17T01:18:38+03:00"
-    completed_at: ""
-    blocked_reason: "All four T060 live harness paths now have valid evidence across macOS, Windows, and Linux. Codex, Antigravity, and Copilot are clean at pinned digests; Cursor produced complete valid finding reviews before its free quota was exhausted, so no clean-current claim is made. Copilot run 04 closes DRIFT-198-I007-011. The disabled barrier is persisted; campaign cutover and exact-commit verification remain before T061."
+    completed_at: "2026-07-17T23:55:18+03:00"
+    blocked_reason: ""
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-17T23:55:18+03:00"
     completed_at: ""
     blocked_reason: ""

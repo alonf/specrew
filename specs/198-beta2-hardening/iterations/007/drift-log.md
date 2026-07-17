@@ -147,10 +147,10 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-013 — hosted Windows cold start exceeded the fake-success timeout
 
-- **Status**: corrected; hosted re-verification pending
+- **Status**: resolved and hosted re-verified on all three operating systems
 - **Severity**: minor deterministic-CI stability defect
 - **Requirements**: FR-061, FR-064, SC-019, NFR-002, NFR-007
 - **Evidence**: campaign commit `fc52b6d1d9c6a4c17489f87dbfd9e4534300c0a7` passed the local 57-suite registry, scoped governance, hosted Ubuntu deterministic job, and hosted macOS deterministic job. In CI run `29611928795`, only the first Windows fake-success case failed: the cold Claude shim/process exceeded the shared 10-second success bound and was correctly killed after 11.58 seconds. The next four fake adapters completed in 0.52–0.99 seconds, and the separate five-second descendant-timeout test passed.
 - **Drift classification**: `implementation/test`. The production runtime enforced the configured timeout correctly; the deterministic success fixture conflated hosted cold-start latency with reviewer failure.
 - **Correction**: successful and malformed fake-provider cases now use a bounded 30-second default, with the cold-start rationale stated at the definition. The dedicated timeout/descendant-death case continues to override this with its independent five-second bound, so timeout semantics are not weakened.
-- **Closure evidence**: the focused local matrix passes 13/13, including the unchanged five-second timeout case; all 57 F-198 suites pass in 616.7 seconds; and scoped Iteration 007 governance passes with historical warnings only. Replacement hosted three-OS CI remains required before T060 closes. No provider was invoked.
+- **Closure evidence**: the focused local matrix passes 13/13, including the unchanged five-second timeout case; all 57 F-198 suites pass in 616.7 seconds; scoped Iteration 007 governance passes with historical warnings only; and replacement CI run `29612794643` passes every job, including deterministic Windows, Ubuntu, and macOS review runtimes. No provider was invoked.
