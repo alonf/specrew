@@ -384,7 +384,7 @@ pick the strongest authorized independent reviewer.
 ### `review-campaign-target-root-unavailable` or `review-campaign-target-root-unusable`
 
 The campaign could not create a writable snapshot root outside the Git repository. The default is
-the sibling `.specrew-targets`; Windows falls back to `%USERPROFILE%\.sr\<repo-token>`, while POSIX
+the sibling `<repository-parent>/.specrew-targets/`; Windows falls back to `%USERPROFILE%\.sr\<repo-token>`, while POSIX
 falls back under the user temp directory. These repo-token namespace directories are deliberately
 retained and individual `rt-*` worktrees are removed after each run. Supply a short writable
 external location with `specrew review --live --run-root <absolute-path> ...`; a path inside the
