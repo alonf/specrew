@@ -256,16 +256,19 @@ $progressSink = {
 
 # This is the only provider-capable call in this package. It is synchronous and has no hidden
 # retry; every further attempt requires a new run ID and a new explicit human authorization.
-$t060ReviewScope = @'
-Review the implemented code and tests in the complete frozen target for correctness, security,
-failure semantics, and conformance with the resolved design context. This T060 run is one serialized
-live harness proof executed before the remaining T060 harnesses, campaign-authority cutover, T061
-independent signoff, retrospective, and closeout. Treat plan/state entries that accurately identify
-those later steps or an external provider-quota constraint as execution context, not code-review
-findings. Report a pending or deferred item only when a grounded defect in the frozen code makes that
-step unsafe or impossible, or when the implementation contradicts an approved requirement. Do not
-review project-completion or gate status in this code-review run.
-'@
+$t060ReviewScope = @"
+Complete one bounded risk-based code review of the implemented code and tests in the frozen target for
+correctness, security, failure semantics, and conformance with the resolved design context. Selected
+live path: harness=$HostName; platform=$platformName. Prioritize the common campaign/file contract plus
+the selected harness adapter and selected OS runtime integration; use adjacent tests and deterministic
+evidence to choose additional high-risk checks. T061 is the separate final independent signoff. This
+T060 run is one serialized live harness proof executed before the remaining T060 harnesses,
+campaign-authority cutover, T061 independent signoff, retrospective, and closeout. Treat plan/state
+entries that accurately identify those later steps or an external provider-quota constraint as
+execution context, not code-review findings. Report a pending or deferred item only when a grounded
+defect in the frozen code makes that step unsafe or impossible, or when the implementation contradicts
+an approved requirement. Do not review project-completion or gate status in this code-review run.
+"@
 $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '198-beta2-hardening' -IterationNumber '007' `
     -RunId $RunId -ReviewerHost $HostName -GrantAuthorizationRef $AuthorizationRef -TimeoutSeconds $TimeoutSeconds `
     -AuthorityConfigPath $authorityConfigPath -StoreRoot $storeRoot -StagingRoot $stagingRoot -Ports $ports `

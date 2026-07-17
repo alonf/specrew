@@ -99,7 +99,7 @@ After this no-spend failure, the maintainer authorized all remaining requirement
 | --- | --- | --- | --- | --- | --- |
 | 1 | T060 | Windows | Cursor | Free/Auto produced two valid finding reviews; run 07 then hit the exhausted free-account limit before producing a candidate | clean proof waits for free-credit reset; no paid or unchanged retry |
 | 2 | T060 | Windows | Antigravity | attempts 01–04 produced immutable correction evidence; run 05 is complete/pass/current/valid with zero findings | complete |
-| 3 | T060 | Linux | Copilot | native CLI plus PowerShell and transient delegated cgroup production preflight are ready | one base attempt covered by minimum-budget standing authority |
+| 3 | T060 | Linux | Copilot | runs 01–02 produced valid zero-finding partials and proved CLI/file-primary/cgroup execution; exhaustive-completion ambiguity is corrected by DRIFT-198-I007-011 | one semantic-contract verification remains |
 | 4 | T060 | macOS | Codex | clean correction run 2 at exact commit/digest; run 1 preserved as partial evidence | complete |
 | 5 | T061 | Windows | Claude | strongest installed reviewer independent of the Codex code-writer; reserved for exact-digest signoff | one base attempt covered by minimum-budget standing authority |
 
@@ -149,6 +149,18 @@ Commit `ba639e84589e3a89fc8440616e8a1112b6ea4c51`, CI run `29604077312`, and exa
 
 Run `run-t060-antigravity-windows-f39178e6-05`, authorization `human-grant-t060-antigravity-windows-20260717-slot-5`, invoked exactly once with no hidden retry. It completed in 777391 ms and published complete/pass/current/valid evidence, verified containment/termination, an unchanged clean target, `can_approve_current=true`, and zero findings. Antigravity/Windows T060 proof is complete; all prior attempts remain immutable.
 
+## Linux Copilot Runs 01–02 — Valid Partials and Completion-Semantics Correction
+
+Copilot's own updater moved WSL from CLI `1.0.27` to `1.0.71`, one patch beyond the repository's `1.0.70` characterized contract. No model was invoked by that update. Commit `e539f82ccdeffbc2108e9a6b7881ad1a9ffa0e86`, CI run `29607731270`, and exact no-spend preflight passed at digest `86a075e3f3fd61c011fe2933ab945d69afc89982` with the production Copilot file-primary adapter and transient delegated cgroup-v2 runtime ready.
+
+Run `run-t060-copilot-linux-e539f82c-01`, authorization `human-grant-t060-copilot-linux-20260717-slot-1`, invoked once under a 300-second controller bound. It returned after 165641 ms with valid/current/contained partial evidence and zero findings. It inspected the common harness contract, Copilot adapter, Linux runtime, result ingress/projection, and strict schema, but declined a complete verdict because the remaining engine had not received file-by-file inspection.
+
+A fresh no-spend preflight passed for the supported 900-second ceiling. Run `run-t060-copilot-linux-e539f82c-02`, authorization `human-grant-t060-copilot-linux-20260717-slot-2-timebox`, invoked once but returned even earlier after 95685 ms with another valid/current/contained zero-finding partial. It explicitly treated the ~50-module/~17k-line inventory as the completion criterion. The longer controller budget therefore did not address the semantic ambiguity; neither result is promoted or retried under its old grant.
+
+`DRIFT-198-I007-011` makes the smallest contract correction. The complete frozen snapshot remains available, read-only, identity-bound, and deadline-controlled, but the shared prompt defines completion as a finished risk-based review of the requested scope—not exhaustive file-by-file/line-by-line inventory—and forbids completion while a planned high-risk check remains. T060 names the selected harness/platform and prioritizes the common campaign/file contract, that adapter, that runtime, adjacent tests, and additional high-risk checks. T061 remains the separate final exact-digest signoff.
+
+The paired shared-contract/T060 package suites pass 32/32, the affected custom-prompt orchestration suite passes 16/16, the runner parses cleanly, all 57 registered F-198 suites pass in 616.1 seconds, and scoped Iteration 007 governance passes with historical warnings only. No provider was invoked by the correction.
+
 ## Current Decision
 
-Preserve the clean Mac result, every immutable Cursor attempt, and all five Antigravity runs. Cursor clean proof is explicitly deferred until free credit resets; do not use paid on-demand credit or retry an unchanged exhausted account. Antigravity/Windows is complete. Copilot/Linux is the remaining T060 live proof, followed by truthful support/cutover; T061 Claude remains the final independent exact-digest signoff. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.
+Preserve the clean Mac result, every immutable Cursor attempt, all five Antigravity runs, and both Copilot partials. Cursor clean proof is explicitly deferred until free credit resets; do not use paid on-demand credit or retry an unchanged exhausted account. Antigravity/Windows is complete. Verify the bounded risk-based completion correction once through Copilot/Linux, then record truthful support/cutover; T061 Claude remains the final independent exact-digest signoff. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.

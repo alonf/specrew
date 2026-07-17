@@ -35,9 +35,13 @@ Describe 'T060 local Windows and Linux smoke package' {
 
     It 'keeps the serialized T060 smoke scoped to code review rather than downstream gate completion' {
         $script:Source | Should -Match '-ReviewScope \$t060ReviewScope'
-        $script:Source | Should -Match 'external provider-quota constraint as execution context, not code-review'
+        $script:Source | Should -Match 'Complete one bounded risk-based code review'
+        $script:Source | Should -Match 'Selected\s+live path: harness=\$HostName; platform=\$platformName'
+        $script:Source | Should -Match 'Prioritize the common campaign/file contract plus\s+the selected harness adapter and selected OS runtime integration'
+        $script:Source | Should -Match 'T061 is the separate final independent signoff'
+        $script:Source | Should -Match 'external provider-quota constraint as\s+execution context, not code-review'
         $script:Source | Should -Match 'Do not\s+review project-completion or gate status in this code-review run'
-        $script:Source | Should -Match 'grounded defect in the frozen code makes that\s+step unsafe or impossible'
+        $script:Source | Should -Match 'grounded\s+defect in the frozen code makes that\s+step unsafe or impossible'
     }
 
     It 'fails closed on authority, repository, contract, and clean-result evidence' {

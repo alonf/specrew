@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total local drift events**: 10
-**Resolution rate**: 100% (10/10 resolved in code; clean live verification pending for event 010, while Cursor proof is externally quota-blocked)
+**Total local drift events**: 11
+**Resolution rate**: 100% (11/11 resolved in code; clean live verification pending for event 011, while Cursor proof is externally quota-blocked)
 **Specification drift**: Local dogfood findings are resolved without changing approved product scope
 
 ## Inherited Open Drift
@@ -124,3 +124,13 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 - **Drift classification**: `stale`. The architectural invariant remains valid for generic selection policy and orchestration, but the test encoded the superseded claim that every host literal must live only in the catalog. Broadly disabling the rule would weaken the invariant.
 - **Correction**: the guard now excludes only a closed, named set of existing catalog, adapter, support, and containment-boundary scripts; rejects duplicate or missing allowlist rows; adds Cursor to the forbidden host-token set; and continues scanning every other core script's code. The governance suite is an explicit row in the aggregate F-198 registry, increasing it from 56 to 57 suites.
 - **Closure evidence**: the corrected focused governance suite passes 3/3, all 57 registered F-198 suites pass in 605.4 seconds, and scoped Iteration 007 governance passes with historical warnings only. Commit `f39178e616f58df9badbdcf09f62282ec843153c`, CI run `29606585387`, and exact-commit no-spend preflight passed at digest `d3314ee2566887e5148e02ca33c04128b87d7bdf`. Authorized run `run-t060-antigravity-windows-f39178e6-05` invoked exactly once, completed in 777391 ms with verified Windows Job Object containment/termination, preserved the clean/current exact target, and published complete/pass/valid evidence with zero findings. No run-04 defect recurred.
+
+### DRIFT-198-I007-011 — complete-smoke wording made honest bounded review indistinguishable from exhaustive inventory
+
+- **Status**: resolved in code; deterministic gates complete, live verification pending
+- **Severity**: moderate review-contract/economy defect
+- **Requirements**: FR-060, FR-063, FR-064, SC-019, SC-021, NFR-002
+- **Evidence**: Copilot/Linux run `run-t060-copilot-linux-e539f82c-01` used CLI `1.0.71`, a 300-second controller bound, and verified delegated cgroup-v2 containment. It returned after 165641 ms with valid/current/contained partial evidence and zero findings, explaining that it had reviewed the shared harness contract, Copilot adapter, Linux runtime, ingress, and schema but could not claim file-by-file coverage of the remaining engine. A fresh authorized 900-second run, `run-t060-copilot-linux-e539f82c-02`, returned even earlier after 95685 ms with another valid/current/contained zero-finding partial, explicitly treating the ~50-module/~17k-line inventory as the completion criterion. Both exact-target runs remain immutable and non-approving.
+- **Drift classification**: `ambiguous`. T060's approved acceptance requires a valid bounded live harness smoke; T061 separately owns final exact-digest signoff. The shared prompt and T060 scope said “complete frozen workspace/target,” which an honest reviewer could read as exhaustive line-by-line inspection even though ordinary code review is risk-based. Repeatedly increasing the controller timeout does not resolve that semantic ambiguity and wastes provider time.
+- **Correction**: the shared prompt now defines completion as finishing the requested review scope with reasonable risk coverage, explicitly rejects exhaustive file-by-file/line-by-line interpretation, and still forbids completion when a planned high-risk check remains. Template validation mechanically requires that rule. T060 identifies the selected harness/platform path and asks the reviewer to prioritize the common campaign/file contract, that harness adapter, that OS runtime, adjacent tests, and additional high-risk checks. The frozen snapshot, strict identity/currentness, deadline, no-delegation rule, and T061 final-signoff responsibility are unchanged.
+- **Closure evidence**: the paired shared-contract/T060 package tests pass 32/32, the affected custom-prompt orchestration suite passes 16/16, the runner parses cleanly, all 57 F-198 suites pass in 616.1 seconds, and scoped Iteration 007 governance passes with historical warnings only. CI, exact-commit no-spend preflight, and one fresh-ID Copilot/Linux verification run remain. No partial result is retroactively promoted.

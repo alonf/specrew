@@ -59,6 +59,7 @@ Review scope: __REVIEW_SCOPE__
 Deadline: __DEADLINE__
 Do not modify the source. The file must contain ONLY the raw JSON object: no prose and no Markdown fences.
 Do not delegate to subagents or start other model-backed reviewers.
+Use risk-based inspection; you are not required to open every file. A complete candidate means the requested review scope received reasonable risk coverage. Do not complete while a high-risk check remains.
 Stdout is telemetry and is never parsed for authority.
 `location`, when present, must be one plain JSON string; never an object, array, number, or boolean.
 '@)

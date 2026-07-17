@@ -42,6 +42,7 @@ function Test-ReviewFilePrimaryPromptTemplate {
         @{ name = 'stdout-non-authority'; pattern = '(?is)stdout.+never\s+parsed\s+for\s+authority' },
         @{ name = 'source-read-only'; pattern = '(?is)do\s+not\s+modify\s+the\s+source' },
         @{ name = 'single-reviewer-session'; pattern = '(?is)do\s+not\s+delegate\s+to\s+subagents\s+or\s+start\s+other\s+model-backed\s+reviewers' },
+        @{ name = 'risk-based-completion'; pattern = '(?is)risk-based\s+inspection.+not\s+required\s+to\s+open\s+every\s+file.+complete\s+candidate.+requested\s+review\s+scope.+high-risk\s+check' },
         @{ name = 'location-string-type'; pattern = '(?is)`?location`?.+when\s+present.+plain\s+JSON\s+string.+never\s+an\s+object.+array.+number.+boolean' }
     )) {
         if ($Template -notmatch $rule.pattern) { $errors.Add(('prompt-contract-missing:' + $rule.name)) | Out-Null }

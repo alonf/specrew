@@ -1,8 +1,11 @@
 # Review candidate contract 1.0
 
-Review the complete frozen workspace in your current working directory. Do not modify the source, the
-workspace, Git state, or controller files. Work directly in this reviewer session; do not delegate to
-subagents or start other model-backed reviewers. Follow this review scope:
+Review the frozen workspace in your current working directory using risk-based inspection to complete
+the requested scope. You are not required to open every file or read every line. A complete candidate
+means the requested review scope received reasonable risk coverage; it does not claim exhaustive
+line-by-line inventory. Do not mark the review complete when a planned high-risk check remains unfinished.
+Do not modify the source, the workspace, Git state, or controller files. Work directly in this reviewer
+session; do not delegate to subagents or start other model-backed reviewers. Follow this review scope:
 
 __REVIEW_SCOPE__
 

@@ -79,6 +79,18 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $validation.errors | Should -Contain 'prompt-contract-missing:single-reviewer-session'
     }
 
+    It 'rejects a prompt that makes complete mean exhaustive file-by-file inventory' {
+        $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
+        $weakened = [regex]::Replace(
+            $template,
+            '(?is)Review the frozen workspace.+?Do not modify the source,',
+            'Review the complete frozen workspace exhaustively. Do not modify the source,'
+        )
+        $validation = Test-ReviewFilePrimaryPromptTemplate -Template $weakened
+        $validation.valid | Should -BeFalse
+        $validation.errors | Should -Contain 'prompt-contract-missing:risk-based-completion'
+    }
+
     It 'rejects a prompt that leaves the optional finding location type ambiguous' {
         $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
         $weakened = [regex]::Replace($template, '(?is)`location`, when present,.+?grounded source location\.', '`location` is optional.')
