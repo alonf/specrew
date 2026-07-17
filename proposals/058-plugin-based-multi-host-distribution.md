@@ -70,13 +70,32 @@ Every capability maps to a standard extension point. This isn't coincidence — 
 
 ### Plugin systems per host
 
+The canonical supported-harness list is the reviewer-host catalog (five harnesses as of F-198:
+Claude Code, Codex CLI, GitHub Copilot CLI, Cursor Agent, Antigravity). Plugin coverage follows
+that list, gated on each host actually exposing a plugin mechanism — a host without one simply
+keeps the PSGallery + file-deployment path, honestly labeled.
+
 | Host | Plugin/extension mechanism | Confidence |
 |---|---|---|
 | **Claude Code** | Full Plugins system: commands, agents, hooks, skills, MCP servers, output styles, status lines. Marketplace exists. `/plugin install <name>`. | High |
 | **GitHub Copilot CLI** | `/plugin` command exists per user observation 2026-05-19; specifics need verification at planning time. | Medium |
-| **Codex CLI** | Extension story exists (MCP servers at minimum); plugin specifics need verification. | Lower |
+| **Codex CLI** | Extension story exists (MCP servers at minimum); plugin specifics need verification. FR-054's hook-isolation regression is parked for exactly this package (issue #3084). | Lower |
+| **Cursor Agent** | Plugin/extension mechanism unverified for the CLI agent surface; verify at planning time via the #3084 capability certification. | Unknown |
+| **Antigravity** | Plugin/extension mechanism unverified; verify at planning time via the #3084 capability certification. | Unknown |
 
-The plugin format and registration API differ per host. Proposal 058 produces three per-host packages from a single canonical capability set.
+The plugin format and registration API differ per host. Proposal 058 produces per-host packages
+from a single canonical capability set — the same one-canonical-set-to-thin-adapter authoring
+pattern the F-198 production harness adapters proved in practice.
+
+### Safety precondition: cross-host hook isolation (FR-054, host-generalized)
+
+Before ANY per-host plugin package ships, it must pass the hook-isolation regression that F-198
+recorded as FR-054 (Codex-scoped there; host-generalized here): a plugin that intends no hooks on
+host X declares exactly an empty hooks manifest for X, and can never auto-discover or register
+another host's hook configuration (e.g., a different host's `hooks/hooks.json`). For a governance
+tool whose hooks gate lifecycle boundaries, cross-host hook leakage is the worst packaging failure
+mode — boundary machinery firing in an environment that never opted in. The regression is
+parameterized per host that has a plugin mechanism and belongs in every package's acceptance floor.
 
 ### Pattern A: Plugins for host integration; PSGallery for project bootstrap (recommended)
 
@@ -143,7 +162,7 @@ Recommend Pattern A as the universal fallback; Pattern B as opportunistic when t
 
 ### `/specrew-init` and `/specrew-start` reintroduced as slash commands
 
-[Proposal 032 (Slash-Command Surface, shipped as F-021)](file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md) deliberately EXCLUDED `/specrew-init` and `/specrew-start` from its v1 catalog. Reasoning at the time:
+[Proposal 032 (Slash-Command Surface, shipped as F-021)](032-specrew-slash-commands.md) deliberately EXCLUDED `/specrew-init` and `/specrew-start` from its v1 catalog. Reasoning at the time:
 
 - `/specrew-init` was circular — slash commands require a Specrew-bootstrapped project, but init bootstraps the project
 - `/specrew-start` was circular — you're already in an agent session if you can invoke slash commands
@@ -173,6 +192,12 @@ Per-host plugin ships these slash commands:
 | `/specrew-config` | Proposal 047 (queued) | View / edit governance profile |
 
 Plus the `/speckit.*` commands (Spec Kit's slash command surface) — these continue to come from Spec Kit's own distribution; the plugin just ensures they coexist cleanly with `/specrew-*`.
+
+**2026-07-17 note**: the deployed command/skill surface has grown well past this v1 table
+(`/specrew-refocus`, `/specrew-user-profile`, capacity/drift/traceability/iteration-resume skills,
+and more). The plugin's command catalog should therefore be GENERATED from the deployed skill
+surface at package-build time, not maintained as a second hand-written list — one canonical
+capability set, per-host projection, no drift.
 
 ### "Without leaving Copilot" UX comparison
 
@@ -220,6 +245,10 @@ Six steps, ONE context (the agent host throughout). User never leaves the sessio
 - Marketplace listing strategy + author docs (~1 SP)
 - Tests + documentation (~1 SP)
 
+**2026-07-17 note**: the iterations below predate the five-harness catalog. Cursor Agent and
+Antigravity packages are gated on the #3084 mechanism verification and would extend Iteration 2 or
+form a third slice; hosts verified to have no plugin mechanism stay on the PSGallery path.
+
 ### Iteration 2 (~14 SP) — Copilot CLI plugin + Codex CLI plugin
 
 - Copilot CLI plugin format definition + manifest schema (~3 SP)
@@ -231,7 +260,7 @@ Six steps, ONE context (the agent host throughout). User never leaves the sessio
 
 ## Phase placement
 
-**Phase 3 (alongside Multi-Host Runtime Abstraction CORE).** Partner proposal to [Proposal 024](file:///C:/Dev/Specrew/proposals/024-multi-host-runtime-abstraction.md):
+**Phase 3 (alongside Multi-Host Runtime Abstraction CORE).** Partner proposal to [Proposal 024](024-multi-host-runtime-abstraction.md):
 
 - **Proposal 024** is the RUNTIME side — how Specrew executes on different hosts (canonical state + per-host projections)
 - **Proposal 058** is the DELIVERY side — how Specrew gets INSTALLED on different hosts (per-host plugin packages)
@@ -255,6 +284,8 @@ Both proposals are needed for genuine multi-host capability. Ship together as a 
 | **Proposal 057 (Roadmap Spine + Adapters)** | Vendor adapters (GitHub Projects, Linear, Jira) can ship as separate small plugins OR bundled into the main plugin. Decided per-adapter. |
 | **Proposal 049 (Version-Check Source Unification, partly fixed)** | Plugin version + module version coupling check at runtime; composes with version-check refinements. |
 | **F-021 retro Lesson 7 — Restart after Specrew update** | Plugin update story should handle "Specrew was updated since session started" warning automatically. |
+| **F-198 (Beta2 hardening, in flight 2026-07)** | Three direct inputs: (1) the five production harness adapters prove the single-canonical-set → thin-per-host-adapter authoring pattern this proposal's plugin generators need; (2) FR-054 records the cross-host hook-isolation regression that becomes every plugin package's acceptance floor (see the Safety precondition section); (3) the FR-050/FR-064 truthful-support discipline applies to plugin claims too — a host's plugin support is `verified` only with executable install/registration evidence, never by manifest existence. |
+| **Issue #3084 (Beta3: host capability negotiation + desktop/IDE certification)** | The natural scheduling home. #3084's capability certification is where the Unknown/Lower confidence rows (Codex, Cursor, Antigravity plugin mechanics) get verified, and FR-054 is already parked there. |
 
 ## Open questions
 
@@ -271,7 +302,8 @@ Both proposals are needed for genuine multi-host capability. Ship together as a 
 
 ## Risks
 
-- **Per-host plugin format drift**: maintaining 3 different plugin formats means triple the keep-up-with-vendor work. Mitigation: per-host plugin as a separate sub-feature; can defer Codex if budget exhausted. Profile-based authoring (per Proposal 052) lets community contribute per-host adapters.
+- **Cross-host hook leakage**: a plugin package registering one host's lifecycle hooks inside another host's runtime — the FR-054 failure class. Mitigation: the host-generalized hook-isolation regression in every package's acceptance floor (see the Safety precondition section); no package ships without it.
+- **Per-host plugin format drift**: maintaining up to five different plugin formats multiplies the keep-up-with-vendor work. Mitigation: per-host plugin as a separate sub-feature; can defer Codex if budget exhausted. Profile-based authoring (per Proposal 052) lets community contribute per-host adapters.
 - **Marketplace gating**: vendor plugin marketplaces may require verification, signing, or approval. Some plugins may need to wait for marketplace authorization. Mitigation: maintain install-from-URL/repo as fallback; document the per-host marketplace process.
 - **Confusion vs PSGallery distribution**: users may not understand which install path to use. Mitigation: documentation; recommend plugin install as primary, PSGallery as advanced/scripted fallback.
 - **Plugin update vs Specrew update divergence**: if plugin pins one version + PSGallery module is another, behavior diverges. Mitigation: plugin version + module version coupling check at runtime (composes with Proposal 049).
@@ -281,18 +313,21 @@ Both proposals are needed for genuine multi-host capability. Ship together as a 
 
 ## Cross-references
 
-- **[Proposal 024 (Multi-Host Runtime Abstraction CORE)](file:///C:/Dev/Specrew/proposals/024-multi-host-runtime-abstraction.md)** — partner proposal; ship together
-- **[Proposal 031 / F-019 (Specrew Distribution Module)](file:///C:/Dev/Specrew/proposals/031-specrew-distribution-module.md)** — current PSGallery distribution; complement
-- **[Proposal 032 / F-021 (Slash-Command Surface)](file:///C:/Dev/Specrew/proposals/032-specrew-slash-commands.md)** — slash commands reused; init/start exclusion reverted under plugin model
-- **[Proposal 047 (Project Governance Profile)](file:///C:/Dev/Specrew/proposals/047-project-governance-profile.md)** — `/specrew-config` command surface
-- **[Proposal 049 (Version-Check Source Unification)](file:///C:/Dev/Specrew/proposals/049-version-check-source-unification.md)** — plugin + module version coupling
-- **[Proposal 050 (Version Surface Discoverability)](file:///C:/Dev/Specrew/proposals/050-version-surface-discoverability.md)** — `/specrew-version` command
-- **[Proposal 052 (Specrew Profile System)](file:///C:/Dev/Specrew/proposals/052-specrew-profile-system.md)** — profiles vs plugins distinct concerns
-- **[Proposal 055 (Always-In-Flow + Bug-Fix Lifecycle)](file:///C:/Dev/Specrew/proposals/055-always-in-flow-bug-fix-lifecycle.md)** — slice types as plugin extensibility
-- **[Proposal 057 (Roadmap Spine + Adapters)](file:///C:/Dev/Specrew/proposals/057-roadmap-spine-input-adapter-pattern.md)** — vendor adapters distributable as separate plugins
+- **[Proposal 024 (Multi-Host Runtime Abstraction CORE)](024-multi-host-runtime-abstraction.md)** — partner proposal; ship together
+- **[Proposal 031 / F-019 (Specrew Distribution Module)](031-specrew-distribution-module.md)** — current PSGallery distribution; complement
+- **[Proposal 032 / F-021 (Slash-Command Surface)](032-specrew-slash-commands.md)** — slash commands reused; init/start exclusion reverted under plugin model
+- **[Proposal 047 (Project Governance Profile)](047-project-governance-profile.md)** — `/specrew-config` command surface
+- **[Proposal 049 (Version-Check Source Unification)](049-version-check-source-unification.md)** — plugin + module version coupling
+- **[Proposal 050 (Version Surface Discoverability)](050-version-surface-discoverability.md)** — `/specrew-version` command
+- **[Proposal 052 (Specrew Profile System)](052-specrew-profile-system.md)** — profiles vs plugins distinct concerns
+- **[Proposal 055 (Always-In-Flow + Bug-Fix Lifecycle)](055-always-in-flow-bug-fix-lifecycle.md)** — slice types as plugin extensibility
+- **[Proposal 057 (Roadmap Spine + Adapters)](057-roadmap-spine-input-adapter-pattern.md)** — vendor adapters distributable as separate plugins
+- **F-198 spec FR-054 (cross-host hook isolation, conditional)** — parked in issue #3084; host-generalized here as every package's acceptance-floor regression
+- **Issue #3084 (Beta3 host capability negotiation)** — scheduling home; verifies the Unknown/Lower plugin-mechanism rows
 - **Memory: [Plugin-based distribution candidate (2026-05-19)](file:///C:/Users/alon.HOME/.claude/projects/C--Dev-Specrew/memory/project_plugin_based_distribution_proposal_candidate_2026_05_19.md)** — original capture
 
 ## Status history
 
 - 2026-05-19: candidate captured after user observation of Copilot CLI's `/plugin` command. Cross-host plugin packaging recognized as the right abstraction for Specrew's polyglot stack (Python + npm + PowerShell). Initial capture in memory.
 - 2026-05-19: drafted as full proposal during the post-F-022 consolidation pass. Composition with proposals 024, 031, 032, 047, 049, 050, 052, 055, 057 made explicit. Phase 3 placement alongside Proposal 024 (Multi-Host CORE) as partner proposal.
+- 2026-07-17: refreshed during F-198 Iteration 007 at maintainer request: host table extended to the full five-harness reviewer catalog (Cursor Agent + Antigravity added with honest Unknown confidence, gated on #3084 verification); FR-054 host-generalized as the cross-host hook-isolation safety precondition and acceptance-floor regression; command catalog switched to generated-from-deployed-surface; composition rows added for F-198 (adapter authoring pattern, truthful-support discipline) and issue #3084; stale absolute cross-reference links converted to relative.
