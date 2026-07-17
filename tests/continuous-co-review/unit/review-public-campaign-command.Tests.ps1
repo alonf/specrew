@@ -372,7 +372,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $one = Get-ReviewCampaignRepositoryToken -GitRoot 'C:\Dev\Repo'
         $two = Get-ReviewCampaignRepositoryToken -GitRoot 'c:\dev\repo'
         $one | Should -Be $two
-        $one | Should -Match '^[0-9a-f]{20}$'
+        $one | Should -Match '^[0-9a-f]{16}$'
 
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
         $source | Should -Match '\[StringComparer\]::OrdinalIgnoreCase'

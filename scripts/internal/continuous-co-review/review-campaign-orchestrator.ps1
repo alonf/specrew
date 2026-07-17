@@ -211,7 +211,10 @@ function Get-ReviewCampaignRepositoryToken {
     param([Parameter(Mandatory)][string]$GitRoot)
     $identity = [IO.Path]::GetFullPath($GitRoot)
     if ([OperatingSystem]::IsWindows()) { $identity = $identity.ToUpperInvariant() }
-    return Get-ReviewCampaignStableToken -Value $identity -Length 20
+    # Filesystem namespace only: immutable campaign/run identity remains full-length in authority
+    # facts and the workspace leaf retains its independent 16-hex run token plus 32-hex random ID.
+    # Sixteen hex characters keep hosted Windows' longest tracked path below MAX_PATH.
+    return Get-ReviewCampaignStableToken -Value $identity -Length 16
 }
 
 function Resolve-ReviewCampaignTargetExternalRoot {
