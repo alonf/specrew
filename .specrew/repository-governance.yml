@@ -1,9 +1,17 @@
 # .specrew/repository-governance.yml — Specrew's OWN branch governance (dogfood, FR-013/SC-007/SC-014).
 #
-# Records Specrew's ACTUAL posture as of 2026-06-11: `main` requires pull requests, applies to admins,
-# and blocks force-pushes/deletions (the interim mitigation that triggered Proposal 182). Authored by
-# the DevOps lens; validated against repository-governance.schema.json. SC-014: applying the updated
-# lens to Specrew's own repo surfaces NO conflict — this capture matches the real protection.
+# Records Specrew's ACTUAL posture as of 2026-07-17 (reconciled). The 2026-06-11 capture drifted from
+# the live protection: on 2026-07-17 a PR merged with a failed Deterministic gate, and inspection
+# showed the live rules had NO required status checks and 0 required approvals. The maintainer
+# authorized resetting live protection via the GitHub API to match this record: the four PR-time
+# check contexts below are now mechanically required, and required_approvals is enforced at 1 in
+# preparation for external contributors (with apply_to_admins true and no bypass actors, this
+# includes the maintainer's own PRs — deliberate). Authored by the DevOps lens; validated against
+# repository-governance.schema.json.
+#
+# NOTE on check names: these are the EXACT GitHub check contexts that report on every PR. The
+# pre-publish Docker harness (`prepublish-validation` in publish-module.yml) is a TAG-TIME release
+# gate, not a PR check — listing it here as a merge requirement would deadlock all merges.
 
 repository_governance:
   provider: github
@@ -15,7 +23,8 @@ repository_governance:
         role: release-truth
         protected: true
         require_pull_request: true
-        required_checks: [Lint, Deterministic, Contract, prepublish-harness, tests]
+        required_checks: ["Lint", "Deterministic gate", "Contract lane", "test"]
+        # Release gate (NOT a PR check): prepublish-validation, tag-time in publish-module.yml.
         allow_force_pushes: false
         allow_deletions: false
     promotion_path: "feature/* -> main"
