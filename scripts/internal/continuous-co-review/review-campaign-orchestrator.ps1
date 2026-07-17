@@ -190,30 +190,28 @@ function ConvertTo-ReviewCampaignSlug {
 
 function Test-ReviewCampaignTargetRootWritable {
     param([Parameter(Mandatory)][string]$Path)
-    $probePath = $null; $createdDirectory = $false
+    $probePath = $null
     try {
         if (Test-Path -LiteralPath $Path -PathType Leaf) {
             return [pscustomobject]@{ ok = $false; reason = 'path-is-file' }
         }
-        if (-not [IO.Directory]::Exists($Path)) {
-            [IO.Directory]::CreateDirectory($Path) | Out-Null
-            $createdDirectory = $true
-        }
+        [IO.Directory]::CreateDirectory($Path) | Out-Null
         $probePath = Join-Path $Path ('.specrew-write-probe-' + [guid]::NewGuid().ToString('N'))
         $stream = [IO.File]::Open($probePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
         $stream.Dispose(); [IO.File]::Delete($probePath); $probePath = $null
-        if ($createdDirectory -and @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop).Count -eq 0) {
-            [IO.Directory]::Delete($Path, $false); $createdDirectory = $false
-        }
         return [pscustomobject]@{ ok = $true; reason = 'writable' }
     }
     catch {
         if ($probePath -and [IO.File]::Exists($probePath)) { try { [IO.File]::Delete($probePath) } catch { $null = $_ } }
-        if ($createdDirectory -and [IO.Directory]::Exists($Path)) {
-            try { if (@(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop).Count -eq 0) { [IO.Directory]::Delete($Path, $false) } } catch { $null = $_ }
-        }
         return [pscustomobject]@{ ok = $false; reason = $_.Exception.GetType().Name }
     }
+}
+
+function Get-ReviewCampaignRepositoryToken {
+    param([Parameter(Mandatory)][string]$GitRoot)
+    $identity = [IO.Path]::GetFullPath($GitRoot)
+    if ([OperatingSystem]::IsWindows()) { $identity = $identity.ToUpperInvariant() }
+    return Get-ReviewCampaignStableToken -Value $identity -Length 20
 }
 
 function Resolve-ReviewCampaignTargetExternalRoot {
@@ -235,16 +233,27 @@ function Resolve-ReviewCampaignTargetExternalRoot {
         return $requestedFull
     }
 
-    $repoToken = Get-ReviewCampaignStableToken -Value $gitRoot -Length 20
+    $repoToken = Get-ReviewCampaignRepositoryToken -GitRoot $gitRoot
     $candidates = [Collections.Generic.List[string]]::new()
     $parent = Split-Path -Parent $root
     if (-not [string]::IsNullOrWhiteSpace($parent)) { $candidates.Add((Join-Path $parent '.specrew-targets')) | Out-Null }
-    $tempCandidate = Join-Path ([IO.Path]::GetTempPath()) "specrew-review-targets/$repoToken"
-    $candidates.Add($tempCandidate) | Out-Null
+    if ([OperatingSystem]::IsWindows()) {
+        # AppData\Local\Temp reproduced MAX_PATH failure on this repository. Keep the fallback
+        # under the writable user profile with a deliberately short leaf; --run-root remains the
+        # escape hatch for unusually long profiles or constrained layouts.
+        $profile = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
+        if (-not [string]::IsNullOrWhiteSpace($profile)) { $candidates.Add((Join-Path $profile ".sr/$repoToken")) | Out-Null }
+    }
+    else {
+        $candidates.Add((Join-Path ([IO.Path]::GetTempPath()) "specrew-review-targets/$repoToken")) | Out-Null
+    }
 
     $failures = [Collections.Generic.List[string]]::new()
-    foreach ($candidate in @($candidates | Select-Object -Unique)) {
+    $comparer = if ([OperatingSystem]::IsWindows()) { [StringComparer]::OrdinalIgnoreCase } else { [StringComparer]::Ordinal }
+    $seen = [Collections.Generic.HashSet[string]]::new($comparer)
+    foreach ($candidate in @($candidates)) {
         $full = [IO.Path]::GetFullPath($candidate)
+        if (-not $seen.Add($full)) { continue }
         if (Test-ReviewTargetPathUnderRoot -Path $full -Root $gitRoot) {
             $failures.Add("inside-origin:$full") | Out-Null
             continue

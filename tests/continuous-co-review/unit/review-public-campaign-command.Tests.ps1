@@ -348,7 +348,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 2 -Exactly
     }
 
-    It 'falls back to the repo-scoped user-temp root when the repository parent is not usable' {
+    It 'falls back to the repo-scoped writable user root when the repository parent is not usable' {
         $parent = Join-Path $TestDrive 'fallback-parent'
         $root = New-PublicCampaignRepo -Root (Join-Path $parent 'repo')
         [IO.File]::WriteAllText((Join-Path $parent '.specrew-targets'), 'blocks sibling directory creation')
@@ -358,10 +358,45 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $port = New-ReviewCampaignTargetPort -RepoRoot $root
         $gitRoot = (& git -C $root rev-parse --show-toplevel).Trim()
-        $expected = Join-Path ([IO.Path]::GetTempPath()) ('specrew-review-targets/' + (Get-ReviewCampaignStableToken -Value ([IO.Path]::GetFullPath($gitRoot)) -Length 20))
+        $token = Get-ReviewCampaignRepositoryToken -GitRoot $gitRoot
+        $expected = if ([OperatingSystem]::IsWindows()) {
+            Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)) ('.sr/' + $token)
+        }
+        else { Join-Path ([IO.Path]::GetTempPath()) ('specrew-review-targets/' + $token) }
 
         $port.external_root | Should -Be ([IO.Path]::GetFullPath($expected))
         Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 1 -Exactly -ParameterFilter { $ExternalRoot -ceq ([IO.Path]::GetFullPath($expected)) }
+    }
+
+    It 'normalizes repository token identity and candidate dedup for case-insensitive Windows paths' -Skip:(-not [OperatingSystem]::IsWindows()) {
+        $one = Get-ReviewCampaignRepositoryToken -GitRoot 'C:\Dev\Repo'
+        $two = Get-ReviewCampaignRepositoryToken -GitRoot 'c:\dev\repo'
+        $one | Should -Be $two
+        $one | Should -Match '^[0-9a-f]{20}$'
+
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
+        $source | Should -Match '\[StringComparer\]::OrdinalIgnoreCase'
+        $source | Should -Match 'HashSet\[string\]'
+
+        $repoToken = Get-ReviewCampaignRepositoryToken -GitRoot $script:RepoRoot
+        $fallbackRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)) ('.sr/' + $repoToken)
+        $workspaceLeaf = 'rt-' + ('a' * 16) + '-' + ('b' * 32)
+        $longestTracked = @(& git -C $script:RepoRoot ls-files) | Sort-Object { $_.Length } -Descending | Select-Object -First 1
+        (Join-Path (Join-Path $fallbackRoot $workspaceLeaf) $longestTracked).Length | Should -BeLessThan 260 -Because 'the Windows fallback must not reproduce the long-prefix checkout failure on the current tree'
+    }
+
+    It 'keeps a successfully probed shared root and never races to delete another run entry' {
+        $root = Join-Path $TestDrive 'shared-probe-root'
+        $first = Test-ReviewCampaignTargetRootWritable -Path $root
+        $first.ok | Should -BeTrue
+        Test-Path -LiteralPath $root -PathType Container | Should -BeTrue
+
+        $otherRun = Join-Path $root 'other-run-entry'
+        [IO.File]::WriteAllText($otherRun, 'owned by another run')
+        $second = Test-ReviewCampaignTargetRootWritable -Path $root
+        $second.ok | Should -BeTrue
+        Test-Path -LiteralPath $otherRun -PathType Leaf | Should -BeTrue
+        @(Get-ChildItem -LiteralPath $root -Filter '.specrew-write-probe-*' -Force).Count | Should -Be 0
     }
 
     It 'wires the existing public live surface to campaign delegation before the legacy diagnostic path' {
