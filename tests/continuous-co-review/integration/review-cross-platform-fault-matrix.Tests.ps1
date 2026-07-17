@@ -130,7 +130,11 @@ exit 0
         }
 
         function script:Invoke-T059NativeCase {
-            param($Case, [int]$TimeoutSeconds = 10)
+            # The first native Windows process on a fresh hosted runner can pay cold PowerShell,
+            # code-signing, and endpoint-scanning startup cost. Keep successful fake cases bounded
+            # without turning that infrastructure latency into a semantic timeout. The dedicated
+            # descendant-kill case below still supplies its independent five-second bound.
+            param($Case, [int]$TimeoutSeconds = 30)
             $harness = New-T059FakeProcessHarness -HostName $Case.host -TimeoutSeconds $TimeoutSeconds
             $runtime = New-T059NativeRuntime -TimeoutSeconds $TimeoutSeconds
             $harnessReady = & $harness.preflight $Case.invocation
