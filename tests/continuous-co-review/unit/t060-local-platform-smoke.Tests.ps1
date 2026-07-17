@@ -22,6 +22,9 @@ Describe 'T060 local Windows and Linux smoke package' {
         $script:Source | Should -Match 't060-invoke-explicit-acknowledgement-required'
         $script:Source | Should -Match 'provider_invoked = \$false'
         $script:Source | Should -Match 'AcknowledgeProviderInvocation'
+        $script:Source | Should -Match 't060-cursor-explicit-model-required'
+        $script:Source | Should -Match 't060-cursor-model-unavailable'
+        $script:Source | Should -Match 'model = \[string\]\$cliEvidence\.model'
     }
 
     It 'contains exactly one synchronous provider call and no retry machinery' {
@@ -35,6 +38,7 @@ Describe 'T060 local Windows and Linux smoke package' {
         $script:Source | Should -Match 't060-provider-authority-count-invalid'
         $script:Source | Should -Match 't060-terminal-result-contract-invalid'
         $script:Source | Should -Match 't060-smoke-not-clean'
+        $script:Source | Should -Match "t060-smoke-not-clean:verdict=\{0\}:findings=\{1\}"
         $script:Source | Should -Match 'Get-ContinuousCoReviewReviewedStateDigest'
     }
 

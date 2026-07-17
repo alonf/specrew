@@ -105,6 +105,14 @@ After this no-spend failure, the maintainer authorized all remaining requirement
 
 The standing Mac instruction is fulfilled. The later minimum-budget authority covers only the required remaining base sequence; unique run identity, recorded authority, serialization, and no-hidden-retry remain mandatory.
 
+## Windows Cursor Attempt 03 — Invoked, Incomplete
+
+At commit `c3b48c00382500e937ef370aaff8f0ee67efa768` and digest `ca94546d9dcd86b61af25597f887c776125fe268`, CI run `29585675046` and all three exact-commit preflights passed without provider use. Standing-authority run `run-t060-cursor-windows-c3b48c00-03` then invoked Cursor exactly once. The target remained clean/current and Job Object containment/termination were verified, but no candidate was produced. The immutable result is `completion=none`, `verdict=incomplete`, `validation=not-produced`, `runtime_outcome=terminated`, `failure_reason=reviewer-process-exit-code:1`, with zero findings.
+
+Cursor's local transcript evidence resolves the opaque exit: all four branches ended with its usage-limit error. The run inherited mutable CLI configuration selecting `Composer 2.5 Fast`, while the package did not record a model. The maintainer reported the dashboard still showed 20% overall included usage remaining, so the evidence supports a selected-pool/request-cost failure rather than proven global account exhaustion.
+
+`DRIFT-198-I007-004` makes a Cursor model explicit and evidence-bearing. The no-spend preflight must find the exact ID in the authenticated account-visible model list; the process receives `--model gpt-5.4-mini-low`; preflight and manifest record it; and the shared prompt prohibits model-backed subagent delegation. This is a lower-cost smoke choice visible to the free account, not a claim that Cursor guarantees it as a free model. Attempt 03 is one spent incomplete invocation and is never retried under its old grant.
+
 ## Current Decision
 
 Preserve the clean Mac result and use the scoped minimum-budget standing authority for the serialized Cursor/Windows, Antigravity/Windows, Copilot/Linux, and T061 Claude base proofs. Stop the sequence on any non-clean result. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.

@@ -12,6 +12,7 @@ function New-ReviewCursorAgentFilePrimaryHarnessPort {
     param(
         [string]$PromptTemplatePath,
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 600,
+        [ValidatePattern('^[a-z0-9][a-z0-9.-]{0,127}$')][string]$Model,
         [scriptblock]$AgentInvoker,
         [scriptblock]$AvailabilityProbe
     )
@@ -21,7 +22,14 @@ function New-ReviewCursorAgentFilePrimaryHarnessPort {
     }
     $definition = Get-ContinuousCoReviewProductionHarnessDefinition -HostName cursor-agent
     if ($null -eq $definition) { throw 'cursor-file-primary-catalog-definition-missing' }
+    $preArguments = @($definition.pre_arguments)
+    $configuredModel = 'configured-by-user'
+    if (-not [string]::IsNullOrWhiteSpace($Model)) {
+        $preArguments += @('--model', $Model)
+        $configuredModel = $Model
+    }
     return New-ReviewFilePrimaryHarnessPort -HarnessId $definition.harness_id -HostName $definition.host `
-        -CommandName $definition.command -PreArguments $definition.pre_arguments -PromptTransport $definition.prompt_transport `
-        -PromptTemplatePath $PromptTemplatePath -TimeoutSeconds $TimeoutSeconds -AgentInvoker $AgentInvoker -AvailabilityProbe $AvailabilityProbe
+        -CommandName $definition.command -PreArguments $preArguments -PromptTransport $definition.prompt_transport `
+        -PromptTemplatePath $PromptTemplatePath -TimeoutSeconds $TimeoutSeconds -ConfiguredModel $configuredModel `
+        -AgentInvoker $AgentInvoker -AvailabilityProbe $AvailabilityProbe
 }

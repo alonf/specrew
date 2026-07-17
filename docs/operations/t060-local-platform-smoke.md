@@ -14,6 +14,7 @@ Cursor uses 600 seconds and Antigravity uses 900 seconds:
 $PinnedCommit = '<40_CHARACTER_COMMIT>'
 $HostName = 'cursor-agent' # or: antigravity
 $TimeoutSeconds = 600      # use 900 for antigravity
+$Model = 'gpt-5.4-mini-low' # Cursor only; omit for Antigravity
 $PreflightOut = Join-Path $env:TEMP "t060-$HostName-preflight-$PinnedCommit"
 
 pwsh -NoProfile -File ./scripts/t060-local-platform-smoke.ps1 `
@@ -22,10 +23,11 @@ pwsh -NoProfile -File ./scripts/t060-local-platform-smoke.ps1 `
   -RepoRoot $PWD `
   -ExpectedCommit $PinnedCommit `
   -OutputDirectory $PreflightOut `
+  -Model $Model `
   -TimeoutSeconds $TimeoutSeconds
 ```
 
-Expected: `provider_invoked` is `false`; the harness is file-primary ready; the runtime is `windows-job-object-runtime` and ready.
+For Antigravity, omit `-Model`. Cursor preflight verifies the exact model against the authenticated account-visible list without invoking it. `gpt-5.4-mini-low` is a lower-cost account-visible choice for this smoke, not a promise from Cursor that the model is free. Expected: `provider_invoked` is `false`; the selected model is recorded; the harness is file-primary ready; the runtime is `windows-job-object-runtime` and ready.
 
 ## WSL Copilot preflight
 

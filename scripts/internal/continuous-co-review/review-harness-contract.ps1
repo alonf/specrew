@@ -115,6 +115,7 @@ function New-ReviewFilePrimaryHarnessPort {
         [Parameter(Mandatory)][ValidateSet('stdin', 'argument')][string]$PromptTransport,
         [Parameter(Mandatory)][string]$PromptTemplatePath,
         [ValidateRange(1, 7200)][int]$TimeoutSeconds,
+        [string]$ConfiguredModel = 'configured-by-user',
         [scriptblock]$AgentInvoker,
         [scriptblock]$AvailabilityProbe
     )
@@ -184,7 +185,8 @@ function New-ReviewFilePrimaryHarnessPort {
     }.GetNewClosure()
 
     return [pscustomobject]@{
-        id = $HarnessId; host = $HostName; contract_version = '1.0'; result_transport = 'file-primary'; stdout_authority = $false
+        id = $HarnessId; host = $HostName; configured_model = $ConfiguredModel
+        contract_version = '1.0'; result_transport = 'file-primary'; stdout_authority = $false
         preflight = $preflight; build_process = $buildProcess; invoke = $invoke
     }
 }
@@ -202,7 +204,8 @@ function New-ReviewProductionHarnessPort {
     param(
         [string]$HostName,
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900,
-        [string]$PromptTemplatePath
+        [string]$PromptTemplatePath,
+        [string]$Model
     )
     if ([string]::IsNullOrWhiteSpace($HostName)) { return New-ReviewUnavailableProductionHarnessPort -HarnessId 'unselected-harness' -HostName '' -Reason 'reviewer-host-required' }
     $normalizedHost = $HostName.ToLowerInvariant()
@@ -220,5 +223,11 @@ function New-ReviewProductionHarnessPort {
     }
     $parameters = @{ TimeoutSeconds = $TimeoutSeconds }
     if (-not [string]::IsNullOrWhiteSpace($PromptTemplatePath)) { $parameters.PromptTemplatePath = $PromptTemplatePath }
+    if (-not [string]::IsNullOrWhiteSpace($Model)) {
+        if (-not $constructor.Parameters.ContainsKey('Model')) {
+            return New-ReviewUnavailableProductionHarnessPort -HarnessId ([string]$definition.harness_id) -HostName $normalizedHost -Reason "production-harness-model-override-unsupported:$normalizedHost"
+        }
+        $parameters.Model = $Model
+    }
     return & $constructor @parameters
 }

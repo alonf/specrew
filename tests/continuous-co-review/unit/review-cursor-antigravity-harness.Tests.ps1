@@ -68,8 +68,24 @@ Describe 'Cursor and Antigravity production file-primary harness adapters (T055)
         $prompt | Should -Match ([regex]::Escape([IO.Path]::GetFullPath($invocation.candidate_result_path)))
         $prompt | Should -Match 'run-one'
         $prompt | Should -Match 'digest-one'
+        $prompt | Should -Match 'do not delegate to\s+subagents'
         @($spec.environment_delta.Keys) | Should -Be @('SPECREW_REFOCUS_DISABLE', 'SPECREW_DISABLE_EVENTS')
         $spec.environment_delta.Contains('SECRET') | Should -BeFalse
+    }
+
+    It 'pins an explicit account-visible Cursor model before the final prompt' {
+        $invocation = New-T055Invocation -Root (Join-Path $TestDrive 'cursor-model')
+        $port = New-ReviewCursorAgentFilePrimaryHarnessPort -TimeoutSeconds 600 -Model 'gpt-5.4-mini-low' -AvailabilityProbe { $true }
+        $spec = & $port.build_process $invocation @{}
+        @($spec.argument_list)[0..4] | Should -Be @('--print', '--trust', '--force', '--model', 'gpt-5.4-mini-low')
+        $spec.argument_list[-1] | Should -Match 'run-one'
+        $port.configured_model | Should -Be 'gpt-5.4-mini-low'
+    }
+
+    It 'fails closed when a model override is requested for a harness without that port' {
+        $port = New-ReviewProductionHarnessPort -HostName antigravity -TimeoutSeconds 600 -Model 'gpt-5.4-mini-low'
+        $port.id | Should -Be 'antigravity-file-primary'
+        (& $port.preflight (New-T055Invocation -Root (Join-Path $TestDrive 'unsupported-model'))).reason | Should -Be 'production-harness-model-override-unsupported:antigravity'
     }
 
     It 'uses exactly one adapter invocation and accepts only the raw candidate file' -ForEach @(

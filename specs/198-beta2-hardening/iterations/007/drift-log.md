@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total local drift events**: 3
-**Resolution rate**: 100% (3/3 resolved in code; live verification pending for event 003)
+**Total local drift events**: 4
+**Resolution rate**: 100% (4/4 resolved in code; live verification pending for events 003–004)
 **Specification drift**: Both local dogfood gaps are resolved without changing approved product scope
 
 ## Inherited Open Drift
@@ -55,3 +55,13 @@
 - **Closure evidence**: the paired deterministic test obtains the actual longest tracked path from the committed tree, proves the legacy full-run-ID leaf exceeds 259 characters, and proves the bounded token leaf remains below 260. Snapshot tests prove stable/distinct tokens and full authority identity retention. Preflight, runtime-preflight, launch-failure, long-exception, and claim-contention paths expose readable reports. All 93 focused target/runtime/harness tests pass, followed by all 56 registered F-198 suites in 626.3 seconds and scoped Iteration 007 governance with historical warnings only. CI and a fresh exact-commit preflight remain required before the next live attempt. Neither failed attempt invoked a provider.
 
 T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS but does not replace T060 live evidence. The inherited Iteration 006 event still requires T061 independent verification.
+
+### DRIFT-198-I007-004 — Cursor smoke inherited an expensive unrecorded model and reduced quota failure to exit code 1
+
+- **Status**: resolved in code; full validation and clean live verification pending
+- **Severity**: moderate cost/evidence integrity
+- **Requirements**: FR-059, FR-060, FR-064, FR-065, SC-018, SC-020, NFR-002
+- **Evidence**: exact-commit run `run-t060-cursor-windows-c3b48c00-03` passed target, authority, contract, Job Object, and harness preflight, invoked Cursor exactly once, preserved a clean/current target, and terminated under verified containment. No candidate was produced; authority published `completion=none`, `validation=not-produced`, `runtime_outcome=terminated`, and `reviewer-process-exit-code:1` with zero findings. Cursor's four local transcript branches each ended with its explicit usage-limit error. The CLI configuration selected `Composer 2.5 Fast`; the run package recorded no model. The maintainer's dashboard still showed 20% overall included usage remaining, so “global account exhaustion” is not established.
+- **Observed drift**: the T060 runner inherited mutable user model configuration despite the live-evidence requirement to record the model. Cursor's Fast selection can consume a materially different pool/rate, and the prompt did not discourage model-backed subagent fan-out. The outer failure exception also interpolated `verdict==0` instead of its named fields.
+- **Correction**: Cursor T060 now requires an explicit bounded model ID, verifies it against the authenticated account-visible `cursor-agent models` list without invoking a model, passes it as a distinct process argument, and records it in preflight and terminal manifest evidence. The next proof pins `gpt-5.4-mini-low`, an account-visible lower-cost choice; it is not described as guaranteed free. The shared prompt directs every reviewer to work in one session without model-backed delegation, and the terminal exception uses positional formatting.
+- **Closure evidence**: all 95 focused target/runtime/harness tests pass, followed by all 56 registered F-198 suites in 513.2 seconds and scoped Iteration 007 governance with historical warnings only. CI plus a new exact-commit no-spend preflight remain required before any separately authorized attempt. Attempt 03 is immutable incomplete evidence and is not retried or retroactively promoted.

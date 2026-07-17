@@ -1,7 +1,8 @@
 # Review candidate contract 1.0
 
 Review the complete frozen workspace in your current working directory. Do not modify the source, the
-workspace, Git state, or controller files. Follow this review scope:
+workspace, Git state, or controller files. Work directly in this reviewer session; do not delegate to
+subagents or start other model-backed reviewers. Follow this review scope:
 
 __REVIEW_SCOPE__
 

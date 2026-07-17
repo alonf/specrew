@@ -29,6 +29,8 @@ param(
     [ValidateRange(1, 7200)]
     [int] $TimeoutSeconds,
 
+    [string] $Model,
+
     [switch] $AcknowledgeProviderInvocation,
 
     [string] $ExpectedRepositoryUrl = 'https://github.com/alonf/specrew.git'
@@ -66,7 +68,8 @@ function Get-T060LocalFileSha256 {
 function Get-T060LocalCliEvidence {
     param(
         [Parameter(Mandatory)][string] $SelectedHost,
-        [Parameter(Mandatory)] $Definition
+        [Parameter(Mandatory)] $Definition,
+        [string] $SelectedModel
     )
     $command = Get-Command -Name ([string]$Definition.command) -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($null -eq $command) { throw "t060-reviewer-cli-not-installed:$SelectedHost" }
@@ -79,10 +82,18 @@ function Get-T060LocalCliEvidence {
     }
 
     $authStatus = 'credential-state-not-exposed'
+    $modelEvidence = 'configured-by-user'
     if ($SelectedHost -ceq 'cursor-agent') {
         $null = @(& $command.Source status 2>&1)
         if ($LASTEXITCODE -ne 0) { throw 't060-cursor-not-authenticated' }
+        $availableModels = @(& $command.Source models 2>&1)
+        if ($LASTEXITCODE -ne 0) { throw 't060-cursor-model-list-probe-failed' }
+        $modelPattern = '^{0}\s+-\s+' -f [regex]::Escape($SelectedModel)
+        if (@($availableModels | Where-Object { [string]$_ -cmatch $modelPattern }).Count -ne 1) {
+            throw "t060-cursor-model-unavailable:$SelectedModel"
+        }
         $authStatus = 'authenticated-probe-passed'
+        $modelEvidence = $SelectedModel
     }
     elseif ($SelectedHost -ceq 'antigravity') {
         $null = @(& $command.Source models 2>&1)
@@ -100,6 +111,7 @@ function Get-T060LocalCliEvidence {
     return [pscustomobject][ordered]@{
         version = $version
         auth_status = $authStatus
+        model = $modelEvidence
     }
 }
 
@@ -107,6 +119,11 @@ if (-not $IsWindows -and -not $IsLinux) { throw 't060-local-platform-smoke-requi
 $platformName = if ($IsWindows) { 'windows' } else { 'linux' }
 $allowedPlatform = if ($HostName -cin @('cursor-agent', 'antigravity')) { 'windows' } else { 'linux' }
 if ($platformName -cne $allowedPlatform) { throw "t060-host-platform-mismatch:host=$HostName:required=$allowedPlatform:actual=$platformName" }
+if ($HostName -ceq 'cursor-agent') {
+    if ([string]::IsNullOrWhiteSpace($Model)) { throw 't060-cursor-explicit-model-required' }
+    if ($Model -cnotmatch '^[a-z0-9][a-z0-9.-]{0,127}$') { throw 't060-cursor-model-invalid' }
+}
+elseif (-not [string]::IsNullOrWhiteSpace($Model)) { throw 't060-model-override-only-supported-for-cursor' }
 
 if ($Mode -ceq 'Invoke') {
     if ([string]::IsNullOrWhiteSpace($RunId)) { throw 't060-invoke-run-id-required' }
@@ -139,7 +156,7 @@ if ([IO.Directory]::Exists($output) -and @(Get-ChildItem -LiteralPath $output -F
 
 $definition = Get-ContinuousCoReviewProductionHarnessDefinition -HostName $HostName
 if ($null -eq $definition) { throw "t060-production-harness-definition-missing:$HostName" }
-$cliEvidence = Get-T060LocalCliEvidence -SelectedHost $HostName -Definition $definition
+$cliEvidence = Get-T060LocalCliEvidence -SelectedHost $HostName -Definition $definition -SelectedModel $Model
 $digestEvidence = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root
 if (-not $digestEvidence.ok) { throw ('t060-reviewed-state-digest-failed:' + [string]$digestEvidence.failure_reason) }
 $reviewedDigest = [string]$digestEvidence.tree_id
@@ -164,7 +181,7 @@ try {
         candidate_report_path = (Join-Path $preflightRoot 'candidate/candidate.md')
         deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds).ToString('o')
     }
-    $harness = New-ReviewProductionHarnessPort -HostName $HostName -TimeoutSeconds $TimeoutSeconds
+    $harness = New-ReviewProductionHarnessPort -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Model $Model
     $runtime = New-ReviewProductionRuntimePort -TimeoutSeconds $TimeoutSeconds
     $harnessPreflight = & $harness.preflight $preflightInvocation
     $runtimePreflight = & $runtime.preflight $preflightInvocation
@@ -190,6 +207,7 @@ $preflight = [pscustomobject][ordered]@{
         host = $HostName
         harness_id = [string]$harness.id
         cli_version = [string]$cliEvidence.version
+        model = [string]$cliEvidence.model
         auth_status = [string]$cliEvidence.auth_status
         ready = [bool]$harnessPreflight.ok
         reason = [string]$harnessPreflight.reason
@@ -279,7 +297,8 @@ $manifest = [pscustomobject][ordered]@{
     }
     platform = $platform
     harness = [pscustomobject][ordered]@{
-        host = $HostName; harness_id = [string]$harness.id; cli_version = [string]$cliEvidence.version; auth_status = [string]$cliEvidence.auth_status
+        host = $HostName; harness_id = [string]$harness.id; cli_version = [string]$cliEvidence.version
+        model = [string]$cliEvidence.model; auth_status = [string]$cliEvidence.auth_status
     }
     authorization = [pscustomobject][ordered]@{
         reference = $AuthorizationRef; grant_count = $grants.Count; reservation_count = $reservations.Count; invocation_count = $spends.Count
@@ -311,6 +330,6 @@ if ($grants.Count -ne 1 -or $reservations.Count -ne 1 -or $spends.Count -ne 1) {
 if (-not $resultValidation.valid) { throw ('t060-terminal-result-contract-invalid:' + ($resultValidation.errors -join ',')) }
 if (-not $smokeClean) {
     $verdict = if ($null -eq $result) { 'unavailable' } else { [string]$result.verdict }
-    throw "t060-smoke-not-clean:verdict=$verdict:findings=$findingCount"
+    throw ('t060-smoke-not-clean:verdict={0}:findings={1}' -f $verdict, $findingCount)
 }
 $manifest | ConvertTo-Json -Depth 20
