@@ -41,10 +41,10 @@ tasks:
     blocked_reason: ""
   T052:
     title: "Workshop-aware intermediate Stop"
-    status: "needs-rework"
+    status: "done"
     started_at: "2026-07-16T20:02:24+03:00"
-    completed_at: ""
-    blocked_reason: "DRIFT-198-I007-002: after the Mac test sequence, tighten ordinary Stop materiality so routine discussion does not emit a full handoff packet; preserve substantial-work and lifecycle-boundary packets."
+    completed_at: "2026-07-17T15:31:29+03:00"
+    blocked_reason: ""
   T053:
     title: "Shared production harness contract/catalog and complete malformed-output matrix"
     status: "done"

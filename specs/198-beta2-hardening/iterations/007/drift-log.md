@@ -5,8 +5,8 @@
 ## Summary
 
 **Total local drift events**: 2
-**Resolution rate**: 50% (1/2 resolved)
-**Specification drift**: One local-Mac live-proof gap is resolved; the ordinary Stop-materiality gap remains open without changing approved product scope
+**Resolution rate**: 100% (2/2 resolved)
+**Specification drift**: Both local dogfood gaps are resolved without changing approved product scope
 
 ## Inherited Open Drift
 
@@ -35,11 +35,12 @@
 
 ### DRIFT-198-I007-002 — ordinary conversational turns are over-classified as material Stop handoffs
 
-- **Status**: open; explicitly deferred until the Mac test sequence completes
+- **Status**: resolved
 - **Severity**: moderate UX/governance friction
 - **Requirements**: FR-055, FR-056, NFR-002, NFR-007
 - **Evidence**: during the T060 Mac setup and live-run discussion, short operational answers repeatedly rendered the full five-section non-boundary packet. The human clarified that context packets are for substantial completed work or real handoff stops, not ordinary back-and-forth every few seconds.
-- **Scope**: T052's workshop-intermediate exception is insufficient because this failure is the ordinary Stop materiality classifier. The later correction must preserve lifecycle-boundary packets and genuine substantial-work handoffs while leaving direct discussion smooth.
-- **Guard**: do not suppress Stop evidence globally and do not weaken boundary precedence. Add paired routine-discussion versus substantial-work fixtures before closing this event.
+- **Root cause**: the stable material-surface hash retained the transient `; N new commit(s): ...` handover annotation. The first Stop after a commit contained the suffix; a later routine discussion over the exact same `HEAD` and file surface did not. That suffix-only transition looked like new material work even though the turn changed nothing.
+- **Correction**: canonicalization removes only the transient new-commit observation before hashing. The concrete `HEAD`, commit title, dirty-file identity, and counts remain, so a genuinely different commit or file surface still creates a new obligation. Refocus guidance also states explicitly that clarify ambiguity and workshop questions are not packet stops.
+- **Closure evidence**: the paired live-reproduction fixture proves same `HEAD`/files with the suffix disappearing stays conversational, while a different `HEAD` still demands the five-section packet. Existing substantial-work, long-read-only, rendered-packet, workshop, boundary-precedence, dispatcher, and deployed-binding cases remain green. Focused suites pass and all 55 F-198 suites pass in 630.5 seconds.
 
 T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS but does not replace T060 live evidence. The inherited Iteration 006 event still requires T061 independent verification.

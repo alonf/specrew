@@ -88,14 +88,16 @@ function New-HandoverSnapshot {
         [int]$ActivityOffsetSeconds = 0,
         [string]$Source = 'Stop',
         [string]$FileList,
-        [string]$ActiveFeature = '050-host-neutral-gate'
+        [string]$ActiveFeature = '050-host-neutral-gate',
+        [string]$Head = 'abc1234',
+        [string]$HeadTitle = 'material commit'
     )
     $dir = Join-Path $Proj '.specrew\handover'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $recordedAt = [datetime]::UtcNow
     $activityAt = $recordedAt.AddSeconds($ActivityOffsetSeconds)
     $stamp = $activityAt.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $commitNote = if ($NewCommits -gt 0) { ("; {0} new commit(s): abc1234 material commit" -f $NewCommits) } else { '' }
+    $commitNote = if ($NewCommits -gt 0) { ("; {0} new commit(s): {1} {2}" -f $NewCommits, $Head, $HeadTitle) } else { '' }
     if ([string]::IsNullOrWhiteSpace($FileList)) {
         $FileList = if ($ChangedUserFiles -gt 0) { 'src/provider.ps1, tests/provider.tests.ps1' } else { '(none)' }
     }
@@ -105,7 +107,7 @@ schema: v1
 source: $Source
 from_host: codex
 recorded_at: $($recordedAt.ToUniversalTime().ToString('o'))
-from_commit: abc1234
+from_commit: $Head
 active_feature: $ActiveFeature
 active_boundary: plan
 ---
@@ -114,7 +116,7 @@ active_boundary: plan
 
 ## What I just did (last 3-5 turns or last boundary work)
 
-- [$stamp] ($Source) $ChangedUserFiles changed user file(s) [$FileList]; HEAD abc1234 (material commit)$commitNote
+- [$stamp] ($Source) $ChangedUserFiles changed user file(s) [$FileList]; HEAD $Head ($HeadTitle)$commitNote
 
 ## Why I'm stopping (the switch trigger)
 
@@ -134,7 +136,7 @@ Resume feature $ActiveFeature at boundary plan.
 
 ## Context the receiving host needs that artifacts don't carry
 
-branch 185-host-neutral-gate-enforcement, HEAD abc1234 (material commit).
+branch 185-host-neutral-gate-enforcement, HEAD $Head ($HeadTitle).
 
 ## Recent conversation (last few exchanges, hook-captured)
 
@@ -423,6 +425,30 @@ try {
     $rhb2 = Invoke-Conformance -Proj $phb -TranscriptPath $thb2
     if ($rhb2.Blocked) { Fail "Case PH-b2: a read-only follow-up over the SAME discharged surface MUST NOT re-demand the packet. Out: $($rhb2.Out)" }
     Write-Pass "Case PH-b2: the baseline advances at a discharged stop, so unchanged-dirty follow-ups stay quiet"
+
+    # ---- Case PH-b3: the first Stop after a commit carries a TRANSIENT '; 1 new commit(s)' annotation. The next
+    #      ordinary discussion over the exact same HEAD/files loses only that annotation. It is the same material
+    #      surface and MUST stay quiet; the transient observation is not a second turn delta. This is the live
+    #      DRIFT-198-I007-002 reproduction from the local-Mac discussion.
+    $phb3 = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phb3
+    New-HandoverSnapshot -Proj $phb3 -ChangedUserFiles 2 -NewCommits 1 -Head 'def5678' -HeadTitle 'record substantial work'
+    $thb3a = New-Transcript -Proj $phb3 -Turns @(@{ role = 'assistant'; text = $materialPacket })
+    $rhb3a = Invoke-Conformance -Proj $phb3 -TranscriptPath $thb3a
+    if ($rhb3a.Blocked) { Fail "Case PH-b3: the packet rendered for the newly observed commit MUST discharge that surface. Out: $($rhb3a.Out)" }
+    New-HandoverSnapshot -Proj $phb3 -ChangedUserFiles 2 -Head 'def5678' -HeadTitle 'record substantial work'
+    $thb3b = New-Transcript -Proj $phb3 -Turns @(@{ role = 'user'; text = 'what happens next?' }, @{ role = 'assistant'; text = 'The Mac test is complete; the remaining provider slots are separate.' })
+    $rhb3b = Invoke-Conformance -Proj $phb3 -TranscriptPath $thb3b
+    if ($rhb3b.Blocked) { Fail "Case PH-b3: disappearance of the transient new-commit annotation on the SAME HEAD/files MUST NOT fabricate another material delta. Out: $($rhb3b.Out)" }
+    Write-Pass "Case PH-b3: an unchanged committed surface stays quiet when its transient new-commit annotation disappears"
+
+    # ---- Case PH-c2: stripping the transient annotation must not hide a REAL later commit. HEAD remains in the
+    #      canonical surface key, so a different HEAD still creates a new obligation even when files are unchanged.
+    New-HandoverSnapshot -Proj $phb3 -ChangedUserFiles 2 -NewCommits 1 -Head 'fed9876' -HeadTitle 'second substantial change'
+    $thc2 = New-Transcript -Proj $phb3 -Turns @(@{ role = 'assistant'; text = 'I committed a second substantial change.' })
+    $rhc2 = Invoke-Conformance -Proj $phb3 -TranscriptPath $thc2
+    if (-not $rhc2.Blocked -or $rhc2.Out -notmatch 'five-part context packet') { Fail "Case PH-c2: a genuinely different HEAD MUST still require the material packet. Out: $($rhc2.Out)" }
+    Write-Pass "Case PH-c2: a genuinely new HEAD remains a new material surface and still requires the packet"
 
     # ---- Case PH-d: LONG READ-ONLY INVESTIGATION (no material delta) -> packet required. >= 15 assistant
     #      entries since the last human message = a genuinely long turn with a real re-entry cost.

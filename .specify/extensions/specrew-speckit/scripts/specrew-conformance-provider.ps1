@@ -234,10 +234,14 @@ function Get-SpecrewCurrentStopMaterialSignal {
 
         # The stable material-surface KEY: the bullet minus its timestamp/source prefix and minus the VOLATILE
         # '(+N Specrew-managed)' clause (managed scaffolding accumulates independently of user work - its count
-        # drifting must never fake a NEW user-material surface). Computed for ANY recognized bullet so the
-        # SessionStart baseline and the Stop-lane delta compare like with like.
+        # drifting must never fake a NEW user-material surface). Also strip the TRANSIENT '; N new commit(s): ...'
+        # observation: the same HEAD is annotated as new only on its first handover, then loses that suffix on the
+        # next conversational Stop. HEAD itself remains in the key, so a genuinely different commit still creates
+        # a new material surface. Computed for ANY recognized bullet so the SessionStart baseline and the Stop-lane
+        # delta compare like with like.
         $stableMaterialSurface = ($bulletText -replace '^\s*-\s+\[[^\]]+\]\s+\([^)]+\)\s+', '').Trim()
         $stableMaterialSurface = ($stableMaterialSurface -replace '\s*\(\+\d+\s+Specrew-managed\)', '').Trim()
+        $stableMaterialSurface = ($stableMaterialSurface -replace ';\s+\d+\s+new commit\(s\):.*$', '').Trim()
         $surfaceHash = Get-SpecrewFireIdentity -Parts @($stableMaterialSurface)
         $result.key = ('material|{0}' -f $surfaceHash)
 
