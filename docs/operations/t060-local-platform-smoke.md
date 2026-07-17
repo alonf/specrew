@@ -1,6 +1,6 @@
 # T060 Local Windows and Linux Smokes
 
-This runner owns the three remaining T060 allocations only: Cursor on Windows, Antigravity on Windows, and Copilot on WSL Ubuntu. It uses an external campaign authority store while the checked-in production mode remains `legacy`.
+This runner owns the three pre-cutover T060 allocations only: Cursor on Windows, Antigravity on Windows, and Copilot on WSL Ubuntu. Those immutable runs used an external campaign authority store while the checked-in production mode remained `legacy`. Production is now cut over to checked-in `campaign` mode; use `specrew review --live` for post-cutover review rather than treating this evidence runner as a second authority.
 
 `Preflight` performs repository, digest, CLI/auth-readiness, harness, and OS-containment checks without invoking a model. `Invoke` requires an exact run ID, authorization reference, and acknowledgement; it contains one synchronous provider-capable call and no retry. Every second attempt therefore requires a new run ID and a new human grant.
 
@@ -47,7 +47,7 @@ wsl.exe -d Ubuntu-24.04 -u root -e systemd-run --quiet --wait --collect --pipe -
     -TimeoutSeconds 300
 ```
 
-Expected: `provider_invoked` is `false`; Copilot is file-primary ready; the runtime is `linux-cgroup-v2-runtime` and ready. `systemd-run --wait --collect` collects the transient unit after the command.
+Expected: `provider_invoked` is `false`; Copilot is file-primary ready; the runtime is `linux-cgroup-v2-runtime` and ready. The live proof used GitHub Copilot CLI `1.0.71`. `systemd-run --wait --collect` collects the transient unit after the command.
 
 ## One authorized invocation
 

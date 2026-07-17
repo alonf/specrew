@@ -54,6 +54,17 @@ Describe 'T094 tiered degraded-evidence signoff gate (FR-036)' {
         }
     }
 
+    BeforeEach {
+        # This suite characterizes the read-only legacy evidence gate. Production now ships in
+        # campaign mode, so select the historical authority explicitly instead of inheriting HEAD.
+        Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+            [pscustomobject]@{
+                mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true
+                campaign_authority_enabled = $false; reason = 'authority-mode-legacy'
+            }
+        }
+    }
+
     It 'auto-allows full + independent evidence' {
         $f = New-FreshRepoWithRun 'tier-full-indep' ([pscustomobject]@{ completeness = 'full'; independence = 'independent'; budget = 'normal' })
         $d = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main'

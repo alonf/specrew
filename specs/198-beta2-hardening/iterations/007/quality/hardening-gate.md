@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
-**Post-Implementation Verification**: in progress — T030–T034b and T051–T059 verified; hosted three-OS deterministic CI is green; T060–T061 live proof remains pending
+**Post-Implementation Verification**: in progress — T030–T034b and T051–T059 verified; hosted three-OS deterministic CI is green; all four T060 harness/OS paths have truthful live evidence; campaign exact-commit verification and T061 signoff remain
 
 ## Concern Review
 
@@ -62,5 +62,5 @@
 ## Notes
 
 - `Overall Verdict: ready` records completed planning-time hardening. The separate fresh human verdict in `condition-a-human-authorization` authorizes Iteration 007 implementation but no provider invocation.
-- Runtime evidence for T030–T034b and T051–T059 is verified; T060–T061 live evidence remains pending until separately authorized provider slots execute. T034b/T059 deterministic compatibility does not substitute for T060's later live current-digest evidence.
+- Runtime evidence for T030–T034b and T051–T059 is verified. T060 has live file-primary/native-containment evidence for Codex/macOS, Cursor/Windows, Antigravity/Windows, and Copilot/Linux; only the pinned clean runs approve their own snapshots, and Cursor is explicitly not claimed clean after free-credit exhaustion. Campaign exact-commit verification and T061 Claude final signoff remain. T034b/T059 deterministic compatibility does not substitute for live evidence.
 - No concern is deferred inside Iteration 007; the command-plan dependency is a separate feature-level slice, not a hidden deferral from this iteration.

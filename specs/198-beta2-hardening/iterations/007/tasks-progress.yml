@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "Codex/local macOS and Antigravity/Windows are clean exact-digest proofs. Cursor clean proof waits for free credit. Copilot/Linux runs 01-02 returned valid/current/contained zero-finding partials because complete target was read as exhaustive ~17k-line inventory. DRIFT-198-I007-011 defines bounded risk-based completion for the selected harness/runtime path while preserving T061 final signoff; 32 paired tests, 16 orchestration cases, all 57 suites in 616.1 seconds, and scoped governance pass. Commit/CI/live verification, support truth, and cutover remain."
+    blocked_reason: "All four T060 live harness paths now have valid evidence across macOS, Windows, and Linux. Codex, Antigravity, and Copilot are clean at pinned digests; Cursor produced complete valid finding reviews before its free quota was exhausted, so no clean-current claim is made. Copilot run 04 closes DRIFT-198-I007-011. The disabled barrier is persisted; campaign cutover and exact-commit verification remain before T061."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"

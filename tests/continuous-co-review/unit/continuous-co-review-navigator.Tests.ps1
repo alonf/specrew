@@ -124,6 +124,18 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         }
     }
 
+    BeforeEach {
+        # This suite owns the retained legacy navigator. Production HEAD is campaign-authoritative,
+        # so legacy behavior must be selected by the fixture rather than inherited accidentally.
+        # Individual campaign-suppression cases override this mock in their It scope.
+        Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+            [pscustomobject]@{
+                mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true
+                campaign_authority_enabled = $false; reason = 'authority-mode-legacy'
+            }
+        }
+    }
+
     AfterAll {
         # The suite must never leave git identity on the Specrew repo (the fan-out hygiene rule).
         Push-Location $script:RepoRoot
