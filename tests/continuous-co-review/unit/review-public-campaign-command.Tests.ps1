@@ -63,6 +63,26 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
                 completion = 'complete'; verdict = 'pass'; summary = 'public command fixture'; findings = @()
             }
         }
+
+        function script:Add-CleanCampaignResult {
+            param([string]$Root, [string]$Store, [string]$RunId = 'run-finalization')
+            $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root).tree_id
+            Request-ReviewAuthorityClaim -StoreRoot $Store -CampaignId 'cmp-demo-i007' -RunId $RunId -TargetLineage 'lin-demo' -ObservedAt '2026-07-18T00:00:00Z' | Out-Null
+            Publish-ReviewRunResultFact -StoreRoot $Store -CampaignId 'cmp-demo-i007' -RunId $RunId -Fact (New-CampaignResult -RunId $RunId -Digest $digest) | Out-Null
+            Complete-ReviewAuthorityClaim -StoreRoot $Store -CampaignId 'cmp-demo-i007' -RunId $RunId -TargetLineage 'lin-demo' -Disposition released -ObservedAt '2026-07-18T00:01:00Z' | Out-Null
+            return [pscustomobject]@{ digest = $digest; commit = [string](@(& git -C $Root rev-parse HEAD) | Select-Object -First 1) }
+        }
+
+        function script:Add-PublicCampaignCommit {
+            param([string]$Root, [string]$RelativePath, [string]$Content)
+            $path = Join-Path $Root $RelativePath
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
+            [IO.File]::WriteAllText($path, $Content, [Text.UTF8Encoding]::new($false))
+            & git -C $Root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
+            & git -C $Root -c user.name=t -c user.email=t@example.invalid commit -qm $RelativePath 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "fixture-commit-failed:$RelativePath" }
+            return [string](@(& git -C $Root rev-parse HEAD) | Select-Object -First 1)
+        }
     }
 
     It 'fails mixed and all-invalid explicit design-context refs before port selection, grant persistence, or spend' -ForEach @(
@@ -504,6 +524,95 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             $blocked.render_verdict_marker | Should -BeFalse
             (Build-ReviewCampaignNavigatorStopBlock -PacketDecision $blocked) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
+    }
+
+    It 'publishes and accepts one direct-parent allowlisted review-evidence finalization while displaying both commits' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-valid')
+        $store = Join-Path $TestDrive 'finalization-valid-store'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+        $beforeGateDigest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+        $candidateFact = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = 'cmp-demo-i007'
+            run_id = 'run-finalization'; reviewed_digest = $reviewed.digest; finalization_commit = $finalizationCommit
+        }
+        $candidateEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId 'cmp-demo-i007' `
+            -Result (Get-ReviewRunAuthorityFact -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-finalization' -Stage result) `
+            -Fact $candidateFact -CurrentDigest $beforeGateDigest -FeatureId '001-demo' -IterationNumber '007'
+        $candidateEnvelope.reason | Should -Be 'valid'
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+
+        $decision.route | Should -Be 'boundary-finalized'
+        $decision.reason | Should -Be 'complete-clean-finalized-result'
+        $decision.render_boundary_packet | Should -BeTrue
+        $decision.reviewed_digest | Should -Be $reviewed.digest
+        $decision.reviewed_commit | Should -Be $reviewed.commit
+        $decision.finalization_commit | Should -Be $finalizationCommit
+        $decision.message | Should -Match ([regex]::Escape($reviewed.commit))
+        $decision.message | Should -Match ([regex]::Escape($finalizationCommit))
+        (Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007').finalization_commit | Should -Be $finalizationCommit
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id | Should -Be $beforeGateDigest -Because 'the authority fact is outside the reviewed digest'
+
+        $configRoot = Join-Path $TestDrive 'finalization-valid-config'; [IO.Directory]::CreateDirectory($configRoot) | Out-Null
+        $config = New-CampaignConfig -Root $configRoot
+        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -AuthorityConfigPath $config -CampaignId 'cmp-demo-i007' `
+            -TargetLineage 'lin-demo' -FeatureId '001-demo' -IterationNumber '007' -CampaignStoreRoot $store
+        $gate.decision | Should -Be 'allow'
+        $gate.reviewed_commit | Should -Be $reviewed.commit
+        $gate.finalization_commit | Should -Be $finalizationCommit
+        $gate.message | Should -Match 'reviewed commit.+finalized.+commit'
+    }
+
+    It 'denies every non-review-evidence finalization path without publishing a fact' -ForEach @(
+        @{ name = 'script'; path = 'scripts/change.ps1' },
+        @{ name = 'test'; path = 'tests/change.Tests.ps1' },
+        @{ name = 'spec'; path = 'specs/001-demo/spec.md' },
+        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md' },
+        @{ name = 'state'; path = 'specs/001-demo/iterations/007/state.md' }
+    ) {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive "finalization-denied-$name")
+        $store = Join-Path $TestDrive "finalization-denied-$name-store"
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId "run-denied-$name"
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath $path -Content "denied $name"
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $decision.route | Should -Be 'review-stale'
+        $decision.render_boundary_packet | Should -BeFalse
+        Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
+    }
+
+    It 'denies an allowlisted envelope chain whose finalization parent is not the reviewed commit' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-chain')
+        $store = Join-Path $TestDrive 'finalization-chain-store'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-chain'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# First envelope'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/coverage-evidence.md' -Content '# Chained envelope'
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $decision.route | Should -Be 'review-stale'
+        $decision.render_boundary_packet | Should -BeFalse
+        Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
+    }
+
+    It 'fails closed when the working state changes after the one-time finalization fact is published' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-post-drift')
+        $store = Join-Path $TestDrive 'finalization-post-drift-store'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-post-drift'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final evidence'
+        $first = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $first.route | Should -Be 'boundary-finalized'
+
+        [IO.File]::WriteAllText((Join-Path $root 'specs/001-demo/iterations/007/review.md'), '# Uncommitted drift', [Text.UTF8Encoding]::new($false))
+        $blocked = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $blocked.route | Should -Be 'review-failure'
+        $blocked.reason | Should -Be 'review-finalization-invalid:current-state-not-finalization-commit'
+        $blocked.render_boundary_packet | Should -BeFalse
     }
 
     It 'fails closed when an active claim has no readable run state' {

@@ -951,7 +951,8 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   authority MUST use dependency-free, schema-versioned JSON facts organized by
   campaign and unique `run_id`. Lifecycle stages, results, validation,
   classification, grants, reservations, invocation/spend, pre-invocation release,
-  and claim-generation facts are created once using atomic no-overwrite
+  claim-generation, and the optional campaign review-finalization binding are
+  created once using atomic no-overwrite
   `CreateNew` semantics. Claims belong to run identities, not launcher/supervisor
   processes; released and abandoned generations are appended, never rewritten or
   deleted. Only a human may grant more allowance. Actual provider invocation spends
@@ -1105,13 +1106,26 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   packet** (the six-section re-entry packet with approval options and a
   `SPECREW-VERDICT-BOUNDARY` marker) MUST NOT be rendered while a REQUIRED
   co-review of the boundary's increment is pending/in-flight, or before
-  that review's reviewed-tree digest matches the EXACT current digest and
-  is clean or human-dispositioned. A blocked or superseded review attempt
+  that review is clean or human-dispositioned and its reviewed-tree digest
+  matches the EXACT current digest. One controller-owned carry-forward is
+  permitted only for a clean result: the current commit MUST have the reviewed
+  commit as its sole direct parent; its complete file-level diff MUST contain only the six
+  generated iteration review artifacts (`review.md`, `reviewer-index.md`,
+  `code-map.md`, `coverage-evidence.md`, `dependency-report.md`, and
+  `review-diagrams.md`); scripts, tests, state/plan/tasks, and all
+  specification/contract files are ineligible. The controller MUST validate
+  the parent/digest/current-state binding, then publish exactly one immutable
+  campaign fact `{run, reviewed digest, finalization commit}` through
+  `CreateNew` in the authority store outside the reviewed digest. A second
+  finalization, an envelope chain, any extra path/status, or later working-tree
+  movement fails closed. The gate MUST record and display both identities as
+  `reviewed at <commit>` and `finalized as <commit>`. A blocked or superseded review attempt
   MUST produce NO approval options and NO verdict-boundary marker. A human
   question genuinely needed DURING review MUST be a NARROW, non-boundary
   decision (no approval options, no marker), never a lifecycle verdict
-  packet. The boundary packet is rendered ONLY after the exact-current-
-  digest review evidence is clean or human-dispositioned. Bound to the
+  packet. The boundary packet is rendered ONLY after exact-current-digest
+  review evidence is clean or human-dispositioned, or after the single
+  validated clean-result finalization described above. Bound to the
   T019 in-flight/digest work (the reviewed-tree-digest acceptance gate) and
   the T030–T032 capture-integrity work so a blocked or superseded packet
   can NEVER be captured as authorization evidence. (Field incident: during

@@ -194,6 +194,108 @@ function Get-ContinuousCoReviewChainReachesAnchor {
     return [pscustomobject]@{ reached = $false; gap_at = 'chain-too-long' }
 }
 
+function Test-ReviewCampaignFinalizationEnvelope {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)]$Result,
+        [Parameter(Mandatory)]$Fact,
+        [Parameter(Mandatory)][string]$CurrentDigest,
+        [Parameter(Mandatory)][string]$FeatureId,
+        [Parameter(Mandatory)][string]$IterationNumber,
+        [string[]]$ExcludedPathPatterns = @()
+    )
+    $fail = {
+        param([string]$Reason)
+        [pscustomobject][ordered]@{
+            valid = $false; reason = $Reason; run_id = $null; reviewed_digest = $null
+            reviewed_commit = $null; finalization_commit = $null; changed_paths = @()
+        }
+    }
+    if ($FeatureId -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]*$' -or $IterationNumber -cnotmatch '^[0-9]{3}$') {
+        return & $fail 'scope-identity-invalid'
+    }
+    $factValidation = Test-ReviewAuthorityContractObject -ContractName ReviewFinalizationFact -InputObject $Fact -ExpectedCampaignId $CampaignId
+    if (-not $factValidation.valid) { return & $fail ('fact-' + $factValidation.category) }
+    $runId = [string]$Fact.run_id
+    $reviewedDigest = [string]$Fact.reviewed_digest
+    $finalizationCommit = [string]$Fact.finalization_commit
+    $resultValidation = Test-ReviewAuthorityContractObject -ContractName ReviewResult -InputObject $Result `
+        -ExpectedCampaignId $CampaignId -ExpectedRunId $runId -ExpectedTargetDigest $reviewedDigest
+    if (-not $resultValidation.valid) { return & $fail ('result-' + $resultValidation.category) }
+    if ([string]$Result.completion -cne 'complete' -or [string]$Result.verdict -cne 'pass' -or
+        [string]$Result.runtime_outcome -cne 'completed' -or -not [bool]$Result.termination_verified -or
+        [string]$Result.containment -cne 'verified' -or [string]$Result.currentness -cne 'current' -or
+        [string]$Result.validation -cne 'valid' -or -not [bool]$Result.can_approve_current) {
+        return & $fail 'result-not-clean-current-pass'
+    }
+
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $head = [string](@(& git -C $root rev-parse --verify 'HEAD^{commit}' 2>$null) | Select-Object -First 1)
+    if ($LASTEXITCODE -ne 0 -or $head.Trim() -cne $finalizationCommit) { return & $fail 'finalization-not-current-head' }
+    $parentLine = [string](@(& git -C $root rev-list --parents -n 1 $finalizationCommit 2>$null) | Select-Object -First 1)
+    if ($LASTEXITCODE -ne 0) { return & $fail 'finalization-commit-unresolvable' }
+    $parentParts = @($parentLine.Trim().Split(' ', [StringSplitOptions]::RemoveEmptyEntries))
+    if ($parentParts.Count -ne 2) { return & $fail 'finalization-parent-not-singular' }
+    $reviewedCommit = [string]$parentParts[1]
+    & git -C $root cat-file -e "$reviewedDigest^{tree}" 2>$null
+    if ($LASTEXITCODE -ne 0) { return & $fail 'reviewed-digest-unresolvable' }
+
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $worktreeReviewerPath = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $worktreeReviewerPath -PathType Leaf) {
+            try { . $worktreeReviewerPath } catch { $null = $_ }
+        }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewDigestRuntimeStripList' -ErrorAction SilentlyContinue) -or
+        -not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue) -or
+        -not (Get-Command -Name 'Test-ContinuousCoReviewDigestPathDenied' -ErrorAction SilentlyContinue)) {
+        return & $fail 'digest-policy-unavailable'
+    }
+    $stripPatterns = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($ExcludedPathPatterns)
+    try {
+        foreach ($machineryPath in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $root)) {
+            if ([string]::IsNullOrWhiteSpace([string]$machineryPath)) { continue }
+            $stripPatterns += [string]$machineryPath
+            $stripPatterns += ('{0}/**' -f [string]$machineryPath)
+        }
+    }
+    catch { return & $fail 'digest-policy-unavailable' }
+
+    foreach ($comparison in @(
+        @{ left = $reviewedDigest; right = $reviewedCommit; reason = 'reviewed-digest-not-parent-state' },
+        @{ left = $CurrentDigest; right = $finalizationCommit; reason = 'current-state-not-finalization-commit' }
+    )) {
+        $differences = @(& git -C $root -c core.quotepath=false diff --name-only --no-renames ([string]$comparison.left) ([string]$comparison.right) 2>$null)
+        if ($LASTEXITCODE -ne 0) { return & $fail ([string]$comparison.reason) }
+        foreach ($path in $differences) {
+            if (-not (Test-ContinuousCoReviewDigestPathDenied -Path ([string]$path).Replace('\', '/') -Denylist $stripPatterns)) {
+                return & $fail ([string]$comparison.reason)
+            }
+        }
+    }
+
+    $iterationRoot = "specs/$FeatureId/iterations/$IterationNumber"
+    $allowed = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($name in @('review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md')) {
+        $null = $allowed.Add("$iterationRoot/$name")
+    }
+    $changedPaths = [Collections.Generic.List[string]]::new()
+    $entries = @(& git -C $root -c core.quotepath=false diff-tree --no-commit-id --name-status --no-renames -r $reviewedCommit $finalizationCommit 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $entries.Count -eq 0) { return & $fail 'finalization-diff-empty-or-unresolvable' }
+    foreach ($entry in $entries) {
+        if ([string]$entry -cnotmatch '^(?<status>[AM])\t(?<path>.+)$') { return & $fail 'finalization-diff-status-denied' }
+        $path = [string]$Matches.path
+        if (-not $allowed.Contains($path)) { return & $fail ('finalization-path-denied:' + $path) }
+        $changedPaths.Add($path) | Out-Null
+    }
+    return [pscustomobject][ordered]@{
+        valid = $true; reason = 'valid'; run_id = $runId; reviewed_digest = $reviewedDigest
+        reviewed_commit = $reviewedCommit; finalization_commit = $finalizationCommit; changed_paths = @($changedPaths)
+    }
+}
+
 function New-ReviewCampaignVerdictPacketDecision {
     param(
         [Parameter(Mandatory)][string]$Route,
@@ -202,6 +304,9 @@ function New-ReviewCampaignVerdictPacketDecision {
         [string]$CampaignId,
         [string]$RunId,
         [string]$TargetDigest,
+        [string]$ReviewedDigest,
+        [string]$ReviewedCommit,
+        [string]$FinalizationCommit,
         [bool]$RenderBoundaryPacket = $false,
         [bool]$AskNarrowQuestion = $false,
         [string]$ImplementerAction = 'wait'
@@ -209,6 +314,7 @@ function New-ReviewCampaignVerdictPacketDecision {
     return [pscustomobject][ordered]@{
         schema_version = '1.0'; route = $Route; reason = $Reason; message = $Message
         campaign_id = $CampaignId; run_id = $RunId; target_digest = $TargetDigest
+        reviewed_digest = $ReviewedDigest; reviewed_commit = $ReviewedCommit; finalization_commit = $FinalizationCommit
         render_boundary_packet = $RenderBoundaryPacket; render_verdict_marker = $RenderBoundaryPacket
         ask_narrow_question = $AskNarrowQuestion; implementer_action = $ImplementerAction
     }
@@ -340,7 +446,58 @@ function Get-ReviewCampaignVerdictPacketDecision {
     }
     $results = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId)
     $dispositions = @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $StoreRoot -CampaignId $CampaignId)
-    return Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest ([string]$digest.tree_id) -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun -HumanDispositions $dispositions
+    $finalizationFact = Get-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $finalizationEnvelope = $null
+    $latestResult = $null
+    if ($orderedRunIds.Count -gt 0) {
+        $latestRunId = [string]$orderedRunIds[$orderedRunIds.Count - 1]
+        $latestResult = @($results | Where-Object { [string]$_.run_id -ceq $latestRunId } | Select-Object -First 1)
+        if ($latestResult.Count -gt 0) { $latestResult = $latestResult[0] } else { $latestResult = $null }
+    }
+    if ($null -ne $finalizationFact) {
+        if ($null -eq $latestResult) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-missing' -Message 'The one-time finalization fact has no matching latest campaign result; authority fails closed.' -CampaignId $CampaignId -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+        }
+        $finalizationEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $CampaignId -Result $latestResult `
+            -Fact $finalizationFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
+            -ExcludedPathPatterns $ExcludedPathPatterns
+        if (-not $finalizationEnvelope.valid) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('review-finalization-invalid:' + [string]$finalizationEnvelope.reason) -Message 'The one-time review finalization fact or its commit envelope is invalid; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationFact.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+        }
+    }
+    elseif ($null -eq $activeRun -and $null -ne $latestResult -and
+        [string]$latestResult.target_digest -cne [string]$digest.tree_id -and
+        [string]$latestResult.completion -ceq 'complete' -and [string]$latestResult.verdict -ceq 'pass' -and
+        [string]$latestResult.runtime_outcome -ceq 'completed' -and [bool]$latestResult.can_approve_current) {
+        $candidateFact = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = $CampaignId
+            run_id = [string]$latestResult.run_id; reviewed_digest = [string]$latestResult.target_digest
+            finalization_commit = [string](@(& git -C $root rev-parse --verify 'HEAD^{commit}' 2>$null) | Select-Object -First 1)
+        }
+        $candidateEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $CampaignId -Result $latestResult `
+            -Fact $candidateFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
+            -ExcludedPathPatterns $ExcludedPathPatterns
+        if ($candidateEnvelope.valid) {
+            Write-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -Fact $candidateFact | Out-Null
+            $finalizationFact = Get-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -CampaignId $CampaignId
+            $finalizationEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $CampaignId -Result $latestResult `
+                -Fact $finalizationFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
+                -ExcludedPathPatterns $ExcludedPathPatterns
+            if (-not $finalizationEnvelope.valid) { throw ('review-finalization-post-publish-invalid:' + [string]$finalizationEnvelope.reason) }
+        }
+    }
+    $decisionDigest = if ($null -ne $finalizationEnvelope) { [string]$finalizationEnvelope.reviewed_digest } else { [string]$digest.tree_id }
+    $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun -HumanDispositions $dispositions
+    if ($null -eq $finalizationEnvelope) { return $packet }
+    if ([string]$packet.route -cne 'boundary-clean') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-not-clean' -Message 'The finalization envelope is valid but its bound result is not an authorizing clean result; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+    }
+    $message = 'The authoritative campaign result reviewed commit {0} at digest {1}; the controller finalized its allowlisted review evidence exactly once as commit {2}.' -f `
+        [string]$finalizationEnvelope.reviewed_commit, [string]$finalizationEnvelope.reviewed_digest, [string]$finalizationEnvelope.finalization_commit
+    return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-finalized' -Reason 'complete-clean-finalized-result' -Message $message `
+        -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) `
+        -ReviewedDigest ([string]$finalizationEnvelope.reviewed_digest) -ReviewedCommit ([string]$finalizationEnvelope.reviewed_commit) `
+        -FinalizationCommit ([string]$finalizationEnvelope.finalization_commit) -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
 }
 
 function Get-ContinuousCoReviewSignoffGateDecision {
@@ -383,7 +540,7 @@ function Get-ContinuousCoReviewSignoffGateDecision {
             return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'campaign-review-state-invalid' -Message ('Campaign review authority could not be read safely: ' + $_.Exception.Message)
         }
         $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.render_boundary_packet) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
-        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'ask_narrow_question', 'implementer_action')) {
+        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'ask_narrow_question', 'implementer_action', 'reviewed_digest', 'reviewed_commit', 'finalization_commit')) {
             $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property
         }
         return $decision

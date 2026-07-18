@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-18
-**Post-Implementation Verification**: in progress — deterministic/hosted/live implementation evidence is green and T061 run 10 is clean for its exact snapshot, but canonical sync proved the required committed ledger moves the digest; DRIFT-198-I007-026 blocks review-signoff
+**Post-Implementation Verification**: in progress — the approved DRIFT-198-I007-026 envelope passes 40/40 focused tests, all 57 F-198 suites, scoped governance, and gap governance; commit/hosted CI and one fresh independent review remain
 
 ## Concern Review
 
@@ -63,4 +63,4 @@
 
 - `Overall Verdict: ready` records completed planning-time hardening. The separate fresh human verdict in `condition-a-human-authorization` authorizes Iteration 007 implementation but no provider invocation.
 - Runtime evidence for T030–T034b and T051–T061 is verified. T060 has live file-primary/native-containment evidence for Codex/macOS, Cursor/Windows, Antigravity/Windows, and Copilot/Linux; only the pinned clean runs approve their own snapshots, and Cursor is explicitly not claimed clean after free-credit exhaustion. The disabled barrier, campaign activation, local 57-suite registry, scoped governance, final hosted CI `29625537074`, and exact-commit preflight are green. T061 run 10 reviewed commit `fc1054b54badcfe2abded0203a1d785eeec0c59b` / digest `5fc6318a300afc654bb09d986d82c8c925506ed3` and returned complete/pass/current/valid evidence with verified containment/termination and zero findings. T034b/T059 deterministic compatibility does not substitute for live evidence.
-- DRIFT-198-I007-026 is an open campaign/signoff integration concern: another provider run alone cannot solve review-evidence self-reference because recording that run changes the digest again. DRIFT-198-I007-025 remains an explicitly deferred stop/capture-mechanism follow-up. The command-plan dependency is a separate feature-level slice, not a hidden deferral from this iteration.
+- DRIFT-198-I007-026 uses the maintainer-approved small controller-owned finalization envelope: direct parent, six-file deny-by-default review allowlist, one CreateNew campaign fact outside the digest, no chain/second envelope, and a gate-visible reviewed/finalized pair. Focused tests, all 57 F-198 suites in 682.2 seconds, scoped governance, and gap governance are green; commit/hosted CI and the single freshly authorized independent run remain. DRIFT-198-I007-025 remains an explicitly deferred stop/capture-mechanism follow-up. The command-plan dependency is a separate feature-level slice, not a hidden deferral from this iteration.

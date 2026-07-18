@@ -31,6 +31,13 @@ Describe 'Immutable review authority JSON store (T045)' {
                 ended_at = '2026-07-16T00:00:01Z'; duration_ms = 1000
             }
         }
+        function script:New-StoreFinalization {
+            param([string]$Campaign = 'cmp-demo', [string]$Run = 'run-one', [string]$Digest = ('a' * 40), [string]$Commit = ('b' * 40))
+            [pscustomobject][ordered]@{
+                schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = $Campaign
+                run_id = $Run; reviewed_digest = $Digest; finalization_commit = $Commit
+            }
+        }
         function script:Start-EncodedPwsh {
             param([Parameter(Mandatory)][string]$Command)
             $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Command))
@@ -89,6 +96,22 @@ Describe 'Immutable review authority JSON store (T045)' {
         $one.path | Should -Match ([regex]::Escape("runs${separator}run-one"))
         $two.path | Should -Match ([regex]::Escape("runs${separator}run-two"))
         (Read-ReviewAuthorityFactFile -Path $one.path -ContractName ReviewResult).findings.Count | Should -Be 0
+    }
+
+    It 'publishes one campaign finalization with CreateNew and rejects a second envelope' {
+        $store = Join-Path $TestDrive 'one-finalization'
+        $fact = New-StoreFinalization
+        $first = Write-ReviewCampaignFinalizationFact -StoreRoot $store -Fact $fact
+        $first.created | Should -BeTrue
+        $replay = Write-ReviewCampaignFinalizationFact -StoreRoot $store -Fact $fact
+        $replay.created | Should -BeFalse
+        $replay.idempotent | Should -BeTrue
+
+        { Write-ReviewCampaignFinalizationFact -StoreRoot $store -Fact (New-StoreFinalization -Run run-two -Commit ('c' * 40)) } |
+            Should -Throw -ExpectedMessage '*review-store-corruption:conflicting-immutable-fact*'
+        $persisted = Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId cmp-demo
+        $persisted.run_id | Should -Be 'run-one'
+        $persisted.finalization_commit | Should -Be ('b' * 40)
     }
 
     It 'makes claim ownership a run identity with append-only generations, never a process handoff' {

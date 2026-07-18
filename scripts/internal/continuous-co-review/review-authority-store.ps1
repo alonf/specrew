@@ -66,7 +66,8 @@ function Write-ReviewAuthorityImmutableFact {
         [Parameter(Mandatory)]$Fact,
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
+            'ReviewFinalizationFact'
         )][string]$ContractName,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
@@ -104,7 +105,8 @@ function Read-ReviewAuthorityFactFile {
         [Parameter(Mandatory)][string]$Path,
         [ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
+            'ReviewFinalizationFact'
         )][string]$ContractName,
         [int]$MaxBytes = 1048576
     )
@@ -320,6 +322,36 @@ function Get-ReviewCampaignHumanDispositionFacts {
         $facts.Add($fact) | Out-Null
     }
     return @($facts)
+}
+
+function Write-ReviewCampaignFinalizationFact {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)]$Fact
+    )
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+    $reviewedDigest = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'reviewed_digest')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + '/finalization.json'
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact `
+        -ContractName ReviewFinalizationFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId -ExpectedTargetDigest $reviewedDigest
+}
+
+function Get-ReviewCampaignFinalizationFact {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId
+    )
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/finalization.json'
+    $path = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $fact = Read-ReviewAuthorityFactFile -Path $path -ContractName ReviewFinalizationFact
+    if ([string]$fact.campaign_id -cne $CampaignId) {
+        throw 'review-store-corruption:finalization-path-identity-mismatch'
+    }
+    return $fact
 }
 
 function Get-ReviewRunAuthorityFact {

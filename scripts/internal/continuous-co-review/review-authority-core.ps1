@@ -234,7 +234,8 @@ function Test-ReviewAuthorityContractObject {
     param(
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
+            'ReviewFinalizationFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -255,6 +256,7 @@ function Test-ReviewAuthorityContractObject {
         'ReleaseFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'reason', 'observed_at') }
         'ClaimFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_lineage', 'generation', 'disposition', 'observed_at') }
         'HumanDispositionFact' { @('schema_version', 'fact_type', 'disposition_id', 'campaign_id', 'run_id', 'target_digest', 'decision', 'authority_kind', 'authorized_by', 'authorization_ref', 'rationale', 'observed_at') }
+        'ReviewFinalizationFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'reviewed_digest', 'finalization_commit') }
         'RecoveryFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'target_lineage',
             'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',
@@ -355,6 +357,17 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'rationale' -Errors $errors -MaxLength 2000
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
         }
+        'ReviewFinalizationFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 32 -Enum @('review-finalization')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'reviewed_digest' -Errors $errors -MaxLength 64
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'finalization_commit' -Errors $errors -MaxLength 64
+            foreach ($name in @('reviewed_digest', 'finalization_commit')) {
+                $value = [string](Get-ReviewAuthorityProperty -Object $InputObject -Name $name)
+                if (-not [string]::IsNullOrWhiteSpace($value) -and $value -cnotmatch '^[0-9a-f]{40,64}$') {
+                    Add-ReviewAuthorityError -Errors $errors -Message "invalid-git-object-id:$name"
+                }
+            }
+        }
         'RecoveryFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('recovery')
             Test-ReviewAuthorityIdField -Object $InputObject -Name 'target_lineage' -Kind lineage -Errors $errors
@@ -439,10 +452,11 @@ function Test-ReviewAuthorityContractObject {
         }
     }
 
+    $digestIdentityField = if ($ContractName -ceq 'ReviewFinalizationFact') { 'reviewed_digest' } else { 'target_digest' }
     foreach ($join in @(
         @{ field = 'campaign_id'; expected = $ExpectedCampaignId },
         @{ field = 'run_id'; expected = $ExpectedRunId },
-        @{ field = 'target_digest'; expected = $ExpectedTargetDigest }
+        @{ field = $digestIdentityField; expected = $ExpectedTargetDigest }
     )) {
         if (-not [string]::IsNullOrWhiteSpace([string]$join.expected) -and
             [string](Get-ReviewAuthorityProperty -Object $InputObject -Name $join.field) -cne [string]$join.expected) {
@@ -463,7 +477,8 @@ function Test-ReviewAuthorityContractJson {
     param(
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact',
+            'RecoveryFact', 'ReviewFinalizationFact'
         )][string]$ContractName,
         [Parameter(Mandatory)][AllowEmptyString()][string]$Json,
         [int]$MaxBytes = 262144,
