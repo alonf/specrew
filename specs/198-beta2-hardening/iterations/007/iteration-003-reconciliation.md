@@ -26,7 +26,7 @@ No Iteration 007 task may import a legacy lease/result as campaign authority, mu
 | T030 | planned/pending | Carry at 0.75 SP | Machinery/hook turns cannot become human verdict evidence. |
 | T031 | planned/pending | Carry at 0.5 SP | Tokenizer, temporal ordering, and cursor invariants remain live capture-integrity work. |
 | T032 | planned/pending | Carry at 0.5 SP | Exact 2026-07-11 fabrication sequence remains the deterministic acceptance fixture. |
-| T033 | done; independent T061 verification pending | Delivered at 1.0 SP | Append-only correction/invalidation is the explicit IA-006-04 vehicle for `DRIFT-198-I006-001`; two historical misuse episodes are corrected by exact entry/crossing identity, raw history is retained, and no quiet matcher point-fix was made. |
+| T033 | done; independently verified by clean T061 run 10 | Delivered at 1.0 SP | Append-only correction/invalidation is the explicit IA-006-04 vehicle for `DRIFT-198-I006-001`; two historical misuse episodes are corrected by exact entry/crossing identity, raw history is retained, and no quiet matcher point-fix was made. |
 | T034b | strict-resolution code integrated; final live compatibility pending | Carry only the 0.5 SP residual | Do not cherry-pick again. Prove the landed physical-containment and strict design-context behavior through the production campaign adapters/live path. |
 
 The source Iteration 003 plan/state/progress files remain historical execution records. Iteration 007 does not rewrite them during planning; the feature-level task artifact will record the ownership move after the plan-to-tasks verdict.

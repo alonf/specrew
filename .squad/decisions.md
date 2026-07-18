@@ -19476,6 +19476,20 @@ User explicitly authorized review-signoff entry for Feature 039 Iteration 001. R
 - **Agent Response Snippet**: (none)
 - **Reason**: Persisted authorization matched the requested boundary.
 
+## 2026-07-18T07:48:40Z — Defer Iteration 007 stop/capture selection repair
+
+- **Decision ID**: defer-198-i007-025
+- **Type**: defer
+- **Affected Requirement**: FR-041
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\007
+- **Approving Human**: Alon
+- **Recorded At**: 2026-07-18T07:48:40Z
+- **Next Action**: Plan a later stop/capture-mechanism repair with paired injected-environment-context and instruction-bearing-verdict fixtures.
+- **Rationale**: The maintainer explicitly directed that the awkward stop mechanism be fixed later, after completing the Mac and review tests. The review-signoff incident is preserved as DRIFT-198-I007-025; it does not alter the independently reviewed implementation tree and must not trigger a quiet point-fix during this boundary.
+
+- **Affected Artifact**: specs\198-beta2-hardening\iterations\007\review.md
+- **Authorization Evidence**: Maintainer instruction: `we need later to fix the stop mechanism to not make it awkward to have a direct and smooth discussion`.
+
 ## 2026-05-22T17:29:22Z — Boundary sync warning: review-signoff
 
 - **Boundary Type**: review-signoff

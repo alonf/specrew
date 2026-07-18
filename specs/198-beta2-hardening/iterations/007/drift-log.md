@@ -4,22 +4,22 @@
 
 ## Summary
 
-**Total local drift events**: 11
-**Resolution rate**: 100% (11/11 resolved in code; clean live verification pending for event 011, while Cursor proof is externally quota-blocked)
-**Specification drift**: Local dogfood findings are resolved without changing approved product scope
+**Total drift events**: 26 (one inherited event plus 25 Iteration 007 events)
+**Resolution rate**: 96.2% (25/26 resolved for Iteration 007 scope; DRIFT-198-I007-025 is explicitly deferred to the later stop/capture-mechanism repair)
+**Specification drift**: Product scope is unchanged; final T061 run 10 independently verifies the implementation, while the capture-selection follow-up and the separate FR-048/FR-049/SC-015 Beta2 slice remain explicit
 
 ## Inherited Open Drift
 
 ### DRIFT-198-I006-001 — boundary authorization matcher is not iteration-scoped
 
-- **Status**: scoped correction delivered and locally verified; independent T061 verification pending
+- **Status**: resolved for Iteration 007 scope; final T061 run 10 is clean, while broader matcher redesign remains an explicit engine backlog item
 - **Severity**: critical
 - **Authority constraint**: Iteration 007 must not rely on the stale global ledger entry. Every boundary uses a fresh scoped human verdict against the current boundary commit.
 - **Disposition**: T033 implements the FR-044 append-only correction/invalidation door and makes every effective-state reader honor the correction. Prior events remain immutable.
 - **Scope guard**: no quiet matcher point-fix is authorized inside adapter/runtime tasks. A matcher redesign beyond the correction door requires a scoped amendment or engine backlog decision.
 - **Gate-episode addendum**: the pending-verdict generator fabricated “tasks committed / in-progress” from stale `session_state`; two sessions rendered divergent option numbering for the same crossing; and a `1 = approved` alias made a bare-number reply unsafe. The authoritative addendum is recorded in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/drift-log.md and is binding T033 acceptance evidence.
 - **Scoped transition evidence**: on 2026-07-16 the maintainer explicitly wrote `approved for before-implement` against task-boundary commit `d9cdd16457e322628957ea74de959a5457358852`. That exact phrase/commit pair authorizes Iteration 007 execution; the global matcher and boundary synchronizer were not used.
-- **Correction evidence**: T033 appended `correction-73ccb3f6407aabe32dadc7781e2acd3513ce4f466cad2f0def1a05c2b124eca9` for the old `plan -> tasks` entry at Iteration 006 commit/tree `4aedb0268f550c5c78e3b9bf19dfc16583c21cc8`/`0199418cc1ed12cd2ec1081fecc8b23b9d0ad714`, and `correction-6283109f289f3491db9baa23a5e9b8cb9619adfb9c490b753d70e98d9824fcde` for the old `tasks -> before-implement` entry at `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`/`2f8e6f7ef0f2601fdd62ff424ce9a3e5fa6333b6`. Raw verdict history remains intact, current authority remains `before-implement`, and T061 retains independent verification responsibility.
+- **Correction evidence**: T033 appended `correction-73ccb3f6407aabe32dadc7781e2acd3513ce4f466cad2f0def1a05c2b124eca9` for the old `plan -> tasks` entry at Iteration 006 commit/tree `4aedb0268f550c5c78e3b9bf19dfc16583c21cc8`/`0199418cc1ed12cd2ec1081fecc8b23b9d0ad714`, and `correction-6283109f289f3491db9baa23a5e9b8cb9619adfb9c490b753d70e98d9824fcde` for the old `tasks -> before-implement` entry at `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`/`2f8e6f7ef0f2601fdd62ff424ce9a3e5fa6333b6`. Raw verdict history remains intact. Final T061 run 10 reviewed the current exact digest with zero findings; the global matcher is still not used as sole closeout authority and any redesign remains backlog work.
 
 ## Events
 
@@ -167,7 +167,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-015 — test README advertised a non-isolated legacy-inclusive glob as the release gate
 
-- **Status**: corrected; final hosted re-verification pending
+- **Status**: resolved and independently re-reviewed; final hosted CI and T061 run 10 are green
 - **Severity**: minor verification-documentation defect
 - **Requirements**: NFR-002, NFR-007
 - **Evidence**: an exploratory `Invoke-Pester -Path tests/continuous-co-review` run in the implementation worktree returned 27 failures. A repeat from a clean detached checkout of `4a85901a` captured 89 containers / 816 passed / 26 failed / 10 skipped. Every failure belonged to retained pre-campaign legacy suites or stale non-gating assertions outside `tests/f198-regression-suite.ps1`; campaign-dependent cases reported the expected fail-closed `campaign-review-state-invalid` or legacy-advisory behavior. The explicit 57-suite registry remained green because it names the current release contracts and isolates every suite in a fresh process.
@@ -177,7 +177,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-016 — public campaign target used the long Windows temp prefix
 
-- **Status**: corrected; exact-commit and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed; exact-commit evidence, hosted CI, and T061 run 10 are green
 - **Severity**: major public-command/pre-spend defect
 - **Requirements**: FR-057, FR-059, FR-061, FR-063, FR-064, SC-018, SC-019, NFR-007
 - **Evidence**: commit `8150a74f53f0461c3a4eb24cf959e4558cdf99be` / digest `7ec05cd11014fc41287518d011ce4c7caf60fceb` passed all local gates, exact clean preflight, and hosted CI `29615754989`. T061 run `run-t061-claude-windows-8150a74f-02` then failed before provider invocation while `git read-tree -u` created the disposable snapshot under `C:\Users\alon\AppData\Local\Temp\specrew-review-targets\...`; deeply nested tracked fixtures exceeded Windows path limits. The controller published immutable `preflight-failed`, `invoked=false`, `termination_verified=true` evidence after 19.8 seconds. Claude was never launched and the fresh authorization slot was not spent.
@@ -187,7 +187,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-017 — short-root policy was duplicated and lacked a portable override/fallback
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: minor integration/portability defect with two advisory edge cases
 - **Requirements**: FR-057, FR-059, FR-061, FR-063, FR-064, SC-018, SC-019, NFR-007
 - **Evidence**: exact-digest Claude run `run-t061-claude-windows-2db52891-03` invoked once against commit `2db52891d946ed94a98d181bf0b4edcea683ba6c` / digest `4bd751edd91d406c44fa0c60b681aa32fdd348e9`, completed under verified Job Object containment and currentness, and published one minor plus two note findings. It found that the public reconciliation call still directly constructed the old default target port; a repository at a drive root produced an undiagnostic empty-parent binding error; and an unwritable repository parent had no public override or temp fallback. The run remains immutable and non-approving.
@@ -197,7 +197,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-018 — root probe cleanup race and Windows fallback identity/path length
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: minor integration defect with two advisory portability findings
 - **Requirements**: FR-057, FR-059, FR-061, FR-063, FR-064, SC-018, SC-019, NFR-007
 - **Evidence**: exact-digest Claude run `run-t061-claude-windows-fb2998d9-04` invoked once against commit `fb2998d91a24607258557b380738570ff7d72a4c` / digest `66c219790e35b74157a04790d795bf3e69777dfa`, completed under verified Job Object containment and currentness, and published one minor plus two note findings. A successful writability probe could be misclassified if it tried to delete a just-created shared root while a concurrent run populated it; the Windows fallback reintroduced the known long AppData temp prefix; and repository tokens/candidate dedup did not mirror Windows case-insensitive path identity. The run remains immutable and non-approving.
@@ -207,7 +207,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-019 — hosted Windows username exhausted fallback path headroom
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: minor deterministic path-budget defect
 - **Requirements**: FR-059, FR-061, FR-064, SC-018, SC-019, NFR-007
 - **Evidence**: hosted run `29619383315` passed every job except the Windows deterministic review job. Its new current-tree fallback guard calculated exactly 260 characters under `C:\Users\runneradmin`, while the same path was 248 under local user `alon`; the strict `< 260` assertion failed before any provider invocation. All other Windows review suites passed up to that guard, and Ubuntu/macOS were green.
@@ -217,7 +217,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-020 — fallback test leakage and retained-root documentation
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: minor test-hygiene defect with three documentation/maintenance notes
 - **Requirements**: FR-057, FR-059, FR-064, SC-018, NFR-002, NFR-007
 - **Evidence**: exact-digest Claude run `run-t061-claude-windows-067dbe10-05` invoked once against commit `067dbe108d382bb41255fa9f0146beb2d3ab1ac0` / digest `6cb5ceab53835a7ba7ac2055cd2098ac03b80910`, completed under verified Job Object containment and currentness, and published one minor plus three note findings. The fallback unit test created a unique real-home namespace per TestDrive run without cleanup; a production comment inaccurately said “user temp” on Windows; `$profile` shadowed PowerShell's automatic `$PROFILE`; and the intentional one-root-per-repository retention policy was undocumented. The run remains immutable and non-approving.
@@ -227,7 +227,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-021 — fallback margin and retained legacy-root hygiene
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: minor forward-risk with two advisory hygiene findings
 - **Requirements**: FR-057, FR-059, FR-061, FR-064, SC-018, SC-019, NFR-002, NFR-007
 - **Evidence**: exact-digest Claude run `run-t061-claude-windows-4bc832b9-06` invoked once against commit `4bc832b927fc9f1047d1900147dacdbf8c46323e` / digest `8a08b74e28bd4ceb842670eea16fe2060289615e`, completed under verified Job Object containment/currentness, and published one minor plus two note findings. The Windows guard fit the current hosted profile and tree with only several characters of margin; failed file probes retained candidate roots without stating that policy; and intermediate 20-hex AppData/user-profile namespaces had no cleanup guidance. The run remains immutable and non-approving.
@@ -237,7 +237,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-022 — GUID fixed bits overstated workspace-token entropy
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: note-level claim accuracy
 - **Requirements**: FR-059, FR-064, SC-018, NFR-007
 - **Evidence**: exact-digest Claude run `run-t061-claude-windows-d4664736-07` invoked once against commit `d4664736fc405be3442946dec6144a800cf9081a` / digest `62285e6f4355aa40c58b129396b99bfd4b5679ef`, completed under verified Job Object containment/currentness, and published one note. Twelve selected v4 GUID bytes include six fixed version/variant bits, so the correction's 96-random-bit claim was inaccurate even though collision probability remained negligible and collisions fail closed. The run remains immutable and non-approving.
@@ -247,7 +247,7 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-023 — collision cleanup could delete an unowned workspace
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: note-level robustness/claim accuracy
 - **Requirements**: FR-059, FR-061, FR-064, SC-018, SC-019, NFR-007
 - **Evidence**: exact-digest Claude run `run-t061-claude-windows-dcb42d56-08` invoked once against commit `dcb42d569ffd49b383c691911ffa51efaa24ce0c` / digest `7836b1219810361c26dbafc98faa3d8ceeccac39`, completed under verified Job Object containment/currentness, and published one note. If the compact token collided with an existing directory, `git worktree add` failed and the not-added catch branch recursively deleted that path, contradicting the previous fail-closed claim. Collision probability remained negligible, but repository mutation authority does not permit deleting an unowned reviewer workspace. The run remains immutable and non-approving.
@@ -257,10 +257,24 @@ T059's fake-provider workflow remains green on hosted Windows, Ubuntu, and macOS
 
 ### DRIFT-198-I007-024 — failed-add race was guarded by prose rather than behavior
 
-- **Status**: corrected; deterministic and hosted re-verification pending
+- **Status**: resolved and independently re-reviewed by final T061 run 10
 - **Severity**: note-level regression-coverage gap
 - **Requirements**: FR-059, FR-061, FR-064, SC-018, SC-019, NFR-007
 - **Evidence**: exact-digest Claude run `run-t061-claude-windows-41b1b048-09` invoked once against commit `41b1b048f8dcd1af5d344d88099104b398d32784` / digest `e847197c371f767b079a2255c0bb7fac6644b587`, completed under verified Job Object containment/currentness, and published one note. The collision fixture covered a directory present before snapshot creation, while the after-precheck/failed-add branch was protected only by a source-comment regex. Reintroducing destructive cleanup without deleting the comment would have left the suite green. The run remains immutable and non-approving.
 - **Drift classification**: `test`. Production behavior was fail-closed, but the NFR-bound claim lacked a paired executable fixture for the race-specific branch.
 - **Correction**: a deterministic fixture fixes the workspace token, intercepts only `git worktree add`, creates a racing-run sentinel at the would-be workspace, returns a synthetic nonzero add result, and verifies the named failure preserves both directory and sentinel. The comment-text assertion is removed; behavior is the authority.
 - **Closure evidence**: the combined collision-race/target/public-policy/T060 set passes 36/36, all 57 registered F-198 suites pass in 701.2 seconds, and scoped Iteration 007 governance passes with historical warnings only. Hosted CI, exact snapshot/preflight, and another clean Claude run remain required against the committed correction.
+
+## Final T061 Closure Evidence for DRIFT-198-I007-015 Through DRIFT-198-I007-024
+
+The final correction tree is commit `fc1054b54badcfe2abded0203a1d785eeec0c59b` with canonical reviewed-state digest `5fc6318a300afc654bb09d986d82c8c925506ed3`. All 57 registered F-198 suites passed in 701.2 seconds, exact no-spend preflight passed, scoped governance passed, and hosted three-OS CI run `29625537074` completed successfully at that exact commit. T061 run `run-t061-claude-windows-fc1054b5-10` invoked once under authorization `human-grant-t061-claude-windows-20260718-slot-10`, completed in 320563 ms, preserved currentness and target integrity, verified Job Object containment/termination, and published a complete/pass/current/valid result with zero findings and `can_approve_current=true`. This independently closes the pending re-verification clauses in events 015–024; no earlier result is promoted and every prior attempt remains immutable.
+
+### DRIFT-198-I007-025 — review-signoff capture selected injected environment context and rejected the instruction-bearing verdict
+
+- **Status**: deferred by explicit maintainer direction to the later stop/capture-mechanism repair; review-signoff authority was recovered through the documented second-chance writer
+- **Severity**: moderate authorization-capture/integration defect
+- **Requirements**: FR-041, FR-042, FR-044, FR-045, NFR-007
+- **Evidence**: the maintainer explicitly wrote `approved for review-signoff — include the complete T061 attempt-and-slot ledger (all runs, provider invocations, slot spend, outcomes) in the Iteration 007 review evidence, matching the Iteration 006 precedent.` The standard provider-hook capture selected the later injected `<environment_context>` user-role turn as the first post-marker candidate and reported `not-approval:none`. Feeding the complete instruction-bearing human text to the narrow tokenizer was also rejected as unrecognized. Neither failure changed the reviewed repository tree or invoked a provider.
+- **Drift classification**: `implementation/integration`. Machinery-turn exclusion exists, but this injected environment-context shape was not classified as ineligible for boundary evidence; the narrow verdict parser also does not normalize an explicit approval followed by binding instructions.
+- **Scoped disposition**: do not quiet-point-fix the stop/capture machinery while closing the independently reviewed trust architecture. Persist the normalized verdict `approved for review-signoff` through `Add-SpecrewBoundaryAuthorization` with evidence source `human-confirmed-at-resume`, retaining the full instruction in `state.md` and `review.md`. This produced authorization `auth-b3798462c3b2dd39a2ea71ec52f6b1b1ef14030a5976e91fa39b1d975a5b4317`, and the scoped authorization check passes for the exact crossing.
+- **Follow-up**: the later mechanism-repair slice must add paired fixtures for injected environment-context selection and explicit approval followed by instructions, while preserving machinery exclusion, exact boundary binding, and bare-number rejection. This is retrospective/backlog input, not authority to change runtime code inside this review-signoff boundary.
