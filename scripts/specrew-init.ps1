@@ -17,6 +17,11 @@ param(
     [Alias('brownfield-bootstrap-commit')]
     [ValidateSet('offer', 'decline')]
     [string]$BrownfieldBootstrapCommit = 'offer',
+    [Alias('release-model')]
+    [ValidateSet('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')]
+    [string]$ReleaseModel = 'auto',
+    [Alias('publish-target')]
+    [string]$PublishTarget,
     [switch]$SkipUpdateCheck,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -278,6 +283,34 @@ for ($cliIndex = 0; $cliIndex -lt $cliArguments.Count; $cliIndex++) {
 
             $cliIndex++
             $BrownfieldBootstrapCommit = $cliArguments[$cliIndex]
+            continue
+        }
+        '^--release-model=(auto|local-only|push-only|pr-flow|beta-stable)$' {
+            $ReleaseModel = $Matches[1]
+            continue
+        }
+        '^--release-model$' {
+            if (($cliIndex + 1) -ge $cliArguments.Count -or $cliArguments[$cliIndex + 1] -notin @('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')) {
+                Write-Error '--release-model requires auto, local-only, push-only, pr-flow, or beta-stable.'
+                exit 3
+            }
+
+            $cliIndex++
+            $ReleaseModel = $cliArguments[$cliIndex]
+            continue
+        }
+        '^--publish-target=(.+)$' {
+            $PublishTarget = $Matches[1]
+            continue
+        }
+        '^--publish-target$' {
+            if (($cliIndex + 1) -ge $cliArguments.Count -or [string]::IsNullOrWhiteSpace($cliArguments[$cliIndex + 1])) {
+                Write-Error '--publish-target requires a value.'
+                exit 3
+            }
+
+            $cliIndex++
+            $PublishTarget = $cliArguments[$cliIndex]
             continue
         }
         '^--skip-update-check$' {
@@ -777,6 +810,14 @@ if ($specifySurfaceReady) {
 else {
     Add-Action -Actions $actions -Step 'spec-kit-extension' -Outcome 'skipped: .specify is absent in brownfield workspace'
 }
+
+Write-Step 'Recording the repository release model'
+$releaseModelSetup = Initialize-SpecrewReleaseModelRecord `
+    -ProjectRoot $resolvedProjectPath `
+    -RequestedModel $ReleaseModel `
+    -PublishTarget $PublishTarget `
+    -PreviewOnly:$DryRun
+Add-Action -Actions $actions -Step 'release-model' -Outcome ("{0}: {1} ({2}; source={3})" -f $releaseModelSetup.Action, $releaseModelSetup.Record.Model, $releaseModelSetup.Record.Provenance, $releaseModelSetup.Record.Source)
 
 Write-Step 'Deploying bundled project templates'
 Invoke-BundledTemplateDeployment `

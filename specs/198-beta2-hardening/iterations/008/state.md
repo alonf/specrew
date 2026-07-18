@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T026 announced greenfield bootstrap commit and brownfield offer
-**Tasks Remaining**: T027, T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T027 release-model resolver and applicable closeout teaching
+**Last Completed Task**: T027 release-model resolver and applicable closeout teaching
+**Tasks Remaining**: T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T028 consumer deny checks, prompt fixture, and applicability firewall
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T23:22:34Z
+**Updated**: 2026-07-18T23:40:37Z
 
 ## Planning Authorization
 
@@ -130,9 +130,17 @@
   history and writes a structured offered/declined record instead, with an explicit CLI decline surface. Real-Git
   fixtures prove the exact subject, clean greenfield state, no brownfield HEAD movement, durable decline, dry-run
   non-mutation, production wiring, and adjacent local-host/file-list behavior.
+- T027 records one closed release model in repository governance, preferring an existing record and otherwise
+  resolving explicit init selection, publish target, configured forge, generic remote, then local-only. The launch
+  contract renders model-specific agent/human actions plus named N/A reasons; only `beta-stable` receives the
+  prerelease-to-stable chain. Local, push, PR, publish-target, invalid, dry-run, quote, record-once, schema, production
+  wiring, lifecycle, and seven mirrored-surface fixture groups pass, as do the updated legacy closeout and launch
+  contract suites. The broad changed-only governance run exceeded its 120-second local bound without output; T066
+  retains the bounded full-governance obligation rather than treating that timeout as a pass.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T027 executes next to resolve the repository's actual release model and render only applicable closeout steps.
+- T028 executes next to extend the consumer deny list and prove prompt/applicability behavior across heterogeneous
+  projects.
 
 ## Notes
 

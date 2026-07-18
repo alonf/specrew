@@ -200,6 +200,10 @@ Options:
   -NoAgents | --no-agents Disable optional delegated agents. The launch host stays as selected via `specrew start --host <kind>`
   -BrownfieldBootstrapCommit | --brownfield-bootstrap-commit <offer|decline>
                          Record the brownfield scaffold baseline offer (default) or its explicit decline; never auto-commits brownfield history
+  -ReleaseModel | --release-model <auto|local-only|push-only|pr-flow|beta-stable>
+                         Record once at init; auto infers from publish target, forge, remote, or local-only fallback
+  -PublishTarget | --publish-target <name>
+                         Publish destination; with auto selects beta-stable, or accompanies explicit beta-stable
   -SkipUpdateCheck | --skip-update-check
                          Skip the PSGallery latest-version check for this run
   -Help | --help          Show usage

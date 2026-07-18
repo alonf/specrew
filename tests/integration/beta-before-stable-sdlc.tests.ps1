@@ -65,39 +65,12 @@ function Assert-FeatureCloseoutSdlcSurface {
     Assert-Match -Text $content -Pattern '(?is)AGENT NEXT ACTION:' -Message "$Label is missing AGENT NEXT ACTION ownership row."
     Assert-Match -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:' -Message "$Label is missing HUMAN ACTION NEEDED ownership row."
 
-    $stepChecks = @(
-        @{ Step = 5;  Pattern = '(?is)Step\s+5\b.{0,240}push' },
-        @{ Step = 6;  Pattern = '(?is)Step\s+6\b.{0,240}(gh\s+pr\s+create|open\s+a\s+PR|create\s+PR)' },
-        @{ Step = 7;  Pattern = '(?is)Step\s+7\b.{0,280}(self-review|automated\s+PR\s+review|review)' },
-        @{ Step = 8;  Pattern = '(?is)Step\s+8\b.{0,240}merge' },
-        @{ Step = 9;  Pattern = '(?is)Step\s+9\b.{0,280}(beta\.1|-beta\.N|beta\s+tag|prerelease\s+tag)' },
-        @{ Step = 10; Pattern = '(?is)Step\s+10\b.{0,320}(Find-Module|AllowPrerelease|verify.{0,80}prerelease|prerelease.{0,80}published)' },
-        @{ Step = 11; Pattern = '(?is)Step\s+11\b.{0,360}(PASS|FAIL).{0,240}(Install-Module|AllowPrerelease|manual\s+test|clean\s+shell)' },
-        @{ Step = 12; Pattern = '(?is)Step\s+12\b.{0,360}(FAIL|failed).{0,240}(beta\.2|beta\.N|repeat|loop)' },
-        @{ Step = 13; Pattern = '(?is)Step\s+13\b.{0,360}(PASS|stable).{0,240}(stable|v<next-version>|publish)' },
-        @{ Step = 14; Pattern = '(?is)Step\s+14\b.{0,240}(stop|new\s+feature)' }
-    )
+    Assert-Match -Text $content -Pattern '(?is)(resolved release-model|resolved feature-closeout|recorded release model)' -Message "$Label does not route closeout through the resolved release model."
+    Assert-Match -Text $content -Pattern '(?is)(N/A|non-N/A|applicable)' -Message "$Label does not preserve applicability or named N/A behavior."
+    Assert-Match -Text $content -Pattern '(?is)beta-stable' -Message "$Label does not scope staged release teaching to beta-stable projects."
+    Assert-NotMatch -Text $content -Pattern "(?is)Specrew's own instantiation|Find-Module\s+Specrew|Install-Module\s+Specrew|gh\s+pr\s+create" -Message "$Label still embeds Specrew-specific delivery instructions."
 
-    $lastIndex = -1
-    foreach ($check in $stepChecks) {
-        $match = [regex]::Match($content, $check.Pattern)
-        if (-not $match.Success) {
-            Write-Fail ("{0} is missing feature-closeout SDLC Step {1}." -f $Label, $check.Step)
-        }
-        if ($match.Index -lt $lastIndex) {
-            Write-Fail ("{0} feature-closeout SDLC Steps are out of order. Step {1} match index ({2}) is before previous step match index ({3})." -f $Label, $check.Step, $match.Index, $lastIndex)
-        }
-        $lastIndex = $match.Index
-    }
-
-    $humanSectionPattern = '(?is)HUMAN ACTION NEEDED:.{0,900}'
-    Assert-Match -Text $content -Pattern "${humanSectionPattern}(approve|approval)" -Message "$Label human row must ask for approval, not execution."
-    Assert-Match -Text $content -Pattern "${humanSectionPattern}(PASS|FAIL)" -Message "$Label human row must ask for the Step 11 PASS/FAIL verdict."
-    Assert-Match -Text $content -Pattern '(?is)Step\s+9\b.{0,420}(PASS-candidate|looping)' -Message "$Label Step 9 must tag the merge commit or the PASS-candidate fix commit if looping."
-    Assert-Match -Text $content -Pattern '(?is)Step\s+13\b.{0,420}PASS-validated\s+commit' -Message "$Label Step 13 must tag the PASS-validated commit, not an earlier failed-beta commit."
-    Assert-NotMatch -Text $content -Pattern "${humanSectionPattern}push\s+the\s+branch,\s*open\s+a\s+PR,\s*address\s+automated\s+PR\s+review,\s*then\s+merge" -Message "$Label still assigns agent-owned push/PR/merge work to the human row."
-
-    Write-Pass "$Label contains split agent/human ownership and Steps 5-14."
+    Write-Pass "$Label delegates feature closeout to the resolved model with split ownership and applicability."
 }
 
 function Assert-ReleaseDisciplineDocumentation {

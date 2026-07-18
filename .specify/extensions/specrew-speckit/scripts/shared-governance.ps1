@@ -19,6 +19,193 @@ function Resolve-ProjectPath {
     return [System.IO.Path]::GetFullPath((Join-Path -Path $cwd -ChildPath $Path))
 }
 
+function Get-SpecrewReleaseModelScalar {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Content,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $match = [regex]::Match($Content, ('(?m)^{0}:\s*(?<value>[^#\r\n]*)' -f [regex]::Escape($Name)))
+    if (-not $match.Success) { return $null }
+    $value = $match.Groups['value'].Value.Trim()
+    if ($value.Length -ge 2 -and $value.StartsWith('"') -and $value.EndsWith('"')) {
+        $value = $value.Substring(1, $value.Length - 2).Replace('\"', '"').Replace('\\', '\')
+    }
+    elseif ($value.Length -ge 2 -and $value.StartsWith("'") -and $value.EndsWith("'")) {
+        $value = $value.Substring(1, $value.Length - 2).Replace("''", "'")
+    }
+    if ([string]::IsNullOrWhiteSpace($value) -or $value -in @('null', '~')) { return $null }
+    return $value
+}
+
+function Resolve-SpecrewReleaseModel {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [ValidateSet('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')]
+        [string]$RequestedModel = 'auto',
+        [AllowNull()][string]$PublishTarget
+    )
+
+    $resolvedRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $governancePath = Join-Path $resolvedRoot '.specrew\repository-governance.yml'
+    $content = if (Test-Path -LiteralPath $governancePath -PathType Leaf) {
+        Get-Content -LiteralPath $governancePath -Raw -Encoding UTF8
+    }
+    else { '' }
+
+    $recordedModel = Get-SpecrewReleaseModelScalar -Content $content -Name 'release_model'
+    $recordedProvenance = Get-SpecrewReleaseModelScalar -Content $content -Name 'release_model_provenance'
+    $recordedPublishTarget = Get-SpecrewReleaseModelScalar -Content $content -Name 'publish_target'
+    if (-not [string]::IsNullOrWhiteSpace($recordedModel)) {
+        if ($recordedModel -notin @('local-only', 'push-only', 'pr-flow', 'beta-stable')) {
+            throw "Unsupported release_model '$recordedModel' in '$governancePath'."
+        }
+        if (-not [string]::IsNullOrWhiteSpace($recordedProvenance) -and $recordedProvenance -notin @('recorded', 'inferred')) {
+            throw "Unsupported release_model_provenance '$recordedProvenance' in '$governancePath'."
+        }
+        if ($recordedModel -eq 'beta-stable' -and [string]::IsNullOrWhiteSpace($recordedPublishTarget)) {
+            throw "release_model 'beta-stable' requires publish_target in '$governancePath'."
+        }
+        return [pscustomobject]@{
+            Model = $recordedModel
+            Provenance = if ($recordedProvenance) { $recordedProvenance } else { 'recorded' }
+            PublishTarget = $recordedPublishTarget
+            Source = 'repository-governance'
+            GovernancePath = $governancePath
+        }
+    }
+
+    $effectivePublishTarget = if (-not [string]::IsNullOrWhiteSpace($PublishTarget)) {
+        $PublishTarget.Trim()
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($recordedPublishTarget)) {
+        $recordedPublishTarget
+    }
+    else { $null }
+
+    if ($RequestedModel -ne 'auto') {
+        if ($RequestedModel -eq 'beta-stable' -and [string]::IsNullOrWhiteSpace($effectivePublishTarget)) {
+            throw "Requested release model 'beta-stable' requires -PublishTarget."
+        }
+        if ($RequestedModel -ne 'beta-stable' -and -not [string]::IsNullOrWhiteSpace($effectivePublishTarget)) {
+            throw "PublishTarget is only valid with release model 'beta-stable'."
+        }
+        return [pscustomobject]@{
+            Model = $RequestedModel
+            Provenance = 'recorded'
+            PublishTarget = $effectivePublishTarget
+            Source = 'init-selection'
+            GovernancePath = $governancePath
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($effectivePublishTarget)) {
+        return [pscustomobject]@{
+            Model = 'beta-stable'
+            Provenance = $(if (-not [string]::IsNullOrWhiteSpace($PublishTarget)) { 'recorded' } else { 'inferred' })
+            PublishTarget = $effectivePublishTarget
+            Source = 'publish-target'
+            GovernancePath = $governancePath
+        }
+    }
+
+    $providerMatch = [regex]::Match($content, '(?m)^(?:\s{2})?provider:\s*(?<value>[^#\r\n]+)')
+    $provider = if ($providerMatch.Success) { $providerMatch.Groups['value'].Value.Trim().Trim([char[]]@('"', "'")).ToLowerInvariant() } else { '' }
+    $remoteNames = @(& git -C $resolvedRoot remote 2>$null)
+    if ($LASTEXITCODE -ne 0) { $remoteNames = @() }
+    $remoteUrls = @()
+    foreach ($remoteName in $remoteNames) {
+        $url = @(& git -C $resolvedRoot remote get-url ([string]$remoteName) 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $url.Count -gt 0) { $remoteUrls += [string]$url[0] }
+    }
+
+    $hasForge = $provider -notin @('', 'none', 'local', 'manual') -or
+        @($remoteUrls | Where-Object { $_ -match '(?i)(github\.com|gitlab\.com|bitbucket\.org|dev\.azure\.com|visualstudio\.com)' }).Count -gt 0
+    $model = if ($hasForge) { 'pr-flow' } elseif ($remoteUrls.Count -gt 0) { 'push-only' } else { 'local-only' }
+    return [pscustomobject]@{
+        Model = $model
+        Provenance = 'inferred'
+        PublishTarget = $null
+        Source = if ($hasForge) { 'forge' } elseif ($remoteUrls.Count -gt 0) { 'remote' } else { 'no-remote' }
+        GovernancePath = $governancePath
+    }
+}
+
+function Initialize-SpecrewReleaseModelRecord {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [ValidateSet('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')]
+        [string]$RequestedModel = 'auto',
+        [AllowNull()][string]$PublishTarget,
+        [switch]$PreviewOnly
+    )
+
+    $resolved = Resolve-SpecrewReleaseModel -ProjectRoot $ProjectRoot -RequestedModel $RequestedModel -PublishTarget $PublishTarget
+    $path = $resolved.GovernancePath
+    $existingContent = if (Test-Path -LiteralPath $path -PathType Leaf) { Get-Content -LiteralPath $path -Raw -Encoding UTF8 } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace((Get-SpecrewReleaseModelScalar -Content $existingContent -Name 'release_model'))) {
+        return [pscustomobject]@{ Action = 'preserved'; Path = $path; Record = $resolved }
+    }
+
+    if ($PreviewOnly) {
+        return [pscustomobject]@{ Action = 'would-record'; Path = $path; Record = $resolved }
+    }
+
+    $lines = @(
+        '# >>> specrew-managed release-model >>>'
+        ('release_model: {0}' -f $resolved.Model)
+        ('release_model_provenance: {0}' -f $resolved.Provenance)
+        ('publish_target: {0}' -f $(if ($resolved.PublishTarget) { '"' + $resolved.PublishTarget.Replace('\', '\\').Replace('"', '\"') + '"' } else { 'null' }))
+        '# <<< specrew-managed release-model <<<'
+    )
+    $prefix = if ([string]::IsNullOrWhiteSpace($existingContent)) { '' } else { $existingContent.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine }
+    Write-Utf8FileAtomic -Path $path -Content ($prefix + ($lines -join [Environment]::NewLine) + [Environment]::NewLine)
+    return [pscustomobject]@{ Action = 'recorded'; Path = $path; Record = $resolved }
+}
+
+function Format-SpecrewFeatureCloseoutReleaseGuidance {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot
+    )
+
+    $record = Resolve-SpecrewReleaseModel -ProjectRoot $ProjectRoot
+    $header = 'Resolved feature-closeout release model: {0} (provenance: {1}).' -f $record.Model, $record.Provenance
+    switch ($record.Model) {
+        'local-only' {
+            return @(
+                $header
+                'AGENT NEXT ACTION: finalize the local commit and closeout evidence only.'
+                'N/A: remote delivery and release publication do not apply because no remote or publish target is recorded.'
+                'HUMAN ACTION NEEDED: approve the local closeout; no external delivery validation is requested.'
+            ) -join [Environment]::NewLine
+        }
+        'push-only' {
+            return @(
+                $header
+                'AGENT NEXT ACTION: push the reviewed commit to the recorded remote after human approval.'
+                'N/A: PR/MR review and release publication do not apply because no forge configuration or publish target is recorded.'
+                'HUMAN ACTION NEEDED: approve the push and validate the delivered remote commit.'
+            ) -join [Environment]::NewLine
+        }
+        'pr-flow' {
+            return @(
+                $header
+                'AGENT NEXT ACTION: push, open the forge review, address the recorded review gate, and merge per the branch model after human approval.'
+                'N/A: release publication and staged package validation do not apply because no publish target is recorded.'
+                'HUMAN ACTION NEEDED: approve each external mutation and provide any required human review.'
+            ) -join [Environment]::NewLine
+        }
+        'beta-stable' {
+            return @(
+                $header
+                ('Publish target: {0}.' -f $record.PublishTarget)
+                'AGENT NEXT ACTION: complete push/review/merge as configured, publish a prerelease, verify it, pause for human runtime validation, then publish stable only after PASS.'
+                'HUMAN ACTION NEEDED: approve each external mutation and report PASS or FAIL from the installed prerelease before stable promotion.'
+            ) -join [Environment]::NewLine
+        }
+    }
+}
+
 function Get-SpecrewSupportedStateSchemas {
     return @('v1', 'v2')
 }

@@ -5,6 +5,10 @@
 # the DevOps lens; validated against repository-governance.schema.json. SC-014: applying the updated
 # lens to Specrew's own repo surfaces NO conflict — this capture matches the real protection.
 
+release_model: beta-stable
+release_model_provenance: recorded
+publish_target: "PowerShell Gallery"
+
 repository_governance:
   provider: github
   branch_model:
