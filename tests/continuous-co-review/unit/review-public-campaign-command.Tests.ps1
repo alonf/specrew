@@ -151,7 +151,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
         $ports = [pscustomobject]@{
             target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'design-valid-external')
-            harness = $harness; runtime = New-ReviewFixtureRuntimePort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
+            harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
         }
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
             -GrantAuthorizationRef 'human-slot-design-valid' -DesignContextRefs @('specs/001-demo/spec.md') `
@@ -190,7 +190,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
         $ports = [pscustomobject]@{
             target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'design-feature-id-external')
-            harness = $harness; runtime = New-ReviewFixtureRuntimePort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
+            harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
         }
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
             -GrantAuthorizationRef 'human-slot-design-feature-id' -AuthorityConfigPath $config `
@@ -224,7 +224,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
         $ports = [pscustomobject]@{
             target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'design-empty-external')
-            harness = $harness; runtime = New-ReviewFixtureRuntimePort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
+            harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
         }
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
             -GrantAuthorizationRef 'human-slot-design-empty' -AuthorityConfigPath $config -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
@@ -251,6 +251,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'external')
             harness = New-ReviewFixtureHarnessPort -Candidate (New-CampaignCandidate -RunId $identity.run_id -Digest $originBefore.reviewed_state_digest)
             runtime = New-ReviewFixtureRuntimePort
+            verification = New-ReviewFixtureVerificationPort
             clock = New-ReviewSystemClockPort
             prompt_path = $prompt
         }
@@ -299,6 +300,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             target = New-ReviewFixtureTargetPort -SnapshotPath $snapshot -TargetDigest 'digest-current'
             harness = New-ReviewUnavailableHarnessPort -Reason 'fixture-harness-missing'
             runtime = New-ReviewFixtureRuntimePort
+            verification = New-ReviewFixtureVerificationPort
             clock = New-ReviewSystemClockPort
             prompt_path = $prompt
         }

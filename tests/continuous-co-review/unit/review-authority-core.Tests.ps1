@@ -220,11 +220,15 @@ Describe 'Pure campaign allowance and rerun policy (T043)' {
 
     It 'requires all cheap preflights before spend and keeps an invoked failure spent' {
         $reservation = Reservation
-        $failed = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; harness = $false; runtime = $true }
+        $failed = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; verification = $true; harness = $false; runtime = $true }
         $failed.permitted | Should -BeFalse
         $failed.reason | Should -Match 'preflight-failed:harness'
 
-        $spent = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; harness = $true; runtime = $true }
+        $verificationMissing = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; harness = $true; runtime = $true }
+        $verificationMissing.permitted | Should -BeFalse
+        $verificationMissing.reason | Should -Be 'preflight-failed:verification'
+
+        $spent = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; verification = $true; harness = $true; runtime = $true }
         $spent.permitted | Should -BeTrue
         $spent.fact.fact_type | Should -Be 'spend'
 

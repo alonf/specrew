@@ -668,7 +668,7 @@ function Resolve-ReviewCampaignSpendDecision {
     if (-not $reservationValidation.valid) { return [pscustomobject]@{ permitted = $false; reason = 'invalid-reservation'; fact = $null; errors = $reservationValidation.errors } }
     $reservationId = [string](Get-ReviewAuthorityProperty -Object $Reservation -Name 'reservation_id')
     $failedChecks = @()
-    foreach ($name in @('target', 'store', 'contract', 'containment', 'harness', 'runtime')) {
+    foreach ($name in @('target', 'store', 'contract', 'containment', 'verification', 'harness', 'runtime')) {
         if ($null -eq $Preflight -or -not $Preflight.ContainsKey($name) -or -not [bool]$Preflight[$name]) { $failedChecks += $name }
     }
     if ($failedChecks.Count -gt 0) { return [pscustomobject]@{ permitted = $false; reason = ('preflight-failed:' + ($failedChecks -join ',')); fact = $null } }

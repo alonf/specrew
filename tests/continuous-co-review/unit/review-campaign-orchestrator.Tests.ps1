@@ -35,7 +35,7 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
                 [Parameter(Mandatory)]$Target, [Parameter(Mandatory)]$Harness, [Parameter(Mandatory)]$Runtime,
                 [scriptblock]$ProgressSink, [int]$TimeoutSeconds = 900
             )
-            return Invoke-ReviewCampaignRun -StoreRoot $Context.store -StagingRoot $Context.staging -CampaignId cmp-demo -RunId $Run -ReservationId $Reservation -TargetLineage lin-code -TargetPort $Target -HarnessPort $Harness -RuntimePort $Runtime -ClockPort (New-OrchestratorClock) -PromptPath $Context.prompt -ProgressSink $ProgressSink -TimeoutSeconds $TimeoutSeconds -AuthorityConfigPath $Context.config
+            return Invoke-ReviewCampaignRun -StoreRoot $Context.store -StagingRoot $Context.staging -CampaignId cmp-demo -RunId $Run -ReservationId $Reservation -TargetLineage lin-code -TargetPort $Target -HarnessPort $Harness -RuntimePort $Runtime -VerificationPort (New-ReviewFixtureVerificationPort) -ClockPort (New-OrchestratorClock) -PromptPath $Context.prompt -ProgressSink $ProgressSink -TimeoutSeconds $TimeoutSeconds -AuthorityConfigPath $Context.config
         }
         function script:New-OrchestratorGitRepo {
             param([string]$Path)

@@ -40,6 +40,19 @@ function Get-ReviewTargetSuppressionEnvironment {
     }
 }
 
+function Get-ReviewTargetVerificationPlanCapture {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    $path = Join-Path $RepoRoot '.specrew/verification-plan.json'
+    if (-not [IO.File]::Exists($path)) {
+        return [pscustomobject]@{ present = $false; sha256 = $null; bytes = $null }
+    }
+    $bytes = [IO.File]::ReadAllBytes($path)
+    $sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    return [pscustomobject]@{ present = $true; sha256 = $sha256; bytes = $bytes }
+}
+
 function Test-ReviewTargetPathUnderRoot {
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Root)
     if (Get-Command -Name 'Test-ContinuousCoReviewPathUnderRoot' -ErrorAction SilentlyContinue) {
@@ -89,6 +102,10 @@ function New-GitReviewTargetSnapshot {
     if ($prefixResult.exit_code -ne 0) { throw ('review-target-prefix-unavailable:' + $prefixResult.stderr) }
     $prefix = $prefixResult.stdout.Trim().TrimEnd('/')
     $before = Get-GitReviewTargetOriginEvidence -OriginRepo $origin
+    # The canonical code digest deliberately excludes .specrew/**. The selected verification plan is
+    # nevertheless a project-owned campaign input, so freeze its exact bytes alongside the code tree and
+    # bind its hash into the target's currentness check. It is never read live after this capture.
+    $verificationPlan = Get-ReviewTargetVerificationPlanCapture -RepoRoot $origin
 
     if ([string]::IsNullOrWhiteSpace($ExternalRoot)) { $ExternalRoot = Join-Path ([IO.Path]::GetTempPath()) 'specrew-review-targets' }
     $externalFull = [IO.Path]::GetFullPath($ExternalRoot)
@@ -113,6 +130,11 @@ function New-GitReviewTargetSnapshot {
         if ($checkout.exit_code -ne 0) { throw ('review-target-tree-checkout-failed:' + $checkout.stderr) }
         $snapshotPath = if ([string]::IsNullOrWhiteSpace($prefix)) { $workspaceRoot } else { Join-Path $workspaceRoot $prefix }
         if (-not [IO.Directory]::Exists($snapshotPath)) { throw 'review-target-snapshot-subtree-missing' }
+        if ($verificationPlan.present) {
+            $verificationPlanPath = Join-Path $snapshotPath '.specrew/verification-plan.json'
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $verificationPlanPath)) | Out-Null
+            [IO.File]::WriteAllBytes($verificationPlanPath, [byte[]]$verificationPlan.bytes)
+        }
         if ((Test-ReviewTargetPathUnderRoot -Path $workspaceRoot -Root $gitRoot) -or (Test-ReviewTargetPathUnderRoot -Path $workspaceRoot -Root $origin)) { throw 'review-target-worktree-inside-origin' }
         if (-not (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) {
             . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
@@ -122,6 +144,7 @@ function New-GitReviewTargetSnapshot {
             schema_version = '1.0'; target_kind = 'code'; run_id = $RunId; target_digest = $before.reviewed_state_digest
             snapshot_path = $snapshotPath; workspace_root = $workspaceRoot; origin_repo = $origin; git_root = $gitRoot
             origin_head_before = $before.origin_head; origin_digest_before = $before.reviewed_state_digest
+            verification_plan_present = [bool]$verificationPlan.present; verification_plan_sha256 = $verificationPlan.sha256
             source_hashes_before = $sourceHashes; suppression_environment = Get-ReviewTargetSuppressionEnvironment
         }
     }
@@ -138,10 +161,19 @@ function Test-GitReviewTargetCurrentness {
     param([Parameter(Mandatory)]$Snapshot)
     $after = Get-GitReviewTargetOriginEvidence -OriginRepo ([string]$Snapshot.origin_repo)
     $decision = Resolve-ReviewCurrentness -ReviewedDigest ([string]$Snapshot.target_digest) -CurrentDigest $after.reviewed_state_digest -OriginHeadBefore ([string]$Snapshot.origin_head_before) -OriginHeadAfter $after.origin_head
+    $currentPlan = Get-ReviewTargetVerificationPlanCapture -RepoRoot ([string]$Snapshot.origin_repo)
+    $capturedPlanPresent = [bool]$Snapshot.verification_plan_present
+    $planCurrent = ($capturedPlanPresent -eq [bool]$currentPlan.present) -and (
+        (-not $capturedPlanPresent) -or ([string]$Snapshot.verification_plan_sha256 -ceq [string]$currentPlan.sha256)
+    )
+    if (-not $planCurrent) {
+        $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = 'verification-plan-changed' }
+    }
     return [pscustomobject]@{
         classification = $decision.classification; exact = $decision.exact; reason = $decision.reason
         origin_head_before = [string]$Snapshot.origin_head_before; origin_head_after = $after.origin_head
         reviewed_digest = [string]$Snapshot.target_digest; current_digest = $after.reviewed_state_digest
+        verification_plan_current = $planCurrent; verification_plan_sha256 = $Snapshot.verification_plan_sha256
     }
 }
 

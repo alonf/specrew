@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T063 init/update/setup materialization and guarded refresh
-**Tasks Remaining**: T064, T021–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T064 frozen-target verification execution and exact-digest campaign injection
+**Last Completed Task**: T064 frozen-target verification execution and exact-digest campaign injection
+**Tasks Remaining**: T021–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T021 methodology gate template and provider-keyed deploy
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T22:20:07Z
+**Updated**: 2026-07-18T22:41:27Z
 
 ## Planning Authorization
 
@@ -89,11 +89,18 @@
   warns and survives. Eleven focused fixtures, 61/62 supplier/materializer/contract cases (one platform skip),
   package import/deploy, FileList parity, and update-resync passed. The older local Spec Kit 0.8.13 blocked the
   legacy packaged-init fixture at its pre-existing minimum-version gate before T063 ran; committed three-OS init
-  CI remains the real production-path confirmation.
+  CI run `29663339974` passed at commit `7e8d9df1` as the production-path confirmation.
+- T064 freezes the selected plan's exact bytes alongside the external code snapshot and includes that hash in
+  currentness because `.specrew/**` intentionally remains outside the canonical code digest. The existing T018
+  runner executes before provider launch; every record must join on the frozen digest plus a unique declared
+  command ID before one bounded `.review/implementer-evidence.json` copy reaches the reviewer. Missing/invalid
+  plans and source mutation release the reservation without spend; configured failures remain injected and force
+  the terminal result incomplete. Seven production-path fixtures and 163/165 adjacent cases (two platform skips)
+  passed, including origin HEAD/status preservation, exact-once order, stale/unjoinable refusal, and plan drift.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T064 executes next from the frozen review target and must stop missing/invalid plans before any provider grant
-  spend, while preserving configured command failures as exact-digest evidence.
+- T021 executes next and starts the historical Iteration 004 distribution tail with the generic methodology-gate
+  template and provider-keyed deployment rule.
 
 ## Notes
 
