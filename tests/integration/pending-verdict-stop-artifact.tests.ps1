@@ -126,6 +126,11 @@ function Assert-ArtifactContains {
     if ($null -eq $scope -or [string]$scope.crossing_id -notmatch '^crossing-[0-9a-f]{64}$') {
         Fail 'Pending-verdict artifact was written without a stable scoped crossing identity.'
     }
+    $expectedCommit = (& git -C $ProjectRoot rev-parse HEAD).Trim()
+    $expectedTree = (& git -C $ProjectRoot rev-parse 'HEAD^{tree}').Trim()
+    if ([string]$scope.boundary_commit_hash -ne $expectedCommit -or [string]$scope.artifact_state_id -ne $expectedTree) {
+        Fail ("Pending crossing did not bind the actual current boundary commit/tree. Expected {0}/{1}; found {2}/{3}." -f $expectedCommit, $expectedTree, $scope.boundary_commit_hash, $scope.artifact_state_id)
+    }
     foreach ($expected in @(
         "Boundary to ask for: $ExpectedBoundary",
         "Human approval phrase: $ExpectedApproval",
@@ -195,18 +200,76 @@ try {
         -SyncOutput $clarifyOutput
     Write-Pass 'sync-clarify after specify authorization surfaces specify -> clarify'
 
-    $noPendingProject = New-TestProject -Name 'no-pending' -LastAuthorizedBoundary 'clarify'
-    $stalePath = Join-Path $noPendingProject '.specrew\runtime\pending-verdict-stop.md'
+    $completedTasksProject = New-TestProject -Name 'completed-tasks-opens-next-crossing' -LastAuthorizedBoundary 'tasks'
+    $stalePath = Join-Path $completedTasksProject '.specrew\runtime\pending-verdict-stop.md'
     $null = New-Item -ItemType Directory -Path (Split-Path -Parent $stalePath) -Force
     [System.IO.File]::WriteAllText($stalePath, "stale`n", [System.Text.UTF8Encoding]::new($false))
-    $noPendingOutput = Invoke-BoundarySync -ProjectRoot $noPendingProject -BoundaryType 'clarify'
-    if (Test-Path -LiteralPath $stalePath -PathType Leaf) {
-        Fail 'sync with no pending verdict must remove a stale pending-verdict stop artifact'
+    $tasksOutput = Invoke-BoundarySync -ProjectRoot $completedTasksProject -BoundaryType 'tasks'
+    Assert-ArtifactContains `
+        -ProjectRoot $completedTasksProject `
+        -ExpectedBoundary 'tasks -> before-implement' `
+        -ExpectedApproval 'approved for before-implement' `
+        -ExpectedMarker '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->' `
+        -ForbiddenText 'approved for tasks' `
+        -SyncOutput $tasksOutput
+    $firstRender = Get-Content -LiteralPath $stalePath -Raw -Encoding UTF8
+    . (Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1')
+    $repeatSession = (Get-Content -LiteralPath (Join-Path $completedTasksProject '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json).session_state
+    $null = Sync-SpecrewPendingVerdictStopArtifact -ProjectRoot $completedTasksProject -SessionState $repeatSession
+    $repeatRender = Get-Content -LiteralPath $stalePath -Raw -Encoding UTF8
+    if ($repeatRender -cne $firstRender) {
+        $renderDiff = Compare-Object -ReferenceObject @($firstRender -split "`r?`n") -DifferenceObject @($repeatRender -split "`r?`n") | Out-String
+        Fail "Repeated sync of the same completed boundary changed the exact pending-crossing packet. Diff:`n$renderDiff"
     }
-    if ($noPendingOutput -match 'SPECREW PENDING VERDICT STOP') {
-        Fail ("sync output must not surface a pending-verdict stop block when no verdict is pending. Output:`n{0}" -f $noPendingOutput)
+    Assert-ArtifactContains `
+        -ProjectRoot $completedTasksProject `
+        -ExpectedBoundary 'tasks -> before-implement' `
+        -ExpectedApproval 'approved for before-implement' `
+        -ExpectedMarker '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->' `
+        -ForbiddenText 'approved for tasks' `
+        -SyncOutput $null
+    Write-Pass 'authorized tasks sync opens one stable tasks -> before-implement crossing at the exact current commit/tree'
+
+    $bareNumericVerdict = Parse-SpecrewBoundaryVerdict -VerdictText '1'
+    if ([bool]$bareNumericVerdict.Authorized) {
+        Fail 'Bare-number verdict unexpectedly authorized the scoped crossing.'
     }
-    Write-Pass 'sync removes stale pending-verdict stop artifact when no verdict is pending'
+    Write-Pass 'bare-number reply remains non-authoritative'
+
+    $closeoutProject = New-TestProject -Name 'closeout-current-not-stale-parent' -LastAuthorizedBoundary 'iteration-closeout'
+    $staleParent = (& git -C $closeoutProject rev-parse HEAD).Trim()
+    [System.IO.File]::AppendAllText((Join-Path $closeoutProject 'README.md'), "`nActual closeout artifact.`n", [System.Text.UTF8Encoding]::new($false))
+    $null = & git -C $closeoutProject add README.md 2>&1
+    $null = & git -C $closeoutProject commit -m 'Actual closeout boundary' --quiet 2>&1
+    $actualCloseout = (& git -C $closeoutProject rev-parse HEAD).Trim()
+    $beforeRejectedSync = Get-Content -LiteralPath (Join-Path $closeoutProject '.specrew\start-context.json') -Raw -Encoding UTF8
+    $staleResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
+        '-ProjectPath', $closeoutProject,
+        '-BoundaryType', 'iteration-closeout',
+        '-FeatureRef', '001-test-feature',
+        '-IterationNumber', '001',
+        '-AuthCommitHash', $staleParent
+    )
+    if ($staleResult.ExitCode -eq 0 -or ($staleResult.Output -join [Environment]::NewLine) -notmatch 'is stale; the actual current boundary commit is HEAD') {
+        Fail ("Stale pre-closeout parent was not refused with the current-commit explanation. Output:`n{0}" -f ($staleResult.Output -join [Environment]::NewLine))
+    }
+    $afterRejectedSync = Get-Content -LiteralPath (Join-Path $closeoutProject '.specrew\start-context.json') -Raw -Encoding UTF8
+    if ($afterRejectedSync -cne $beforeRejectedSync) {
+        Fail 'Rejected stale-parent sync mutated the authorization context.'
+    }
+    $closeoutOutput = Invoke-BoundarySync -ProjectRoot $closeoutProject -BoundaryType 'iteration-closeout'
+    Assert-ArtifactContains `
+        -ProjectRoot $closeoutProject `
+        -ExpectedBoundary 'iteration-closeout -> plan' `
+        -ExpectedApproval 'approved for plan' `
+        -ExpectedMarker '<!-- SPECREW-VERDICT-BOUNDARY: iteration-closeout -> plan -->' `
+        -ForbiddenText $staleParent `
+        -SyncOutput $closeoutOutput
+    $closeoutScope = (Get-Content -LiteralPath (Join-Path $closeoutProject '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json).boundary_enforcement.pending_crossing
+    if ([string]$closeoutScope.boundary_commit_hash -ne $actualCloseout) {
+        Fail 'Closeout crossing did not bind the actual closeout commit after the stale parent was refused.'
+    }
+    Write-Pass 'stale pre-closeout parent is refused and the actual closeout commit/tree renders the next crossing'
 
     Write-Host "`n=== pending-verdict-stop-artifact.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0

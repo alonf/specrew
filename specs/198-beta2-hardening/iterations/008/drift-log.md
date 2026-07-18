@@ -30,7 +30,7 @@
 
 ### DRIFT-198-I008-001 — Pending crossing cites stale pre-closeout identity
 
-- **Status**: selected for T068; manually contained until implementation
+- **Status**: resolved by T068; deterministic current/stale fixtures green
 - **Severity**: major governance identity defect
 - **Type**: authority-binding drift, not specification drift
 - **Requirements**: FR-041, FR-042, FR-044, FR-045, NFR-007
@@ -50,6 +50,10 @@
   a manually rendered packet bound to its exact committed task artifact and Git tree.
 - **Selected correction**: T068, 0.75 SP, narrowly rebinds a pending crossing to the actual closeout commit/tree
   with paired current/stale tests. It executes first and must not expand into a matcher redesign.
+- **Resolution evidence**: boundary sync now rejects a supplied commit that is not current `HEAD`; a sync of an
+  already-authorized completed boundary opens the next exact crossing at that current commit and Git tree. The
+  production-path fixture reproduces the tasks null-pending case and the stale pre-closeout-parent case, verifies
+  no context mutation on rejection, verifies stable rerendering, and keeps bare-number replies non-authoritative.
 
 ### DRIFT-198-I008-002 — injected-context and shared-baseline capture defects carried into T069
 

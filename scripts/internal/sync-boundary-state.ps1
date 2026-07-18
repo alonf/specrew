@@ -321,23 +321,30 @@ function Resolve-SpecrewBoundaryAuthCommitHash {
         [string]$AuthCommitHash
     )
 
-    if (-not [string]::IsNullOrWhiteSpace($AuthCommitHash) -and $AuthCommitHash -ne 'HEAD') {
-        return $AuthCommitHash.Trim()
-    }
-
     $resolvedHead = @(& git -C $ProjectRoot rev-parse --verify HEAD 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $resolvedHead.Count -gt 0) {
-        $candidateHead = $resolvedHead[0].ToString().Trim()
-        if ($candidateHead -match '^[0-9a-f]{40}$') {
-            return $candidateHead
-        }
+    if ($LASTEXITCODE -ne 0 -or $resolvedHead.Count -eq 0) {
+        throw 'Failed to resolve the current HEAD commit hash.'
+    }
+    $candidateHead = $resolvedHead[0].ToString().Trim().ToLowerInvariant()
+    if ($candidateHead -notmatch '^[0-9a-f]{40}$') {
+        throw 'Failed to resolve the current HEAD commit hash.'
     }
 
-    if ($AuthCommitHash -eq 'HEAD') {
-        throw "Failed to resolve literal HEAD to a concrete commit hash."
+    if ([string]::IsNullOrWhiteSpace($AuthCommitHash) -or $AuthCommitHash -eq 'HEAD') {
+        return $candidateHead
     }
 
-    return $null
+    $requested = $AuthCommitHash.Trim()
+    $resolvedRequested = @(& git -C $ProjectRoot rev-parse --verify ("{0}^{{commit}}" -f $requested) 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $resolvedRequested.Count -eq 0) {
+        throw "Boundary commit hash '$requested' does not resolve to a commit in the project repository."
+    }
+    $candidateRequested = $resolvedRequested[0].ToString().Trim().ToLowerInvariant()
+    if ($candidateRequested -ne $candidateHead) {
+        throw "Boundary commit hash '$candidateRequested' is stale; the actual current boundary commit is HEAD '$candidateHead'. Commit the boundary artifacts first, then sync that exact commit."
+    }
+
+    return $candidateHead
 }
 
 function New-SpecrewSessionState {
@@ -597,7 +604,13 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $artifactStateKind = if ([string]::IsNullOrWhiteSpace([string]$pendingState.ArtifactStateKind)) { '(none)' } else { [string]$pendingState.ArtifactStateKind }
     $artifactStateId = if ([string]::IsNullOrWhiteSpace([string]$pendingState.ArtifactStateId)) { '(none)' } else { [string]$pendingState.ArtifactStateId }
     $workingBoundary = if ([string]::IsNullOrWhiteSpace([string]$pendingState.WorkingBoundary)) { [string]$SessionState.boundary_type } else { [string]$pendingState.WorkingBoundary }
-    $recordedAt = if ([string]::IsNullOrWhiteSpace([string]$SessionState.recorded_at)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { [string]$SessionState.recorded_at }
+    $recordedAt = if ([string]::IsNullOrWhiteSpace([string]$SessionState.recorded_at)) {
+        (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    else {
+        try { ([datetimeoffset]$SessionState.recorded_at).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
+        catch { ([string]$SessionState.recorded_at).Trim() }
+    }
 
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('# Specrew Pending Verdict Stop') | Out-Null
@@ -1640,7 +1653,8 @@ function Invoke-SpecrewBoundaryStateSync {
             -ProjectRoot $paths.ProjectRoot `
             -WorkingBoundary $BoundaryType `
             -BoundaryCommitHash $effectiveAuthCommitHash `
-            -RecordedAt $sessionState.recorded_at | Out-Null
+            -RecordedAt $sessionState.recorded_at `
+            -OpenNextCrossingWhenBoundaryAuthorized | Out-Null
         $pendingVerdictStop = Sync-SpecrewPendingVerdictStopArtifact -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
     }
     catch {

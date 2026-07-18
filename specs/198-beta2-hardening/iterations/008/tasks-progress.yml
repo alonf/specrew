@@ -1,18 +1,18 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-18T20:25:50Z"
+updated_at: "2026-07-18T21:03:36Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-07-18T20:55:24Z"
+    completed_at: "2026-07-18T21:03:36Z"
     blocked_reason: ""
   T069:
     title: "Multi-session Stop/capture integrity repair"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-18T21:03:36Z"
     completed_at: ""
     blocked_reason: ""
   T062:

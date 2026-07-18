@@ -1820,9 +1820,26 @@ function New-SpecrewPendingCrossingScope {
         [Parameter(Mandatory = $true)][string]$BoundaryCommitHash,
         [Parameter(Mandatory = $true)][string]$ArtifactStateId,
         [AllowNull()][string]$RecordedAt,
-        [AllowNull()]$ExistingScope
+        [AllowNull()]$ExistingScope,
+        [switch]$OpenNextCrossingWhenBoundaryAuthorized
     )
-    $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $WorkingBoundary
+    $effectiveWorkingBoundary = $WorkingBoundary
+    if ($OpenNextCrossingWhenBoundaryAuthorized) {
+        $lastAuthorizedCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $LastAuthorizedBoundary
+        $workingCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $WorkingBoundary
+        if (-not [string]::IsNullOrWhiteSpace($lastAuthorizedCanonical) -and $lastAuthorizedCanonical -eq $workingCanonical) {
+            $order = @(Get-SpecrewBoundaryOrder)
+            if ($lastAuthorizedCanonical -eq 'iteration-closeout') {
+                $effectiveWorkingBoundary = 'plan'
+            }
+            else {
+                $completedIndex = [Array]::IndexOf($order, $lastAuthorizedCanonical)
+                if ($completedIndex -lt 0 -or $completedIndex -ge ($order.Count - 1)) { return $null }
+                $effectiveWorkingBoundary = $order[$completedIndex + 1]
+            }
+        }
+    }
+    $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $effectiveWorkingBoundary
     if (-not [bool]$crossing.HasPendingVerdict) { return $null }
     $scope = New-SpecrewBoundaryCrossingIdentity `
         -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) `
@@ -1845,7 +1862,8 @@ function Set-SpecrewPendingBoundaryCrossingScope {
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
         [Parameter(Mandatory = $true)][string]$WorkingBoundary,
         [Parameter(Mandatory = $true)][string]$BoundaryCommitHash,
-        [AllowNull()][string]$RecordedAt
+        [AllowNull()][string]$RecordedAt,
+        [switch]$OpenNextCrossingWhenBoundaryAuthorized
     )
     $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
     if ($state.NeedsMigration -or $state.Issues.Count -gt 0 -or $null -eq $state.State) {
@@ -1860,7 +1878,8 @@ function Set-SpecrewPendingBoundaryCrossingScope {
         -BoundaryCommitHash $BoundaryCommitHash `
         -ArtifactStateId $artifactStateId `
         -RecordedAt $RecordedAt `
-        -ExistingScope $existingScope
+        -ExistingScope $existingScope `
+        -OpenNextCrossingWhenBoundaryAuthorized:$OpenNextCrossingWhenBoundaryAuthorized
     $updated = [ordered]@{
         enabled                  = [bool]$state.State['enabled']
         last_authorized_boundary = $state.State['last_authorized_boundary']

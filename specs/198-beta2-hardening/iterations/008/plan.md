@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 18/26 story_points
 **Started**: 2026-07-18
 **Completed**:
@@ -94,8 +94,8 @@ the published beta from a fresh consumer; it does not promote a stable version.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
-| T068 | Narrow stale-binding rebind | FR-041, FR-042, FR-044, FR-045, NFR-007 | US1 | 0.75 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, tests/integration/** | planned | — | — | — |
-| T069 | Multi-session stop/capture integrity repair | FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007 | US1 | 2.25 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, scripts/internal/bootstrap/**, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, tests/integration/** | planned | — | — | — |
+| T068 | Narrow stale-binding rebind | FR-041, FR-042, FR-044, FR-045, NFR-007 | US1 | 0.75 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, tests/integration/** | done | Implementer | 0.75 | passed |
+| T069 | Multi-session stop/capture integrity repair | FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007 | US1 | 2.25 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, scripts/internal/bootstrap/**, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, tests/integration/** | in-progress | Implementer | — | — |
 | T021 | Methodology gate template and provider-keyed deploy | FR-024, FR-031, SC-008 | US4 | 0.75 | Implementer | templates/github/workflows/**, scripts/internal/distribution-module-init.ps1, tests/** | planned | — | — | — |
 | T022 | Work-kind template deployed-path correction | FR-025, SC-008 | US4 | 0.25 | Implementer | templates/github/workflows/specrew-work-kind.yml, tests/** | planned | — | — | — |
 | T023 | Deny-by-default consumer deploy-list surgery | FR-026, SC-008 | US4 | 0.75 | Implementer | scripts/internal/distribution-module-init.ps1, templates/**, .github/workflows/**, tests/** | planned | — | — | — |

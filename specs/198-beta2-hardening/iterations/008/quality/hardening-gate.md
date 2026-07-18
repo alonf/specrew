@@ -32,7 +32,7 @@
 
 | Condition | Status | Evidence | Decision |
 | --- | --- | --- | --- |
-| `condition-a-human-authorization` | `open-for-verdict` | The tasks verdict authorizes artifacts only. No `approved for before-implement` verdict exists for the task-boundary commit. | Do not modify production code or spend provider slots. |
+| `condition-a-human-authorization` | `met` | The human gave `approved for before-implement`, bound to task commit `364fbe88ef29cce5ac74d8086c1d78d8b8363197` and tree `1e5cf50256303efc81d6282315d1818ff2eebae4`; the hook-captured ledger entry records the exact crossing. | Implementation is authorized. Provider and release slots remain separate. |
 | `condition-b-traceability` | `met` | 17/17 tasks map to valid selected requirements and 32/32 selected requirements have coverage in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/tasks.md. | Any orphan or uncovered requirement reopens the gate. |
 | `condition-c-fail-direction-review` | `met` | Stale crossing, injected context, invalid explicit config, unsafe path, missing plan, command failure, stale evidence, and release uncertainty all refuse authority or approval. | A fail-direction change requires recorded drift and replan. |
 | `condition-d-capacity-discipline` | `met` | 18/26 SP includes T068/T069, supplier/injection, distribution, deterministic proof, review, release, and dogfood. | Preserve the 8 SP headroom; do not hide extra scope. |
