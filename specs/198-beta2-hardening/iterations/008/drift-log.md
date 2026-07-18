@@ -57,7 +57,7 @@
 
 ### DRIFT-198-I008-002 — injected-context and shared-baseline capture defects carried into T069
 
-- **Status**: resolved by T069; committed evidence pending
+- **Status**: resolved by T069 at commit `9ef3b137a4bf6525d823eee3e6c6d8bc6faf8517`
 - **Severity**: major authorization and interaction-integrity defect
 - **Type**: inherited implementation/integration drift
 - **Requirements**: FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007
@@ -78,7 +78,8 @@
   barrier-synchronized two-session fixture writes distinct baseline files, attributes session B's PostToolUse
   surface to B, keeps session A's routine status conversational, and makes B's own material Stop request exactly
   one packet. The exact stale/current T068 suite, machinery/quoted/teaching fixtures, focused neighbors, and all 60
-  registered Feature 198 suites pass; full-registry wall time was 788.5 seconds.
+  registered Feature 198 suites pass; full-registry wall time was 788.5 seconds. Cross-platform CI run
+  `29662556573` passed the committed repair on Windows, Ubuntu, and macOS.
 
 ### Resolution Strategies
 

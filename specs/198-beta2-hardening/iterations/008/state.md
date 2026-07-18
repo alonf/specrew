@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T069 multi-session Stop/capture integrity repair with production-path and barrier-synchronized fixtures
-**Tasks Remaining**: T062–T064, T021–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T062 deterministic verification-plan supplier and bounded selection catalog
+**Last Completed Task**: T062 deterministic verification-plan supplier and bounded selection catalog
+**Tasks Remaining**: T063–T064, T021–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T063 init/update/setup materialization and guarded refresh
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T21:53:06Z
+**Updated**: 2026-07-18T22:09:46Z
 
 ## Planning Authorization
 
@@ -75,11 +75,18 @@
   sessions receive owner-scoped material state, and a fresh exact-surface owner record prevents cross-session
   billing without weakening same-session packet enforcement.
 - T069 focused/neighbor suites passed, HookRenderDedupe passed serially, and all 60 registered Feature 198 suites
-  passed in 788.5 seconds. No provider slot or release authority was used.
+  passed in 788.5 seconds; commit `9ef3b137` then passed three-OS CI run `29662556573`. No provider slot or release
+  authority was used.
+- T062 is implemented as one ordered selector over normalized named sources. The closed versioned catalog ships
+  one unambiguous `package.json#scripts.test` detector and the existing explicit Node/React/Python/.NET quality
+  profiles; its provider row set is deliberately empty by default rather than inventing an unbound provider
+  command. Fourteen supplier pairs plus the adjacent T018 contract/runner matrix (70 passing, 2 platform skips)
+  prove strict precedence, explicit-invalid short circuit, extension/inactive-provider refusal, stable identities,
+  schema-valid output, actionable no-source behavior, and secret-safe provenance.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T062 executes next; it must use the existing T018 plan schema/validator/runner seam and add no discovery DSL or
-  invented Specrew/Pester default.
+- T063 executes next and owns real init/update/setup source capture plus hash-guarded materialization; it must keep
+  the selector pure and must preserve user-authored explicit plans byte-for-byte.
 
 ## Notes
 

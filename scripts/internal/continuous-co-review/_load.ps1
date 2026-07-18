@@ -78,6 +78,7 @@ $proposal197ReviewerModules = @(
     # the evidence-join) and the EXECUTION runner that drives the universal recorded-run runner over an ordered,
     # provenance-tagged plan. Contract before runner (the runner consumes it).
     'verification-plan-contract.ps1'
+    'verification-plan-supplier.ps1'
     'verification-plan-runner.ps1'
 )
 
