@@ -1,15 +1,15 @@
 # Iteration 007 Review Evidence
 
 **Task**: T061
-**Status**: complete — run 10 is a valid current pass with zero findings and can approve the reviewed snapshot
-**Overall Verdict**: accepted
+**Status**: needs rework — run 10 is a valid zero-finding pass for its exact snapshot, but canonical sync proved the committed review ledger moves the digest and campaign mode has no bounded finalization rule
+**Overall Verdict**: needs-rework
 **Reviewer**: Claude Code through the production `claude-code-file-primary` harness
 **Recorded**: 2026-07-18
 **Human Approval**: approved for review-signoff, 2026-07-18
 **Reviewed Commit**: `fc1054b54badcfe2abded0203a1d785eeec0c59b`
 **Reviewed-State Digest**: `5fc6318a300afc654bb09d986d82c8c925506ed3`
 
-The maintainer's explicit instruction-bearing verdict authorizes exactly this review-signoff boundary and requires the complete T061 attempt-and-slot ledger below. Retrospective and iteration closeout remain separate human-verdict boundaries.
+The maintainer's explicit instruction-bearing verdict authorizes exactly this review-signoff work and requires the complete T061 attempt-and-slot ledger below. Retrospective and iteration closeout remain separate human-verdict boundaries. Canonical sync is still blocked by DRIFT-198-I007-026, so this artifact no longer claims the crossing is complete.
 
 ## Review Mechanism
 
@@ -88,7 +88,7 @@ Attempt 1 ended before authority-store creation, so it has no fabricated result 
 | T058 | pass | Informational progress/timing/usage plus validated retrospective projection. |
 | T059 | pass | Hosted deterministic fake-provider matrix is green on Windows, Ubuntu, and macOS. |
 | T060 | pass with truthful Cursor qualification | Four live harness paths across three OSes are proved; Cursor execution is valid but no clean-current claim is made after Free quota exhaustion. |
-| T061 | pass | Run 10 is a complete, valid, current, contained, zero-finding exact-digest pass. |
+| T061 | needs-work | Run 10 is a complete, valid, current, contained, zero-finding pass for commit `fc1054b5`; the required committed ledger moved the digest and canonical campaign sync correctly refused it as stale. |
 
 ## Correction Verification
 
@@ -102,6 +102,8 @@ Attempt 1 ended before authority-store creation, so it has no fabricated result 
 
 All code/test/documentation findings through DRIFT-024 are corrected and independently closed by the final deterministic, hosted, exact-preflight, and clean run-10 chain. DRIFT-025 records the review-signoff capture episode discovered after run 10: injected environment-context ordering and an instruction-bearing verdict shape required the documented `human-confirmed-at-resume` path. The maintainer has explicitly deferred the stop/capture mechanism repair to later work; no runtime code is changed under this boundary.
 
+DRIFT-026 is blocking: canonical `review-signoff` sync against boundary commit `b094e69b` returned `latest-result-not-current`. A direct read using the external run-10 store confirmed current digest `4b4e5ee7b7434eac4865342ae90f8a0e59a2cadb` versus run-10 digest `5fc6318a300afc654bb09d986d82c8c925506ed3`. Another provider run alone cannot close this because adding that run to the required committed ledger changes the digest again. No result is promoted and no bypass is inferred.
+
 Cursor clean-current proof remains unavailable after free-credit exhaustion; support truth does not promote an older digest. FR-048/FR-049/SC-015 remains a separate open Beta2 command-plan dependency and still blocks T029 and feature closeout. Neither limitation blocks this bounded Iteration 007 review verdict.
 
 ## Gap Ledger
@@ -110,7 +112,8 @@ Cursor clean-current proof remains unavailable after free-credit exhaustion; sup
 - DRIFT-198-I007-025 capture-selection repair is deferred with maintainer approval to the later stop/capture-mechanism slice; see `.squad\decisions.md` entry `defer-198-i007-025`.
 - Cursor clean-current support remains unavailable after Free quota exhaustion, while live execution and the qualified support state are truthfully recorded: fixed-now.
 - FR-048/FR-049/SC-015 remains outside the approved Iteration 007 scope and visibly blocks feature closeout until its own Beta2 slice: fixed-now.
+- DRIFT-198-I007-026 campaign review-ledger finalization circularity remains open and blocks this review-signoff; it requires an explicit bounded architecture decision before closure.
 
-## Acceptance Condition Satisfied
+## Acceptance Condition Status
 
-T061 is complete. Every paid run is visible, every correction was committed and re-verified before the next slot, attempts 1 and 2 consumed no provider spend, attempts 3–10 each consumed exactly one spend fact, and run 10 provides the required independent exact-digest approval. Retrospective remains the next separate lifecycle decision.
+Every paid T061 run remains visible, every correction was committed and re-verified before the next slot, attempts 1 and 2 consumed no provider spend, and attempts 3–10 each consumed exactly one spend fact. Run 10 provides independent approval of its exact snapshot, but the campaign gate cannot authorize the later ledger commit. Retrospective is not yet available.

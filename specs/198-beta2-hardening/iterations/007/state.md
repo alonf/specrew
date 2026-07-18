@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: review-signoff
 **Iteration Status**: executing
-**Last Completed Task**: T061 independent exact-digest review, including ten-attempt/eight-slot ledger and clean Claude run 10
-**Tasks Remaining**: retrospective and iteration closeout; clean Cursor proof remains unavailable until free-credit reset; FR-048/FR-049/SC-015 remains a separate Beta2 slice
-**In Progress**: recording the authorized review-signoff and preparing the retrospective boundary
+**Last Completed Task**: T060 four-harness/three-OS live proof and campaign cutover; T061 run 10 is clean evidence for its exact snapshot but signoff remains open
+**Tasks Remaining**: T061 campaign review-evidence finalization, retrospective, and iteration closeout; clean Cursor proof remains unavailable until free-credit reset; FR-048/FR-049/SC-015 remains a separate Beta2 slice
+**In Progress**: DRIFT-198-I007-026 design decision after canonical sync rejected the post-review ledger digest as stale
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-18
@@ -54,6 +54,7 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **Durable authorization**: `auth-b3798462c3b2dd39a2ea71ec52f6b1b1ef14030a5976e91fa39b1d975a5b4317`, recorded through the documented second-chance authority writer with evidence source `human-confirmed-at-resume`; the authorization check passes for the current `implement -> review-signoff` crossing.
 - **Instruction fulfillment**: `review.md` records all ten unique T061 attempts, all eight provider invocations/spend facts, every authorization reference, target commit/digest, duration, finding count, and terminal outcome. No hidden retry or unrecorded slot exists.
 - **Capture follow-up**: the initial hook capture selected a later injected environment-context turn and did not accept the instruction-bearing verdict. `DRIFT-198-I007-025` records this as a deferred stop/capture-mechanism repair item; the documented second-chance writer restored durable authority without altering runtime code or review evidence.
+- **Boundary result**: review-signoff is not complete. Canonical sync after commit `b094e69b` failed closed with `latest-result-not-current`; direct external-store evaluation confirmed the run-10 snapshot moved after committing the required ledger. DRIFT-198-I007-026 is open and retrospective remains unauthorized.
 
 ## Execution Progress
 

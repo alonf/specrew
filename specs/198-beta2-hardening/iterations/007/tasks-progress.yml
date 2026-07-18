@@ -95,7 +95,7 @@ tasks:
     blocked_reason: ""
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
-    status: "done"
+    status: "needs-rework"
     started_at: "2026-07-17T23:55:18+03:00"
-    completed_at: "2026-07-18T04:45:15+03:00"
-    blocked_reason: ""
+    completed_at: ""
+    blocked_reason: "DRIFT-198-I007-026: committed review evidence moves the campaign digest; canonical signoff sync rejects run 10 as stale"

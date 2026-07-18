@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Reviewed**: 2026-07-18
-**Overall Verdict**: accepted
+**Overall Verdict**: needs-rework
 **Reviewed-State Digest**: `5fc6318a300afc654bb09d986d82c8c925506ed3`
 
 ## Executed Evidence
@@ -19,6 +19,7 @@
 | Claude/Windows independent signoff | run 10 complete/pass/current/valid, zero findings | Exact final digest plus Job Object containment |
 | Bidirectional traceability | PASS, 16/16 tasks and 25/25 scoped requirements | No orphans, invalid refs, or uncovered scope |
 | Scoped governance | PASS | Iteration 007 artifact and lifecycle schema |
+| Canonical review-signoff sync | BLOCKED | `latest-result-not-current` after the required review-evidence commit; DRIFT-026 |
 
 ## Requirement Coverage
 

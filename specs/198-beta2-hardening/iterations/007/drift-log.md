@@ -4,9 +4,9 @@
 
 ## Summary
 
-**Total drift events**: 26 (one inherited event plus 25 Iteration 007 events)
-**Resolution rate**: 96.2% (25/26 resolved for Iteration 007 scope; DRIFT-198-I007-025 is explicitly deferred to the later stop/capture-mechanism repair)
-**Specification drift**: Product scope is unchanged; final T061 run 10 independently verifies the implementation, while the capture-selection follow-up and the separate FR-048/FR-049/SC-015 Beta2 slice remain explicit
+**Total drift events**: 27 (one inherited event plus 26 Iteration 007 events)
+**Resolution rate**: 92.6% (25/27 resolved for Iteration 007 scope; DRIFT-198-I007-025 is explicitly deferred and DRIFT-198-I007-026 is open/blocking)
+**Specification drift**: Product scope is unchanged, but campaign review-evidence finalization lacks a bounded rule; final T061 run 10 verifies its exact implementation snapshot while canonical review-signoff remains blocked
 
 ## Inherited Open Drift
 
@@ -278,3 +278,13 @@ The final correction tree is commit `fc1054b54badcfe2abded0203a1d785eeec0c59b` w
 - **Drift classification**: `implementation/integration`. Machinery-turn exclusion exists, but this injected environment-context shape was not classified as ineligible for boundary evidence; the narrow verdict parser also does not normalize an explicit approval followed by binding instructions.
 - **Scoped disposition**: do not quiet-point-fix the stop/capture machinery while closing the independently reviewed trust architecture. Persist the normalized verdict `approved for review-signoff` through `Add-SpecrewBoundaryAuthorization` with evidence source `human-confirmed-at-resume`, retaining the full instruction in `state.md` and `review.md`. This produced authorization `auth-b3798462c3b2dd39a2ea71ec52f6b1b1ef14030a5976e91fa39b1d975a5b4317`, and the scoped authorization check passes for the exact crossing.
 - **Follow-up**: the later mechanism-repair slice must add paired fixtures for injected environment-context selection and explicit approval followed by instructions, while preserving machinery exclusion, exact boundary binding, and bare-number rejection. This is retrospective/backlog input, not authority to change runtime code inside this review-signoff boundary.
+
+### DRIFT-198-I007-026 — committed review evidence makes the clean campaign result stale with no bounded finalization rule
+
+- **Status**: open and blocking review-signoff; no bypass or extra provider invocation applied
+- **Severity**: blocking architecture/integration defect
+- **Requirements**: FR-045, FR-058, FR-059, FR-062, FR-065, SC-017, SC-018, SC-020, SC-021, NFR-002, NFR-007
+- **Evidence**: T061 run `run-t061-claude-windows-fc1054b5-10` is complete/pass/current/valid with zero findings for commit `fc1054b54badcfe2abded0203a1d785eeec0c59b` / digest `5fc6318a300afc654bb09d986d82c8c925506ed3`. The maintainer then required the complete attempt-and-slot ledger in committed Iteration 007 review evidence. Boundary commit `b094e69b` added that ledger and the required review artifacts. Canonical `sync-boundary-state.ps1 -BoundaryType review-signoff` failed closed with `no-authoritative-campaign-result` in the default store; a direct decision using the external run-10 store selected the correct latest run but returned `latest-result-not-current`, current digest `4b4e5ee7b7434eac4865342ae90f8a0e59a2cadb`.
+- **Drift classification**: `architecture/integration`. Campaign freshness correctly rejects a moved digest, but the lifecycle requires review artifacts to be committed after review. Recording a fresh provider run in the required complete ledger changes the digest again, so rerun-only recovery is recursive rather than convergent. The legacy gate has a narrow tracker-only reconciliation, but it covers only `state.md` and `tasks-progress.yml`; it does not authorize campaign review-evidence finalization.
+- **Fail-closed disposition**: do not copy authority facts, salvage a stale pass, broaden digest exclusions, invent a human override, or spend another provider slot before choosing a bounded finalization contract. Run 10 remains useful exact-snapshot evidence and all ten attempts remain immutable.
+- **Decision needed**: choose whether Beta2 adds a strict controller-owned review-finalization envelope (recommended), defines a reviewed-state digest that excludes a closed named set of generated review projections while retaining authoritative inputs, or moves final ledger publication to a post-signoff artifact with an explicitly different authority role. Any correction needs paired false-allow tests and a fresh independent review of the changed gate code.
