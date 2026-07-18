@@ -202,8 +202,8 @@ function Test-ReviewCampaignFinalizationEnvelope {
         [Parameter(Mandatory)]$Result,
         [Parameter(Mandatory)]$Fact,
         [Parameter(Mandatory)][string]$CurrentDigest,
-        [Parameter(Mandatory)][string]$FeatureId,
-        [Parameter(Mandatory)][string]$IterationNumber,
+        [AllowEmptyString()][string]$FeatureId,
+        [AllowEmptyString()][string]$IterationNumber,
         [string[]]$ExcludedPathPatterns = @()
     )
     $fail = {
@@ -427,10 +427,19 @@ function Get-ReviewCampaignVerdictPacketDecision {
         [string[]]$ExcludedPathPatterns = @()
     )
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $identity = $null
     if ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($TargetLineage)) {
         $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId $FeatureId -IterationNumber $IterationNumber -RunId 'run-gate-probe'
         if ([string]::IsNullOrWhiteSpace($CampaignId)) { $CampaignId = [string]$identity.campaign_id }
         if ([string]::IsNullOrWhiteSpace($TargetLineage)) { $TargetLineage = [string]$identity.target_lineage }
+        if ([string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId = [string]$identity.feature_id }
+        if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $IterationNumber = [string]$identity.iteration_number }
+    }
+    if ($null -ne $identity -and ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($TargetLineage) -or
+        $FeatureId -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]*$' -or $IterationNumber -cnotmatch '^[0-9]{3}$')) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'scope-identity-unresolvable' `
+            -Message 'Campaign, lineage, feature, and iteration identity must resolve before finalization validation or publication.' `
+            -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
     }
     if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
     $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns

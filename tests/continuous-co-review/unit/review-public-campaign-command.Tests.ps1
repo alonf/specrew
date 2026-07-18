@@ -6,6 +6,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1')
 
         function script:New-CampaignConfig {
             param([string]$Root, [string]$Mode = 'campaign')
@@ -40,13 +41,14 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         function script:New-CampaignResult {
             param(
                 [string]$RunId = 'run-one', [string]$Digest = 'digest-current',
+                [string]$CampaignId = 'cmp-demo-i007',
                 [string]$Completion = 'complete', [string]$Verdict = 'pass',
                 [string]$Runtime = 'completed', [string]$Currentness = 'current',
                 [string]$Validation = 'valid', [bool]$CanApprove = $true,
                 [object[]]$Findings = @(), [string]$FailureReason = $null
             )
             $result = [ordered]@{
-                schema_version = '1.0'; campaign_id = 'cmp-demo-i007'; run_id = $RunId; target_digest = $Digest
+                schema_version = '1.0'; campaign_id = $CampaignId; run_id = $RunId; target_digest = $Digest
                 harness_id = 'fixture'; completion = $Completion; verdict = $Verdict; runtime_outcome = $Runtime
                 termination_verified = $true; containment = 'verified'; currentness = $Currentness; validation = $Validation
                 can_approve_current = $CanApprove; summary = 'fixture result'; findings = @($Findings)
@@ -65,11 +67,14 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
 
         function script:Add-CleanCampaignResult {
-            param([string]$Root, [string]$Store, [string]$RunId = 'run-finalization')
+            param(
+                [string]$Root, [string]$Store, [string]$RunId = 'run-finalization',
+                [string]$CampaignId = 'cmp-demo-i007', [string]$TargetLineage = 'lin-demo'
+            )
             $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root).tree_id
-            Request-ReviewAuthorityClaim -StoreRoot $Store -CampaignId 'cmp-demo-i007' -RunId $RunId -TargetLineage 'lin-demo' -ObservedAt '2026-07-18T00:00:00Z' | Out-Null
-            Publish-ReviewRunResultFact -StoreRoot $Store -CampaignId 'cmp-demo-i007' -RunId $RunId -Fact (New-CampaignResult -RunId $RunId -Digest $digest) | Out-Null
-            Complete-ReviewAuthorityClaim -StoreRoot $Store -CampaignId 'cmp-demo-i007' -RunId $RunId -TargetLineage 'lin-demo' -Disposition released -ObservedAt '2026-07-18T00:01:00Z' | Out-Null
+            Request-ReviewAuthorityClaim -StoreRoot $Store -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -ObservedAt '2026-07-18T00:00:00Z' | Out-Null
+            Publish-ReviewRunResultFact -StoreRoot $Store -CampaignId $CampaignId -RunId $RunId -Fact (New-CampaignResult -RunId $RunId -Digest $digest -CampaignId $CampaignId) | Out-Null
+            Complete-ReviewAuthorityClaim -StoreRoot $Store -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt '2026-07-18T00:01:00Z' | Out-Null
             return [pscustomobject]@{ digest = $digest; commit = [string](@(& git -C $Root rev-parse HEAD) | Select-Object -First 1) }
         }
 
@@ -267,7 +272,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -AuthorityConfigPath $config -CampaignId $run.campaign_id `
             -TargetLineage $run.target_lineage -CampaignStoreRoot $store
-        $gate.decision | Should -Be 'allow'
+        $gate.decision | Should -Be 'allow' -Because ("reason={0}; message={1}" -f $gate.reason, $gate.message)
         $gate.route | Should -Be 'boundary-clean'
         $gate.render_verdict_marker | Should -BeTrue
 
@@ -526,43 +531,66 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
     }
 
-    It 'publishes and accepts one direct-parent allowlisted review-evidence finalization while displaying both commits' {
+    It 'backfills omitted production scope, publishes one direct-parent finalization, and renders both commits through the wired gate' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-valid')
-        $store = Join-Path $TestDrive 'finalization-valid-store'
-        $reviewed = Add-CleanCampaignResult -Root $root -Store $store
+        & git -C $root branch -m 001-demo 2>&1 | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/`n", [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add .gitignore 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'ignore controller authority store' 2>&1 | Out-Null
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaignId = 'cmp-001-demo-i007'
+        $targetLineage = 'lin-001-demo'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -CampaignId $campaignId -TargetLineage $targetLineage
         $finalizationCommit = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
         $beforeGateDigest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
         $candidateFact = [pscustomobject][ordered]@{
-            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = 'cmp-demo-i007'
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = $campaignId
             run_id = 'run-finalization'; reviewed_digest = $reviewed.digest; finalization_commit = $finalizationCommit
         }
-        $candidateEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId 'cmp-demo-i007' `
-            -Result (Get-ReviewRunAuthorityFact -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-finalization' -Stage result) `
+        $candidateEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $campaignId `
+            -Result (Get-ReviewRunAuthorityFact -StoreRoot $store -CampaignId $campaignId -RunId 'run-finalization' -Stage result) `
             -Fact $candidateFact -CurrentDigest $beforeGateDigest -FeatureId '001-demo' -IterationNumber '007'
         $candidateEnvelope.reason | Should -Be 'valid'
 
-        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
-            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
-
-        $decision.route | Should -Be 'boundary-finalized'
-        $decision.reason | Should -Be 'complete-clean-finalized-result'
-        $decision.render_boundary_packet | Should -BeTrue
-        $decision.reviewed_digest | Should -Be $reviewed.digest
-        $decision.reviewed_commit | Should -Be $reviewed.commit
-        $decision.finalization_commit | Should -Be $finalizationCommit
-        $decision.message | Should -Match ([regex]::Escape($reviewed.commit))
-        $decision.message | Should -Match ([regex]::Escape($finalizationCommit))
-        (Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007').finalization_commit | Should -Be $finalizationCommit
-        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id | Should -Be $beforeGateDigest -Because 'the authority fact is outside the reviewed digest'
-
-        $configRoot = Join-Path $TestDrive 'finalization-valid-config'; [IO.Directory]::CreateDirectory($configRoot) | Out-Null
-        $config = New-CampaignConfig -Root $configRoot
-        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -AuthorityConfigPath $config -CampaignId 'cmp-demo-i007' `
-            -TargetLineage 'lin-demo' -FeatureId '001-demo' -IterationNumber '007' -CampaignStoreRoot $store
-        $gate.decision | Should -Be 'allow'
+        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root
+        $gate.decision | Should -Be 'allow' -Because ("reason={0}; message={1}" -f $gate.reason, $gate.message)
+        $gate.route | Should -Be 'boundary-finalized'
+        $gate.reason | Should -Be 'complete-clean-finalized-result'
+        $gate.render_boundary_packet | Should -BeTrue
+        $gate.reviewed_digest | Should -Be $reviewed.digest
         $gate.reviewed_commit | Should -Be $reviewed.commit
         $gate.finalization_commit | Should -Be $finalizationCommit
-        $gate.message | Should -Match 'reviewed commit.+finalized.+commit'
+        $gate.message | Should -Match ([regex]::Escape($reviewed.commit))
+        $gate.message | Should -Match ([regex]::Escape($finalizationCommit))
+        (Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId $campaignId).finalization_commit | Should -Be $finalizationCommit
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id | Should -Be $beforeGateDigest -Because 'the authority fact is outside the reviewed digest'
+
+        { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $root -BoundaryType review-signoff } | Should -Not -Throw
+        $wired = (Get-Content -LiteralPath (Join-Path $root '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json).decision
+        $wired.decision | Should -Be 'allow'
+        $wired.route | Should -Be 'boundary-finalized'
+        $wired.reviewed_commit | Should -Be $reviewed.commit
+        $wired.finalization_commit | Should -Be $finalizationCommit
+        $wired.message | Should -Match 'reviewed commit.+finalized.+commit'
+    }
+
+    It 'fails closed before validation or publication when production scope remains unresolved after backfill' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-scope-unresolved')
+        $store = Join-Path $TestDrive 'finalization-scope-unresolved-store'
+        Mock -CommandName Resolve-ReviewCampaignPublicIdentity -MockWith {
+            [pscustomobject]@{
+                campaign_id = 'cmp-demo-i007'; target_lineage = 'lin-demo'
+                feature_id = ''; iteration_number = ''
+            }
+        }
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -StoreRoot $store
+
+        $decision.route | Should -Be 'review-failure'
+        $decision.reason | Should -Be 'scope-identity-unresolvable'
+        $decision.render_boundary_packet | Should -BeFalse
+        Test-Path -LiteralPath $store | Should -BeFalse -Because 'empty scope cannot reach digest, validation, or fact publication'
+        Assert-MockCalled -CommandName Resolve-ReviewCampaignPublicIdentity -Times 1 -Exactly
     }
 
     It 'denies every non-review-evidence finalization path without publishing a fact' -ForEach @(

@@ -98,4 +98,4 @@ tasks:
     status: "needs-rework"
     started_at: "2026-07-17T23:55:18+03:00"
     completed_at: ""
-    blocked_reason: "DRIFT-198-I007-026 correction passes 40/40 focused tests, all 57 F-198 suites, and governance; commit/hosted CI plus one freshly authorized independent review remain"
+    blocked_reason: "T061 run 11 found DRIFT-198-I007-027 in the production finalization caller; focused 41/41, all 57 suites in 693.2 seconds, and scoped/gap governance pass, while commit/hosted CI and one fresh authorized review remain"
