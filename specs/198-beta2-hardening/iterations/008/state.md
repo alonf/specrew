@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T025 hash-guard update healing and refocus-scope synchronization
-**Tasks Remaining**: T026–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T026 announced greenfield bootstrap commit and brownfield offer
+**Last Completed Task**: T026 announced greenfield bootstrap commit and brownfield offer
+**Tasks Remaining**: T027, T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T027 release-model resolver and applicable closeout teaching
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T23:13:12Z
+**Updated**: 2026-07-18T23:22:34Z
 
 ## Planning Authorization
 
@@ -124,10 +124,15 @@
   fixture, missing-source and registration fixtures, and the 390-entry package completeness guard pass. The broad
   provider-mirror test also exposed an older committed bootstrap-provider comment/newline mismatch outside T025;
   it remains visible for the T065/T066 quality sweep instead of being hidden in this task.
+- T026 classifies a project from its pre-mutation content and Git history. A genuinely greenfield init creates and
+  announces `chore(specrew): bootstrap scaffold`, commits its automatic-baseline record, and ends clean; a missing
+  Git identity uses a command-scoped fallback without changing user configuration. Brownfield init never creates
+  history and writes a structured offered/declined record instead, with an explicit CLI decline surface. Real-Git
+  fixtures prove the exact subject, clean greenfield state, no brownfield HEAD movement, durable decline, dry-run
+  non-mutation, production wiring, and adjacent local-host/file-list behavior.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T026 executes next to create and announce a greenfield scaffold baseline while leaving brownfield history under
-  an explicit recorded human choice.
+- T027 executes next to resolve the repository's actual release model and render only applicable closeout steps.
 
 ## Notes
 

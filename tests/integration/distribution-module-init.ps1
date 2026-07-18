@@ -125,6 +125,9 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 $null = New-Item -Path $moduleRoot -ItemType Directory -Force
 $null = New-Item -Path $projectRoot -ItemType Directory -Force
+& git -C $projectRoot init --quiet
+& git -C $projectRoot config user.name 'Specrew Distribution Test'
+& git -C $projectRoot config user.email 'specrew-distribution@example.invalid'
 
 $missingTools = @()
 if (-not (Get-Command -Name 'specify' -ErrorAction SilentlyContinue)) {
@@ -194,6 +197,19 @@ if (($workflowNames -join '|') -cne ($expectedWorkflowNames -join '|')) {
     Write-Fail ("Distribution bootstrap workflow allowlist mismatch. Expected [{0}], got [{1}]." -f ($expectedWorkflowNames -join ', '), ($workflowNames -join ', '))
     exit 1
 }
+if ($firstRunOutput -notmatch 'Created bootstrap commit [0-9a-f]{40}: chore\(specrew\): bootstrap scaffold') {
+    Write-Fail ("Greenfield module bootstrap did not announce the exact bootstrap commit. Output:`n{0}" -f $firstRunOutput)
+    exit 1
+}
+$bootstrapSubject = (& git -C $projectRoot show -s --format=%s HEAD 2>&1 | Select-Object -First 1)
+if ($LASTEXITCODE -ne 0 -or $bootstrapSubject -ne 'chore(specrew): bootstrap scaffold') {
+    Write-Fail ("Greenfield module bootstrap did not create the exact required commit; observed subject '{0}'." -f $bootstrapSubject)
+    exit 1
+}
+if (@(& git -C $projectRoot status --porcelain=v1 --untracked-files=all 2>&1).Count -ne 0) {
+    Write-Fail 'Greenfield module bootstrap did not leave a clean committed baseline.'
+    exit 1
+}
 
 $trackedFiles = @(
     (Join-Path -Path $projectRoot -ChildPath '.specify\templates\spec-template.md'),
@@ -206,6 +222,7 @@ foreach ($trackedFile in $trackedFiles) {
 }
 
 Write-Pass 'Module bootstrap copied bundled templates and preserved per-project artifacts.'
+Write-Pass 'Module bootstrap created and announced the exact greenfield baseline commit.'
 Write-Pass 'Module proxy preserved module mode and cleared SPECREW_INVOKED_FROM_MODULE after execution.'
 
 $secondRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot

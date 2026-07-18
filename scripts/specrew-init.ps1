@@ -14,6 +14,9 @@ param(
     [switch]$NoAgents,
     [Alias('spec-kit-extension-only')]
     [switch]$SpecKitExtensionOnly,
+    [Alias('brownfield-bootstrap-commit')]
+    [ValidateSet('offer', 'decline')]
+    [string]$BrownfieldBootstrapCommit = 'offer',
     [switch]$SkipUpdateCheck,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -263,6 +266,20 @@ for ($cliIndex = 0; $cliIndex -lt $cliArguments.Count; $cliIndex++) {
             $SpecKitExtensionOnly = $true
             continue
         }
+        '^--brownfield-bootstrap-commit=(offer|decline)$' {
+            $BrownfieldBootstrapCommit = $Matches[1]
+            continue
+        }
+        '^--brownfield-bootstrap-commit$' {
+            if (($cliIndex + 1) -ge $cliArguments.Count -or $cliArguments[$cliIndex + 1] -notin @('offer', 'decline')) {
+                Write-Error '--brownfield-bootstrap-commit requires offer or decline.'
+                exit 3
+            }
+
+            $cliIndex++
+            $BrownfieldBootstrapCommit = $cliArguments[$cliIndex]
+            continue
+        }
         '^--skip-update-check$' {
             $SkipUpdateCheck = $true
             continue
@@ -364,11 +381,16 @@ $hadGitHubContent = $hadGitHub -and ((@(
             Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.github') -Force -ErrorAction SilentlyContinue
         ).Count) -gt 0)
 $hasSpecrewConfig = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specrew\config.yml')
+$initialGitHasHead = $false
+if (Test-Path -LiteralPath $resolvedProjectPath -PathType Container) {
+    $null = & git -C $resolvedProjectPath rev-parse --verify HEAD 2>$null
+    $initialGitHasHead = ($LASTEXITCODE -eq 0)
+}
 $alreadyBootstrapped = $hadSpecify -and $hasSpecrewConfig
 if (-not $SpecKitExtensionOnly) {
     $alreadyBootstrapped = $alreadyBootstrapped -and $hadSquad -and $hadGitHub
 }
-$bootstrapMode = if ($hadSpecify -or $hadSquad) { 'brownfield' } else { 'greenfield' }
+$bootstrapMode = if ($blockingEntries.Count -gt 0 -or $initialGitHasHead) { 'brownfield' } else { 'greenfield' }
 $shouldInitializeSpecify = -not $hadSpecify
 $shouldInitializeSquad = -not $hadSquad
 $shouldForceSpecifyInit = $Force -or ($blockingEntries.Count -eq 0)
@@ -441,6 +463,12 @@ if ($alreadyBootstrapped -and -not $Force) {
         }
     }
 
+    Invoke-SpecrewBootstrapBaseline `
+        -ProjectPath $resolvedProjectPath `
+        -BootstrapMode 'brownfield' `
+        -BrownfieldDecision $BrownfieldBootstrapCommit `
+        -Actions $actions `
+        -PreviewOnly:$DryRun | Out-Null
     Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:$false
     exit 0
 }
@@ -983,6 +1011,13 @@ else {
         Add-Action -Actions $actions -Step 'skill-catalog' -Outcome 'validated .claude/skills, .github/skills, and .agents/skills'
     }
 }
+
+Invoke-SpecrewBootstrapBaseline `
+    -ProjectPath $resolvedProjectPath `
+    -BootstrapMode $bootstrapMode `
+    -BrownfieldDecision $BrownfieldBootstrapCommit `
+    -Actions $actions `
+    -PreviewOnly:$DryRun | Out-Null
 
 Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:(-not $SpecKitExtensionOnly -and $squadSurfaceReady)
 
