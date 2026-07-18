@@ -70,7 +70,7 @@ Iteration 004 was never opened. T021–T029 retain their global identifiers and 
 Iteration 008 plan and readiness gate.
 
 - [x] T021 [owner: Implementer] [sp: 0.75] **Methodology gate template + provider-keyed deploy** — `specrew-methodology-gate.yml` (markdownlint F-033 set + deployed-path validator full run + conditional PSSA; generic triggers; advisory-first; action pins by major); deployed only for recorded provider github/unset (Trace: FR-024, FR-031, SC-008; owns: `templates/github/workflows/**`, installer)
-- [ ] T022 [owner: Implementer] [sp: 0.25] **Work-kind template path fix** — deployed validator location; advisory default kept (Trace: FR-025; owns: `templates/github/workflows/specrew-work-kind.yml`)
+- [x] T022 [owner: Implementer] [sp: 0.25] **Work-kind template path fix** — deployed validator location; advisory default kept (Trace: FR-025; owns: `templates/github/workflows/specrew-work-kind.yml`)
 - [ ] T023 [owner: Implementer] [sp: 0.75] **Deploy-list surgery (deny-by-default)** — only the consumer-ized set deploys; self-host lanes move to `.github/workflows/`; distribution assertions updated (Trace: FR-026; owns: `scripts/internal/distribution-module-init.ps1`, `templates/**`, `.github/workflows/**`)
 - [ ] T024 [owner: Implementer] [sp: 0.25] **Gitignore deployed local host config** (Trace: FR-027; owns: init gitignore surface)
 - [ ] T025 [owner: Implementer] [sp: 0.75] **Update heal: retired templates + refocus-scopes sync** — hash-guarded removal (user-modified → WARN); `refocus-scopes.json` synced into existing `.specify` (closes #2903) (Trace: FR-028, FR-032, SC-009; owns: F-116 heal surface)

@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T021 methodology gate template and provider-keyed deploy
-**Tasks Remaining**: T022–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T022 work-kind template deployed-path correction
+**Last Completed Task**: T022 work-kind template deployed-path correction
+**Tasks Remaining**: T023–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T023 deny-by-default consumer deploy-list surgery
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T22:51:17Z
+**Updated**: 2026-07-18T22:54:15Z
 
 ## Planning Authorization
 
@@ -104,9 +104,14 @@
   checks, and Markdown lint passed; the broader FileList completeness check still reports four pre-existing T060
   root scripts outside the manifest, which T021 did not alter and the deny-by-default distribution slice will
   reconcile rather than hiding here.
+- T022 removes the work-kind workflow's repository-source fallback. Consumer execution now resolves only the
+  shipped `.specify/extensions/.../work-kind-validator.ps1` path, while a missing deployed validator remains an
+  explicit advisory warning and `MODE: advisory` remains the default. The existing deployed-shape behavioral
+  suite was updated to prove deployed-only, hybrid, source-only, and absent layouts through the new contract.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T022 executes next to make the consumer work-kind template resolve only the shipped deployed validator path.
+- T023 executes next to reduce the consumer workflow package to the methodology and work-kind allowlist while
+  preserving Specrew's self-host workflows only in its repository CI surface.
 
 ## Notes
 
