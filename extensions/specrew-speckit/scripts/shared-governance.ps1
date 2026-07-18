@@ -2192,6 +2192,27 @@ function Parse-SpecrewBoundaryVerdict {
         }
     }
 
+    # A hook-captured verdict may carry binding instructions after the canonical boundary. Accept only a leading
+    # exact canonical boundary followed by an explicit instruction delimiter; arbitrary trailing prose still fails
+    # closed. The original VerdictText is stored by Add-SpecrewBoundaryAuthorization for the audit trail.
+    $instructionVerdict = [regex]::Match(
+        $lowerVerdict,
+        '^approved\s+for\s+(?<boundary>before-implement|review-signoff|iteration-closeout|feature-closeout|specify|clarify|plan|tasks|retro)(?<instruction>(?:\s+with\s+instructions?\b[\s\S]*|\s*[,;:]\s*\S[\s\S]*|\s*[-\u2013\u2014]\s*\S[\s\S]*))$'
+    )
+    if ($instructionVerdict.Success) {
+        $boundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$instructionVerdict.Groups['boundary'].Value)
+        if ($boundary -in $CanonicalBoundaries) {
+            return [pscustomobject]@{
+                Authorized        = $true
+                Action            = 'approved'
+                Boundaries        = @($boundary)
+                NormalizedVerdict = "approved for $boundary-boundary entry"
+                DirectiveSentinel = 'SPECREW_BOUNDARY_AUTHORIZED'
+                FailureReason     = $null
+            }
+        }
+    }
+
     if ($lowerVerdict -match '^approved\s+for\s+(.+)$') {
         $payload = $Matches[1].Trim()
         if ($payload -match '\band\b') {

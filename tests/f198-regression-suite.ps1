@@ -24,6 +24,8 @@ $registry = @(
     @{ area = 'tracker honesty check (FR-020)'; path = 'tests/unit/tracker-honesty-check.tests.ps1'; kind = 'script' }
     @{ area = 'self-leak firewall (FR-033/FR-037)'; path = 'tests/unit/self-leak-lint.tests.ps1'; kind = 'script' }
     @{ area = 'verdict-capture integrity (FR-041..FR-044)'; path = 'tests/integration/verdict-capture-blocks.tests.ps1'; kind = 'script' }
+    @{ area = 'T069 production hook/writer capture - injected-context exclusion, complete instructions, contiguous crossing, idempotence'; path = 'tests/bootstrap/HookVerdictCapture.Tests.ps1'; kind = 'script' }
+    @{ area = 'T069 dispatcher session-ownership delivery - sanitized genuine host identity as a clean provider argument'; path = 'tests/bootstrap/DispatcherTranscriptDelivery.Tests.ps1'; kind = 'script' }
     @{ area = 'reviewer containment (FR-008/SC-002)'; path = 'tests/continuous-co-review/unit/worktree-containment.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewer origin-path hygiene (FR-009/SC-002)'; path = 'tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1'; kind = 'pester' }
     @{ area = 'bounded verification opt-in helper + regression evidence (FR-010)'; path = 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1'; kind = 'pester' }

@@ -150,11 +150,56 @@ branch 185-host-neutral-gate-enforcement, HEAD $Head ($HeadTitle).
 }
 
 function Invoke-Conformance {
-    param([string]$Proj, [AllowNull()][string]$TranscriptPath, [string]$Event = 'Stop')
+    param([string]$Proj, [AllowNull()][string]$TranscriptPath, [string]$Event = 'Stop', [AllowNull()][string]$SessionId)
     $tpArg = if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { '' } else { " --transcript-path '$TranscriptPath'" }
-    $cmd = "Set-Location -LiteralPath '$Proj'; & '$provider' --host-kind claude --source-event $Event$tpArg"
+    $sessionArg = if ([string]::IsNullOrWhiteSpace($SessionId)) { '' } else { " --session-id '$SessionId'" }
+    $cmd = "Set-Location -LiteralPath '$Proj'; & '$provider' --host-kind claude --source-event $Event$sessionArg$tpArg"
     $out = & pwsh -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1
     return [pscustomobject]@{ Out = (@($out) -join "`n"); Code = $LASTEXITCODE; Blocked = ((@($out) -join "`n") -match '<<<SPECREW-STOP-BLOCK>>>') }
+}
+
+function Get-TestSessionStatePath {
+    param([string]$Proj, [string]$SessionId, [string]$Leaf = 'material-baseline.json')
+    $owner = "claude|$SessionId"
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($owner)
+    $hash = -join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
+    return (Join-Path (Join-Path (Join-Path $Proj '.specrew/runtime/conformance-sessions') $hash) $Leaf)
+}
+
+function Invoke-BarrierSynchronizedSessionStarts {
+    param([string]$Proj, [string[]]$SessionIds)
+    $barrier = Join-Path $Proj ('.specrew/runtime/barrier-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $barrier -Force | Out-Null
+    $release = Join-Path $barrier 'release'
+    $jobs = @()
+    $worker = {
+        param($ProviderPath, $ProjectPath, $SessionId, $ReadyPath, $ReleasePath, $ModulePath)
+        $env:SPECREW_MODULE_PATH = $ModulePath
+        [System.IO.File]::WriteAllText($ReadyPath, $SessionId, [System.Text.UTF8Encoding]::new($false))
+        $deadline = [DateTime]::UtcNow.AddSeconds(20)
+        while (-not (Test-Path -LiteralPath $ReleasePath -PathType Leaf) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 20 }
+        if (-not (Test-Path -LiteralPath $ReleasePath -PathType Leaf)) { throw "barrier-release-timeout:$SessionId" }
+        Set-Location -LiteralPath $ProjectPath
+        $out = & pwsh -NoProfile -ExecutionPolicy Bypass -File $ProviderPath --host-kind claude --source-event SessionStart --session-id $SessionId 2>&1
+        [pscustomobject]@{ session_id = $SessionId; code = $LASTEXITCODE; output = (@($out) -join "`n") }
+    }
+    try {
+        foreach ($sessionId in $SessionIds) {
+            $ready = Join-Path $barrier ("ready-$sessionId")
+            $jobs += Start-Job -ScriptBlock $worker -ArgumentList $provider, $Proj, $sessionId, $ready, $release, $repoRoot
+        }
+        $deadline = [DateTime]::UtcNow.AddSeconds(20)
+        while (@(Get-ChildItem -LiteralPath $barrier -Filter 'ready-*' -File -ErrorAction SilentlyContinue).Count -lt $SessionIds.Count -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 20 }
+        if (@(Get-ChildItem -LiteralPath $barrier -Filter 'ready-*' -File -ErrorAction SilentlyContinue).Count -ne $SessionIds.Count) { throw 'barrier-ready-timeout' }
+        [System.IO.File]::WriteAllText($release, 'go', [System.Text.UTF8Encoding]::new($false))
+        $null = Wait-Job -Job $jobs -Timeout 40
+        if (@($jobs | Where-Object State -ne 'Completed').Count -gt 0) { throw 'barrier-sessionstart-timeout' }
+        return @($jobs | Receive-Job)
+    }
+    finally {
+        $jobs | Stop-Job -ErrorAction SilentlyContinue
+        $jobs | Remove-Job -Force -ErrorAction SilentlyContinue
+    }
 }
 
 # A real six-section packet body (well over the 600-char substantial floor) carrying the verdict marker.
@@ -402,6 +447,38 @@ try {
     $rhb = Invoke-Conformance -Proj $phb -TranscriptPath $thb
     if ($rhb.Blocked) { Fail "Case PH-b: a read-only status turn over a PRE-EXISTING dirty surface (== session baseline) MUST NOT demand the packet. Out: $($rhb.Out)" }
     Write-Pass "Case PH-b: read-only status over a pre-session dirty tree owes no packet - the SessionStart baseline absorbs foreign dirt (maintainer fixture b)"
+
+    # ---- Case PH-ms: two real child sessions cross the SessionStart barrier together and retain distinct
+    # baselines. Session B then owns a new exact surface through PostToolUse. Session A's routine status Stop must
+    # not be billed for B's files, while B's own packet-less Stop must request exactly one context packet.
+    $phms = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phms
+    New-HandoverSnapshot -Proj $phms -ChangedUserFiles 2 -FileList 'src/preexisting.ps1, tests/preexisting.tests.ps1'
+    $sessionA = 't069-session-a'
+    $sessionB = 't069-session-b'
+    $sessionStarts = @(Invoke-BarrierSynchronizedSessionStarts -Proj $phms -SessionIds @($sessionA, $sessionB))
+    if ($sessionStarts.Count -ne 2 -or @($sessionStarts | Where-Object { [int]$_.code -ne 0 }).Count -gt 0) { Fail "Case PH-ms: barrier-synchronized SessionStart calls failed: $($sessionStarts | ConvertTo-Json -Compress)" }
+    $baselineA = Get-TestSessionStatePath -Proj $phms -SessionId $sessionA
+    $baselineB = Get-TestSessionStatePath -Proj $phms -SessionId $sessionB
+    if (-not (Test-Path -LiteralPath $baselineA -PathType Leaf) -or -not (Test-Path -LiteralPath $baselineB -PathType Leaf) -or $baselineA -eq $baselineB) { Fail 'Case PH-ms: concurrent sessions did not receive distinct owner-scoped baseline files.' }
+    if (Test-Path -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-material-baseline.json') -PathType Leaf) { Fail 'Case PH-ms: production session dispatch must not write the legacy shared baseline.' }
+
+    $ownedFiles = 'src/preexisting.ps1, tests/preexisting.tests.ps1, src/session-b.ps1, tests/session-b.tests.ps1'
+    New-HandoverSnapshot -Proj $phms -ChangedUserFiles 4 -FileList $ownedFiles -Source 'PostToolUse'
+    $postB = Invoke-Conformance -Proj $phms -Event PostToolUse -SessionId $sessionB
+    if ($postB.Code -ne 0) { Fail "Case PH-ms: session B PostToolUse attribution failed. Out: $($postB.Out)" }
+    $ownerRecord = Get-Content -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-material-owner.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ([string]$ownerRecord.owner -ne "claude|$sessionB") { Fail "Case PH-ms: exact material surface was not attributed to session B (owner='$($ownerRecord.owner)')." }
+
+    New-HandoverSnapshot -Proj $phms -ChangedUserFiles 4 -FileList $ownedFiles -Source 'Stop'
+    $statusA = New-Transcript -Proj $phms -Turns @(@{ role = 'user'; text = 'status' }, @{ role = 'assistant'; text = 'The other session is still working; I made no changes in this discussion.' })
+    $stopA = Invoke-Conformance -Proj $phms -TranscriptPath $statusA -SessionId $sessionA
+    if ($stopA.Blocked) { Fail "Case PH-ms: session A was billed for session B's exact material surface. Out: $($stopA.Out)" }
+    $workB = New-Transcript -Proj $phms -Turns @(@{ role = 'user'; text = 'finish the repair' }, @{ role = 'assistant'; text = 'I implemented the session B repair and its tests.' })
+    $stopB = Invoke-Conformance -Proj $phms -TranscriptPath $workB -SessionId $sessionB
+    if (-not $stopB.Blocked) { Fail "Case PH-ms: the owning session's genuine material Stop did not request its packet. Out: $($stopB.Out)" }
+    if ([regex]::Matches($stopB.Out, 'five-part context packet').Count -ne 1) { Fail "Case PH-ms: the owning session must receive exactly one packet request. Out: $($stopB.Out)" }
+    Write-Pass 'Case PH-ms: barrier-synchronized sessions keep separate baselines; foreign work stays conversational and same-owner work requests one packet'
 
     # ---- Case PH-c: SUBSTANTIAL STATE-CHANGING WORK -> packet required. Same project: the surface CHANGES
     #      relative to the baseline (new files appear), the last message has no packet -> block.

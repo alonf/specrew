@@ -1084,6 +1084,11 @@ try {
             if (-not [string]::IsNullOrWhiteSpace($HostBinding)) {
                 $commandArgs += @('--host-binding', $HostBinding)
             }
+            # T069: bind provider-local material state to the genuine host session. Only host-supplied identities
+            # are forwarded; the dispatcher's per-launch fallback is not stable enough to claim session ownership.
+            if (-not [string]::IsNullOrWhiteSpace($rawSessionId)) {
+                $commandArgs += @('--session-id', $sessionId)
+            }
             # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event and
             # pass it as its own CLEAN arg, so the handover provider captures the conversation tail without
             # re-parsing the event JSON. Field name varies (snake/camel); harmless to providers that ignore the

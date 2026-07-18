@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-18T21:03:36Z"
+updated_at: "2026-07-18T21:53:06Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -11,14 +11,14 @@ tasks:
     blocked_reason: ""
   T069:
     title: "Multi-session Stop/capture integrity repair"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-18T21:03:36Z"
-    completed_at: ""
+    completed_at: "2026-07-18T21:53:06Z"
     blocked_reason: ""
   T062:
     title: "Deterministic verification-plan supplier and bounded selection catalog"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-18T21:53:06Z"
     completed_at: ""
     blocked_reason: ""
   T063:

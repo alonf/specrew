@@ -57,7 +57,7 @@
 
 ### DRIFT-198-I008-002 — injected-context and shared-baseline capture defects carried into T069
 
-- **Status**: selected for T069; implementation pending
+- **Status**: resolved by T069; committed evidence pending
 - **Severity**: major authorization and interaction-integrity defect
 - **Type**: inherited implementation/integration drift
 - **Requirements**: FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007
@@ -72,6 +72,13 @@
 - **Scope guard**: if the full production correction and fixture matrix cannot fit 2.25 SP, stop and replan. Do
   not hide additional work under distribution, supplier, or release tasks.
 - **Dogfood rule**: subsequent Iteration 008 lifecycle boundaries exercise the corrected T068/T069 path.
+- **Resolution evidence**: the real hook/writer fixture skips an injected `<environment_context>` turn, accepts the
+  later exact instruction-bearing approval, persists its complete instruction once, and preserves contiguous
+  crossing and bare-number controls. The dispatcher passes only a sanitized genuine host session identity. A
+  barrier-synchronized two-session fixture writes distinct baseline files, attributes session B's PostToolUse
+  surface to B, keeps session A's routine status conversational, and makes B's own material Stop request exactly
+  one packet. The exact stale/current T068 suite, machinery/quoted/teaching fixtures, focused neighbors, and all 60
+  registered Feature 198 suites pass; full-registry wall time was 788.5 seconds.
 
 ### Resolution Strategies
 

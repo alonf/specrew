@@ -97,13 +97,20 @@ try {
     Invoke-StopHook -Proj $c6.Proj -Tx $c6.Transcript
     Assert-True ([string](Read-Enforcement -Proj $c6.Proj).last_authorized_boundary -eq 'tasks') "6 TO-JUMP: tasks + (tasks->review-signoff) marker -> gate STAYS at tasks (TO is not FROM's immediate successor)"
 
-    # === Case 7 (maintainer test 5) — IDEMPOTENT: a duplicate Stop after the boundary is already authorized does NOT re-record. ===
-    $c7 = New-CaptureProject -LastAuth 'tasks' -Turns (Packet 'tasks' 'before-implement' 'Approve with instructions'); $cases += $c7.Tmp
+    # === Case 7 — REAL WRITER PATH: injected environment context is skipped, the complete instruction-bearing
+    # verdict is stored, and a duplicate Stop does not re-record it. This reproduces DRIFT-198-I007-025. ===
+    $instructionVerdict7 = 'approved for before-implement — authorize the bounded correction; do not spend a provider slot'
+    $c7 = New-CaptureProject -LastAuth 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement --> What's your verdict?" },
+        @{ role = 'user'; text = '<environment_context><cwd>C:\stale\injected</cwd><current_date>2026-07-18</current_date></environment_context>' },
+        @{ role = 'user'; text = $instructionVerdict7 }
+    ); $cases += $c7.Tmp
     Invoke-StopHook -Proj $c7.Proj -Tx $c7.Transcript
     Invoke-StopHook -Proj $c7.Proj -Tx $c7.Transcript   # fire again
     $e7 = Read-Enforcement -Proj $c7.Proj
     Assert-True ([string]$e7.last_authorized_boundary -eq 'before-implement') "7 IDEMPOTENT: gate at before-implement after two stops"
     Assert-True (@($e7.verdict_history).Count -eq 1) "7 IDEMPOTENT: exactly ONE verdict_history entry (the re-fired Stop's marker FROM no longer matches the advanced cursor) (got $(@($e7.verdict_history).Count))"
+    Assert-True ([string](@($e7.verdict_history)[-1].verdict_text) -eq $instructionVerdict7) '7 INSTRUCTION INTEGRITY: the real hook/writer path stores the complete instruction-bearing human verdict'
 
     # === Case 8 — FIRST BOUNDARY: no lastAuth + marker intake->specify + approval -> AUTHORIZES specify. ===
     $c8 = New-CaptureProject -LastAuth '' -Turns (Packet 'intake' 'specify' 'approved for specify'); $cases += $c8.Tmp

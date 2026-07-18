@@ -60,6 +60,8 @@ exit 0
     Assert-True ($si -ge 0 -and $captured[$si + 1] -eq 'Stop') 'F4b: the neutral --source-event Stop is delivered (clean arg)'
     $hi = [array]::IndexOf($captured, '--host-kind')
     Assert-True ($hi -ge 0 -and $captured[$hi + 1] -eq 'claude') 'F4b: --host-kind claude is delivered'
+    $sessionIndex = [array]::IndexOf($captured, '--session-id')
+    Assert-True ($sessionIndex -ge 0 -and $captured[$sessionIndex + 1] -eq 'abc123') 'T069: the sanitized genuine host session id is delivered as a clean provider arg'
 
     $prompt = 'approved for tasks'
     $promptEvent = @{ session_id = 'abc123'; hook_event_name = 'UserPromptSubmit'; transcript_path = $spaced; prompt = $prompt } | ConvertTo-Json -Compress

@@ -221,8 +221,11 @@ try {
             @{ role = 'user'; text = 'Approve with instructions: fold T008 in' }))
     if (-not $c1.Found) { Fail "C1: marker + approval must capture (reason=$($c1.Reason))" }
     if ($c1.ToBoundary -ne 'before-implement') { Fail "C1: ToBoundary expected before-implement, got '$($c1.ToBoundary)'" }
-    if ($c1.VerdictText -ne 'approved for before-implement') { Fail "C1: VerdictText expected 'approved for before-implement', got '$($c1.VerdictText)'" }
-    Write-Pass "reader: marker packet + human approval -> captured verdict tied to the marker's boundary"
+    $expectedInstructionVerdict = 'approved for before-implement — with instructions: fold T008 in'
+    if ($c1.VerdictText -ne $expectedInstructionVerdict) { Fail "C1: instruction-bearing VerdictText was not retained; expected '$expectedInstructionVerdict', got '$($c1.VerdictText)'" }
+    $parsedInstructionVerdict = Parse-SpecrewBoundaryVerdict -VerdictText $c1.VerdictText
+    if (-not $parsedInstructionVerdict.Authorized -or @($parsedInstructionVerdict.Boundaries) -notcontains 'before-implement') { Fail 'C1: retained instructions must not weaken canonical boundary parsing' }
+    Write-Pass "reader: marker packet + human approval retains its complete instruction behind the exact canonical boundary"
 
     # C2: NO marker -> NO capture (the human re-confirms via the pending surface).
     $c2 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
@@ -297,7 +300,16 @@ try {
             @{ role = 'user'; text = '<hook_prompt hook_run_id="stop:2:C:\Users\alon.HOME\.codex\hooks.json">Please reply with: approved for clarify</hook_prompt>' }))
     if ($c8c.Found) { Fail "C8c: hook_prompt must not be treated as a human approval" }
     if ($c8c.Reason -ne 'awaiting-response') { Fail "C8c: expected awaiting-response after ignoring hook_prompt, got '$($c8c.Reason)'" }
-    Write-Pass "reader: identical human/isMeta text is provenance-separated, genuine prompt-submit survives dedup, and Codex hook_prompt is ignored"
+    $instructionVerdict = 'approved for clarify — retain the complete T061 attempt-and-slot ledger'
+    $c8e = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify --> verdict?" },
+            @{ role = 'user'; text = '<environment_context><cwd>C:\stale\injected</cwd><current_date>2026-07-18</current_date></environment_context>' },
+            @{ role = 'user'; text = $instructionVerdict }))
+    if (-not $c8e.Found -or $c8e.VerdictText -ne $instructionVerdict) { Fail "C8e: injected environment context hid or altered the genuine instruction-bearing verdict (reason=$($c8e.Reason), verdict='$($c8e.VerdictText)')" }
+    $c8f = Get-SpecrewCapturedBoundaryVerdict -LastUserMessage '<environment_context><cwd>C:\stale\injected</cwd></environment_context>' -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify --> verdict?" }))
+    if ($c8f.Found -or $c8f.Reason -ne 'awaiting-response') { Fail "C8f: injected prompt context must be ineligible for verdict evidence (reason=$($c8f.Reason))" }
+    Write-Pass "reader: isMeta/hook/environment machinery is provenance-excluded while the genuine full instruction-bearing approval remains authoritative"
 
     # C9: Antigravity transcript roles parse as real assistant/user turns, including USER_REQUEST wrapper removal.
     $c9 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-AntigravityTranscript -Turns @(

@@ -313,6 +313,68 @@ function Get-SpecrewFireIdentity {
     catch { return '' }
 }
 
+function Get-SpecrewMaterialRuntimeState {
+    # Production dispatch supplies a sanitized host session id. Scope every mutable material/loop/dedupe record to
+    # that owner so concurrent sessions cannot overwrite one another's baseline or satisfaction state. Direct legacy
+    # invocations without a session id retain the historical paths and the conservative enforcement behavior.
+    param([string]$ProjectRoot, [AllowNull()][string]$HostKind, [AllowNull()][string]$SessionId)
+    $runtimeRoot = Join-Path $ProjectRoot '.specrew/runtime'
+    $stateRoot = $runtimeRoot
+    $owner = $null
+    if (-not [string]::IsNullOrWhiteSpace($SessionId)) {
+        $safeHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'unknown' } else { (($HostKind -replace '[^a-zA-Z0-9-]+', '-').Trim('-').ToLowerInvariant()) }
+        $safeSession = (($SessionId -replace '[^a-zA-Z0-9-]+', '-').Trim('-'))
+        if (-not [string]::IsNullOrWhiteSpace($safeSession)) {
+            $owner = ('{0}|{1}' -f $safeHost, $safeSession)
+            $ownerHash = Get-SpecrewFireIdentity -Parts @($owner)
+            if (-not [string]::IsNullOrWhiteSpace($ownerHash)) {
+                $stateRoot = Join-Path (Join-Path $runtimeRoot 'conformance-sessions') $ownerHash
+            }
+            else { $owner = $null }
+        }
+    }
+    $legacy = [string]::IsNullOrWhiteSpace($owner)
+    return [pscustomobject]@{
+        Owner = $owner
+        BaselinePath = Join-Path $stateRoot $(if ($legacy) { 'conformance-material-baseline.json' } else { 'material-baseline.json' })
+        SatisfiedPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-material-satisfied.json' } else { 'material-satisfied.json' })
+        NudgedPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-material-nudged.json' } else { 'material-nudged.json' })
+        BlockPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-stop-block.json' } else { 'stop-block.json' })
+        ContinueGuardPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-continue-guard.json' } else { 'continue-guard.json' })
+        LastFirePath = Join-Path $stateRoot $(if ($legacy) { 'conformance-last-fire.json' } else { 'last-fire.json' })
+        AttributionPath = Join-Path $runtimeRoot 'conformance-material-owner.json'
+    }
+}
+
+function Get-SpecrewMaterialOwnerRecord {
+    param([string]$Path)
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        $record = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace([string]$record.key) -or [string]::IsNullOrWhiteSpace([string]$record.owner) -or $null -eq $record.epoch) { return $null }
+        return $record
+    }
+    catch { return $null }
+}
+
+function Set-SpecrewMaterialOwnerRecord {
+    param([string]$Path, [string]$Key, [string]$Owner)
+    if ([string]::IsNullOrWhiteSpace($Key) -or [string]::IsNullOrWhiteSpace($Owner)) { return $false }
+    $temp = $null
+    try {
+        $dir = Split-Path -Parent $Path
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $temp = $Path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        $json = [pscustomobject]@{ key = $Key; owner = $Owner; epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress
+        [System.IO.File]::WriteAllText($temp, $json, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $Path, $true)
+        $back = Get-SpecrewMaterialOwnerRecord -Path $Path
+        return ($null -ne $back -and [string]$back.key -eq $Key -and [string]$back.owner -eq $Owner)
+    }
+    catch { return $false }
+    finally { if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }
+}
+
 function Resolve-SpecrewBootstrapDir {
     # The scripts/internal/bootstrap dir (ConversationCaptureAccessor + ProjectMetadataAccessor). Direct candidates
     # (project tree, then SPECREW_MODULE_PATH) FIRST; the Get-Module -ListAvailable scan (slow over OneDrive /
@@ -473,10 +535,12 @@ function Update-SpecrewWorkshopQuestionHandover {
 $hostKindArg = $null
 $sourceEventArg = $null
 $transcriptPathArg = $null
+$sessionIdArg = $null
 for ($i = 0; $i -lt $args.Count; $i++) {
     if ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKindArg = [string]$args[$i + 1] }
     elseif ($args[$i] -eq '--source-event' -and ($i + 1) -lt $args.Count) { $sourceEventArg = [string]$args[$i + 1] }
     elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
+    elseif ($args[$i] -eq '--session-id' -and ($i + 1) -lt $args.Count) { $sessionIdArg = [string]$args[$i + 1] }
 }
 
 try {
@@ -488,6 +552,7 @@ try {
     if ($eventLower -notin @('stop', 'agentstop', 'sessionstart', 'posttooluse')) {
         return  # Stop-class enforcement + the SessionStart baseline + the PostToolUse nudge lanes only (defensive).
     }
+    $materialRuntime = Get-SpecrewMaterialRuntimeState -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg
 
     # --- SESSIONSTART BASELINE lane (maintainer packet-hardening 2026-07-14): absorb the CURRENT dirty-tree
     # surface as this session's baseline so a read-only turn is never blamed for files an EARLIER session (or an
@@ -499,7 +564,7 @@ try {
             $bd = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
             $sig = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bd -AnySnapshot
             $blKey = if ($null -ne $sig -and -not [string]::IsNullOrWhiteSpace([string]$sig.key)) { [string]$sig.key } else { 'baseline|no-surface' }
-            Set-SpecrewMaterialSatisfiedKey -Path (Join-Path $projectRoot '.specrew/runtime/conformance-material-baseline.json') -Key $blKey
+            Set-SpecrewMaterialSatisfiedKey -Path $materialRuntime.BaselinePath -Key $blKey
         }
         catch { $null = $_ }
         return
@@ -516,12 +581,14 @@ try {
             $sig = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bd -AllowedSources @('posttooluse')
             if ($null -eq $sig -or -not [bool]$sig.material) { return }
             $key = [string]$sig.key
-            $rt = Join-Path $projectRoot '.specrew/runtime'
-            $baseKey = Get-SpecrewMaterialSatisfiedKey -Path (Join-Path $rt 'conformance-material-baseline.json')
+            $baseKey = Get-SpecrewMaterialSatisfiedKey -Path $materialRuntime.BaselinePath
             if (-not [string]::IsNullOrWhiteSpace($baseKey) -and ($key -eq $baseKey)) { return }        # pre-session surface, not this turn's work
-            $satKey = Get-SpecrewMaterialSatisfiedKey -Path (Join-Path $rt 'conformance-material-satisfied.json')
+            $satKey = Get-SpecrewMaterialSatisfiedKey -Path $materialRuntime.SatisfiedPath
             if (-not [string]::IsNullOrWhiteSpace($satKey) -and ($key -eq $satKey)) { return }          # a packet already covered this surface
-            $nudgedPath = Join-Path $rt 'conformance-material-nudged.json'
+            if (-not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) {
+                $null = Set-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath -Key $key -Owner ([string]$materialRuntime.Owner)
+            }
+            $nudgedPath = $materialRuntime.NudgedPath
             $nudgedKey = Get-SpecrewMaterialSatisfiedKey -Path $nudgedPath
             if (-not [string]::IsNullOrWhiteSpace($nudgedKey)) {
                 if ($nudgedKey -eq $key) { return }                                                     # this exact surface already nudged
@@ -646,9 +713,9 @@ try {
     # Material-work lane (Proposal 145 follow-up): the old length-only "substantial" trigger over-blocked normal
     # discussion, so use the deterministic rolling-handover signal written by the preceding Stop provider instead.
     $materialStop = ($null -ne $materialSignal -and [bool]$materialSignal.material)
-    $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
-    $materialSatisfiedPath = Join-Path $projectRoot '.specrew/runtime/conformance-material-satisfied.json'
-    $materialBaselinePath = Join-Path $projectRoot '.specrew/runtime/conformance-material-baseline.json'
+    $blockStatePath = $materialRuntime.BlockPath
+    $materialSatisfiedPath = $materialRuntime.SatisfiedPath
+    $materialBaselinePath = $materialRuntime.BaselinePath
     # The FILE-SURFACE key of the current snapshot (material or not) - what the session baseline advances to
     # once this stop's obligation is discharged. Captured BEFORE any long-turn key override.
     $fileSurfaceKey = if ($null -ne $materialSignal) { [string]$materialSignal.key } else { '' }
@@ -664,6 +731,17 @@ try {
         $materialStop = $false
         $materialBaselineSuppressed = $true
     }
+    $materialForeignOwnerSuppressed = $false
+    if ($materialStop -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) {
+        $ownerRecord = Get-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath
+        if ($null -ne $ownerRecord -and [string]$ownerRecord.key -eq [string]$materialSignal.key -and [string]$ownerRecord.owner -ne [string]$materialRuntime.Owner) {
+            $ownerAge = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$ownerRecord.epoch
+            if ($ownerAge -ge 0 -and $ownerAge -le $script:SpecrewMaterialHandoverMaxAgeSec) {
+                $materialStop = $false
+                $materialForeignOwnerSuppressed = $true
+            }
+        }
+    }
     # --- LONG-TURN lane (maintainer fixture (d) 2026-07-14): a read-only turn with no material delta still owes
     # the packet when it was a GENUINELY LONG investigation (assistant-entry count since the last human message
     # >= the threshold) - the re-entry cost is the turn, not the diff. Deterministic, cheap (raw string scan),
@@ -678,7 +756,7 @@ try {
             $materialSignal.reason = 'long-turn-investigation'
         }
     }
-    $continueGuardPath = Join-Path $projectRoot '.specrew/runtime/conformance-continue-guard.json'  # FR-045a continue loop-guard store ({key,count,epoch}); keyed by "continue|<materialSurfaceHash>", NO time window (a changed surface = intervening progress = reset to 0).
+    $continueGuardPath = $materialRuntime.ContinueGuardPath  # FR-045a continue loop-guard store ({key,count,epoch}); keyed by "continue|<materialSurfaceHash>", NO time window (a changed surface = intervening progress = reset to 0).
     $existingBlockRecord = Get-SpecrewBlockRecord -Path $blockStatePath
     $materialRetryKey = Get-SpecrewRecentMaterialRetryKey -Record $existingBlockRecord
     $materialSatisfiedKey = Get-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath
@@ -770,7 +848,7 @@ try {
     $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
     $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
     $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("wq={0}" -f [int][bool]$workshopIntermediate), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
-    $lastFirePath = Join-Path $projectRoot '.specrew/runtime/conformance-last-fire.json'
+    $lastFirePath = $materialRuntime.LastFirePath
     if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
         try {
             if (Test-Path -LiteralPath $lastFirePath -PathType Leaf) {
@@ -1007,7 +1085,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_feature = $(if ($workshopIntermediate) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopIntermediate) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopIntermediate) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_feature = $(if ($workshopIntermediate) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopIntermediate) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopIntermediate) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

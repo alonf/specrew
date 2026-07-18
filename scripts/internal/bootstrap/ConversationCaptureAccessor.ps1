@@ -77,7 +77,7 @@ function Test-SpecrewConversationMachineryEnvelope {
     [OutputType([bool])]
     param([Parameter()][AllowNull()][string]$Text)
     if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
-    return [bool]($Text -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b)[\s\S]*</(?:hook_prompt|task-notification|turn_aborted|system-reminder)>\s*$')
+    return [bool]($Text -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b)[\s\S]*</(?:hook_prompt|task-notification|turn_aborted|system-reminder|environment_context)>\s*$')
 }
 
 function Test-SpecrewTurnIsHumanVerdictEvidence {
@@ -192,6 +192,42 @@ function Test-SpecrewHumanVerdictToken {
     return $r
 }
 
+function Get-SpecrewCapturedVerdictText {
+    # Keep the canonical boundary prefix that the authorization writer validates, but do not discard binding
+    # instructions from the human's verdict. A direct "approved for <boundary>" keeps its suffix byte-for-byte;
+    # other clear instruction-bearing approval forms are normalized behind an explicit delimiter. Non-instruction
+    # variants retain the historical canonical-only representation.
+    [OutputType([string])]
+    param(
+        [Parameter()][AllowNull()][string]$HumanText,
+        [Parameter(Mandatory = $true)][string]$ToBoundary
+    )
+
+    $canonical = "approved for $ToBoundary"
+    if ([string]::IsNullOrWhiteSpace($HumanText)) { return $canonical }
+    $text = $HumanText.Trim()
+    $approval = [regex]::Match(
+        $text,
+        '(?is)^\s*(?:(?:option\s*)?[12]\s*[.):\-\u2013\u2014]\s*)?(?:(?:yes|confirmed)\s*[,;:\-\u2013\u2014]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b(?<tail>[\s\S]*)$'
+    )
+    if (-not $approval.Success) { return $canonical }
+
+    $tail = [string]$approval.Groups['tail'].Value
+    $forBoundary = [regex]::Match(
+        $tail,
+        ('(?is)^\s+for\s+' + [regex]::Escape($ToBoundary) + '\b(?<suffix>[\s\S]*)$')
+    )
+    if ($forBoundary.Success) {
+        $suffix = [string]$forBoundary.Groups['suffix'].Value
+        return $(if ([string]::IsNullOrWhiteSpace($suffix)) { $canonical } else { $canonical + $suffix })
+    }
+
+    if ($tail -match '(?is)\bwith\s+instructions?\b|[,;:\-\u2013\u2014]\s*\S') {
+        return ($canonical + ' — ' + $tail.Trim())
+    }
+    return $canonical
+}
+
 function Test-SpecrewBoundaryPacketLikeText {
     # Markerless fallback is allowed only when the preceding assistant turn looks like the re-entry packet the
     # human was approving. This is intentionally structural and bounded, not a full prose validator.
@@ -291,7 +327,7 @@ function Find-SpecrewPendingVerdictFallbackCandidate {
         $result.Found = $true
         $result.FromBoundary = $pendingFromMarker
         $result.ToBoundary = $pendingToMarker
-        $result.VerdictText = $approvalPhrase
+        $result.VerdictText = Get-SpecrewCapturedVerdictText -HumanText $humanText -ToBoundary $pendingToMarker
         $result.HumanText = $humanText
         $result.Reason = 'captured-pending-artifact-fallback'
         return $result
@@ -446,7 +482,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $result.Found = $true
         $result.FromBoundary = $mFrom
         $result.ToBoundary = $mTo
-        $result.VerdictText = "approved for $mTo"
+        $result.VerdictText = Get-SpecrewCapturedVerdictText -HumanText $humanText -ToBoundary $mTo
         $result.HumanText = $humanText
         $result.Reason = 'captured'
         return $result
