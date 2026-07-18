@@ -91,6 +91,30 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         (Get-Content -LiteralPath $sentinel -Raw) | Should -Be 'preserve'
     }
 
+    It 'preserves a workspace that appears while git worktree add is failing' {
+        $origin = Join-Path $TestDrive 'origin-add-race'
+        $external = Join-Path $TestDrive 'external-add-race'
+        New-TargetRepo -Path $origin
+        Mock -CommandName New-ReviewTargetWorkspaceToken -MockWith { 'BBBBBBBBBBBBBBBB' }
+        Mock -CommandName Invoke-ReviewTargetGit -ParameterFilter {
+            $Arguments.Count -ge 5 -and $Arguments[0] -ceq 'worktree' -and $Arguments[1] -ceq 'add'
+        } -MockWith {
+            $appeared = [string]$Arguments[4]
+            [IO.Directory]::CreateDirectory($appeared) | Out-Null
+            [IO.File]::WriteAllText((Join-Path $appeared 'owned-by-racing-run.txt'), 'preserve-race')
+            [pscustomobject]@{ exit_code = 1; stdout = ''; stderr = 'synthetic-add-race' }
+        }
+
+        { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-add-race -ExternalRoot $external } | Should -Throw -ExpectedMessage '*review-target-worktree-add-failed:synthetic-add-race*'
+        $appeared = Join-Path $external 'rt-BBBBBBBBBBBBBBBB'
+        $sentinel = Join-Path $appeared 'owned-by-racing-run.txt'
+        Test-Path -LiteralPath $sentinel -PathType Leaf | Should -BeTrue
+        (Get-Content -LiteralPath $sentinel -Raw) | Should -Be 'preserve-race'
+        Assert-MockCalled -CommandName Invoke-ReviewTargetGit -Times 1 -Exactly -ParameterFilter {
+            $Arguments.Count -ge 5 -and $Arguments[0] -ceq 'worktree' -and $Arguments[1] -ceq 'add'
+        }
+    }
+
     It 'generates compact fixed-length workspace tokens without collapsing invocations' {
         $one = New-ReviewTargetWorkspaceToken
         $two = New-ReviewTargetWorkspaceToken
@@ -99,7 +123,6 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
 
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1') -Raw
         $source | Should -Match 'RandomNumberGenerator\]::GetBytes\(12\)'
-        $source | Should -Match 'failed add never proves ownership'
     }
 
     It 'exposes the same neutral port fields for the thin non-code fixture' {
