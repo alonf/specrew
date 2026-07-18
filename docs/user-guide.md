@@ -921,6 +921,19 @@ pwsh -File .\.specify\extensions\specrew-speckit\scripts\validate-governance.ps1
 The process-quality scorer is an internal regression helper and is exercised
 through the CI integration tests rather than a public `evaluation/` surface.
 
+### Consumer methodology checks
+
+For projects whose repository provider is GitHub or not yet recorded, the
+generic methodology workflow is installed by `specrew init`. It runs Markdown
+lint, the full deployed governance validator, and PSScriptAnalyzer when
+PowerShell files are present. The workflow starts in advisory mode: findings
+remain visible without making the job a required merge gate. Maintainers can
+promote deterministic failures to a blocking repository check after the project
+has established a stable baseline; warnings should remain advisory.
+
+For an explicitly non-GitHub provider, init deploys no GitHub Actions workflow
+and prints the equivalent manual governance-validator command.
+
 ## Troubleshooting
 
 ### Copilot CLI "Failed to load N skills" warning at startup

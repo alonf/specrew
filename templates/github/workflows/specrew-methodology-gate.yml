@@ -1,0 +1,61 @@
+name: Specrew Methodology Gate
+
+on:
+  push:
+    branches:
+      - main
+      - '[0-9][0-9][0-9]-*'
+  pull_request:
+    branches:
+      - main
+      - '[0-9][0-9][0-9]-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  methodology:
+    name: methodology checks (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Lint Markdown (F-033)
+        run: >-
+          npx --yes markdownlint-cli@0 "**/*.md"
+          --ignore node_modules
+          --ignore .squad
+          --ignore .specify
+
+      - name: Validate Specrew governance
+        shell: pwsh
+        run: |
+          $validator = './.specify/extensions/specrew-speckit/scripts/validate-governance.ps1'
+          if (-not (Test-Path -LiteralPath $validator -PathType Leaf)) {
+            throw "Deployed Specrew governance validator not found at $validator"
+          }
+          & $validator -ProjectPath .
+
+      - name: Analyze PowerShell when present
+        if: ${{ hashFiles('**/*.ps1', '**/*.psm1', '**/*.psd1') != '' }}
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          $files = Get-ChildItem -Path . -Recurse -File -Include *.ps1,*.psm1,*.psd1 |
+            Where-Object { $_.FullName -notmatch '[\\/]\.(git|squad|specify)[\\/]' }
+          $errors = @($files | ForEach-Object {
+              Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error
+            })
+          if ($errors.Count -gt 0) {
+            $errors | Format-Table -AutoSize
+            throw "PSScriptAnalyzer found $($errors.Count) error(s)."
+          }

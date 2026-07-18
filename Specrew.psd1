@@ -377,6 +377,7 @@
         'templates/github/agents/squad.agent.md',
         'templates/github/workflows/specrew-ci.yml',
         'templates/github/workflows/specrew-confidence-lane.yml',
+        'templates/github/workflows/specrew-methodology-gate.yml',
         'templates/github/workflows/specrew-project-sync.yml',
         'templates/github/workflows/specrew-work-kind.yml',
         'templates/specify/templates/agent-file-template.md',

@@ -21,7 +21,9 @@ function Copy-TemplateTree {
         [bool]$OverwriteExisting,
 
         [Parameter(Mandatory = $true)]
-        [switch]$PreviewOnly
+        [switch]$PreviewOnly,
+
+        [string[]]$ExcludedRelativePaths = @()
     )
 
     if (-not (Test-Path -LiteralPath $SourceRoot -PathType Container)) {
@@ -33,7 +35,14 @@ function Copy-TemplateTree {
     $copied = 0
     $updated = 0
     $preserved = 0
-    $sourceFiles = @(Get-ChildItem -LiteralPath $SourceRoot -File -Recurse | Sort-Object FullName)
+    $excluded = @{}
+    foreach ($path in @($ExcludedRelativePaths)) {
+        if (-not [string]::IsNullOrWhiteSpace($path)) { $excluded[$path.Replace('\', '/')] = $true }
+    }
+    $sourceFiles = @(Get-ChildItem -LiteralPath $SourceRoot -File -Recurse | Sort-Object FullName | Where-Object {
+            $relative = [IO.Path]::GetRelativePath($SourceRoot, $_.FullName).Replace('\', '/')
+            -not $excluded.ContainsKey($relative)
+        })
 
     foreach ($sourceFile in $sourceFiles) {
         $relativePath = [System.IO.Path]::GetRelativePath($SourceRoot, $sourceFile.FullName)
@@ -77,6 +86,35 @@ function Copy-TemplateTree {
         Preserved = $preserved
         Total     = $sourceFiles.Count
     }
+}
+
+function Get-SpecrewTemplateDeploymentProvider {
+    # Init needs to distinguish an UNSET provider (greenfield: deploy the GitHub-ready generic
+    # methodology gate) from an explicitly non-GitHub forge (do not deploy GitHub Actions YAML).
+    param([Parameter(Mandatory = $true)][string]$ProjectPath)
+    $path = Join-Path $ProjectPath '.specrew/repository-governance.yml'
+    if (-not [IO.File]::Exists($path)) { return '' }
+    function ConvertFrom-ProviderScalar([string]$Value) {
+        $withoutComment = @($Value -split '#', 2)[0].Trim()
+        return $withoutComment.Trim([char[]]@('"', "'")).ToLowerInvariant()
+    }
+    $block = ''
+    foreach ($line in [IO.File]::ReadAllLines($path)) {
+        if ($line -match '^(?<key>[a-z_]+):\s*(?<value>.*)$') {
+            $block = $Matches.key
+            if ($block -ceq 'provider' -and -not [string]::IsNullOrWhiteSpace($Matches.value)) {
+                return ConvertFrom-ProviderScalar -Value $Matches.value
+            }
+            continue
+        }
+        if ($block -ceq 'provider' -and $line -match '^\s+name:\s*(?<value>[^#]+)') {
+            return ConvertFrom-ProviderScalar -Value $Matches.value
+        }
+        if ($block -ceq 'repository_governance' -and $line -match '^\s{2}provider:\s*(?<value>[^#]+)') {
+            return ConvertFrom-ProviderScalar -Value $Matches.value
+        }
+    }
+    return ''
 }
 
 function Invoke-BundledTemplateDeployment {
@@ -142,11 +180,25 @@ function Invoke-BundledTemplateDeployment {
     }
 
     if (-not $SpecKitExtensionOnly) {
+        $provider = Get-SpecrewTemplateDeploymentProvider -ProjectPath $ProjectPath
+        $githubExclusions = if ([string]::IsNullOrWhiteSpace($provider) -or $provider -ceq 'github') {
+            @()
+        }
+        else {
+            @(Get-ChildItem -LiteralPath (Join-Path $ExecutionLayout.TemplateRoot 'github/workflows') -File |
+                    ForEach-Object { 'workflows/{0}' -f $_.Name })
+        }
+        if (-not [string]::IsNullOrWhiteSpace($provider) -and $provider -cne 'github') {
+            Add-Action -Actions $Actions -Step 'provider-gate' -Outcome (
+                "skipped GitHub Actions workflows for recorded provider '{0}'; run governance manually: pwsh -File ./.specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath ." -f $provider
+            )
+        }
         $null = $deployments.Add([pscustomobject]@{
                 Name        = '.github'
                 SourceRoot  = Join-Path -Path $ExecutionLayout.TemplateRoot -ChildPath 'github'
                 TargetRoot  = Join-Path -Path $ProjectPath -ChildPath '.github'
                 HadExisting = $HadGitHub
+                Exclusions  = @($githubExclusions)
             })
     }
 
@@ -156,7 +208,8 @@ function Invoke-BundledTemplateDeployment {
             continue
         }
 
-        $result = Copy-TemplateTree -SourceRoot $deployment.SourceRoot -TargetRoot $deployment.TargetRoot -OverwriteExisting:$ForceRefresh -PreviewOnly:$PreviewOnly
+        $exclusions = if ($deployment.PSObject.Properties['Exclusions']) { @($deployment.Exclusions) } else { @() }
+        $result = Copy-TemplateTree -SourceRoot $deployment.SourceRoot -TargetRoot $deployment.TargetRoot -OverwriteExisting:$ForceRefresh -PreviewOnly:$PreviewOnly -ExcludedRelativePaths $exclusions
         $verb = if ($PreviewOnly) { 'would-sync' } else { 'synced' }
         Add-Action -Actions $Actions -Step 'template-copy' -Outcome ("{0} {1} from {2} ({3} new, {4} updated, {5} preserved)" -f $verb, $deployment.Name, $deployment.SourceRoot, $result.Copied, $result.Updated, $result.Preserved)
     }

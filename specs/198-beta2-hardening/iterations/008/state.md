@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T064 frozen-target verification execution and exact-digest campaign injection
-**Tasks Remaining**: T021–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T021 methodology gate template and provider-keyed deploy
+**Last Completed Task**: T021 methodology gate template and provider-keyed deploy
+**Tasks Remaining**: T022–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T022 work-kind template deployed-path correction
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T22:41:27Z
+**Updated**: 2026-07-18T22:51:17Z
 
 ## Planning Authorization
 
@@ -97,10 +97,16 @@
   plans and source mutation release the reservation without spend; configured failures remain injected and force
   the terminal result incomplete. Seven production-path fixtures and 163/165 adjacent cases (two platform skips)
   passed, including origin HEAD/status preservation, exact-once order, stale/unjoinable refusal, and plan drift.
+- T021 adds the generic advisory methodology workflow with the F-033 Markdown ignore set, a full deployed-path
+  governance run, conditional PSScriptAnalyzer, major-pinned actions, and provider-aware init deployment. Scratch
+  projects prove GitHub and unset providers receive it, while explicit non-GitHub providers receive no Actions
+  workflows and an actionable manual-validator command. The focused contract/deploy suite, packaged-artifact
+  checks, and Markdown lint passed; the broader FileList completeness check still reports four pre-existing T060
+  root scripts outside the manifest, which T021 did not alter and the deny-by-default distribution slice will
+  reconcile rather than hiding here.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T021 executes next and starts the historical Iteration 004 distribution tail with the generic methodology-gate
-  template and provider-keyed deployment rule.
+- T022 executes next to make the consumer work-kind template resolve only the shipped deployed validator path.
 
 ## Notes
 
