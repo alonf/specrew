@@ -386,9 +386,16 @@ pick the strongest authorized independent reviewer.
 The campaign could not create a writable snapshot root outside the Git repository. The default is
 the sibling `<repository-parent>/.specrew-targets/`; Windows falls back to `%USERPROFILE%\.sr\<repo-token>`, while POSIX
 falls back under the user temp directory. These repo-token namespace directories are deliberately
-retained and individual `rt-*` worktrees are removed after each run. Supply a short writable
-external location with `specrew review --live --run-root <absolute-path> ...`; a path inside the
-repository is rejected before provider spend.
+retained, including when directory creation succeeds but the file probe fails, because deleting an
+empty-looking shared root can race a concurrent run. Individual `rt-*` worktrees are removed after
+each run. Supply a short writable external location with
+`specrew review --live --run-root <absolute-path> ...`; a path inside the repository is rejected
+before provider spend.
+
+Intermediate Iteration 007 builds may have left empty legacy namespaces at
+`%TEMP%/specrew-review-targets/<20-hex>/` or `%USERPROFILE%\.sr\<20-hex>`. They are no longer read and
+may be deleted after confirming that no review is running; do not remove a populated `rt-*`
+workspace until its recovery evidence has been reconciled.
 
 ### `no-parseable-findings-json` (reviewer returned nothing)
 

@@ -31,7 +31,7 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-target -ExternalRoot $external
         try {
             (Test-ReviewTargetPathUnderRoot -Path $snapshot.workspace_root -Root $origin) | Should -BeFalse
-            (Split-Path -Leaf $snapshot.workspace_root) | Should -Match '^rt-[0-9a-f]{16}-[0-9a-f]{32}$'
+            (Split-Path -Leaf $snapshot.workspace_root) | Should -Match '^rt-[A-Za-z0-9_-]{16}$'
             (Split-Path -Leaf $snapshot.workspace_root) | Should -Not -Match 'run-target'
             $snapshot.run_id | Should -Be 'run-target' -Because 'the full authority identity stays in metadata, not the bounded filesystem leaf'
             Test-Path -LiteralPath (Join-Path $snapshot.workspace_root '.git') | Should -BeTrue -Because 'this is a genuine linked git worktree sharing the object database'
@@ -75,11 +75,10 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         Test-Path -LiteralPath (Join-Path $origin 'reviews') | Should -BeFalse
     }
 
-    It 'derives a stable fixed-length token without collapsing distinct run identities' {
-        $one = Get-ReviewTargetRunToken -RunId run-target-one
-        $two = Get-ReviewTargetRunToken -RunId run-target-two
-        $one | Should -Match '^[0-9a-f]{16}$'
-        $one | Should -Be (Get-ReviewTargetRunToken -RunId run-target-one)
+    It 'generates compact fixed-length workspace tokens without collapsing invocations' {
+        $one = New-ReviewTargetWorkspaceToken
+        $two = New-ReviewTargetWorkspaceToken
+        $one | Should -Match '^[A-Za-z0-9_-]{16}$'
         $one | Should -Not -Be $two
     }
 

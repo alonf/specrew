@@ -118,9 +118,10 @@ Behavior:
 
 - campaign snapshots prefer the short sibling `.specrew-targets` root. If that parent is not
   writable, Windows uses `%USERPROFILE%\.sr\<repo-token>` and POSIX uses a repo-token directory
-  under the user temp root. Individual `rt-*` worktrees are removed after each run; the empty
-  repo-token namespace is intentionally retained (at most one per resolved repository identity)
-  to avoid racing concurrent runs during root cleanup. Use `--run-root` for constrained layouts
+  under the user temp root. Individual `rt-*` worktrees are removed after each run. Candidate
+  roots created by a successful or failed file probe are intentionally retained because deleting
+  an empty-looking shared root can race a concurrent run; default fallback namespaces remain
+  bounded to one per resolved repository identity. Use `--run-root` for constrained layouts
 - durable evidence lands under `.specrew/review/inline/<run-id>/` (`findings-result.json`,
   `review-run.json`, `gate-verdict.json`); the review-signoff gate checks digest freshness, lineage,
   and the evidence-tier labels (completeness / independence / budget)

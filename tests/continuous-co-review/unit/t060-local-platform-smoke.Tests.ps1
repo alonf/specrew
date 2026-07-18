@@ -64,10 +64,10 @@ Describe 'T060 local Windows and Linux smoke package' {
         $trackedPaths = @(& git -C $script:RepoRoot ls-tree -r --name-only HEAD)
         $longestTrackedPath = @($trackedPaths | Sort-Object Length -Descending | Select-Object -First 1)[0]
         $legacyPrefix = 'C:\Dev\.t060-targets\review-target-run-t060-cursor-windows-maximum-identifier-01-00000000000000000000000000000000'
-        $boundedPrefix = 'C:\Dev\.t060-targets\rt-0000000000000000-00000000000000000000000000000000'
+        $boundedPrefix = 'C:\Dev\.t060-targets\rt-AAAAAAAAAAAAAAAA'
         (Join-Path $legacyPrefix $longestTrackedPath).Length | Should -BeGreaterThan 259
         (Join-Path $boundedPrefix $longestTrackedPath).Length | Should -BeLessThan 260
-        $script:TargetPortSource | Should -Match ([regex]::Escape('''rt-{0}-{1}'' -f $runToken'))
+        $script:TargetPortSource | Should -Match ([regex]::Escape("'rt-' + (New-ReviewTargetWorkspaceToken)"))
     }
 
     It 'throttles non-semantic heartbeats while preserving every progress event' {

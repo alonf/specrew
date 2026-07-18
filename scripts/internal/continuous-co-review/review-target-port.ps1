@@ -51,11 +51,11 @@ function Test-ReviewTargetPathUnderRoot {
     return $pathFull.Equals($rootFull, $comparison) -or $pathFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, $comparison)
 }
 
-function Get-ReviewTargetRunToken {
-    param([Parameter(Mandatory)][string]$RunId)
-    $bytes = [Text.Encoding]::UTF8.GetBytes($RunId)
-    $digest = [Security.Cryptography.SHA256]::HashData($bytes)
-    return [Convert]::ToHexString($digest).ToLowerInvariant().Substring(0, 16)
+function New-ReviewTargetWorkspaceToken {
+    # Twelve random bytes encode to 16 URL-safe characters: 96 bits of per-workspace uniqueness
+    # with 33 fewer path characters than the former run-token + full-GUID leaf.
+    $bytes = [byte[]]([guid]::NewGuid().ToByteArray()[0..11])
+    return [Convert]::ToBase64String($bytes).Replace('+', '-').Replace('/', '_')
 }
 
 function Get-GitReviewTargetOriginEvidence {
@@ -95,10 +95,9 @@ function New-GitReviewTargetSnapshot {
         throw 'review-target-external-root-inside-origin'
     }
     [IO.Directory]::CreateDirectory($externalFull) | Out-Null
-    # The full run ID remains in immutable authority metadata. A fixed-length token keeps the disposable
-    # filesystem name bounded even when the approved run identifier and tracked repository paths are long.
-    $runToken = Get-ReviewTargetRunToken -RunId $RunId
-    $workspaceRoot = Join-Path $externalFull ('rt-{0}-{1}' -f $runToken, [guid]::NewGuid().ToString('N'))
+    # The full run ID remains in immutable authority metadata. A 96-bit URL-safe workspace token
+    # keeps the disposable filesystem name bounded while retaining strong cross-run uniqueness.
+    $workspaceRoot = Join-Path $externalFull ('rt-' + (New-ReviewTargetWorkspaceToken))
     $added = $false
     try {
         # Create a genuine linked worktree (shared objects), then checkout the canonical current-state

@@ -195,6 +195,9 @@ function Test-ReviewCampaignTargetRootWritable {
         if (Test-Path -LiteralPath $Path -PathType Leaf) {
             return [pscustomobject]@{ ok = $false; reason = 'path-is-file' }
         }
+        # Candidate roots are intentionally retained after both successful and failed file probes.
+        # Deleting an empty-looking shared directory races another process populating it between
+        # inspection and deletion; individual rt-* worktrees remain the cleanup unit.
         [IO.Directory]::CreateDirectory($Path) | Out-Null
         $probePath = Join-Path $Path ('.specrew-write-probe-' + [guid]::NewGuid().ToString('N'))
         $stream = [IO.File]::Open($probePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
@@ -212,8 +215,8 @@ function Get-ReviewCampaignRepositoryToken {
     $identity = [IO.Path]::GetFullPath($GitRoot)
     if ([OperatingSystem]::IsWindows()) { $identity = $identity.ToUpperInvariant() }
     # Filesystem namespace only: immutable campaign/run identity remains full-length in authority
-    # facts and the workspace leaf retains its independent 16-hex run token plus 32-hex random ID.
-    # Sixteen hex characters keep hosted Windows' longest tracked path below MAX_PATH.
+    # facts, while the workspace leaf carries an independent 96-bit random token. Sixteen hex
+    # characters keep the repository namespace bounded without becoming review authority.
     return Get-ReviewCampaignStableToken -Value $identity -Length 16
 }
 

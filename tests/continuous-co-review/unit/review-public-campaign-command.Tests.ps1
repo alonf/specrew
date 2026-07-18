@@ -389,10 +389,14 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source | Should -Match 'HashSet\[string\]'
 
         $repoToken = Get-ReviewCampaignRepositoryToken -GitRoot $script:RepoRoot
-        $fallbackRoot = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)) ('.sr/' + $repoToken)
-        $workspaceLeaf = 'rt-' + ('a' * 16) + '-' + ('b' * 32)
+        $boundedUserProfile = 'C:\Users\' + ('u' * 31)
+        $boundedUserProfile.Length | Should -Be 40
+        $fallbackRoot = Join-Path $boundedUserProfile ('.sr/' + $repoToken)
+        $workspaceLeaf = 'rt-' + ('a' * 16)
         $longestTracked = @(& git -C $script:RepoRoot ls-files) | Sort-Object { $_.Length } -Descending | Select-Object -First 1
-        (Join-Path (Join-Path $fallbackRoot $workspaceLeaf) $longestTracked).Length | Should -BeLessThan 260 -Because 'the Windows fallback must not reproduce the long-prefix checkout failure on the current tree'
+        $trackedPathGrowthAllowance = 16
+        ($fallbackRoot.Length + 1 + $workspaceLeaf.Length + 1 + $longestTracked.Length + $trackedPathGrowthAllowance) | Should -BeLessThan 260 `
+            -Because 'the fallback must budget a fixed 40-character user profile plus tracked-path growth, not merely fit the current runner'
     }
 
     It 'keeps a successfully probed shared root and never races to delete another run entry' {
@@ -416,10 +420,14 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $source | Should -Not -Match '\$profile\s*='
         $source | Should -Match 'one per resolved repository identity'
+        $source | Should -Match 'both successful and failed file probes'
         $api | Should -Match '%USERPROFILE%\\\.sr\\<repo-token>'
         $api | Should -Match 'intentionally retained'
+        $api | Should -Match 'failed file probe'
         $troubleshooting | Should -Match 'review-campaign-target-root-unavailable'
         $troubleshooting | Should -Match '--run-root <absolute-path>'
+        $troubleshooting | Should -Match '%TEMP%/specrew-review-targets/<20-hex>/'
+        $troubleshooting | Should -Match '%USERPROFILE%\\\.sr\\<20-hex>'
     }
 
     It 'wires the existing public live surface to campaign delegation before the legacy diagnostic path' {
