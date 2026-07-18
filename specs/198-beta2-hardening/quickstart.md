@@ -1,50 +1,88 @@
-# Quickstart: Controlled External Review
+# Quickstart: Beta2 Finish-Line Acceptance
 
 **Feature**: 198-beta2-hardening
-**Status**: Iteration 007 plan-time acceptance guide
-**Last verified**: 2026-07-16 (foundation only)
+**Status**: Iteration 008 plan-time acceptance guide
+**Planning baseline**: `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`
 
-## Current Safety Rule
+This guide describes the planned acceptance flow. It does not authorize task execution, provider spend, or
+release publication.
 
-The checked-in authority mode is still `legacy`. Do not switch it manually. Iteration 007 changes to `campaign` only after the public command, all five adapters, all three runtime ports, deterministic three-OS proof, and five separately authorized live smokes pass.
+## 1. Configure Downstream Verification
 
-## Inspect Available Reviewer Harnesses Without Spending
+The production supplier must select commands in this order:
 
-```powershell
-pwsh -NoProfile -File scripts/specrew-review.ps1 --list-hosts
-```
+1. explicit project configuration;
+2. reliable named detection from project-owned CI/build/package metadata;
+3. an explicitly selected quality profile;
+4. provider-specific configuration only when that provider is active;
+5. otherwise, actionable `verification-not-configured`.
 
-This performs discovery/presentation only. It does not reserve or spend a provider slot.
+The selected plan is materialized at `.specrew/verification-plan.json` and validated by the existing
+`verification-plan.schema.json`. Commands are executable-plus-argument arrays, not shell strings. Do not infer a
+test framework from extensions and do not add an implicit Pester/Specrew plan.
 
-## Verify the Delivered Foundation
+Expected setup behavior:
 
-```powershell
-Invoke-Pester -Path tests/continuous-co-review/unit/review-authority-core.Tests.ps1,
-  tests/continuous-co-review/unit/review-authority-store.Tests.ps1,
-  tests/continuous-co-review/unit/review-result-ingestor.Tests.ps1,
-  tests/continuous-co-review/unit/review-campaign-orchestrator.Tests.ps1
-```
+- a valid explicit plan remains authoritative;
+- an invalid explicit plan fails rather than falling through;
+- generated content refreshes only while its recorded hash still matches;
+- a user-modified plan is preserved with a warning;
+- no trustworthy source yields an actionable setup instruction.
 
-Expected at the Iteration 007 baseline: the Iteration 006 authority suite is green, strict ingress rejects prose-wrapped candidate content, and no production-completeness claim is made.
+## 2. Run the Production Review Path
 
-## Iteration 007 Acceptance Scenario
+For a configured downstream project, the campaign must:
 
-After T060, the public review command must provide this operator flow without adapter-specific authority logic:
+1. freeze an external clean Git target and compute its reviewed-state digest;
+2. load and validate the selected plan from that frozen target;
+3. run the existing T018 executor in declared order and record every attempted command;
+4. join evidence by exact reviewed digest and `command_id`;
+5. inject bounded matching evidence into the reviewer context;
+6. preserve command failures/timeouts/invalid required results as blocking evidence;
+7. invoke a provider only after plan selection and verification preflight succeed.
 
-1. Select one installed harness and perform cheap target/store/contract/containment/harness/runtime preflight.
-2. Require a human grant for exactly one provider invocation and create a new run ID.
-3. Freeze an external Git target, keep the origin unchanged, and write the versioned invocation into run-owned staging.
-4. Launch the reviewer under the platform runtime controller. The reviewer writes one raw JSON object to the candidate file; stdout is informational only.
-5. On timeout, kill the complete descendant tree, verify death and stream closure, then publish a terminal result containing the timeout reason and any valid partial findings.
-6. Show stage/heartbeat/timing/currentness information. Findings against a moved target remain advisory and visible; they cannot approve the current tree.
-7. Publish controller-owned immutable JSON plus derived Markdown. Only a complete, valid, current, contained, terminated pass can approve.
-8. A rerun always uses a new run ID and a separately authorized slot. There is no hidden retry.
+For an unconfigured or invalid project, the flow must stop before provider invocation and name the setup action.
+Review never writes the origin worktree.
 
-## Completion Proof
+## 3. Prove Consumer Distribution
 
-- One deterministic adapter/failure matrix runs on Windows, Linux, and macOS.
-- One paid live smoke runs for each of Claude, Codex, Copilot, Cursor, and Antigravity, distributed so every OS has at least one live run.
-- Four harnesses prove the staged public path across all three OSes; the fifth runs after the campaign-mode cutover commit and also serves as exact-digest independent signoff. Failure blocks completion and returns for human authorization.
-- Evidence records harness/model, OS, run ID, exact digest, duration, containment, termination, validation, currentness, and result paths.
+Use scratch fixtures for all of these shapes:
 
-Generic gate/artifact target adapters are intentionally absent from this quickstart; they remain Beta3 scope.
+- GitHub-provider greenfield init: deployed workflows reference existing paths, use generic triggers, ignore local
+  host config, and announce the bootstrap commit.
+- Beta1-shaped update: unmodified retired templates are removed, a modified template is retained with warning,
+  and refocus scopes synchronize.
+- Local-only repository: closeout omits registry and beta-before-stable steps and names why they are not
+  applicable.
+- Publish-target repository: closeout renders the full release chain.
+- Python/non-Pester, non-GitHub, and no-publish projects: prompts and deployed templates contain no inapplicable
+  technology, provider, or delivery mandate.
+
+## 4. Verify Before Release
+
+The pre-release boundary requires:
+
+- focused supplier/runner/injection fixtures, including both fail directions;
+- the full deterministic test registry;
+- scoped governance validation;
+- the cross-platform Windows/Linux/macOS workflow;
+- one independently authorized exact-digest review with no hidden retry;
+- seven-surface version agreement and release-credential documentation that matches the tag workflow.
+
+Repeated independent review does not continue merely because it is active. Stop and replan after three
+consecutive recurrences of the same finding class or three consecutive rounds without a lower validated finding
+count.
+
+## 5. Publish and Dogfood
+
+Publishing `v0.40.0-beta2` requires a fresh explicit human release authorization after all pre-release gates pass.
+After publication, install the published beta into a fresh consumer and record maintainer PASS/FAIL evidence for
+the four beta1 friction classes named by SC-014. This evidence informs a later stable-promotion decision; Iteration
+008 does not publish a stable release.
+
+## Explicitly Outside This Guide
+
+- Generic non-code gate/artifact review adapters.
+- Proposal 209.
+- Automatic campaign retention/pruning.
+- The optional stale-binding rebind and stop/capture repairs unless a later verdict selects them.

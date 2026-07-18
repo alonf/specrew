@@ -1,7 +1,7 @@
 # Review Diagrams: 0.40.0-beta2 Hardening Bundle
 
 **Feature**: 198-beta2-hardening
-**Phase**: pre-implementation (planning artifact for reviewer)
+**Phase**: Iteration 008 planning (Beta2 finish line)
 
 ## Component diagram (feature-wide, per the agreed map)
 
@@ -181,4 +181,55 @@ sequenceDiagram
   else fabricated/abandoned/interrupted state
     Stop-->>Human: ordinary non-boundary context packet
   end
+```
+
+## Component: verification-plan supplier and production injection (iteration 008)
+
+```mermaid
+flowchart LR
+  Explicit[Explicit project config] --> Selector[Ordered Plan Supplier]
+  Metadata[Named project-owned metadata detector] --> Selector
+  Profile[Explicit quality profile] --> Selector
+  Provider[Active provider-gated catalog row] --> Selector
+  Catalog[Small versioned selection catalog] --> Selector
+  Selector -->|selected| Plan[.specrew/verification-plan.json]
+  Selector -->|no trusted source| NotConfigured[verification-not-configured]
+  Plan --> Validator[Existing FR-048 validator]
+  Validator --> Runner[Existing T018 ordered runner]
+  Target[Frozen external Git target + digest] --> Runner
+  Runner --> Evidence[Per-command recorded evidence]
+  Evidence --> Join[Exact digest + command_id join]
+  Plan --> Join
+  Join --> Campaign[Review campaign evidence injection]
+  Campaign --> Reviewer[Authorized reviewer invocation]
+  NotConfigured --> Setup[Actionable setup instruction; zero provider spend]
+```
+
+The selector supplies commands but never executes them. The existing FR-048/T018 path owns validation,
+execution, and evidence. Review reads the frozen target, does not mutate the origin, and refuses provider spend
+when selection is absent or invalid.
+
+## Sequence: finish-line release and published-beta proof
+
+```mermaid
+sequenceDiagram
+  participant Project as Downstream fixture
+  participant Supplier
+  participant Runner as T018 Runner
+  participant Campaign
+  participant CI as Three-OS CI
+  participant Human
+  participant Release as Tag workflow
+  participant Consumer as Fresh consumer
+  Project->>Supplier: explicit config / named metadata / profile / provider
+  Supplier->>Runner: canonical selected plan
+  Runner->>Runner: execute in order; record every attempt
+  Runner->>Campaign: exact-digest + command-id evidence
+  Campaign->>Campaign: inject matching bounded evidence
+  Campaign->>CI: deterministic suite and governance proof
+  CI-->>Human: pre-release gates and independent review result
+  Human->>Release: separately authorize v0.40.0-beta2
+  Release-->>Consumer: published beta bits
+  Consumer-->>Human: SC-014 friction-class PASS/FAIL evidence
+  Note over Human,Consumer: Stable promotion remains separate
 ```

@@ -8,9 +8,10 @@
 
 ## Summary
 
-Four iterations harden the shipped 0.40.0-beta1 into v0.40.0-beta2:
-substrate + firewall-first (001), governance correctness core (002),
-reviewer containment + round economy (003), distribution + release (004).
+The original four-iteration hardening plan grew through evidence-backed corrective slices. Iterations 001–003
+delivered the substrate, governance core, and initial review seams; Iterations 005–007 replaced the failed review
+authority architecture and proved the production campaign. Iteration 008 is the single Beta2 finish-line slice:
+the missing command-plan supplier/injection path plus the never-opened Iteration 004 distribution/release tail.
 Iteration 001 executes design Option B: a versioned JSON self-leak
 deny-list with a manifest-derived blocking lint lane, and the Spec-Kit
 0.12.9 / Squad 0.11.0 pin moves with scratch-dir probe evidence and
@@ -85,7 +86,8 @@ validate-governance.ps1 at every boundary commit, validate-versions.ps1
 - Performance tuning (evidence-driven-performance exception; W9's
   incremental baselines are recorded-evidence-driven correctness work).
 - Browser/UI acceptance (no screens; console text asserted in tests).
-- Load/concurrency (no new concurrent infrastructure).
+- Load testing (no throughput service). Exact-digest campaign injection and any multi-session capture correction
+  still require deterministic concurrency fixtures.
 
 ### Explicit Phase 2+ Deferrals
 
@@ -181,10 +183,11 @@ iteration design-analyses.
 | 001 substrate + firewall-first | FR-033, FR-034, FR-037, FR-038, FR-039 | 5 | lint lane live + suites green on 0.12.9 fixture |
 | 002 governance correctness core | FR-001..FR-007, FR-020..FR-023 (+ codex/copilot timeout measurements per clarify Q1) | 6–8 | ratchet paired tests; honesty-check paired tests; catalog resolution fixture |
 | 003 containment + round economy | FR-008..FR-019 | 6–8 | containment fixtures incl. false-kill guard; reviewer-can-still-see-it per exclusion |
-| 004 distribution + release | FR-024..FR-032, FR-035, FR-036, FR-040 | 5–6 | provider-shape init/update fixtures; seven-surface pre-tag check; v0.40.0-beta2 |
+| 004 distribution + release | FR-024..FR-032, FR-035, FR-036, FR-040 | historical/unstarted | Never opened; its 7.0 SP amended tail is absorbed into Iteration 008 |
 | 005 local-host certification + failed-design evidence | FR-050..FR-054 | historical | T035–T039 delivered; final review exposed the superseded lease/authority architecture |
 | 006 authority foundation | FR-057..FR-065, SC-017..SC-021 (foundation portions) | 16 | pure campaign/run policy; immutable JSON facts; exact targets; strict terminal-result ingress; concurrency/recovery fixtures |
 | 007 production completeness | FR-060..FR-064, SC-019..SC-021 (completion portions) | 17 | five real harness adapters; three OS runtime adapters; progress/retro projection; five live smokes + three-OS matrix |
+| 008 Beta2 finish line | FR-024..FR-032, FR-035, FR-036, FR-040, FR-046..FR-049, SC-008..SC-015 | 15 core (18 max with both optional repairs) | supplier/runner/injection E2E; consumer distribution; prerelease publish; published-beta dogfood |
 
 ## Iteration 001 Detail (Option B)
 
@@ -233,7 +236,9 @@ Iterations 001–004. The Iteration 005 architectural reassessment adds no
 dependency or service, but it does introduce explicit multi-process claim,
 allowance, and recovery correctness. The replacement Beta2 work is therefore
 split into Iteration 006 (16 SP authority foundation) and Iteration 007
-(17 SP production completeness), both below the current 26 SP cap.
+(17 SP production completeness), both below the current 26 SP cap. The remaining Beta2 release dependencies are
+combined into Iteration 008 at 15 SP core. The separately visible 0.75 SP stale-binding rebind and 2.25 SP
+stop/capture repair would raise the maximum to 18 SP if a later tasks verdict explicitly selects both.
 
 ## Phase 0 Research
 
@@ -251,7 +256,9 @@ file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/contracts/198-b
 quickstart at
 file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/quickstart.md,
 review diagrams at
-file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/review-diagrams.md.
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/review-diagrams.md. Iteration 008 adds the
+supplier contract at
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/contracts/verification-plan-supplier.md.
 
 ## Post-Design Constitution Check
 
@@ -273,3 +280,20 @@ file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/
 Iteration 007 is reserved for the 17 SP five-harness/three-platform production
 completion slice. Beta2 release remains blocked until both slices pass their
 separate lifecycle gates and clean review.
+
+## 2026-07-18 Beta2 Finish-Line Planning Amendment
+
+The Iteration 008 planning verdict binds to the actual Iteration 007 closeout commit
+`ec2287c0b950ceb78522f3b5aae8dd94d4710a88`. A pending crossing record cited the stale pre-closeout commit
+`744e77d8` and tree `542c54f0`; that citation is a known binding defect and carries no authority.
+
+Capacity arithmetic permits one coherent finish-line iteration. The amended historical Iteration 004 tail is
+7.0 SP. The residual FR-048/FR-049/SC-015 supplier, setup, production injection, and fixture work is 5.5 SP.
+Independent verification and published-beta dogfood add 2.5 SP, for 15.0/26 SP core. The existing T018 schema,
+validator, runner, and evidence recorder are reused rather than reimplemented.
+
+The binding plan is
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/008/plan.md. T068 (0.75 SP narrow
+stale-binding rebind) and T069 (2.25 SP remaining stop/capture repair) are priced but not selected. Proposal 209
+remains separately scheduled. Planning grants no task authoring, implementation, provider invocation, tag, or
+publication authority.

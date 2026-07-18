@@ -390,3 +390,45 @@ unavailable and does not invalidate an otherwise authoritative terminal result.
 Beta2 does not add automatic campaign pruning. Immutable campaign/run/grant/reservation/spend/claim/result facts
 remain durable. Future archival or deletion requires a separately designed policy and cannot silently reactivate
 the old T019 retention runtime.
+
+## Entity: VerificationPlanSupplierSelection — iteration 008
+
+**Purpose**: select one complete, auditable verification plan for the existing T018 runner without framework
+inference or a Specrew-specific default.
+
+### Attributes
+
+| Attribute | Type | Validation rule |
+| --- | --- | --- |
+| `schema_version` | string | exactly the supported supplier-selection schema version |
+| `selection_id` | stable string | deterministic for the normalized source identity and selected plan |
+| `state` | enum | `selected` \| `verification-not-configured` \| `invalid` |
+| `source_kind` | enum/null | `project-config` \| `project-detected` \| `profile-selected` \| `provider-gated`; null unless selected |
+| `source_identity` | object/null | named project path/detector/profile/provider identity; no secret values |
+| `plan_id` | string/null | stable plan identity when selected |
+| `plan_digest` | SHA-256/null | digest of the canonical schema-valid plan when selected |
+| `skipped_sources` | array | ordered safe reason records for higher-precedence sources that were absent/ineligible |
+| `failure_reason` | closed string/null | actionable reason for not-configured or invalid selection |
+| `generated_content_hash` | SHA-256/null | permits hash-guarded refresh without overwriting modified project content |
+
+### Selection Lifecycle
+
+`inputs captured -> precedence evaluated -> selected | verification-not-configured | invalid`
+
+An explicit project configuration short-circuits selection whether valid or invalid. A lower-precedence source
+may be examined only when every higher-precedence source is absent or ineligible. Project detection is limited to
+versioned named detectors over project-owned CI/build/package metadata. File extensions never establish command
+authority.
+
+### Relationships and Invariants
+
+- A selected row produces one canonical `VerificationPlan`; the plan continues to obey the existing stable
+  `plan_id`, unique `command_id`, safe-path, timeout, provenance, and no-secret invariants.
+- Init/update/setup may materialize the plan. Review consumes it from the frozen target and never materializes or
+  refreshes it.
+- A generated plan is refreshable only when its current hash equals `generated_content_hash`; otherwise the
+  project-modified plan is preserved and the user receives a warning.
+- `RecordedRunEvidence` is injectable only when its reviewed digest equals the campaign target digest and its
+  command identity joins the selected plan exactly once.
+- `verification-not-configured` and invalid selection terminate before provider spend. Executed command failures
+  remain visible terminal evidence and cannot authorize approval.
