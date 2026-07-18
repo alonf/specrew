@@ -80,6 +80,9 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         $two = New-ReviewTargetWorkspaceToken
         $one | Should -Match '^[A-Za-z0-9_-]{16}$'
         $one | Should -Not -Be $two
+
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1') -Raw
+        $source | Should -Match 'RandomNumberGenerator\]::GetBytes\(12\)'
     }
 
     It 'exposes the same neutral port fields for the thin non-code fixture' {

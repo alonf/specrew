@@ -215,8 +215,9 @@ function Get-ReviewCampaignRepositoryToken {
     $identity = [IO.Path]::GetFullPath($GitRoot)
     if ([OperatingSystem]::IsWindows()) { $identity = $identity.ToUpperInvariant() }
     # Filesystem namespace only: immutable campaign/run identity remains full-length in authority
-    # facts, while the workspace leaf carries an independent 96-bit random token. Sixteen hex
-    # characters keep the repository namespace bounded without becoming review authority.
+    # facts, while the workspace leaf is drawn from 96 independent random source bits (about 83
+    # effective namespace bits after case-folding). Sixteen hex characters keep the repository
+    # namespace bounded without becoming review authority.
     return Get-ReviewCampaignStableToken -Value $identity -Length 16
 }
 

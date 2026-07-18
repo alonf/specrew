@@ -52,9 +52,10 @@ function Test-ReviewTargetPathUnderRoot {
 }
 
 function New-ReviewTargetWorkspaceToken {
-    # Twelve random bytes encode to 16 URL-safe characters: 96 bits of per-workspace uniqueness
-    # with 33 fewer path characters than the former run-token + full-GUID leaf.
-    $bytes = [byte[]]([guid]::NewGuid().ToByteArray()[0..11])
+    # Twelve independent random bytes encode to 16 URL-safe characters: 96 source bits (about
+    # 83 bits of namespace entropy after case-folding) with 33 fewer path characters than the
+    # former run-token + full-GUID leaf.
+    $bytes = [Security.Cryptography.RandomNumberGenerator]::GetBytes(12)
     return [Convert]::ToBase64String($bytes).Replace('+', '-').Replace('/', '_')
 }
 
@@ -95,8 +96,8 @@ function New-GitReviewTargetSnapshot {
         throw 'review-target-external-root-inside-origin'
     }
     [IO.Directory]::CreateDirectory($externalFull) | Out-Null
-    # The full run ID remains in immutable authority metadata. A 96-bit URL-safe workspace token
-    # keeps the disposable filesystem name bounded while retaining strong cross-run uniqueness.
+    # The full run ID remains in immutable authority metadata. A URL-safe token drawn from 96
+    # independent random bits keeps the filesystem name bounded with strong cross-run uniqueness.
     $workspaceRoot = Join-Path $externalFull ('rt-' + (New-ReviewTargetWorkspaceToken))
     $added = $false
     try {
