@@ -37,10 +37,17 @@
 - **Observed evidence**: the generated pending `iteration-closeout -> plan` narrative cited commit `744e77d8`
   and tree `542c54f0`, while the actual Iteration 007 closeout commit is
   `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`.
+- **Tasks-boundary reproduction**: after task commit `29cf84084fd65da9f4199466a9aa4dccc5105958`
+  (tree `0457cdd8da4ba24aa5e258224fda8f6ec1dd4ca3`), the canonical `tasks` boundary sync reported
+  `success: true` but `pending_verdict_has_pending: false`; its boundary, approval phrase, crossing ID, commit,
+  and artifact identity fields were all null even though no `before-implement` verdict exists. No pending packet
+  was published. This exact missing-pending result is evidence of the same stale/global binding class, not an
+  authorization or a successful gate advance.
 - **Human disposition**: the planning verdict explicitly binds only to `ec2287c0`; the stale citation carries
   no authority.
 - **Immediate containment**: Iteration 008 planning state and plan record the exact human binding. No later
-  boundary may rely on the stale pending record.
+  boundary may rely on the stale pending record or the false no-pending sync result. The next crossing must use
+  a manually rendered packet bound to its exact committed task artifact and Git tree.
 - **Selected correction**: T068, 0.75 SP, narrowly rebinds a pending crossing to the actual closeout commit/tree
   with paired current/stale tests. It executes first and must not expand into a matcher redesign.
 

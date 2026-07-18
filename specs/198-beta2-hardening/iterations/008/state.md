@@ -50,6 +50,9 @@
   a new run ID, and no hidden retry.
 - **Release**: T029 has a separate release gate; T067 validates published beta without stable promotion.
 - **Authorization**: task/readiness artifacts are authorized; implementation is not.
+- **Live sync containment**: canonical sync at task commit `29cf84084fd65da9f4199466a9aa4dccc5105958`
+  returned success with `pending_verdict_has_pending: false` and null pending identity despite the open
+  `tasks -> before-implement` crossing. This is recorded under DRIFT-198-I008-001 and grants no authority.
 
 ## Execution Summary
 
@@ -63,6 +66,9 @@
 
 - Do not infer authority from the stale pending crossing record. Until T068 executes, use the explicit human
   verdict plus exact task-boundary commit/tree for the next crossing.
+- Do not infer authorization from the tasks sync's missing pending artifact. Present the next verdict packet
+  manually against the exact post-reproduction task-boundary commit/tree, and require the literal
+  `approved for before-implement` verdict.
 - Planned execution order is T068 → T069 → T062 → T063 → T064 → T021–T028 → T065 → T066 → separately
   authorized T029 → T067.
 - Update this file after each authorized task completes and keep identifiers aligned to plan.md.
