@@ -99,6 +99,9 @@ function New-GitReviewTargetSnapshot {
     # The full run ID remains in immutable authority metadata. A URL-safe token drawn from 96
     # independent random bits keeps the filesystem name bounded with strong cross-run uniqueness.
     $workspaceRoot = Join-Path $externalFull ('rt-' + (New-ReviewTargetWorkspaceToken))
+    if ([IO.Directory]::Exists($workspaceRoot) -or [IO.File]::Exists($workspaceRoot)) {
+        throw 'review-target-workspace-collision'
+    }
     $added = $false
     try {
         # Create a genuine linked worktree (shared objects), then checkout the canonical current-state
@@ -124,7 +127,8 @@ function New-GitReviewTargetSnapshot {
     }
     catch {
         if ($added) { $null = Invoke-ReviewTargetGit -WorkingDirectory $gitRoot -Arguments @('worktree', 'remove', '--force', $workspaceRoot) }
-        elseif ([IO.Directory]::Exists($workspaceRoot)) { [IO.Directory]::Delete($workspaceRoot, $true) }
+        # A failed add never proves ownership of a path that appeared after the pre-check. Leave it
+        # untouched; only a successfully registered worktree is safe for this invocation to remove.
         throw
     }
 }

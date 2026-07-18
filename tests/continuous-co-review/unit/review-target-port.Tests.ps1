@@ -75,6 +75,22 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         Test-Path -LiteralPath (Join-Path $origin 'reviews') | Should -BeFalse
     }
 
+    It 'fails closed on a workspace-token collision without deleting the existing directory' {
+        $origin = Join-Path $TestDrive 'origin-collision'
+        $external = Join-Path $TestDrive 'external-collision'
+        New-TargetRepo -Path $origin
+        [IO.Directory]::CreateDirectory($external) | Out-Null
+        $existing = Join-Path $external 'rt-AAAAAAAAAAAAAAAA'
+        [IO.Directory]::CreateDirectory($existing) | Out-Null
+        $sentinel = Join-Path $existing 'owned-by-another-run.txt'
+        [IO.File]::WriteAllText($sentinel, 'preserve')
+        Mock -CommandName New-ReviewTargetWorkspaceToken -MockWith { 'AAAAAAAAAAAAAAAA' }
+
+        { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-collision -ExternalRoot $external } | Should -Throw -ExpectedMessage '*review-target-workspace-collision*'
+        Test-Path -LiteralPath $sentinel -PathType Leaf | Should -BeTrue
+        (Get-Content -LiteralPath $sentinel -Raw) | Should -Be 'preserve'
+    }
+
     It 'generates compact fixed-length workspace tokens without collapsing invocations' {
         $one = New-ReviewTargetWorkspaceToken
         $two = New-ReviewTargetWorkspaceToken
@@ -83,6 +99,7 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
 
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1') -Raw
         $source | Should -Match 'RandomNumberGenerator\]::GetBytes\(12\)'
+        $source | Should -Match 'failed add never proves ownership'
     }
 
     It 'exposes the same neutral port fields for the thin non-code fixture' {
