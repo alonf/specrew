@@ -2,7 +2,7 @@
 
 **Task**: T061
 **Status**: pass — clean independent run 13 approves the reviewed parent and the bounded finalization envelope carries these six review artifacts without reopening the implementation digest
-**Overall Verdict**: pass
+**Overall Verdict**: accepted
 **Reviewer**: Claude Code through the production `claude-code-file-primary` harness
 **Recorded**: 2026-07-18
 **Human Approval**: approved for review-signoff and for serialized additional invocations while concrete progress continued, 2026-07-18
@@ -77,9 +77,26 @@ Attempt 1 ended before authority-store creation, so it has no fabricated result 
 
 ## Task Verdicts
 
-T030–T034b and T051–T060 pass with the qualifications already recorded in the supporting evidence: DRIFT-198-I007-025 is explicitly deferred to the later stop/capture-mechanism slice; Cursor is live-proven but not claimed clean-current after free-credit exhaustion; and FR-048/FR-049/SC-015 remains an explicit open Beta2 command-plan dependency outside Iteration 007.
+| Task | Requirement | Verdict | Notes |
+| --- | --- | --- | --- |
+| T030 | FR-041 | pass | Machinery and injected provider turns are excluded from verdict evidence. |
+| T031 | FR-042 | pass | Tokenizer, temporal ordering, and cursor-bound capture fail closed. |
+| T032 | FR-043 | pass | Exact fabrication sequences are retained as deterministic regressions. |
+| T033 | FR-044 | pass | Append-only corrections close the scoped stale-ledger defect without rewriting history. |
+| T034b | FR-059 | pass | Strict design context and physical target containment pass the production path. |
+| T051 | FR-045, FR-057, FR-058 | pass | Public campaign cutover and current-result gate are delivered. |
+| T052 | FR-055, FR-056 | pass | Workshop-intermediate and ordinary Stop behavior is delivered; DRIFT-025 remains a named later repair. |
+| T053 | FR-060, FR-063, FR-064 | pass | Shared file-primary contract and malformed-output matrix pass. |
+| T054 | FR-060, FR-063, FR-064 | pass | Codex and Copilot production adapters pass. |
+| T055 | FR-060, FR-063, FR-064 | pass | Cursor and Antigravity production adapters pass. |
+| T056 | FR-061, FR-063, FR-064 | pass | Windows Job Object runtime passes native containment and termination proof. |
+| T057 | FR-061, FR-063, FR-064 | pass | Linux cgroup and macOS process-group runtimes pass native proof. |
+| T058 | FR-062, FR-063 | pass | Progress, timing, usage, duplicate warning, and retro provenance are delivered. |
+| T059 | FR-060, FR-061, FR-064 | pass | Deterministic five-adapter/three-OS registry and hosted CI pass. |
+| T060 | FR-059, FR-060, FR-061, FR-064, FR-065 | pass | Four live harness paths are proved; Cursor is live-proven but not claimed clean-current after free-credit exhaustion. |
+| T061 | FR-041–FR-045, FR-056–FR-065 | pass | Run 13 independently confirms the corrected tree with zero findings; the six-file commit and one-time fact close finalization. |
 
-T061 passes. Runs 11 and 12 supplied immutable correction evidence for the finalization envelope; run 13 independently confirms the corrected final tree with no findings. The six-file finalization commit and one-time authority fact close the evidence/digest circularity without treating documentation mutation as reviewed implementation.
+FR-048/FR-049/SC-015 remains an explicit open Beta2 command-plan dependency outside Iteration 007 and is not covered by these verdicts.
 
 ## Correction Verification
 
@@ -89,6 +106,10 @@ T061 passes. Runs 11 and 12 supplied immutable correction evidence for the final
 - Bidirectional traceability: 16/16 tasks and 25/25 scoped requirements; no orphan task, invalid reference, or uncovered scoped requirement.
 - Scoped and gap governance: PASS with historical warnings only.
 - Final no-spend preflight: exact commit/digest, clean current target, five resolved design references, Claude readiness, Job Object readiness, invocation contract, and process contract all passed before attempt 13.
+
+## Gap Ledger
+
+No known gaps remain.
 
 ## Drift and Carry-Forward
 
