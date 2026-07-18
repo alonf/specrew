@@ -696,19 +696,19 @@ function Get-TemplateRefreshMappings {
 
     return @(
         [pscustomobject]@{
-            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.specify\templates'
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath 'templates\specify\templates'
             TargetRelativeRoot = '.specify\templates'
-            SourceLabelRoot    = '.specify/templates'
+            SourceLabelRoot    = 'templates/specify/templates'
         }
         [pscustomobject]@{
-            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.squad\templates'
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath 'templates\squad'
             TargetRelativeRoot = '.squad'
-            SourceLabelRoot    = '.squad/templates'
+            SourceLabelRoot    = 'templates/squad'
         }
         [pscustomobject]@{
-            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.github\workflows'
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath 'templates\github\workflows'
             TargetRelativeRoot = '.github\workflows'
-            SourceLabelRoot    = '.github/workflows'
+            SourceLabelRoot    = 'templates/github/workflows'
         }
     )
 }
@@ -759,24 +759,17 @@ function Get-NullableFileContent {
     return Get-Content -LiteralPath $Path -Raw -Encoding UTF8
 }
 
-function Get-ContentHash {
+function Get-FileSha256 {
     param(
-        [AllowNull()]
-        [string]$Content
+        [Parameter(Mandatory = $true)]
+        [string]$Path
     )
 
-    if ($null -eq $Content) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         return $null
     }
 
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    try {
-        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($Content)
-        return ([System.BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '')
-    }
-    finally {
-        $sha256.Dispose()
-    }
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
 }
 
 function Resolve-PreviousSpecrewRoot {
@@ -1060,6 +1053,18 @@ function Invoke-TemplateRefresh {
                 continue
             }
 
+            $previousSourceHash = Get-FileSha256 -Path $previousTemplate.SourcePath
+            $projectFileHash = Get-FileSha256 -Path $previousTemplate.TargetPath
+            if ($null -ne $previousSourceHash -and $previousSourceHash -eq $projectFileHash) {
+                Remove-Item -LiteralPath $previousTemplate.TargetPath -Force
+                $null = $actions.Add([pscustomobject]@{
+                        Action   = 'template-retired-removed'
+                        Detail   = $projectRelativePath
+                        Template = $projectRelativePath
+                    })
+                continue
+            }
+
             $preservedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
             $artifactBaseName = Get-TemplateArtifactBaseName -ProjectRelativePath $projectRelativePath
             $artifactPath = Join-Path -Path $artifactRoot -ChildPath ('{0}.deletion' -f $artifactBaseName)
@@ -1071,9 +1076,10 @@ function Invoke-TemplateRefresh {
                 -SourceTemplatePath $previousTemplate.SourceTemplatePath
 
             Write-Utf8FileAtomic -Path $artifactPath -Content $artifactContent
+            Write-Warning ("Retired Specrew template '{0}' was user-modified; preserving it for manual review. Evidence: '{1}'." -f $projectRelativePath, $artifactPath)
             $null = $actions.Add([pscustomobject]@{
-                    Action   = 'template-deleted'
-                    Detail   = ('{0} -> {1}' -f $projectRelativePath, $artifactPath)
+                    Action   = 'template-retired-warning'
+                    Detail   = ('WARN: retired user-modified template preserved: {0} -> {1}' -f $projectRelativePath, $artifactPath)
                     Template = $projectRelativePath
                 })
         }

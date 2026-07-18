@@ -46,6 +46,7 @@ requires:
   speckit_version: ">=0.8.4"
 '@ -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'README.md') -Value 'test' -Encoding utf8 -NoNewline
+    Set-Content -LiteralPath (Join-Path $Root 'refocus-scopes.json') -Value '{"schema_version":"1.0","scopes":[]}' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'commands/placeholder.md') -Value '# placeholder' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'scripts/placeholder.ps1') -Value '# placeholder' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'templates/placeholder.md') -Value '# placeholder' -Encoding utf8 -NoNewline

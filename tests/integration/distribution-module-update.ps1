@@ -120,35 +120,43 @@ $null = New-Item -ItemType Directory -Path $currentModuleRoot -Force
 $null = New-Item -ItemType Directory -Path $projectRoot -Force
 
 foreach ($moduleRoot in @($previousModuleRoot, $currentModuleRoot)) {
-    foreach ($surface in @('scripts', 'extensions', '.specify', '.squad', '.github')) {
+    foreach ($surface in @('scripts', 'extensions', '.specify', '.squad', '.github', 'templates', 'hosts')) {
         Copy-Surface -SourcePath (Join-Path $repoRoot $surface) -DestinationPath (Join-Path $moduleRoot $surface)
     }
+    $contractsTargetParent = Join-Path $moduleRoot 'specs\197-continuous-co-review'
+    $null = New-Item -ItemType Directory -Path $contractsTargetParent -Force
+    Copy-Surface `
+        -SourcePath (Join-Path $repoRoot 'specs\197-continuous-co-review\contracts') `
+        -DestinationPath (Join-Path $contractsTargetParent 'contracts')
 }
 
 Set-ExtensionVersion -ModuleRoot $previousModuleRoot -Version $previousVersion
 Set-ExtensionVersion -ModuleRoot $currentModuleRoot -Version $currentVersion
 
-$moduleOnlyPath = Join-Path $currentModuleRoot '.specify\templates\spec-template.md'
+$moduleOnlyPath = Join-Path $currentModuleRoot 'templates\specify\templates\spec-template.md'
 [System.IO.File]::WriteAllText($moduleOnlyPath, "CURRENT MODULE-ONLY TEMPLATE`n", [System.Text.UTF8Encoding]::new($false))
-[System.IO.File]::WriteAllText((Join-Path $previousModuleRoot '.specify\templates\spec-template.md'), "PREVIOUS MODULE-ONLY TEMPLATE`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $previousModuleRoot 'templates\specify\templates\spec-template.md'), "PREVIOUS MODULE-ONLY TEMPLATE`n", [System.Text.UTF8Encoding]::new($false))
 
 $userOnlyProjectRelativePath = '.specify\templates\plan-template.md'
 $bothModifiedProjectRelativePath = '.squad\identity\now.md'
 
-$bothModifiedPreviousSourcePath = Join-Path $previousModuleRoot '.squad\templates\identity\now.md'
-$bothModifiedCurrentSourcePath = Join-Path $currentModuleRoot '.squad\templates\identity\now.md'
+$bothModifiedPreviousSourcePath = Join-Path $previousModuleRoot 'templates\squad\identity\now.md'
+$bothModifiedCurrentSourcePath = Join-Path $currentModuleRoot 'templates\squad\identity\now.md'
 [System.IO.File]::WriteAllText($bothModifiedPreviousSourcePath, "PREVIOUS SHARED TEMPLATE`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText($bothModifiedCurrentSourcePath, "CURRENT MODULE TEMPLATE`n", [System.Text.UTF8Encoding]::new($false))
 
-$newTemplateCurrentSourcePath = Join-Path $currentModuleRoot '.github\workflows\new-template.yml'
+$newTemplateCurrentSourcePath = Join-Path $currentModuleRoot 'templates\github\workflows\new-template.yml'
 [System.IO.File]::WriteAllText($newTemplateCurrentSourcePath, "name: new-template`n", [System.Text.UTF8Encoding]::new($false))
 
-$deletedTemplatePreviousSourcePath = Join-Path $previousModuleRoot '.github\workflows\obsolete-template.yml'
+$deletedTemplatePreviousSourcePath = Join-Path $previousModuleRoot 'templates\github\workflows\obsolete-template.yml'
 [System.IO.File]::WriteAllText($deletedTemplatePreviousSourcePath, "name: obsolete-template`n", [System.Text.UTF8Encoding]::new($false))
 
-Install-TemplateSurface -SourceRoot (Join-Path $previousModuleRoot '.specify\templates') -TargetRoot (Join-Path $projectRoot '.specify\templates')
-Install-TemplateSurface -SourceRoot (Join-Path $previousModuleRoot '.squad\templates') -TargetRoot (Join-Path $projectRoot '.squad')
-Install-TemplateSurface -SourceRoot (Join-Path $previousModuleRoot '.github\workflows') -TargetRoot (Join-Path $projectRoot '.github\workflows')
+$modifiedDeletedTemplatePreviousSourcePath = Join-Path $previousModuleRoot 'templates\github\workflows\modified-obsolete-template.yml'
+[System.IO.File]::WriteAllText($modifiedDeletedTemplatePreviousSourcePath, "name: modified-obsolete-template`n", [System.Text.UTF8Encoding]::new($false))
+
+Install-TemplateSurface -SourceRoot (Join-Path $previousModuleRoot 'templates\specify\templates') -TargetRoot (Join-Path $projectRoot '.specify\templates')
+Install-TemplateSurface -SourceRoot (Join-Path $previousModuleRoot 'templates\squad') -TargetRoot (Join-Path $projectRoot '.squad')
+Install-TemplateSurface -SourceRoot (Join-Path $previousModuleRoot 'templates\github\workflows') -TargetRoot (Join-Path $projectRoot '.github\workflows')
 $null = New-Item -ItemType Directory -Path (Join-Path $projectRoot '.github\agents') -Force
 [System.IO.File]::WriteAllText((Join-Path $projectRoot '.github\agents\squad.agent.md'), "# Squad Agent`n", [System.Text.UTF8Encoding]::new($false))
 
@@ -167,6 +175,12 @@ $userOnlyTargetPath = Join-Path $projectRoot $userOnlyProjectRelativePath
 
 $bothModifiedTargetPath = Join-Path $projectRoot $bothModifiedProjectRelativePath
 [System.IO.File]::WriteAllText($bothModifiedTargetPath, "USER CUSTOM IDENTITY TEMPLATE`n", [System.Text.UTF8Encoding]::new($false))
+
+$modifiedDeletedTargetPath = Join-Path $projectRoot '.github\workflows\modified-obsolete-template.yml'
+[System.IO.File]::WriteAllText($modifiedDeletedTargetPath, "name: user-modified-retired-template`n", [System.Text.UTF8Encoding]::new($false))
+
+$consumerRefocusCatalogPath = Join-Path $projectRoot '.specify\extensions\specrew-speckit\refocus-scopes.json'
+Remove-Item -LiteralPath $consumerRefocusCatalogPath -Force -ErrorAction SilentlyContinue
 
 $updateResult = Invoke-ModuleScript `
     -ModuleRoot $currentModuleRoot `
@@ -199,7 +213,7 @@ foreach ($pattern in @(
         'USER CUSTOM IDENTITY TEMPLATE',
         '=======',
         'CURRENT MODULE TEMPLATE',
-        '>>>>>>> module-version \(specrew_version: 0\.18\.0, source: \.squad/templates/identity/now\.md\)'
+        '>>>>>>> module-version \(specrew_version: 0\.18\.0, source: templates/squad/identity/now\.md\)'
     )) {
     if ($conflictedContent -notmatch $pattern) {
         Write-Fail ("Conflict markers missing expected content '{0}'." -f $pattern)
@@ -229,18 +243,59 @@ if (-not (Test-Path -LiteralPath $newTemplateTargetPath -PathType Leaf)) {
 }
 Write-Pass 'New templates are added non-destructively.'
 
-$deletionArtifact = Get-ChildItem -LiteralPath $artifactRoot -Filter '*.deletion' -File | Select-Object -First 1
+$cleanDeletedTargetPath = Join-Path $projectRoot '.github\workflows\obsolete-template.yml'
+if (Test-Path -LiteralPath $cleanDeletedTargetPath) {
+    Write-Fail 'Byte-identical retired template was preserved instead of removed.'
+    exit 1
+}
+Write-Pass 'Byte-identical retired templates are removed by exact SHA-256 match.'
+
+if (-not (Test-Path -LiteralPath $modifiedDeletedTargetPath -PathType Leaf)) {
+    Write-Fail 'User-modified retired template was removed.'
+    exit 1
+}
+$modifiedDeletedContent = Get-Content -LiteralPath $modifiedDeletedTargetPath -Raw -Encoding UTF8
+if ($modifiedDeletedContent -ne "name: user-modified-retired-template`n") {
+    Write-Fail 'User-modified retired template content was changed.'
+    exit 1
+}
+
+$deletionArtifact = Get-ChildItem -LiteralPath $artifactRoot -Filter '*.deletion' -File | Where-Object {
+    (Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -match 'modified-obsolete-template\.yml'
+} | Select-Object -First 1
 if ($null -eq $deletionArtifact) {
-    Write-Fail 'Expected a .deletion artifact for removed templates.'
+    Write-Fail 'Expected a .deletion artifact for the user-modified retired template.'
     exit 1
 }
 
 $deletionContent = Get-Content -LiteralPath $deletionArtifact.FullName -Raw -Encoding UTF8
-if ($deletionContent -notmatch 'obsolete-template\.yml' -or $deletionContent -notmatch 'pending-manual-review') {
+if ($deletionContent -notmatch 'modified-obsolete-template\.yml' -or $deletionContent -notmatch 'pending-manual-review') {
     Write-Fail '.deletion artifact did not capture the expected removal metadata.'
     exit 1
 }
-Write-Pass 'Template deletions are flagged for manual review.'
+$cleanDeletionArtifacts = @(Get-ChildItem -LiteralPath $artifactRoot -Filter '*.deletion' -File | Where-Object {
+        (Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8) -match '(?<!modified-)obsolete-template\.yml'
+    })
+if ($cleanDeletionArtifacts.Count -ne 0) {
+    Write-Fail 'Byte-identical retired template incorrectly produced a manual-review artifact.'
+    exit 1
+}
+if (($updateResult.Output -join "`n") -notmatch 'WARNING:.*modified-obsolete-template\.yml.*preserv') {
+    Write-Fail 'Update did not emit an explicit WARN naming the preserved retired template.'
+    exit 1
+}
+Write-Pass 'User-modified retired templates are preserved with an explicit WARN and review artifact.'
+
+$sourceRefocusCatalogPath = Join-Path $currentModuleRoot 'extensions\specrew-speckit\refocus-scopes.json'
+if (-not (Test-Path -LiteralPath $consumerRefocusCatalogPath -PathType Leaf)) {
+    Write-Fail 'Update did not sync refocus-scopes.json into the existing .specify tree.'
+    exit 1
+}
+if ((Get-FileHash -LiteralPath $consumerRefocusCatalogPath -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $sourceRefocusCatalogPath -Algorithm SHA256).Hash) {
+    Write-Fail 'Synced refocus-scopes.json does not match the current module source.'
+    exit 1
+}
+Write-Pass 'Existing .specify trees receive the current refocus-scopes.json catalog.'
 
 $updatedConfig = Get-Content -LiteralPath (Join-Path $projectRoot '.specrew\config.yml') -Raw -Encoding UTF8
 if ($updatedConfig -notmatch 'specrew_version:\s*"0\.18\.0"') {

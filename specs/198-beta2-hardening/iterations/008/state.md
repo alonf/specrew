@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T024 ignore deployed local host configuration
-**Tasks Remaining**: T025–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T025 hash-guard update healing and refocus-scope synchronization
+**Last Completed Task**: T025 hash-guard update healing and refocus-scope synchronization
+**Tasks Remaining**: T026–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T026 announced greenfield bootstrap commit and brownfield offer
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T23:02:07Z
+**Updated**: 2026-07-18T23:13:12Z
 
 ## Planning Authorization
 
@@ -117,10 +117,17 @@
   its ignore rule before hook deployment; a Git-backed fixture proves an already-tracked config is removed only
   from the index, preserved on disk, ignored thereafter, and not duplicated on repeated init. The adjacent
   Feature 051 classification suite remains green with the expanded canonical pattern set.
+- T025 points update inventory at the packaged consumer template roots. Retired files are removed only when the
+  exact previous-source SHA-256 still matches the consumer bytes; modified files remain untouched and produce a
+  named warning plus `.deletion` review artifact. The extension deploy now treats `refocus-scopes.json` as a
+  required managed item, with the existing user overlay reapplied after refresh. The beta1-shaped production-path
+  fixture, missing-source and registration fixtures, and the 390-entry package completeness guard pass. The broad
+  provider-mirror test also exposed an older committed bootstrap-provider comment/newline mismatch outside T025;
+  it remains visible for the T065/T066 quality sweep instead of being hidden in this task.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T025 executes next to heal retired Beta1 templates only when their shipped hashes still match and to synchronize
-  refocus scopes into existing consumer extensions.
+- T026 executes next to create and announce a greenfield scaffold baseline while leaving brownfield history under
+  an explicit recorded human choice.
 
 ## Notes
 
