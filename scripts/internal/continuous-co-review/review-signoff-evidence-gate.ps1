@@ -213,7 +213,7 @@ function Test-ReviewCampaignFinalizationEnvelope {
             reviewed_commit = $null; finalization_commit = $null; changed_paths = @()
         }
     }
-    if ($FeatureId -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]*$' -or $IterationNumber -cnotmatch '^[0-9]{3}$') {
+    if (-not (Test-ReviewCampaignScopeIdentity -FeatureId $FeatureId -IterationNumber $IterationNumber)) {
         return & $fail 'scope-identity-invalid'
     }
     $factValidation = Test-ReviewAuthorityContractObject -ContractName ReviewFinalizationFact -InputObject $Fact -ExpectedCampaignId $CampaignId
@@ -436,7 +436,7 @@ function Get-ReviewCampaignVerdictPacketDecision {
         if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $IterationNumber = [string]$identity.iteration_number }
     }
     if ($null -ne $identity -and ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($TargetLineage) -or
-        $FeatureId -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]*$' -or $IterationNumber -cnotmatch '^[0-9]{3}$')) {
+        -not (Test-ReviewCampaignScopeIdentity -FeatureId $FeatureId -IterationNumber $IterationNumber))) {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'scope-identity-unresolvable' `
             -Message 'Campaign, lineage, feature, and iteration identity must resolve before finalization validation or publication.' `
             -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
@@ -463,6 +463,17 @@ function Get-ReviewCampaignVerdictPacketDecision {
         $latestResult = @($results | Where-Object { [string]$_.run_id -ceq $latestRunId } | Select-Object -First 1)
         if ($latestResult.Count -gt 0) { $latestResult = $latestResult[0] } else { $latestResult = $null }
     }
+    $finalizationCandidateEligible = $null -eq $activeRun -and $null -ne $latestResult -and
+        [string]$latestResult.target_digest -cne [string]$digest.tree_id -and
+        [string]$latestResult.completion -ceq 'complete' -and [string]$latestResult.verdict -ceq 'pass' -and
+        [string]$latestResult.runtime_outcome -ceq 'completed' -and [bool]$latestResult.can_approve_current
+    if (($null -ne $finalizationFact -or $finalizationCandidateEligible) -and
+        -not (Test-ReviewCampaignScopeIdentity -FeatureId $FeatureId -IterationNumber $IterationNumber)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'scope-identity-unresolvable' `
+            -Message 'Feature and iteration identity must resolve before finalization validation or publication.' `
+            -CampaignId $CampaignId -RunId $(if ($null -ne $latestResult) { [string]$latestResult.run_id } else { $null }) `
+            -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+    }
     if ($null -ne $finalizationFact) {
         if ($null -eq $latestResult) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-missing' -Message 'The one-time finalization fact has no matching latest campaign result; authority fails closed.' -CampaignId $CampaignId -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
@@ -474,10 +485,7 @@ function Get-ReviewCampaignVerdictPacketDecision {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('review-finalization-invalid:' + [string]$finalizationEnvelope.reason) -Message 'The one-time review finalization fact or its commit envelope is invalid; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationFact.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
         }
     }
-    elseif ($null -eq $activeRun -and $null -ne $latestResult -and
-        [string]$latestResult.target_digest -cne [string]$digest.tree_id -and
-        [string]$latestResult.completion -ceq 'complete' -and [string]$latestResult.verdict -ceq 'pass' -and
-        [string]$latestResult.runtime_outcome -ceq 'completed' -and [bool]$latestResult.can_approve_current) {
+    elseif ($finalizationCandidateEligible) {
         $candidateFact = [pscustomobject][ordered]@{
             schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = $CampaignId
             run_id = [string]$latestResult.run_id; reviewed_digest = [string]$latestResult.target_digest
@@ -487,8 +495,17 @@ function Get-ReviewCampaignVerdictPacketDecision {
             -Fact $candidateFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
             -ExcludedPathPatterns $ExcludedPathPatterns
         if ($candidateEnvelope.valid) {
-            Write-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -Fact $candidateFact | Out-Null
+            try {
+                Write-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -Fact $candidateFact | Out-Null
+            }
+            catch {
+                if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw }
+                # Another gate may have won CreateNew after this gate validated its candidate. The
+                # winner is authoritative only if the normal read + envelope validation below proves
+                # it binds this same clean result and current finalization commit.
+            }
             $finalizationFact = Get-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -CampaignId $CampaignId
+            if ($null -eq $finalizationFact) { throw 'review-finalization-post-publish-missing' }
             $finalizationEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $CampaignId -Result $latestResult `
                 -Fact $finalizationFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
                 -ExcludedPathPatterns $ExcludedPathPatterns

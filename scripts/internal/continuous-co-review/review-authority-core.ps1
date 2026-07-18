@@ -68,6 +68,25 @@ function Test-ReviewAuthorityIdentifier {
     return ([string]$Value -cmatch ('^{0}-[a-z0-9][a-z0-9-]{{0,63}}$' -f $prefix))
 }
 
+function Test-ReviewCampaignFeatureIdentity {
+    param([AllowNull()]$Value)
+    return ($Value -is [string] -and [string]$Value -cmatch '^[a-z0-9][a-z0-9-]{0,127}$')
+}
+
+function Test-ReviewCampaignIterationIdentity {
+    param([AllowNull()]$Value)
+    return ($Value -is [string] -and [string]$Value -cmatch '^[0-9]{3,}$')
+}
+
+function Test-ReviewCampaignScopeIdentity {
+    param(
+        [AllowNull()]$FeatureId,
+        [AllowNull()]$IterationNumber
+    )
+    return ((Test-ReviewCampaignFeatureIdentity -Value $FeatureId) -and
+        (Test-ReviewCampaignIterationIdentity -Value $IterationNumber))
+}
+
 function Add-ReviewAuthorityError {
     param(
         [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors,

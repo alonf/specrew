@@ -66,6 +66,14 @@ Describe 'Review authority closed contracts (T042)' {
         }
     }
 
+    It 'uses one safe campaign scope definition for ordinary and long-lived identities' {
+        Test-ReviewCampaignScopeIdentity -FeatureId '198-beta2-hardening' -IterationNumber '007' | Should -BeTrue
+        Test-ReviewCampaignScopeIdentity -FeatureId 'antigravity-host-followup' -IterationNumber '1000' | Should -BeTrue
+        Test-ReviewCampaignScopeIdentity -FeatureId '../escape' -IterationNumber '007' | Should -BeFalse
+        Test-ReviewCampaignScopeIdentity -FeatureId '198-beta2-hardening' -IterationNumber '7' | Should -BeFalse
+        Test-ReviewCampaignScopeIdentity -FeatureId '' -IterationNumber '007' | Should -BeFalse
+    }
+
     It 'accepts every versioned authority object shape' {
         $cases = @(
             @{ name = 'ReviewCampaign'; object = [pscustomobject][ordered]@{ schema_version = '1.0'; campaign_id = 'cmp-demo'; target_lineage = 'lin-code'; created_at = '2026-07-16T00:00:00Z' } }

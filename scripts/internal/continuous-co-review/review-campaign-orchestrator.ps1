@@ -308,7 +308,7 @@ function Resolve-ReviewCampaignPublicIdentity {
             $feature = $branch.stdout
         }
     }
-    if ([string]::IsNullOrWhiteSpace($feature)) { throw 'review-campaign-active-feature-unresolved' }
+    if (-not (Test-ReviewCampaignFeatureIdentity -Value $feature)) { throw 'review-campaign-active-feature-unresolved' }
     $featureDirectory = Join-Path $root "specs/$feature"
     if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) { throw "review-campaign-feature-missing:$feature" }
 
@@ -320,7 +320,7 @@ function Resolve-ReviewCampaignPublicIdentity {
         }
     }
     if ($iteration -is [array]) { $iteration = if ($iteration.Count -gt 0) { [string]$iteration[0] } else { '' } }
-    if ([string]::IsNullOrWhiteSpace([string]$iteration) -or [string]$iteration -notmatch '^\d{3,}$') { throw 'review-campaign-active-iteration-unresolved' }
+    if (-not (Test-ReviewCampaignIterationIdentity -Value $iteration)) { throw 'review-campaign-active-iteration-unresolved' }
 
     $featureSlug = ConvertTo-ReviewCampaignSlug -Value $feature -MaximumLength 44
     $campaignId = "cmp-$featureSlug-i$iteration"

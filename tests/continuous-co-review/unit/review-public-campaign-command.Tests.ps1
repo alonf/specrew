@@ -16,13 +16,18 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
 
         function script:New-PublicCampaignRepo {
-            param([string]$Root, [switch]$WithoutDesignContext)
-            New-Item -ItemType Directory -Path (Join-Path $Root 'specs/001-demo/iterations/007') -Force | Out-Null
+            param(
+                [string]$Root,
+                [switch]$WithoutDesignContext,
+                [string]$FeatureId = '001-demo',
+                [string]$IterationNumber = '007'
+            )
+            New-Item -ItemType Directory -Path (Join-Path $Root "specs/$FeatureId/iterations/$IterationNumber") -Force | Out-Null
             & git -C $Root init -q 2>&1 | Out-Null
             & git -C $Root branch -m main 2>&1 | Out-Null
             [IO.File]::WriteAllText((Join-Path $Root 'app.txt'), 'review me', [Text.UTF8Encoding]::new($false))
             if (-not $WithoutDesignContext) {
-                [IO.File]::WriteAllText((Join-Path $Root 'specs/001-demo/spec.md'), '# Demo design context', [Text.UTF8Encoding]::new($false))
+                [IO.File]::WriteAllText((Join-Path $Root "specs/$FeatureId/spec.md"), '# Demo design context', [Text.UTF8Encoding]::new($false))
             }
             & git -C $Root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
             & git -C $Root -c user.name=t -c user.email=t@example.invalid commit -qm initial 2>&1 | Out-Null
@@ -591,6 +596,106 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $decision.render_boundary_packet | Should -BeFalse
         Test-Path -LiteralPath $store | Should -BeFalse -Because 'empty scope cannot reach digest, validation, or fact publication'
         Assert-MockCalled -CommandName Resolve-ReviewCampaignPublicIdentity -Times 1 -Exactly
+    }
+
+    It 'uses the shared scope definition through resolver and production finalization for a nonnumeric feature and four-digit iteration' {
+        $featureId = 'antigravity-host-followup'
+        $iterationNumber = '1000'
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-long-lived-scope') `
+            -FeatureId $featureId -IterationNumber $iterationNumber
+        & git -C $root branch -m $featureId 2>&1 | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/`n", [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add .gitignore 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'ignore controller authority store' 2>&1 | Out-Null
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -RunId 'run-scope-shared'
+        $identity.feature_id | Should -Be $featureId
+        $identity.iteration_number | Should -Be $iterationNumber
+        $store = Join-Path $root '.specrew/review/authority'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -CampaignId $identity.campaign_id -TargetLineage $identity.target_lineage
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root `
+            -RelativePath "specs/$featureId/iterations/$iterationNumber/review.md" -Content '# Final review evidence'
+
+        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root
+
+        $gate.decision | Should -Be 'allow' -Because ("reason={0}; message={1}" -f $gate.reason, $gate.message)
+        $gate.route | Should -Be 'boundary-finalized'
+        $gate.reviewed_commit | Should -Be $reviewed.commit
+        $gate.finalization_commit | Should -Be $finalizationCommit
+    }
+
+    It 'reports missing explicit-call scope before finalization validation or publication' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-explicit-scope-missing')
+        $store = Join-Path $TestDrive 'finalization-explicit-scope-missing-store'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-explicit-scope-missing'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' `
+            -TargetLineage 'lin-demo' -StoreRoot $store
+
+        $decision.route | Should -Be 'review-failure'
+        $decision.reason | Should -Be 'scope-identity-unresolvable'
+        $decision.render_boundary_packet | Should -BeFalse
+        Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
+    }
+
+    It 're-reads and validates the immutable winner when finalization publication loses a CreateNew race' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-race-converges')
+        $store = Join-Path $TestDrive 'finalization-race-converges-store'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-race-converges'
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+        $winner = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = 'cmp-demo-i007'
+            run_id = 'run-race-converges'; reviewed_digest = $reviewed.digest; finalization_commit = $finalizationCommit
+        }
+        $script:raceRead = 0
+        Mock -CommandName Get-ReviewCampaignFinalizationFact -MockWith {
+            $script:raceRead++
+            if ($script:raceRead -eq 1) { return $null }
+            return $winner
+        }
+        Mock -CommandName Write-ReviewCampaignFinalizationFact -MockWith {
+            throw 'review-store-corruption:conflicting-immutable-fact:campaigns/cmp-demo-i007/finalization.json'
+        }
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+
+        $decision.route | Should -Be 'boundary-finalized'
+        $decision.finalization_commit | Should -Be $finalizationCommit
+        Assert-MockCalled -CommandName Write-ReviewCampaignFinalizationFact -Times 1 -Exactly
+        Assert-MockCalled -CommandName Get-ReviewCampaignFinalizationFact -Times 2 -Exactly
+    }
+
+    It 'fails closed when the CreateNew winner does not bind the validated candidate' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-race-conflict')
+        $store = Join-Path $TestDrive 'finalization-race-conflict-store'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-race-conflict'
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+        $conflictingWinner = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = 'cmp-demo-i007'
+            run_id = 'run-other'; reviewed_digest = $reviewed.digest; finalization_commit = $finalizationCommit
+        }
+        $script:conflictRead = 0
+        Mock -CommandName Get-ReviewCampaignFinalizationFact -MockWith {
+            $script:conflictRead++
+            if ($script:conflictRead -eq 1) { return $null }
+            return $conflictingWinner
+        }
+        Mock -CommandName Write-ReviewCampaignFinalizationFact -MockWith {
+            throw 'review-store-corruption:conflicting-immutable-fact:campaigns/cmp-demo-i007/finalization.json'
+        }
+
+        $caught = $null
+        try {
+            $null = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+                -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        }
+        catch { $caught = $_ }
+
+        $caught | Should -Not -BeNullOrEmpty
+        $caught.Exception.Message | Should -Match 'review-finalization-post-publish-invalid:result-identity-mismatch'
+        Assert-MockCalled -CommandName Write-ReviewCampaignFinalizationFact -Times 1 -Exactly
+        Assert-MockCalled -CommandName Get-ReviewCampaignFinalizationFact -Times 2 -Exactly
     }
 
     It 'denies every non-review-evidence finalization path without publishing a fact' -ForEach @(
