@@ -3,7 +3,7 @@
 **Schema**: v1
 **Date**: 2026-07-18
 **Status**: accepted
-**Human Authority**: approved for retro on 2026-07-18; iteration closeout is not yet authorized
+**Human Authority**: approved for retro and separately approved for iteration-closeout on 2026-07-18
 **Plan**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/plan.md
 **State**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/state.md
 **Drift Log**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/drift-log.md
@@ -132,4 +132,4 @@ Schedule it as a separate Phase-2 engine optimization slice before the next corr
 - The frequent five-section packet behavior is recorded as product/process friction, not dismissed as user error. Context packets belong after substantial work or a real handoff, not every few seconds during direct discussion.
 - The multi-session attribution defect is separate from the already-resolved same-HEAD annotation issue. Both can produce awkward packets, but they require different fixes.
 - The `HookRenderDedupe` incident is classified as a timing-sensitive fixture flake based on rerun and post-merge green evidence; this retro does not claim a product dedupe defect.
-- This retro reconciles lifecycle artifacts after the deliberately narrow finalization commit. It does not mutate authority code, review code, tests, specifications, or contracts and does not authorize iteration closeout.
+- This retro reconciles lifecycle artifacts after the deliberately narrow finalization commit. It does not mutate authority code, review code, tests, specifications, or contracts; iteration closeout was authorized separately against retro boundary commit `744e77d8086234bd8dfde3fbc6237abd226319ae`.

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "007"
-updated_at: "2026-07-18"
+updated_at: "2026-07-18T22:21:25+03:00"
 tasks:
   T030:
     title: "Machinery-turn exclusion from verdict evidence"
