@@ -34,7 +34,8 @@ $canonicalPerSession = @(
     '.specrew/host-history.json', '.specrew/.cache/', '.squad/sessions/',
     '.squad/decisions/inbox/', '.specrew/last-validator-summary.json',
     '.specrew/active-sessions.yml',  # added in Iteration 2a (T020c, FR-005 gap fix)
-    '.agents/hooks.json'             # Antigravity hook config carries per-developer launcher paths.
+    '.agents/hooks.json',            # Antigravity hook config carries per-developer launcher paths.
+    '.claude/settings.local.json'    # Claude hook config carries machine-local project paths.
 )
 
 # --- FR-004: classification rule set has all four categories + canonical per-session patterns ---

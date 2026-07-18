@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T023 deny-by-default consumer deploy-list surgery
-**Tasks Remaining**: T024–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T024 ignore deployed local host configuration
+**Last Completed Task**: T024 ignore deployed local host configuration
+**Tasks Remaining**: T025–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T025 hash-guard update healing and refocus-scope synchronization
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T22:57:19Z
+**Updated**: 2026-07-18T23:02:07Z
 
 ## Planning Authorization
 
@@ -113,10 +113,14 @@
   manifest now also declares the previously omitted hooks-doctor and T060 operator scripts, closing the release
   completeness failure surfaced during T021. Source/manifest/real-deploy allowlist tests, all adjacent workflow
   suites, the bidirectional 390-entry FileList guard, and packaged-artifact deploy checks pass.
+- T024 classifies `.claude/settings.local.json` as machine-local per-session state. The real init ordering writes
+  its ignore rule before hook deployment; a Git-backed fixture proves an already-tracked config is removed only
+  from the index, preserved on disk, ignored thereafter, and not duplicated on repeated init. The adjacent
+  Feature 051 classification suite remains green with the expanded canonical pattern set.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T024 executes next to ensure the machine-local host configuration deployed by init remains ignored and
-  untracked in fresh consumers.
+- T025 executes next to heal retired Beta1 templates only when their shipped hashes still match and to synchronize
+  refocus scopes into existing consumer extensions.
 
 ## Notes
 

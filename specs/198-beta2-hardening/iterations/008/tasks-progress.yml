@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-18T22:57:19Z"
+updated_at: "2026-07-18T23:02:07Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -53,14 +53,14 @@ tasks:
     blocked_reason: ""
   T024:
     title: "Ignore deployed local host configuration"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-18T22:57:19Z"
-    completed_at: ""
+    completed_at: "2026-07-18T23:02:07Z"
     blocked_reason: ""
   T025:
     title: "Hash-guard update healing and refocus-scope synchronization"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-18T23:02:07Z"
     completed_at: ""
     blocked_reason: ""
   T026:
