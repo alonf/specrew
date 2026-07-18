@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T062 deterministic verification-plan supplier and bounded selection catalog
-**Tasks Remaining**: T063–T064, T021–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T063 init/update/setup materialization and guarded refresh
+**Last Completed Task**: T063 init/update/setup materialization and guarded refresh
+**Tasks Remaining**: T064, T021–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T064 frozen-target verification execution and exact-digest campaign injection
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T22:09:46Z
+**Updated**: 2026-07-18T22:20:07Z
 
 ## Planning Authorization
 
@@ -83,10 +83,17 @@
   command. Fourteen supplier pairs plus the adjacent T018 contract/runner matrix (70 passing, 2 platform skips)
   prove strict precedence, explicit-invalid short circuit, extension/inactive-provider refusal, stable identities,
   schema-valid output, actionable no-source behavior, and secret-safe provenance.
+- T063 wires the selector into both real init and update callers. A hash sidecar distinguishes generated content
+  from explicit project-owned configuration: explicit valid or invalid plans are preserved byte-for-byte; only a
+  hash-matching generated plan may refresh or be removed when its source disappears; any project modification
+  warns and survives. Eleven focused fixtures, 61/62 supplier/materializer/contract cases (one platform skip),
+  package import/deploy, FileList parity, and update-resync passed. The older local Spec Kit 0.8.13 blocked the
+  legacy packaged-init fixture at its pre-existing minimum-version gate before T063 ran; committed three-OS init
+  CI remains the real production-path confirmation.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T063 executes next and owns real init/update/setup source capture plus hash-guarded materialization; it must keep
-  the selector pure and must preserve user-authored explicit plans byte-for-byte.
+- T064 executes next from the frozen review target and must stop missing/invalid plans before any provider grant
+  spend, while preserving configured command failures as exact-digest evidence.
 
 ## Notes
 

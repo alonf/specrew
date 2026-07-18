@@ -79,6 +79,7 @@ $proposal197ReviewerModules = @(
     # provenance-tagged plan. Contract before runner (the runner consumes it).
     'verification-plan-contract.ps1'
     'verification-plan-supplier.ps1'
+    'verification-plan-materializer.ps1'
     'verification-plan-runner.ps1'
 )
 

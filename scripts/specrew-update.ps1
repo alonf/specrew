@@ -1443,6 +1443,14 @@ if ($scopes -contains 'Specrew') {
                 Detail   = [string]$action.Detail
             })
     }
+
+    . (Join-Path $repoRoot 'scripts\internal\continuous-co-review\verification-plan-materializer.ps1')
+    $verificationPlanSetup = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $resolvedProjectPath
+    $null = $summary.Add([pscustomobject]@{
+            Platform = 'Specrew'
+            Action   = 'verification-plan'
+            Detail   = ("{0}: {1}" -f $verificationPlanSetup.Action, $(if ($verificationPlanSetup.Warning) { $verificationPlanSetup.Warning } else { $verificationPlanSetup.State }))
+        })
 }
 
 foreach ($platform in @('Spec Kit', 'Squad')) {

@@ -840,6 +840,11 @@ if (-not $SpecKitExtensionOnly) {
     else {
         Add-Action -Actions $actions -Step 'squad-runtime' -Outcome 'skipped: .squad is absent in brownfield workspace'
     }
+
+    Write-Step 'Selecting the downstream verification plan'
+    . (Join-Path $repoRoot 'scripts\internal\continuous-co-review\verification-plan-materializer.ps1')
+    $verificationPlanSetup = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $resolvedProjectPath -PreviewOnly:$DryRun
+    Add-Action -Actions $actions -Step 'verification-plan' -Outcome ("{0}: {1}" -f $verificationPlanSetup.Action, $(if ($verificationPlanSetup.Warning) { $verificationPlanSetup.Warning } else { $verificationPlanSetup.State }))
 }
 
 Write-Step 'Seeding canonical Crew team at .specrew/team/'
