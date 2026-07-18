@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T022 work-kind template deployed-path correction
-**Tasks Remaining**: T023–T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T023 deny-by-default consumer deploy-list surgery
+**Last Completed Task**: T023 deny-by-default consumer deploy-list surgery
+**Tasks Remaining**: T024–T028, T065, T066, separately authorized T029, and T067
+**In Progress**: T024 ignore deployed local host configuration
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T22:54:15Z
+**Updated**: 2026-07-18T22:57:19Z
 
 ## Planning Authorization
 
@@ -108,10 +108,15 @@
   shipped `.specify/extensions/.../work-kind-validator.ps1` path, while a missing deployed validator remains an
   explicit advisory warning and `MODE: advisory` remains the default. The existing deployed-shape behavioral
   suite was updated to prove deployed-only, hybrid, source-only, and absent layouts through the new contract.
+- T023 reduces the consumer template directory and module FileList to exactly the methodology and work-kind
+  workflows; Specrew's CI, confidence, and project-sync lanes remain only under `.github/workflows`. The package
+  manifest now also declares the previously omitted hooks-doctor and T060 operator scripts, closing the release
+  completeness failure surfaced during T021. Source/manifest/real-deploy allowlist tests, all adjacent workflow
+  suites, the bidirectional 390-entry FileList guard, and packaged-artifact deploy checks pass.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T023 executes next to reduce the consumer workflow package to the methodology and work-kind allowlist while
-  preserving Specrew's self-host workflows only in its repository CI surface.
+- T024 executes next to ensure the machine-local host configuration deployed by init remains ignored and
+  untracked in fresh consumers.
 
 ## Notes
 

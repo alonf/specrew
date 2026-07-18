@@ -140,7 +140,9 @@ if ($missingTools.Count -gt 0) {
 }
 
 Copy-PackagedModuleSurface -SourceRoot $repoRoot -DestinationRoot $moduleRoot -RequiredEntries @(
-    'templates/github/agents/squad.agent.md'
+    'templates/github/agents/squad.agent.md',
+    'templates/github/workflows/specrew-methodology-gate.yml',
+    'templates/github/workflows/specrew-work-kind.yml'
 )
 $null = New-Item -Path (Join-Path -Path $moduleRoot -ChildPath '.git') -ItemType Directory -Force
 
@@ -167,7 +169,8 @@ $requiredPaths = @(
     '.squad\decisions.md',
     '.squad\identity\now.md',
     '.github\agents\squad.agent.md',
-    '.github\workflows\specrew-ci.yml',
+    '.github\workflows\specrew-methodology-gate.yml',
+    '.github\workflows\specrew-work-kind.yml',
     '.specrew\config.yml'
 )
 
@@ -185,16 +188,17 @@ if ($missingPaths.Count -gt 0) {
 }
 
 $workflowRoot = Join-Path -Path $projectRoot -ChildPath '.github\workflows'
-$workflowCount = @(Get-ChildItem -LiteralPath $workflowRoot -File -ErrorAction SilentlyContinue).Count
-if ($workflowCount -lt 1) {
-    Write-Fail 'Distribution bootstrap did not install any GitHub workflows.'
+$workflowNames = @(Get-ChildItem -LiteralPath $workflowRoot -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object Name)
+$expectedWorkflowNames = @('specrew-methodology-gate.yml', 'specrew-work-kind.yml')
+if (($workflowNames -join '|') -cne ($expectedWorkflowNames -join '|')) {
+    Write-Fail ("Distribution bootstrap workflow allowlist mismatch. Expected [{0}], got [{1}]." -f ($expectedWorkflowNames -join ', '), ($workflowNames -join ', '))
     exit 1
 }
 
 $trackedFiles = @(
     (Join-Path -Path $projectRoot -ChildPath '.specify\templates\spec-template.md'),
     (Join-Path -Path $projectRoot -ChildPath '.squad\identity\now.md'),
-    (Join-Path -Path $projectRoot -ChildPath '.github\workflows\specrew-ci.yml')
+    (Join-Path -Path $projectRoot -ChildPath '.github\workflows\specrew-methodology-gate.yml')
 )
 $baselineHashes = @{}
 foreach ($trackedFile in $trackedFiles) {
