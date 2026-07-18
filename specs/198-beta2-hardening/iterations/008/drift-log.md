@@ -22,15 +22,15 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 0% (0/1 resolved)
+**Total drift events**: 2
+**Resolution rate**: 0% (0/2 resolved)
 **Specification drift**: None detected
 
 ## Events
 
 ### DRIFT-198-I008-001 — Pending crossing cites stale pre-closeout identity
 
-- **Status**: deferred; manually contained
+- **Status**: selected for T068; manually contained until implementation
 - **Severity**: major governance identity defect
 - **Type**: authority-binding drift, not specification drift
 - **Requirements**: FR-041, FR-042, FR-044, FR-045, NFR-007
@@ -41,9 +41,26 @@
   no authority.
 - **Immediate containment**: Iteration 008 planning state and plan record the exact human binding. No later
   boundary may rely on the stale pending record.
-- **Priced correction**: optional T068, 0.75 SP, would narrowly rebind a pending crossing to the actual closeout
-  commit/tree with paired current/stale tests. It is not selected by the planning verdict and must not expand
-  into a matcher redesign.
+- **Selected correction**: T068, 0.75 SP, narrowly rebinds a pending crossing to the actual closeout commit/tree
+  with paired current/stale tests. It executes first and must not expand into a matcher redesign.
+
+### DRIFT-198-I008-002 — injected-context and shared-baseline capture defects carried into T069
+
+- **Status**: selected for T069; implementation pending
+- **Severity**: major authorization and interaction-integrity defect
+- **Type**: inherited implementation/integration drift
+- **Requirements**: FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007
+- **Source evidence**: DRIFT-198-I007-025 recorded that review-signoff capture selected an injected
+  `<environment_context>` user-role turn and rejected the real leading approval followed by binding instructions.
+  The Iteration 007 retro separately recorded concurrent sessions sharing one material baseline, allowing one
+  session's file changes to trigger another session's material-work packet.
+- **Tasks-verdict disposition**: T069 is selected at a hard 2.25 SP ceiling and executes immediately after T068.
+  Its acceptance fixtures must reproduce injected context, instruction-bearing approval, shared-baseline
+  cross-session attribution, concurrent sessions, the stale-binding class, machinery/teaching text, exact
+  boundary identity, and bare-number rejection.
+- **Scope guard**: if the full production correction and fixture matrix cannot fit 2.25 SP, stop and replan. Do
+  not hide additional work under distribution, supplier, or release tasks.
+- **Dogfood rule**: subsequent Iteration 008 lifecycle boundaries exercise the corrected T068/T069 path.
 
 ### Resolution Strategies
 

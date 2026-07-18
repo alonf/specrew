@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 15/26 story_points
+**Capacity**: 18/26 story_points
 **Started**: 2026-07-18
 **Completed**:
 **Planning Baseline**: `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`
@@ -12,8 +12,17 @@
 
 The human verdict authorizes planning only and binds this iteration to the actual Iteration 007 closeout commit
 `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`. The pending crossing record that cited `744e77d8` and tree
-`542c54f0` is a known stale-binding defect and carries no authority. Task authoring and implementation require
-their own later verdicts. This plan grants no provider invocation and no release action.
+`542c54f0` is a known stale-binding defect and carries no authority. At planning time, task authoring and
+implementation required later verdicts; the amendment below records the subsequent tasks verdict. Neither
+verdict grants a provider invocation or release action.
+
+### Tasks Verdict Amendment — 2026-07-18
+
+The maintainer approved task authoring from plan commit `08e86496f2475bb970ff1eafeedf3d58ee897a53`
+and explicitly selected both priced repairs. T068 and T069 therefore move into the execution baseline, increasing
+capacity from 15 to 18 SP. They execute first so the remaining Iteration 008 lifecycle boundaries dogfood the
+repair. T069 is hard-capped at 2.25 SP: if its observed scope exceeds that estimate, stop and replan rather than
+expand the release slice. Implementation, provider invocation, and release action remain unauthorized.
 
 ## Objective
 
@@ -31,6 +40,8 @@ it does not create a second runner or a general discovery framework.
 
 | Requirement | Iteration 008 obligation | Acceptance claim |
 | --- | --- | --- |
+| FR-041, FR-042, FR-044, FR-045 | Rebind pending crossings to their actual closeout commit/tree and reject stale authority | Remaining boundaries use current scoped identity and stable explicit verdict semantics |
+| FR-055, FR-056 | Repair injected-context and multi-session Stop/capture attribution without losing instruction-bearing verdicts | Routine discussion stays conversational; genuine scoped verdict plus instructions remains complete |
 | FR-024, FR-025, FR-031 | Ship consumer-safe methodology/work-kind workflows with provider-gated deployment and valid deployed paths | Fresh GitHub-provider consumer has usable generic CI |
 | FR-026, FR-027 | Keep template deployment deny-by-default and ignore local host configuration | No self-host-only lane or local secret/config leaks into consumers |
 | FR-028, FR-032 | Hash-guard retired-template healing and synchronize refocus scopes | Unmodified obsolete files heal; modified files warn and survive |
@@ -83,6 +94,8 @@ the published beta from a fresh consumer; it does not promote a stable version.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
+| T068 | Narrow stale-binding rebind | FR-041, FR-042, FR-044, FR-045, NFR-007 | US1 | 0.75 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, tests/integration/** | planned | — | — | — |
+| T069 | Multi-session stop/capture integrity repair | FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007 | US1 | 2.25 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, scripts/internal/bootstrap/**, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, tests/integration/** | planned | — | — | — |
 | T021 | Methodology gate template and provider-keyed deploy | FR-024, FR-031, SC-008 | US4 | 0.75 | Implementer | templates/github/workflows/**, scripts/internal/distribution-module-init.ps1, tests/** | planned | — | — | — |
 | T022 | Work-kind template deployed-path correction | FR-025, SC-008 | US4 | 0.25 | Implementer | templates/github/workflows/specrew-work-kind.yml, tests/** | planned | — | — | — |
 | T023 | Deny-by-default consumer deploy-list surgery | FR-026, SC-008 | US4 | 0.75 | Implementer | scripts/internal/distribution-module-init.ps1, templates/**, .github/workflows/**, tests/** | planned | — | — | — |
@@ -100,12 +113,14 @@ the published beta from a fresh consumer; it does not promote a stable version.
 | T067 | Published-beta fresh-consumer dogfood and stable-promotion input | SC-014, NFR-002 | Release | 1.0 | Maintainer | specs/198-beta2-hardening/iterations/008/quality/**, docs/** | planned | — | — | — |
 
 T021–T029 retain their feature-global identifiers from the never-opened Iteration 004 slice. New work continues
-after T061. The feature-level tasks artifact is amended only after the plan-to-tasks verdict.
+after T061. The feature-level tasks artifact is amended under the recorded plan-to-tasks verdict.
 
 ## Requirements-to-Test and Evidence Mapping
 
 | Requirement | Required test/evidence shape |
 | --- | --- |
+| FR-041, FR-042, FR-044, FR-045 | Exact current closeout commit/tree binds; stale pre-closeout identity rejected; repeat rendering stable; bare-number alias non-authoritative |
+| FR-055, FR-056 | Real injected-environment-context reproduction, shared-baseline cross-session attribution, concurrent sessions, stale-binding class, and leading approval-plus-instructions preservation |
 | FR-024–FR-027, FR-031 | Scratch GitHub/unset-provider init fixtures; deployed files exist; generic triggers; deny-by-default manifest; local host config ignored |
 | FR-028, FR-032 | Beta1-shaped update fixture: unmodified retired file removed, modified file warned/preserved, refocus rows synchronized |
 | FR-029 | Greenfield Git fixture proves announced bootstrap commit; brownfield fixture proves no surprise commit and an explicit recorded offer |
@@ -123,9 +138,9 @@ after T061. The feature-level tasks artifact is amended only after the plan-to-t
 | --- | --- | --- |
 | Effort Unit | story_points | Repository-configured unit |
 | Capacity per Iteration | 26 | Current project cap |
-| Planned Effort | 15.0 | Core finish-line scope only |
+| Planned Effort | 18.0 | Core finish line plus both explicitly selected repairs |
 | Overcommit Threshold | 1.0 | No overcommit allowed |
-| Capacity Status | ok | 11 SP core headroom |
+| Capacity Status | ok | 8 SP headroom |
 | Iteration Bounding | scope | Beta2 supplier, distribution, release, and published-beta proof form one coherent finish line |
 | Time Limit (hours) | n/a | Scope-bounded iteration |
 | Defer Strategy | manual | No requirement or optional repair is silently included or dropped |
@@ -137,17 +152,18 @@ after T061. The feature-level tasks artifact is amended only after the plan-to-t
 - The T018 verification schema, validator, runner, evidence recorder, and selected-plan load seam already exist and are not re-estimated.
 - Residual supplier/materialization/campaign injection and deterministic fixture work T062–T065 totals 5.5 SP.
 - Full validation/signoff and post-publish consumer proof T066–T067 totals 2.5 SP.
-- Core total: 15.0 SP. The combined slice fits within 26 SP and keeps 11 SP unallocated.
+- The tasks verdict selected T068 (0.75 SP) and T069 (2.25 SP), raising the executable baseline to 18.0 SP.
+- Selected total: 18.0 SP. The combined slice fits within 26 SP and keeps 8 SP unallocated.
 
-Iterations 001 and 002 expanded about 16–17% from plan to actual. Applying 17% to this core yields a 17.55 SP
-forecast. Selecting both optional repairs later would produce an 18.0 SP baseline and about 21.1 SP at the same
-variance, still below capacity. Iterations 006 and 007 reported estimated effort as actual but did not meter it
+Iterations 001 and 002 expanded about 16–17% from plan to actual. Applying 17% to the selected 18.0 SP baseline
+yields about 21.1 SP, still below capacity. Iterations 006 and 007 reported estimated effort as actual but did not meter it
 independently; they are not used as zero-variance evidence.
 
 ### Phase Baseline
 
 | Phase | Estimated Effort | Included work |
 | --- | ---: | --- |
+| Early boundary and capture integrity repair | 3.0 | T068–T069 |
 | Supplier selection and materialization | 2.75 | T062–T063 |
 | Production execution and exact-digest injection | 1.5 | T064 |
 | Consumer distribution hardening | 6.25 | T021–T028 |
@@ -155,41 +171,43 @@ independently; they are not used as zero-variance evidence.
 | Full verification and independent review | 1.5 | T066 |
 | Authorized prerelease publication | 0.75 | T029 |
 | Published-beta consumer dogfood | 1.0 | T067 |
-| **Total** | **15.0** | Matches planned capacity consumption |
+| **Total** | **18.0** | Matches selected capacity consumption |
 
 ### Provider and Review-Round Budget
 
-- Planning grants zero provider slots.
+- Planning and task authoring grant zero provider slots.
 - T066 starts with one independently authorized provider invocation against the committed candidate digest.
 - Any correction rerun uses a new run ID and a separately visible authorization. No hidden retry exists.
 - The expected correction reserve is one to three additional slots, not pre-spent and not silently assumed.
 - Stop and replan if the same finding class recurs for three consecutive rounds or the validated finding count
   does not decrease across three consecutive rounds. Progress, not merely activity, governs further spend.
 
-## Priced Optional Tasks — Not Selected
+## Selected Governance Repairs
 
-These tasks are outside the 15 SP baseline. A later tasks verdict must name either one explicitly before it is
-added to execution. Otherwise it remains backlog.
+The tasks verdict selected both repairs. Their total is included in the 18 SP baseline.
 
-| Task | Optional scope | Requirement/defect | Effort | Selection state | Hard boundary |
+| Task | Selected scope | Requirement/defect | Effort | Selection state | Hard boundary |
 | --- | --- | --- | ---: | --- | --- |
-| T068 | Narrow stale-binding rebind | `DRIFT-198-I008-001`; FR-041, FR-042, FR-044, FR-045, NFR-007 | 0.75 | not selected | Bind a pending crossing to the actual closeout commit/tree; stale parent citations carry no authority; paired current/stale tests. No matcher redesign. |
-| T069 | Remaining stop/capture integrity repair | `DRIFT-198-I007-025`; FR-041, FR-042, FR-055, FR-056, NFR-007 | 2.25 | not selected | Exclude injected environment context, normalize leading approval-plus-instructions without dropping instructions, key attribution to session/owner, and add concurrent/cross-session/bare-number fixtures. Does not absorb T068. |
+| T068 | Narrow stale-binding rebind | `DRIFT-198-I008-001`; FR-041, FR-042, FR-044, FR-045, NFR-007 | 0.75 | selected; executes first | Bind a pending crossing to the actual closeout commit/tree; stale parent citations carry no authority; paired current/stale tests. No matcher redesign. |
+| T069 | Remaining stop/capture integrity repair | `DRIFT-198-I007-025`; FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007 | 2.25 | selected; executes after T068 | Reproduce injected-context, shared-baseline attribution, stale-binding-class, concurrent-session, and approval-plus-instructions defects; key attribution to session/owner; preserve full instructions; prevent cross-session billing. Stop and replan before exceeding 2.25 SP. |
 
 ## Dependencies and Execution Order
 
-1. T062 freezes the supplier output and precedence behavior before setup or campaign wiring depends on it.
-2. T063 materializes the canonical plan through real init/update/setup paths while preserving explicit user-owned
+1. T068 lands the narrow current-crossing rebind and paired stale/current fixtures.
+2. T069 then lands the bounded multi-session/injected-context capture repair and regression matrix. Every
+   subsequent Iteration 008 boundary exercises both repairs. If T069 cannot remain within 2.25 SP, stop and replan.
+3. T062 freezes the supplier output and precedence behavior before setup or campaign wiring depends on it.
+4. T063 materializes the canonical plan through real init/update/setup paths while preserving explicit user-owned
    configuration.
-3. T064 integrates the frozen-target runner and exact-digest evidence join. Missing/invalid plans stop before
+5. T064 integrates the frozen-target runner and exact-digest evidence join. Missing/invalid plans stop before
    provider invocation.
-4. T021–T028 complete the consumer distribution tail using the same applicability and provider provenance rules.
-5. T065 exercises the supplier, existing T018 runner, evidence recorder, and campaign path together.
-6. T066 runs focused suites, the full registry, scoped governance, three-OS CI, and independent exact-digest
+6. T021–T028 complete the consumer distribution tail using the same applicability and provider provenance rules.
+7. T065 exercises the supplier, existing T018 runner, evidence recorder, and campaign path together.
+8. T066 runs focused suites, the full registry, scoped governance, three-OS CI, and independent exact-digest
    review. Finding corrections follow the bounded non-convergence rule.
-7. T029 may update version surfaces and publish only after T066 passes and a fresh human explicitly authorizes
+9. T029 may update version surfaces and publish only after T066 passes and a fresh human explicitly authorizes
    the release action.
-8. T067 consumes the actually published beta in a fresh project and records SC-014 evidence. It does not publish
+10. T067 consumes the actually published beta in a fresh project and records SC-014 evidence. It does not publish
    a stable release.
 
 ## Concurrency Rationale
@@ -210,7 +228,7 @@ not runtime technologies for this slice. The reconciled profile is:
 - Required honesty pairs: explicit-plan valid/invalid; every precedence source selected/skipped; current/stale
   digest; joinable/unjoinable evidence; safe/escaping paths; eligible/ineligible provider; release/not-release
   model; unmodified/modified heal target.
-- Concurrency: required for exact-digest campaign injection and optional stop/capture work.
+- Concurrency: required for exact-digest campaign injection and the selected stop/capture repair.
 - UI/browser, database, and load testing: not applicable.
 - Performance: secondary to stability; command timeouts are bounded and full-suite/provider wall time is recorded.
 
@@ -222,6 +240,7 @@ not runtime technologies for this slice. The reconciled profile is:
 - [../../review-diagrams.md](../../review-diagrams.md) shows selection, materialization, execution, evidence join, release, and dogfood sequence.
 - [state.md](state.md) records planning authority and the unstarted execution state.
 - [drift-log.md](drift-log.md) records the stale crossing-binding defect without treating it as authority.
+- [quality/hardening-gate.md](quality/hardening-gate.md) records before-implementation controls and evidence obligations.
 
 ## Explicit Exclusions and Deferrals
 
@@ -230,19 +249,20 @@ not runtime technologies for this slice. The reconciled profile is:
 - Generic gate/artifact review adapters remain Beta3 scope under FR-065.
 - Stable promotion is outside this feature; SC-014 supplies evidence only.
 - Automatic campaign retention/pruning remains deferred.
-- T068 and T069 are optional and unselected; neither may be silently implemented under a core task.
+- T068 and T069 are selected only at their stated bounds. T069 cannot silently grow beyond 2.25 SP.
 - A broad verification discovery DSL, file-extension inference, and a Specrew/Pester default are prohibited.
 
 ## Traceability Summary
 
 - Every core task maps to at least one scoped FR, SC, or NFR.
-- Every finish-line requirement FR-024–FR-032, FR-035, FR-036, FR-040, FR-046–FR-049 and SC-008–SC-015 maps to
-  at least one core task and one evidence shape.
-- T068/T069 trace separately to named defects and are not counted as core coverage.
+- Every selected requirement FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056 and
+  SC-008–SC-015 maps to at least one task and one evidence shape.
+- T068/T069 trace separately to named defects and are included in the 18 SP selected baseline.
 - The official plan scaffold was created first. Its scope parser rejected decorated requirement IDs such as
   `FR-024 (W1)` and produced an overbroad stub; this authored plan uses the canonical IDs and explicit mapping.
 
 ## Stop Condition
 
-After this plan is validated, committed, and pushed, stop at the `plan -> tasks` boundary. Do not author tasks,
-implement code, invoke a provider, or perform a release action without the corresponding later human verdict.
+After task artifacts and readiness evidence are validated, committed, and pushed, stop at the
+`tasks -> before-implement` boundary. Do not implement code, invoke a provider, or perform a release action
+without the corresponding later human verdict.

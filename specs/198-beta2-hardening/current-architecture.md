@@ -65,6 +65,10 @@ The same iteration completes consumer workflow deployment, update healing, relea
 technology-assumption firewall, `v0.40.0-beta2` publication after a separate human release grant, and published
 beta dogfood. Stable promotion remains separate.
 
+The tasks verdict also selected the narrow crossing rebind and multi-session Stop/capture repair as the first
+3.0 SP of Iteration 008. T069 is hard-capped at 2.25 SP; exceeding it requires replan rather than expanding the
+release slice. Proposal 209 remains separately scheduled.
+
 ## Mutation and Authority Boundaries
 
 - The repository is the sole code mutation authority.

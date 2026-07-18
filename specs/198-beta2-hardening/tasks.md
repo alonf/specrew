@@ -3,12 +3,12 @@
 **Feature**: 198-beta2-hardening
 **Plan**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/plan.md
 **Date**: 2026-07-10
-**Effort unit**: story points (feature envelope ~25 SP across four iterations)
+**Effort unit**: story points (historical four-iteration envelope superseded by per-iteration measured plans)
 
 Tasks are feature-globally numbered. Each authorized iteration refines its
 scope to execution grain while preserving the prior task identifiers. The
-current controlled-review replacement spans Iterations 006–007; separate
-open Beta2 release dependencies remain explicitly outside those slices.
+controlled-review replacement spans Iterations 006–007. Iteration 008 now
+owns the selected 18 SP Beta2 finish line and its remaining release dependencies.
 
 ## Iteration 001 — Substrate + firewall-first (5.0 SP)
 
@@ -64,7 +64,10 @@ The T034 wrapper is reconciled as T034a (0.25 SP, completed seam inspection/inte
 - [x] T034a [owner: Implementer] [sp: 0.25] **Devin seam inspection and strict-resolution integration** — completed in Iteration 003; strict fail-before-selection plus physical/path containment tests landed. (Trace: FR-012, FR-017; owns: historical Iteration 003 evidence)
 - [x] T034b [owner: Implementer] [sp: 0.5] **Strict design-context final campaign-path regression and live compatibility proof** — after T051 and T053–T055, prove the already-landed strict-resolution/physical-containment behavior through the production campaign adapters; never re-cherry-pick or reimplement. Acceptance delivered: one extracted shared selector preserves the landed component-wise physical containment for legacy and campaign paths; mixed/all-invalid explicit refs fail before port selection/grant/spend; omitted unresolved context is bounded and controller-forced partial; validated repo-relative refs reach the frozen invocation without changing target identity; Windows and focused POSIX cases plus all 53 F-198 suites pass. The ordered T060 live-smoke evidence still must record its current target digest and cannot be replaced by this deterministic proof. (Trace: FR-012, FR-017, FR-059, FR-060, SC-018; depends: T051, T053, T054, T055; owns: `scripts/internal/continuous-co-review/**`, `tests/continuous-co-review/**`)
 
-## Iteration 004 — Distribution + release (7.0 SP provisional — was 5.5; +1.5 from T028's 2026-07-13 technology-assumption amendment (205-W7–W9), PENDING Iteration 004 design calibration)
+## Iteration 004 — Historical distribution tail absorbed into Iteration 008 (7.0 SP)
+
+Iteration 004 was never opened. T021–T029 retain their global identifiers and execute under the approved
+Iteration 008 plan and readiness gate.
 
 - [ ] T021 [owner: Implementer] [sp: 0.75] **Methodology gate template + provider-keyed deploy** — `specrew-methodology-gate.yml` (markdownlint F-033 set + deployed-path validator full run + conditional PSSA; generic triggers; advisory-first; action pins by major); deployed only for recorded provider github/unset (Trace: FR-024, FR-031, SC-008; owns: `templates/github/workflows/**`, installer)
 - [ ] T022 [owner: Implementer] [sp: 0.25] **Work-kind template path fix** — deployed validator location; advisory default kept (Trace: FR-025; owns: `templates/github/workflows/specrew-work-kind.yml`)
@@ -74,9 +77,10 @@ The T034 wrapper is reconciled as T034a (0.25 SP, completed seam inspection/inte
 - [ ] T026 [owner: Implementer] [sp: 0.5] **Bootstrap commit** — greenfield auto `chore(specrew): bootstrap scaffold` announced; brownfield explicit recorded offer (Trace: FR-029, SC-008; owns: init tail)
 - [ ] T027 [owner: Implementer] [sp: 1.0] **Release-model resolver + closeout teaching** — governance-file-else-inference; closeout renders ONLY applicable steps + names N/A reasons; beta-before-stable scoped to publish targets; init records model ask-once; lifecycle template line fixed (Trace: FR-030, SC-010; owns: `shared-governance.ps1` resolver + closeout rendering + `templates/lifecycle/software-feature-lifecycle.md`)
 - [ ] T028 [owner: Implementer] [sp: 2.0 provisional — was 0.5; +1.5 for the 2026-07-13 technology-assumption amendment (205-W7–W9), PENDING Iteration 004 design calibration] **Consumer-side deny checks + prompt fixture + inoculation + technology-assumption firewall** — gateway advisory + update heal read the shipped list (flag-only user files; rewrite hash-verified Specrew-owned); `PromptFixtureTest` renders all prompt surfaces vs anything-but-Specrew fixture, zero hits; refocus inoculation line deployed. **AMENDMENT (205-W7–W9; spec FR-046/FR-047; carried into Iteration 004 ownership 2026-07-13 — W10 ALREADY realized by T018/FR-015; does NOT reopen T004–T006)**: extend the ONE versioned deny-list with `stack-assumption` + `delivery-assumption` classes; enforce applicability provenance on every downstream-FACING technology/delivery statement (exactly one of `project-detected` / `profile-selected` / `provider-gated` / `example-only` — NO global ban on technology names; explicitly selected stack presets + provider-gated templates stay valid); fix absolute `C:/Dev/Specrew` examples and make Windows/PowerShell implementation teaching applicability-gated; add the heterogeneous consumer fixtures (Python/non-Pester test command, non-GitHub repo, no-publish/release target) proving no inapplicable technology/delivery mandate renders. COMPOSES WITH T021–T023 (provider-gated consumer CI) and T027 (release-model-aware lifecycle). (Trace: FR-035, FR-036, FR-046, FR-047, SC-011; owns: gateway advisory step, heal surface, deny-list data + taxonomy, `tests/**`, refocus content, consumer-deployed teaching/templates)
-- [ ] T029 [owner: Implementer] [sp: 0.75] **Release v0.40.0-beta2** — seven-surface pre-tag deterministic check via extended `validate-versions.ps1`; `psgallery-release-credentials.md` rewritten to auto-publish reality; tag `v0.40.0-beta2` (ModuleVersion 0.40.0, Prerelease beta2). **BLOCKED until Iteration 005 passes** — the local-host Beta2 compatibility blockers are release-gating. (Trace: FR-040, SC-013; owns: manifests, CHANGELOG, README, docs/operations, tag; depends: Iteration 005)
+- [ ] T029 [owner: Implementer] [sp: 0.75] **Release v0.40.0-beta2** — run the seven-surface pre-tag deterministic check; align `psgallery-release-credentials.md` with tag-driven auto-publish; then, only after T066 passes and the maintainer grants a separate release authorization, create tag `v0.40.0-beta2` (ModuleVersion 0.40.0, Prerelease beta2) and record the publication result. Acceptance: version surfaces agree before tag creation, the tag workflow publishes the prerelease, and no release action occurs under the before-implement or provider grant. (Trace: FR-040, SC-012, SC-013; owns: manifests, CHANGELOG, README, docs/operations, `scripts/internal/validate-versions.ps1`, release workflow, tag; depends: T066 and a fresh human release authorization)
 
-**Current T029 blocker correction**: Iteration 005 alone is no longer sufficient. T029 and feature closeout also require Iteration 007 completion and a separately planned/authorized FR-048/FR-049/SC-015 command-plan supplier/injection slice.
+**Current T029 blocker correction**: Iterations 005 and 007 are complete. T029 now depends on Iteration 008 tasks
+T062–T066, a green exact-digest signoff, and its own fresh human release authorization.
 
 ## Iteration 005 — Local-host Beta2 compatibility certification (Beta2 RELEASE BLOCKER; ~4.0 SP provisional, pending 005 design calibration; reviewer-instructed 2026-07-14; issue #3084 = Beta3 follow-up)
 
@@ -127,9 +131,45 @@ The Iteration 007 execution contract is file:///C:/Dev/specrew-beta2-hardening/s
 - [x] T060 [owner: Implementer] [sp: 1.5] **First four live harness smokes across three OSes, support truth, campaign cutover commit, and docs** — completed with real Codex/local-macOS, Cursor/Windows, Antigravity/Windows, and Copilot/Linux execution through file-primary adapters and native containment. Cursor live operation is proved but clean-current support remains unavailable after free-credit exhaustion; the other three paths have clean pinned-digest evidence. Campaign cutover commit `fc52b6d1` and replacement three-OS CI `29612794643` are green, with every attempt preserved and no hidden retry. (Trace: FR-059, FR-060, FR-061, FR-064, FR-065, SC-018, SC-019, SC-020, SC-021, NFR-002; depends: T059; owns: authority mode, host support, docs, Iteration 007/live review evidence)
 - [x] T061 [owner: Reviewer] [sp: 1.5] **Fifth harness smoke as independent exact-digest signoff** — thirteen unique attempts and eleven actual Claude invocations are preserved with no hidden retry. Run 13 independently passed commit `58869dfe343e1183c08e22ed1a1dd7419a75dc71` / digest `7c225e535f34597501ba1b3f0a80facfa7639e3e` with zero findings after the DRIFT-028 correction, hosted CI, and exact preflight. Direct-child commit `b2d138dfd40cb2da418bff22ad0c06697f6fd80a` finalized exactly the six approved review artifacts; the singular authority-store fact records the reviewed/finalized pair and CI `29651549007` is green. (Trace: FR-041, FR-042, FR-043, FR-044, FR-045, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065; SC-017, SC-018, SC-019, SC-020, SC-021; depends: T060; owns: implementation scope, deterministic evidence, `.specrew/review/**`, Iteration 007 review evidence)
 
-### Open Beta2 release dependency outside Iteration 007
+## Iteration 008 — Beta2 finish line (18.0 SP; approved for tasks 2026-07-18)
 
-FR-048, FR-049, and SC-015 remain an explicit uncovered Beta2 item: a production command-plan supplier must feed the framework-neutral T018 runner and a campaign-compatible exact-digest injection seam. Iteration 007 neither implements nor claims this slice. It requires its own plan, capacity, task identifiers, human verdicts, and review before T029 or feature closeout; legacy T019 wording and Iteration 007 retro projection do not satisfy it.
+The task verdict binds to plan commit `08e86496f2475bb970ff1eafeedf3d58ee897a53`, selects T068 and T069,
+and authorizes task/readiness artifacts only. T068 and T069 execute before the supplier/distribution work so the
+remaining lifecycle boundaries dogfood them. T069 has a hard 2.25 SP ceiling; exceeding it requires a stop and
+replan, not an expanded release slice. T021–T029 above are the 7.0 SP historical Iteration 004 tail absorbed here.
+
+### Phase 0 — boundary and capture integrity first
+
+- [ ] T068 [owner: Implementer] [sp: 0.75] **Narrow stale-binding rebind** — bind a newly pending crossing to the actual boundary commit and Git tree produced for that crossing, never the pre-closeout parent or a stale `session_state` identity. Preserve append-only correction history and explicit-verdict semantics; do not redesign the broader matcher. Acceptance: a current closeout commit/tree publishes and renders one exact crossing; the real `744e77d8`/`542c54f0` stale-parent class is refused and carries no authority; repeated rendering is stable; a bare-number reply remains non-authoritative. (Trace: FR-041, FR-042, FR-044, FR-045, NFR-007, DRIFT-198-I008-001; owns: `extensions/specrew-speckit/scripts/shared-governance.ps1`, `.specify/extensions/specrew-speckit/scripts/shared-governance.ps1`, `scripts/internal/sync-boundary-state.ps1`, scoped boundary fixtures; depends: none; execution order: first)
+- [ ] T069 [owner: Implementer] [sp: 2.25] [ceiling: hard] **Multi-session Stop/capture integrity repair** — make injected `<environment_context>` user-role turns ineligible for verdict evidence; normalize a leading explicit `approved for <boundary>` followed by binding instructions while retaining the complete instruction; key material baselines and attribution by session/owner; prevent one session from being billed for another session's file changes. Acceptance reproduces and then fixes: (1) DRIFT-198-I007-025 injected-context selection and instruction-bearing-verdict rejection; (2) two concurrent sessions sharing the old material baseline, where observer changes falsely charge the implementer; (3) the T068 stale-binding class, proving capture cannot reauthorize a stale crossing; (4) machinery/quoted/teaching text rejection; (5) exact-boundary and bare-number rejection; and (6) genuine same-session substantial work still requests one packet while routine discussion does not. If the production correction or required fixture matrix cannot fit 2.25 SP, stop and replan before broadening files or behavior. (Trace: FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007, DRIFT-198-I007-025; owns: `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`, session-scoped material-baseline/Stop provider surfaces, both deployed provider mirrors, `tests/integration/**`; depends: T068; execution order: second)
+
+### Phase 1 — verification-plan supplier and production injection
+
+- [ ] T062 [owner: Implementer] [sp: 1.25] **Deterministic verification-plan supplier and bounded catalog** — implement one pure ordered selector over explicit project configuration, named reliable project-owned metadata, explicit quality profile, and active provider-gated catalog entries. A present-but-invalid explicit plan fails closed; lower-precedence sources are considered only when higher sources are absent/ineligible; no file-extension inference or Specrew/Pester default exists. Acceptance: stable `selection_id`/plan output for identical normalized inputs; one positive/negative pair per precedence source; extension-only bait and inactive-provider rows select nothing; no-source returns actionable `verification-not-configured`; safe provenance contains no secret values. (Trace: FR-049, SC-015, NFR-007; owns: `scripts/internal/continuous-co-review/verification-plan-supplier.ps1`, versioned supplier catalog data + `.specify` mirror, supplier unit fixtures; depends: T069)
+- [ ] T063 [owner: Implementer] [sp: 1.5] **Init/update/setup materialization and guarded refresh** — wire real setup paths to materialize the selected plan at `.specrew/verification-plan.json`; preserve an explicit user-authored plan; refresh generated content only while its recorded hash still matches; provide actionable setup guidance when unconfigured. Acceptance: fresh init materializes a schema-valid selected plan where a trustworthy source exists; hash-matching generated content refreshes; modified content warns and survives byte-for-byte; invalid explicit config never falls through; unconfigured projects receive the exact remediation without a provider invocation. (Trace: FR-049, SC-008, SC-009, SC-015, NFR-007; owns: `scripts/specrew-init.ps1`, `scripts/specrew-update.ps1`, setup/distribution helpers, deployed extension mirrors, setup fixtures; depends: T062)
+- [ ] T064 [owner: Implementer] [sp: 1.5] **Frozen-target verification execution and exact-digest campaign injection** — load the canonical selected plan from the clean frozen review target, invoke the existing T018 runner before provider launch, join evidence by reviewed-state digest plus `command_id`, and inject only matching bounded evidence into the campaign prompt/context. Missing/invalid selection stops before grant spend; configured command failure/timeout/missing required result stays visible and prevents approval. Acceptance: origin HEAD/status remains unchanged; declared mixed commands execute in order and every attempt is recorded; duplicate/unjoinable/stale evidence is rejected; configured failure cannot disappear or become a clean result; valid matching evidence reaches the reviewer exactly once. (Trace: FR-048, FR-049, SC-015, NFR-002, NFR-007; owns: `scripts/internal/continuous-co-review/**`, `scripts/specrew-review.ps1`, campaign/evidence fixtures; depends: T063)
+
+### Phase 2 — consumer distribution tail
+
+T021–T028 execute here after T064. Their existing descriptions remain binding; acceptance is consolidated by
+T065 and T066. T029 remains after independent signoff and a separate release verdict.
+
+| Task | Iteration 008 dependency | Concrete acceptance refinement |
+| --- | --- | --- |
+| T021 | T064 | GitHub/unset-provider scratch init deploys the generic methodology workflow; other providers do not; every referenced path exists. |
+| T022 | T021 | Deployed work-kind workflow calls the shipped validator path and retains advisory default behavior. |
+| T023 | T021, T022 | Consumer manifest contains only consumer-safe workflows; self-host lanes remain repository CI only; distribution assertions match the allowlist. |
+| T024 | T023 | Fresh init writes the local host-config pattern to consumer `.gitignore`; the config remains untracked. |
+| T025 | T023 | Beta1 update removes only hash-matching retired templates, warns/preserves modified content, and synchronizes refocus scopes. |
+| T026 | T023 | Greenfield init announces and creates the exact bootstrap commit; brownfield init records an offer and makes no surprise commit. |
+| T027 | T026 | Local-only and publish-target fixtures render mutually appropriate closeout actions plus explicit N/A reasons. |
+| T028 | T021–T027 | Seeded deny-list pairs and all-prompt heterogeneous fixtures prove only project/profile/provider/example-applicable technology and delivery claims render. |
+
+### Phase 3 — deterministic acceptance, signoff, release, and dogfood
+
+- [ ] T065 [owner: Implementer] [sp: 1.25] **Supplier/runner/injection end-to-end fixture matrix** — exercise the production supplier, existing FR-048 validator/T018 runner, recorder, and campaign injection through real call paths using explicit-config, metadata, profile, provider, mixed-technology, and no-source projects. Acceptance includes invalid-explicit zero-command side effects; ordered every-attempt evidence; safe/escaping path pairs; exact/stale/duplicate/unjoinable evidence pairs; failed command non-approval; provider-invocation counter remains zero for unconfigured/invalid preflight. (Trace: FR-048, FR-049, SC-015, NFR-007; owns: `tests/continuous-co-review/**`, downstream project fixtures, Iteration 008 quality evidence; depends: T021–T028, T064)
+- [ ] T066 [owner: Reviewer] [sp: 1.5] **Full deterministic verification, three-OS CI, and independent exact-digest signoff** — run focused T068/T069, supplier/injection, distribution, version, and quality suites; then the full registered suite, scoped governance, and hosted Windows/Linux/macOS workflow against one committed candidate. Launch an independent reviewer only under a separately granted provider slot/new run ID. Acceptance: deterministic gates and three-OS CI are green; task/drift/state truth agrees; a complete valid current zero-blocking result permits signoff; findings, invalid output, timeout, or failure stop for correction/authorization. Apply the non-convergence stop rule after three recurring same-class or non-decreasing finding rounds. (Trace: FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056, SC-008–SC-015, NFR-002, NFR-007; owns: tests, cross-platform workflow, Iteration 008 quality/review evidence, `.specrew/review/**`; depends: T065; provider authority: none granted here)
+- [ ] T067 [owner: Maintainer] [sp: 1.0] **Published-beta fresh-consumer dogfood and stable-promotion input** — after T029 publishes, install only the published beta bits into a fresh consumer and assess the four SC-014 beta1 friction classes. Acceptance: record exact published version/source, clean fixture identity, commands/evidence, and maintainer PASS/FAIL per friction class; any failure remains release evidence and follow-up work; this task validates the beta and never creates or authorizes a stable tag. (Trace: SC-014, NFR-002; owns: Iteration 008 dogfood evidence and applicable docs; depends: T029; boundary: validate-not-promote)
 
 ## Bidirectional traceability (tasks ↔ requirements)
 
@@ -159,14 +199,13 @@ FR-048, FR-049, and SC-015 remain an explicit uncovered Beta2 item: a production
 | FR-062 | T043, T044, T045, T047, T050 | | FR-063 | T043, T048, T049 |
 | FR-064 | T049, T050 | | FR-065 | T041, T046, T049 |
 
-Every FR-001..FR-047 has ≥1 task; every task traces to ≥1 FR. FR-045
+Every FR-001..FR-049 has ≥1 task; every task traces to at least one FR, SC, or NFR. FR-045
 (stop-ordering) rides T019 + T030–T032; FR-046/FR-047 (technology-assumption
 firewall, 205-W7–W9) ride T028 — Iteration 004, composing with T021–T023 and
 T027. NFR-001..007 are cross-cutting and ride every honesty-invariant task as
 the paired-test and message-content shape (NFR-007 explicitly tagged on T005,
-T010, T016, T017, T018, T020). SC-014 (fresh consumer E2E on published beta2 bits) is
-the maintainer's manual stable-promotion gate input — post-feature by
-design (clarify 2026-07-09), deliberately not a task.
+T010, T016, T017, T018, T020). The Iteration 008 verdict brings SC-014 into T067 as published-beta validation
+evidence while retaining its validate-not-promote boundary.
 
 Iteration 006 traceability is complete for its bounded authority-foundation scope: every T041–T050 task maps to at least one FR/SC, and every FR-057–FR-065 plus SC-017–SC-021 has at least one task. SC-019 is explicitly partial: T049 proves that fake foundation fixtures do not earn a five-harness/three-platform claim; production completion remains Iteration 007 and Beta2 stays blocked.
 
@@ -217,8 +256,50 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
 - **Tasks missing owner, effort, story, status, dependency, acceptance, or ownership metadata**: none
 - **Uncovered scoped requirements**: none
 - **Capacity**: 20.25/26 story_points; 5.75 SP headroom
-- **Feature-level open item**: FR-048/FR-049/SC-015 remains intentionally outside this scope and blocks T029/feature closeout pending its own replanned slice.
+- **Historical Iteration 007 open item**: FR-048/FR-049/SC-015 was intentionally outside this scope. Iteration 008 now owns it; Iteration 007 still makes no claim over it.
 - **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/plan.md at commit `9fd802b7` against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-07-16.
+
+### Iteration 008 traceability check
+
+| Requirement | Covering tasks | Delivery note |
+| --- | --- | --- |
+| FR-024, FR-031 | T021, T066 | Consumer methodology workflow and provider-gated deployment |
+| FR-025 | T022, T066 | Deployed work-kind path |
+| FR-026 | T023, T066 | Deny-by-default deploy set |
+| FR-027 | T024, T066 | Local host config ignored |
+| FR-028, FR-032 | T025, T066 | Hash-guard healing and refocus synchronization |
+| FR-029 | T026, T066 | Greenfield bootstrap and brownfield offer |
+| FR-030 | T027, T066 | Release-model-specific closeout |
+| FR-035, FR-036, FR-046, FR-047 | T028, T066 | Consumer deny checks, prompt fixtures, applicability firewall |
+| FR-040 | T029, T066 | Separately authorized beta2 release and version proof |
+| FR-041, FR-042 | T068, T069, T066 | Exact crossing binding plus injected/multi-session capture integrity |
+| FR-044, FR-045 | T068, T066 | Append-only correction compatibility and current crossing authority |
+| FR-048 | T064, T065, T066 | Existing ordered runner and exact-digest evidence injection |
+| FR-049 | T062, T063, T064, T065, T066 | Deterministic production supplier and actionable no-source state |
+| FR-055, FR-056 | T069, T066 | Conversational Stop and capture regression preservation |
+| SC-008 | T021, T022, T023, T024, T026, T063, T066 | Fresh consumer init |
+| SC-009 | T025, T063, T066 | Beta1-shaped update |
+| SC-010 | T027, T066 | Local-only/publish-target closeout |
+| SC-011 | T028, T066 | Deny-list and prompt fixture |
+| SC-012 | T029, T066 | Toolchain/version agreement re-verification |
+| SC-013 | T029, T066 | Tag-driven beta publication |
+| SC-014 | T066, T067 | Published-beta dogfood; no stable promotion |
+| SC-015 | T062, T063, T064, T065, T066 | Supplier → T018 → exact-digest campaign injection |
+| NFR-002 | T069, T064, T066, T067 | Visible authority, evidence, and outcomes |
+| NFR-007 | T068, T069, T062, T063, T064, T065, T066 | Paired false-allow/false-deny fixtures |
+
+- **Verdict**: PASS for the approved Iteration 008 tasks scope
+- **Coverage ratio**: 32/32 scoped requirements (100%)
+- **Task count**: 17 (T021–T029 and T062–T069)
+- **Orphan tasks**: none
+- **Invalid requirement references**: none
+- **Tasks missing owner, effort, story, status, dependency, acceptance, or ownership metadata**: none
+- **Uncovered scoped requirements**: none
+- **Capacity**: 18/26 story_points; 8 SP headroom
+- **Sequence**: T068 → T069 precedes all supplier/distribution work; T069 exceeding 2.25 SP stops for replan
+- **Release boundaries**: T029 needs a fresh release authorization; T067 validates and never promotes stable
+- **Separate scheduling**: Proposal 209 remains outside Iteration 008
+- **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/008/plan.md at commit `08e86496` plus the explicit selected-task amendment, against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-07-18.
 
 ## Dependencies & parallel safety
 
@@ -256,8 +337,17 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
   rerun requires a distinct human grant and new run ID; failure stops the
   sequence rather than spending another slot automatically.
 - FR-048/FR-049/SC-015 has no Iteration 007 dependency edge because it is not
-  in this scope. It remains a separate Beta2 plan/task/review prerequisite for
-  T029 and feature closeout.
+  in that historical scope. Iteration 008 now owns it through T062–T066.
+- Iteration 008 executes serially for stability: T068 → T069 → T062 → T063 →
+  T064. T021–T028 then complete the distribution tail before T065 integrates
+  the full supplier/distribution acceptance matrix. T066 follows one committed
+  candidate; T029 follows a clean signoff plus a separate release grant; T067
+  follows actual publication and remains validate-not-promote.
+- T068/T069 are intentionally first so later Iteration 008 boundaries dogfood
+  their behavior. T069 has a hard 2.25 SP ceiling; any expansion stops for a
+  human replan before additional production surfaces are changed.
+- Proposal 209 has no Iteration 008 dependency edge and remains separately
+  scheduled.
 - Stability is P0, so the default remains one Implementer and serial
   integration. The task graph documents logical separability but does not
   authorize same-specialty parallelism or overlapping owner globs.

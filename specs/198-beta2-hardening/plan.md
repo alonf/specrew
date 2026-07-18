@@ -187,7 +187,7 @@ iteration design-analyses.
 | 005 local-host certification + failed-design evidence | FR-050..FR-054 | historical | T035–T039 delivered; final review exposed the superseded lease/authority architecture |
 | 006 authority foundation | FR-057..FR-065, SC-017..SC-021 (foundation portions) | 16 | pure campaign/run policy; immutable JSON facts; exact targets; strict terminal-result ingress; concurrency/recovery fixtures |
 | 007 production completeness | FR-060..FR-064, SC-019..SC-021 (completion portions) | 17 | five real harness adapters; three OS runtime adapters; progress/retro projection; five live smokes + three-OS matrix |
-| 008 Beta2 finish line | FR-024..FR-032, FR-035, FR-036, FR-040, FR-046..FR-049, SC-008..SC-015 | 15 core (18 max with both optional repairs) | supplier/runner/injection E2E; consumer distribution; prerelease publish; published-beta dogfood |
+| 008 Beta2 finish line | FR-024..FR-032, FR-035, FR-036, FR-040..FR-049, FR-055, FR-056, SC-008..SC-015 | 18 selected | early stale-binding/capture repair; supplier/runner/injection E2E; consumer distribution; prerelease publish; published-beta dogfood |
 
 ## Iteration 001 Detail (Option B)
 
@@ -237,8 +237,8 @@ dependency or service, but it does introduce explicit multi-process claim,
 allowance, and recovery correctness. The replacement Beta2 work is therefore
 split into Iteration 006 (16 SP authority foundation) and Iteration 007
 (17 SP production completeness), both below the current 26 SP cap. The remaining Beta2 release dependencies are
-combined into Iteration 008 at 15 SP core. The separately visible 0.75 SP stale-binding rebind and 2.25 SP
-stop/capture repair would raise the maximum to 18 SP if a later tasks verdict explicitly selects both.
+combined into Iteration 008 at 15 SP core. The tasks verdict then explicitly selected the separately priced
+0.75 SP stale-binding rebind and 2.25 SP stop/capture repair, producing an 18 SP execution baseline.
 
 ## Phase 0 Research
 
@@ -294,6 +294,7 @@ validator, runner, and evidence recorder are reused rather than reimplemented.
 
 The binding plan is
 file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/008/plan.md. T068 (0.75 SP narrow
-stale-binding rebind) and T069 (2.25 SP remaining stop/capture repair) are priced but not selected. Proposal 209
-remains separately scheduled. Planning grants no task authoring, implementation, provider invocation, tag, or
+stale-binding rebind) and T069 (2.25 SP remaining stop/capture repair) were separately priced at planning and
+selected by the later tasks verdict. They execute first; T069 exceeding 2.25 SP stops for replan. Proposal 209
+remains separately scheduled. The tasks verdict grants no implementation, provider invocation, tag, or
 publication authority.

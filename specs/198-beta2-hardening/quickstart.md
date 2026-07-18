@@ -85,4 +85,4 @@ the four beta1 friction classes named by SC-014. This evidence informs a later s
 - Generic non-code gate/artifact review adapters.
 - Proposal 209.
 - Automatic campaign retention/pruning.
-- The optional stale-binding rebind and stop/capture repairs unless a later verdict selects them.
+- Any expansion beyond the selected bounded T068/T069 repairs.
