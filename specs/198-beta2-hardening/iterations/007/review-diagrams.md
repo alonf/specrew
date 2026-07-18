@@ -21,7 +21,7 @@ graph TD
   Result --> Report[Derived report.md]
 ```
 
-## T061 Correction Sequence
+## T061 Correction and Signoff Sequence
 
 ```mermaid
 sequenceDiagram
@@ -29,7 +29,7 @@ sequenceDiagram
   participant C as Controller
   participant A as Claude
   participant R as Repository
-  loop Attempts 1 through 9
+  loop Attempts 1 through 12
     H->>C: Fresh authorization reference
     C->>C: Deterministic and no-spend preflight
     alt Pre-provider failure
@@ -37,15 +37,31 @@ sequenceDiagram
     else Provider invoked
       C->>A: Exactly one contained invocation
       A-->>C: Raw candidate JSON
-      C-->>H: Publish findings and stop
+      C-->>H: Publish result and stop on findings
       H->>R: Authorize bounded correction
       R->>R: Test commit CI exact preflight
     end
   end
-  H->>C: Slot 10
+  H->>C: Standing progress grant for attempt 13
   C->>A: Exactly one contained invocation
-  A-->>C: Complete zero-finding pass
-  C-->>H: Current exact-digest signoff evidence
+  A-->>C: Complete zero-finding pass at 58869dfe
+  C-->>R: Allow one six-file evidence finalization child
+  R-->>C: Finalization commit F
+  C->>C: CreateNew binding fact run + digest + F
+  C-->>H: Reviewed at 58869dfe finalized as F
+```
+
+## Bounded Finalization Envelope
+
+```mermaid
+graph LR
+  X[Reviewed commit X] --> F[Direct child F]
+  F --> Allow[Only six review evidence files]
+  F --> Deny[Scripts tests specs contracts denied]
+  Clean[Clean run bound to digest of X] --> Fact[CreateNew authority fact]
+  X --> Fact
+  F --> Fact
+  Fact --> Gate[Boundary-finalized signoff packet]
 ```
 
 ## Support and Deferral Boundary
@@ -61,4 +77,4 @@ graph LR
   Supplier --> Block[Blocks feature closeout]
 ```
 
-The diagrams intentionally separate reviewer execution from code mutation: only the repository may mutate product code, and only the campaign controller may publish review authority.
+The diagrams intentionally separate reviewer execution from code mutation: only the repository may mutate product code, only the campaign controller may publish review authority, and the finalization child cannot carry implementation changes.

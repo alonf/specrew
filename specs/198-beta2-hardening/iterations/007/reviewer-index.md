@@ -2,17 +2,17 @@
 
 **Schema**: v1
 **Reviewed**: 2026-07-18
-**Overall Verdict**: needs-rework
+**Overall Verdict**: pass
 
 ## Summary
 
 - Feature `198-beta2-hardening`, iteration `007`, branch `198-beta2-hardening`.
-- Execution contract: `d9cdd16457e322628957ea74de959a5457358852` through reviewed implementation commit `fc1054b54badcfe2abded0203a1d785eeec0c59b`.
-- Authoritative reviewer: Claude Code through campaign `cmp-198-beta2-hardening-i007`, run `run-t061-claude-windows-fc1054b5-10`.
-- Reviewed-state digest: `5fc6318a300afc654bb09d986d82c8c925506ed3`.
-- Reviewer verdict: complete, valid, current pass for commit `fc1054b5`; zero findings; containment/termination verified; can approve that exact snapshot.
-- Boundary verdict: needs rework because committed review evidence moved the digest and canonical campaign sync returned `latest-result-not-current`.
-- T061 accounting: 10 attempts, 8 provider invocations, 8 spend facts, 16 validated findings across seven correction runs, one clean pass.
+- Execution contract: `d9cdd16457e322628957ea74de959a5457358852` through reviewed implementation commit `58869dfe343e1183c08e22ed1a1dd7419a75dc71`.
+- Authoritative reviewer: Claude Code through campaign `cmp-198-beta2-hardening-i007`, run `run-t061-claude-windows-58869dfe-13`.
+- Reviewed-state digest: `7c225e535f34597501ba1b3f0a80facfa7639e3e`.
+- Reviewer verdict: complete, valid, current pass; zero findings; containment and termination verified; can approve the exact reviewed parent.
+- Boundary mechanism: one direct six-file evidence finalization commit plus one controller-owned immutable authority fact; no scripts, tests, specifications, contracts, or tracker files are eligible.
+- T061 accounting: 13 attempts, 11 provider invocations, 11 spend facts, 20 validated findings across nine correction runs, and two clean exact-snapshot passes.
 
 ## Read Order
 
@@ -26,17 +26,18 @@
 
 ## Authoritative Machine Evidence
 
-- Final result: file:///C:/Dev/specrew-t061-fc1054b5/.specrew/review/authority/campaigns/cmp-198-beta2-hardening-i007/runs/run-t061-claude-windows-fc1054b5-10/result.json
-- Final report: file:///C:/Dev/specrew-t061-fc1054b5/.specrew/review/authority/campaigns/cmp-198-beta2-hardening-i007/runs/run-t061-claude-windows-fc1054b5-10/report.md
+- Final result: file:///C:/Dev/specrew-t061-authority-58869dfe/campaigns/cmp-198-beta2-hardening-i007/runs/run-t061-claude-windows-58869dfe-13/result.json
+- Final report: file:///C:/Dev/specrew-t061-authority-58869dfe/campaigns/cmp-198-beta2-hardening-i007/runs/run-t061-claude-windows-58869dfe-13/report.md
 - Complete attempt/result path ledger: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/review.md
+- Finalization binding: the campaign authority store's single `finalization.json`, published only after the allowed direct-child evidence commit exists.
 
 ## Triage and Carry-Forward
 
-- No provider finding is open; DRIFT-026 is an open campaign/signoff integration finding.
-- Cursor remains live-proven but not clean-current after Free quota exhaustion.
+- No provider finding is open; DRIFT-198-I007-026/027/028 are resolved by the finalization chain and clean run 13.
+- DRIFT-198-I007-025 is deferred to the later stop/capture-mechanism repair requested by the maintainer.
+- Cursor remains live-proven but not clean-current after free-credit exhaustion.
 - FR-048/FR-049/SC-015 remains outside Iteration 007 and blocks feature closeout.
-- DRIFT-025 is deferred to the later stop/capture mechanism repair requested by the maintainer.
 
 ## Replay Digest
 
-`SPECREW_REVIEW schema=v1 iter=007 feature=198-beta2-hardening verdict=needs-rework tasks=15-pass+1-needs-work reqs=25 attempts=10 invocations=8 spend=8 findings=16 final=pass-at-fc1054b5 drift=27/25+1-deferred+1-open index=specs/198-beta2-hardening/iterations/007/reviewer-index.md`
+`SPECREW_REVIEW schema=v1 iter=007 feature=198-beta2-hardening verdict=pass tasks=16-pass reqs=25 attempts=13 invocations=11 spend=11 findings=20 final=pass-at-58869dfe envelope=single-direct-child-six-files index=specs/198-beta2-hardening/iterations/007/reviewer-index.md`
