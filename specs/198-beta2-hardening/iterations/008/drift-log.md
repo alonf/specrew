@@ -23,7 +23,7 @@
 ## Summary
 
 **Total drift events**: 4
-**Resolution rate**: 75% (3/4 resolved)
+**Resolution rate**: 100% (4/4 resolved)
 **Specification drift**: None detected
 
 ## Events
@@ -106,7 +106,7 @@
 
 ### DRIFT-198-I008-004 — T066 self-plan omitted its production child-environment declaration
 
-- **Status**: correction verification in progress under T066
+- **Status**: resolved by T066 plan v5 and exact production proof
 - **Severity**: blocking verification-integrity defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
@@ -124,6 +124,11 @@
 - **Correction shape**: tracked `f198.i008.signoff.v5` plan, identical runtime selected-plan bytes, paired
   production-runner allow/deny fixture, full production execution, fresh exact-commit CI, and a new digest-bound
   preparation artifact. No output salvage, environment-value persistence, or hidden provider retry is allowed.
+- **Resolution evidence**: the environment fixture proves declared tool lookup, nested PowerShell launch, and
+  Windows common-data resolution while the undeclared form fails. The ANSI-wrapped stale-binding fixture now
+  normalizes presentation bytes without weakening commit identity. At code candidate `9dc0c10d`, the production
+  runner passed all 73 suites plus scoped governance and preserved digest
+  `ee374f3685cebfae153a63fd525d95f18e04dc01` before/after; hosted three-OS run `29693858260` passed every job.
 
 ### Resolution Strategies
 

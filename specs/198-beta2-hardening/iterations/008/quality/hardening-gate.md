@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Planner
 **Reviewed At**: 2026-07-18
-**Post-Implementation Verification**: correction verification in progress; independent review pending
+**Post-Implementation Verification**: deterministic-green at code candidate; independent exact-digest review pending
 
 ## Concern Review
 
@@ -52,8 +52,13 @@ Iteration 008 governance in 18.0 seconds with historical warnings only, and all 
 configured commands failed under the production runner's intentionally empty child environment because the
 project plan declared no `env_refs`. Plan v5 now names only the required ambient variables, including Windows
 application lookup, nested-process state, and common-data resolution outside the repository, and carries a paired
-production-runner regression. The corrected exact candidate still requires its own hosted run and a separately
-authorized independent provider invocation before this field can become complete.
+production-runner regression. The corrected candidate therefore required its own hosted run before another
+provider request. Code candidate
+`9dc0c10d1125a22645bd4d6545c70c145a7e4db0` then passed the production plan: all 73 suites in 814.881 seconds,
+scoped governance in 13.436 seconds, and unchanged canonical digest
+`ee374f3685cebfae153a63fd525d95f18e04dc01`. Hosted three-OS run `29693858260` also passed on that commit. A
+separately authorized independent provider invocation is still required before this field can become complete. The
+evidence-only successor is prepared and checked outside the reviewed digest before another provider grant.
 
 ### T066 Attempt and Slot Ledger
 

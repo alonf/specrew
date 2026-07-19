@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: T070 host-independent conformance turn-delta core and supported-host adapters
 **Tasks Remaining**: T066, separately authorized T029, and T067
-**In Progress**: T066 correction and deterministic candidate preparation (no fresh provider grant)
+**In Progress**: T066 exact-digest independent review authorization (no fresh provider grant)
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T14:54:10Z
+**Updated**: 2026-07-19T16:14:18Z
 
 ## Planning Authorization
 
@@ -192,12 +192,15 @@
   variable names required by its tools (`PATH`/Windows application and process-launch state, temp paths, PowerShell
   module/home paths, and Windows common-data resolution), and adds paired
   production-runner evidence: the declared environment succeeds and the same probe without declarations fails.
-  The exact full plan must pass through the production runner before a replacement provider slot is requested.
+  At code candidate `9dc0c10d1125a22645bd4d6545c70c145a7e4db0`, the exact production plan passed all 73 suites in
+  814.881 seconds and scoped governance in 13.436 seconds; canonical digest
+  `ee374f3685cebfae153a63fd525d95f18e04dc01` was identical before and after. Hosted run `29693858260` passed
+  every Windows, Ubuntu, and macOS job on the same commit. The ensuing evidence-only commit is re-prepared outside
+  the reviewed digest before a replacement provider slot is requested.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 is complete. T066 is correcting the first review findings and will receive a new committed candidate and
-  deterministic preparation record; provider invocation still requires a fresh explicit grant against that exact
-  commit/digest/run ID.
+- T070 and the T066 attempt-01 correction are complete. T066 awaits a durable exact-candidate preparation record
+  and fresh explicit grant against that commit/digest/run ID; no provider invocation is currently authorized.
 
 ## Notes
 
