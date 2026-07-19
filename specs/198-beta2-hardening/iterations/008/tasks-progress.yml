@@ -94,11 +94,11 @@ tasks:
     completed_at: "2026-07-19T14:39:59Z"
     blocked_reason: ""
   T066:
-    title: "Full deterministic verification, pinned support lifecycle, evidence-clock honesty, three-OS CI, and independent signoff"
+    title: "Full deterministic verification, frozen pinned support lifecycle, evidence-clock honesty, three-OS CI, and independent signoff"
     status: "in_progress"
     started_at: "2026-07-19T13:06:00Z"
     completed_at: ""
-    blocked_reason: "Attempts 01, 02, and 05 each spent one Claude slot and returned valid incomplete; attempts 03 and 04 failed safely before provider with zero spend. Attempt 05 passed full controller verification and exposed per-command timestamp, empty-support teaching, and rollback-observability findings. Those corrections pass focused and expanded suites; exact-candidate proof is in progress."
+    blocked_reason: "Attempts 01, 02, 05, and 06 each spent one Claude slot and returned valid incomplete; attempts 03 and 04 failed safely before provider with zero spend. Attempt 06 exposed tracked-plan collision, live-vocabulary, failure-rebaseline, and vestigial-degrade findings. The final corrections pass 37/37 focused tests; the preceding expanded set passed 175 with one platform skip, and exact-candidate proof is in progress. A support-class recurrence next provider round triggers non-convergence replan."
   T029:
     title: "Release v0.40.0-beta2 after separately authorized release gate"
     status: "pending"

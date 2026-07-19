@@ -222,6 +222,65 @@
 - **Paired evidence**: one fixture proves both cleanup layers run when restore fails; a second makes both layers
   fail and proves both diagnostics survive in the returned exception. The expanded suite remains green.
 
+### DRIFT-198-I008-010 — pinned support staging collided with the captured current verification plan
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: major target-integrity defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, FR-049, NFR-002, NFR-007
+- **Observed evidence**: T066 attempt 06 found that a tracked `.specrew/verification-plan.json` could enter the
+  pinned support manifest even though the target port had already captured and hash-bound the current plan bytes.
+  Support staging would then reject the collision or overwrite the plan the campaign was required to execute.
+- **Correction**: `.specrew/verification-plan.json` remains exclusively target-port owned and is excluded from
+  support restore/removal. The controller executes the separately captured current plan while staging only other
+  pinned support files.
+- **Paired evidence**: a production campaign fixture dirties the tracked current plan against the pinned commit,
+  proves that the current command executes, and proves exact cleanup plus an unchanged origin target.
+
+### DRIFT-198-I008-011 — support staging recomputed a live machinery vocabulary after target freeze
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: minor determinism/currentness defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 06 found the support manifest performed a second recursive live-origin scan after
+  the canonical digest had already chosen its machinery paths. Marker changes between those observations could
+  change support scope, add latency, and contradict the pinned-only contract.
+- **Correction**: the canonical digest returns the normalized exact machinery-path vocabulary it used. The target
+  snapshot freezes and hash-binds that vocabulary, currentness recomputes and compares its hash, and support
+  staging reuses the frozen list while reading eligible tracked file contents only from the pinned commit.
+- **Paired evidence**: a direct target fixture changes a machinery marker after freeze, proves verification reuses
+  the captured vocabulary without copying dirty origin contents, and proves currentness fails with
+  `machinery-paths-changed`. A false-allow pair mutates the in-memory vocabulary and proves support staging refuses
+  it when it no longer matches the frozen hash.
+
+### DRIFT-198-I008-012 — failed verification re-baselined source hashes
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: note-level failure-path defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 06 found source hashes were refreshed in an unconditional exit path. A failed
+  verification therefore could replace the original comparison baseline and weaken later mutation detection.
+- **Correction**: source hashes are re-baselined only after complete successful verification and cleanup; every
+  red or exceptional path retains the original frozen baseline.
+- **Paired evidence**: the production red-verification fixture proves failure remains pre-provider and the original
+  `source_hashes_before` value is unchanged.
+
+### DRIFT-198-I008-013 — verification returned a vestigial degradation field with no reachable path
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: note-level contract/plumbing defect
+- **Type**: implementation drift
+- **Requirements**: FR-048, NFR-002
+- **Observed evidence**: attempt 06 found `degrade_reason` was always null in verification results while the caller
+  still conditionally consumed it, implying a verification-degradation state the implementation could not emit.
+- **Correction**: the unused verification field and consumer branch are removed. Design-context degradation remains
+  owned by its actual resolver and no verification failure is silently converted into degraded approval evidence.
+- **Paired evidence**: focused target/campaign coverage, including a mismatched frozen-vocabulary binding refusal,
+  passes 37/37. The preceding expanded eleven-file set records 175 passed with one platform skip without a
+  verification degradation branch; the committed campaign owns final exact-candidate full-registry proof.
+
 ### Resolution Strategies
 
 The following resolution strategies remain available if drift is detected later in execution:

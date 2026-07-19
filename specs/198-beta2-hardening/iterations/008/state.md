@@ -49,8 +49,8 @@
 
 - **Authorization**: reprice T070 honestly and complete the full scope with no SP ceiling before T066
   re-preparation; stop only for non-convergence or a genuine architectural surprise.
-- **Estimate**: 4.0 SP. T066's fourth observed evidence-honesty correction class later reprices T066 to 4.5 SP
-  and the iteration to 25.0/26 SP with 1.0 SP headroom.
+- **Estimate**: 4.0 SP. T066's fifth observed target/support correction class later reprices T066 to 5.0 SP
+  and the iteration to 25.5/26 SP with 0.5 SP headroom.
 - **Architecture**: one host-independent core owns the live owner-scoped baseline, status/content fingerprints,
   delta, and packet-demand decision. Host adapters supply only genuine prompt-boundary events.
 - **Host scope**: Claude/Codex `UserPromptSubmit`, Copilot `userPromptSubmitted`, Cursor `beforeSubmitPrompt`, and
@@ -63,9 +63,9 @@
 
 ## Readiness Summary
 
-- **Plan/capacity**: 25.0/26 story_points; 18 tasks; 1.0 SP headroom. Conservatively applying +17% to all
-  6.25 SP still-open work, including T066's fourth correction class, forecasts 26.06 SP. Nominal scope still fits;
-  the 0.06 SP stress overage is explicit calibration risk, not hidden work or authorization to add scope.
+- **Plan/capacity**: 25.5/26 story_points; 18 tasks; 0.5 SP headroom. Conservatively applying +17% to all
+  6.75 SP still-open work, including T066's fifth correction class, forecasts 26.65 SP. Nominal scope still fits;
+  the 0.65 SP stress overage is explicit calibration risk, not hidden work or authorization to add scope.
 - **Traceability**: PASS; 18/18 tasks have valid selected refs and metadata, 32/32 selected requirements have
   coverage, and no task/progress mismatch exists.
 - **Hardening**: planning-time `Overall Verdict: ready`; the exact before-implement verdict is captured. Runtime
@@ -74,8 +74,8 @@
   completed successfully at plan commit `08e86496`.
 - **Team/sequence**: one serial Implementer; T068 then T069 before supplier/distribution work; T066 is the
   independent Reviewer boundary.
-- **Provider budget**: attempts 01, 02, and 05 each invoked Claude once and spent one immutable slot. Attempts 03
-  and 04 failed during controller verification, invoked no provider, spent no slot, and released their reservations.
+- **Provider budget**: attempts 01, 02, 05, and 06 each invoked Claude once and spent one immutable slot. Attempts
+  03 and 04 failed during controller verification, invoked no provider, spent no slot, and released their reservations.
   The standing bounded progress grant still requires a new run ID/fact for every invocation and forbids hidden or
   unchanged retry.
 - **Release**: T029 has a separate release gate; T067 validates published beta without stable promotion.
@@ -248,11 +248,27 @@
   exact cleanup plus the complete machinery purge while preserving all rollback errors. The two focused suites
   record 32 passed with one platform skip; the expanded ten-file recorder/campaign/public/target/end-to-end set
   records 157 passed with one platform skip. T066 is repriced to 4.5 SP, bringing the iteration to 25.0/26 SP.
+- T066 attempt 06 invoked Claude once as
+  `run-t066-claude-windows-29dfd7cf-c0b8a57f-06` against commit
+  `29dfd7cfabc89c0f7d0eb64f3738bdffc12a2a0e` and digest
+  `c0b8a57f49f69ac3eb8c422f44716a694cf592d7`. Exact-commit CI run `29704267055` passed all eight jobs and the
+  controller again completed its exact plan before the one-slot invocation. The valid current incomplete result
+  reported one major tracked-plan collision, one minor live-vocabulary inconsistency, and two notes covering
+  failure-path rebaseline and unreachable verification-degrade plumbing.
+- The fifth correction class freezes the exact machinery vocabulary returned by the canonical digest in the target
+  identity and currentness-binds its hash; verification reuses that capture and reads only support contents from the
+  pinned commit. The independently captured current `.specrew/verification-plan.json` is excluded from support
+  restore/removal, failed verification never re-baselines, and the unreachable degrade field/consumer are removed.
+  Focused digest/target/campaign coverage, including an in-memory vocabulary-binding false-allow, passes 37/37.
+  The preceding expanded eleven-file set records 175 passed with one platform skip; the committed campaign owns
+  the final exact-candidate full-registry proof. T066 is repriced to 5.0 SP, bringing the iteration to 25.5/26 SP.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 is complete. T066 is correcting attempt 05's evidence-clock and support-rollback findings and will rerun
+- T070 is complete. T066 is correcting attempt 06's target/support findings and will rerun
   exact-digest deterministic/hosted proof before a fresh independent run. The maintainer's standing authorization permits further bounded correction/review actions
   while evidence is converging; every provider invocation still receives a unique run ID and immutable slot fact.
+  Support-lifecycle findings have now appeared in two consecutive provider rounds (05/06); recurrence in the next
+  provider result reaches the three-round non-convergence stop and requires replan instead of another automatic correction.
 
 ## Notes
 

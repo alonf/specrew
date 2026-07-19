@@ -120,7 +120,9 @@ function New-ContinuousCoReviewDigestResult {
         [AllowNull()]
         [string] $FailureReason,
 
-        [int] $IncludedIgnoredCount = 0
+        [int] $IncludedIgnoredCount = 0,
+
+        [string[]] $MachineryPaths = @()
     )
 
     return [pscustomobject][ordered]@{
@@ -129,6 +131,7 @@ function New-ContinuousCoReviewDigestResult {
         tree_id                = $TreeId
         is_empty               = ($Ok -and $TreeId -eq (Get-ContinuousCoReviewEmptyTreeId))
         included_ignored_count = $IncludedIgnoredCount
+        machinery_paths        = @($MachineryPaths)
         failure_reason         = $FailureReason
     }
 }
@@ -201,11 +204,16 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'machinery-resolver-unavailable (the ONE FR-012 machinery resolver could not be loaded - refusing a digest that would diverge from the worktree strip)'
     }
     $machineryPatterns = @()
+    $machineryPaths = @()
     try {
         foreach ($m in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRepoRoot)) {
             if ([string]::IsNullOrWhiteSpace($m)) { continue }
-            $machineryPatterns += ([string]$m); $machineryPatterns += ("{0}/**" -f $m)
+            $normalized = ([string]$m -replace '\\', '/').Trim('/')
+            if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
+            $machineryPaths += $normalized
+            $machineryPatterns += $normalized; $machineryPatterns += ("{0}/**" -f $normalized)
         }
+        $machineryPaths = @($machineryPaths | Sort-Object -Unique)
     }
     catch {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason ('machinery-resolver-failed: ' + [string]$_.Exception.Message)
@@ -298,7 +306,7 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-malformed'
         }
 
-        return New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included
+        return New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included -MachineryPaths $machineryPaths
     }
     catch {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'digest-exception'

@@ -83,7 +83,13 @@ function Get-GitReviewTargetOriginEvidence {
         $reason = if ($null -ne $digest) { [string]$digest.failure_reason } else { 'null-digest' }
         throw "review-target-digest-unavailable:$reason"
     }
-    return [pscustomobject]@{ origin_head = $head.stdout; reviewed_state_digest = [string]$digest.tree_id }
+    $machineryPaths = @($digest.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Sort-Object -Unique)
+    $machineryPathBytes = [Text.Encoding]::UTF8.GetBytes(($machineryPaths -join "`n"))
+    $machineryPathsSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($machineryPathBytes)).ToLowerInvariant()
+    return [pscustomobject]@{
+        origin_head = $head.stdout; reviewed_state_digest = [string]$digest.tree_id
+        machinery_paths = @($machineryPaths); machinery_paths_sha256 = $machineryPathsSha256
+    }
 }
 
 function New-GitReviewTargetSnapshot {
@@ -144,6 +150,7 @@ function New-GitReviewTargetSnapshot {
             schema_version = '1.0'; target_kind = 'code'; run_id = $RunId; target_digest = $before.reviewed_state_digest
             snapshot_path = $snapshotPath; workspace_root = $workspaceRoot; origin_repo = $origin; git_root = $gitRoot
             origin_head_before = $before.origin_head; origin_digest_before = $before.reviewed_state_digest
+            machinery_paths = @($before.machinery_paths); machinery_paths_sha256 = $before.machinery_paths_sha256
             verification_plan_present = [bool]$verificationPlan.present; verification_plan_sha256 = $verificationPlan.sha256
             source_hashes_before = $sourceHashes; suppression_environment = Get-ReviewTargetSuppressionEnvironment
         }
@@ -169,11 +176,16 @@ function Test-GitReviewTargetCurrentness {
     if (-not $planCurrent) {
         $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = 'verification-plan-changed' }
     }
+    $machineryPathsCurrent = [string]$Snapshot.machinery_paths_sha256 -ceq [string]$after.machinery_paths_sha256
+    if (-not $machineryPathsCurrent) {
+        $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = 'machinery-paths-changed' }
+    }
     return [pscustomobject]@{
         classification = $decision.classification; exact = $decision.exact; reason = $decision.reason
         origin_head_before = [string]$Snapshot.origin_head_before; origin_head_after = $after.origin_head
         reviewed_digest = [string]$Snapshot.target_digest; current_digest = $after.reviewed_state_digest
         verification_plan_current = $planCurrent; verification_plan_sha256 = $Snapshot.verification_plan_sha256
+        machinery_paths_current = $machineryPathsCurrent; machinery_paths_sha256 = $Snapshot.machinery_paths_sha256
     }
 }
 

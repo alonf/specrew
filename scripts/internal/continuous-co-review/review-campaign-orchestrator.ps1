@@ -167,7 +167,7 @@ function New-ReviewFixtureVerificationPort {
         param($snapshot)
         return [pscustomobject]@{
             ok = $true; reason = 'fixture-verification-ready'; state = 'fixture'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = 0; evidence_count = 0
+            review_scope_suffix = ''; command_count = 0; evidence_count = 0
         }
     }
     return [pscustomobject]@{ kind = 'fixture'; execute = $execute }
@@ -181,24 +181,28 @@ function Get-ReviewCampaignVerificationSupportManifest {
     # verification is different: release/distribution checks may legitimately need committed Specrew
     # mirrors and governance configuration. Stage only TRACKED machinery from the snapshot's pinned
     # origin commit, never the origin working tree, and remove it again before harness preflight.
-    foreach ($name in @('snapshot_path', 'origin_repo', 'origin_head_before')) {
+    foreach ($name in @('snapshot_path', 'origin_head_before', 'machinery_paths_sha256')) {
         if (-not $Snapshot.PSObject.Properties[$name] -or [string]::IsNullOrWhiteSpace([string]$Snapshot.$name)) {
             return [pscustomobject]@{ commit = ''; paths = @(); files = @() }
         }
     }
-    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
-        . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
-    }
 
     $snapshotPath = [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path)
-    $originRepo = [IO.Path]::GetFullPath([string]$Snapshot.origin_repo)
     $commit = [string]$Snapshot.origin_head_before
-    $paths = @(
-        Get-ContinuousCoReviewMachineryPaths -RepoRoot $originRepo |
+    # VOCABULARY CAPTURE (T066 attempt 06 finding f2): the digest resolver already
+    # performed the one live marker/host scan that defines reviewable content. The
+    # target port freezes that exact normalized vocabulary and currentness-binds its
+    # hash. Verification reuses it without a second origin scan; only FILE CONTENT is
+    # read from the pinned commit.
+    $frozenPaths = @($Snapshot.machinery_paths |
             ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -cne '.git' } |
-            Sort-Object -Unique
-    )
+            Sort-Object -Unique)
+    $pathBytes = [Text.Encoding]::UTF8.GetBytes(($frozenPaths -join "`n"))
+    $pathHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($pathBytes)).ToLowerInvariant()
+    if ($pathHash -cne [string]$Snapshot.machinery_paths_sha256) {
+        throw 'verification-support-machinery-vocabulary-binding-mismatch'
+    }
+    $paths = @($frozenPaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -cne '.git' })
     if ($paths.Count -eq 0) { return [pscustomobject]@{ commit = $commit; paths = @(); files = @() } }
 
     $files = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -210,6 +214,10 @@ function Get-ReviewCampaignVerificationSupportManifest {
         foreach ($file in @([string]$listed.stdout -split "`r?`n")) {
             $normalized = ([string]$file -replace '\\', '/').Trim()
             if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
+            # The selected plan is captured independently from current origin bytes,
+            # hash-bound by the target port, and already materialized in the snapshot.
+            # It is controller input, not pinned support to overwrite or remove.
+            if ($normalized -ceq '.specrew/verification-plan.json') { continue }
             $full = [IO.Path]::GetFullPath((Join-Path $snapshotPath $normalized))
             if (-not (Test-ReviewTargetPathUnderRoot -Path $full -Root $snapshotPath)) { throw "verification-support-path-unsafe:$normalized" }
             $null = $files.Add($normalized)
@@ -317,7 +325,7 @@ function Invoke-ReviewCampaignFrozenVerification {
     if (-not [bool]$selected.available) {
         return [pscustomobject]@{
             ok = $false; reason = ('verification-not-configured:' + [string]$selected.reason); state = 'verification-not-configured'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = 0; evidence_count = 0
+            review_scope_suffix = ''; command_count = 0; evidence_count = 0
         }
     }
 
@@ -325,7 +333,7 @@ function Invoke-ReviewCampaignFrozenVerification {
     if ($null -eq $before -or -not [bool]$before.ok -or [string]$before.tree_id -cne $targetDigest) {
         return [pscustomobject]@{
             ok = $false; reason = 'verification-target-digest-mismatch-before-execution'; state = 'verification-preflight-failed'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = 0; evidence_count = 0
+            review_scope_suffix = ''; command_count = 0; evidence_count = 0
         }
     }
 
@@ -333,6 +341,7 @@ function Invoke-ReviewCampaignFrozenVerification {
     $execution = $null
     $executionFailure = $null
     $cleanupFailure = $null
+    $preparationComplete = $false
     try {
         $support = Add-ReviewCampaignVerificationSupport -Snapshot $Snapshot
         $execution = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $snapshotPath -Plan $selected.plan
@@ -348,19 +357,19 @@ function Invoke-ReviewCampaignFrozenVerification {
     if (-not [string]::IsNullOrWhiteSpace($cleanupFailure)) {
         return [pscustomobject]@{
             ok = $false; reason = ('verification-support-cleanup-failed:' + $cleanupFailure); state = 'verification-preflight-failed'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = 0; evidence_count = 0
+            review_scope_suffix = ''; command_count = 0; evidence_count = 0
         }
     }
     if (-not [string]::IsNullOrWhiteSpace($executionFailure)) {
         return [pscustomobject]@{
             ok = $false; reason = ('verification-runner-failed:' + $executionFailure); state = 'verification-preflight-failed'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = 0; evidence_count = 0
+            review_scope_suffix = ''; command_count = 0; evidence_count = 0
         }
     }
     if ([string]$execution.state -cne 'configured') {
         return [pscustomobject]@{
             ok = $false; reason = ('verification-plan-not-runnable:' + [string]$execution.reason); state = [string]$execution.state
-            review_scope_suffix = ''; degrade_reason = $null; command_count = [int]$execution.command_count; evidence_count = @($execution.evidence).Count
+            review_scope_suffix = ''; command_count = [int]$execution.command_count; evidence_count = @($execution.evidence).Count
         }
     }
 
@@ -370,7 +379,7 @@ function Invoke-ReviewCampaignFrozenVerification {
     if ($null -eq $after -or -not [bool]$after.ok -or [string]$after.tree_id -cne $targetDigest) {
         return [pscustomobject]@{
             ok = $false; reason = 'verification-mutated-frozen-target'; state = 'verification-preflight-failed'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = [int]$execution.command_count; evidence_count = @($execution.evidence).Count
+            review_scope_suffix = ''; command_count = [int]$execution.command_count; evidence_count = @($execution.evidence).Count
         }
     }
 
@@ -389,7 +398,7 @@ function Invoke-ReviewCampaignFrozenVerification {
     if (-not $joinComplete) {
         return [pscustomobject]@{
             ok = $false; reason = 'verification-evidence-not-exactly-joinable'; state = 'verification-preflight-failed'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = $planIds.Count; evidence_count = $evidence.Count
+            review_scope_suffix = ''; command_count = $planIds.Count; evidence_count = $evidence.Count
         }
     }
 
@@ -404,7 +413,6 @@ function Invoke-ReviewCampaignFrozenVerification {
             reason = 'verification-command-failed:' + ($failedIds -join ',') + ':diagnostics-require-command-scoped-disclosure'
             state = 'verification-failed'
             review_scope_suffix = ''
-            degrade_reason = $null
             command_count = $planIds.Count
             evidence_count = $evidence.Count
             failed_command_ids = @($failedIds)
@@ -418,7 +426,7 @@ function Invoke-ReviewCampaignFrozenVerification {
     if (-not $injected -or -not [IO.File]::Exists($injectedPath)) {
         return [pscustomobject]@{
             ok = $false; reason = 'verification-evidence-injection-failed'; state = 'verification-preflight-failed'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = $planIds.Count; evidence_count = $evidence.Count
+            review_scope_suffix = ''; command_count = $planIds.Count; evidence_count = $evidence.Count
         }
     }
     try {
@@ -433,7 +441,7 @@ function Invoke-ReviewCampaignFrozenVerification {
     catch {
         return [pscustomobject]@{
             ok = $false; reason = ('verification-evidence-injection-invalid:' + [string]$_.Exception.Message); state = 'verification-preflight-failed'
-            review_scope_suffix = ''; degrade_reason = $null; command_count = $planIds.Count; evidence_count = $evidence.Count
+            review_scope_suffix = ''; command_count = $planIds.Count; evidence_count = $evidence.Count
         }
     }
 
@@ -452,17 +460,18 @@ for each of $($planIds.Count) declared command(s). Treat failed, timed-out, or m
 approval-blocking evidence; never turn a configured verification failure into a clean result.
 $supportScope
 "@
+    $preparationComplete = $true
     return [pscustomobject]@{
         ok = $true; reason = 'verification-evidence-ready'; state = 'configured'; review_scope_suffix = $scopeSuffix
-        degrade_reason = $null; command_count = $planIds.Count; evidence_count = $evidence.Count
+        command_count = $planIds.Count; evidence_count = $evidence.Count
     }
     }
     finally {
         if ($null -ne $support) { Remove-ReviewCampaignVerificationMachinery -SnapshotPath $snapshotPath -Manifest $support }
         # Verification, evidence injection, and the final machinery purge are controller-owned
-        # preparation. Re-baseline only after all three complete; reviewer changes remain integrity
-        # violations while the projected .review evidence is part of the frozen launch surface.
-        if ($Snapshot.PSObject.Properties['source_hashes_before'] -and (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) {
+        # preparation. Re-baseline only after successful evidence projection and purge; failed
+        # verification snapshots retain their original baseline until disposal.
+        if ($preparationComplete -and $Snapshot.PSObject.Properties['source_hashes_before'] -and (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) {
             $Snapshot.source_hashes_before = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshotPath
         }
     }
@@ -1000,10 +1009,7 @@ function Invoke-ReviewCampaignRun {
         $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort
         $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
         $startedAt = ConvertTo-ReviewObservedTimestampString -Value $spends[0].invocation_started_at
-        $degradeReasons = @()
-        if ($DesignContextEmpty) { $degradeReasons += 'DESIGN_CONTEXT_EMPTY: no spec, design analysis, or formal contract resolved; this run is partial evidence and cannot approve the current target.' }
-        if (-not [string]::IsNullOrWhiteSpace([string]$verification.degrade_reason)) { $degradeReasons += [string]$verification.degrade_reason }
-        $degradeReason = if ($degradeReasons.Count -gt 0) { $degradeReasons -join ' ' } else { $null }
+        $degradeReason = if ($DesignContextEmpty) { 'DESIGN_CONTEXT_EMPTY: no spec, design analysis, or formal contract resolved; this run is partial evidence and cannot approve the current target.' } else { $null }
         $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason ([string]$runtimeResult.failure_reason) -ControllerDegradeReason $degradeReason
         if ($ingress.published) {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null

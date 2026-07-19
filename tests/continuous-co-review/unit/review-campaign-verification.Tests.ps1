@@ -61,7 +61,8 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
                 $Capture.review_scope = [string]$invocation.review_scope
                 $visibleSupport = @(
                     '.specify/support.txt', '.specify/generated-by-verification.txt', '.squad/team.yml',
-                    '.specrew/iteration-config.yml', '.specrew/verification-plan.json' |
+                    '.specrew/iteration-config.yml', '.specrew/verification-plan.json',
+                    '.custom-host/specrew/.specrew-managed', '.custom-host/specrew/support.txt' |
                         Where-Object { Test-Path -LiteralPath (Join-Path ([string]$invocation.snapshot_path) $_) }
                 )
                 $Capture | Add-Member -NotePropertyName verification_support_visible_at_preflight -NotePropertyValue @($visibleSupport) -Force
@@ -115,24 +116,55 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
         @(& git -C $repo status --porcelain=v1 --untracked-files=all) | Should -Be $statusBefore
     }
 
+    It 'preserves the captured current plan when verification-plan.json is tracked at the pinned commit' {
+        $root = Join-Path $TestDrive 'tracked-current-plan'; $repo = New-T064Repo -Path (Join-Path $root 'origin')
+        $pinnedPlan = New-T064Plan -Commands @(
+            (New-T064Command -Id 'pinned-plan-must-not-run' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 9'))
+        )
+        Set-T064Plan -Repo $repo -Plan $pinnedPlan
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid add -f .specrew/verification-plan.json 2>&1 | Out-Null
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid commit -qm pinned-plan 2>&1 | Out-Null
+        $currentPlan = New-T064Plan -Commands @(
+            (New-T064Command -Id 'captured-current-plan' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0'))
+        )
+        Set-T064Plan -Repo $repo -Plan $currentPlan
+        $currentBytes = [IO.File]::ReadAllBytes((Join-Path $repo '.specrew/verification-plan.json'))
+        $context = New-T064Context -Root (Join-Path $root 'controller')
+        $capture = [pscustomobject]@{ preflight_count = 0; invoke_count = 0; review_scope = ''; evidence = $null }
+
+        $result = Invoke-T064Campaign -Repo $repo -Context $context -Harness (New-T064CapturingHarness -Capture $capture)
+
+        $result.status | Should -Be 'terminal' -Because $result.reason
+        $result.result.can_approve_current | Should -BeTrue
+        @($capture.evidence.runs | ForEach-Object { [string]$_.command_id }) | Should -Be @('captured-current-plan')
+        $capture.review_scope | Should -Not -Match 'Tracked methodology support used by verification' -Because 'the separately captured plan is controller input, not staged support'
+        @($capture.verification_support_visible_at_preflight).Count | Should -Be 0
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $repo '.specrew/verification-plan.json'))) |
+            Should -Be ([Convert]::ToBase64String($currentBytes)) -Because 'the dirty current plan remains the origin authority and is never overwritten'
+    }
+
     It 'stages pinned tracked machinery for verification and removes it before harness preflight' {
         $root = Join-Path $TestDrive 'verification-support'; $repo = New-T064Repo -Path (Join-Path $root 'origin')
         foreach ($entry in @(
                 @{ path = '.specify/support.txt'; content = 'pinned' },
                 @{ path = '.squad/team.yml'; content = 'team: pinned' },
-                @{ path = '.specrew/iteration-config.yml'; content = 'capacity_per_iteration: 26' }
+                @{ path = '.specrew/iteration-config.yml'; content = 'capacity_per_iteration: 26' },
+                @{ path = '.custom-host/specrew/.specrew-managed'; content = 'managed' },
+                @{ path = '.custom-host/specrew/support.txt'; content = 'custom pinned' }
             )) {
             $path = Join-Path $repo $entry.path
             [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
             [IO.File]::WriteAllText($path, [string]$entry.content)
         }
-        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid add -f .specify/support.txt .squad/team.yml .specrew/iteration-config.yml 2>&1 | Out-Null
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid add -f .specify/support.txt .squad/team.yml .specrew/iteration-config.yml .custom-host/specrew/.specrew-managed .custom-host/specrew/support.txt 2>&1 | Out-Null
         & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid commit -qm support 2>&1 | Out-Null
         [IO.File]::WriteAllText((Join-Path $repo '.specify/support.txt'), 'dirty-origin-must-not-be-staged')
+        [IO.File]::WriteAllText((Join-Path $repo '.custom-host/specrew/support.txt'), 'dirty-custom-origin-must-not-be-staged')
         $probe = @'
-$required = @('.specify/support.txt', '.squad/team.yml', '.specrew/iteration-config.yml')
+$required = @('.specify/support.txt', '.squad/team.yml', '.specrew/iteration-config.yml', '.custom-host/specrew/.specrew-managed', '.custom-host/specrew/support.txt')
 if (@($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path (Get-Location) $_)) }).Count -gt 0) { exit 8 }
 if ([IO.File]::ReadAllText((Join-Path (Get-Location) '.specify/support.txt')) -cne 'pinned') { exit 9 }
+if ([IO.File]::ReadAllText((Join-Path (Get-Location) '.custom-host/specrew/support.txt')) -cne 'custom pinned') { exit 10 }
 [IO.File]::WriteAllText((Join-Path (Get-Location) '.specify/generated-by-verification.txt'), 'must-be-purged')
 exit 0
 '@
@@ -150,6 +182,51 @@ exit 0
         $capture.review_scope | Should -Match 'Tracked methodology support used by verification came only from pinned commit'
         @($capture.evidence.runs | Where-Object { -not [bool]$_.command_succeeded }).Count | Should -Be 0
         [IO.File]::ReadAllText((Join-Path $repo '.specify/support.txt')) | Should -Be 'dirty-origin-must-not-be-staged'
+        Test-Path -LiteralPath (Join-Path $repo '.custom-host/specrew/.specrew-managed') | Should -BeTrue
+        [IO.File]::ReadAllText((Join-Path $repo '.custom-host/specrew/support.txt')) | Should -Be 'dirty-custom-origin-must-not-be-staged'
+    }
+
+    It 'reuses the digest-captured machinery vocabulary and currentness-detects later marker drift' {
+        $root = Join-Path $TestDrive 'captured-machinery-vocabulary'; $repo = New-T064Repo -Path (Join-Path $root 'origin')
+        $marker = Join-Path $repo '.custom-host/specrew/.specrew-managed'
+        $support = Join-Path $repo '.custom-host/specrew/support.txt'
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $marker)) | Out-Null
+        [IO.File]::WriteAllText($marker, 'managed')
+        [IO.File]::WriteAllText($support, 'custom pinned')
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid add -f .custom-host/specrew/.specrew-managed .custom-host/specrew/support.txt 2>&1 | Out-Null
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid commit -qm custom-support 2>&1 | Out-Null
+        $probe = "if (-not (Test-Path -LiteralPath '.custom-host/specrew/.specrew-managed')) { exit 8 }; if ([IO.File]::ReadAllText('.custom-host/specrew/support.txt') -cne 'custom pinned') { exit 9 }; exit 0"
+        Set-T064Plan -Repo $repo -Plan (New-T064Plan -Commands @(
+                (New-T064Command -Id 'captured-vocabulary' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', $probe))
+            ))
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $repo -RunId run-captured-vocabulary -ExternalRoot (Join-Path $root 'targets')
+        try {
+            Remove-Item -LiteralPath $marker -Force
+            [IO.File]::WriteAllText($support, 'dirty-live-content')
+
+            $result = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
+
+            $result.ok | Should -BeTrue -Because $result.reason
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.custom-host/specrew') | Should -BeFalse -Because 'captured support is purged after verification'
+            $currentness = Test-GitReviewTargetCurrentness -Snapshot $snapshot
+            $currentness.exact | Should -BeFalse
+            $currentness.reason | Should -Be 'machinery-paths-changed'
+            Test-Path -LiteralPath $marker | Should -BeFalse -Because 'origin marker drift is observed, never repaired or copied back'
+            [IO.File]::ReadAllText($support) | Should -Be 'dirty-live-content'
+        }
+        finally { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null }
+    }
+
+    It 'refuses a machinery vocabulary that no longer matches the frozen target binding' {
+        $root = Join-Path $TestDrive 'tampered-machinery-vocabulary'; $repo = New-T064Repo -Path (Join-Path $root 'origin')
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $repo -RunId run-tampered-vocabulary -ExternalRoot (Join-Path $root 'targets')
+        try {
+            $snapshot.machinery_paths = @('.different-support-scope')
+
+            { Get-ReviewCampaignVerificationSupportManifest -Snapshot $snapshot } |
+                Should -Throw '*verification-support-machinery-vocabulary-binding-mismatch*'
+        }
+        finally { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null }
     }
 
     It 'removes staged machinery after a red verification command before returning' {
@@ -164,6 +241,7 @@ exit 0
             ))
         $snapshot = New-GitReviewTargetSnapshot -OriginRepo $repo -RunId run-support-cleanup -ExternalRoot (Join-Path $root 'targets')
         try {
+            $baselineBefore = $snapshot.source_hashes_before | ConvertTo-Json -Depth 20 -Compress
             $result = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
             $result.ok | Should -BeFalse
             $result.reason | Should -Be 'verification-command-failed:red-with-support:diagnostics-require-command-scoped-disclosure'
@@ -173,6 +251,7 @@ exit 0
             $after = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $snapshot.snapshot_path
             $treeDelta = @(& git -C $snapshot.snapshot_path diff --name-status $snapshot.target_digest $after.tree_id 2>&1)
             $after.tree_id | Should -Be $snapshot.target_digest -Because ($treeDelta -join '; ')
+            ($snapshot.source_hashes_before | ConvertTo-Json -Depth 20 -Compress) | Should -Be $baselineBefore -Because 'a failed verification never re-baselines partial controller preparation'
         }
         finally { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null }
     }
