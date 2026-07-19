@@ -245,6 +245,20 @@ Stdout is telemetry and is never parsed for authority.
         $result.result.can_approve_current | Should -BeTrue
     }
 
+    It 'publishes bounded changed-path evidence when snapshot integrity fails' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'integrity-path-evidence')
+        $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one `
+            -IntegrityPass $false -IntegrityChangedPaths @('.claude/settings.local.json')
+        $result = Invoke-OrchestratorFixture -Context $context -Target $target `
+            -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) -Runtime (New-ReviewFixtureRuntimePort)
+
+        $result.status | Should -Be 'terminal'
+        $result.result.runtime_outcome | Should -Be 'containment-violated'
+        $result.result.containment | Should -Be 'violated'
+        $result.result.failure_reason | Should -Be 'target-integrity-failed:snapshot-tampered:.claude/settings.local.json'
+        $result.result.can_approve_current | Should -BeFalse
+    }
+
     It 'publishes verified timeout partials, moved results, and a visible complete rerun under new run IDs' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'rerun') -Slots 2
         $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one

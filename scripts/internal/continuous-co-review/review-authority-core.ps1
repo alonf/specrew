@@ -280,7 +280,8 @@ function Test-ReviewAuthorityContractObject {
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'target_lineage',
             'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',
             'invocation_started_at', 'invocation_started_monotonic_ms', 'target_kind', 'snapshot_path',
-            'workspace_root', 'origin_repo', 'git_root', 'origin_head_before', 'staging_root'
+            'workspace_root', 'origin_repo', 'git_root', 'origin_head_before', 'staging_root',
+            'verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256'
         ) }
     }
     if (-not (Test-ReviewAuthorityClosedShape -Object $InputObject -Allowed $fields -Errors $errors)) {
@@ -403,6 +404,34 @@ function Test-ReviewAuthorityContractObject {
                 Test-ReviewAuthorityStringField -Object $InputObject -Name $name -Errors $errors -MaxLength 4096
             }
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'origin_head_before' -Errors $errors -MaxLength 128
+            $names = Get-ReviewAuthorityPropertyNames -Object $InputObject
+            $bindingNames = @('verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256')
+            $bindingCount = @($bindingNames | Where-Object { $names -contains $_ }).Count
+            if ($bindingCount -ne 0 -and $bindingCount -ne $bindingNames.Count) {
+                Add-ReviewAuthorityError -Errors $errors -Message 'incomplete-group:recovery-target-bindings'
+            }
+            if ($names -contains 'verification_plan_present') {
+                Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'verification_plan_present' -Errors $errors
+            }
+            foreach ($name in @('verification_plan_sha256', 'machinery_paths_sha256')) {
+                if ($names -contains $name) { Test-ReviewAuthorityStringField -Object $InputObject -Name $name -Errors $errors -MaxLength 128 }
+            }
+            if ($names -contains 'machinery_paths') {
+                $paths = Get-ReviewAuthorityProperty -Object $InputObject -Name 'machinery_paths'
+                if (($paths -is [string]) -or ($paths -isnot [System.Collections.IEnumerable])) {
+                    Add-ReviewAuthorityError -Errors $errors -Message 'wrong-type:machinery_paths:array'
+                }
+                else {
+                    $pathArray = @($paths)
+                    if ($pathArray.Count -gt 512) { Add-ReviewAuthorityError -Errors $errors -Message 'too-many:machinery_paths:512' }
+                    foreach ($path in $pathArray) {
+                        if ($path -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$path) -or ([string]$path).Length -gt 512) {
+                            Add-ReviewAuthorityError -Errors $errors -Message 'invalid-value:machinery_paths:item'
+                            break
+                        }
+                    }
+                }
+            }
         }
     }
 

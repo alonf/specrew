@@ -281,6 +281,52 @@
   passes 37/37. The preceding expanded eleven-file set records 175 passed with one platform skip without a
   verification degradation branch; the committed campaign owns final exact-candidate full-registry proof.
 
+### DRIFT-198-I008-014 — crash-recovery facts omitted target currentness bindings
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: minor recovery-observability defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: T066 attempt 07 found `Get-ReviewRecoverySnapshot` rebuilt only the original identity/path
+  fields. Strict-mode production currentness now also requires the captured plan presence/hash and machinery
+  path-list/hash, so an interrupted invoked run would always fall back to `recovery-currentness-check-failed`.
+  Recovered runs remain abandoned and non-approving; approval authority was never granted incorrectly.
+- **Correction**: new immutable recovery facts persist and contract-check all four bindings, code-target creation
+  fails closed if any binding is missing, and recovery rehydrates them through the real target currentness path.
+  Historical facts without the extension remain honestly `unknown` as `recovery-target-binding-unavailable`.
+- **Paired evidence**: a real Git target freezes its bindings, round-trips them through
+  `New-ReviewRunRecoveryFact`/`Get-ReviewRecoverySnapshot`, validates the fact contract, and classifies current.
+
+### DRIFT-198-I008-015 — later currentness checks overwrote earlier divergence reasons
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: note-level observability defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 07 found plan drift overwrote head/digest drift and machinery-vocabulary drift then
+  overwrote both. The final `snapshot-moved` classification was safe, but its single reason under-reported evidence.
+- **Correction**: currentness accumulates ordered reasons while preserving the strongest classification; the legacy
+  scalar `reason` becomes their comma-joined projection and an explicit `reasons` array carries the full evidence.
+- **Paired evidence**: one production Git target simultaneously changes reviewable content, plan bytes, and the
+  machinery vocabulary and proves all three ordered reasons survive.
+
+### DRIFT-198-I008-016 — attempt 07 lost the changed-path cause behind snapshot-integrity failure
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: runtime-integrity/diagnostic defect
+- **Type**: implementation/operability drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 07's reviewer process terminated cleanly and produced valid current findings, but
+  post-runtime integrity classified the snapshot changed and forced `containment-violated`. The old controller
+  disposed the snapshot and published only that generic reason; no durable evidence identifies the changed path,
+  so this record does not speculate that a particular file caused it.
+- **Correction**: Claude print mode now disables session persistence and loads user settings only, excluding
+  project/local settings from the frozen input. Any remaining integrity failure publishes its classification and at
+  most 20 bounded relative changed paths in `failure_reason` before disposal.
+- **Paired evidence**: harness-contract proof asserts the non-persistent/user-only production vector; a campaign
+  integrity fixture mutates `.claude/settings.local.json` and proves the terminal non-approving result retains that
+  exact relative path. The five focused authority/recovery/target/harness/campaign suites pass 98/98.
+
 ### Resolution Strategies
 
 The following resolution strategies remain available if drift is detected later in execution:

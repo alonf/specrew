@@ -27,6 +27,17 @@ function New-ReviewRunRecoveryFact {
         if ($null -eq $RuntimeReceipt.PSObject.Properties[$name]) { throw "review-recovery-runtime-receipt-missing:$name" }
     }
     $notApplicable = 'not-applicable'
+    $targetKind = [string]$Snapshot.target_kind
+    $bindingNames = @('verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256')
+    if ($targetKind -ceq 'code') {
+        foreach ($name in $bindingNames) {
+            if ($null -eq $Snapshot.PSObject.Properties[$name]) { throw "review-recovery-snapshot-binding-missing:$name" }
+        }
+    }
+    $verificationPlanPresent = $Snapshot.PSObject.Properties['verification_plan_present'] -and [bool]$Snapshot.verification_plan_present
+    $verificationPlanSha256 = if ($Snapshot.PSObject.Properties['verification_plan_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.verification_plan_sha256)) { [string]$Snapshot.verification_plan_sha256 } else { $notApplicable }
+    $machineryPaths = if ($Snapshot.PSObject.Properties['machinery_paths']) { @($Snapshot.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique) } else { @() }
+    $machineryPathsSha256 = if ($Snapshot.PSObject.Properties['machinery_paths_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.machinery_paths_sha256)) { [string]$Snapshot.machinery_paths_sha256 } else { $notApplicable }
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'recovery'; campaign_id = $CampaignId; run_id = $RunId
         target_digest = $TargetDigest; harness_id = $HarnessId; target_lineage = $TargetLineage
@@ -34,11 +45,13 @@ function New-ReviewRunRecoveryFact {
         containment_kind = [string]$RuntimeReceipt.containment_kind; containment_id = [string]$RuntimeReceipt.containment_id
         process_id = [int]$RuntimeReceipt.process_id; process_started_at = [string]$RuntimeReceipt.process_started_at
         invocation_started_at = $InvocationStartedAt; invocation_started_monotonic_ms = $InvocationStartedMonotonicMs
-        target_kind = [string]$Snapshot.target_kind; snapshot_path = [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path)
+        target_kind = $targetKind; snapshot_path = [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path)
         workspace_root = [IO.Path]::GetFullPath([string]$Snapshot.workspace_root)
         origin_repo = $(if ($Snapshot.PSObject.Properties['origin_repo'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.origin_repo)) { [IO.Path]::GetFullPath([string]$Snapshot.origin_repo) } else { $notApplicable })
         git_root = $(if ($Snapshot.PSObject.Properties['git_root'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.git_root)) { [IO.Path]::GetFullPath([string]$Snapshot.git_root) } else { $notApplicable })
         origin_head_before = $(if ($Snapshot.PSObject.Properties['origin_head_before'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.origin_head_before)) { [string]$Snapshot.origin_head_before } else { $notApplicable })
+        verification_plan_present = [bool]$verificationPlanPresent; verification_plan_sha256 = $verificationPlanSha256
+        machinery_paths = @($machineryPaths); machinery_paths_sha256 = $machineryPathsSha256
         staging_root = [IO.Path]::GetFullPath($StagingRoot)
     }
     $validation = Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $fact -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId -ExpectedTargetDigest $TargetDigest
@@ -48,6 +61,13 @@ function New-ReviewRunRecoveryFact {
 
 function Get-ReviewRecoverySnapshot {
     param([Parameter(Mandatory)]$Fact)
+    $names = @($Fact.PSObject.Properties.Name)
+    $requiredBindings = @('verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256')
+    $bindingComplete = @($requiredBindings | Where-Object { $names -notcontains $_ }).Count -eq 0
+    $verificationPlanSha256 = if ($bindingComplete -and [string]$Fact.verification_plan_sha256 -cne 'not-applicable') { [string]$Fact.verification_plan_sha256 } else { $null }
+    $machineryPathsSha256 = if ($bindingComplete -and [string]$Fact.machinery_paths_sha256 -cne 'not-applicable') { [string]$Fact.machinery_paths_sha256 } else { $null }
+    $machineryPaths = @()
+    if ($bindingComplete) { $machineryPaths = @($Fact.machinery_paths) }
     return [pscustomobject]@{
         schema_version = '1.0'; target_kind = [string]$Fact.target_kind; run_id = [string]$Fact.run_id
         target_digest = [string]$Fact.target_digest; snapshot_path = [string]$Fact.snapshot_path
@@ -55,6 +75,11 @@ function Get-ReviewRecoverySnapshot {
         origin_repo = $(if ([string]$Fact.origin_repo -ceq 'not-applicable') { $null } else { [string]$Fact.origin_repo })
         git_root = $(if ([string]$Fact.git_root -ceq 'not-applicable') { $null } else { [string]$Fact.git_root })
         origin_head_before = $(if ([string]$Fact.origin_head_before -ceq 'not-applicable') { $null } else { [string]$Fact.origin_head_before })
+        verification_plan_present = $(if ($bindingComplete) { [bool]$Fact.verification_plan_present } else { $false })
+        verification_plan_sha256 = $verificationPlanSha256
+        machinery_paths = $machineryPaths
+        machinery_paths_sha256 = $machineryPathsSha256
+        recovery_binding_complete = $bindingComplete
     }
 }
 
@@ -130,8 +155,13 @@ function Invoke-ReviewRunReconciliation {
     }
 
     $snapshot = Get-ReviewRecoverySnapshot -Fact $recovery
-    try { $currentness = & $TargetPort.currentness $snapshot }
-    catch { $currentness = [pscustomobject]@{ classification = 'unknown'; exact = $false; reason = 'recovery-currentness-check-failed' } }
+    if ([string]$snapshot.target_kind -ceq 'code' -and -not [bool]$snapshot.recovery_binding_complete) {
+        $currentness = [pscustomobject]@{ classification = 'unknown'; exact = $false; reason = 'recovery-target-binding-unavailable' }
+    }
+    else {
+        try { $currentness = & $TargetPort.currentness $snapshot }
+        catch { $currentness = [pscustomobject]@{ classification = 'unknown'; exact = $false; reason = 'recovery-currentness-check-failed' } }
+    }
     $duration = Get-ReviewRecoveryDurationMilliseconds -Fact $recovery -ClockPort $ClockPort
     $failure = 'restart-reconciliation: interrupted invoked run verified dead and closed as spent/abandoned'
     $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot ([string]$recovery.staging_root) -CampaignId $CampaignId -RunId $RunId `

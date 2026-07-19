@@ -91,7 +91,9 @@ Describe 'Review authority closed contracts (T042)' {
                 target_lineage = 'lin-code'; runtime_id = 'fixture-runtime'; platform = 'fixture'; containment_kind = 'fixture'; containment_id = 'fixture-contained-process'
                 process_id = 42; process_started_at = '2026-07-16T00:00:02Z'; invocation_started_at = '2026-07-16T00:00:02Z'; invocation_started_monotonic_ms = 100
                 target_kind = 'fixture'; snapshot_path = 'C:\review\snapshot'; workspace_root = 'C:\review\snapshot'; origin_repo = 'not-applicable'
-                git_root = 'not-applicable'; origin_head_before = 'not-applicable'; staging_root = 'C:\review\staging'
+                git_root = 'not-applicable'; origin_head_before = 'not-applicable'; verification_plan_present = $false
+                verification_plan_sha256 = 'not-applicable'; machinery_paths = @('.specrew'); machinery_paths_sha256 = ('a' * 64)
+                staging_root = 'C:\review\staging'
             } }
         )
         foreach ($case in $cases) {
@@ -116,6 +118,22 @@ Describe 'Review authority closed contracts (T042)' {
         $beyond = Test-ReviewAuthorityContractObject -ContractName ReviewResult -InputObject (New-TerminalResult -DurationMs ($limits.max_duration_ms + 1))
         $beyond.valid | Should -BeFalse
         ($beyond.errors -join ';') | Should -Match 'out-of-range:duration_ms'
+    }
+
+    It 'accepts historical recovery facts without target bindings but rejects a partial binding group' {
+        $historical = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'recovery'; campaign_id = 'cmp-demo'; run_id = 'run-one'; target_digest = 'digest-one'; harness_id = 'fixture'
+            target_lineage = 'lin-code'; runtime_id = 'fixture-runtime'; platform = 'fixture'; containment_kind = 'fixture'; containment_id = 'fixture-contained-process'
+            process_id = 42; process_started_at = '2026-07-16T00:00:02Z'; invocation_started_at = '2026-07-16T00:00:02Z'; invocation_started_monotonic_ms = 100
+            target_kind = 'code'; snapshot_path = 'C:\review\snapshot'; workspace_root = 'C:\review\snapshot'; origin_repo = 'C:\review\origin'
+            git_root = 'C:\review\origin'; origin_head_before = ('a' * 40); staging_root = 'C:\review\staging'
+        }
+        (Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $historical).valid | Should -BeTrue
+
+        $historical | Add-Member -NotePropertyName verification_plan_present -NotePropertyValue $false
+        $partial = Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $historical
+        $partial.valid | Should -BeFalse
+        ($partial.errors -join ';') | Should -Match 'incomplete-group:recovery-target-bindings'
     }
 
     It 'rejects unknown fields, unsupported versions, illegal states, and identity substitution' {

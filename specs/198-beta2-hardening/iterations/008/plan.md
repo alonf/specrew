@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 25.5/26 story_points
+**Capacity**: 26.0/26 story_points
 **Started**: 2026-07-18
 **Completed**:
 **Planning Baseline**: `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`
@@ -53,6 +53,13 @@ verification re-baselined source hashes, and obsolete verification-degrade plumb
 only. T066 is repriced to 5.0 SP for frozen machinery-vocabulary identity/currentness, current-plan precedence,
 success-only rebaseline, plumbing removal, and their production regressions. The iteration rises to 25.5/26 SP
 with 0.5 SP nominal headroom.
+
+Attempt 07 verified all attempt-05/06 corrections and explicitly found the support-lifecycle convergence-watch area
+clean, but exposed a sixth bounded recovery/runtime-integrity class: crash-recovery facts omitted target currentness
+bindings, multi-cause currentness reasons overwrote one another, and the controller discarded the changed-path detail
+behind a reviewer-time snapshot-integrity failure. T066 is repriced to 5.5 SP for recovery binding round-trip,
+additive reasons, Claude non-persistent/user-only settings, bounded integrity diagnostics, and production regressions.
+The iteration rises to exactly 26.0/26 SP with no nominal headroom.
 
 ## Objective
 
@@ -140,7 +147,7 @@ the published beta from a fresh consumer; it does not promote a stable version.
 | T064 | Frozen-target verification execution and exact-digest campaign evidence injection | FR-048, FR-049, SC-015 | US3 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/continuous-co-review/** | done | Implementer | 1.5 | passed |
 | T065 | Supplier/runner/injection deterministic end-to-end fixture matrix | FR-048, FR-049, SC-015, NFR-007 | US3 | 1.25 | Implementer | tests/continuous-co-review/**, tests/fixtures/**, specs/198-beta2-hardening/iterations/008/quality/** | done | Implementer | 1.25 | passed |
 | T070 | Host-independent conformance turn-delta core and supported-host prompt adapters | FR-055, FR-056, NFR-002, NFR-007 | US1 | 4.0 | Implementer | host hook manifests, conformance core/provider/refocus-catalog mirrors, tests/unit/**, tests/integration/**, tests/bootstrap/**, specs/198-beta2-hardening/iterations/008/** | done | Implementer | 4.0 | passed |
-| T066 | Full deterministic verification, three-OS CI, pre-spend red-verification gate, frozen pinned-support lifecycle, evidence-clock honesty, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 5.0 | Reviewer | tests/**, scripts/internal/continuous-co-review/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | in-progress | Reviewer | — | attempts 01/02/05/06 valid incomplete and spent; attempts 03/04 failed before provider with zero spend; attempt-06 target/support correction active; third consecutive support-class recurrence stops for replan |
+| T066 | Full deterministic verification, three-OS CI, pre-spend red-verification gate, frozen pinned-support lifecycle, recovery/currentness integrity, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 5.5 | Reviewer | tests/**, scripts/internal/continuous-co-review/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | in-progress | Reviewer | — | attempts 01/02/05/06/07 valid incomplete and spent; attempts 03/04 failed before provider with zero spend; attempt-07 recovery/runtime-integrity correction active; general three-round non-convergence rule retained |
 | T067 | Published-beta fresh-consumer dogfood and stable-promotion input | SC-014, NFR-002 | Release | 1.0 | Maintainer | specs/198-beta2-hardening/iterations/008/quality/**, docs/** | planned | — | — | — |
 
 T021–T029 retain their feature-global identifiers from the never-opened Iteration 004 slice. New work continues
@@ -169,9 +176,9 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 | --- | --- | --- |
 | Effort Unit | story_points | Repository-configured unit |
 | Capacity per Iteration | 26 | Current project cap |
-| Planned Effort | 25.5 | Core finish line plus the three explicitly selected repairs and five observed T066 correction classes |
+| Planned Effort | 26.0 | Core finish line plus the three explicitly selected repairs and six observed T066 correction classes |
 | Overcommit Threshold | 1.0 | No overcommit allowed |
-| Capacity Status | at-risk | Nominal scope retains 0.5 SP headroom after T066's 5.0 SP reprice; the conservative variance forecast is 0.65 SP over cap |
+| Capacity Status | at-risk | Nominal scope exactly fills capacity after T066's 5.5 SP reprice; the conservative variance forecast is 1.23 SP over cap |
 | Iteration Bounding | scope | Beta2 supplier, distribution, release, and published-beta proof form one coherent finish line |
 | Time Limit (hours) | n/a | Scope-bounded iteration |
 | Defer Strategy | manual | No requirement or optional repair is silently included or dropped |
@@ -182,14 +189,14 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 - Historical Iteration 004 distribution/release tasks T021–T029 total 7.0 SP after the approved T028 technology-assumption amendment.
 - The T018 verification schema, validator, runner, evidence recorder, and selected-plan load seam already exist and are not re-estimated.
 - Residual supplier/materialization/campaign injection and deterministic fixture work T062–T065 totals 5.5 SP.
-- Full validation/signoff, its five observed evidence-pipeline/target correction classes, and post-publish consumer proof T066–T067 total 6.0 SP.
+- Full validation/signoff, its six observed evidence/recovery/runtime-integrity correction classes, and post-publish consumer proof T066–T067 total 6.5 SP.
 - The tasks verdict selected T068 (0.75 SP) and T069 (2.25 SP), raising the original executable baseline to 18.0 SP.
 - The full-scope 2026-07-19 amendment reprices T070 to 4.0 SP with no SP ceiling.
-- Selected total: 25.5 SP. The combined slice fits within 26 SP and keeps 0.5 SP unallocated.
+- Selected total: 26.0 SP. The combined slice exactly fills the 26 SP capacity; no scope may be added silently.
 
-Iterations 001 and 002 expanded about 16–17% from plan to actual. Conservatively applying 17% to all 6.75 SP
-still-open work, including T066's full 5.0 SP reprice, forecasts 26.65 SP, 0.65 SP above capacity. Nominal selected
-scope remains 0.5 SP below the cap; this stress overage is visible calibration risk and forbids adding work.
+Iterations 001 and 002 expanded about 16–17% from plan to actual. Conservatively applying 17% to all 7.25 SP
+still-open work, including T066's full 5.5 SP reprice, forecasts 27.23 SP, 1.23 SP above capacity. Nominal selected
+scope exactly fills the cap; this stress overage is visible calibration risk and forbids adding work.
 Iterations 006 and
 007 reported estimated effort as actual but did not meter it independently; they are not used as zero-variance
 evidence.
@@ -204,20 +211,20 @@ evidence.
 | Consumer distribution hardening | 6.25 | T021–T028 |
 | Deterministic end-to-end acceptance | 1.25 | T065 |
 | Conformance turn-delta core and five host adapters | 4.0 | T070 |
-| Full verification, five evidence-pipeline/target correction classes, and independent review | 5.0 | T066 |
+| Full verification, six evidence/recovery/runtime-integrity correction classes, and independent review | 5.5 | T066 |
 | Authorized prerelease publication | 0.75 | T029 |
 | Published-beta consumer dogfood | 1.0 | T067 |
-| **Total** | **25.5** | Matches selected capacity consumption |
+| **Total** | **26.0** | Matches selected capacity consumption |
 
 ### Provider and Review-Round Budget
 
 - Planning and task authoring grant zero provider slots.
 - T066 starts with one independently authorized provider invocation against the committed candidate digest.
 - Any correction rerun uses a new run ID and a separately visible authorization. No hidden retry exists.
-- Attempts 01, 02, 05, and 06 spent one immutable slot each; attempts 03 and 04 spent none. Any further invocation
+- Attempts 01, 02, 05, 06, and 07 spent one immutable slot each; attempts 03 and 04 spent none. Any further invocation
   requires changed evidence, a unique run ID, and one new immutable slot fact under the standing progress grant.
-- Support-lifecycle findings occurred in provider rounds 05 and 06. A support-class finding in the next provider
-  round reaches the three-consecutive-round non-convergence stop and requires human replan.
+- Attempt 07 explicitly found support lifecycle clean; provider finding counts for rounds 05/06/07 are 3/4/2.
+  The general three-round recurring-class or non-decreasing-count non-convergence stop remains in force.
 - Stop and replan if the same finding class recurs for three consecutive rounds or the validated finding count
   does not decrease across three consecutive rounds. Progress, not merely activity, governs further spend.
 
@@ -299,8 +306,8 @@ not runtime technologies for this slice. The reconciled profile is:
 ## Traceability Summary
 
 - Every core task maps to at least one scoped FR, SC, or NFR.
-- Every selected requirement FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056 and
-  SC-008–SC-015 maps to at least one task and one evidence shape.
+- Every selected requirement FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056,
+  SC-008–SC-015, NFR-002, and NFR-007 maps to at least one task and one evidence shape.
 - T068/T069/T070 trace separately to named defects and are included in the 22.0 SP selected baseline.
 - The official plan scaffold was created first. Its scope parser rejected decorated requirement IDs such as
   `FR-024 (W1)` and produced an overbroad stub; this authored plan uses the canonical IDs and explicit mapping.

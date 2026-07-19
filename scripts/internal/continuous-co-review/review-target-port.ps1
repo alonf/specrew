@@ -168,20 +168,25 @@ function Test-GitReviewTargetCurrentness {
     param([Parameter(Mandatory)]$Snapshot)
     $after = Get-GitReviewTargetOriginEvidence -OriginRepo ([string]$Snapshot.origin_repo)
     $decision = Resolve-ReviewCurrentness -ReviewedDigest ([string]$Snapshot.target_digest) -CurrentDigest $after.reviewed_state_digest -OriginHeadBefore ([string]$Snapshot.origin_head_before) -OriginHeadAfter $after.origin_head
+    $reasons = [Collections.Generic.List[string]]::new()
+    if ([string]$decision.reason -cne 'exact-head-and-digest-match') { $reasons.Add([string]$decision.reason) | Out-Null }
     $currentPlan = Get-ReviewTargetVerificationPlanCapture -RepoRoot ([string]$Snapshot.origin_repo)
     $capturedPlanPresent = [bool]$Snapshot.verification_plan_present
     $planCurrent = ($capturedPlanPresent -eq [bool]$currentPlan.present) -and (
         (-not $capturedPlanPresent) -or ([string]$Snapshot.verification_plan_sha256 -ceq [string]$currentPlan.sha256)
     )
     if (-not $planCurrent) {
-        $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = 'verification-plan-changed' }
+        $reasons.Add('verification-plan-changed') | Out-Null
+        if ([string]$decision.classification -cne 'unknown') { $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = $decision.reason } }
     }
     $machineryPathsCurrent = [string]$Snapshot.machinery_paths_sha256 -ceq [string]$after.machinery_paths_sha256
     if (-not $machineryPathsCurrent) {
-        $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = 'machinery-paths-changed' }
+        $reasons.Add('machinery-paths-changed') | Out-Null
+        if ([string]$decision.classification -cne 'unknown') { $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = $decision.reason } }
     }
+    if ($reasons.Count -eq 0) { $reasons.Add('exact-head-and-digest-match') | Out-Null }
     return [pscustomobject]@{
-        classification = $decision.classification; exact = $decision.exact; reason = $decision.reason
+        classification = $decision.classification; exact = $decision.exact; reason = ($reasons -join ','); reasons = @($reasons)
         origin_head_before = [string]$Snapshot.origin_head_before; origin_head_after = $after.origin_head
         reviewed_digest = [string]$Snapshot.target_digest; current_digest = $after.reviewed_state_digest
         verification_plan_current = $planCurrent; verification_plan_sha256 = $Snapshot.verification_plan_sha256

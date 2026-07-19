@@ -129,7 +129,7 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         })
         $spec.command | Should -Be 'claude'
         $spec.prompt_transport | Should -Be 'stdin'
-        $spec.argument_list | Should -Be @('-p', '--permission-mode', 'bypassPermissions')
+        $spec.argument_list | Should -Be @('-p', '--no-session-persistence', '--setting-sources', 'user', '--permission-mode', 'bypassPermissions')
         $spec.working_directory | Should -Be ([IO.Path]::GetFullPath($invocation.snapshot_path))
         $spec.candidate_result_path | Should -Be ([IO.Path]::GetFullPath($invocation.candidate_result_path))
         $spec.stdout_authority | Should -BeFalse

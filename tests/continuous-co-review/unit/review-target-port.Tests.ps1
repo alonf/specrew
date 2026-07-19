@@ -5,6 +5,7 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-run-reconciler.ps1')
 
         function script:New-TargetRepo {
             param([Parameter(Mandatory)][string]$Path)
@@ -58,9 +59,15 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
 
             # Later legitimate origin movement does not erase the review; it labels it snapshot-moved.
             [IO.File]::WriteAllText((Join-Path $origin 'tracked.txt'), 'implementer-moved')
+            [IO.File]::WriteAllText((Join-Path $origin '.specrew/verification-plan.json'), '{}')
+            $marker = Join-Path $origin '.custom-host/specrew/.specrew-managed'
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $marker)) | Out-Null
+            [IO.File]::WriteAllText($marker, 'managed')
             $moved = Test-GitReviewTargetCurrentness -Snapshot $snapshot
             $moved.classification | Should -Be 'snapshot-moved'
             $moved.exact | Should -BeFalse
+            $moved.reasons | Should -Be @('origin-head-or-reviewed-digest-moved', 'verification-plan-changed', 'machinery-paths-changed')
+            $moved.reason | Should -Be 'origin-head-or-reviewed-digest-moved,verification-plan-changed,machinery-paths-changed'
         }
         finally {
             $removed = Remove-GitReviewTargetSnapshot -Snapshot $snapshot
@@ -73,6 +80,33 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         New-TargetRepo -Path $origin
         { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-contained -ExternalRoot (Join-Path $origin 'reviews') } | Should -Throw -ExpectedMessage '*external-root-inside-origin*'
         Test-Path -LiteralPath (Join-Path $origin 'reviews') | Should -BeFalse
+    }
+
+    It 'round-trips every code-target currentness binding through the immutable recovery fact' {
+        $origin = Join-Path $TestDrive 'origin-recovery-binding'
+        $external = Join-Path $TestDrive 'external-recovery-binding'
+        New-TargetRepo -Path $origin
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-recovery-binding -ExternalRoot $external
+        try {
+            $receipt = [pscustomobject]@{
+                runtime_id = 'windows-job-object-runtime'; platform = 'windows'; containment_kind = 'job-object'
+                containment_id = 'job-object-process-42'; process_id = 42; process_started_at = '2026-07-19T00:00:00Z'
+            }
+            $fact = New-ReviewRunRecoveryFact -CampaignId cmp-recovery-binding -RunId run-recovery-binding `
+                -TargetDigest $snapshot.target_digest -HarnessId fixture-harness -TargetLineage lin-recovery-binding `
+                -RuntimeReceipt $receipt -Snapshot $snapshot -StagingRoot (Join-Path $TestDrive 'staging-recovery-binding') `
+                -InvocationStartedAt '2026-07-19T00:00:01Z' -InvocationStartedMonotonicMs 10
+
+            (Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $fact).valid | Should -BeTrue
+            $recovered = Get-ReviewRecoverySnapshot -Fact $fact
+            $recovered.recovery_binding_complete | Should -BeTrue
+            $recovered.verification_plan_present | Should -Be $snapshot.verification_plan_present
+            $recovered.verification_plan_sha256 | Should -Be $snapshot.verification_plan_sha256
+            $recovered.machinery_paths | Should -Be $snapshot.machinery_paths
+            $recovered.machinery_paths_sha256 | Should -Be $snapshot.machinery_paths_sha256
+            (Test-GitReviewTargetCurrentness -Snapshot $recovered).classification | Should -Be 'current'
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
     }
 
     It 'fails closed on a workspace-token collision without deleting the existing directory' {

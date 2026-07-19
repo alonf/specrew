@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-19T13:37:10Z"
+updated_at: "2026-07-19T23:22:08Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -94,11 +94,11 @@ tasks:
     completed_at: "2026-07-19T14:39:59Z"
     blocked_reason: ""
   T066:
-    title: "Full deterministic verification, frozen pinned support lifecycle, evidence-clock honesty, three-OS CI, and independent signoff"
+    title: "Full deterministic verification, frozen support and recovery/currentness integrity, three-OS CI, and independent signoff"
     status: "in_progress"
     started_at: "2026-07-19T13:06:00Z"
     completed_at: ""
-    blocked_reason: "Attempts 01, 02, 05, and 06 each spent one Claude slot and returned valid incomplete; attempts 03 and 04 failed safely before provider with zero spend. Attempt 06 exposed tracked-plan collision, live-vocabulary, failure-rebaseline, and vestigial-degrade findings. The final corrections pass 37/37 focused tests; the preceding expanded set passed 175 with one platform skip, and exact-candidate proof is in progress. A support-class recurrence next provider round triggers non-convergence replan."
+    blocked_reason: "Attempts 01, 02, 05, 06, and 07 each spent one Claude slot and returned valid incomplete; attempts 03 and 04 failed safely before provider with zero spend. Attempt 07 verified prior corrections, explicitly found support lifecycle clean, and exposed recovery-binding/reason observability plus an undiagnosed snapshot-integrity failure. Recovery round-trip, additive reasons, non-persistent Claude settings isolation, and bounded integrity diagnostics pass 98/98 focused tests; exact-candidate proof is in progress."
   T029:
     title: "Release v0.40.0-beta2 after separately authorized release gate"
     status: "pending"

@@ -210,7 +210,8 @@ exit 0
             Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.custom-host/specrew') | Should -BeFalse -Because 'captured support is purged after verification'
             $currentness = Test-GitReviewTargetCurrentness -Snapshot $snapshot
             $currentness.exact | Should -BeFalse
-            $currentness.reason | Should -Be 'machinery-paths-changed'
+            $currentness.reasons | Should -Be @('origin-head-or-reviewed-digest-moved', 'machinery-paths-changed')
+            $currentness.reason | Should -Be 'origin-head-or-reviewed-digest-moved,machinery-paths-changed'
             Test-Path -LiteralPath $marker | Should -BeFalse -Because 'origin marker drift is observed, never repaired or copied back'
             [IO.File]::ReadAllText($support) | Should -Be 'dirty-live-content'
         }

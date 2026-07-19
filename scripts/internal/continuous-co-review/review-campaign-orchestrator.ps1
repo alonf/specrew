@@ -97,12 +97,13 @@ function New-ReviewFixtureTargetPort {
         [Parameter(Mandatory)][string]$SnapshotPath,
         [string]$TargetDigest = 'fixture-digest',
         [ValidateSet('current', 'snapshot-moved', 'unknown')][string]$Currentness = 'current',
-        [bool]$IntegrityPass = $true
+        [bool]$IntegrityPass = $true,
+        [string[]]$IntegrityChangedPaths = @()
     )
     $suppressionEnvironment = Get-ReviewTargetSuppressionEnvironment
     $prepare = { param($runId) [pscustomobject]@{ schema_version = '1.0'; target_kind = 'fixture'; run_id = $runId; target_digest = $TargetDigest; snapshot_path = $SnapshotPath; workspace_root = $SnapshotPath; origin_repo = $null; suppression_environment = $suppressionEnvironment } }.GetNewClosure()
     $checkCurrentness = { param($snapshot) [pscustomobject]@{ classification = $Currentness; exact = ($Currentness -ceq 'current'); reason = 'fixture-currentness' } }.GetNewClosure()
-    $checkIntegrity = { param($snapshot) [pscustomobject]@{ intact = $IntegrityPass; classification = $(if ($IntegrityPass) { 'intact' } else { 'snapshot-tampered' }); changed_paths = @() } }.GetNewClosure()
+    $checkIntegrity = { param($snapshot) [pscustomobject]@{ intact = $IntegrityPass; classification = $(if ($IntegrityPass) { 'intact' } else { 'snapshot-tampered' }); changed_paths = @($IntegrityChangedPaths) } }.GetNewClosure()
     $dispose = { param($snapshot) [pscustomobject]@{ removed = $true; failure_reason = $null } }
     return [pscustomobject]@{ kind = 'fixture'; prepare = $prepare; currentness = $checkCurrentness; integrity = $checkIntegrity; dispose = $dispose }
 }
@@ -1003,14 +1004,25 @@ function Invoke-ReviewCampaignRun {
         $observedUsage = if ($runtimeResult.PSObject.Properties['usage']) { $runtimeResult.usage } else { $null }
         Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'terminalizing' -Message 'runtime returned; validating target and candidate' -ProcessTreeLive $runtimeResult.process_tree_live -OutputActivity $runtimeResult.output_activity -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds -Usage $observedUsage
         $containment = [string]$runtimeResult.containment; $runtimeOutcome = [string]$runtimeResult.runtime_outcome
+        $failureReason = [string]$runtimeResult.failure_reason
         try { $integrity = & $TargetPort.integrity $snapshot } catch { $integrity = [pscustomobject]@{ intact = $false; classification = 'integrity-check-failed' } }
-        if (-not $integrity.intact) { $containment = 'violated'; $runtimeOutcome = 'containment-violated' }
+        if (-not $integrity.intact) {
+            $containment = 'violated'; $runtimeOutcome = 'containment-violated'
+            $changedPaths = @()
+            if ($integrity.PSObject.Properties['changed_paths']) {
+                $changedPaths = @($integrity.changed_paths | ForEach-Object { [string]$_ } | Select-Object -First 20)
+            }
+            $integrityReason = 'target-integrity-failed:' + [string]$integrity.classification
+            if ($changedPaths.Count -gt 0) { $integrityReason += ':' + ($changedPaths -join ',') }
+            $failureReason = if ([string]::IsNullOrWhiteSpace($failureReason)) { $integrityReason } else { $failureReason + ';' + $integrityReason }
+            $failureReason = ConvertTo-ReviewAuthorityBoundedText -Value $failureReason -MaximumLength 1900
+        }
         try { $currentness = & $TargetPort.currentness $snapshot } catch { $currentness = [pscustomobject]@{ classification = 'unknown'; exact = $false; reason = 'currentness-check-failed' } }
         $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort
         $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
         $startedAt = ConvertTo-ReviewObservedTimestampString -Value $spends[0].invocation_started_at
         $degradeReason = if ($DesignContextEmpty) { 'DESIGN_CONTEXT_EMPTY: no spec, design analysis, or formal contract resolved; this run is partial evidence and cannot approve the current target.' } else { $null }
-        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason ([string]$runtimeResult.failure_reason) -ControllerDegradeReason $degradeReason
+        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason $failureReason -ControllerDegradeReason $degradeReason
         if ($ingress.published) {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null
             $findingCount = if ($ingress.candidate_category -ceq 'valid' -and [string]$ingress.result.completion -ceq 'complete' -and [string]$ingress.result.validation -ceq 'valid') { @($ingress.result.findings).Count } else { $null }
