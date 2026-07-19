@@ -31,8 +31,9 @@ re-preparation. The honest estimate is 4.0 SP: a host-independent core owns the 
 status/content fingerprints, delta, and packet-demand decision; thin host adapters contribute genuine prompt
 events; deterministic fixtures prove stale-handover, consecutive-turn, same-path re-edit, degraded display, and
 concurrent-session behavior. Claude, Codex, Copilot, Cursor, and Antigravity all have verified prompt-boundary
-registrations. The iteration rises to 22/26 SP and retains 4 SP headroom. The withdrawn T066 run ID and grant
-remain unspent.
+registrations. The iteration rises to 22/26 SP and retains 4 SP headroom. The earlier T066 slot was in fact spent
+and returned a valid incomplete result; its verification-plan findings are corrected within T066 before any new
+slot is requested.
 
 ## Objective
 
@@ -120,7 +121,7 @@ the published beta from a fresh consumer; it does not promote a stable version.
 | T064 | Frozen-target verification execution and exact-digest campaign evidence injection | FR-048, FR-049, SC-015 | US3 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/continuous-co-review/** | done | Implementer | 1.5 | passed |
 | T065 | Supplier/runner/injection deterministic end-to-end fixture matrix | FR-048, FR-049, SC-015, NFR-007 | US3 | 1.25 | Implementer | tests/continuous-co-review/**, tests/fixtures/**, specs/198-beta2-hardening/iterations/008/quality/** | done | Implementer | 1.25 | passed |
 | T070 | Host-independent conformance turn-delta core and supported-host prompt adapters | FR-055, FR-056, NFR-002, NFR-007 | US1 | 4.0 | Implementer | host hook manifests, conformance core/provider/refocus-catalog mirrors, tests/unit/**, tests/integration/**, tests/bootstrap/**, specs/198-beta2-hardening/iterations/008/** | done | Implementer | 4.0 | passed |
-| T066 | Full deterministic verification, three-OS CI, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 1.5 | Reviewer | tests/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | planned | — | — | — |
+| T066 | Full deterministic verification, three-OS CI, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 1.5 | Reviewer | tests/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | in-progress | Reviewer | — | attempt 01 valid incomplete; correction/preparation active |
 | T067 | Published-beta fresh-consumer dogfood and stable-promotion input | SC-014, NFR-002 | Release | 1.0 | Maintainer | specs/198-beta2-hardening/iterations/008/quality/**, docs/** | planned | — | — | — |
 
 T021–T029 retain their feature-global identifiers from the never-opened Iteration 004 slice. New work continues

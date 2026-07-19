@@ -232,4 +232,74 @@ Describe 'Supplier to campaign deterministic end-to-end project matrix (T065)' {
         $result.result.can_approve_current | Should -BeFalse
         $result.result.failure_reason | Should -Match 'VERIFICATION_FAILED.*fails-second'
     }
+
+    It 'ships a T066 self-plan whose declared environment executes through the production runner and fails without it' {
+        $planPath = Join-Path $script:RepoRoot 'specs/198-beta2-hardening/iterations/008/quality/t066-verification-plan.json'
+        $projectPlan = [IO.File]::ReadAllText($planPath) | ConvertFrom-Json
+        $contract = Test-ContinuousCoReviewVerificationPlan -Plan $projectPlan
+        $contract.valid | Should -BeTrue -Because $contract.reason
+        $projectPlan.plan_id | Should -Be 'f198.i008.signoff.v5'
+        foreach ($command in @($projectPlan.commands)) {
+            @($command.env_refs) | Should -Contain 'PATH'
+            @($command.env_refs) | Should -Contain 'PATHEXT'
+            @($command.env_refs) | Should -Contain 'TEMP'
+            @($command.env_refs) | Should -Contain 'TMP'
+            @($command.env_refs) | Should -Contain 'SystemRoot'
+            @($command.env_refs) | Should -Contain 'WINDIR'
+            @($command.env_refs) | Should -Contain 'ComSpec'
+            @($command.env_refs) | Should -Contain 'ProgramData'
+        }
+
+        $repo = New-T065Repo -Path (Join-Path $TestDrive 'self-plan-env') -Shape explicit
+        $probe = @'
+$required = @('PATH', 'TEMP', 'TMP')
+$required += if ($IsWindows) { @('PATHEXT', 'SystemRoot', 'WINDIR', 'ComSpec', 'ProgramData') } else { @() }
+$missing = @($required | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+if ($missing.Count -gt 0) { exit 27 }
+if ($null -eq (Get-Command git -CommandType Application -ErrorAction SilentlyContinue)) { exit 28 }
+if ($null -eq (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue)) { exit 29 }
+if ($IsWindows) {
+    $nested = Start-Process pwsh -ArgumentList @('-NoProfile', '-Command', 'exit 0') -NoNewWindow -Wait -PassThru
+    if ($nested.ExitCode -ne 0) { exit 30 }
+    $commonData = [IO.Path]::GetFullPath($env:ProgramData)
+    $current = [IO.Path]::GetFullPath((Get-Location).Path).TrimEnd([char]'\') + [IO.Path]::DirectorySeparatorChar
+    if ($commonData.StartsWith($current, [StringComparison]::OrdinalIgnoreCase)) { exit 31 }
+}
+exit 0
+'@
+        $baseCommand = [ordered]@{
+            command_id = 'self-plan-environment-probe'
+            executable = 'pwsh'
+            arguments = @('-NoProfile', '-Command', $probe)
+            timeout_seconds = 30
+            provenance = [ordered]@{ kind = 'project-config'; source = '.specrew/verification-plan.json' }
+        }
+        $oldTemp = $env:TEMP; $oldTmp = $env:TMP
+        try {
+            $env:TEMP = $TestDrive
+            $env:TMP = $TestDrive
+
+            $withEnvironment = [pscustomobject]@{
+                schema_version = '1.0'
+                plan_id = 't066.production-env.allow'
+                commands = @([pscustomobject]($baseCommand + @{ env_refs = @($projectPlan.commands[0].env_refs) }))
+            }
+            $allowed = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $withEnvironment
+            $allowed.all_succeeded | Should -BeTrue
+            [int]$allowed.evidence[0].exit_code | Should -Be 0
+
+            $withoutEnvironment = [pscustomobject]@{
+                schema_version = '1.0'
+                plan_id = 't066.production-env.deny'
+                commands = @([pscustomobject]$baseCommand)
+            }
+            $denied = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $withoutEnvironment
+            $denied.all_succeeded | Should -BeFalse
+            [int]$denied.evidence[0].exit_code | Should -Be 27
+        }
+        finally {
+            $env:TEMP = $oldTemp
+            $env:TMP = $oldTmp
+        }
+    }
 }

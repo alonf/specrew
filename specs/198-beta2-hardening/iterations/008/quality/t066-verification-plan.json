@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "f198.i008.signoff.v5",
+  "commands": [
+    {
+      "command_id": "f198-full-registry",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-File",
+        "tests/f198-regression-suite.ps1",
+        "-PerTestTimeoutSeconds",
+        "300"
+      ],
+      "timeout_seconds": 1200,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "TEMP",
+        "TMP",
+        "PSModulePath",
+        "HOME",
+        "USERPROFILE",
+        "SystemRoot",
+        "WINDIR",
+        "ComSpec",
+        "ProgramData"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Feature 198 full deterministic registry"
+    },
+    {
+      "command_id": "iteration-008-governance",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-File",
+        "extensions/specrew-speckit/scripts/validate-governance.ps1",
+        "-ProjectPath",
+        ".",
+        "-IterationPath",
+        "specs/198-beta2-hardening/iterations/008",
+        "-NoCacheRead",
+        "-NoParallel"
+      ],
+      "timeout_seconds": 120,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "TEMP",
+        "TMP",
+        "PSModulePath",
+        "HOME",
+        "USERPROFILE",
+        "SystemRoot",
+        "WINDIR",
+        "ComSpec",
+        "ProgramData"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Iteration 008 explicit governance validation"
+    }
+  ]
+}
