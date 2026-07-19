@@ -146,7 +146,7 @@ These rules override generic Squad coordination whenever the repository is boots
       ```
 
       Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
-    - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them clickable via Ctrl+Click. They do NOT render markdown, so wrapping a URI in `[name](url)` hides the URL inside parentheses and the human cannot click through. Emit `file:///C:/Dev/project/specs/001/plan.md` on its own (or as part of a sentence), never `[plan.md](file:///...)`.
+    - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** Terminal hosts may auto-detect bare file URLs without rendering markdown, so wrapping a URI can hide its clickable target. Emit `file:///absolute/project/path/specs/001/plan.md` directly, never `[plan.md](file:///...)`.
     - Every artifact, file, or directory reference in every packet section MUST use visible `file:///` URL form, not bare repository paths such as `specs/...`, `.specrew/...`, `.squad/...`, `tests/...`, or `README.md`. Command/code blocks and explicit command examples are exempt.
     - The packet text recorded as boundary evidence MUST be the exact human-visible packet emitted for approval. Do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet.
     - The six-section packet is reserved for **boundary stops** where the human is the immediate blocker. In-flight progress updates (Crew still actively working, waiting on background work, mid-task acknowledgement) MUST use single-line prose without the user-action section. Do not pad routine progress updates into the packet shape — that dilutes the signal of an actual boundary stop.
@@ -166,10 +166,9 @@ These rules override generic Squad coordination whenever the repository is boots
     - This rule operates at the same authority level as 14A and applies to every Crew role (Implementer, Planner, Reviewer, Spec Steward, Retro Facilitator). Per-role responsibilities are detailed in each agent's charter.
 
 1. **Carry feature closeout version management**
-    - When a feature closeout is preparing to claim shipped work, treat release-version bookkeeping as required closure work rather than an optional reminder.
-    - Update the authoritative product version in `.specrew/config.yml`, the matching `version:` field in `extensions/specrew-speckit/extension.yml` (and the deployed mirror at `.specify/extensions/specrew-speckit/extension.yml`), add the corresponding `CHANGELOG.md` entry, refresh any README version summary or linked versioning references that surfaced the previous version, and create the release tag that anchors the closed feature state.
-    - Rerun `validate-governance.ps1` after the version/changelog/tag updates so the closeout evidence reflects the final public-readiness state.
-    - If any release-version step is intentionally deferred, keep the feature open until explicit human-approved defer evidence is recorded in the governing artifacts.
+    - Read `## Resolved Feature-Closeout Delivery` before proposing version, tag, or publication work. A local-only, push-only, or PR-flow project does not gain release bookkeeping merely because the lifecycle reached feature-closeout.
+    - When the resolved model includes publication, update only the project-owned version and changelog surfaces named by its governance, then validate the final state. Never assume Specrew's own manifest, mirror, tag, or registry layout.
+    - Keep any applicable but deferred delivery step open until explicit human-approved defer evidence is recorded.
 
 2. **Provide a review-ready implementation briefing**
     - At the end of implementation and review, provide a developer-facing briefing that summarizes what was built, how it maps to requirements, the main happy path and relevant alternative flows, dependency/package usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.

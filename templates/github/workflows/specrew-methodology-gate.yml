@@ -45,6 +45,18 @@ jobs:
           }
           & $validator -ProjectPath .
 
+      # specrew-applicability: provider-gated; this workflow is deployed only when the resolved provider is GitHub
+      - name: Check consumer assumptions (advisory)
+        shell: pwsh
+        run: |
+          $checker = './.specify/extensions/specrew-speckit/scripts/test-consumer-assumptions.ps1'
+          if (-not (Test-Path -LiteralPath $checker -PathType Leaf)) {
+            Write-Warning "Deployed Specrew consumer-assumption checker not found at $checker"
+          }
+          else {
+            & $checker -ProjectPath .
+          }
+
       - name: Analyze PowerShell when present
         if: ${{ hashFiles('**/*.ps1', '**/*.psm1', '**/*.psd1') != '' }}
         shell: pwsh

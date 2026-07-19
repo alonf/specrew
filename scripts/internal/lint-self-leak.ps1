@@ -67,6 +67,10 @@ function Read-SelfLeakDenyList {
     if ($null -eq $parsed.entries -or @($parsed.entries).Count -eq 0) {
         throw ("Deny-list at {0} has no entries." -f $Path)
     }
+    $applicabilityKinds = @($parsed.applicability_annotation.kinds | ForEach-Object { [string]$_ })
+    if ($applicabilityKinds.Count -ne 4 -or @('project-detected', 'profile-selected', 'provider-gated', 'example-only' | Where-Object { $_ -notin $applicabilityKinds }).Count -gt 0) {
+        throw ("Deny-list at {0} does not declare the closed applicability kind set." -f $Path)
+    }
     $compiled = @()
     foreach ($entry in $parsed.entries) {
         foreach ($required in @('pattern', 'class', 'reason', 'source', 'added')) {
@@ -83,7 +87,7 @@ function Read-SelfLeakDenyList {
             Reason  = [string]$entry.reason
         }
     }
-    [pscustomobject]@{ SchemaVersion = [string]$parsed.schema_version; Entries = $compiled }
+    [pscustomobject]@{ SchemaVersion = [string]$parsed.schema_version; Entries = $compiled; ApplicabilityKinds = $applicabilityKinds }
 }
 
 function Get-SelfLeakScanSurface {
@@ -160,6 +164,49 @@ function Test-SelfLeakAnnotated {
     return $null
 }
 
+function Get-SelfLeakApplicabilityAnnotation {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][AllowEmptyCollection()][string[]]$Lines,
+        [Parameter(Mandatory = $true)][int]$LineIndex,
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string[]]$AllowedKinds
+    )
+
+    $extension = [System.IO.Path]::GetExtension($FilePath)
+    $pattern = switch -Regex ($extension) {
+        '^\.(md|markdown)$' { '<!--\s*specrew-applicability:\s*(?<kind>[a-z-]+)\s*;(?<reason>([^-]|-(?!->))*)-->' ; break }
+        '^\.(ps1|psd1|psm1|yml|yaml|sh)$' { '^\s*#[^#]*?specrew-applicability:\s*(?<kind>[a-z-]+)\s*;(?<reason>.+)$' ; break }
+        '^$' { '^\s*#[^#]*?specrew-applicability:\s*(?<kind>[a-z-]+)\s*;(?<reason>.+)$' ; break }
+        default { $null }
+    }
+    if ($null -eq $pattern) { return [pscustomobject]@{ Valid = $false; Failure = 'file kind has no applicability annotation form'; Kind = $null; Reason = $null } }
+
+    $found = [System.Collections.ArrayList]::new()
+    foreach ($candidateIndex in @($LineIndex, ($LineIndex - 1))) {
+        if ($candidateIndex -lt 0 -or $candidateIndex -ge $Lines.Count) { continue }
+        foreach ($match in [regex]::Matches($Lines[$candidateIndex], $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+            $null = $found.Add($match)
+        }
+    }
+    if ($found.Count -ne 1) {
+        return [pscustomobject]@{ Valid = $false; Failure = $(if ($found.Count -eq 0) { 'missing applicability marker' } else { 'multiple applicability markers' }); Kind = $null; Reason = $null }
+    }
+
+    $kind = $found[0].Groups['kind'].Value.Trim().ToLowerInvariant()
+    $reason = $found[0].Groups['reason'].Value.Trim()
+    if ($kind -notin $AllowedKinds) {
+        return [pscustomobject]@{ Valid = $false; Failure = "unsupported applicability kind '$kind'"; Kind = $kind; Reason = $reason }
+    }
+    if ([string]::IsNullOrWhiteSpace($reason)) {
+        return [pscustomobject]@{ Valid = $false; Failure = 'applicability marker has no reason'; Kind = $kind; Reason = $reason }
+    }
+    if ($kind -eq 'example-only' -and $Lines[$LineIndex] -notmatch '(?i)\b(example|illustrative|non-binding|not\s+a\s+mandate)\b') {
+        return [pscustomobject]@{ Valid = $false; Failure = 'example-only statement is not visibly non-binding'; Kind = $kind; Reason = $reason }
+    }
+
+    return [pscustomobject]@{ Valid = $true; Failure = $null; Kind = $kind; Reason = $reason }
+}
+
 try {
     $denyList = Read-SelfLeakDenyList -Path $DenyListPath
     $surface = Get-SelfLeakScanSurface -ManifestPath $ManifestPath -ProjectRoot $ProjectRoot -DenyListPath $DenyListPath -ConsumerDeployedPrefixes $ConsumerDeployedPrefixes
@@ -184,7 +231,17 @@ foreach ($file in $surface) {
         foreach ($entry in $denyList.Entries) {
             $match = $entry.Regex.Match($lines[$i])
             if (-not $match.Success) { continue }
-            $annotationReason = Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -FilePath $file.Full
+            $isApplicabilityFinding = $entry.Class -in @('stack-assumption', 'delivery-assumption')
+            $applicability = if ($isApplicabilityFinding) {
+                Get-SelfLeakApplicabilityAnnotation -Lines $lines -LineIndex $i -FilePath $file.Full -AllowedKinds $denyList.ApplicabilityKinds
+            }
+            else { $null }
+            $annotationReason = if ($isApplicabilityFinding) {
+                if ($applicability.Valid) { '[{0}] {1}' -f $applicability.Kind, $applicability.Reason } else { $null }
+            }
+            else {
+                Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -FilePath $file.Full
+            }
             $record = [pscustomobject]@{
                 File             = $file.Relative
                 Line             = $i + 1
@@ -192,6 +249,7 @@ foreach ($file in $surface) {
                 Class            = $entry.Class
                 Reason           = $entry.Reason
                 AnnotationReason = $annotationReason
+                ApplicabilityFailure = if ($isApplicabilityFinding -and -not $applicability.Valid) { $applicability.Failure } else { $null }
             }
             if ($null -ne $annotationReason) {
                 $annotated += $record
@@ -216,11 +274,15 @@ if (@($findings).Count -gt 0) {
         Write-Host ("  {0}:{1}" -f $finding.File, $finding.Line) -ForegroundColor Red
         Write-Host ("    matched: '{0}'  class: {1}" -f $finding.Matched, $finding.Class) -ForegroundColor Red
         Write-Host ("    why this is a self-fact: {0}" -f $finding.Reason) -ForegroundColor Red
+        if ($finding.ApplicabilityFailure) {
+            Write-Host ("    applicability: {0}" -f $finding.ApplicabilityFailure) -ForegroundColor Red
+        }
     }
     Write-Host ""
     Write-Host ("[self-leak-lint] To sanction an intentional self-reference, annotate the hit line (or the line above):") -ForegroundColor Yellow
     Write-Host ("  .md:              <!-- specrew-self-ok: <reason> -->") -ForegroundColor Yellow
     Write-Host ("  .ps1/.psd1/.yml:  # specrew-self-ok: <reason>   (a WHOLE-LINE comment - the line must start with #)") -ForegroundColor Yellow
+    Write-Host ("  assumption classes: specrew-applicability: project-detected|profile-selected|provider-gated|example-only; <reason>") -ForegroundColor Yellow
     Write-Host ("[self-leak-lint] The rule and the resolution-point teaching live in {0}." -f $ruleDoc) -ForegroundColor Yellow
     exit 1
 }

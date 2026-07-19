@@ -28,6 +28,10 @@ function New-Fixture {
     @'
 {
   "schema_version": "1.0",
+  "applicability_annotation": {
+    "token": "specrew-applicability:",
+    "kinds": ["project-detected", "profile-selected", "provider-gated", "example-only"]
+  },
   "entries": [
     { "pattern": "(?i)FakeGallery", "class": "registry", "reason": "fixture registry fact", "source": "fixture", "added": "2026-07-10" },
     { "pattern": "(?i)fixture-release-mandate", "class": "release-model", "reason": "fixture release fact", "source": "fixture", "added": "2026-07-10" },
@@ -35,7 +39,9 @@ function New-Fixture {
     { "pattern": "(?i)X:\\\\FixtureDev\\\\tool", "class": "dev-path", "reason": "fixture dev path", "source": "fixture", "added": "2026-07-10" },
     { "pattern": "(?i)\\bFIX-42\\b", "class": "feature-id", "reason": "fixture feature id", "source": "fixture", "added": "2026-07-10" },
     { "pattern": "(?i)fixture-proposals/\\d{3}", "class": "decision-ref", "reason": "fixture decision ref", "source": "fixture", "added": "2026-07-10" },
-    { "pattern": "(?i)\\bFixtureMaintainer\\b", "class": "maintainer-id", "reason": "fixture maintainer id", "source": "fixture", "added": "2026-07-10" }
+    { "pattern": "(?i)\\bFixtureMaintainer\\b", "class": "maintainer-id", "reason": "fixture maintainer id", "source": "fixture", "added": "2026-07-10" },
+    { "pattern": "(?i)must run pytest", "class": "stack-assumption", "reason": "fixture stack mandate", "source": "fixture", "added": "2026-07-18" },
+    { "pattern": "(?i)must use GitHub", "class": "delivery-assumption", "reason": "fixture delivery mandate", "source": "fixture", "added": "2026-07-18" }
   ]
 }
 '@ | Set-Content -LiteralPath (Join-Path $root 'deny-list.json') -Encoding UTF8
@@ -59,7 +65,7 @@ function New-Fixture {
 Write-Host "Test 1: shipped deny-list shape (FR-037)"
 $shipped = Get-Content -LiteralPath $shippedDenyList -Raw | ConvertFrom-Json
 if ([string]::IsNullOrWhiteSpace([string]$shipped.schema_version)) { Write-Fail "shipped deny-list has no schema_version" } else { Write-Pass "shipped schema_version present ($($shipped.schema_version))" }
-$knownClasses = @('release-model', 'dev-path', 'feature-id', 'maintainer-id', 'registry', 'repo-ref', 'decision-ref')
+$knownClasses = @('release-model', 'dev-path', 'feature-id', 'maintainer-id', 'registry', 'repo-ref', 'decision-ref', 'stack-assumption', 'delivery-assumption')
 $shapeOk = $true
 foreach ($entry in $shipped.entries) {
     foreach ($field in @('pattern', 'class', 'reason', 'source', 'added')) {
@@ -70,7 +76,7 @@ foreach ($entry in $shipped.entries) {
 }
 if ($shapeOk) { Write-Pass "all $(@($shipped.entries).Count) shipped entries carry the full shape, known classes, compiling regexes" }
 $coveredClasses = @($shipped.entries | ForEach-Object { $_.class } | Sort-Object -Unique)
-if (@($knownClasses | Where-Object { $_ -notin $coveredClasses }).Count -eq 0) { Write-Pass "shipped seed covers all seven classes" } else { Write-Fail "shipped seed misses classes: $(@($knownClasses | Where-Object { $_ -notin $coveredClasses }) -join ', ')" }
+if (@($knownClasses | Where-Object { $_ -notin $coveredClasses }).Count -eq 0) { Write-Pass "shipped seed covers all nine classes" } else { Write-Fail "shipped seed misses classes: $(@($knownClasses | Where-Object { $_ -notin $coveredClasses }) -join ', ')" }
 
 Write-Host "Test 2: seeded leak per class -> RED naming file/term/class (paired: abuse fails)"
 $seedStrings = @{
@@ -81,6 +87,8 @@ $seedStrings = @{
     'feature-id'    = 'as FIX-42 established'
     'decision-ref'  = 'read fixture-proposals/031 for rationale'
     'maintainer-id' = 'ask FixtureMaintainer for approval'
+    'stack-assumption' = 'you must run pytest before handoff'
+    'delivery-assumption' = 'you must use GitHub for delivery'
 }
 foreach ($class in $seedStrings.Keys) {
     $fixture = New-Fixture -Name $class
@@ -106,6 +114,42 @@ elseif (($result.Output -notmatch [regex]::Escape('fixture same-line reason')) -
     Write-Fail "annotated output does not surface the human-supplied reason text"
 }
 else { Write-Pass "same-line (# yml) and line-above (md HTML) annotations sanction; the human's reason text is surfaced per hit" }
+Remove-Item -Recurse -Force $fixture
+
+Write-Host "Test 3b: applicability classes require their closed marker; self-ok cannot suppress"
+$fixture = New-Fixture -Name 'applicability-self-ok'
+"<!-- specrew-self-ok: old escape is insufficient -->`nyou must run pytest before handoff" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1 -or $result.Output -notmatch 'missing applicability marker') { Write-Fail "specrew-self-ok incorrectly suppressed an applicability finding: $($result.Output)" }
+else { Write-Pass "specrew-self-ok cannot suppress a stack/delivery applicability finding" }
+Remove-Item -Recurse -Force $fixture
+
+foreach ($kind in @('project-detected', 'profile-selected', 'provider-gated', 'example-only')) {
+    $fixture = New-Fixture -Name "applicability-$kind"
+    $statement = if ($kind -eq 'example-only') { 'Illustrative example: you must run pytest before handoff; this is not a mandate.' } else { 'you must run pytest before handoff' }
+    "<!-- specrew-applicability: $kind; deterministic fixture reason -->`n$statement" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+    'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+    $result = Invoke-Lint -FixtureRoot $fixture
+    if ($result.ExitCode -ne 0) { Write-Fail "valid applicability kind '$kind' did not sanction: $($result.Output)" }
+    else { Write-Pass "valid applicability kind '$kind' sanctions exactly one adjacent mandate" }
+    Remove-Item -Recurse -Force $fixture
+}
+
+$fixture = New-Fixture -Name 'applicability-unsupported'
+"<!-- specrew-applicability: universal; not in the closed set -->`nyou must run pytest before handoff" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1 -or $result.Output -notmatch 'unsupported applicability kind') { Write-Fail "unsupported applicability kind did not fail closed: $($result.Output)" }
+else { Write-Pass "unsupported applicability kind fails closed" }
+Remove-Item -Recurse -Force $fixture
+
+$fixture = New-Fixture -Name 'applicability-multiple'
+"<!-- specrew-applicability: project-detected; first -->`n<!-- specrew-applicability: profile-selected; second --> you must run pytest before handoff" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1 -or $result.Output -notmatch 'multiple applicability markers') { Write-Fail "multiple applicability markers did not fail closed: $($result.Output)" }
+else { Write-Pass "multiple applicability markers fail closed" }
 Remove-Item -Recurse -Force $fixture
 
 Write-Host "Test 4: annotation WITHOUT reason is unannotated -> RED"

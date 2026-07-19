@@ -62,12 +62,12 @@ Examples:
 2. In **What needs your review**, say exactly what should be reviewed and why.
 3. In **What happens next**, say what will happen after review or approval.
 4. In **What I need from you**, ask for the single review/verdict action.
-5. If the review target is a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
+5. If the review target is a local repository file, include a `file:///` URI resolved from the current project's absolute path.
 6. Name the owner when it matters.
 
 Example next step:
 
-> Review the new handoff wording in the coordinator prompt, template, and Squad agent contract. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
+> Review the new handoff wording in the coordinator prompt, template, and agent contract. Start with `file:///absolute/project/path/specs/001-feature/contracts/coordinator-handoff-template.md`.
 
 At `feature-closeout`, copy the `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows from the launch contract's `## Resolved Feature-Closeout Delivery` block. That resolved block is authoritative: execute only its applicable steps, keep every named N/A reason visible, never invent a forge, review, or publication step, and require prerelease validation before stable only for `beta-stable`.
 
@@ -108,7 +108,7 @@ Example next step:
 
 Examples:
 
-- **Compliant**: "I used the current authorization to advance only to the implementation boundary. I stopped again and I need your review of `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` before the review-boundary."
+- **Compliant**: "I used the current authorization to advance only to the implementation boundary. I stopped again and I need your review of `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/plan.md` before the review-boundary."
 - **Violation**: "You said continue, so I emitted review-boundary, retro-boundary, and iteration-closeout commits." Expected validator result: `validation-fail.bundled-boundary-advance`.
 
 ### 5A. Stop-vs-Progress Decision
@@ -161,7 +161,7 @@ Examples:
 - **Why I stopped**: The approved slice is implemented, but the wording still needs a human review pass.
 - **What needs your review**: Review the coordinator response wording, the decision guidance, and the validator expectations for consistency.
 - **What happens next**: If approved, the rollout proceeds to the next proof task; if sent back, I will revise only the wording slice.
-- **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
+- **What I need from you**: Review the wording in the prompt, template, and agent section for clarity and consistency. Start with `file:///absolute/project/path/specs/001-feature/contracts/coordinator-handoff-template.md`.
 
 ### Boundary-Blocked Stop Message
 
@@ -169,7 +169,7 @@ Examples:
 - **Why I stopped**: I stopped at the review-boundary because per-boundary discipline requires a separate authorization before any review-boundary commit can be emitted.
 - **What needs your review**: Review the plan and hardening gate evidence before deciding whether the review-boundary should advance.
 - **What happens next**: If approved, the Crew emits the review-boundary commit and begins review evidence collection.
-- **What I need from you**: Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and approve or reject advancement to the review-boundary.
+- **What I need from you**: Review `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/plan.md` and approve or reject advancement to the review-boundary.
 
 ### Verification-Gap Stop Message
 

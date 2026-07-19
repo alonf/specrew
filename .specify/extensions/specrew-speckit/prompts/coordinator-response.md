@@ -115,7 +115,7 @@ When human review or manual testing is needed:
 - Say exactly what should be reviewed or tested.
 - Name the owner when it matters.
 - Keep the next step concrete and singular.
-- If the next step is review of a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
+- If the next step is review of a local repository file, include a `file:///` URI resolved from the current project's absolute path.
 
 ### 4. Final Stop Message: Verification Gaps
 
@@ -173,7 +173,7 @@ Review and approve the bounded wording change before Iteration 002 proof work be
 ### Substantive Boundary Example
 
 **What I just did**
-I updated **the substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 boundary-discipline, console-substance, and click-through rules**. I aligned `file:///C:/Dev/Specrew/.github/agents/squad.agent.md`, `file:///C:/Dev/Specrew/extensions/specrew-speckit/prompts/coordinator-response.md`, and `file:///C:/Dev/Specrew/extensions/specrew-speckit/scripts/validate-governance.ps1`, recorded the canonical authorization shape in `.squad/decisions.md`, and verified the governing integration checks still pass before the next boundary.
+I updated **the substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 boundary-discipline, console-substance, and click-through rules**. I aligned `file:///absolute/project/path/.github/agents/squad.agent.md`, `file:///absolute/project/path/extensions/example/prompts/coordinator-response.md`, and `file:///absolute/project/path/extensions/example/scripts/validate-governance.ps1`, recorded the canonical authorization shape in `.squad/decisions.md`, and verified the governing integration checks still pass before the next boundary.
 
 **Why I stopped**
 I stopped at the review-boundary because the next lifecycle step is the review boundary, and per-boundary discipline allows only one explicitly authorized boundary advance at a time.
@@ -185,7 +185,7 @@ Review the boundary artifacts and the committed evidence; focus on the plan, har
 If approved, the Crew enters review and produces the review evidence before stopping again for review signoff.
 
 **What I need from you**
-Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md`, then approve or reject advancement to the review-boundary.
+Review `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/plan.md` and `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md`, then approve or reject advancement to the review-boundary.
 
 ### In-Flight Progress Update Example
 

@@ -32,7 +32,7 @@ $fakeModuleRoot = Join-Path $testRoot 'module/extensions/specrew-speckit'
 
 function New-FakeModule {
     param([string]$Root)
-    foreach ($d in @('commands', 'scripts', 'templates', 'squad-templates')) {
+    foreach ($d in @('commands', 'data', 'scripts', 'templates', 'squad-templates')) {
         New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null
     }
     Set-Content -LiteralPath (Join-Path $Root 'extension.yml') -Value @'
@@ -47,6 +47,7 @@ requires:
 '@ -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'README.md') -Value 'test' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'refocus-scopes.json') -Value '{"schema_version":"1.0","scopes":[]}' -Encoding utf8 -NoNewline
+    Set-Content -LiteralPath (Join-Path $Root 'data/self-leak-deny-list.json') -Value '{"schema_version":"1.0","entries":[]}' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'commands/placeholder.md') -Value '# placeholder' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'scripts/placeholder.ps1') -Value '# placeholder' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $Root 'templates/placeholder.md') -Value '# placeholder' -Encoding utf8 -NoNewline

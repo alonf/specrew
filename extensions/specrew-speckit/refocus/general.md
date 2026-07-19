@@ -11,6 +11,8 @@ reviewed_at: 2026-06-08
 
 Inside Specrew, these rules hold at every stage and on every host:
 
+The governed subject is the project resolved at `{{project_root}}`; Specrew is the methodology tool, never the project being specified or implemented.
+
 1. **Boundaries.** Every boundary needs explicit HUMAN authorization. One approval advances at most ONE boundary; discussion is not approval.
 2. **Spec truth.** The spec is authoritative. Drift between spec, plan, tasks, and code is first-class: record it in drift-log.md with a requirement citation.
 3. **Verdicts.** Recognized verdicts read "approved for <boundary>". Instruction-bearing verdicts carry the human's text. Ask if ambiguous.

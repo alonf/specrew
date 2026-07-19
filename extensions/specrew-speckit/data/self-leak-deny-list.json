@@ -6,6 +6,11 @@
     "semantics": "A hit is annotated when the hit line, or the line immediately above it, contains the token followed by non-empty reason text. Comment form per file kind: <!-- specrew-self-ok: reason --> for .md; # specrew-self-ok: reason for .ps1/.psd1/.yml. A token with no reason text is treated as unannotated.",
     "doc": "docs/methodology/self-leak-firewall.md"
   },
+  "applicability_annotation": {
+    "token": "specrew-applicability:",
+    "kinds": ["project-detected", "profile-selected", "provider-gated", "example-only"],
+    "semantics": "A stack-assumption or delivery-assumption match requires exactly one adjacent whole-comment marker: specrew-applicability: <kind>; <non-empty reason>. example-only also requires the statement itself to say example, illustrative, non-binding, or not a mandate. specrew-self-ok never suppresses an applicability finding."
+  },
   "entries": [
     {
       "pattern": "(?i)\\bPSGallery\\b|\\bPowerShell Gallery\\b",
@@ -83,6 +88,20 @@
       "reason": "Maintainer identifiers; consumer surfaces are maintainer-neutral.",
       "source": "proposal 205 W1 seed",
       "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)(?:\\b(?:must|required)\\b[^\\r\\n]{0,40}\\b(?:Pester|PowerShell|Windows|Node(?:\\.js)?|Python|pytest|Jest|Vitest|dotnet\\s+test|Maven|Gradle|Rust|Golang)\\b|\\b(?:use|run|install)\\s+(?:the\\s+)?(?:Pester|PowerShell|Windows|Node(?:\\.js)?|Python|pytest|Jest|Vitest|dotnet\\s+test|Maven|Gradle|Rust|Golang)\\b|\\b(?:Pester|PowerShell|Windows|Node(?:\\.js)?|Python|pytest|Jest|Vitest|dotnet\\s+test|Maven|Gradle|Rust|Golang)\\b[^\\r\\n]{0,30}\\b(?:must|required)\\b)",
+      "class": "stack-assumption",
+      "reason": "A concrete runtime, platform, or test tool is presented as an instruction. Consumer-facing technology instructions require one adjacent applicability marker proving project detection, explicit profile selection, provider gating, or clearly non-binding example status.",
+      "source": "proposal 205 W7/W8 technology-assumption amendment (2026-07-13)",
+      "added": "2026-07-18"
+    },
+    {
+      "pattern": "(?i)(?:\\b(?:must|required)\\b[^\\r\\n]{0,50}\\b(?:(?-i:GitHub|GitLab|Bitbucket|Azure DevOps)|pull request|PR/MR|registry|package (?:registry|publication|release|install)|prerelease|stable promotion|release tag)\\b|\\b(?:use|run|install|push|publish|promote|open|create)\\s+(?:(?:to|a|the)\\s+)?(?:(?-i:GitHub|GitLab|Bitbucket|Azure DevOps)|pull request|PR/MR|registry|package (?:registry|publication|release|install)|prerelease|stable promotion|release tag)\\b|\\b(?:(?-i:GitHub|GitLab|Bitbucket|Azure DevOps)|pull request|PR/MR|registry|package (?:registry|publication|release|install)|prerelease|stable promotion|release tag)\\b[^\\r\\n]{0,40}\\b(?:must|required)\\b)",
+      "class": "delivery-assumption",
+      "reason": "A concrete forge, review, package, or release workflow is presented as an instruction. Consumer-facing delivery instructions require one adjacent applicability marker tied to project governance or explicit example-only wording.",
+      "source": "proposal 205 W7/W8 delivery-assumption amendment (2026-07-13)",
+      "added": "2026-07-18"
     }
   ]
 }

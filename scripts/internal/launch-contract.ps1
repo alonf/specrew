@@ -228,6 +228,14 @@ function Get-StartPrompt {
         '- Resolved from ``.specrew/config.yml`` into ``boundary_enforcement.policy_classes`` in ``start-context.json``: no human-judgment boundaries are configured for this run.'
     }
 
+    $hostShellGuidance = if ($IsWindows) {
+        @'
+<!-- specrew-applicability: project-detected; the active launch host was detected as Windows before this guidance was rendered -->
+- **Windows shell rule:** on Windows/PowerShell, do not use Bash syntax, Unix-only path assumptions, or cross-shell deletion/move pipelines. Use PowerShell-native commands with quoted `-LiteralPath` values for file operations.
+'@
+    }
+    else { '' }
+
     # Forward-slash form of the project path for use in `file:///` URLs in the
     # orientation block + Rule 52 (visible file:/// artifact references in user output).
     $projectPathUrl = ([string]$ResolvedProjectPath).Replace('\', '/').TrimEnd('/')
@@ -319,7 +327,7 @@ The ``crew_runtime_status`` field tells you whether the downstream sync-* agents
 - ``Status: approved`` / ``in_progress`` are INVALID iteration / task statuses. Canonical iteration statuses: ``planning | executing | reviewing | retro | complete | abandoned``. Canonical task statuses: ``planned | in-progress | done | needs-rework | deferred | blocked`` (hyphens, not underscores).
 - Hardening-gate concern ``Status: tbd`` is rejected. Use ``addressed | not-applicable | deferred-with-approval``.
 - ``Capacity: <consumed>/<cap> <effort_unit>`` with NO trailing prose. Notes go in the Notes section.
-- **Windows shell rule:** on Windows/PowerShell, do not use Bash syntax, Unix-only path assumptions, or cross-shell deletion/move pipelines. Use PowerShell-native commands with quoted ``-LiteralPath`` values for file operations.
+$hostShellGuidance
 - **Web-form feature pitfall:** for any feature whose deliverable is an HTML form (calculator, registration, search box, etc.), browsers submit the form on **Enter key inside any ``<input>``** — which triggers a full page reload to the form's ``action`` URL and wipes computed output. If the form is rendered by your app and you want Enter to compute-without-reload, either (a) bind a ``submit`` handler that calls ``event.preventDefault()`` or (b) use ``<input type="button">`` (not ``submit``) for the action and avoid the form's default submission. Cover this in the test plan: a Cypress / Playwright test that types into the field and presses Enter must verify the computed value appears AND the URL does not change. This pitfall was the dominant bug class in F-040 tip-calc-v2 + calc-v2 dogfooding.
 - **Web-feature acceptance evidence:** for browser features, the review-time evidence must include a screenshot or recorded interaction showing the golden-path AND Enter-key behavior — running ``Invoke-WebRequest`` against the static HTML proves the file deployed, NOT that the feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented in quickstart.md) are the canonical evidence layer.
 

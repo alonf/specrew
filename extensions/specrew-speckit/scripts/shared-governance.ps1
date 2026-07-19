@@ -199,6 +199,7 @@ function Format-SpecrewFeatureCloseoutReleaseGuidance {
             return @(
                 $header
                 ('Publish target: {0}.' -f $record.PublishTarget)
+                # specrew-applicability: project-detected; emitted only after repository governance resolves beta-stable with a publish target
                 'AGENT NEXT ACTION: complete push/review/merge as configured, publish a prerelease, verify it, pause for human runtime validation, then publish stable only after PASS.'
                 'HUMAN ACTION NEEDED: approve each external mutation and report PASS or FAIL from the installed prerelease before stable promotion.'
             ) -join [Environment]::NewLine

@@ -136,7 +136,7 @@ Rules:
 - Session-opening acknowledgements follow the same rule: if no human action is required yet, they are in-flight progress updates.
 - Mixed transition + true blocker cases still use the final stop message because the human action wins.
 - When review is recommended, say exactly what to review.
-- When review points to a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path, and use `file:///` for authored artifact references outside approved exempt contexts.
+- When review points to a local repository file, include a `file:///` URI resolved from the current project's absolute path, and use `file:///` for authored artifact references outside approved exempt contexts.
 - When manual testing is recommended, say exactly what scenario or risk to test.
 
 Examples:
@@ -195,6 +195,7 @@ Before assembling the session cast, check for personal agents:
 
 ### Issue Awareness
 
+<!-- specrew-applicability: provider-gated; this instruction is shipped only by the GitHub-provider template deployment -->
 **On every session start (after resolving team root):** Check for open GitHub issues assigned to squad members via labels. Use the GitHub CLI or API to list issues with `squad:*` labels:
 
 ```
@@ -1503,10 +1504,9 @@ These rules override generic Squad coordination whenever the repository is boots
     - After each committed boundary handoff, synchronize `Commit Reference` away from `pending`, keep `Recorded At` in UTC seconds precision, run a stale-reference scan on the cited `file:///` targets, and rerun validation on the exact committed tree before claiming readiness.
 
 1. **Carry feature closeout version management**
-    - When a feature closeout is preparing to claim shipped work, treat release-version bookkeeping as required closure work rather than an optional reminder.
-    - Update the authoritative product version in `.specrew/config.yml`, the matching `version:` field in `extensions/specrew-speckit/extension.yml` (and the deployed mirror at `.specify/extensions/specrew-speckit/extension.yml`), add the corresponding `CHANGELOG.md` entry, refresh any README version summary or linked versioning references that surfaced the previous version, and create the release tag that anchors the closed feature state.
-    - Rerun `validate-governance.ps1` after the version/changelog/tag updates so the closeout evidence reflects the final public-readiness state.
-    - If any release-version step is intentionally deferred, keep the feature open until explicit human-approved defer evidence is recorded in the governing artifacts.
+    - Read `## Resolved Feature-Closeout Delivery` before proposing version, tag, or publication work. A local-only, push-only, or PR-flow project does not gain release bookkeeping merely because the lifecycle reached feature-closeout.
+    - When the resolved model includes publication, update only the project-owned version and changelog surfaces named by its governance, then validate the final state. Never assume Specrew's own manifest, mirror, tag, or registry layout.
+    - Keep any applicable but deferred delivery step open until explicit human-approved defer evidence is recorded.
 
 2. **Provide a review-ready implementation briefing**
     - At the end of implementation and review, provide a developer-facing briefing that summarizes what was built, how it maps to requirements, the main happy path and relevant alternative flows, dependency/package usage including newly introduced packages, the testing strategy, and an explicitly labeled estimate of coverage or confidence.

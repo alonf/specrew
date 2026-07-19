@@ -382,6 +382,7 @@ Ensure-Directory -Path $targetExtensionRoot -Actions $actions
 # not silently skip (otherwise a future packaging regression would be masked).
 $itemsToCopy = @(
     @{ Name = 'commands';        Optional = $false }
+    @{ Name = 'data';            Optional = $false }
     @{ Name = 'extension.yml';   Optional = $false }
     @{ Name = 'README.md';       Optional = $false }
     @{ Name = 'refocus-scopes.json'; Optional = $false }

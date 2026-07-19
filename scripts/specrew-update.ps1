@@ -1450,6 +1450,35 @@ if ($scopes -contains 'Specrew') {
             })
     }
 
+    # Managed Specrew-owned templates have now passed through their existing
+    # hash-aware refresh policy. The consumer checker is intentionally advisory:
+    # it flags authored project files but never rewrites them.
+    $consumerAssumptionChecker = Join-Path $resolvedProjectPath '.specify/extensions/specrew-speckit/scripts/test-consumer-assumptions.ps1'
+    if (Test-Path -LiteralPath $consumerAssumptionChecker -PathType Leaf) {
+        $consumerAssumptionResult = & $consumerAssumptionChecker -ProjectPath $resolvedProjectPath -PassThru
+        $consumerAssumptionDetail = if (-not $consumerAssumptionResult.rules_valid) {
+            'rule surface unavailable; advisory warning emitted and user files preserved'
+        }
+        elseif ([int]$consumerAssumptionResult.finding_count -eq 0) {
+            "clean: $([int]$consumerAssumptionResult.scanned_files) consumer files checked after managed refresh"
+        }
+        else {
+            "$([int]$consumerAssumptionResult.finding_count) advisory finding(s); user files preserved"
+        }
+        $null = $summary.Add([pscustomobject]@{
+                Platform = 'Specrew'
+                Action   = 'consumer-assumption-advisory'
+                Detail   = $consumerAssumptionDetail
+            })
+    }
+    else {
+        $null = $summary.Add([pscustomobject]@{
+                Platform = 'Specrew'
+                Action   = 'consumer-assumption-advisory'
+                Detail   = 'checker unavailable after extension refresh; user files preserved'
+            })
+    }
+
     . (Join-Path $repoRoot 'scripts\internal\continuous-co-review\verification-plan-materializer.ps1')
     $verificationPlanSetup = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $resolvedProjectPath
     $null = $summary.Add([pscustomobject]@{

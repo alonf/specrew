@@ -37,8 +37,9 @@ The CI lane runs `lint-self-leak.ps1` over **exactly what ships**: the
 module manifest's FileList filtered to the consumer-deployed prefixes
 (`templates/`, `squad-templates/`, `extensions/specrew-speckit/`). The
 deny-list is versioned data (`schema_version`; entries carry
-pattern/class/reason/source/added across seven classes: release-model,
-dev-path, feature-id, maintainer-id, registry, repo-ref, decision-ref).
+pattern/class/reason/source/added across nine classes: release-model,
+dev-path, feature-id, maintainer-id, registry, repo-ref, decision-ref,
+stack-assumption, and delivery-assumption).
 Every field-found leak adds one entry — prevention and detection read the
 same shipped file, so they cannot disagree about what a leak is.
 
@@ -63,6 +64,18 @@ reason text is treated as unannotated** — the reason is the audit trail.
 Tracked-debt annotations name the task/requirement that removes them
 (e.g. the release-model resolver), so the debt is self-documenting and
 its cleanup is scheduled, never silent.
+
+Technology and delivery assumptions use a stricter escape. They cannot
+be suppressed with `specrew-self-ok`; they require exactly one adjacent
+whole-comment applicability marker whose kind is one of the closed set:
+
+```text
+specrew-applicability: project-detected|profile-selected|provider-gated|example-only; <reason>
+```
+
+`example-only` also requires the matched statement itself to say that it
+is an example, illustrative, non-binding, or not a mandate. This is an
+applicability firewall, not a global ban on naming technologies.
 
 ## Runtime and consumer-side arms
 

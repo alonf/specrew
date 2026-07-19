@@ -190,12 +190,9 @@ if ($violations.Count -gt 0) {
 }
 Write-Pass ("SC-008/SC-015 sweep: no bare mandate across {0} markdown + {1} .ps1 + {2} deployed-agent downstream-governing surface(s)." -f $scanned, $ps1Scanned, $agentScanned)
 
-# --- positive assertion: the 4 neutralized change-surfaces each carry the labeled example (proves they
-#     were neutralized-with-an-example, not silently stripped of all guidance) ---
+# --- positive assertion: the methodology's explicitly labeled Specrew example remains available,
+#     while runtime prompt surfaces now delegate to the recorded release-model resolver. ---
 $mustCarryMarker = @(
-    'extensions/specrew-speckit/prompts/coordinator-decision-guidance.md',
-    'extensions/specrew-speckit/prompts/coordinator-response.md',
-    'extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md',
     'docs/methodology/lifecycle-discipline.md'
 )
 foreach ($m in $mustCarryMarker) {
@@ -204,7 +201,19 @@ foreach ($m in $mustCarryMarker) {
         Write-Fail "$m must carry the labeled '$exampleMarker' example (DP-1 (b) / DP-2)"
     }
 }
-Write-Pass ("SC-008 sweep: all {0} neutralized change-surfaces carry the labeled non-mandatory example." -f $mustCarryMarker.Count)
+Write-Pass ("SC-008 sweep: the methodology retains its labeled non-mandatory example." )
+
+foreach ($runtimePrompt in @(
+        'extensions/specrew-speckit/prompts/coordinator-decision-guidance.md',
+        'extensions/specrew-speckit/prompts/coordinator-response.md',
+        'extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md'
+    )) {
+    $body = Get-Content -LiteralPath (Join-Path $repoRoot $runtimePrompt) -Raw -Encoding UTF8
+    if ($body -notmatch 'Resolved Feature-Closeout Delivery|release[- ]model') {
+        Write-Fail "$runtimePrompt must delegate feature closeout to the resolved release-model contract"
+    }
+}
+Write-Pass 'SC-008 sweep: runtime prompts delegate closeout to the project-recorded release model.'
 
 # --- D-304 completion: the two methodology INDEX docs neutralized by REMOVAL (no labeled example —
 #     they merely described lifecycle-discipline.md's release section). Assert they carry no
@@ -253,24 +262,24 @@ foreach ($o in $ownInfra) {
 }
 Write-Pass ("SC-013: Specrew's own infra is unchanged — all {0} own-infra/host-adapter surfaces still carry their GitHub usage." -f $ownInfra.Count)
 
-# --- T308: Specrew's OWN closeout flow still works — its governance opts into automated review, and the
-#     neutralized change-surfaces still document Specrew's own GitHub + PSGallery steps (as examples). ---
+# --- T308: Specrew's OWN closeout flow still works — its governance opts into automated review, and
+#     its recorded beta-stable model resolves the concrete closeout without leaking it downstream. ---
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
 $ownOptIn = Get-SpecrewAutomatedReviewOptIn -ProjectRoot $repoRoot
 if (-not [bool]$ownOptIn.Enabled) { Write-Fail "T308: Specrew's own governance must still opt into automated review (provider:github Copilot) — own flow regressed" }
 Write-Pass ("T308: Specrew's own governance still opts into automated review (provider_suggestion={0}) — own reviewer flow preserved." -f $ownOptIn.ProviderSuggestion)
 
-$exampleFlow = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/prompts/coordinator-decision-guidance.md') -Raw -Encoding UTF8
-if ($exampleFlow -notmatch 'gh pr create' -or $exampleFlow -notmatch 'Install-Module Specrew') {
-    Write-Fail "T308: the labeled Specrew example must still document Specrew's own gh + PSGallery steps (kept documented/usable, not stripped)"
+$ownReleaseModel = Resolve-SpecrewReleaseModel -ProjectRoot $repoRoot
+$ownCloseout = Format-SpecrewFeatureCloseoutReleaseGuidance -ProjectRoot $repoRoot
+if ($ownReleaseModel.Model -ne 'beta-stable' -or [string]::IsNullOrWhiteSpace($ownReleaseModel.PublishTarget) -or $ownCloseout -notmatch 'publish a prerelease' -or $ownCloseout -notmatch 'stable') {
+    Write-Fail 'T308: Specrew governance must resolve a beta-stable closeout with a concrete publish target and prerelease validation'
 }
-Write-Pass "T308: Specrew's own GitHub + PSGallery closeout steps remain documented in the labeled example (usable for Specrew, example-only for downstream)."
+Write-Pass ("T308: Specrew's own beta-stable closeout resolves from governance (publish_target={0}) without becoming downstream prompt text." -f $ownReleaseModel.PublishTarget)
 
 # --- iter-4 (FR-022 / SC-015): the neutralized RUNTIME/DEPLOYED change-surfaces carry the labeled example
 #     (neutralized-with-an-example, not silently stripped). These are F-182-owned current-tree surfaces. ---
 $mustCarryMarkerRuntime = @(
     'scripts/specrew-start.ps1',                 # launcher: carries Specrew's own PSGallery update-check, marker-labeled
-    'scripts/internal/launch-contract.ps1',      # F-174 post-rebase: the relocated launch-contract generator (now holds the closeout-SDLC block + marker)
     '.github/agents/squad.agent.md'              # the deployed per-host agent file
 )
 foreach ($m in $mustCarryMarkerRuntime) {
@@ -282,6 +291,12 @@ foreach ($m in $mustCarryMarkerRuntime) {
     }
 }
 Write-Pass ("SC-015: the {0} neutralized runtime/deployed change-surfaces carry the labeled non-mandatory example." -f $mustCarryMarkerRuntime.Count)
+
+$launchContractBody = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/launch-contract.ps1') -Raw -Encoding UTF8
+if ($launchContractBody -notmatch 'Format-SpecrewFeatureCloseoutReleaseGuidance' -or $launchContractBody -notmatch '## Resolved Feature-Closeout Delivery') {
+    Write-Fail 'scripts/internal/launch-contract.ps1 must resolve closeout from project governance instead of embedding a release example'
+}
+Write-Pass 'SC-015: launch-contract closeout is resolver-backed rather than an embedded Specrew release example.'
 
 # --- F-174 regression fixture: prove the widened .ps1 scan WOULD catch a future
 #     scripts/internal/launch-contract.ps1 site carrying the bare mandate — WITHOUT editing F-174's

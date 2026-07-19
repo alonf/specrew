@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T027 release-model resolver and applicable closeout teaching
-**Tasks Remaining**: T028, T065, T066, separately authorized T029, and T067
-**In Progress**: T028 consumer deny checks, prompt fixture, and applicability firewall
+**Last Completed Task**: T028 consumer deny checks, prompt fixture, and applicability firewall
+**Tasks Remaining**: T065, T066, separately authorized T029, and T067
+**In Progress**: T065 supplier/runner/injection deterministic end-to-end fixture matrix
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-18T23:40:37Z
+**Updated**: 2026-07-19T00:08:46Z
 
 ## Planning Authorization
 
@@ -137,10 +137,19 @@
   wiring, lifecycle, and seven mirrored-surface fixture groups pass, as do the updated legacy closeout and launch
   contract suites. The broad changed-only governance run exceeded its 120-second local bound without output; T066
   retains the bounded full-governance obligation rather than treating that timeout as a pass.
+- T028 extends the single shipped deny-list with `stack-assumption` and `delivery-assumption` while requiring
+  exactly one closed-set applicability marker for those classes; the older self-reference escape cannot suppress
+  them. The same data file now deploys with the extension and drives both the provider-gated methodology advisory
+  and update's post-refresh, flag-only consumer check. Refocus distinguishes the governed project from the tool,
+  platform-specific launch guidance is rendered only after platform detection, and hard-coded self paths and
+  unconditional delivery instructions were removed from consumer teaching. Paired lint/consumer/update fixtures,
+  package deployment, release-model, forge-neutralization, launch-contract parity, and a 38-surface runtime render
+  covering reviewer rounds, navigator notes, boundary scaffolding, lifecycle templates, Python/pytest, GitLab, and
+  local-only delivery all pass. PSScriptAnalyzer was unavailable locally; T066 retains that CI obligation.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T028 executes next to extend the consumer deny list and prove prompt/applicability behavior across heterogeneous
-  projects.
+- T065 executes next to exercise supplier selection, recorded execution, evidence joining, and campaign injection
+  as one deterministic end-to-end path.
 
 ## Notes
 

@@ -33,6 +33,7 @@ $fakeProjectRoot = Join-Path $testRoot 'project'
 try {
     # Synthetic module tree — include every $itemsToCopy entry EXCEPT hooks/
     New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'commands')        | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'data')            | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'scripts')         | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'templates')       | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $fakeModuleRoot 'squad-templates') | Out-Null
@@ -50,6 +51,7 @@ requires:
 '@ -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $fakeModuleRoot 'README.md')                       -Value 'test' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $fakeModuleRoot 'refocus-scopes.json')             -Value '{"schema_version":"1.0","scopes":[]}' -Encoding utf8 -NoNewline
+    Set-Content -LiteralPath (Join-Path $fakeModuleRoot 'data/self-leak-deny-list.json')     -Value '{"schema_version":"1.0","entries":[]}' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $fakeModuleRoot 'scripts/placeholder.ps1')         -Value '# placeholder' -Encoding utf8 -NoNewline
 
     # Copy deploy script + shared-governance into the fake scripts/ so $PSScriptRoot
@@ -104,6 +106,7 @@ requires:
     # and assert it throws — preventing future packaging regressions from being masked.
     $requiredMissingRoot = Join-Path $testRoot 'module-no-commands/extensions/specrew-speckit'
     New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'hooks')           | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'data')            | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'scripts')         | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'templates')       | Out-Null
     New-Item -ItemType Directory -Force -Path (Join-Path $requiredMissingRoot 'squad-templates') | Out-Null
@@ -119,6 +122,7 @@ requires:
 '@ -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $requiredMissingRoot 'README.md') -Value 'test' -Encoding utf8 -NoNewline
     Set-Content -LiteralPath (Join-Path $requiredMissingRoot 'refocus-scopes.json') -Value '{"schema_version":"1.0","scopes":[]}' -Encoding utf8 -NoNewline
+    Set-Content -LiteralPath (Join-Path $requiredMissingRoot 'data/self-leak-deny-list.json') -Value '{"schema_version":"1.0","entries":[]}' -Encoding utf8 -NoNewline
     # NOTE: intentionally NO commands/ subdirectory — that's the regression case
     Copy-Item -LiteralPath $realDeployScript -Destination (Join-Path $requiredMissingRoot 'scripts/deploy-speckit-extension.ps1') -Force
     Copy-Item -LiteralPath $realSharedGov    -Destination (Join-Path $requiredMissingRoot 'scripts/shared-governance.ps1')       -Force

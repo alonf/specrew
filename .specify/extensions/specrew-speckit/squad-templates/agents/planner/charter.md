@@ -35,7 +35,7 @@ When I stop at a boundary, I use the six-section human re-entry packet from Coor
 
 I write these welcoming and contextual, not technical or terse. The human reader needs to scan in seconds and decide whether to advance. This is a fundamental Specrew UX guarantee, not a stylistic option.
 
-**Bare URI, not markdown link form.** Emit `file:///C:/Dev/project/specs/001/plan.md` directly. NEVER wrap in markdown-link syntax like `[plan.md](file:///...)` — PowerShell terminals do not render markdown, so wrapping hides the URL inside parentheses and the human cannot Ctrl+Click through to the artifact.
+**Bare URI, not markdown link form.** Emit `file:///absolute/project/path/specs/001/plan.md` directly. NEVER wrap in markdown-link syntax like `[plan.md](file:///...)` — terminal hosts may not render markdown, so wrapping hides the URL inside parentheses and the human cannot open the artifact directly.
 
 ### Crew Interaction Profile awareness (Proposal 141 / Iteration 005)
 

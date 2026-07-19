@@ -26,7 +26,7 @@ The core user-facing risk is jargon-first handoff wording that hides the actual 
 | Readable identifier references | When authored prose contains three or more feature, iteration, task, requirement, corpus, or commit references, each one has inline descriptive scope or a valid shared scope statement | Three or more authored references appear without readable descriptive scope | Warn, do not hard-fail |
 | Shared-scope grouping clarity | A grouped list or range uses one shared explanation only when the grouping is unmistakable | A grouped list relies on one explanation but the covered identifiers are ambiguous | Warn, request rewrite |
 | Excluded verbatim surfaces stay excluded | Numeric references that appear only in quoted material, code blocks, raw tool output, or Copilot-rendered tool-call result blocks are ignored | The review counts excluded verbatim content toward the descriptive-reference warning | Warn, request rewrite |
-| Review file reference format | If the next step is local file review in this Windows workflow, the response includes a `file:///` URI using the absolute Windows path | The response points the reviewer at a local file with only a plain path or no navigation-ready URI | Warn, request rewrite |
+| Review file reference format | If the next step is local file review, the response includes a `file:///` URI resolved from the current project's absolute path | The response points the reviewer at a local file with only a plain path or no navigation-ready URI | Warn, request rewrite |
 | Thin "What I just did" | Planning / implementation / review / retro handoffs include at least 3 identifiers and at least 50 words; iteration-closeout / feature-closeout include at least one of those thresholds | The section is too thin for the active boundary | Warn with `soft-warning.thin-what-i-just-did` |
 | Specific stop boundary | `Why I stopped` names the exact boundary that is being entered and matches the active iteration state | The boundary is generic, missing, or contradicts the active iteration state | Warn with `soft-warning.unspecific-stop-boundary` |
 | Actionable boundary request | `What I need from you` names the boundary, includes `file:///` inspection targets, and requests a verdict | One or more of `boundary-name`, `inspection-target`, or `verdict-required` is missing | Warn once with `soft-warning.unactionable-user-request` |
@@ -100,7 +100,7 @@ When identifiers appear only inside excluded verbatim content:
 When the next step is to review a local repository file in this Windows environment:
 
 - confirm the response includes a `file:///` URI
-- confirm the URI uses the absolute Windows path
+- confirm the URI resolves from the current project's absolute path
 - allow additional fallbacks, but do not accept plain paths as the only review reference
 
 ## Executable Heuristics

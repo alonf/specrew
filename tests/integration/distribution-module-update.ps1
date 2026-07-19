@@ -182,6 +182,11 @@ $modifiedDeletedTargetPath = Join-Path $projectRoot '.github\workflows\modified-
 $consumerRefocusCatalogPath = Join-Path $projectRoot '.specify\extensions\specrew-speckit\refocus-scopes.json'
 Remove-Item -LiteralPath $consumerRefocusCatalogPath -Force -ErrorAction SilentlyContinue
 
+$consumerGuidancePath = Join-Path $projectRoot 'docs\user-guidance.md'
+$null = New-Item -ItemType Directory -Path (Split-Path -Parent $consumerGuidancePath) -Force
+[System.IO.File]::WriteAllText($consumerGuidancePath, "The project must run pytest before handoff.`n", [System.Text.UTF8Encoding]::new($false))
+$consumerGuidanceBeforeHash = (Get-FileHash -LiteralPath $consumerGuidancePath -Algorithm SHA256).Hash
+
 $updateResult = Invoke-ModuleScript `
     -ModuleRoot $currentModuleRoot `
     -ScriptRelativePath 'scripts\specrew-update.ps1' `
@@ -296,6 +301,22 @@ if ((Get-FileHash -LiteralPath $consumerRefocusCatalogPath -Algorithm SHA256).Ha
     exit 1
 }
 Write-Pass 'Existing .specify trees receive the current refocus-scopes.json catalog.'
+
+$consumerCheckerPath = Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\test-consumer-assumptions.ps1'
+if (-not (Test-Path -LiteralPath $consumerCheckerPath -PathType Leaf)) {
+    Write-Fail 'Update did not deploy the consumer-assumption checker.'
+    exit 1
+}
+$updateOutput = $updateResult.Output -join "`n"
+if ($updateOutput -notmatch 'consumer-assumption-advisory' -or $updateOutput -notmatch 'Consumer assumption: docs/user-guidance.md:1') {
+    Write-Fail 'Update did not execute and surface the consumer-assumption advisory after refresh.'
+    exit 1
+}
+if ((Get-FileHash -LiteralPath $consumerGuidancePath -Algorithm SHA256).Hash -ne $consumerGuidanceBeforeHash) {
+    Write-Fail 'Update consumer advisory rewrote the user-authored guidance file.'
+    exit 1
+}
+Write-Pass 'Update executes the shipped advisory after managed refresh and preserves flagged user-authored files.'
 
 $updatedConfig = Get-Content -LiteralPath (Join-Path $projectRoot '.specrew\config.yml') -Raw -Encoding UTF8
 if ($updatedConfig -notmatch 'specrew_version:\s*"0\.18\.0"') {

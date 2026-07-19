@@ -657,13 +657,14 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 
 **Correction Implemented**:
 
-1. **Normative Rule for Specrew**: GitHub Projects V2 board MUST be used for self-development
+<!-- specrew-applicability: example-only; historical Specrew self-governance example, explicitly not a downstream mandate -->
+1. **Historical example — normative rule for Specrew only**: GitHub Projects V2 board MUST be used for self-development
    - Local task artifacts (plan.md, iteration state) are authoritative source of truth
    - GitHub Issues and Project board items are derived operational mirrors
    - Squad is responsible for board sync and maintenance (automation primary, manual fallback-only)
    - If automation fails, capability gap MUST be recorded (not silently downgraded)
 
-2. **Downstream Projects**: MAY choose whether to use GitHub Projects V2 (no mandate)
+2. **Downstream Projects**: GitHub Projects V2 remains optional (no mandate)
    - Choice of authoritative source is up to downstream project
    - If board is used, follow Squad automation model as reference
 
@@ -733,13 +734,15 @@ Picard reviewed three governance surfaces ahead of Iteration 1 execution:
 - Section 9 line: "Project board (optional): GitHub Projects V2 may be used for visibility if the team chooses"
 - Iteration 0 deliverables table: "GitHub Project board (optional)"
 
-All three contradicted the corrected rule: **Specrew self-development MUST use GitHub Projects V2 as a derived operational mirror maintained by Squad.**
+<!-- specrew-applicability: example-only; historical Specrew self-governance example, explicitly not a downstream mandate -->
+All three contradicted this historical Specrew-only example: **Specrew self-development MUST use GitHub Projects V2 as a derived operational mirror maintained by Squad.**
 
 **Fix Applied** (2 edits to plan.md):
 
 1. **Section 9 (GitHub Workflow for Specrew Development)** — Lines 360–376:
    - Removed "(optional)" labels and discretionary framing
-   - Restated board usage as REQUIRED for Specrew: "GitHub Issues are created from plan tasks and synchronized to GitHub Projects V2 board"
+   <!-- specrew-applicability: example-only; historical Specrew self-governance example, explicitly not a downstream mandate -->
+   - Historical example: restated board usage as REQUIRED for Specrew: "GitHub Issues are created from plan tasks and synchronized to GitHub Projects V2 board"
    - Clarified Squad responsibility: "Squad is responsible for creating, populating, and maintaining the board as a derived operational mirror from local artifacts"
    - Clarified distinction: "Manual board management is fallback-only if automation fails; capability gaps or blockers must be recorded, not silently downgraded to manual management"
    - Added explicit downstream carve-out: "Downstream projects MAY opt in or out of GitHub Projects board usage. Downstream projects retain choice of authority model..."
@@ -754,7 +757,8 @@ All three contradicted the corrected rule: **Specrew self-development MUST use G
 
 **Traceability**: Fix aligns `plan.md` with:
 
-- `spec.md` § Clarifications (GitHub Projects V2): "Specrew's own development MUST use GitHub Projects V2"
+<!-- specrew-applicability: example-only; historical Specrew self-governance example, explicitly not a downstream mandate -->
+- Historical example from `spec.md` § Clarifications: "Specrew's own development MUST use GitHub Projects V2"
 - `.squad/protocol.md` § Iteration Coordination: "board is a derived operational mirror, manual board management is never normal"
 - `docs/github-project.md` § Overview: "GitHub Issues and Project items are synchronized from local artifacts for visibility, but they are not the authoritative source"
 
@@ -958,7 +962,8 @@ All three decision points (greenfield contract, brownfield additive flow, guard 
 3. Updated docs/getting-started.md with truthful Known Limitations section explaining:
    - Bootstrap correctly validates dependencies and attempts initialization
    - Spec Kit CLI has a Unicode encoding issue in some Windows environments
-   - Workaround: use Windows Terminal or VS Code terminal with UTF-8 support
+   <!-- specrew-applicability: example-only; historical environment-specific workaround, not downstream stack guidance -->
+   - Historical example workaround: use Windows Terminal or VS Code terminal with UTF-8 support
    - Documented what works (validator, corrected flags) vs. what's environment-dependent (CLI banner rendering)
 
 **Validator Fix Preservation**: Verified  ests/integration/validate-versions-cli-behavior.ps1 still passes (both healthy and broken Spec Kit scenarios).
