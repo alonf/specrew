@@ -1,7 +1,7 @@
 #requires -Version 7.0
 # T099 / FR-040 (design N3): the material-turn gate for the Stop-hook conformance parse. The per-line
 # transcript JSON parse (the dominant Stop-hook cost, scales with session size) runs ONLY when the stop
-# actually followed material work (the deterministic rolling-handover signal), a boundary verdict is
+# actually followed material work (the live owner-scoped turn delta), a boundary verdict is
 # pending, a material forced-continue retry is in flight, or exact active-feature state has a remaining workshop
 # lens whose rendered question must be validated. The old `$anySpec` trigger made EVERY stop in EVERY real project
 # (any specs/*/spec.md on disk) pay the parse - trivial/conversational stops still skip it entirely.

@@ -23,7 +23,7 @@
 ## Summary
 
 **Total drift events**: 3
-**Resolution rate**: 67% (2/3 resolved)
+**Resolution rate**: 100% (3/3 resolved)
 **Specification drift**: None detected
 
 ## Events
@@ -83,7 +83,7 @@
 
 ### DRIFT-198-I008-003 — material packet counts absolute dirty state as turn-owned work
 
-- **Status**: open; T070 blocked at its hard ceiling pending replan
+- **Status**: resolved by full-scope T070
 - **Severity**: major interaction-integrity defect
 - **Type**: implementation/contract drift
 - **Requirements**: FR-055, FR-056, NFR-002, NFR-007
@@ -93,12 +93,16 @@
 - **Required correction**: owner-scoped `turn-baseline.json` captures live HEAD plus dirty-path status/content
   fingerprints at genuine turn start; PostToolUse/Stop uses only the resulting delta for the trigger and count;
   SessionStart refreshes live state; T069 owner suppression remains.
-- **Ceiling finding**: Codex has verified `UserPromptSubmit` and Antigravity has verified `PreInvocation`, but the
-  supported Copilot and Cursor manifests register only session-start/stop and explicitly leave per-prompt events
-  unverified. Claude's reliable prompt event is not currently registered. Verifying and shipping the missing host
-  surfaces is additional host-capability work beyond T070's 2.25 SP hard ceiling.
-- **Disposition needed**: replan before production changes. Do not relabel absolute dirty state as a turn delta,
-  silently narrow host support, or proceed to T066 on the superseded candidate.
+- **Replan disposition**: the maintainer removed the SP ceiling and repriced the complete repair to 4.0 SP. The
+  iteration becomes 22/26 SP with 4 SP headroom.
+- **Implementation shape**: a host-independent core owns live Git snapshotting, content fingerprints, owner
+  baseline, delta, and packet-demand classification. Thin manifests map Claude/Codex `UserPromptSubmit`, Copilot
+  `userPromptSubmitted`, Cursor `beforeSubmitPrompt`, and Antigravity `PreInvocation`. No supported host is
+  capability-absent; the generic degraded path says only `CURRENTLY DIRTY IN THE WORKTREE`.
+- **Resolution evidence**: deterministic core, real deployment registration, normalized dispatcher delivery,
+  provider prompt/degraded message, stale-handover, consecutive-turn, same-path re-edit, and concurrent-session
+  fixtures pass. All 73 registered Feature 198 suites pass in 740.4 seconds. Three-OS CI remains T066 candidate
+  preparation evidence and does not reopen the corrected contract.
 
 ### Resolution Strategies
 

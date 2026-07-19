@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 19.75/26 story_points
+**Capacity**: 22/26 story_points
 **Started**: 2026-07-18
 **Completed**:
 **Planning Baseline**: `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`
@@ -24,14 +24,15 @@ capacity from 15 to 18 SP. They execute first so the remaining Iteration 008 lif
 repair. T069 is hard-capped at 2.25 SP: if its observed scope exceeds that estimate, stop and replan rather than
 expand the release slice. Implementation, provider invocation, and release action remain unauthorized.
 
-### Scoped T070 Amendment — 2026-07-19
+### Full-Scope T070 Amendment — 2026-07-19
 
-The maintainer authorized a 1.75 SP conformance turn-delta repair, hard-capped at 2.25 SP, before T066
-re-preparation. T070 must capture a live owner-scoped turn baseline, compare status/content fingerprints at
-PostToolUse/Stop, refresh SessionStart from live Git state, preserve T069 owner suppression, and prove stale
-handover, consecutive-turn, same-path re-edit, and concurrent-session behavior. The authorization explicitly
-requires a stop and replan if any supported host lacks a reliable turn-start event and covering that host would
-exceed the ceiling. The withdrawn T066 run ID and grant remain unspent.
+The maintainer removed T070's SP ceiling and authorized its full supported-host scope before T066
+re-preparation. The honest estimate is 4.0 SP: a host-independent core owns the live owner-scoped baseline,
+status/content fingerprints, delta, and packet-demand decision; thin host adapters contribute genuine prompt
+events; deterministic fixtures prove stale-handover, consecutive-turn, same-path re-edit, degraded display, and
+concurrent-session behavior. Claude, Codex, Copilot, Cursor, and Antigravity all have verified prompt-boundary
+registrations. The iteration rises to 22/26 SP and retains 4 SP headroom. The withdrawn T066 run ID and grant
+remain unspent.
 
 ## Objective
 
@@ -118,7 +119,7 @@ the published beta from a fresh consumer; it does not promote a stable version.
 | T063 | Init/update/setup materialization, guarded refresh, and actionable configuration UX | FR-049, SC-008, SC-009, SC-015 | US3 | 1.5 | Implementer | scripts/specrew-init.ps1, scripts/specrew-update.ps1, scripts/internal/**, extensions/specrew-speckit/**, .specify/extensions/specrew-speckit/**, tests/** | done | Implementer | 1.5 | passed |
 | T064 | Frozen-target verification execution and exact-digest campaign evidence injection | FR-048, FR-049, SC-015 | US3 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/continuous-co-review/** | done | Implementer | 1.5 | passed |
 | T065 | Supplier/runner/injection deterministic end-to-end fixture matrix | FR-048, FR-049, SC-015, NFR-007 | US3 | 1.25 | Implementer | tests/continuous-co-review/**, tests/fixtures/**, specs/198-beta2-hardening/iterations/008/quality/** | done | Implementer | 1.25 | passed |
-| T070 | Owner-scoped conformance turn-delta repair | FR-055, FR-056, NFR-002, NFR-007 | US1 | 1.75 | Implementer | host hook manifests, conformance-provider/refocus-catalog mirrors, tests/integration/**, tests/bootstrap/**, specs/198-beta2-hardening/iterations/008/** | planned | — | — | blocked-replan: reliable turn-start coverage exceeds 2.25 SP ceiling |
+| T070 | Host-independent conformance turn-delta core and supported-host prompt adapters | FR-055, FR-056, NFR-002, NFR-007 | US1 | 4.0 | Implementer | host hook manifests, conformance core/provider/refocus-catalog mirrors, tests/unit/**, tests/integration/**, tests/bootstrap/**, specs/198-beta2-hardening/iterations/008/** | done | Implementer | 4.0 | passed |
 | T066 | Full deterministic verification, three-OS CI, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 1.5 | Reviewer | tests/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | planned | — | — | — |
 | T067 | Published-beta fresh-consumer dogfood and stable-promotion input | SC-014, NFR-002 | Release | 1.0 | Maintainer | specs/198-beta2-hardening/iterations/008/quality/**, docs/** | planned | — | — | — |
 
@@ -148,9 +149,9 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 | --- | --- | --- |
 | Effort Unit | story_points | Repository-configured unit |
 | Capacity per Iteration | 26 | Current project cap |
-| Planned Effort | 19.75 | Core finish line plus the three explicitly selected repairs |
+| Planned Effort | 22.0 | Core finish line plus the three explicitly selected repairs at T070's full scope |
 | Overcommit Threshold | 1.0 | No overcommit allowed |
-| Capacity Status | ok | 6.25 SP headroom; T070 is blocked at its hard ceiling pending replan |
+| Capacity Status | ok | 4.0 SP headroom after T070's honest 4.0 SP reprice |
 | Iteration Bounding | scope | Beta2 supplier, distribution, release, and published-beta proof form one coherent finish line |
 | Time Limit (hours) | n/a | Scope-bounded iteration |
 | Defer Strategy | manual | No requirement or optional repair is silently included or dropped |
@@ -163,11 +164,11 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 - Residual supplier/materialization/campaign injection and deterministic fixture work T062–T065 totals 5.5 SP.
 - Full validation/signoff and post-publish consumer proof T066–T067 totals 2.5 SP.
 - The tasks verdict selected T068 (0.75 SP) and T069 (2.25 SP), raising the original executable baseline to 18.0 SP.
-- The scoped 2026-07-19 amendment adds T070 at 1.75 SP with a hard 2.25 SP ceiling.
-- Selected total: 19.75 SP. The combined slice fits within 26 SP and keeps 6.25 SP unallocated.
+- The full-scope 2026-07-19 amendment reprices T070 to 4.0 SP with no SP ceiling.
+- Selected total: 22.0 SP. The combined slice fits within 26 SP and keeps 4.0 SP unallocated.
 
-Iterations 001 and 002 expanded about 16–17% from plan to actual. Applying 17% to the selected 19.75 SP baseline
-yields about 23.1 SP, still below capacity. Iterations 006 and 007 reported estimated effort as actual but did not meter it
+Iterations 001 and 002 expanded about 16–17% from plan to actual. Applying 17% to the selected 22.0 SP baseline
+yields about 25.7 SP, still below capacity. Iterations 006 and 007 reported estimated effort as actual but did not meter it
 independently; they are not used as zero-variance evidence.
 
 ### Phase Baseline
@@ -179,11 +180,11 @@ independently; they are not used as zero-variance evidence.
 | Production execution and exact-digest injection | 1.5 | T064 |
 | Consumer distribution hardening | 6.25 | T021–T028 |
 | Deterministic end-to-end acceptance | 1.25 | T065 |
-| Conformance turn-delta repair | 1.75 | T070 |
+| Conformance turn-delta core and five host adapters | 4.0 | T070 |
 | Full verification and independent review | 1.5 | T066 |
 | Authorized prerelease publication | 0.75 | T029 |
 | Published-beta consumer dogfood | 1.0 | T067 |
-| **Total** | **19.75** | Matches selected capacity consumption |
+| **Total** | **22.0** | Matches selected capacity consumption |
 
 ### Provider and Review-Round Budget
 
@@ -196,14 +197,14 @@ independently; they are not used as zero-variance evidence.
 
 ## Selected Governance Repairs
 
-The original tasks verdict selected T068/T069; the scoped amendment adds T070. Their total is included in the
-19.75 SP baseline.
+The original tasks verdict selected T068/T069; the scoped amendments add and then fully reprice T070. Their total
+is included in the 22.0 SP baseline.
 
 | Task | Selected scope | Requirement/defect | Effort | Selection state | Hard boundary |
 | --- | --- | --- | ---: | --- | --- |
 | T068 | Narrow stale-binding rebind | `DRIFT-198-I008-001`; FR-041, FR-042, FR-044, FR-045, NFR-007 | 0.75 | selected; executes first | Bind a pending crossing to the actual closeout commit/tree; stale parent citations carry no authority; paired current/stale tests. No matcher redesign. |
 | T069 | Remaining stop/capture integrity repair | `DRIFT-198-I007-025`; FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007 | 2.25 | selected; executes after T068 | Reproduce injected-context, shared-baseline attribution, stale-binding-class, concurrent-session, and approval-plus-instructions defects; key attribution to session/owner; preserve full instructions; prevent cross-session billing. Stop and replan before exceeding 2.25 SP. |
-| T070 | Owner-scoped conformance turn-delta repair | `DRIFT-198-I008-003`; FR-055, FR-056, NFR-002, NFR-007 | 1.75 | selected; blocked for replan before implementation | Capture a live owner-scoped turn baseline and compute status/content deltas. Hard ceiling 2.25 SP. Supported Copilot/Cursor lack a verified per-turn event and Claude's event is not registered; expanding host capability is outside the ceiling. |
+| T070 | Host-independent conformance turn-delta core and adapters | `DRIFT-198-I008-003`; FR-055, FR-056, NFR-002, NFR-007 | 4.0 | completed under full-scope amendment | Core owns live baseline/fingerprints/delta/decision. Five thin adapters map Claude/Codex `UserPromptSubmit`, Copilot `userPromptSubmitted`, Cursor `beforeSubmitPrompt`, and Antigravity `PreInvocation`; only a proven capability-absent future host may degrade. |
 
 ## Dependencies and Execution Order
 
@@ -217,8 +218,8 @@ The original tasks verdict selected T068/T069; the scoped amendment adds T070. T
    provider invocation.
 6. T021–T028 complete the consumer distribution tail using the same applicability and provider provenance rules.
 7. T065 exercises the supplier, existing T018 runner, evidence recorder, and campaign path together.
-8. T070 must complete before T066 re-preparation. Its reliable-turn-start host matrix exceeded the 2.25 SP ceiling
-   during pre-implementation inspection, so the authorized scope stops for replan without production changes.
+8. T070 completes its core, five-host prompt adapter matrix, deterministic fixtures, and full verification before
+   T066 re-preparation.
 9. T066 runs focused suites, the full registry, scoped governance, three-OS CI, and independent exact-digest
    review. Finding corrections follow the bounded non-convergence rule.
 10. T029 may update version surfaces and publish only after T066 passes and a fresh human explicitly authorizes
@@ -265,7 +266,8 @@ not runtime technologies for this slice. The reconciled profile is:
 - Generic gate/artifact review adapters remain Beta3 scope under FR-065.
 - Stable promotion is outside this feature; SC-014 supplies evidence only.
 - Automatic campaign retention/pruning remains deferred.
-- T068, T069, and T070 are selected only at their stated bounds. T069/T070 cannot silently grow beyond 2.25 SP.
+- T068 and T069 retain their stated bounds. T070 is honestly priced at 4.0 SP and has no SP ceiling under the
+  full-scope amendment; only non-convergence or an architectural surprise triggers replan.
 - A broad verification discovery DSL, file-extension inference, and a Specrew/Pester default are prohibited.
 
 ## Traceability Summary
@@ -273,7 +275,7 @@ not runtime technologies for this slice. The reconciled profile is:
 - Every core task maps to at least one scoped FR, SC, or NFR.
 - Every selected requirement FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056 and
   SC-008–SC-015 maps to at least one task and one evidence shape.
-- T068/T069/T070 trace separately to named defects and are included in the 19.75 SP selected baseline.
+- T068/T069/T070 trace separately to named defects and are included in the 22.0 SP selected baseline.
 - The official plan scaffold was created first. Its scope parser rejected decorated requirement IDs such as
   `FR-024 (W1)` and produced an overbroad stub; this authored plan uses the canonical IDs and explicit mapping.
 

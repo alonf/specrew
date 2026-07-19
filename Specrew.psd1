@@ -143,6 +143,7 @@
         'extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1',
         'extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1',
         'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1',
+        'extensions/specrew-speckit/scripts/conformance-turn-delta.ps1',
         'extensions/specrew-speckit/scripts/specrew-handover-provider.ps1',
         'extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1',
         'extensions/specrew-speckit/scripts/sync-boundary-state.ps1',

@@ -40,7 +40,25 @@ function New-Fixture {
         boundary_enforcement = [ordered]@{ enabled = $Enabled; last_authorized_boundary = $LastAuth; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
     }
     [System.IO.File]::WriteAllText((Join-Path $proj '.specrew\start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
+    $null = & git -C $proj init --quiet
+    if ($LASTEXITCODE -ne 0) { throw 'fixture git init failed' }
+    $null = & git -C $proj config core.autocrlf false
+    [System.IO.File]::WriteAllText((Join-Path $proj '.fixture-base'), "fixture`n", [System.Text.UTF8Encoding]::new($false))
+    $null = & git -C $proj add .fixture-base
+    $null = & git -C $proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture baseline'
+    if ($LASTEXITCODE -ne 0) { throw 'fixture baseline commit failed' }
     return $proj
+}
+
+function Save-FixtureStructure {
+    param([string]$Proj, [string]$Message)
+    $null = & git -C $Proj add -- specs
+    if ($LASTEXITCODE -ne 0) { throw "fixture structure add failed: $Message" }
+    $pending = @(& git -C $Proj diff --cached --name-only -- specs)
+    if ($pending.Count -gt 0) {
+        $null = & git -C $Proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m $Message
+        if ($LASTEXITCODE -ne 0) { throw "fixture structure commit failed: $Message" }
+    }
 }
 
 function New-Spec {
@@ -48,6 +66,7 @@ function New-Spec {
     $dir = Join-Path $Proj 'specs\050-host-neutral-gate'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $dir 'spec.md') -Value "# Feature Specification: Host-Neutral Gate Enforcement`n`nThe authoritative contract for the active feature." -Encoding UTF8
+    Save-FixtureStructure -Proj $Proj -Message 'fixture spec'
 }
 
 function New-LensApplicability {
@@ -64,6 +83,7 @@ function New-LensApplicability {
     $iterationDir = Join-Path $dir ("iterations/{0}" -f $Iteration)
     New-Item -ItemType Directory -Path $iterationDir -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $iterationDir 'lens-applicability.json') -Value $json -Encoding UTF8
+    Save-FixtureStructure -Proj $Proj -Message 'fixture lens state'
 }
 
 function New-Transcript {
@@ -99,7 +119,29 @@ function New-HandoverSnapshot {
     $stamp = $activityAt.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     $commitNote = if ($NewCommits -gt 0) { ("; {0} new commit(s): {1} {2}" -f $NewCommits, $Head, $HeadTitle) } else { '' }
     if ([string]::IsNullOrWhiteSpace($FileList)) {
-        $FileList = if ($ChangedUserFiles -gt 0) { 'src/provider.ps1, tests/provider.tests.ps1' } else { '(none)' }
+        $defaults = @('src/provider.ps1', 'tests/provider.tests.ps1', 'docs/new.md', 'src/new-module.ps1', 'tests/new-module.tests.ps1')
+        $FileList = if ($ChangedUserFiles -gt 0) { (@($defaults | Select-Object -First $ChangedUserFiles) -join ', ') } else { '(none)' }
+    }
+    if ($ChangedUserFiles -gt 0) {
+        $paths = @($FileList -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -ne '(none)' } | Select-Object -First $ChangedUserFiles)
+        foreach ($relative in $paths) {
+            $full = Join-Path $Proj ($relative -replace '/', [IO.Path]::DirectorySeparatorChar)
+            $parent = Split-Path -Parent $full
+            if ($parent -and -not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+            if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+                [IO.File]::WriteAllText($full, ("fixture material: {0}`n" -f $relative), [Text.UTF8Encoding]::new($false))
+            }
+        }
+    }
+    if ($NewCommits -gt 0) {
+        foreach ($n in 1..$NewCommits) {
+            $sequence = @(& git -C $Proj rev-list --count HEAD)
+            $marker = ".fixture-commit-$($sequence[0])-$n.txt"
+            [IO.File]::WriteAllText((Join-Path $Proj $marker), ("commit $marker`n"), [Text.UTF8Encoding]::new($false))
+            $null = & git -C $Proj add -- $marker
+            $null = & git -C $Proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m $HeadTitle
+            if ($LASTEXITCODE -ne 0) { throw "fixture material commit failed: $HeadTitle" }
+        }
     }
     $content = @"
 ---
@@ -159,7 +201,7 @@ function Invoke-Conformance {
 }
 
 function Get-TestSessionStatePath {
-    param([string]$Proj, [string]$SessionId, [string]$Leaf = 'material-baseline.json')
+    param([string]$Proj, [string]$SessionId, [string]$Leaf = 'turn-baseline.json')
     $owner = "claude|$SessionId"
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($owner)
     $hash = -join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
@@ -357,6 +399,7 @@ try {
     $p4e = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p4e
     New-HandoverSnapshot -Proj $p4e -ChangedUserFiles 2 -ActivityOffsetSeconds -120
+    $null = Invoke-Conformance -Proj $p4e -Event SessionStart
     $t4e = New-Transcript -Proj $p4e -Turns @(@{ role = 'assistant'; text = $longProse })
     $r4e = Invoke-Conformance -Proj $p4e -TranscriptPath $t4e
     if ($r4e.Blocked) { Fail "Case 4e: a conversation-only Stop with only an older material bullet MUST NOT block. Out: $($r4e.Out)" }
@@ -395,6 +438,7 @@ try {
     $p4h = New-Fixture -Working '' -LastAuth ''
     New-Spec -Proj $p4h
     New-LensApplicability -Proj $p4h -Selected @('product-domain','architecture-core') -Done @('product-domain','architecture-core')
+    $null = Invoke-Conformance -Proj $p4h -Event SessionStart
     New-HandoverSnapshot -Proj $p4h -NewCommits 1 -FileList '(none)'
     $t4h = New-Transcript -Proj $p4h -Turns @(@{ role = 'assistant'; text = 'I committed the hook budget fix and the repository is clean.' })
     $r4h = Invoke-Conformance -Proj $p4h -TranscriptPath $t4h
@@ -413,6 +457,8 @@ try {
     New-Item -ItemType Directory -Path $activeDir -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $activeDir 'spec.md') -Value "# Feature Specification: Host-Neutral Gate Enforcement`n" -Encoding UTF8
     New-LensApplicability -Proj $p4i -FeatureRef '185-host-neutral-gate-enforcement' -Selected @('product-domain','architecture-core') -Done @('product-domain','architecture-core')
+    Save-FixtureStructure -Proj $p4i -Message 'fixture multi-feature state'
+    $null = Invoke-Conformance -Proj $p4i -Event SessionStart
     New-HandoverSnapshot -Proj $p4i -NewCommits 1 -FileList '(none)' -ActiveFeature '185-host-neutral-gate-enforcement'
     $t4i = New-Transcript -Proj $p4i -Turns @(@{ role = 'assistant'; text = 'I committed the verdict capture fix and refreshed the dogfood project.' })
     $r4i = Invoke-Conformance -Proj $p4i -TranscriptPath $t4i
@@ -441,12 +487,38 @@ try {
     New-HandoverSnapshot -Proj $phb -ChangedUserFiles 2   # the previous session's dirty surface
     $rbBase = Invoke-Conformance -Proj $phb -Event SessionStart
     if ($rbBase.Code -ne 0) { Fail "Case PH-b: the SessionStart baseline lane must exit 0. Out: $($rbBase.Out)" }
-    if (-not (Test-Path -LiteralPath (Join-Path $phb '.specrew\runtime\conformance-material-baseline.json'))) { Fail "Case PH-b: SessionStart must persist the material baseline." }
+    if (-not (Test-Path -LiteralPath (Join-Path $phb '.specrew\runtime\conformance-turn-baseline.json'))) { Fail "Case PH-b: SessionStart must persist the live turn baseline." }
     New-HandoverSnapshot -Proj $phb -ChangedUserFiles 2   # the SAME surface, refreshed at this turn's stop
     $thb = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'status' }, @{ role = 'assistant'; text = 'Iteration 003 is executing; 8 tasks done, T019 in progress, validator has 40 soft warnings.' })
     $rhb = Invoke-Conformance -Proj $phb -TranscriptPath $thb
     if ($rhb.Blocked) { Fail "Case PH-b: a read-only status turn over a PRE-EXISTING dirty surface (== session baseline) MUST NOT demand the packet. Out: $($rhb.Out)" }
     Write-Pass "Case PH-b: read-only status over a pre-session dirty tree owes no packet - the SessionStart baseline absorbs foreign dirt (maintainer fixture b)"
+
+    # ---- Case PH-prompt: Claude's real UserPromptSubmit provider path refreshes the live baseline. A same-path
+    # edit afterwards is exact turn work, and the nudge may say "this turn" only in that exact mode.
+    $phPrompt = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phPrompt
+    New-HandoverSnapshot -Proj $phPrompt -ChangedUserFiles 1 -FileList 'src/prompt-owned.ps1'
+    $promptSession = 'prompt-owner'
+    $promptStart = Invoke-Conformance -Proj $phPrompt -Event UserPromptSubmit -SessionId $promptSession
+    if ($promptStart.Code -ne 0) { Fail "Case PH-prompt: Claude UserPromptSubmit baseline capture failed. Out: $($promptStart.Out)" }
+    $promptBaselinePath = Get-TestSessionStatePath -Proj $phPrompt -SessionId $promptSession
+    $promptBaseline = Get-Content -LiteralPath $promptBaselinePath -Raw | ConvertFrom-Json
+    if ([string]$promptBaseline.capture_event -ne 'UserPromptSubmit') { Fail "Case PH-prompt: baseline was not captured by the genuine prompt event. Record: $($promptBaseline | ConvertTo-Json -Compress)" }
+    [IO.File]::WriteAllText((Join-Path $phPrompt 'src/prompt-owned.ps1'), "same path, new content`n", [Text.UTF8Encoding]::new($false))
+    $promptNudge = Invoke-Conformance -Proj $phPrompt -Event PostToolUse -SessionId $promptSession
+    if ($promptNudge.Out -notmatch 'MATERIAL WORK IN PROGRESS this turn \(1 changed user file\(s\)') { Fail "Case PH-prompt: exact prompt-owned same-path edit did not render an exact-turn nudge. Out: $($promptNudge.Out)" }
+    Write-Pass "Case PH-prompt: Claude UserPromptSubmit reaches the production provider, captures the owner baseline, and enables exact same-path turn attribution"
+
+    # ---- Case PH-degraded: no prompt baseline means capability is absent/stale. The cooperative message is honest
+    # about CURRENT worktree dirt and never claims that another session's dirty files were changed "this turn".
+    $phDegraded = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phDegraded
+    New-HandoverSnapshot -Proj $phDegraded -ChangedUserFiles 2
+    $degradedNudge = Invoke-Conformance -Proj $phDegraded -Event PostToolUse -SessionId 'degraded-owner'
+    if ($degradedNudge.Out -notmatch 'CURRENTLY DIRTY IN THE WORKTREE \(2 user file\(s\)\)') { Fail "Case PH-degraded: missing prompt baseline did not display the degraded current-worktree message. Out: $($degradedNudge.Out)" }
+    if ($degradedNudge.Out -match 'this turn') { Fail "Case PH-degraded: degraded attribution must never say 'this turn'. Out: $($degradedNudge.Out)" }
+    Write-Pass "Case PH-degraded: missing prompt capability reports only current worktree dirt and never fabricates turn ownership"
 
     # ---- Case PH-ms: two real child sessions cross the SessionStart barrier together and retain distinct
     # baselines. Session B then owns a new exact surface through PostToolUse. Session A's routine status Stop must
@@ -461,12 +533,15 @@ try {
     $baselineA = Get-TestSessionStatePath -Proj $phms -SessionId $sessionA
     $baselineB = Get-TestSessionStatePath -Proj $phms -SessionId $sessionB
     if (-not (Test-Path -LiteralPath $baselineA -PathType Leaf) -or -not (Test-Path -LiteralPath $baselineB -PathType Leaf) -or $baselineA -eq $baselineB) { Fail 'Case PH-ms: concurrent sessions did not receive distinct owner-scoped baseline files.' }
-    if (Test-Path -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-material-baseline.json') -PathType Leaf) { Fail 'Case PH-ms: production session dispatch must not write the legacy shared baseline.' }
+    if (Test-Path -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-turn-baseline.json') -PathType Leaf) { Fail 'Case PH-ms: production session dispatch must not write the legacy shared turn baseline.' }
+    $null = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionA
+    $null = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionB
 
     $ownedFiles = 'src/preexisting.ps1, tests/preexisting.tests.ps1, src/session-b.ps1, tests/session-b.tests.ps1'
     New-HandoverSnapshot -Proj $phms -ChangedUserFiles 4 -FileList $ownedFiles -Source 'PostToolUse'
     $postB = Invoke-Conformance -Proj $phms -Event PostToolUse -SessionId $sessionB
     if ($postB.Code -ne 0) { Fail "Case PH-ms: session B PostToolUse attribution failed. Out: $($postB.Out)" }
+    if ($postB.Out -notmatch 'MATERIAL WORK IN PROGRESS this turn') { Fail "Case PH-ms: exact owner PostToolUse did not render the exact-turn message. Out: $($postB.Out)" }
     $ownerRecord = Get-Content -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-material-owner.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     if ([string]$ownerRecord.owner -ne "claude|$sessionB") { Fail "Case PH-ms: exact material surface was not attributed to session B (owner='$($ownerRecord.owner)')." }
 

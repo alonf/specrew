@@ -77,6 +77,21 @@ exit 0
     Assert-True ($ui -ge 0) 'UserPromptSubmit: the dispatcher passed --last-user-message as a CLEAN arg'
     Assert-True ($captured[$ui + 1] -eq $prompt) 'UserPromptSubmit: the current human prompt survived clean-arg delivery'
 
+    foreach ($normalizedHost in @('copilot', 'cursor')) {
+        Set-Content -LiteralPath $eventFile -Value $promptEvent -Encoding UTF8 -NoNewline
+        Remove-Item -LiteralPath $argsPath -Force -ErrorAction SilentlyContinue
+        $p = Start-Process -FilePath 'pwsh' `
+            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'UserPromptSubmit', '-HostKind', $normalizedHost) `
+            -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+            -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        Assert-True ($p.ExitCode -eq 0) "$normalizedHost normalized UserPromptSubmit exits 0"
+        $captured = @(Get-Content -LiteralPath $argsPath -Raw | ConvertFrom-Json)
+        $hostIndex = [array]::IndexOf($captured, '--host-kind')
+        $promptIndex = [array]::IndexOf($captured, '--last-user-message')
+        Assert-True ($hostIndex -ge 0 -and $captured[$hostIndex + 1] -eq $normalizedHost) "$normalizedHost host identity reaches the provider"
+        Assert-True ($promptIndex -ge 0 -and $captured[$promptIndex + 1] -eq $prompt) "$normalizedHost prompt reaches the provider through UserPromptSubmit"
+    }
+
     Set-Content -LiteralPath $eventFile -Value $promptEvent -Encoding UTF8 -NoNewline
     Remove-Item -LiteralPath $argsPath -Force -ErrorAction SilentlyContinue
     $p = Start-Process -FilePath 'pwsh' `

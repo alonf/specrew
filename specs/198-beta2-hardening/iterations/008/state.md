@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T065 supplier/runner/injection deterministic end-to-end fixture matrix
-**Tasks Remaining**: blocked T070, T066, separately authorized T029, and T067
-**In Progress**: T070 stopped for replan before production changes
+**Last Completed Task**: T070 host-independent conformance turn-delta core and supported-host adapters
+**Tasks Remaining**: T066, separately authorized T029, and T067
+**In Progress**: T066 deterministic candidate preparation (no provider grant)
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T13:37:10Z
+**Updated**: 2026-07-19T14:39:59Z
 
 ## Planning Authorization
 
@@ -45,20 +45,23 @@
 - **Scope**: execute the selected 18 SP implementation in order. This verdict grants no provider invocation,
   beta publication, or stable promotion.
 
-## Scoped T070 Authorization and Ceiling Stop
+## Full-Scope T070 Authorization
 
-- **Authorization**: add and execute T070 at 1.75 SP with a hard 2.25 SP ceiling before T066 re-preparation.
-- **Required behavior**: live owner-scoped turn baseline, status/content fingerprint delta at PostToolUse/Stop,
-  live SessionStart refresh, retained T069 owner suppression, and four named regression classes.
-- **Ceiling condition**: stop and replan if reliable turn-start coverage for a supported host exceeds 2.25 SP.
-- **Observed condition**: Codex and Antigravity have verified turn-start events; Copilot/Cursor do not, and
-  Claude's prompt event is not registered. Full supported-host coverage therefore exceeds the ceiling.
+- **Authorization**: reprice T070 honestly and complete the full scope with no SP ceiling before T066
+  re-preparation; stop only for non-convergence or a genuine architectural surprise.
+- **Estimate**: 4.0 SP. Iteration capacity becomes 22/26 SP with 4 SP headroom.
+- **Architecture**: one host-independent core owns the live owner-scoped baseline, status/content fingerprints,
+  delta, and packet-demand decision. Host adapters supply only genuine prompt-boundary events.
+- **Host scope**: Claude/Codex `UserPromptSubmit`, Copilot `userPromptSubmitted`, Cursor `beforeSubmitPrompt`, and
+  Antigravity `PreInvocation`; a proven capability-absent future host uses the explicit degraded contract.
+- **Required evidence**: stale-handover read-only, consecutive turns, same-path re-edit, concurrent sessions,
+  production host registrations, and honest degraded display.
 - **Provider effect**: the prior T066 run ID/grant is withdrawn unspent; no replacement candidate or grant exists.
 
 ## Readiness Summary
 
-- **Plan/capacity**: 19.75/26 story_points; 18 tasks; 6.25 SP headroom. Historical +17% variance forecasts about
-  23.1 SP, still below capacity.
+- **Plan/capacity**: 22/26 story_points; 18 tasks; 4 SP headroom. Historical +17% variance forecasts about
+  25.7 SP, still below capacity.
 - **Traceability**: PASS; 18/18 tasks have valid selected refs and metadata, 32/32 selected requirements have
   coverage, and no task/progress mismatch exists.
 - **Hardening**: planning-time `Overall Verdict: ready`; the exact before-implement verdict is captured. Runtime
@@ -171,15 +174,16 @@
   `b97dd63370faa687e39ae224b93b938ebb7e20df`. The scoped validator first rejected descriptive runtime-evidence
   status tokens, so the three affected hardening rows now use its exact closed value `recorded`. That documentation
   correction is part of the independent-review candidate; no provider invocation or release action has occurred.
-- T070 was added at 1.75 SP with a hard 2.25 SP ceiling after a read-only session was falsely charged for eight
-  absolute dirty files. Pre-implementation inspection found reliable turn-start events only for Codex and
-  Antigravity; supported Copilot/Cursor per-prompt hooks remain unverified and Claude's prompt hook is not
-  registered. Completing the exact all-host scope would exceed the ceiling, so production code remains unchanged
-  and T070/T066 stop for human replan. The withdrawn T066 run
+- T070 completed at its honest 4.0 SP estimate under the no-ceiling full-scope authorization after a read-only
+  session was falsely charged for eight absolute dirty files. One host-independent live-Git core owns baseline,
+  status/content fingerprints, delta, and packet demand; thin manifests map all five supported prompt events.
+  SessionStart-only operation is explicitly degraded and never says `this turn`. Focused core/provider/host suites,
+  mirror/package checks, and all 73 registered Feature 198 suites passed in 740.4 seconds. The withdrawn T066 run
   `run-t066-claude-windows-8daac538-e03a4139-01` was never invoked and spent no provider slot.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 must be replanned before T066 receives a new committed candidate, digest, run ID, or provider grant.
+- T070 is complete. T066 may now receive a new committed candidate and deterministic preparation record; provider
+  invocation still requires a fresh explicit grant against that exact commit/digest/run ID.
 
 ## Notes
 

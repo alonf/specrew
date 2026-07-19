@@ -49,6 +49,12 @@ function New-Fixture {
         boundary_enforcement = [ordered]@{ enabled = $Enabled; last_authorized_boundary = $LastAuth; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
     }
     [System.IO.File]::WriteAllText((Join-Path $proj '.specrew\start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
+    $null = & git -C $proj init --quiet
+    $null = & git -C $proj config core.autocrlf false
+    [IO.File]::WriteAllText((Join-Path $proj '.fixture-base'), "fixture`n", [Text.UTF8Encoding]::new($false))
+    $null = & git -C $proj add .fixture-base
+    $null = & git -C $proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture baseline'
+    if ($LASTEXITCODE -ne 0) { throw 'fixture baseline commit failed' }
     return $proj
 }
 
@@ -57,6 +63,9 @@ function New-Spec {
     $dir = Join-Path $Proj 'specs\050-host-neutral-gate'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $dir 'spec.md') -Value "# Feature Specification: Host-Neutral Gate Enforcement`n`nThe authoritative contract for the active feature." -Encoding UTF8
+    $null = & git -C $Proj add -- specs
+    $null = & git -C $Proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture spec'
+    if ($LASTEXITCODE -ne 0) { throw 'fixture spec commit failed' }
 }
 
 function New-Transcript {
@@ -89,6 +98,16 @@ function New-HandoverSnapshot {
     $commitNote = if ($NewCommits -gt 0) { ("; {0} new commit(s): abc1234 material commit" -f $NewCommits) } else { '' }
     if ([string]::IsNullOrWhiteSpace($FileList)) {
         $FileList = if ($ChangedUserFiles -gt 0) { 'src/provider.ps1, tests/provider.tests.ps1' } else { '(none)' }
+    }
+    if ($ChangedUserFiles -gt 0) {
+        foreach ($relative in @($FileList -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -ne '(none)' } | Select-Object -First $ChangedUserFiles)) {
+            $full = Join-Path $Proj ($relative -replace '/', [IO.Path]::DirectorySeparatorChar)
+            $parent = Split-Path -Parent $full
+            if ($parent -and -not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+            if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+                [IO.File]::WriteAllText($full, ("fixture material: {0}`n" -f $relative), [Text.UTF8Encoding]::new($false))
+            }
+        }
     }
     $content = @"
 ---

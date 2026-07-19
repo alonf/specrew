@@ -24,12 +24,11 @@
 #   - BOUNDARY stop: HasPendingVerdict (working boundary ahead of last-authorized, no captured verdict - the #2884
 #     silent advance). REUSES the canonical Get-SpecrewPendingVerdictState (FR-008; not a parallel inference engine).
 #     The block directive carries the CONTIGUOUS last_authorized -> successor verdict marker (145 F2).
-#   - MATERIAL non-boundary stop: the current Stop handover reports changed user files or new commits AND that
-#     surface DIFFERS from the session BASELINE (captured on SessionStart + advanced at every discharged stop -
-#     maintainer packet-hardening 2026-07-14: a read-only consultation/status turn over files an EARLIER session
-#     left dirty owes nothing), but the last assistant message lacks the five-part context packet. This uses the
-#     same rolling-handover material signal as the resume floor and deliberately does NOT block on prose length
-#     alone. A LONG read-only investigation (>= the assistant-entry threshold since the last human message) owes
+#   - MATERIAL non-boundary stop: the live owner-scoped turn delta reports changed user files or new commits after
+#     a genuine UserPromptSubmit/PreInvocation baseline. SessionStart is the live-refreshed degraded fallback, so
+#     a read-only consultation over files an earlier session left dirty owes nothing and a missing prompt event
+#     never fabricates "this turn" ownership. The last assistant message must carry the five-part context packet.
+#     A LONG read-only investigation (>= the assistant-entry threshold since the last human message) owes
 #     the packet too - the re-entry cost is the turn itself. A PostToolUse tracked-change fires a ONE-PER-SURFACE
 #     pre-arrangement nudge so the packet lands IN the original response instead of a forced duplicate turn.
 #   FALSE-POSITIVE GUARD: if the last assistant message already surfaced the exact pending boundary crossing (the
@@ -336,7 +335,7 @@ function Get-SpecrewMaterialRuntimeState {
     $legacy = [string]::IsNullOrWhiteSpace($owner)
     return [pscustomobject]@{
         Owner = $owner
-        BaselinePath = Join-Path $stateRoot $(if ($legacy) { 'conformance-material-baseline.json' } else { 'material-baseline.json' })
+        BaselinePath = Join-Path $stateRoot $(if ($legacy) { 'conformance-turn-baseline.json' } else { 'turn-baseline.json' })
         SatisfiedPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-material-satisfied.json' } else { 'material-satisfied.json' })
         NudgedPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-material-nudged.json' } else { 'material-nudged.json' })
         BlockPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-stop-block.json' } else { 'stop-block.json' })
@@ -549,22 +548,30 @@ try {
         return  # not a governed project root - nothing to check.
     }
     $eventLower = if ([string]::IsNullOrWhiteSpace($sourceEventArg)) { 'stop' } else { $sourceEventArg.ToLowerInvariant() }
-    if ($eventLower -notin @('stop', 'agentstop', 'sessionstart', 'posttooluse')) {
-        return  # Stop-class enforcement + the SessionStart baseline + the PostToolUse nudge lanes only (defensive).
+    if ($eventLower -notin @('stop', 'agentstop', 'sessionstart', 'userpromptsubmit', 'preinvocation', 'posttooluse')) {
+        return  # Stop enforcement + genuine turn-start capture + PostToolUse nudge only (defensive).
     }
     $materialRuntime = Get-SpecrewMaterialRuntimeState -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg
+    $turnCorePath = Join-Path $PSScriptRoot 'conformance-turn-delta.ps1'
+    if (-not (Get-Command Get-SpecrewTurnSnapshot -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $turnCorePath -PathType Leaf)) {
+        try { . $turnCorePath } catch { $null = $_ }
+    }
+    $turnCoreAvailable = (
+        (Get-Command Get-SpecrewTurnSnapshot -ErrorAction SilentlyContinue) -and
+        (Get-Command Read-SpecrewTurnBaseline -ErrorAction SilentlyContinue) -and
+        (Get-Command Compare-SpecrewTurnSnapshot -ErrorAction SilentlyContinue) -and
+        (Get-Command Resolve-SpecrewTurnPacketDemand -ErrorAction SilentlyContinue)
+    )
 
-    # --- SESSIONSTART BASELINE lane (maintainer packet-hardening 2026-07-14): absorb the CURRENT dirty-tree
-    # surface as this session's baseline so a read-only turn is never blamed for files an EARLIER session (or an
-    # external writer) left dirty - the false material demand that forced a duplicate five-part packet after a
-    # plain status answer. Best-effort + silent: any failure just leaves no baseline (the Stop lane then fails
-    # toward enforcement, the safe direction). ---
-    if ($eventLower -eq 'sessionstart') {
+    # --- TURN-START BASELINE lane (T070): host adapters normalize their genuine prompt boundary to
+    # UserPromptSubmit / PreInvocation; SessionStart anchors the first turn and is also the explicit degraded
+    # fallback. The baseline comes from LIVE Git state, never a rolling handover written by another session. ---
+    if ($eventLower -in @('sessionstart', 'userpromptsubmit', 'preinvocation')) {
         try {
-            $bd = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
-            $sig = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bd -AnySnapshot
-            $blKey = if ($null -ne $sig -and -not [string]::IsNullOrWhiteSpace([string]$sig.key)) { [string]$sig.key } else { 'baseline|no-surface' }
-            Set-SpecrewMaterialSatisfiedKey -Path $materialRuntime.BaselinePath -Key $blKey
+            if ($turnCoreAvailable) {
+                $snapshot = Get-SpecrewTurnSnapshot -ProjectRoot $projectRoot
+                $null = Write-SpecrewTurnBaseline -Path $materialRuntime.BaselinePath -Snapshot $snapshot -CaptureEvent $sourceEventArg
+            }
         }
         catch { $null = $_ }
         return
@@ -577,14 +584,18 @@ try {
     # response afterwards and forcing a duplicate turn. Non-blocking, deduplicated, fail-open. ---
     if ($eventLower -eq 'posttooluse') {
         try {
-            $bd = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
-            $sig = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bd -AllowedSources @('posttooluse')
-            if ($null -eq $sig -or -not [bool]$sig.material) { return }
-            $key = [string]$sig.key
-            $baseKey = Get-SpecrewMaterialSatisfiedKey -Path $materialRuntime.BaselinePath
-            if (-not [string]::IsNullOrWhiteSpace($baseKey) -and ($key -eq $baseKey)) { return }        # pre-session surface, not this turn's work
+            if (-not $turnCoreAvailable) { return }
+            $current = Get-SpecrewTurnSnapshot -ProjectRoot $projectRoot
+            if ($null -eq $current -or -not [bool]$current.available) { return }
+            $baseline = Read-SpecrewTurnBaseline -Path $materialRuntime.BaselinePath
+            if ($null -eq $baseline) { $baseline = New-SpecrewDegradedTurnBaseline -Current $current }
+            $sig = Compare-SpecrewTurnSnapshot -Baseline $baseline -Current $current -ProjectRoot $projectRoot
             $satKey = Get-SpecrewMaterialSatisfiedKey -Path $materialRuntime.SatisfiedPath
-            if (-not [string]::IsNullOrWhiteSpace($satKey) -and ($key -eq $satKey)) { return }          # a packet already covered this surface
+            $ownerRecord = Get-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath
+            $decision = Resolve-SpecrewTurnPacketDemand -Delta $sig -SatisfiedKey $satKey -Owner ([string]$materialRuntime.Owner) -OwnerRecord $ownerRecord -OwnerMaxAgeSeconds $script:SpecrewMaterialHandoverMaxAgeSec
+            if (-not [bool]$decision.demand) { return }
+            $bd = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+            $key = [string]$sig.key
             if (-not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) {
                 $null = Set-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath -Key $key -Owner ([string]$materialRuntime.Owner)
             }
@@ -595,11 +606,12 @@ try {
                 # ONE reminder per OBLIGATION WINDOW: while an earlier nudge's surface is still undischarged
                 # (not absorbed into the baseline, not satisfied by a packet), every additional touched file
                 # mutates the surface key - re-nudging each mutation is a per-tool-call drumbeat, not signal.
-                if (($nudgedKey -ne $baseKey) -and ($nudgedKey -ne $satKey)) { return }
+                if ($nudgedKey -ne $satKey) { return }
             }
             # Nudge-only optimization: avoid interrupting a likely in-progress lens turn before its final question is
             # rendered. The Stop lane does not trust this broad signal; it proves the exact scoped marker and question.
-            $featureRef = [string]$sig.active_feature
+            $handoverContext = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bd -AnySnapshot
+            $featureRef = if ($null -ne $handoverContext) { [string]$handoverContext.active_feature } else { '' }
             if (Test-SpecrewWorkshopInProgress -ProjectRoot $projectRoot -BootstrapDir $bd -FeatureRef $featureRef) { return }
             try {
                 $scP = Join-Path $projectRoot '.specrew/start-context.json'
@@ -616,7 +628,13 @@ try {
             }
             catch { $null = $_ }
             Set-SpecrewMaterialSatisfiedKey -Path $nudgedPath -Key $key
-            Write-Output ('[specrew-conformance] MATERIAL WORK IN PROGRESS this turn ({0} changed user file(s), {1} new commit(s)). When you finish, END your final message with the five-heading non-boundary context packet - ## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You, every artifact reference a bare file:/// URL. Rendering it IN this response is the contract; a packet-less stop after material work gets force-continued into a duplicate turn.' -f [int]$sig.user_file_count, [int]$sig.new_commit_count)
+            $activityLabel = if ([string]$sig.attribution_mode -eq 'exact-turn') {
+                'MATERIAL WORK IN PROGRESS this turn ({0} changed user file(s), {1} new commit(s)).' -f [int]$sig.user_file_count, [int]$sig.new_commit_count
+            }
+            else {
+                'CURRENTLY DIRTY IN THE WORKTREE ({0} user file(s)); exact per-turn attribution is unavailable.' -f [int]$sig.current_dirty_user_file_count
+            }
+            Write-Output ('[specrew-conformance] {0} When you finish, END your final message with the five-heading non-boundary context packet - ## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You, every artifact reference a bare file:/// URL. Rendering it IN this response is the contract; a packet-less stop after material work gets force-continued into a duplicate turn.' -f $activityLabel)
         }
         catch { $null = $_ }
         return
@@ -683,12 +701,13 @@ try {
     catch { $null = $_ }
     $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
 
-    # If lifecycle state is still pre-boundary / anchorless, the rolling Stop handover is the fresher scoped signal.
+    # If lifecycle state is still pre-boundary / anchorless, the rolling Stop handover is the fresher FEATURE signal.
+    # It is context only: T070 forbids using its absolute dirty-file count as turn ownership evidence.
     # In a multi-feature repo, falling back to the first specs/* directory can incorrectly borrow an abandoned
     # feature's workshop state. Prefer the current rolling Stop handover when lifecycle state is still anchorless.
-    $materialSignal = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir
-    if (-not $activeFeatureFromSessionState -and $null -ne $materialSignal -and -not [string]::IsNullOrWhiteSpace([string]$materialSignal.active_feature)) {
-        $activeFeatureRef = [string]$materialSignal.active_feature
+    $handoverContextSignal = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -AnySnapshot
+    if (-not $activeFeatureFromSessionState -and $null -ne $handoverContextSignal -and -not [string]::IsNullOrWhiteSpace([string]$handoverContextSignal.active_feature)) {
+        $activeFeatureRef = [string]$handoverContextSignal.active_feature
     }
     if ([string]::IsNullOrWhiteSpace($activeFeatureRef) -and -not [string]::IsNullOrWhiteSpace($specPath)) {
         $activeFeatureRef = Split-Path (Split-Path $specPath -Parent) -Leaf
@@ -710,38 +729,38 @@ try {
         catch { $null = $_ }
     }
 
-    # Material-work lane (Proposal 145 follow-up): the old length-only "substantial" trigger over-blocked normal
-    # discussion, so use the deterministic rolling-handover signal written by the preceding Stop provider instead.
-    $materialStop = ($null -ne $materialSignal -and [bool]$materialSignal.material)
+    # Material-work lane (T070): compare a LIVE Git status/content-fingerprint snapshot to this owner's turn-start
+    # baseline. The pure core owns snapshotting, delta semantics, and the packet-demand decision; this provider owns
+    # only host-event orchestration and presentation.
     $blockStatePath = $materialRuntime.BlockPath
     $materialSatisfiedPath = $materialRuntime.SatisfiedPath
     $materialBaselinePath = $materialRuntime.BaselinePath
-    # The FILE-SURFACE key of the current snapshot (material or not) - what the session baseline advances to
-    # once this stop's obligation is discharged. Captured BEFORE any long-turn key override.
-    $fileSurfaceKey = if ($null -ne $materialSignal) { [string]$materialSignal.key } else { '' }
-    # --- TURN-DELTA GATE (maintainer packet-hardening 2026-07-14): a dirty tree is MATERIAL for THIS stop only
-    # when its surface DIFFERS from the session baseline captured at SessionStart / the last discharged stop.
-    # Files an earlier session (or an external writer) left dirty were absorbed into the baseline, so an
-    # ordinary read-only consultation or status turn no longer owes a packet for work it did not do. No
-    # baseline on disk (a host without SessionStart hooks, a stale deployment) -> fail toward enforcement,
-    # exactly the pre-existing behavior. ---
-    $materialBaselineKey = Get-SpecrewMaterialSatisfiedKey -Path $materialBaselinePath
-    $materialBaselineSuppressed = $false
-    if ($materialStop -and -not [string]::IsNullOrWhiteSpace($materialBaselineKey) -and ([string]$materialSignal.key -eq $materialBaselineKey)) {
-        $materialStop = $false
-        $materialBaselineSuppressed = $true
-    }
-    $materialForeignOwnerSuppressed = $false
-    if ($materialStop -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) {
-        $ownerRecord = Get-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath
-        if ($null -ne $ownerRecord -and [string]$ownerRecord.key -eq [string]$materialSignal.key -and [string]$ownerRecord.owner -ne [string]$materialRuntime.Owner) {
-            $ownerAge = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$ownerRecord.epoch
-            if ($ownerAge -ge 0 -and $ownerAge -le $script:SpecrewMaterialHandoverMaxAgeSec) {
-                $materialStop = $false
-                $materialForeignOwnerSuppressed = $true
+    $turnCurrentSnapshot = $null
+    $materialSignal = $null
+    $materialDecision = $null
+    if ($turnCoreAvailable) {
+        try {
+            $turnCurrentSnapshot = Get-SpecrewTurnSnapshot -ProjectRoot $projectRoot
+            if ($null -ne $turnCurrentSnapshot -and [bool]$turnCurrentSnapshot.available) {
+                $turnBaseline = Read-SpecrewTurnBaseline -Path $materialBaselinePath
+                if ($null -eq $turnBaseline) { $turnBaseline = New-SpecrewDegradedTurnBaseline -Current $turnCurrentSnapshot }
+                $materialSignal = Compare-SpecrewTurnSnapshot -Baseline $turnBaseline -Current $turnCurrentSnapshot -ProjectRoot $projectRoot
+                $ownerRecord = Get-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath
+                $materialSatisfiedKeyForDecision = Get-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath
+                $materialDecision = Resolve-SpecrewTurnPacketDemand -Delta $materialSignal -SatisfiedKey $materialSatisfiedKeyForDecision -Owner ([string]$materialRuntime.Owner) -OwnerRecord $ownerRecord -OwnerMaxAgeSeconds $script:SpecrewMaterialHandoverMaxAgeSec
+                if ([bool]$materialDecision.demand -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) {
+                    $null = Set-SpecrewMaterialOwnerRecord -Path $materialRuntime.AttributionPath -Key ([string]$materialSignal.key) -Owner ([string]$materialRuntime.Owner)
+                }
             }
         }
+        catch { $materialSignal = $null; $materialDecision = $null }
     }
+    if ($null -eq $materialSignal) {
+        $materialSignal = [pscustomobject]@{ material = $false; reason = 'turn-delta-unavailable'; key = ''; user_file_count = 0; current_dirty_user_file_count = 0; new_commit_count = 0; attribution_mode = 'degraded-worktree' }
+    }
+    $materialStop = ($null -ne $materialDecision -and [bool]$materialDecision.demand)
+    $materialBaselineSuppressed = ($null -ne $materialDecision -and [string]$materialDecision.reason -in @('no-turn-delta', 'turn-delta-already-satisfied'))
+    $materialForeignOwnerSuppressed = ($null -ne $materialDecision -and [bool]$materialDecision.foreign_owner_suppressed)
     # --- LONG-TURN lane (maintainer fixture (d) 2026-07-14): a read-only turn with no material delta still owes
     # the packet when it was a GENUINELY LONG investigation (assistant-entry count since the last human message
     # >= the threshold) - the re-entry cost is the turn, not the diff. Deterministic, cheap (raw string scan),
@@ -776,7 +795,7 @@ try {
 
     # --- EXPENSIVE transcript parse ONLY on a MATERIAL-TURN stop (T099/FR-040, design N3): the per-line
     # ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size. It runs ONLY when
-    # the stop actually followed material work (the deterministic rolling-handover signal), a boundary is
+    # the stop actually followed material work (the deterministic live turn-delta signal), a boundary is
     # pending, or a material forced-continue retry is in flight - a trivial/conversational stop skips it
     # entirely. The old `$anySpec` trigger made EVERY stop in EVERY real project pay the parse just to feed
     # the #1 intake regex; that check now only evaluates on the stops that already warranted the parse
@@ -891,8 +910,8 @@ try {
     # Hard-block ONLY genuine DECISION-YIELD stops = a BOUNDARY (pending verdict + missing marker). The earlier
     # "substantial" (>=600-char) non-boundary trigger was DROPPED (maintainer 2026-06-21): a long but communicative
     # DISCUSSION / status answer is not a decision-yield and must not be force-blocked into a packet. The replacement
-    # hard block is deterministic material work only: the current Stop handover reports changed user files or new
-    # commits. Once a packet has been rendered for the same material surface, later quick discussion while the tree
+    # hard block is deterministic material work only: the live turn delta reports changed user files or new commits.
+    # Once a packet has been rendered for the same material surface, later quick discussion while the tree
     # stays dirty is allowed; a changed material surface requires a fresh packet.
     $boundaryBlock = $hasPending -and (-not $markerForPendingCrossing)
     $materialAlreadySatisfied = $materialStop -and (-not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) -and ([string]$materialSignal.key -eq [string]$materialSatisfiedKey)
@@ -1042,13 +1061,11 @@ try {
             Set-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath -Key ([string]$materialSignal.key)
         }
         Reset-SpecrewBlockCount -Path $blockStatePath
-        # BASELINE ADVANCE (maintainer packet-hardening 2026-07-14): this stop's obligation is DISCHARGED -
-        # either nothing was owed, or the packet was rendered for the material surface - so the current FILE
-        # surface becomes the new session baseline: later read-only turns over the same dirty tree stay quiet,
-        # while any NEW work re-arms the delta. A blocked / capped / intermediate stop does NOT advance the
-        # baseline (the obligation is still outstanding).
-        if ((-not [string]::IsNullOrWhiteSpace($fileSurfaceKey)) -and (($blockKind -eq 'none') -or ($materialStop -and $packetPresent))) {
-            Set-SpecrewMaterialSatisfiedKey -Path $materialBaselinePath -Key $fileSurfaceKey
+        # BASELINE ADVANCE: this obligation is discharged. Persist the complete live snapshot, not a handover key,
+        # so a same-path re-edit changes its content fingerprint and re-arms the next delta. CaptureEvent=Stop makes
+        # any missing next prompt event explicitly degraded; a genuine prompt adapter replaces it at turn start.
+        if ($null -ne $turnCurrentSnapshot -and [bool]$turnCurrentSnapshot.available -and (($blockKind -eq 'none') -or ($materialStop -and $packetPresent))) {
+            $null = Write-SpecrewTurnBaseline -Path $materialBaselinePath -Snapshot $turnCurrentSnapshot -CaptureEvent 'Stop'
         }
     }
 
