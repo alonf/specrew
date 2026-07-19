@@ -7,7 +7,7 @@
 **Tasks Remaining**: T066, T029, T067
 **In Progress**: T066
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T18:20:57Z
+**Updated**: 2026-07-19T20:05:00Z
 
 ## Planning Authorization
 
@@ -49,7 +49,8 @@
 
 - **Authorization**: reprice T070 honestly and complete the full scope with no SP ceiling before T066
   re-preparation; stop only for non-convergence or a genuine architectural surprise.
-- **Estimate**: 4.0 SP. T066's evidence-pipeline correction reprices the iteration to 23.5/26 SP with 2.5 SP headroom.
+- **Estimate**: 4.0 SP. T066's three evidence-pipeline correction classes reprice the iteration to 24.5/26 SP
+  with 1.5 SP headroom.
 - **Architecture**: one host-independent core owns the live owner-scoped baseline, status/content fingerprints,
   delta, and packet-demand decision. Host adapters supply only genuine prompt-boundary events.
 - **Host scope**: Claude/Codex `UserPromptSubmit`, Copilot `userPromptSubmitted`, Cursor `beforeSubmitPrompt`, and
@@ -57,12 +58,13 @@
 - **Required evidence**: stale-handover read-only, consecutive turns, same-path re-edit, concurrent sessions,
   production host registrations, and honest degraded display.
 - **Provider effect**: the earlier exact grant raced with the subsequent read-only investigation request and was
-  invoked once. Its valid incomplete result is retained in the attempt ledger; no replacement grant exists.
+  invoked once. Its valid incomplete result is retained in the attempt ledger. Later bounded progress authority
+  permits new unique runs while evidence converges; it never permits hidden retry or duplicate unchanged action.
 
 ## Readiness Summary
 
-- **Plan/capacity**: 23.5/26 story_points; 18 tasks; 2.5 SP headroom. Historical +17% variance forecasts about
-  25.7 SP, still below capacity.
+- **Plan/capacity**: 24.5/26 story_points; 18 tasks; 1.5 SP headroom. Conservatively applying +17% to all
+  5.75 SP still-open work, including T066's full reprice, forecasts 25.48 SP, below capacity.
 - **Traceability**: PASS; 18/18 tasks have valid selected refs and metadata, 32/32 selected requirements have
   coverage, and no task/progress mismatch exists.
 - **Hardening**: planning-time `Overall Verdict: ready`; the exact before-implement verdict is captured. Runtime
@@ -71,9 +73,10 @@
   completed successfully at plan commit `08e86496`.
 - **Team/sequence**: one serial Implementer; T068 then T069 before supplier/distribution work; T066 is the
   independent Reviewer boundary.
-- **Provider budget**: one exact Claude slot was granted and spent by
-  `run-t066-claude-windows-8daac538-e03a4139-01`; no fresh slot is granted. Every correction rerun requires
-  separate human authorization, a new run ID, and no hidden retry.
+- **Provider budget**: attempts 01 and 02 each invoked Claude once and spent one immutable slot. Attempts 03 and
+  04 failed during controller verification, invoked no provider, spent no slot, and released their reservations.
+  The standing bounded progress grant still requires a new run ID/fact for every invocation and forbids hidden or
+  unchanged retry.
 - **Release**: T029 has a separate release gate; T067 validates published beta without stable promotion.
 - **Authorization**: implementation is authorized against task commit `364fbe88`; provider and release actions
   remain separately gated.
@@ -109,9 +112,10 @@
   currentness because `.specrew/**` intentionally remains outside the canonical code digest. The existing T018
   runner executes before provider launch; every record must join on the frozen digest plus a unique declared
   command ID before one bounded `.review/implementer-evidence.json` copy reaches the reviewer. Missing/invalid
-  plans and source mutation release the reservation without spend; configured failures remain injected and force
-  the terminal result incomplete. Seven production-path fixtures and 163/165 adjacent cases (two platform skips)
-  passed, including origin HEAD/status preservation, exact-once order, stale/unjoinable refusal, and plan drift.
+  plans and source mutation release the reservation without spend. T066 later tightened configured-command red
+  results to stop before evidence injection, harness preflight, or spend. Seven original production-path fixtures
+  and the later pinned-support/cleanup pairs pass, including origin HEAD/status preservation, exact-once order,
+  stale/unjoinable refusal, and plan drift.
 - T021 adds the generic advisory methodology workflow with the F-033 Markdown ignore set, a full deployed-path
   governance run, conditional PSScriptAnalyzer, major-pinned actions, and provider-aware init deployment. Scratch
   projects prove GitHub and unset providers receive it, while explicit non-GitHub providers receive no Actions
@@ -214,10 +218,25 @@
   command-scoped diagnostic path. Private command output remains suppressed by default. The paired unit and
   supplier-to-campaign production-path suites pass 18/18; the expanded orchestration/frozen-verification/public-
   command/strict-ingress/end-to-end set passes 77/77. Scoped governance and diff integrity pass. T066 is repriced
-  from 1.5 to 3.0 SP for both correction rounds, bringing the iteration to 23.5/26 SP.
+  from 1.5 to 3.0 SP for the first two correction rounds.
+- T066 attempts 03 and 04 used commit `9b37b05ec5b06a146cc6f5c2f93ee20091c1ba64` and digest
+  `2105a405bc03674ea49b203a23e97625574816af`. Both stopped before provider invocation, spent zero slots, and
+  released their reservations after the campaign snapshot recorded the registry and governance red. Raising the
+  outer timeout from 900 to 2100 seconds did not change the roughly 907-second failure point, disproving the first
+  timeout diagnosis. A retained campaign-generated snapshot with bounded disclosure identified five registry
+  failures caused by missing tracked `.specify/**`; governance additionally required pinned `.squad/**` and
+  `.specrew/iteration-config.yml`. The snapshot had incorrectly treated the machinery-stripped review digest as a
+  complete verification repository.
+- The correction temporarily stages only tracked methodology support files from `origin_head_before`, executes
+  verification, removes exactly those files, and rechecks the canonical digest before reviewer harness preflight.
+  Dirty origin machinery is never copied, the reviewer never sees staged support, and red verification now stops
+  before implementer-evidence injection as well as before spend. The production campaign/public/target/ingress/
+  supplier set passes 86/86 on the final purge/baseline code. Its immediate pre-purge precursor passed all 73
+  registered Feature 198 suites in 845.1 seconds; the campaign pre-spend run owns the post-commit full proof.
+  T066 is honestly repriced to 4.0 SP, bringing the iteration to 24.5/26 SP.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 is complete. T066 is correcting attempt 02 and will rerun exact-digest deterministic/hosted proof before a
+- T070 is complete. T066 is correcting the snapshot-support defect and will rerun exact-digest deterministic/hosted proof before a
   fresh independent run. The maintainer's standing authorization permits further bounded correction/review actions
   while evidence is converging; every provider invocation still receives a unique run ID and immutable slot fact.
 

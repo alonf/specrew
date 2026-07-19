@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 23.5/26 story_points
+**Capacity**: 24.5/26 story_points
 **Started**: 2026-07-18
 **Completed**:
 **Planning Baseline**: `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`
@@ -34,6 +34,12 @@ concurrent-session behavior. Claude, Codex, Copilot, Cursor, and Antigravity all
 registrations. Attempt 02 then proved red controller verification could still spend a provider slot without
 actionable diagnostics. T066 is therefore repriced from 1.5 to 3.0 SP to include both correction rounds and the
 pre-spend failure gate. The iteration rises to 23.5/26 SP and retains 2.5 SP headroom.
+
+Attempts 03 and 04 then exposed a third correction class without provider spend: the reviewer snapshot's
+machinery-stripped digest tree was not a complete repository for release/distribution verification. T066 is
+repriced to 4.0 SP to stage pinned tracked methodology support only during controller verification, remove it
+before reviewer preflight, and prove pass/red cleanup pairs. The iteration rises to 24.5/26 SP with 1.5 SP
+headroom.
 
 ## Objective
 
@@ -121,7 +127,7 @@ the published beta from a fresh consumer; it does not promote a stable version.
 | T064 | Frozen-target verification execution and exact-digest campaign evidence injection | FR-048, FR-049, SC-015 | US3 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/continuous-co-review/** | done | Implementer | 1.5 | passed |
 | T065 | Supplier/runner/injection deterministic end-to-end fixture matrix | FR-048, FR-049, SC-015, NFR-007 | US3 | 1.25 | Implementer | tests/continuous-co-review/**, tests/fixtures/**, specs/198-beta2-hardening/iterations/008/quality/** | done | Implementer | 1.25 | passed |
 | T070 | Host-independent conformance turn-delta core and supported-host prompt adapters | FR-055, FR-056, NFR-002, NFR-007 | US1 | 4.0 | Implementer | host hook manifests, conformance core/provider/refocus-catalog mirrors, tests/unit/**, tests/integration/**, tests/bootstrap/**, specs/198-beta2-hardening/iterations/008/** | done | Implementer | 4.0 | passed |
-| T066 | Full deterministic verification, three-OS CI, pre-spend red-verification gate, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 3.0 | Reviewer | tests/**, scripts/internal/continuous-co-review/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | in-progress | Reviewer | — | attempts 01/02 valid incomplete; zero-spend red-verification correction active |
+| T066 | Full deterministic verification, three-OS CI, pre-spend red-verification gate, pinned verification-support lifecycle, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 4.0 | Reviewer | tests/**, scripts/internal/continuous-co-review/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | in-progress | Reviewer | — | attempts 01/02 valid incomplete and spent; attempts 03/04 failed before provider with zero spend; snapshot-support correction active |
 | T067 | Published-beta fresh-consumer dogfood and stable-promotion input | SC-014, NFR-002 | Release | 1.0 | Maintainer | specs/198-beta2-hardening/iterations/008/quality/**, docs/** | planned | — | — | — |
 
 T021–T029 retain their feature-global identifiers from the never-opened Iteration 004 slice. New work continues
@@ -150,9 +156,9 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 | --- | --- | --- |
 | Effort Unit | story_points | Repository-configured unit |
 | Capacity per Iteration | 26 | Current project cap |
-| Planned Effort | 22.0 | Core finish line plus the three explicitly selected repairs at T070's full scope |
+| Planned Effort | 24.5 | Core finish line plus the three explicitly selected repairs and observed T066 correction scope |
 | Overcommit Threshold | 1.0 | No overcommit allowed |
-| Capacity Status | ok | 2.5 SP headroom after T070's 4.0 SP and T066's 3.0 SP reprices |
+| Capacity Status | ok | 1.5 SP headroom after T070's 4.0 SP and T066's 4.0 SP reprices |
 | Iteration Bounding | scope | Beta2 supplier, distribution, release, and published-beta proof form one coherent finish line |
 | Time Limit (hours) | n/a | Scope-bounded iteration |
 | Defer Strategy | manual | No requirement or optional repair is silently included or dropped |
@@ -163,14 +169,15 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 - Historical Iteration 004 distribution/release tasks T021–T029 total 7.0 SP after the approved T028 technology-assumption amendment.
 - The T018 verification schema, validator, runner, evidence recorder, and selected-plan load seam already exist and are not re-estimated.
 - Residual supplier/materialization/campaign injection and deterministic fixture work T062–T065 totals 5.5 SP.
-- Full validation/signoff, its two evidence-pipeline correction rounds, and post-publish consumer proof T066–T067 total 4.0 SP.
+- Full validation/signoff, its three evidence-pipeline correction classes, and post-publish consumer proof T066–T067 total 5.0 SP.
 - The tasks verdict selected T068 (0.75 SP) and T069 (2.25 SP), raising the original executable baseline to 18.0 SP.
 - The full-scope 2026-07-19 amendment reprices T070 to 4.0 SP with no SP ceiling.
-- Selected total: 22.0 SP. The combined slice fits within 26 SP and keeps 4.0 SP unallocated.
+- Selected total: 24.5 SP. The combined slice fits within 26 SP and keeps 1.5 SP unallocated.
 
-Iterations 001 and 002 expanded about 16–17% from plan to actual. Applying 17% to the selected 22.0 SP baseline
-yields about 25.7 SP, still below capacity. Iterations 006 and 007 reported estimated effort as actual but did not meter it
-independently; they are not used as zero-variance evidence.
+Iterations 001 and 002 expanded about 16–17% from plan to actual. Conservatively applying 17% to all 5.75 SP
+still-open work, including T066's full 4.0 SP reprice, forecasts 25.48 SP, still below capacity. Iterations 006 and
+007 reported estimated effort as actual but did not meter it independently; they are not used as zero-variance
+evidence.
 
 ### Phase Baseline
 
@@ -182,10 +189,10 @@ independently; they are not used as zero-variance evidence.
 | Consumer distribution hardening | 6.25 | T021–T028 |
 | Deterministic end-to-end acceptance | 1.25 | T065 |
 | Conformance turn-delta core and five host adapters | 4.0 | T070 |
-| Full verification, pre-spend correction, and independent review | 3.0 | T066 |
+| Full verification, pre-spend and snapshot-support correction, and independent review | 4.0 | T066 |
 | Authorized prerelease publication | 0.75 | T029 |
 | Published-beta consumer dogfood | 1.0 | T067 |
-| **Total** | **22.0** | Matches selected capacity consumption |
+| **Total** | **24.5** | Matches selected capacity consumption |
 
 ### Provider and Review-Round Budget
 

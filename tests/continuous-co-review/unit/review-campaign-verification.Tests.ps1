@@ -59,6 +59,12 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
                 param($invocation)
                 $Capture.preflight_count++
                 $Capture.review_scope = [string]$invocation.review_scope
+                $visibleSupport = @(
+                    '.specify/support.txt', '.specify/generated-by-verification.txt', '.squad/team.yml',
+                    '.specrew/iteration-config.yml', '.specrew/verification-plan.json' |
+                        Where-Object { Test-Path -LiteralPath (Join-Path ([string]$invocation.snapshot_path) $_) }
+                )
+                $Capture | Add-Member -NotePropertyName verification_support_visible_at_preflight -NotePropertyValue @($visibleSupport) -Force
                 $path = Join-Path ([string]$invocation.snapshot_path) '.review/implementer-evidence.json'
                 if ([IO.File]::Exists($path)) { $Capture.evidence = [IO.File]::ReadAllText($path) | ConvertFrom-Json }
                 return [pscustomobject]@{ ok = $true; reason = 'fixture-ready' }
@@ -106,6 +112,68 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-t064 -Kind spend).Count | Should -Be 1
         (& git -C $repo rev-parse HEAD).Trim() | Should -Be $headBefore
         @(& git -C $repo status --porcelain=v1 --untracked-files=all) | Should -Be $statusBefore
+    }
+
+    It 'stages pinned tracked machinery for verification and removes it before harness preflight' {
+        $root = Join-Path $TestDrive 'verification-support'; $repo = New-T064Repo -Path (Join-Path $root 'origin')
+        foreach ($entry in @(
+                @{ path = '.specify/support.txt'; content = 'pinned' },
+                @{ path = '.squad/team.yml'; content = 'team: pinned' },
+                @{ path = '.specrew/iteration-config.yml'; content = 'capacity_per_iteration: 26' }
+            )) {
+            $path = Join-Path $repo $entry.path
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
+            [IO.File]::WriteAllText($path, [string]$entry.content)
+        }
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid add -f .specify/support.txt .squad/team.yml .specrew/iteration-config.yml 2>&1 | Out-Null
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid commit -qm support 2>&1 | Out-Null
+        [IO.File]::WriteAllText((Join-Path $repo '.specify/support.txt'), 'dirty-origin-must-not-be-staged')
+        $probe = @'
+$required = @('.specify/support.txt', '.squad/team.yml', '.specrew/iteration-config.yml')
+if (@($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path (Get-Location) $_)) }).Count -gt 0) { exit 8 }
+if ([IO.File]::ReadAllText((Join-Path (Get-Location) '.specify/support.txt')) -cne 'pinned') { exit 9 }
+[IO.File]::WriteAllText((Join-Path (Get-Location) '.specify/generated-by-verification.txt'), 'must-be-purged')
+exit 0
+'@
+        Set-T064Plan -Repo $repo -Plan (New-T064Plan -Commands @(
+                (New-T064Command -Id 'requires-pinned-support' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', $probe))
+            ))
+        $context = New-T064Context -Root (Join-Path $root 'controller')
+        $capture = [pscustomobject]@{ preflight_count = 0; invoke_count = 0; review_scope = ''; evidence = $null }
+
+        $result = Invoke-T064Campaign -Repo $repo -Context $context -Harness (New-T064CapturingHarness -Capture $capture)
+
+        $result.status | Should -Be 'terminal' -Because $result.reason
+        $capture.invoke_count | Should -Be 1
+        @($capture.verification_support_visible_at_preflight).Count | Should -Be 0 -Because 'methodology support is controller-only and never reviewer-visible'
+        $capture.review_scope | Should -Match 'Tracked methodology support used by verification came only from pinned commit'
+        @($capture.evidence.runs | Where-Object { -not [bool]$_.command_succeeded }).Count | Should -Be 0
+        [IO.File]::ReadAllText((Join-Path $repo '.specify/support.txt')) | Should -Be 'dirty-origin-must-not-be-staged'
+    }
+
+    It 'removes staged machinery after a red verification command before returning' {
+        $root = Join-Path $TestDrive 'verification-support-failure'; $repo = New-T064Repo -Path (Join-Path $root 'origin')
+        $support = Join-Path $repo '.specify/support.txt'; [IO.Directory]::CreateDirectory((Split-Path -Parent $support)) | Out-Null
+        [IO.File]::WriteAllText($support, 'pinned')
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid add -f .specify/support.txt 2>&1 | Out-Null
+        & git -C $repo -c user.name=t064-test -c user.email=t064@example.invalid commit -qm support 2>&1 | Out-Null
+        $probe = "if (-not (Test-Path -LiteralPath '.specify/support.txt')) { exit 8 }; [IO.File]::WriteAllText('.specify/generated-by-verification.txt', 'must-be-purged'); exit 7"
+        Set-T064Plan -Repo $repo -Plan (New-T064Plan -Commands @(
+                (New-T064Command -Id 'red-with-support' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', $probe))
+            ))
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $repo -RunId run-support-cleanup -ExternalRoot (Join-Path $root 'targets')
+        try {
+            $result = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
+            $result.ok | Should -BeFalse
+            $result.reason | Should -Be 'verification-command-failed:red-with-support:diagnostics-require-command-scoped-disclosure'
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specify/support.txt') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specify/generated-by-verification.txt') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specrew/verification-plan.json') | Should -BeFalse
+            $after = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $snapshot.snapshot_path
+            $treeDelta = @(& git -C $snapshot.snapshot_path diff --name-status $snapshot.target_digest $after.tree_id 2>&1)
+            $after.tree_id | Should -Be $snapshot.target_digest -Because ($treeDelta -join '; ')
+        }
+        finally { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null }
     }
 
     It 'stops a <case> selected plan before provider spend' -ForEach @(

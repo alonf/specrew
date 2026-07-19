@@ -23,7 +23,7 @@
 ## Summary
 
 **Total drift events**: 5
-**Resolution rate**: 60% (3/5 resolved; DRIFT-198-I008-004/005 remain open through exact-digest signoff)
+**Resolution rate**: 50% (3/6 resolved; DRIFT-198-I008-004/005/006 remain open through exact-digest signoff)
 **Specification drift**: None detected
 
 ## Events
@@ -150,6 +150,32 @@
   evidence and spends once, while pass/fail/pass records every attempt but performs zero harness preflight, zero
   invocation, zero spend, and exactly one reservation release. Focused result: 18/18 passed; expanded campaign,
   public-command, strict-ingress, and supplier-to-campaign result: 77/77 passed; scoped governance passed.
+
+### DRIFT-198-I008-006 — machinery-stripped reviewer snapshot was not a complete verification repository
+
+- **Status**: correction implemented; exact-candidate full verification and signoff pending
+- **Severity**: blocking verification-integrity defect
+- **Type**: architecture/evidence drift
+- **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
+- **Observed evidence**: zero-spend T066 attempts 03 and 04 both stopped before provider invocation after the
+  campaign-generated snapshot recorded the full registry and governance red. Raising the outer bound from 900 to
+  2100 seconds did not move the roughly 907-second failure, disproving the initial timeout diagnosis. A retained
+  campaign snapshot with command-scoped bounded disclosure showed five registry failures because tracked
+  `.specify/**` distribution mirrors were absent; governance also required pinned `.squad/**` and
+  `.specrew/iteration-config.yml`. The external commit worktree was green because it contained those tracked
+  support trees, while `New-GitReviewTargetSnapshot` checked out only the machinery-stripped canonical digest.
+- **Correction**: controller verification derives the existing authoritative machinery path set from the origin,
+  lists only files tracked by `origin_head_before`, stages those exact files in bounded chunks, runs the selected
+  plan, and deletes exactly the manifest files in `finally`. It then recomputes the canonical digest before any
+  reviewer harness preflight. Dirty origin machinery is never copied, path collisions fail closed, and the
+  reviewer-visible tree remains machinery-stripped. A red configured command now returns before creating
+  `.review/implementer-evidence.json` because no reviewer can consume it.
+- **Paired evidence**: a production Git campaign fixture proves verification sees pinned `.specify`, `.squad`,
+  and `.specrew` support while ignoring dirty origin support; the capturing harness proves none is visible at
+  preflight. A red-command fixture proves cleanup and unchanged digest before return. The expanded production
+  target/campaign/public-command/strict-ingress/supplier matrix passes 86/86 on the final purge/baseline code. The
+  immediate pre-purge precursor passed all 73 registered entries in 845.1 seconds; the committed campaign's
+  pre-spend execution owns the final full-registry proof.
 
 ### Resolution Strategies
 

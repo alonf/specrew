@@ -94,11 +94,11 @@ tasks:
     completed_at: "2026-07-19T14:39:59Z"
     blocked_reason: ""
   T066:
-    title: "Full deterministic verification, three-OS CI, and independent signoff"
+    title: "Full deterministic verification, pinned support lifecycle, three-OS CI, and independent signoff"
     status: "in_progress"
     started_at: "2026-07-19T13:06:00Z"
     completed_at: ""
-    blocked_reason: "Attempts 01 and 02 each spent one Claude slot and returned valid incomplete. Attempt 02 exposed intermittent opaque verification plus provider spend on an already-red plan; pre-spend gating is corrected and exact-candidate proof is in progress."
+    blocked_reason: "Attempts 01 and 02 each spent one Claude slot and returned valid incomplete. Attempts 03 and 04 failed safely before provider with zero spend, exposing that the machinery-stripped reviewer tree was incomplete for controller verification. Pinned support staging/cleanup is corrected; exact-candidate proof is in progress."
   T029:
     title: "Release v0.40.0-beta2 after separately authorized release gate"
     status: "pending"

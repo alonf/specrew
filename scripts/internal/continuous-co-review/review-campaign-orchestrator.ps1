@@ -173,6 +173,119 @@ function New-ReviewFixtureVerificationPort {
     return [pscustomobject]@{ kind = 'fixture'; execute = $execute }
 }
 
+function Get-ReviewCampaignVerificationSupportManifest {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Snapshot)
+
+    # The reviewer snapshot is intentionally the machinery-stripped canonical digest tree. Project
+    # verification is different: release/distribution checks may legitimately need committed Specrew
+    # mirrors and governance configuration. Stage only TRACKED machinery from the snapshot's pinned
+    # origin commit, never the origin working tree, and remove it again before harness preflight.
+    foreach ($name in @('snapshot_path', 'origin_repo', 'origin_head_before')) {
+        if (-not $Snapshot.PSObject.Properties[$name] -or [string]::IsNullOrWhiteSpace([string]$Snapshot.$name)) {
+            return [pscustomobject]@{ commit = ''; paths = @(); files = @() }
+        }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
+    }
+
+    $snapshotPath = [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path)
+    $originRepo = [IO.Path]::GetFullPath([string]$Snapshot.origin_repo)
+    $commit = [string]$Snapshot.origin_head_before
+    $paths = @(
+        Get-ContinuousCoReviewMachineryPaths -RepoRoot $originRepo |
+            ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -cne '.git' } |
+            Sort-Object -Unique
+    )
+    if ($paths.Count -eq 0) { return [pscustomobject]@{ commit = $commit; paths = @(); files = @() } }
+
+    $files = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    for ($offset = 0; $offset -lt $paths.Count; $offset += 80) {
+        $end = [Math]::Min($offset + 80, $paths.Count) - 1
+        $chunk = @($paths[$offset..$end])
+        $listed = Invoke-ReviewTargetGit -WorkingDirectory $snapshotPath -Arguments (@('ls-tree', '-r', '--name-only', $commit, '--') + $chunk)
+        if ($listed.exit_code -ne 0) { throw ('verification-support-list-failed:' + $listed.stderr) }
+        foreach ($file in @([string]$listed.stdout -split "`r?`n")) {
+            $normalized = ([string]$file -replace '\\', '/').Trim()
+            if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
+            $full = [IO.Path]::GetFullPath((Join-Path $snapshotPath $normalized))
+            if (-not (Test-ReviewTargetPathUnderRoot -Path $full -Root $snapshotPath)) { throw "verification-support-path-unsafe:$normalized" }
+            $null = $files.Add($normalized)
+        }
+    }
+    return [pscustomobject]@{ commit = $commit; paths = @($paths); files = @($files | Sort-Object) }
+}
+
+function Remove-ReviewCampaignVerificationSupport {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$SnapshotPath, [Parameter(Mandatory)]$Manifest)
+
+    $root = [IO.Path]::GetFullPath($SnapshotPath)
+    $pathComparer = if ([OperatingSystem]::IsWindows()) { [StringComparer]::OrdinalIgnoreCase } else { [StringComparer]::Ordinal }
+    $parents = [Collections.Generic.HashSet[string]]::new($pathComparer)
+    foreach ($relative in @($Manifest.files)) {
+        $full = [IO.Path]::GetFullPath((Join-Path $root ([string]$relative)))
+        if (-not (Test-ReviewTargetPathUnderRoot -Path $full -Root $root)) { throw "verification-support-cleanup-path-unsafe:$relative" }
+        for ($parent = Split-Path -Parent $full;
+            -not [string]::IsNullOrWhiteSpace($parent) -and (Test-ReviewTargetPathUnderRoot -Path $parent -Root $root);
+            $parent = Split-Path -Parent $parent) {
+            $null = $parents.Add($parent)
+        }
+        if ([IO.File]::Exists($full)) { [IO.File]::Delete($full) }
+        elseif (Test-Path -LiteralPath $full) { Remove-Item -LiteralPath $full -Force }
+    }
+    foreach ($directory in @($parents | Sort-Object { $_.Length } -Descending)) {
+        if ([IO.Directory]::Exists($directory) -and [IO.Directory]::GetFileSystemEntries($directory).Count -eq 0) {
+            [IO.Directory]::Delete($directory, $false)
+        }
+    }
+    $left = @($Manifest.files | Where-Object { Test-Path -LiteralPath (Join-Path $root ([string]$_)) })
+    if ($left.Count -gt 0) { throw ('verification-support-cleanup-incomplete:' + ($left -join ',')) }
+}
+
+function Remove-ReviewCampaignVerificationMachinery {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$SnapshotPath, [Parameter(Mandatory)]$Manifest)
+
+    $root = [IO.Path]::GetFullPath($SnapshotPath)
+    foreach ($relative in @($Manifest.paths | Sort-Object { ([string]$_).Length } -Descending)) {
+        $full = [IO.Path]::GetFullPath((Join-Path $root ([string]$relative)))
+        if (-not (Test-ReviewTargetPathUnderRoot -Path $full -Root $root)) { throw "verification-machinery-purge-path-unsafe:$relative" }
+        if (Test-Path -LiteralPath $full) { Remove-Item -LiteralPath $full -Recurse -Force }
+    }
+    $left = @($Manifest.paths | Where-Object { Test-Path -LiteralPath (Join-Path $root ([string]$_)) })
+    if ($left.Count -gt 0) { throw ('verification-machinery-purge-incomplete:' + ($left -join ',')) }
+}
+
+function Add-ReviewCampaignVerificationSupport {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Snapshot)
+
+    $manifest = Get-ReviewCampaignVerificationSupportManifest -Snapshot $Snapshot
+    if (@($manifest.files).Count -eq 0) { return $manifest }
+    $snapshotPath = [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path)
+    foreach ($relative in @($manifest.files)) {
+        if (Test-Path -LiteralPath (Join-Path $snapshotPath ([string]$relative))) {
+            throw "verification-support-path-collision:$relative"
+        }
+    }
+    try {
+        for ($offset = 0; $offset -lt @($manifest.files).Count; $offset += 80) {
+            $end = [Math]::Min($offset + 80, @($manifest.files).Count) - 1
+            $chunk = @($manifest.files[$offset..$end])
+            $restored = Invoke-ReviewTargetGit -WorkingDirectory $snapshotPath -Arguments (@('restore', "--source=$($manifest.commit)", '--worktree', '--') + $chunk)
+            if ($restored.exit_code -ne 0) { throw ('verification-support-restore-failed:' + $restored.stderr) }
+        }
+        return $manifest
+    }
+    catch {
+        try { Remove-ReviewCampaignVerificationSupport -SnapshotPath $snapshotPath -Manifest $manifest } catch { $null = $_ }
+        throw
+    }
+}
+
 function Invoke-ReviewCampaignFrozenVerification {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Snapshot)
@@ -205,10 +318,31 @@ function Invoke-ReviewCampaignFrozenVerification {
         }
     }
 
-    try { $execution = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $snapshotPath -Plan $selected.plan }
-    catch {
+    $support = $null
+    $execution = $null
+    $executionFailure = $null
+    $cleanupFailure = $null
+    try {
+        $support = Add-ReviewCampaignVerificationSupport -Snapshot $Snapshot
+        $execution = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $snapshotPath -Plan $selected.plan
+    }
+    catch { $executionFailure = [string]$_.Exception.Message }
+    finally {
+        if ($null -ne $support) {
+            try { Remove-ReviewCampaignVerificationSupport -SnapshotPath $snapshotPath -Manifest $support }
+            catch { $cleanupFailure = [string]$_.Exception.Message }
+        }
+    }
+    try {
+    if (-not [string]::IsNullOrWhiteSpace($cleanupFailure)) {
         return [pscustomobject]@{
-            ok = $false; reason = ('verification-runner-failed:' + [string]$_.Exception.Message); state = 'verification-preflight-failed'
+            ok = $false; reason = ('verification-support-cleanup-failed:' + $cleanupFailure); state = 'verification-preflight-failed'
+            review_scope_suffix = ''; degrade_reason = $null; command_count = 0; evidence_count = 0
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($executionFailure)) {
+        return [pscustomobject]@{
+            ok = $false; reason = ('verification-runner-failed:' + $executionFailure); state = 'verification-preflight-failed'
             review_scope_suffix = ''; degrade_reason = $null; command_count = 0; evidence_count = 0
         }
     }
@@ -248,6 +382,24 @@ function Invoke-ReviewCampaignFrozenVerification {
         }
     }
 
+    $failedIds = @($evidence | Where-Object { -not [bool]$_.command_succeeded } | ForEach-Object { [string]$_.command_id })
+    if ($failedIds.Count -gt 0) {
+        # A red configured command is controller evidence, not work for a paid reviewer. Stop before
+        # evidence injection, harness preflight, claim acquisition, or spend; the reservation is
+        # released by the caller. Output stays private by default. The stable reason directs the
+        # operator to the existing human-authorized, command-scoped bounded-disclosure path.
+        return [pscustomobject]@{
+            ok = $false
+            reason = 'verification-command-failed:' + ($failedIds -join ',') + ':diagnostics-require-command-scoped-disclosure'
+            state = 'verification-failed'
+            review_scope_suffix = ''
+            degrade_reason = $null
+            command_count = $planIds.Count
+            evidence_count = $evidence.Count
+            failed_command_ids = @($failedIds)
+        }
+    }
+
     $reviewDirectory = Join-Path $snapshotPath '.review'
     [IO.Directory]::CreateDirectory($reviewDirectory) | Out-Null
     $injected = Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $snapshotPath -WorktreePath $snapshotPath -DigestTreeId $targetDigest -Plan $selected.plan
@@ -274,39 +426,28 @@ function Invoke-ReviewCampaignFrozenVerification {
         }
     }
 
-    # Verification and evidence injection are controller-owned preparation. Re-baseline only after the
-    # canonical digest equality and exact join have passed; reviewer changes remain integrity violations.
-    if ($Snapshot.PSObject.Properties['source_hashes_before'] -and (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) {
-        $Snapshot.source_hashes_before = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshotPath
-    }
-    $failedIds = @($evidence | Where-Object { -not [bool]$_.command_succeeded } | ForEach-Object { [string]$_.command_id })
     $scopeSuffix = @"
 
 CONTROLLER VERIFICATION EVIDENCE: Read .review/implementer-evidence.json. The controller executed the selected
 project verification plan against this exact frozen digest before reviewer launch and injected one joined record
 for each of $($planIds.Count) declared command(s). Treat failed, timed-out, or missing-required-result records as
 approval-blocking evidence; never turn a configured verification failure into a clean result.
+Tracked methodology support used by verification came only from pinned commit $([string]$Snapshot.origin_head_before)
+and was removed before reviewer harness preflight; the reviewer-visible tree remains machinery-stripped.
 "@
-    if ($failedIds.Count -gt 0) {
-        # A red configured command is controller evidence, not work for a paid reviewer. Stop before
-        # harness preflight, claim acquisition, or spend; the reservation is released by the caller.
-        # Output stays private by default. The stable reason directs the operator to the existing
-        # human-authorized, command-scoped bounded-disclosure path instead of spending a provider slot
-        # merely to repeat that verification is red.
-        return [pscustomobject]@{
-            ok = $false
-            reason = 'verification-command-failed:' + ($failedIds -join ',') + ':diagnostics-require-command-scoped-disclosure'
-            state = 'verification-failed'
-            review_scope_suffix = ''
-            degrade_reason = $null
-            command_count = $planIds.Count
-            evidence_count = $evidence.Count
-            failed_command_ids = @($failedIds)
-        }
-    }
     return [pscustomobject]@{
         ok = $true; reason = 'verification-evidence-ready'; state = 'configured'; review_scope_suffix = $scopeSuffix
         degrade_reason = $null; command_count = $planIds.Count; evidence_count = $evidence.Count
+    }
+    }
+    finally {
+        if ($null -ne $support) { Remove-ReviewCampaignVerificationMachinery -SnapshotPath $snapshotPath -Manifest $support }
+        # Verification, evidence injection, and the final machinery purge are controller-owned
+        # preparation. Re-baseline only after all three complete; reviewer changes remain integrity
+        # violations while the projected .review evidence is part of the frozen launch surface.
+        if ($Snapshot.PSObject.Properties['source_hashes_before'] -and (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) {
+            $Snapshot.source_hashes_before = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshotPath
+        }
     }
 }
 
