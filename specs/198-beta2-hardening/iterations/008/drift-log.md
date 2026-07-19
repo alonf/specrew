@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved)
+**Total drift events**: 4
+**Resolution rate**: 75% (3/4 resolved)
 **Specification drift**: None detected
 
 ## Events
@@ -103,6 +103,27 @@
   provider prompt/degraded message, stale-handover, consecutive-turn, same-path re-edit, and concurrent-session
   fixtures pass. All 73 registered Feature 198 suites pass in 740.4 seconds. Three-OS CI remains T066 candidate
   preparation evidence and does not reopen the corrected contract.
+
+### DRIFT-198-I008-004 — T066 self-plan omitted its production child-environment declaration
+
+- **Status**: correction verification in progress under T066
+- **Severity**: blocking verification-integrity defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
+- **Observed evidence**: T066 attempt 01 executed the selected plan through the real production runner. Its empty
+  child environment was correct by contract, but the project plan declared no `env_refs`; the registry failed
+  before its first suite because temp paths were unavailable, and governance validated zero iterations because
+  Git was not resolvable. The prior deterministic-green wording described only ambient local/CI execution.
+- **Required correction**: version the self-plan, declare only the ambient variable names required by its tools,
+  prove the declared environment succeeds and the undeclared form fails through the production runner, and run
+  the exact full plan successfully before requesting another provider slot.
+- **Attempt evidence**: `run-t066-claude-windows-8daac538-e03a4139-01`, commit
+  `8daac53888f29c47cab0c23531e9fbf53ec38729`, digest
+  `e03a413985002981933eccdbcd7b25c5b6c6df96`, one provider invocation/slot, valid incomplete result with two
+  blocking findings and one major finding.
+- **Correction shape**: tracked `f198.i008.signoff.v4` plan, identical runtime selected-plan bytes, paired
+  production-runner allow/deny fixture, full production execution, fresh exact-commit CI, and a new digest-bound
+  preparation artifact. No output salvage, environment-value persistence, or hidden provider retry is allowed.
 
 ### Resolution Strategies
 

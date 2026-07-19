@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Planner
 **Reviewed At**: 2026-07-18
-**Post-Implementation Verification**: deterministic-green; independent review pending
+**Post-Implementation Verification**: correction verification in progress; independent review pending
 
 ## Concern Review
 
@@ -19,7 +19,7 @@
 | `security-surface` | `security` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Explicit configuration precedence; versioned allowlisted metadata detectors; safe repository-relative canonical paths; no secret values in plan/evidence; frozen external target; origin unchanged; repository-only code mutation. | `true` | Supplier inputs and executable commands cross project/reviewer trust boundaries and must not create path, secret, or mutation authority. | `—` |
 | `error-handling-expectations` | `robustness` | `addressed` | `runtime-evidence` | `recorded` | T065 proves invalid explicit config, no source, and escaping paths stop before harness preflight, command execution, or spend; its pass/fail/pass plan records every attempt and remains non-approving. T064 plus the adjacent join suites refuse stale, duplicate, and unjoinable evidence. | `true` | Missing configuration, command failure, and stale authority cannot become silent success. | `—` |
 | `retry-idempotency-requirements` | `resilience` | `addressed` | `runtime-evidence` | `recorded` | T063 records the generated plan hash in a sidecar, performs no write when current, refreshes/removes only a hash-matching generated file, preserves any modified or explicit file byte-for-byte with an actionable warning, and exercises init/update production wiring. Review/release retry controls remain task-owned by T064/T066/T029. | `true` | Setup, review, and release have durable side effects whose replay must not overwrite user work or duplicate authority/spend. | `—` |
-| `test-integrity-targets` | `verification` | `addressed` | `runtime-evidence` | `recorded` | T068/T069 and T062–T065 now carry paired false-allow/false-deny fixtures. The T065 ten-case downstream matrix plus adjacent production join suites passed 114/116 with two intentional platform skips; T066 retains the full registry, three-OS CI, and independent exact-digest review. | `true` | File presence, fake-provider success, or a tag alone cannot prove the finish line. | `—` |
+| `test-integrity-targets` | `verification` | `addressed` | `runtime-evidence` | `recorded` | T068/T069 and T062–T065 carry paired false-allow/false-deny fixtures. T066 attempt 01 exposed that the project self-plan had only been run with ambient environment inheritance; plan v2 declares the required variable names and adds a paired production-runner allow/deny regression before another provider slot. | `true` | File presence, fake-provider success, ambient-only execution, or a tag alone cannot prove the finish line. | `—` |
 | `operational-resilience-concerns` | `operability` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Bounded command timeouts; pre-provider validation; controller-owned terminal evidence; visible setup/remediation; hash-guarded update; release workflow observation; non-convergence stop rule; T069 hard ceiling. | `true` | The slice changes downstream setup, CI, review preflight, and prerelease publication behavior. | `—` |
 | `crossing-binding-and-capture-integrity` | `authorization-integrity` | `addressed` | `runtime-evidence` | `recorded` | T068 binds actual closeout commit/tree and rejects stale parent identity; T069 excludes injected context, preserves instruction-bearing approval through the real writer, scopes material state by session/owner, rejects machinery/teaching/bare-number input, and passes a barrier-synchronized two-session attribution fixture. | `true` | Both defect classes produced misleading or rejected boundary authority in real sessions. | `—` |
 | `supplier-provenance-and-no-default` | `input-integrity` | `addressed` | `runtime-evidence` | `recorded` | The pure T062 selector enforces fixed precedence and explicit-invalid short circuit over normalized named identities. A closed mirrored catalog contains only one unambiguous package-script detector plus explicitly selected stack profiles; provider rows are supported but empty by default. Fourteen paired tests prove extension bait and inactive providers select nothing, no-source is actionable, output identity is stable, and provenance carries no supplied secret. | `true` | A convenient invented command would be unproven authority over downstream verification. | `—` |
@@ -38,7 +38,7 @@
 | `condition-d-capacity-discipline` | `met` | 18/26 SP includes T068/T069, supplier/injection, distribution, deterministic proof, review, release, and dogfood. | Preserve the 8 SP headroom; do not hide extra scope. |
 | `condition-e-live-state-safety` | `met-with-scoped-control` | The tasks verdict names plan commit `08e86496`; the stale `744e77d8`/`542c54f0` record carries no authority. Canonical sync at exact task commit `29cf84084fd65da9f4199466a9aa4dccc5105958` then returned success with no pending verdict and null pending identity despite the open crossing. | Treat both results as DRIFT-198-I008-001 evidence, never authority. Until T068 passes, use only exact commit/tree plus explicit verdict text for crossings. |
 | `condition-f-t069-ceiling` | `met` | T069 completed at 2.25 SP with its injected-context, instruction-retention, machinery, exact-boundary, bare-number, stale/current, dispatcher-delivery, and barrier-synchronized multi-session matrix green; all 60 registered suites passed in 788.5 seconds. | Further stop/capture expansion requires separate scope; T069 does not absorb it. |
-| `condition-g-provider-authority` | `met` | Task/before-implement authorization grants zero provider invocations. | T066 requires a separate slot, new run ID, and no hidden retry. |
+| `condition-g-provider-authority` | `met` | Task/before-implement authorization granted zero provider invocations. A later exact T066 grant spent one slot on attempt 01, whose valid incomplete result is retained. | Any correction rerun requires a fresh separate slot, new run ID, and no hidden retry. |
 | `condition-h-release-authority` | `met` | T029 remains separately gated after clean T066 evidence. | Do not tag or publish under implementation approval. |
 | `condition-i-promotion-boundary` | `met` | T067 is explicitly validate-not-promote. | Record published-beta evidence; never create a stable release. |
 | `condition-j-proposal-209` | `met` | Proposal 209 remains separately scheduled in plan/tasks/state. | Do not fold its optimization or redesign into Iteration 008. |
@@ -46,10 +46,20 @@
 Plan-boundary cross-platform CI run `29659141998` completed successfully at commit `08e86496`. That confirms the
 committed planning baseline; it does not replace the post-implementation T066 three-OS run.
 
-T066 deterministic preparation passed all 72 registered Feature 198 suites locally in 998.6 seconds, explicit
+Initial T066 deterministic preparation passed all 72 registered Feature 198 suites locally in 998.6 seconds, explicit
 Iteration 008 governance in 18.0 seconds with historical warnings only, and all jobs in hosted three-OS run
-`29666927862` at commit `b97dd633`. The exact post-evidence candidate still requires its own hosted run and a
-separately authorized independent provider invocation before this field can become complete.
+`29666927862` at commit `b97dd633`. T066 attempt 01 then proved that ambient-only evidence was insufficient: both
+configured commands failed under the production runner's intentionally empty child environment because the
+project plan declared no `env_refs`. Plan v4 now names only the required ambient variables, including Windows
+application lookup and nested-process state, and carries a paired
+production-runner regression. The corrected exact candidate still requires its own hosted run and a separately
+authorized independent provider invocation before this field can become complete.
+
+### T066 Attempt and Slot Ledger
+
+| Attempt | Run ID | Target | Provider invocations / slots | Outcome | Disposition |
+| --- | --- | --- | --- | --- | --- |
+| 01 | `run-t066-claude-windows-8daac538-e03a4139-01` | commit `8daac53888f29c47cab0c23531e9fbf53ec38729`, digest `e03a413985002981933eccdbcd7b25c5b6c6df96` | 1 / 1 | valid `incomplete`; containment reported violated after both configured commands failed; two blocking findings and one major finding | retained as non-approving evidence; correct self-plan environment contract and rerun only under a new exact grant |
 
 ## Required Evidence at Review
 

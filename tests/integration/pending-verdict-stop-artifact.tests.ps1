@@ -250,7 +250,12 @@ try {
         '-IterationNumber', '001',
         '-AuthCommitHash', $staleParent
     )
-    if ($staleResult.ExitCode -eq 0 -or ($staleResult.Output -join [Environment]::NewLine) -notmatch 'is stale; the actual current boundary commit is HEAD') {
+    $staleOutput = ($staleResult.Output -join [Environment]::NewLine)
+    $stalePlain = (($staleOutput -replace "`e\[[0-9;?]*[ -/]*[@-~]", '') -replace '\s+', ' ').Trim()
+    $hasCurrentExplanation =
+        ($stalePlain -match 'is stale; the actual current boundary commit is') -and
+        ($stalePlain -match [regex]::Escape("HEAD '$actualCloseout'"))
+    if ($staleResult.ExitCode -eq 0 -or -not $hasCurrentExplanation) {
         Fail ("Stale pre-closeout parent was not refused with the current-commit explanation. Output:`n{0}" -f ($staleResult.Output -join [Environment]::NewLine))
     }
     $afterRejectedSync = Get-Content -LiteralPath (Join-Path $closeoutProject '.specrew\start-context.json') -Raw -Encoding UTF8

@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: T070 host-independent conformance turn-delta core and supported-host adapters
 **Tasks Remaining**: T066, separately authorized T029, and T067
-**In Progress**: T066 deterministic candidate preparation (no provider grant)
+**In Progress**: T066 correction and deterministic candidate preparation (no fresh provider grant)
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T14:39:59Z
+**Updated**: 2026-07-19T14:54:10Z
 
 ## Planning Authorization
 
@@ -56,7 +56,8 @@
   Antigravity `PreInvocation`; a proven capability-absent future host uses the explicit degraded contract.
 - **Required evidence**: stale-handover read-only, consecutive turns, same-path re-edit, concurrent sessions,
   production host registrations, and honest degraded display.
-- **Provider effect**: the prior T066 run ID/grant is withdrawn unspent; no replacement candidate or grant exists.
+- **Provider effect**: the earlier exact grant raced with the subsequent read-only investigation request and was
+  invoked once. Its valid incomplete result is retained in the attempt ledger; no replacement grant exists.
 
 ## Readiness Summary
 
@@ -70,8 +71,9 @@
   completed successfully at plan commit `08e86496`.
 - **Team/sequence**: one serial Implementer; T068 then T069 before supplier/distribution work; T066 is the
   independent Reviewer boundary.
-- **Provider budget**: zero slots granted. T066 and every correction rerun require separate human authorization,
-  a new run ID, and no hidden retry.
+- **Provider budget**: one exact Claude slot was granted and spent by
+  `run-t066-claude-windows-8daac538-e03a4139-01`; no fresh slot is granted. Every correction rerun requires
+  separate human authorization, a new run ID, and no hidden retry.
 - **Release**: T029 has a separate release gate; T067 validates published beta without stable promotion.
 - **Authorization**: implementation is authorized against task commit `364fbe88`; provider and release actions
   remain separately gated.
@@ -168,22 +170,34 @@
   set passed 114/116 with two intentional platform skips in 170.9 seconds. The preceding T028 CI run
   `29666586025` exposed an older Windows fixture that returned to its divergent branch via `git checkout -`; the
   fixture now records its actual base branch and asserts non-ancestry before exercising the production guard.
-- T066 deterministic preparation is green at the T065 commit: all 72 explicitly registered Feature 198 suites
+- Initial T066 deterministic preparation was green at the T065 commit: all 72 explicitly registered Feature 198 suites
   passed locally in 998.6 seconds; the explicit Iteration 008 governance validator passed in 18.0 seconds with
   historical warnings only; and hosted Windows/Linux/macOS run `29666927862` passed every job at commit
   `b97dd63370faa687e39ae224b93b938ebb7e20df`. The scoped validator first rejected descriptive runtime-evidence
   status tokens, so the three affected hardening rows now use its exact closed value `recorded`. That documentation
-  correction is part of the independent-review candidate; no provider invocation or release action has occurred.
+  correction was part of the first independent-review candidate; no release action occurred.
+- T066 attempt 01 invoked Claude once as
+  `run-t066-claude-windows-8daac538-e03a4139-01` against commit `8daac53888f29c47cab0c23531e9fbf53ec38729`
+  and digest `e03a413985002981933eccdbcd7b25c5b6c6df96`. The valid incomplete result reported two blocking command
+  failures and one major evidence-honesty finding: the project plan omitted the `env_refs` needed by the
+  production runner's empty child environment, so the registry could not create a temp file and governance could
+  not resolve Git. The slot is spent; the result cannot approve the candidate.
 - T070 completed at its honest 4.0 SP estimate under the no-ceiling full-scope authorization after a read-only
   session was falsely charged for eight absolute dirty files. One host-independent live-Git core owns baseline,
   status/content fingerprints, delta, and packet demand; thin manifests map all five supported prompt events.
   SessionStart-only operation is explicitly degraded and never says `this turn`. Focused core/provider/host suites,
-  mirror/package checks, and all 73 registered Feature 198 suites passed in 740.4 seconds. The withdrawn T066 run
-  `run-t066-claude-windows-8daac538-e03a4139-01` was never invoked and spent no provider slot.
+  mirror/package checks, and all 73 registered Feature 198 suites passed in 740.4 seconds. Exact-commit hosted run
+  `29691361750` passed every Windows, Ubuntu, and macOS job at commit `dbbabcd9ff6fdb6fa2f453df9df485c4594ba576`.
+- T066 correction now versions the self-review plan as `f198.i008.signoff.v4`, explicitly allows only the ambient
+  variable names required by its tools (`PATH`/Windows application and process-launch state, temp paths, PowerShell
+  module/home paths), and adds paired
+  production-runner evidence: the declared environment succeeds and the same probe without declarations fails.
+  The exact full plan must pass through the production runner before a replacement provider slot is requested.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 is complete. T066 may now receive a new committed candidate and deterministic preparation record; provider
-  invocation still requires a fresh explicit grant against that exact commit/digest/run ID.
+- T070 is complete. T066 is correcting the first review findings and will receive a new committed candidate and
+  deterministic preparation record; provider invocation still requires a fresh explicit grant against that exact
+  commit/digest/run ID.
 
 ## Notes
 
