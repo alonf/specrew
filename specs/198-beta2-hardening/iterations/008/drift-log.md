@@ -177,6 +177,51 @@
   immediate pre-purge precursor passed all 73 registered entries in 845.1 seconds; the committed campaign's
   pre-spend execution owns the final full-registry proof.
 
+### DRIFT-198-I008-007 — plan-level time was persisted as every serial command's observed time
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: major evidence-honesty defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-015, FR-048, NFR-002, NFR-007
+- **Observed evidence**: T066 attempt 05 passed both controller commands, but its injected records gave the
+  900.3-second registry and the later 10.9-second governance command the same `started_at` and `recorded_at`.
+  Governance therefore appeared to start before the registry ended, contradicting declared serial order. Run
+  `run-t066-claude-windows-fe17e387-5602cb72-05` spent one provider slot and returned valid current incomplete.
+- **Correction**: the production recorded-run wrapper accepts no caller clock. It captures start immediately before
+  spawn and captures record time only after process, structured-result, and artifact observation. Synthetic failed
+  attempts also obtain their own live stamp; the pure assembler retains injected clocks only for deterministic core
+  fixtures.
+- **Paired evidence**: a two-command production-plan fixture sleeps across clock-second boundaries and proves the
+  second start is at or after the first end/record time, while each `recorded_at` is at or after its command end.
+  Recorder/plan/campaign/public/target/end-to-end coverage records 157 passed with one platform skip.
+
+### DRIFT-198-I008-008 — empty support manifest produced false reviewer teaching
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: minor teaching/evidence defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 05 found the reviewer scope unconditionally claimed tracked methodology support
+  was staged and removed, even when the manifest contained zero files or lacked a commit identity.
+- **Correction**: support lifecycle teaching is appended only when a non-empty manifest was actually staged and
+  names the manifest's pinned commit, never an inferred or blank snapshot value.
+- **Paired evidence**: the existing pinned-support campaign fixture retains the teaching; the ordinary empty-
+  manifest campaign explicitly proves it is absent. Both reviewer-visible trees remain machinery-stripped.
+
+### DRIFT-198-I008-009 — staging rollback could hide cleanup failures and skip its purge backstop
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: note-level rollback-observability defect
+- **Type**: implementation/robustness drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 05 found that a chunked restore failure called exact cleanup but swallowed its
+  exception; because the caller never received a manifest, its outer machinery purge was then skipped.
+- **Correction**: a staging failure always attempts exact manifest cleanup and then the complete authoritative
+  machinery purge inside the staging boundary. The controller reason preserves the restore failure and every
+  rollback failure; the run remains pre-provider and fail closed.
+- **Paired evidence**: one fixture proves both cleanup layers run when restore fails; a second makes both layers
+  fail and proves both diagnostics survive in the returned exception. The expanded suite remains green.
+
 ### Resolution Strategies
 
 The following resolution strategies remain available if drift is detected later in execution:

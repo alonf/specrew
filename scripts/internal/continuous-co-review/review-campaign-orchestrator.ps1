@@ -281,8 +281,19 @@ function Add-ReviewCampaignVerificationSupport {
         return $manifest
     }
     catch {
-        try { Remove-ReviewCampaignVerificationSupport -SnapshotPath $snapshotPath -Manifest $manifest } catch { $null = $_ }
-        throw
+        $restoreFailure = [string]$_.Exception.Message
+        $rollbackFailures = [Collections.Generic.List[string]]::new()
+        try { Remove-ReviewCampaignVerificationSupport -SnapshotPath $snapshotPath -Manifest $manifest }
+        catch { $rollbackFailures.Add('exact-cleanup:' + [string]$_.Exception.Message) }
+        # A chunked restore can fail after creating files the exact manifest cleanup cannot
+        # remove. Always attempt the complete authoritative machinery purge as the rollback
+        # backstop, and preserve every cleanup failure in the controller-visible reason.
+        try { Remove-ReviewCampaignVerificationMachinery -SnapshotPath $snapshotPath -Manifest $manifest }
+        catch { $rollbackFailures.Add('machinery-purge:' + [string]$_.Exception.Message) }
+        if ($rollbackFailures.Count -gt 0) {
+            throw ('verification-support-staging-failed:' + $restoreFailure + ';verification-support-rollback-failed:' + ($rollbackFailures -join '|'))
+        }
+        throw ('verification-support-staging-failed:' + $restoreFailure)
     }
 }
 
@@ -426,14 +437,20 @@ function Invoke-ReviewCampaignFrozenVerification {
         }
     }
 
+    $supportScope = ''
+    if ($null -ne $support -and @($support.files).Count -gt 0) {
+        $supportScope = @"
+Tracked methodology support used by verification came only from pinned commit $([string]$support.commit)
+and was removed before reviewer harness preflight; the reviewer-visible tree remains machinery-stripped.
+"@
+    }
     $scopeSuffix = @"
 
 CONTROLLER VERIFICATION EVIDENCE: Read .review/implementer-evidence.json. The controller executed the selected
 project verification plan against this exact frozen digest before reviewer launch and injected one joined record
 for each of $($planIds.Count) declared command(s). Treat failed, timed-out, or missing-required-result records as
 approval-blocking evidence; never turn a configured verification failure into a clean result.
-Tracked methodology support used by verification came only from pinned commit $([string]$Snapshot.origin_head_before)
-and was removed before reviewer harness preflight; the reviewer-visible tree remains machinery-stripped.
+$supportScope
 "@
     return [pscustomobject]@{
         ok = $true; reason = 'verification-evidence-ready'; state = 'configured'; review_scope_suffix = $scopeSuffix

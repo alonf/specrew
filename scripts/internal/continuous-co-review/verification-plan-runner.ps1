@@ -207,8 +207,7 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         # { authorized_by; reason; command_id; max_tail_bytes? }. NEVER automatic - absent means every plan
         # command persists NO output text. Validated FAIL-FAST here (a structurally invalid authorization is
         # a caller error and runs ZERO commands); scoping to the named command_id is enforced by the recorder.
-        [AllowNull()]$DiagnosticDisclosure = $null,
-        [datetime]$Now = [datetime]::UtcNow
+        [AllowNull()]$DiagnosticDisclosure = $null
     )
 
     # Load guard (same pattern as test-evidence-recorder.ps1): make the universal recorded-run runner +
@@ -310,13 +309,13 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         # recorded as a failed attempt and skipped — never executed, never dropped, never made clean.
         $cmdCheck = Test-ContinuousCoReviewVerificationCommand -Command $cmd -RepoRoot $resolvedRoot
         if (-not $cmdCheck.valid) {
-            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'structurally-un-runnable' -Reason $cmdCheck.reason -Now $Now))
+            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'structurally-un-runnable' -Reason $cmdCheck.reason -Now ([datetime]::UtcNow)))
             continue
         }
 
         # require_result with nowhere to write the result can NEVER be satisfied -> verification failure.
         if ($requireResult -and [string]::IsNullOrWhiteSpace($resultPath)) {
-            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'required-result-missing-or-invalid' -Reason 'require_result=true but no result_path declared to satisfy it' -Now $Now))
+            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'required-result-missing-or-invalid' -Reason 'require_result=true but no result_path declared to satisfy it' -Now ([datetime]::UtcNow)))
             continue
         }
 
@@ -328,7 +327,7 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         # inherited PATH for launch. Unresolvable -> a RECORDED failure; the plan continues (never dropped).
         $exeResolution = Resolve-ContinuousCoReviewVerificationExecutable -Executable $executable -RepoRoot $resolvedRoot
         if (-not [bool]$exeResolution.resolved) {
-            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'executable-not-resolvable' -Reason $exeResolution.reason -Now $Now))
+            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'executable-not-resolvable' -Reason $exeResolution.reason -Now ([datetime]::UtcNow)))
             continue
         }
 
@@ -356,7 +355,6 @@ function Invoke-ContinuousCoReviewVerificationPlan {
             # env_refs only, resolved from the ambient environment at spawn - every unlisted ambient value
             # is structurally absent. Values are never recorded.
             ChildEnvironment = (Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs $envRefs)
-            Now              = $Now
         }
         if ($null -ne $DiagnosticDisclosure) { $runParams.DiagnosticDisclosure = $DiagnosticDisclosure }
         # REPO-ROOT ANCHORING (review finding f4): the schema defines working_directory AND result_path as
@@ -403,7 +401,7 @@ function Invoke-ContinuousCoReviewVerificationPlan {
                 $evidence += $reused
             }
             else {
-                $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification $cls -Reason $msg -Now $Now))
+                $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification $cls -Reason $msg -Now ([datetime]::UtcNow)))
             }
         }
     }

@@ -645,8 +645,7 @@ function Invoke-ContinuousCoReviewRecordedRun {
         [string[]]$EnvRefs,           # OPTIONAL env var NAMES (never values) - persisted INTO the durable record
         [System.Collections.IDictionary]$ChildEnvironment,   # OPTIONAL constructed child environment (allowlist semantics)
         [string]$DeclaredExecutable,  # OPTIONAL supplier-declared executable name (the resolved full path is what executes)
-        [AllowNull()]$DiagnosticDisclosure = $null,          # OPTIONAL human-authorized, command_id-scoped disclosure { authorized_by; reason; command_id; max_tail_bytes? } - NEVER automatic
-        [datetime]$Now = [datetime]::UtcNow
+        [AllowNull()]$DiagnosticDisclosure = $null           # OPTIONAL human-authorized, command_id-scoped disclosure { authorized_by; reason; command_id; max_tail_bytes? } - NEVER automatic
     )
     # DIAGNOSTIC DISCLOSURE (maintainer decision 2026-07-14): validated FAIL-LOUD (a malformed authorization
     # is a caller error, never silently ignored and never silently honored), and applied ONLY when its
@@ -693,7 +692,10 @@ function Invoke-ContinuousCoReviewRecordedRun {
     # EXECUTE via the HARNESS primitive (process-tree contained via Kill(entireProcessTree) on timeout; the
     # bounded-memory concurrent drain lives entirely in Invoke-...BoundedProcess). It returns RAW observed
     # facts; all honesty semantics (redaction, disclosure, classification) are applied by the pure assembler.
-    $startedAt = $Now
+    # PRODUCTION CLOCK BOUNDARY (review finding f1, T066 attempt 05): capture this command's
+    # own start immediately before spawn. A plan-level caller timestamp is not an observed
+    # command start and made later serial commands appear to overlap the first command.
+    $startedAt = [datetime]::UtcNow
     $procParams = @{ Executable = $Executable; Arguments = @($Arguments); WorkingDirectory = $cwd; TimeoutSeconds = $TimeoutSeconds; TailBytes = $effectiveTailBytes }
     if ($PSBoundParameters.ContainsKey('ChildEnvironment') -and $null -ne $ChildEnvironment) { $procParams.ChildEnvironment = $ChildEnvironment }
     $procFacts = try { Invoke-ContinuousCoReviewBoundedProcess @procParams } catch { throw "recorded-run: $($_.Exception.Message)" }
@@ -742,10 +744,15 @@ function Invoke-ContinuousCoReviewRecordedRun {
         }
     }
 
+    # Capture record time only after the process result, optional structured result, and
+    # artifact facts have been observed. The pure assembler still accepts injected clocks
+    # for deterministic core fixtures; this production wrapper never accepts caller time.
+    $recordedAt = [datetime]::UtcNow
+
     # ASSEMBLE the durable record via the PURE core (no process/clock/filesystem in there).
     $recordParams = @{
         Executable = $Executable; Arguments = @($Arguments); WorkingDirectory = $cwd; TreeId = $treeId
-        StartedAt = $startedAt; Now = $Now; Process = $procFacts
+        StartedAt = $startedAt; Now = $recordedAt; Process = $procFacts
         EffectiveTailBytes = $effectiveTailBytes; TailLabel = $tailLabel
         TestResult = $testResult; RequiredResultFailure = $requiredResultFailure; Artifacts = @($artifacts)
     }

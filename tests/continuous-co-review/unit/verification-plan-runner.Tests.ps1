@@ -85,6 +85,32 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         [string]$ev[2].reviewed_digest_tree_id | Should -Be ([string]$ev[0].reviewed_digest_tree_id)
     }
 
+    It 'records directly observed non-overlapping time windows for serial commands (T066 attempt 05 finding f1)' {
+        $repo = New-PlanRunRepo
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-observed-command-time'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'timed-first'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'Start-Sleep -Milliseconds 1200; exit 0'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'timing-fixture' } },
+                [pscustomobject]@{ command_id = 'timed-second'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'Start-Sleep -Milliseconds 1200; exit 0'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'timing-fixture' } }
+            )
+        }
+
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+
+        $result.all_succeeded | Should -BeTrue
+        $ev = @($result.evidence)
+        $firstEnd = [datetime]::Parse([string]$ev[0].ended_at).ToUniversalTime()
+        $firstRecorded = [datetime]::Parse([string]$ev[0].recorded_at).ToUniversalTime()
+        $secondStart = [datetime]::Parse([string]$ev[1].started_at).ToUniversalTime()
+        $secondEnd = [datetime]::Parse([string]$ev[1].ended_at).ToUniversalTime()
+        $secondRecorded = [datetime]::Parse([string]$ev[1].recorded_at).ToUniversalTime()
+        $firstRecorded | Should -BeGreaterOrEqual $firstEnd -Because 'recorded_at is observed after process completion, never copied from command start'
+        $secondStart | Should -BeGreaterOrEqual $firstEnd -Because 'the second serial command gets its own live start timestamp'
+        $secondStart | Should -BeGreaterOrEqual $firstRecorded -Because 'declared-order execution records the first attempt before starting the second'
+        $secondRecorded | Should -BeGreaterOrEqual $secondEnd
+    }
+
     It 'RECORDS EVERY ATTEMPT including a FAILURE — the failing command is not dropped and not made clean' {
         $repo = New-PlanRunRepo
         $plan = [pscustomobject]@{

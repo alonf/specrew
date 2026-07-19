@@ -107,6 +107,7 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
         $result.result.can_approve_current | Should -BeTrue
         $capture.invoke_count | Should -Be 1
         ([regex]::Matches($capture.review_scope, 'CONTROLLER VERIFICATION EVIDENCE')).Count | Should -Be 1
+        $capture.review_scope | Should -Not -Match 'Tracked methodology support used by verification' -Because 'an empty support manifest must not fabricate a staging event'
         @($capture.evidence.runs | ForEach-Object { [string]$_.command_id }) | Should -Be @('first-git', 'second-pwsh')
         @($capture.evidence.runs | Where-Object { -not [bool]$_.command_succeeded }).Count | Should -Be 0
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-t064 -Kind spend).Count | Should -Be 1
@@ -174,6 +175,36 @@ exit 0
             $after.tree_id | Should -Be $snapshot.target_digest -Because ($treeDelta -join '; ')
         }
         finally { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null }
+    }
+
+    It 'attempts exact cleanup and the complete machinery purge when support staging fails' {
+        $snapshotPath = Join-Path $TestDrive 'support-staging-rollback'; New-Item -ItemType Directory -Path $snapshotPath -Force | Out-Null
+        Mock Get-ReviewCampaignVerificationSupportManifest {
+            [pscustomobject]@{ commit = ('a' * 40); paths = @('.specify'); files = @('.specify/support.txt') }
+        }
+        Mock Invoke-ReviewTargetGit { throw 'fixture restore failed' }
+        Mock Remove-ReviewCampaignVerificationSupport { }
+        Mock Remove-ReviewCampaignVerificationMachinery { }
+
+        { Add-ReviewCampaignVerificationSupport -Snapshot ([pscustomobject]@{ snapshot_path = $snapshotPath }) } |
+            Should -Throw -ExpectedMessage '*verification-support-staging-failed:fixture restore failed*'
+        Assert-MockCalled Remove-ReviewCampaignVerificationSupport -Times 1 -Exactly
+        Assert-MockCalled Remove-ReviewCampaignVerificationMachinery -Times 1 -Exactly
+    }
+
+    It 'surfaces every rollback failure instead of swallowing cleanup evidence' {
+        $snapshotPath = Join-Path $TestDrive 'support-staging-rollback-red'; New-Item -ItemType Directory -Path $snapshotPath -Force | Out-Null
+        Mock Get-ReviewCampaignVerificationSupportManifest {
+            [pscustomobject]@{ commit = ('b' * 40); paths = @('.specify'); files = @('.specify/support.txt') }
+        }
+        Mock Invoke-ReviewTargetGit { throw 'fixture restore failed' }
+        Mock Remove-ReviewCampaignVerificationSupport { throw 'exact cleanup failed' }
+        Mock Remove-ReviewCampaignVerificationMachinery { throw 'machinery purge failed' }
+
+        { Add-ReviewCampaignVerificationSupport -Snapshot ([pscustomobject]@{ snapshot_path = $snapshotPath }) } |
+            Should -Throw -ExpectedMessage '*verification-support-rollback-failed:exact-cleanup:exact cleanup failed|machinery-purge:machinery purge failed*'
+        Assert-MockCalled Remove-ReviewCampaignVerificationSupport -Times 1 -Exactly
+        Assert-MockCalled Remove-ReviewCampaignVerificationMachinery -Times 1 -Exactly
     }
 
     It 'stops a <case> selected plan before provider spend' -ForEach @(
