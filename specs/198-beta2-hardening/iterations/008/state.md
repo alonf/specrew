@@ -155,6 +155,12 @@
   set passed 114/116 with two intentional platform skips in 170.9 seconds. The preceding T028 CI run
   `29666586025` exposed an older Windows fixture that returned to its divergent branch via `git checkout -`; the
   fixture now records its actual base branch and asserts non-ancestry before exercising the production guard.
+- T066 deterministic preparation is green at the T065 commit: all 72 explicitly registered Feature 198 suites
+  passed locally in 998.6 seconds; the explicit Iteration 008 governance validator passed in 18.0 seconds with
+  historical warnings only; and hosted Windows/Linux/macOS run `29666927862` passed every job at commit
+  `b97dd63370faa687e39ae224b93b938ebb7e20df`. The scoped validator first rejected descriptive runtime-evidence
+  status tokens, so the three affected hardening rows now use its exact closed value `recorded`. That documentation
+  correction is part of the independent-review candidate; no provider invocation or release action has occurred.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
 - T066 executes next against one committed candidate: focused and full deterministic verification, scoped
