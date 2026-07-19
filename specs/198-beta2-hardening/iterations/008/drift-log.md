@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 100% (4/4 resolved)
+**Total drift events**: 5
+**Resolution rate**: 60% (3/5 resolved; DRIFT-198-I008-004/005 remain open through exact-digest signoff)
 **Specification drift**: None detected
 
 ## Events
@@ -106,7 +106,7 @@
 
 ### DRIFT-198-I008-004 — T066 self-plan omitted its production child-environment declaration
 
-- **Status**: resolved by T066 plan v5 and exact production proof
+- **Status**: correction implemented; exact-digest signoff pending after attempt 02 intermittent verification failure
 - **Severity**: blocking verification-integrity defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
@@ -129,6 +129,27 @@
   normalizes presentation bytes without weakening commit identity. At code candidate `9dc0c10d`, the production
   runner passed all 73 suites plus scoped governance and preserved digest
   `ee374f3685cebfae153a63fd525d95f18e04dc01` before/after; hosted three-OS run `29693858260` passed every job.
+
+### DRIFT-198-I008-005 — red controller verification spent a provider slot and suppressed actionable diagnostics
+
+- **Status**: correction implemented; full exact-candidate verification pending
+- **Severity**: major cost/integrity defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
+- **Observed evidence**: T066 attempt 02 recorded both configured commands red before reviewer launch but continued
+  into Claude, spending one provider slot. Its durable evidence retained exit/duration/hash facts while suppressing
+  output text, so the paid reviewer could identify the failed command IDs but could not determine their causes.
+  The controller result was valid incomplete with two blocking and three major findings. A later no-provider,
+  human-authorized bounded diagnostic reproduction under the same constructed environment passed all 73 suites
+  and scoped governance, proving the red result was intermittent rather than a deterministic candidate defect.
+- **Correction**: a red configured command now makes frozen verification fail before harness preflight, claim, or
+  spend. The reservation is released and the stable failure reason names all failed command IDs plus the required
+  command-scoped diagnostic-disclosure path. Automatic output disclosure remains forbidden; troubleshooting uses
+  the existing bounded, redacted, explicitly human-authorized one-command surface.
+- **Paired evidence**: unit and supplier-to-campaign end-to-end fixtures prove a green plan still injects exact
+  evidence and spends once, while pass/fail/pass records every attempt but performs zero harness preflight, zero
+  invocation, zero spend, and exactly one reservation release. Focused result: 18/18 passed; expanded campaign,
+  public-command, strict-ingress, and supplier-to-campaign result: 77/77 passed; scoped governance passed.
 
 ### Resolution Strategies
 

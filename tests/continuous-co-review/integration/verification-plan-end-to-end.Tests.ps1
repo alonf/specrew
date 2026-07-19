@@ -210,7 +210,7 @@ Describe 'Supplier to campaign deterministic end-to-end project matrix (T065)' {
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId $context.campaign_id -Kind spend).Count | Should -Be 0
     }
 
-    It 'keeps every ordered attempt and prevents approval when one configured command fails' {
+    It 'records every ordered attempt but stops a configured failure before provider spend' {
         $root = Join-Path $TestDrive 'failed-command'; $repo = New-T065Repo -Path (Join-Path $root 'origin') -Shape explicit
         $catalogPath = New-T065Catalog -Path (Join-Path $root 'catalog.json')
         Set-T065ExplicitPlan -Repo $repo -Plan (New-T065Plan -PlanId 't065.failure.v1' -Commands @(
@@ -224,13 +224,18 @@ Describe 'Supplier to campaign deterministic end-to-end project matrix (T065)' {
 
         $result = Invoke-T065Campaign -Repo $repo -Context $context -Capture $capture
 
-        $result.status | Should -Be 'terminal'
-        @($capture.evidence.runs | ForEach-Object { [string]$_.command_id }) | Should -Be @('passes-first', 'fails-second', 'passes-third')
-        @($capture.evidence.runs | Where-Object { -not [bool]$_.command_succeeded } | ForEach-Object command_id) | Should -Be @('fails-second')
-        $result.result.completion | Should -Be 'partial'
-        $result.result.verdict | Should -Be 'incomplete'
+        $result.status | Should -Be 'failed'
+        $result.reason | Should -Be 'verification-command-failed:fails-second:diagnostics-require-command-scoped-disclosure'
+        $result.invoked | Should -BeFalse
+        $capture.preflight_count | Should -Be 0
+        $capture.invoke_count | Should -Be 0
+        $capture.evidence | Should -BeNullOrEmpty
+        $result.result.completion | Should -Be 'none' -Because 'no reviewer candidate exists before provider invocation'
+        $result.result.verdict | Should -Be 'failed' -Because 'controller preflight failure has no reviewer verdict'
         $result.result.can_approve_current | Should -BeFalse
-        $result.result.failure_reason | Should -Match 'VERIFICATION_FAILED.*fails-second'
+        $result.result.failure_reason | Should -Be $result.reason
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId $context.campaign_id -Kind spend).Count | Should -Be 0
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId $context.campaign_id -Kind releases).Count | Should -Be 1
     }
 
     It 'ships a T066 self-plan whose declared environment executes through the production runner and fails without it' {

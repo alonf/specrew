@@ -287,10 +287,26 @@ project verification plan against this exact frozen digest before reviewer launc
 for each of $($planIds.Count) declared command(s). Treat failed, timed-out, or missing-required-result records as
 approval-blocking evidence; never turn a configured verification failure into a clean result.
 "@
-    $degradeReason = if ($failedIds.Count -gt 0) { 'VERIFICATION_FAILED: configured command(s) failed: ' + ($failedIds -join ',') } else { $null }
+    if ($failedIds.Count -gt 0) {
+        # A red configured command is controller evidence, not work for a paid reviewer. Stop before
+        # harness preflight, claim acquisition, or spend; the reservation is released by the caller.
+        # Output stays private by default. The stable reason directs the operator to the existing
+        # human-authorized, command-scoped bounded-disclosure path instead of spending a provider slot
+        # merely to repeat that verification is red.
+        return [pscustomobject]@{
+            ok = $false
+            reason = 'verification-command-failed:' + ($failedIds -join ',') + ':diagnostics-require-command-scoped-disclosure'
+            state = 'verification-failed'
+            review_scope_suffix = ''
+            degrade_reason = $null
+            command_count = $planIds.Count
+            evidence_count = $evidence.Count
+            failed_command_ids = @($failedIds)
+        }
+    }
     return [pscustomobject]@{
         ok = $true; reason = 'verification-evidence-ready'; state = 'configured'; review_scope_suffix = $scopeSuffix
-        degrade_reason = $degradeReason; command_count = $planIds.Count; evidence_count = $evidence.Count
+        degrade_reason = $null; command_count = $planIds.Count; evidence_count = $evidence.Count
     }
 }
 

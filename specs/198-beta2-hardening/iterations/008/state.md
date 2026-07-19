@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T070 host-independent conformance turn-delta core and supported-host adapters
-**Tasks Remaining**: T066, separately authorized T029, and T067
-**In Progress**: T066 exact-digest independent review authorization (no fresh provider grant)
+**Last Completed Task**: T070
+**Tasks Remaining**: T066, T029, T067
+**In Progress**: T066
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T16:14:18Z
+**Updated**: 2026-07-19T18:20:57Z
 
 ## Planning Authorization
 
@@ -49,7 +49,7 @@
 
 - **Authorization**: reprice T070 honestly and complete the full scope with no SP ceiling before T066
   re-preparation; stop only for non-convergence or a genuine architectural surprise.
-- **Estimate**: 4.0 SP. Iteration capacity becomes 22/26 SP with 4 SP headroom.
+- **Estimate**: 4.0 SP. T066's evidence-pipeline correction reprices the iteration to 23.5/26 SP with 2.5 SP headroom.
 - **Architecture**: one host-independent core owns the live owner-scoped baseline, status/content fingerprints,
   delta, and packet-demand decision. Host adapters supply only genuine prompt-boundary events.
 - **Host scope**: Claude/Codex `UserPromptSubmit`, Copilot `userPromptSubmitted`, Cursor `beforeSubmitPrompt`, and
@@ -61,7 +61,7 @@
 
 ## Readiness Summary
 
-- **Plan/capacity**: 22/26 story_points; 18 tasks; 4 SP headroom. Historical +17% variance forecasts about
+- **Plan/capacity**: 23.5/26 story_points; 18 tasks; 2.5 SP headroom. Historical +17% variance forecasts about
   25.7 SP, still below capacity.
 - **Traceability**: PASS; 18/18 tasks have valid selected refs and metadata, 32/32 selected requirements have
   coverage, and no task/progress mismatch exists.
@@ -165,8 +165,9 @@
   quality profile, an active provider, mixed Python/.NET/Node-shaped content, and a repository-relative working
   directory all materialize through the real supplier and reach the T018 runner, durable recorder, exact-digest
   join, and campaign harness in declared order. No-source, malformed explicit, and escaping-path projects stop
-  before harness preflight, command execution, or spend; a three-command pass/fail/pass plan records every attempt
-  and forces an optimistic reviewer result incomplete. The consolidated supplier/contract/runner/recorder/campaign
+  before harness preflight, command execution, or spend; a three-command pass/fail/pass plan records every attempt.
+  T066 later tightened that path so the red plan stops before paid harness preflight instead of asking a reviewer to
+  restate the controller failure. The consolidated supplier/contract/runner/recorder/campaign
   set passed 114/116 with two intentional platform skips in 170.9 seconds. The preceding T028 CI run
   `29666586025` exposed an older Windows fixture that returned to its divergent branch via `git checkout -`; the
   fixture now records its actual base branch and asserts non-ancestry before exercising the production guard.
@@ -197,10 +198,28 @@
   `ee374f3685cebfae153a63fd525d95f18e04dc01` was identical before and after. Hosted run `29693858260` passed
   every Windows, Ubuntu, and macOS job on the same commit. The ensuing evidence-only commit is re-prepared outside
   the reviewed digest before a replacement provider slot is requested.
+- T066 attempt 02 invoked Claude once as
+  `run-t066-claude-windows-0625d8cb-7cdbaccd-02` against commit
+  `0625d8cbeda13b54c98a8233728adc6acf543659` and digest
+  `7cdbaccde22045e9335c6eb1e3435188c5d78539`. The valid incomplete result reported two blocking and three major
+  findings after both configured commands were recorded red. The provider slot was spent even though controller
+  verification already knew the candidate was not reviewable, and the default evidence suppressed the command
+  tails. A no-provider, command-scoped bounded diagnostic reproduction then passed all 73 suites in 759.655 seconds
+  with stdout SHA-256 `23b38344414d3dd2b795e9b9445b60e51ab20576366b5e37e3a0ef9fe0b2fc1b`; scoped
+  governance passed in 9.387 seconds with stdout SHA-256
+  `f80a5d9ec37905faec0ae4d5c231317df23d0f646e946d6cb4ce733bbae8f10b`. The attempt-02 red state is therefore
+  retained as intermittent evidence, never overwritten by the later green reproduction.
+- T066 now fails any configured verification command before harness preflight, claim acquisition, or provider
+  spend, releases the reservation, and names the failed command IDs plus the existing human-authorized
+  command-scoped diagnostic path. Private command output remains suppressed by default. The paired unit and
+  supplier-to-campaign production-path suites pass 18/18; the expanded orchestration/frozen-verification/public-
+  command/strict-ingress/end-to-end set passes 77/77. Scoped governance and diff integrity pass. T066 is repriced
+  from 1.5 to 3.0 SP for both correction rounds, bringing the iteration to 23.5/26 SP.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 and the T066 attempt-01 correction are complete. T066 awaits a durable exact-candidate preparation record
-  and fresh explicit grant against that commit/digest/run ID; no provider invocation is currently authorized.
+- T070 is complete. T066 is correcting attempt 02 and will rerun exact-digest deterministic/hosted proof before a
+  fresh independent run. The maintainer's standing authorization permits further bounded correction/review actions
+  while evidence is converging; every provider invocation still receives a unique run ID and immutable slot fact.
 
 ## Notes
 

@@ -130,7 +130,7 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-t064 -Kind spend).Count | Should -Be 0
     }
 
-    It 'injects a configured command failure and forces an optimistic reviewer pass to incomplete' {
+    It 'stops a configured command failure before harness preflight or provider spend' {
         $root = Join-Path $TestDrive 'configured-failure'; $repo = New-T064Repo -Path (Join-Path $root 'origin')
         Set-T064Plan -Repo $repo -Plan (New-T064Plan -Commands @(
                 (New-T064Command -Id 'failing-check' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 7'))
@@ -140,14 +140,18 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
 
         $result = Invoke-T064Campaign -Repo $repo -Context $context -Harness (New-T064CapturingHarness -Capture $capture)
 
-        $result.status | Should -Be 'terminal'
-        $capture.invoke_count | Should -Be 1
-        @($capture.evidence.runs).Count | Should -Be 1
-        [bool]$capture.evidence.runs[0].command_succeeded | Should -BeFalse
-        $result.result.completion | Should -Be 'partial'
-        $result.result.verdict | Should -Be 'incomplete'
+        $result.status | Should -Be 'failed'
+        $result.reason | Should -Be 'verification-command-failed:failing-check:diagnostics-require-command-scoped-disclosure'
+        $result.invoked | Should -BeFalse
+        $capture.preflight_count | Should -Be 0 -Because 'a red controller verification never reaches the paid harness'
+        $capture.invoke_count | Should -Be 0
+        $capture.evidence | Should -BeNullOrEmpty
+        $result.result.completion | Should -Be 'none' -Because 'no reviewer candidate exists before provider invocation'
+        $result.result.verdict | Should -Be 'failed' -Because 'controller preflight failure has no reviewer verdict'
         $result.result.can_approve_current | Should -BeFalse
-        $result.result.failure_reason | Should -Match 'VERIFICATION_FAILED.*failing-check'
+        $result.result.failure_reason | Should -Be $result.reason
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-t064 -Kind spend).Count | Should -Be 0
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-t064 -Kind releases).Count | Should -Be 1
     }
 
     It 'refuses a verification command that mutates the frozen source before provider spend' {
