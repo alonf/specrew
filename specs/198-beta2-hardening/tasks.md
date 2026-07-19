@@ -8,7 +8,7 @@
 Tasks are feature-globally numbered. Each authorized iteration refines its
 scope to execution grain while preserving the prior task identifiers. The
 controlled-review replacement spans Iterations 006–007. Iteration 008 now
-owns the selected 18 SP Beta2 finish line and its remaining release dependencies.
+owns the selected 19.75 SP Beta2 finish line and its remaining release dependencies.
 
 ## Iteration 001 — Substrate + firewall-first (5.0 SP)
 
@@ -131,12 +131,14 @@ The Iteration 007 execution contract is file:///C:/Dev/specrew-beta2-hardening/s
 - [x] T060 [owner: Implementer] [sp: 1.5] **First four live harness smokes across three OSes, support truth, campaign cutover commit, and docs** — completed with real Codex/local-macOS, Cursor/Windows, Antigravity/Windows, and Copilot/Linux execution through file-primary adapters and native containment. Cursor live operation is proved but clean-current support remains unavailable after free-credit exhaustion; the other three paths have clean pinned-digest evidence. Campaign cutover commit `fc52b6d1` and replacement three-OS CI `29612794643` are green, with every attempt preserved and no hidden retry. (Trace: FR-059, FR-060, FR-061, FR-064, FR-065, SC-018, SC-019, SC-020, SC-021, NFR-002; depends: T059; owns: authority mode, host support, docs, Iteration 007/live review evidence)
 - [x] T061 [owner: Reviewer] [sp: 1.5] **Fifth harness smoke as independent exact-digest signoff** — thirteen unique attempts and eleven actual Claude invocations are preserved with no hidden retry. Run 13 independently passed commit `58869dfe343e1183c08e22ed1a1dd7419a75dc71` / digest `7c225e535f34597501ba1b3f0a80facfa7639e3e` with zero findings after the DRIFT-028 correction, hosted CI, and exact preflight. Direct-child commit `b2d138dfd40cb2da418bff22ad0c06697f6fd80a` finalized exactly the six approved review artifacts; the singular authority-store fact records the reviewed/finalized pair and CI `29651549007` is green. (Trace: FR-041, FR-042, FR-043, FR-044, FR-045, FR-056, FR-057, FR-058, FR-059, FR-060, FR-061, FR-062, FR-063, FR-064, FR-065; SC-017, SC-018, SC-019, SC-020, SC-021; depends: T060; owns: implementation scope, deterministic evidence, `.specrew/review/**`, Iteration 007 review evidence)
 
-## Iteration 008 — Beta2 finish line (18.0 SP; approved for tasks 2026-07-18)
+## Iteration 008 — Beta2 finish line (19.75 SP; amended 2026-07-19)
 
 The task verdict binds to plan commit `08e86496f2475bb970ff1eafeedf3d58ee897a53`, selects T068 and T069,
 and authorizes task/readiness artifacts only. T068 and T069 execute before the supplier/distribution work so the
 remaining lifecycle boundaries dogfood them. T069 has a hard 2.25 SP ceiling; exceeding it requires a stop and
 replan, not an expanded release slice. T021–T029 above are the 7.0 SP historical Iteration 004 tail absorbed here.
+The 2026-07-19 scoped amendment adds T070 at 1.75 SP with a hard 2.25 SP ceiling before T066 re-preparation;
+its host-event feasibility check triggered the mandated replan stop before production changes.
 
 ### Phase 0 — boundary and capture integrity first
 
@@ -168,7 +170,8 @@ T065 and T066. T029 remains after independent signoff and a separate release ver
 ### Phase 3 — deterministic acceptance, signoff, release, and dogfood
 
 - [x] T065 [owner: Implementer] [sp: 1.25] **Supplier/runner/injection end-to-end fixture matrix** — exercise the production supplier, existing FR-048 validator/T018 runner, recorder, and campaign injection through real call paths using explicit-config, metadata, profile, provider, mixed-technology, and no-source projects. Acceptance includes invalid-explicit zero-command side effects; ordered every-attempt evidence; safe/escaping path pairs; exact/stale/duplicate/unjoinable evidence pairs; failed command non-approval; provider-invocation counter remains zero for unconfigured/invalid preflight. (Trace: FR-048, FR-049, SC-015, NFR-007; owns: `tests/continuous-co-review/**`, downstream project fixtures, Iteration 008 quality evidence; depends: T021–T028, T064)
-- [ ] T066 [owner: Reviewer] [sp: 1.5] **Full deterministic verification, three-OS CI, and independent exact-digest signoff** — run focused T068/T069, supplier/injection, distribution, version, and quality suites; then the full registered suite, scoped governance, and hosted Windows/Linux/macOS workflow against one committed candidate. Launch an independent reviewer only under a separately granted provider slot/new run ID. Acceptance: deterministic gates and three-OS CI are green; task/drift/state truth agrees; a complete valid current zero-blocking result permits signoff; findings, invalid output, timeout, or failure stop for correction/authorization. Apply the non-convergence stop rule after three recurring same-class or non-decreasing finding rounds. (Trace: FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056, SC-008–SC-015, NFR-002, NFR-007; owns: tests, cross-platform workflow, Iteration 008 quality/review evidence, `.specrew/review/**`; depends: T065; provider authority: none granted here)
+- [ ] T070 [owner: Implementer] [sp: 1.75] [ceiling: hard 2.25] **Owner-scoped conformance turn-delta repair** — capture live HEAD plus dirty-user-path status and content fingerprints in owner-scoped `turn-baseline.json` at a genuine turn start; PostToolUse/Stop computes only the delta since that baseline for both packet demand and displayed count; SessionStart refreshes directly from live Git state; T069 owner-attribution suppression remains. Acceptance covers stale-handover read-only SessionStart, consecutive turns, same-path re-editing, and concurrent sessions. Pre-implementation host inspection found verified turn starts only for Codex (`UserPromptSubmit`) and Antigravity (`PreInvocation`); Copilot/Cursor per-prompt events remain unverified and Claude's reliable event is not registered. Per the human ceiling, production work is blocked for replan before expanding host capability. (Trace: FR-055, FR-056, NFR-002, NFR-007, DRIFT-198-I008-003; owns: host hook manifests, conformance-provider/refocus-catalog mirrors, `tests/integration/**`, `tests/bootstrap/**`, Iteration 008 task/state evidence; depends: T065; blocks: T066)
+- [ ] T066 [owner: Reviewer] [sp: 1.5] **Full deterministic verification, three-OS CI, and independent exact-digest signoff** — run focused T068/T069/T070, supplier/injection, distribution, version, and quality suites; then the full registered suite, scoped governance, and hosted Windows/Linux/macOS workflow against one committed candidate. Launch an independent reviewer only under a separately granted provider slot/new run ID. Acceptance: deterministic gates and three-OS CI are green; task/drift/state truth agrees; a complete valid current zero-blocking result permits signoff; findings, invalid output, timeout, or failure stop for correction/authorization. Apply the non-convergence stop rule after three recurring same-class or non-decreasing finding rounds. (Trace: FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056, SC-008–SC-015, NFR-002, NFR-007; owns: tests, cross-platform workflow, Iteration 008 quality/review evidence, `.specrew/review/**`; depends: T070; provider authority: none granted here)
 - [ ] T067 [owner: Maintainer] [sp: 1.0] **Published-beta fresh-consumer dogfood and stable-promotion input** — after T029 publishes, install only the published beta bits into a fresh consumer and assess the four SC-014 beta1 friction classes. Acceptance: record exact published version/source, clean fixture identity, commands/evidence, and maintainer PASS/FAIL per friction class; any failure remains release evidence and follow-up work; this task validates the beta and never creates or authorizes a stable tag. (Trace: SC-014, NFR-002; owns: Iteration 008 dogfood evidence and applicable docs; depends: T029; boundary: validate-not-promote)
 
 ## Bidirectional traceability (tasks ↔ requirements)
@@ -276,7 +279,7 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
 | FR-044, FR-045 | T068, T066 | Append-only correction compatibility and current crossing authority |
 | FR-048 | T064, T065, T066 | Existing ordered runner and exact-digest evidence injection |
 | FR-049 | T062, T063, T064, T065, T066 | Deterministic production supplier and actionable no-source state |
-| FR-055, FR-056 | T069, T066 | Conversational Stop and capture regression preservation |
+| FR-055, FR-056 | T069, T070, T066 | Conversational Stop, true turn-delta, and capture regression preservation |
 | SC-008 | T021, T022, T023, T024, T026, T063, T066 | Fresh consumer init |
 | SC-009 | T025, T063, T066 | Beta1-shaped update |
 | SC-010 | T027, T066 | Local-only/publish-target closeout |
@@ -285,21 +288,21 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
 | SC-013 | T029, T066 | Tag-driven beta publication |
 | SC-014 | T066, T067 | Published-beta dogfood; no stable promotion |
 | SC-015 | T062, T063, T064, T065, T066 | Supplier → T018 → exact-digest campaign injection |
-| NFR-002 | T069, T064, T066, T067 | Visible authority, evidence, and outcomes |
-| NFR-007 | T068, T069, T062, T063, T064, T065, T066 | Paired false-allow/false-deny fixtures |
+| NFR-002 | T069, T070, T064, T066, T067 | Visible authority, evidence, and outcomes |
+| NFR-007 | T068, T069, T070, T062, T063, T064, T065, T066 | Paired false-allow/false-deny fixtures |
 
 - **Verdict**: PASS for the approved Iteration 008 tasks scope
 - **Coverage ratio**: 32/32 scoped requirements (100%)
-- **Task count**: 17 (T021–T029 and T062–T069)
+- **Task count**: 18 (T021–T029 and T062–T070)
 - **Orphan tasks**: none
 - **Invalid requirement references**: none
 - **Tasks missing owner, effort, story, status, dependency, acceptance, or ownership metadata**: none
 - **Uncovered scoped requirements**: none
-- **Capacity**: 18/26 story_points; 8 SP headroom
-- **Sequence**: T068 → T069 precedes all supplier/distribution work; T069 exceeding 2.25 SP stops for replan
+- **Capacity**: 19.75/26 story_points; 6.25 SP headroom
+- **Sequence**: T068 → T069 precedes supplier/distribution work; T070 follows T065 and blocks T066 until replanned
 - **Release boundaries**: T029 needs a fresh release authorization; T067 validates and never promotes stable
 - **Separate scheduling**: Proposal 209 remains outside Iteration 008
-- **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/008/plan.md at commit `08e86496` plus the explicit selected-task amendment, against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-07-18.
+- **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/008/plan.md at commit `08e86496` plus the explicit 2026-07-18 and 2026-07-19 amendments, against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-07-19.
 
 ## Dependencies & parallel safety
 
@@ -340,7 +343,8 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
   in that historical scope. Iteration 008 now owns it through T062–T066.
 - Iteration 008 executes serially for stability: T068 → T069 → T062 → T063 →
   T064. T021–T028 then complete the distribution tail before T065 integrates
-  the full supplier/distribution acceptance matrix. T066 follows one committed
+  the full supplier/distribution acceptance matrix. T070 follows T065; its hard-ceiling
+  host-event gap now requires replan. T066 follows one committed
   candidate; T029 follows a clean signoff plus a separate release grant; T067
   follows actual publication and remains validate-not-promote.
 - T068/T069 are intentionally first so later Iteration 008 boundaries dogfood

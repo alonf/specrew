@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 18/26 story_points
+**Capacity**: 19.75/26 story_points
 **Started**: 2026-07-18
 **Completed**:
 **Planning Baseline**: `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`
@@ -23,6 +23,15 @@ and explicitly selected both priced repairs. T068 and T069 therefore move into t
 capacity from 15 to 18 SP. They execute first so the remaining Iteration 008 lifecycle boundaries dogfood the
 repair. T069 is hard-capped at 2.25 SP: if its observed scope exceeds that estimate, stop and replan rather than
 expand the release slice. Implementation, provider invocation, and release action remain unauthorized.
+
+### Scoped T070 Amendment — 2026-07-19
+
+The maintainer authorized a 1.75 SP conformance turn-delta repair, hard-capped at 2.25 SP, before T066
+re-preparation. T070 must capture a live owner-scoped turn baseline, compare status/content fingerprints at
+PostToolUse/Stop, refresh SessionStart from live Git state, preserve T069 owner suppression, and prove stale
+handover, consecutive-turn, same-path re-edit, and concurrent-session behavior. The authorization explicitly
+requires a stop and replan if any supported host lacks a reliable turn-start event and covering that host would
+exceed the ceiling. The withdrawn T066 run ID and grant remain unspent.
 
 ## Objective
 
@@ -109,6 +118,7 @@ the published beta from a fresh consumer; it does not promote a stable version.
 | T063 | Init/update/setup materialization, guarded refresh, and actionable configuration UX | FR-049, SC-008, SC-009, SC-015 | US3 | 1.5 | Implementer | scripts/specrew-init.ps1, scripts/specrew-update.ps1, scripts/internal/**, extensions/specrew-speckit/**, .specify/extensions/specrew-speckit/**, tests/** | done | Implementer | 1.5 | passed |
 | T064 | Frozen-target verification execution and exact-digest campaign evidence injection | FR-048, FR-049, SC-015 | US3 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/continuous-co-review/** | done | Implementer | 1.5 | passed |
 | T065 | Supplier/runner/injection deterministic end-to-end fixture matrix | FR-048, FR-049, SC-015, NFR-007 | US3 | 1.25 | Implementer | tests/continuous-co-review/**, tests/fixtures/**, specs/198-beta2-hardening/iterations/008/quality/** | done | Implementer | 1.25 | passed |
+| T070 | Owner-scoped conformance turn-delta repair | FR-055, FR-056, NFR-002, NFR-007 | US1 | 1.75 | Implementer | host hook manifests, conformance-provider/refocus-catalog mirrors, tests/integration/**, tests/bootstrap/**, specs/198-beta2-hardening/iterations/008/** | planned | — | — | blocked-replan: reliable turn-start coverage exceeds 2.25 SP ceiling |
 | T066 | Full deterministic verification, three-OS CI, and independent signoff | FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, FR-035, FR-036, FR-040, FR-046, FR-047, FR-048, FR-049, SC-008, SC-009, SC-010, SC-011, SC-012, SC-013, SC-014, SC-015, NFR-002, NFR-007 | Release | 1.5 | Reviewer | tests/**, .github/workflows/**, .specrew/review/**, specs/198-beta2-hardening/iterations/008/** | planned | — | — | — |
 | T067 | Published-beta fresh-consumer dogfood and stable-promotion input | SC-014, NFR-002 | Release | 1.0 | Maintainer | specs/198-beta2-hardening/iterations/008/quality/**, docs/** | planned | — | — | — |
 
@@ -120,7 +130,7 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 | Requirement | Required test/evidence shape |
 | --- | --- |
 | FR-041, FR-042, FR-044, FR-045 | Exact current closeout commit/tree binds; stale pre-closeout identity rejected; repeat rendering stable; bare-number alias non-authoritative |
-| FR-055, FR-056 | Real injected-environment-context reproduction, shared-baseline cross-session attribution, concurrent sessions, stale-binding class, and leading approval-plus-instructions preservation |
+| FR-055, FR-056 | Real injected-environment-context reproduction, shared-baseline cross-session attribution, live turn-start fingerprints, stale-handover read-only session, consecutive turns, same-path re-edit, concurrent sessions, stale-binding class, and leading approval-plus-instructions preservation |
 | FR-024–FR-027, FR-031 | Scratch GitHub/unset-provider init fixtures; deployed files exist; generic triggers; deny-by-default manifest; local host config ignored |
 | FR-028, FR-032 | Beta1-shaped update fixture: unmodified retired file removed, modified file warned/preserved, refocus rows synchronized |
 | FR-029 | Greenfield Git fixture proves announced bootstrap commit; brownfield fixture proves no surprise commit and an explicit recorded offer |
@@ -138,9 +148,9 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 | --- | --- | --- |
 | Effort Unit | story_points | Repository-configured unit |
 | Capacity per Iteration | 26 | Current project cap |
-| Planned Effort | 18.0 | Core finish line plus both explicitly selected repairs |
+| Planned Effort | 19.75 | Core finish line plus the three explicitly selected repairs |
 | Overcommit Threshold | 1.0 | No overcommit allowed |
-| Capacity Status | ok | 8 SP headroom |
+| Capacity Status | ok | 6.25 SP headroom; T070 is blocked at its hard ceiling pending replan |
 | Iteration Bounding | scope | Beta2 supplier, distribution, release, and published-beta proof form one coherent finish line |
 | Time Limit (hours) | n/a | Scope-bounded iteration |
 | Defer Strategy | manual | No requirement or optional repair is silently included or dropped |
@@ -152,11 +162,12 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 - The T018 verification schema, validator, runner, evidence recorder, and selected-plan load seam already exist and are not re-estimated.
 - Residual supplier/materialization/campaign injection and deterministic fixture work T062–T065 totals 5.5 SP.
 - Full validation/signoff and post-publish consumer proof T066–T067 totals 2.5 SP.
-- The tasks verdict selected T068 (0.75 SP) and T069 (2.25 SP), raising the executable baseline to 18.0 SP.
-- Selected total: 18.0 SP. The combined slice fits within 26 SP and keeps 8 SP unallocated.
+- The tasks verdict selected T068 (0.75 SP) and T069 (2.25 SP), raising the original executable baseline to 18.0 SP.
+- The scoped 2026-07-19 amendment adds T070 at 1.75 SP with a hard 2.25 SP ceiling.
+- Selected total: 19.75 SP. The combined slice fits within 26 SP and keeps 6.25 SP unallocated.
 
-Iterations 001 and 002 expanded about 16–17% from plan to actual. Applying 17% to the selected 18.0 SP baseline
-yields about 21.1 SP, still below capacity. Iterations 006 and 007 reported estimated effort as actual but did not meter it
+Iterations 001 and 002 expanded about 16–17% from plan to actual. Applying 17% to the selected 19.75 SP baseline
+yields about 23.1 SP, still below capacity. Iterations 006 and 007 reported estimated effort as actual but did not meter it
 independently; they are not used as zero-variance evidence.
 
 ### Phase Baseline
@@ -168,10 +179,11 @@ independently; they are not used as zero-variance evidence.
 | Production execution and exact-digest injection | 1.5 | T064 |
 | Consumer distribution hardening | 6.25 | T021–T028 |
 | Deterministic end-to-end acceptance | 1.25 | T065 |
+| Conformance turn-delta repair | 1.75 | T070 |
 | Full verification and independent review | 1.5 | T066 |
 | Authorized prerelease publication | 0.75 | T029 |
 | Published-beta consumer dogfood | 1.0 | T067 |
-| **Total** | **18.0** | Matches selected capacity consumption |
+| **Total** | **19.75** | Matches selected capacity consumption |
 
 ### Provider and Review-Round Budget
 
@@ -184,12 +196,14 @@ independently; they are not used as zero-variance evidence.
 
 ## Selected Governance Repairs
 
-The tasks verdict selected both repairs. Their total is included in the 18 SP baseline.
+The original tasks verdict selected T068/T069; the scoped amendment adds T070. Their total is included in the
+19.75 SP baseline.
 
 | Task | Selected scope | Requirement/defect | Effort | Selection state | Hard boundary |
 | --- | --- | --- | ---: | --- | --- |
 | T068 | Narrow stale-binding rebind | `DRIFT-198-I008-001`; FR-041, FR-042, FR-044, FR-045, NFR-007 | 0.75 | selected; executes first | Bind a pending crossing to the actual closeout commit/tree; stale parent citations carry no authority; paired current/stale tests. No matcher redesign. |
 | T069 | Remaining stop/capture integrity repair | `DRIFT-198-I007-025`; FR-041, FR-042, FR-055, FR-056, NFR-002, NFR-007 | 2.25 | selected; executes after T068 | Reproduce injected-context, shared-baseline attribution, stale-binding-class, concurrent-session, and approval-plus-instructions defects; key attribution to session/owner; preserve full instructions; prevent cross-session billing. Stop and replan before exceeding 2.25 SP. |
+| T070 | Owner-scoped conformance turn-delta repair | `DRIFT-198-I008-003`; FR-055, FR-056, NFR-002, NFR-007 | 1.75 | selected; blocked for replan before implementation | Capture a live owner-scoped turn baseline and compute status/content deltas. Hard ceiling 2.25 SP. Supported Copilot/Cursor lack a verified per-turn event and Claude's event is not registered; expanding host capability is outside the ceiling. |
 
 ## Dependencies and Execution Order
 
@@ -203,11 +217,13 @@ The tasks verdict selected both repairs. Their total is included in the 18 SP ba
    provider invocation.
 6. T021–T028 complete the consumer distribution tail using the same applicability and provider provenance rules.
 7. T065 exercises the supplier, existing T018 runner, evidence recorder, and campaign path together.
-8. T066 runs focused suites, the full registry, scoped governance, three-OS CI, and independent exact-digest
+8. T070 must complete before T066 re-preparation. Its reliable-turn-start host matrix exceeded the 2.25 SP ceiling
+   during pre-implementation inspection, so the authorized scope stops for replan without production changes.
+9. T066 runs focused suites, the full registry, scoped governance, three-OS CI, and independent exact-digest
    review. Finding corrections follow the bounded non-convergence rule.
-9. T029 may update version surfaces and publish only after T066 passes and a fresh human explicitly authorizes
+10. T029 may update version surfaces and publish only after T066 passes and a fresh human explicitly authorizes
    the release action.
-10. T067 consumes the actually published beta in a fresh project and records SC-014 evidence. It does not publish
+11. T067 consumes the actually published beta in a fresh project and records SC-014 evidence. It does not publish
    a stable release.
 
 ## Concurrency Rationale
@@ -228,7 +244,7 @@ not runtime technologies for this slice. The reconciled profile is:
 - Required honesty pairs: explicit-plan valid/invalid; every precedence source selected/skipped; current/stale
   digest; joinable/unjoinable evidence; safe/escaping paths; eligible/ineligible provider; release/not-release
   model; unmodified/modified heal target.
-- Concurrency: required for exact-digest campaign injection and the selected stop/capture repair.
+- Concurrency: required for exact-digest campaign injection and the selected stop/capture/turn-delta repairs.
 - UI/browser, database, and load testing: not applicable.
 - Performance: secondary to stability; command timeouts are bounded and full-suite/provider wall time is recorded.
 
@@ -239,7 +255,7 @@ not runtime technologies for this slice. The reconciled profile is:
 - [../../quickstart.md](../../quickstart.md) describes plan-time operator and acceptance flow.
 - [../../review-diagrams.md](../../review-diagrams.md) shows selection, materialization, execution, evidence join, release, and dogfood sequence.
 - [state.md](state.md) records planning authority and the unstarted execution state.
-- [drift-log.md](drift-log.md) records the stale crossing-binding defect without treating it as authority.
+- [drift-log.md](drift-log.md) records the crossing-binding, capture, and turn-delta defects without treating them as authority.
 - [quality/hardening-gate.md](quality/hardening-gate.md) records before-implementation controls and evidence obligations.
 
 ## Explicit Exclusions and Deferrals
@@ -249,7 +265,7 @@ not runtime technologies for this slice. The reconciled profile is:
 - Generic gate/artifact review adapters remain Beta3 scope under FR-065.
 - Stable promotion is outside this feature; SC-014 supplies evidence only.
 - Automatic campaign retention/pruning remains deferred.
-- T068 and T069 are selected only at their stated bounds. T069 cannot silently grow beyond 2.25 SP.
+- T068, T069, and T070 are selected only at their stated bounds. T069/T070 cannot silently grow beyond 2.25 SP.
 - A broad verification discovery DSL, file-extension inference, and a Specrew/Pester default are prohibited.
 
 ## Traceability Summary
@@ -257,7 +273,7 @@ not runtime technologies for this slice. The reconciled profile is:
 - Every core task maps to at least one scoped FR, SC, or NFR.
 - Every selected requirement FR-024–FR-032, FR-035, FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056 and
   SC-008–SC-015 maps to at least one task and one evidence shape.
-- T068/T069 trace separately to named defects and are included in the 18 SP selected baseline.
+- T068/T069/T070 trace separately to named defects and are included in the 19.75 SP selected baseline.
 - The official plan scaffold was created first. Its scope parser rejected decorated requirement IDs such as
   `FR-024 (W1)` and produced an overbroad stub; this authored plan uses the canonical IDs and explicit mapping.
 

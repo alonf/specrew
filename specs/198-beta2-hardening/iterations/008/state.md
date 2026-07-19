@@ -4,10 +4,10 @@
 **Current Phase**: before-implement
 **Iteration Status**: executing
 **Last Completed Task**: T065 supplier/runner/injection deterministic end-to-end fixture matrix
-**Tasks Remaining**: T066, separately authorized T029, and T067
-**In Progress**: T066 full deterministic verification, three-OS CI, and independent signoff
+**Tasks Remaining**: blocked T070, T066, separately authorized T029, and T067
+**In Progress**: T070 stopped for replan before production changes
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T00:24:09Z
+**Updated**: 2026-07-19T13:37:10Z
 
 ## Planning Authorization
 
@@ -45,11 +45,21 @@
 - **Scope**: execute the selected 18 SP implementation in order. This verdict grants no provider invocation,
   beta publication, or stable promotion.
 
+## Scoped T070 Authorization and Ceiling Stop
+
+- **Authorization**: add and execute T070 at 1.75 SP with a hard 2.25 SP ceiling before T066 re-preparation.
+- **Required behavior**: live owner-scoped turn baseline, status/content fingerprint delta at PostToolUse/Stop,
+  live SessionStart refresh, retained T069 owner suppression, and four named regression classes.
+- **Ceiling condition**: stop and replan if reliable turn-start coverage for a supported host exceeds 2.25 SP.
+- **Observed condition**: Codex and Antigravity have verified turn-start events; Copilot/Cursor do not, and
+  Claude's prompt event is not registered. Full supported-host coverage therefore exceeds the ceiling.
+- **Provider effect**: the prior T066 run ID/grant is withdrawn unspent; no replacement candidate or grant exists.
+
 ## Readiness Summary
 
-- **Plan/capacity**: 18/26 story_points; 17 tasks; 8 SP headroom. Historical +17% variance forecasts about
-  21.1 SP, still below capacity.
-- **Traceability**: PASS; 17/17 tasks have valid selected refs and metadata, 32/32 selected requirements have
+- **Plan/capacity**: 19.75/26 story_points; 18 tasks; 6.25 SP headroom. Historical +17% variance forecasts about
+  23.1 SP, still below capacity.
+- **Traceability**: PASS; 18/18 tasks have valid selected refs and metadata, 32/32 selected requirements have
   coverage, and no task/progress mismatch exists.
 - **Hardening**: planning-time `Overall Verdict: ready`; the exact before-implement verdict is captured. Runtime
   evidence remains task-owned.
@@ -161,10 +171,15 @@
   `b97dd63370faa687e39ae224b93b938ebb7e20df`. The scoped validator first rejected descriptive runtime-evidence
   status tokens, so the three affected hardening rows now use its exact closed value `recorded`. That documentation
   correction is part of the independent-review candidate; no provider invocation or release action has occurred.
+- T070 was added at 1.75 SP with a hard 2.25 SP ceiling after a read-only session was falsely charged for eight
+  absolute dirty files. Pre-implementation inspection found reliable turn-start events only for Codex and
+  Antigravity; supported Copilot/Cursor per-prompt hooks remain unverified and Claude's prompt hook is not
+  registered. Completing the exact all-host scope would exceed the ceiling, so production code remains unchanged
+  and T070/T066 stop for human replan. The withdrawn T066 run
+  `run-t066-claude-windows-8daac538-e03a4139-01` was never invoked and spent no provider slot.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T066 executes next against one committed candidate: focused and full deterministic verification, scoped
-  governance, three-OS CI, then the separately authorized independent review boundary.
+- T070 must be replanned before T066 receives a new committed candidate, digest, run ID, or provider grant.
 
 ## Notes
 

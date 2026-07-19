@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 0% (0/2 resolved)
+**Total drift events**: 3
+**Resolution rate**: 67% (2/3 resolved)
 **Specification drift**: None detected
 
 ## Events
@@ -80,6 +80,25 @@
   one packet. The exact stale/current T068 suite, machinery/quoted/teaching fixtures, focused neighbors, and all 60
   registered Feature 198 suites pass; full-registry wall time was 788.5 seconds. Cross-platform CI run
   `29662556573` passed the committed repair on Windows, Ubuntu, and macOS.
+
+### DRIFT-198-I008-003 — material packet counts absolute dirty state as turn-owned work
+
+- **Status**: open; T070 blocked at its hard ceiling pending replan
+- **Severity**: major interaction-integrity defect
+- **Type**: implementation/contract drift
+- **Requirements**: FR-055, FR-056, NFR-002, NFR-007
+- **Observed evidence**: a read-only reviewer session was told `MATERIAL WORK IN PROGRESS this turn (8 changed
+  user files)` for files it never touched. The conformance signal reads the rolling handover's absolute Git dirty
+  count, and SessionStart may inherit a stale handover surface rather than snapshot live Git state.
+- **Required correction**: owner-scoped `turn-baseline.json` captures live HEAD plus dirty-path status/content
+  fingerprints at genuine turn start; PostToolUse/Stop uses only the resulting delta for the trigger and count;
+  SessionStart refreshes live state; T069 owner suppression remains.
+- **Ceiling finding**: Codex has verified `UserPromptSubmit` and Antigravity has verified `PreInvocation`, but the
+  supported Copilot and Cursor manifests register only session-start/stop and explicitly leave per-prompt events
+  unverified. Claude's reliable prompt event is not currently registered. Verifying and shipping the missing host
+  surfaces is additional host-capability work beyond T070's 2.25 SP hard ceiling.
+- **Disposition needed**: replan before production changes. Do not relabel absolute dirty state as a turn delta,
+  silently narrow host support, or proceed to T066 on the superseded candidate.
 
 ### Resolution Strategies
 

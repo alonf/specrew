@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-18T23:22:34Z"
+updated_at: "2026-07-19T13:37:10Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -87,12 +87,18 @@ tasks:
     started_at: "2026-07-19T00:08:46Z"
     completed_at: "2026-07-19T00:24:09Z"
     blocked_reason: ""
+  T070:
+    title: "Owner-scoped conformance turn-delta repair"
+    status: "in-progress"
+    started_at: "2026-07-19T13:37:10Z"
+    completed_at: ""
+    blocked_reason: "Reliable turn-start coverage for supported Copilot/Cursor and unregistered Claude exceeds the hard 2.25 SP ceiling; replan required before production changes."
   T066:
     title: "Full deterministic verification, three-OS CI, and independent signoff"
-    status: "in-progress"
-    started_at: "2026-07-19T00:24:09Z"
+    status: "pending"
+    started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "Blocked behind T070 replan; withdrawn run-t066-claude-windows-8daac538-e03a4139-01 remains unspent."
   T029:
     title: "Release v0.40.0-beta2 after separately authorized release gate"
     status: "pending"
