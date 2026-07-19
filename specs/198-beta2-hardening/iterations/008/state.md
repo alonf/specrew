@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T028 consumer deny checks, prompt fixture, and applicability firewall
-**Tasks Remaining**: T065, T066, separately authorized T029, and T067
-**In Progress**: T065 supplier/runner/injection deterministic end-to-end fixture matrix
+**Last Completed Task**: T065 supplier/runner/injection deterministic end-to-end fixture matrix
+**Tasks Remaining**: T066, separately authorized T029, and T067
+**In Progress**: T066 full deterministic verification, three-OS CI, and independent signoff
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T00:08:46Z
+**Updated**: 2026-07-19T00:24:09Z
 
 ## Planning Authorization
 
@@ -146,10 +146,19 @@
   package deployment, release-model, forge-neutralization, launch-contract parity, and a 38-surface runtime render
   covering reviewer rounds, navigator notes, boundary scaffolding, lifecycle templates, Python/pytest, GitLab, and
   local-only delivery all pass. PSScriptAnalyzer was unavailable locally; T066 retains that CI obligation.
+- T065 adds a ten-case production-path downstream project matrix. Explicit config, package metadata, a selected
+  quality profile, an active provider, mixed Python/.NET/Node-shaped content, and a repository-relative working
+  directory all materialize through the real supplier and reach the T018 runner, durable recorder, exact-digest
+  join, and campaign harness in declared order. No-source, malformed explicit, and escaping-path projects stop
+  before harness preflight, command execution, or spend; a three-command pass/fail/pass plan records every attempt
+  and forces an optimistic reviewer result incomplete. The consolidated supplier/contract/runner/recorder/campaign
+  set passed 114/116 with two intentional platform skips in 170.9 seconds. The preceding T028 CI run
+  `29666586025` exposed an older Windows fixture that returned to its divergent branch via `git checkout -`; the
+  fixture now records its actual base branch and asserts non-ancestry before exercising the production guard.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T065 executes next to exercise supplier selection, recorded execution, evidence joining, and campaign injection
-  as one deterministic end-to-end path.
+- T066 executes next against one committed candidate: focused and full deterministic verification, scoped
+  governance, three-OS CI, then the separately authorized independent review boundary.
 
 ## Notes
 

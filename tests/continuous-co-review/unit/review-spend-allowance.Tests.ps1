@@ -28,10 +28,11 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
             & git -C $repo -c user.name='t' -c user.email='t@e.c' add -A 2>&1 | Out-Null
             & git -C $repo -c user.name='t' -c user.email='t@e.c' commit -q -m 'the fix' 2>&1 | Out-Null
             $fix = (& git -C $repo rev-parse HEAD).Trim()
+            $baseBranch = (& git -C $repo branch --show-current).Trim()
             $held = @{ schema_version = '1.0'; run_id = 'r-stale'; status = 'findings'; findings = @(@{ finding_id = 'f1'; severity = 'blocking'; kind = 'defect'; location = @{ path = 'code.ps1'; line_start = 1 } }) } | ConvertTo-Json -Depth 8 -Compress
             (@{ changed_paths = @('code.ps1'); round = 3; blocking = $true; findings = $held; remediation = $null } | ConvertTo-Json -Depth 8 -Compress) |
                 Set-Content -LiteralPath (Join-Path $repo '.specrew/runtime/co-review-round-state.json') -Encoding UTF8
-            return [pscustomobject]@{ Repo = $repo; FixCommit = $fix }
+            return [pscustomobject]@{ Repo = $repo; FixCommit = $fix; BaseBranch = $baseBranch }
         }
     }
 
@@ -83,7 +84,10 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
                 Set-Content -LiteralPath (Join-Path $f.Repo 'code.ps1') -Value '# divergent' -Encoding UTF8 -NoNewline
                 & git -C $f.Repo -c user.name='t' -c user.email='t@e.c' commit -aq -m 'divergent' 2>&1 | Out-Null
                 $divergent = (& git -C $f.Repo rev-parse HEAD).Trim()
-                & git -C $f.Repo -c user.name='t' -c user.email='t@e.c' checkout -q main 2>&1 | & git -C $f.Repo checkout -q - 2>&1 | Out-Null
+                & git -C $f.Repo -c user.name='t' -c user.email='t@e.c' checkout -q $f.BaseBranch 2>&1 | Out-Null
+                (& git -C $f.Repo branch --show-current).Trim() | Should -Be $f.BaseBranch
+                & git -C $f.Repo merge-base --is-ancestor $divergent HEAD 2>$null
+                $LASTEXITCODE | Should -Be 1 -Because 'the fixture must prove its divergent commit is outside the reviewed HEAD history'
                 { Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef $divergent } |
                     Should -Throw -ExpectedMessage '*not an ancestor of HEAD*'
             }
