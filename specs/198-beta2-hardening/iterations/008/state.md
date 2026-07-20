@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T070
+**Last Completed Task**: T071
 **Tasks Remaining**: T029, T066, T067
-**In Progress**: T071
+**In Progress**: T066
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-20T18:41:49.5813801Z
+**Updated**: 2026-07-20T20:20:47.8892535Z
 
 ## Planning Authorization
 
@@ -76,8 +76,8 @@
   host/runtime preflight while the external candidate path stays writable. Recursive Windows deny ACLs cover
   explicit child allows; privileged Linux uses a read-only self-bind rather than bypassable mode bits; ordinary
   POSIX/macOS uses portable mode arguments. Normal and lost-lease cleanup are paired.
-- **Guard**: T066 remains paused. Reset the non-convergence guard only after T071 full deterministic verification,
-  exact-commit three-OS CI, and a durable fresh candidate preparation all pass.
+- **Guard**: reset after T071's full deterministic verification and exact-commit three-OS hosted proof passed.
+  T066 resumes only through a fresh committed identity, durable preparation, and new immutable provider slot.
 
 ## Readiness Summary
 
@@ -340,12 +340,15 @@
   mount for uid 0 on Linux, and BSD-compatible chmod arguments on macOS; local Pester 5.7.1 proof passes the exact
   Windows deterministic sequence and the privileged-Linux production protection path. The corrected full registry
   passes all 73 suites in 783.5 seconds and scoped governance passes in 11.2 seconds with historical warnings only.
-  A corrected exact-commit CI run remains before T071 completes and the T066 guard resets.
+  Hosted retry run `29775507402` then passed all eight jobs on exact commit
+  `b3fb1ab3037342ec7677cad694a0f7567789b7c2`, including all three deterministic containment jobs. Push run
+  `29773556546` was cancelled after its unrelated macOS wrapper-install runner wedged; it carries no authority.
+  T071 is complete with zero provider spend and the T066 non-convergence guard is reset.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 is complete. T071 is the only implementation task in progress; T066 is paused until its deterministic proof,
-  full registry, exact-commit hosted proof, and fresh preparation are all durable. No provider is invoked during
-  T071. Any later provider invocation still receives a unique run ID and immutable slot fact.
+- T070 and T071 are complete. T066 has resumed for a fresh committed candidate, exact-commit hosted proof, and
+  durable preparation. T071 invoked no provider. Any later provider invocation still receives a unique run ID and
+  immutable slot fact.
 ## Notes
 
 - T068 retains the stale record and null-pending sync as regression evidence; neither is authority. New boundary

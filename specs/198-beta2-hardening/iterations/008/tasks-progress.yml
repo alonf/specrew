@@ -101,16 +101,16 @@ tasks:
     blocked_reason: ""
   T071:
     title: "Disposable controller verification, external evidence projection, OS read-only reviewer target, and Claude startup correction"
-    status: "in_progress"
+    status: "done"
     started_at: "2026-07-20T17:48:02Z"
-    completed_at: ""
-    blocked_reason: "Zero-provider proof, corrected 73/73 registry, and governance are green. Hosted run 29771340851 exposed cross-platform target-protection portability before spend; the Windows recursive-ACL, Linux-root bind-mount, and macOS chmod correction is locally proven and awaits corrected exact-commit CI."
+    completed_at: "2026-07-20T20:20:47Z"
+    blocked_reason: ""
   T066:
     title: "Full deterministic verification, three-OS CI, pre-spend red-verification gate, frozen pinned-support lifecycle, recovery/currentness integrity, and independent signoff"
-    status: "pending"
+    status: "in_progress"
     started_at: "2026-07-19T13:06:00Z"
     completed_at: ""
-    blocked_reason: "Paused after attempt 09 became the third consecutive snapshot-integrity recurrence. T071 must finish zero-spend deterministic proof, full verification, exact-commit CI, and fresh preparation before the non-convergence guard resets."
+    blocked_reason: ""
   T067:
     title: "Published-beta fresh-consumer dogfood and stable-promotion input"
     status: "pending"

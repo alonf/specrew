@@ -359,7 +359,7 @@
 
 ### DRIFT-198-I008-019 — controller preparation mutated the frozen reviewer target before Claude startup
 
-- **Status**: deterministic containment correction implemented; local full verification green; first hosted portability failure corrected; exact-commit CI and signoff pending
+- **Status**: resolved by T071 deterministic containment correction and exact-commit three-OS hosted proof; T066 signoff pending
 - **Severity**: blocking runtime-integrity defect
 - **Type**: architecture/containment drift
 - **Requirements**: FR-048, SC-015, NFR-002, NFR-007
@@ -393,7 +393,9 @@
   warnings only. Hosted run `29771340851` at `11b10dd1592d81fa098fbc8782eb6a2cc59ed82f` then exposed the three
   platform subcases before spend; the corrected Windows deterministic sequence and privileged-Linux production path
   pass under Pester 5.7.1. The corrected full registry passes 73/73 in 783.5 seconds and scoped governance passes in
-  11.2 seconds with historical warnings only. Corrected hosted exact-commit proof remains pending.
+  11.2 seconds with historical warnings only. Hosted retry run `29775507402` passed all eight jobs at exact commit
+  `b3fb1ab3037342ec7677cad694a0f7567789b7c2`; the original push run `29773556546` was cancelled after an unrelated
+  macOS runner wedge and carries no authority. T071 completed with zero provider spend and reset the T066 guard.
 
 ### Resolution Strategies
 

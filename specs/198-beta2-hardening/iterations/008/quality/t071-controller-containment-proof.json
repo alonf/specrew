@@ -88,7 +88,14 @@
       "duration_seconds": 11.2,
       "warnings": "historical-only"
     },
-    "corrected_hosted_run": null,
+    "corrected_hosted_run": "29775507402",
+    "corrected_hosted_commit": "b3fb1ab3037342ec7677cad694a0f7567789b7c2",
+    "corrected_hosted_outcome": "success; all eight jobs passed",
+    "non_authoritative_cancelled_run": {
+      "run_id": "29773556546",
+      "reason": "unrelated macOS wrapper-install runner wedge after deterministic containment jobs passed"
+    },
+    "non_convergence_guard_reset": true,
     "provider_invoked": false
   }
 }
