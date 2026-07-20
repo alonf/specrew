@@ -581,6 +581,36 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $wired.message | Should -Match 'reviewed commit.+finalized.+commit'
     }
 
+    It 'finalizes a reviewed parent with a machine-local Claude settings overlay while ordinary Claude settings still fail closed' -ForEach @(
+        @{ name = 'local-overlay'; path = '.claude/settings.local.json'; expected = 'boundary-finalized' },
+        @{ name = 'ordinary-settings'; path = '.claude/settings.json'; expected = 'review-stale' }
+    ) {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive "finalization-settings-$name")
+        & git -C $root branch -m 001-demo 2>&1 | Out-Null
+        [IO.Directory]::CreateDirectory((Join-Path $root '.claude')) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root $path), '{"baseline":true}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/`n", [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'tracked settings baseline' 2>&1 | Out-Null
+
+        [IO.File]::WriteAllText((Join-Path $root $path), '{"reviewed_overlay":true}', [Text.UTF8Encoding]::new($false))
+        $store = Join-Path $root '.specrew/review/authority'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId "run-settings-$name" -CampaignId 'cmp-001-demo-i007' -TargetLineage 'lin-001-demo'
+        & git -C $root restore -- $path 2>&1 | Out-Null
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-001-demo-i007' -TargetLineage 'lin-001-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+
+        $decision.route | Should -Be $expected
+        if ($expected -eq 'boundary-finalized') {
+            (Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-001-demo-i007') | Should -Not -BeNullOrEmpty
+        }
+        else {
+            Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-001-demo-i007' | Should -BeNullOrEmpty
+        }
+    }
+
     It 'fails closed before validation or publication when production scope remains unresolved after backfill' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-scope-unresolved')
         $store = Join-Path $TestDrive 'finalization-scope-unresolved-store'

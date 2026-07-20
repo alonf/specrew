@@ -73,12 +73,12 @@ function Get-ContinuousCoReviewMachineryPaths {
     #   (b) SELF-DESCRIBING detection: every dir Specrew DEPLOYS into a host carries a `.specrew-managed` marker
     #       (written by Set-ManagedFile at deploy), so its parent dir is machinery. This catches the host-mirror
     #       skill/rule/agent dirs (.github/skills/specrew-*, .claude/skills/specrew-*, .cursor/rules/specrew-*, ...)
-    #       across every host WITHOUT enumerating them, and keeps user config (.github/workflows,
-    #       .claude/settings — no marker). Returns project-relative paths. -RepoRoot enables (b); omit for the
-    #       core-only list.
+    #       across every host WITHOUT enumerating them. Ordinary user config stays reviewable; the one exception is
+    #       `.claude/settings.local.json`, the canonical machine-local/per-session hook config that init untracks and
+    #       ignores. Returns project-relative paths. -RepoRoot enables (b); omit for the core-only list.
     param([string]$RepoRoot)
     $core = @(
-        '.specrew', '.specify', '.squad', '.agents', '.git',
+        '.specrew', '.specify', '.squad', '.agents', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
     if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {
