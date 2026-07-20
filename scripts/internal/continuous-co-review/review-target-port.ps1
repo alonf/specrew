@@ -224,10 +224,13 @@ function New-GitReviewTargetVerificationCopy {
     }
 }
 
-function Invoke-ReviewTargetChmod {
-    param([Parameter(Mandatory)][string[]]$Arguments)
+function Invoke-ReviewTargetNativeCommand {
+    param(
+        [Parameter(Mandatory)][string]$FileName,
+        [Parameter(Mandatory)][string[]]$Arguments
+    )
     $start = [Diagnostics.ProcessStartInfo]::new()
-    $start.FileName = 'chmod'
+    $start.FileName = $FileName
     foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
     $start.UseShellExecute = $false; $start.CreateNoWindow = $true
     $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
@@ -235,6 +238,23 @@ function Invoke-ReviewTargetChmod {
     [void]$process.Start(); $stdout = $process.StandardOutput.ReadToEnd(); $stderr = $process.StandardError.ReadToEnd()
     $process.WaitForExit(); $exitCode = $process.ExitCode; $process.Dispose()
     return [pscustomobject]@{ exit_code = $exitCode; stdout = $stdout.Trim(); stderr = $stderr.Trim() }
+}
+
+function Get-ReviewTargetEffectiveUserId {
+    if (-not [OperatingSystem]::IsLinux()) { return $null }
+    $identity = Invoke-ReviewTargetNativeCommand -FileName 'id' -Arguments @('-u')
+    $effectiveUserId = 0
+    if ($identity.exit_code -ne 0 -or -not [int]::TryParse($identity.stdout, [ref]$effectiveUserId)) {
+        throw ('review-target-effective-user-id-unavailable:' + $identity.stderr)
+    }
+    return $effectiveUserId
+}
+
+function Remove-ReviewTargetWindowsDeny {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Sid)
+    $identity = '*' + $Sid
+    $removed = Invoke-ReviewTargetNativeCommand -FileName 'icacls.exe' -Arguments @($Root, '/remove:d', $identity, '/T', '/C', '/Q')
+    if ($removed.exit_code -ne 0) { throw ('icacls-deny-remove-failed:' + $removed.stderr) }
 }
 
 function Disable-ReviewTargetReadOnlyProtection {
@@ -245,25 +265,29 @@ function Disable-ReviewTargetReadOnlyProtection {
     try {
         if ([OperatingSystem]::IsWindows()) {
             $sections = [Security.AccessControl.AccessControlSections]::All
+            $currentSid = if ($null -ne $Lease -and $Lease.PSObject.Properties['sid']) {
+                [string]$Lease.sid
+            }
+            else { [Security.Principal.WindowsIdentity]::GetCurrent().User.Value }
+            Remove-ReviewTargetWindowsDeny -Root $root -Sid $currentSid
             if ($null -ne $Lease -and $Lease.PSObject.Properties['original_sddl'] -and -not [string]::IsNullOrWhiteSpace([string]$Lease.original_sddl)) {
                 $acl = Get-Acl -LiteralPath $root
                 $acl.SetSecurityDescriptorSddlForm([string]$Lease.original_sddl, $sections)
                 Set-Acl -LiteralPath $root -AclObject $acl
             }
-            else {
-                # Crash recovery has no in-memory lease. The external worktree is controller-created
-                # and starts without an explicit deny; remove only this identity's explicit deny ACE.
-                $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-                $acl = Get-Acl -LiteralPath $root
-                foreach ($rule in @($acl.Access | Where-Object { $_.AccessControlType -eq [Security.AccessControl.AccessControlType]::Deny -and -not $_.IsInherited })) {
-                    $ruleSid = try { $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value } catch { '' }
-                    if ($ruleSid -ceq $currentSid) { [void]$acl.RemoveAccessRuleSpecific($rule) }
-                }
-                Set-Acl -LiteralPath $root -AclObject $acl
-            }
         }
         else {
-            $restored = Invoke-ReviewTargetChmod -Arguments @('-R', 'u+w', '--', $root)
+            $leasePlatform = if ($null -ne $Lease -and $Lease.PSObject.Properties['platform']) { [string]$Lease.platform } else { '' }
+            $mountedReadOnly = $leasePlatform -ceq 'linux-bind-readonly'
+            if (-not $mountedReadOnly -and [OperatingSystem]::IsLinux() -and (Get-ReviewTargetEffectiveUserId) -eq 0) {
+                $mountPoint = Invoke-ReviewTargetNativeCommand -FileName 'mountpoint' -Arguments @('-q', $root)
+                $mountedReadOnly = $mountPoint.exit_code -eq 0
+            }
+            if ($mountedReadOnly) {
+                $unmounted = Invoke-ReviewTargetNativeCommand -FileName 'umount' -Arguments @($root)
+                if ($unmounted.exit_code -ne 0) { throw ('readonly-bind-unmount-failed:' + $unmounted.stderr) }
+            }
+            $restored = Invoke-ReviewTargetNativeCommand -FileName 'chmod' -Arguments @('-R', 'u+w', $root)
             if ($restored.exit_code -ne 0) { throw ('chmod-restore-failed:' + $restored.stderr) }
         }
         return [pscustomobject]@{ ok = $true; reason = 'review-target-write-protection-removed' }
@@ -287,45 +311,54 @@ function Enable-ReviewTargetReadOnlyProtection {
         return [pscustomobject]@{ ok = $false; reason = 'review-target-writable-parent-missing'; lease = $null }
     }
     $lease = $null
+    $existingBlocked = $false
+    $createBlocked = $false
+    $externalWritable = $false
     try {
         if ([OperatingSystem]::IsWindows()) {
             $acl = Get-Acl -LiteralPath $root
             $originalSddl = $acl.GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::All)
-            $rights = [Security.AccessControl.FileSystemRights]::WriteData -bor [Security.AccessControl.FileSystemRights]::AppendData -bor `
-                [Security.AccessControl.FileSystemRights]::WriteAttributes -bor [Security.AccessControl.FileSystemRights]::WriteExtendedAttributes -bor `
-                [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles
-            $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
-            $rule = [Security.AccessControl.FileSystemAccessRule]::new(
-                [Security.Principal.WindowsIdentity]::GetCurrent().User, $rights, $inheritance,
-                [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Deny
-            )
-            [void]$acl.AddAccessRule($rule)
-            Set-Acl -LiteralPath $root -AclObject $acl
-            $lease = [pscustomobject]@{ platform = 'windows'; original_sddl = $originalSddl }
+            $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+            $denyEntry = ('*{0}:(OI)(CI)(WD,AD,WEA,WA,DE,DC)' -f $currentSid)
+            # Apply an explicit deny to every existing descendant. A root-only inheritable ACE is
+            # insufficient when a checkout contains a child with an explicit allow ACE.
+            $protected = Invoke-ReviewTargetNativeCommand -FileName 'icacls.exe' -Arguments @($root, '/deny', $denyEntry, '/T', '/C', '/Q')
+            if ($protected.exit_code -ne 0) { throw ('icacls-deny-apply-failed:' + $protected.stderr) }
+            $lease = [pscustomobject]@{ platform = 'windows-recursive-deny'; original_sddl = $originalSddl; sid = $currentSid }
+        }
+        elseif ([OperatingSystem]::IsLinux() -and (Get-ReviewTargetEffectiveUserId) -eq 0) {
+            # chmod does not constrain uid 0. A self-bind followed by a read-only remount protects
+            # the entire frozen tree in the reviewer's mount namespace, including against root.
+            $bound = Invoke-ReviewTargetNativeCommand -FileName 'mount' -Arguments @('--bind', $root, $root)
+            if ($bound.exit_code -ne 0) { throw ('readonly-bind-mount-failed:' + $bound.stderr) }
+            $remounted = Invoke-ReviewTargetNativeCommand -FileName 'mount' -Arguments @('-o', 'remount,bind,ro', $root)
+            if ($remounted.exit_code -ne 0) {
+                $null = Invoke-ReviewTargetNativeCommand -FileName 'umount' -Arguments @($root)
+                throw ('readonly-bind-remount-failed:' + $remounted.stderr)
+            }
+            $lease = [pscustomobject]@{ platform = 'linux-bind-readonly'; original_sddl = $null }
         }
         else {
-            $protected = Invoke-ReviewTargetChmod -Arguments @('-R', 'a-w', '--', $root)
+            # No `--`: BSD chmod on macOS does not accept the GNU operand separator here.
+            $protected = Invoke-ReviewTargetNativeCommand -FileName 'chmod' -Arguments @('-R', 'a-w', $root)
             if ($protected.exit_code -ne 0) { throw ('chmod-protect-failed:' + $protected.stderr) }
             $lease = [pscustomobject]@{ platform = 'posix'; original_sddl = $null }
         }
 
         $firstFile = Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction Stop | Select-Object -First 1
         if ($null -eq $firstFile) { throw 'review-target-write-protection-no-probe-file' }
-        $existingBlocked = $false
         try {
             $stream = [IO.File]::Open($firstFile.FullName, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read)
             $stream.Dispose()
         }
         catch { $existingBlocked = $true }
         $newPath = Join-Path $root ('.specrew-readonly-probe-' + [guid]::NewGuid().ToString('N'))
-        $createBlocked = $false
         try {
             $stream = [IO.File]::Open($newPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
             $stream.Dispose()
         }
         catch { $createBlocked = $true }
         $externalProbe = Join-Path $externalParent ('.specrew-external-write-probe-' + [guid]::NewGuid().ToString('N'))
-        $externalWritable = $false
         try {
             $stream = [IO.File]::Open($externalProbe, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
             $stream.Dispose(); [IO.File]::Delete($externalProbe); $externalWritable = $true
@@ -335,7 +368,11 @@ function Enable-ReviewTargetReadOnlyProtection {
             $null = Disable-ReviewTargetReadOnlyProtection -Snapshot $Snapshot -Lease $lease
             if ([IO.File]::Exists($newPath)) { [IO.File]::Delete($newPath) }
             if ([IO.File]::Exists($externalProbe)) { [IO.File]::Delete($externalProbe) }
-            return [pscustomobject]@{ ok = $false; reason = 'review-target-write-protection-probe-failed'; lease = $null }
+            $detail = 'existing={0};create={1};external={2}' -f $existingBlocked, $createBlocked, $externalWritable
+            return [pscustomobject]@{
+                ok = $false; reason = ('review-target-write-protection-probe-failed:' + $detail); lease = $null
+                existing_write_blocked = $existingBlocked; create_blocked = $createBlocked; external_writable = $externalWritable
+            }
         }
         return [pscustomobject]@{
             ok = $true; reason = 'review-target-os-read-only'; lease = $lease

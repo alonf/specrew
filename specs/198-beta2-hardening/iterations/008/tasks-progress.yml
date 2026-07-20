@@ -104,7 +104,7 @@ tasks:
     status: "in_progress"
     started_at: "2026-07-20T17:48:02Z"
     completed_at: ""
-    blocked_reason: "Zero-provider focused proof, all 73 registered suites, and scoped governance are green; exact-commit three-OS CI remains before the T066 guard can reset."
+    blocked_reason: "Zero-provider proof, corrected 73/73 registry, and governance are green. Hosted run 29771340851 exposed cross-platform target-protection portability before spend; the Windows recursive-ACL, Linux-root bind-mount, and macOS chmod correction is locally proven and awaits corrected exact-commit CI."
   T066:
     title: "Full deterministic verification, three-OS CI, pre-spend red-verification gate, frozen pinned-support lifecycle, recovery/currentness integrity, and independent signoff"
     status: "pending"

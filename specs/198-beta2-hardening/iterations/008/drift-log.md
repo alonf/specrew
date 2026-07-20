@@ -359,7 +359,7 @@
 
 ### DRIFT-198-I008-019 — controller preparation mutated the frozen reviewer target before Claude startup
 
-- **Status**: deterministic containment correction implemented; local full verification green; exact-commit CI and signoff pending
+- **Status**: deterministic containment correction implemented; local full verification green; first hosted portability failure corrected; exact-commit CI and signoff pending
 - **Severity**: blocking runtime-integrity defect
 - **Type**: architecture/containment drift
 - **Requirements**: FR-048, SC-015, NFR-002, NFR-007
@@ -380,16 +380,20 @@
 - **Correction**: controller verification runs in a second disposable worktree built from the frozen commit/digest
   and captured plan bytes. Its joined implementer evidence is projected with CreateNew to the external controller
   staging path. The original reviewer target is verified byte-identical, then OS-protected read-only before any
-  harness/runtime preflight; only the external candidate parent is write-probed. Windows restores the exact ACL on
-  normal cleanup and removes the controller-owned deny rule after a lost in-memory lease; POSIX restores owner write
-  mode. Claude receives the schema-valid strict empty-MCP document.
+  harness/runtime preflight; only the external candidate parent is write-probed. Windows applies/removes a recursive
+  current-identity deny so explicit child allow ACEs cannot reopen writes. Privileged Linux uses a read-only self-bind
+  because uid 0 bypasses chmod; ordinary POSIX/macOS uses portable chmod arguments and restores owner write mode.
+  Claude receives the schema-valid strict empty-MCP document.
 - **Paired evidence**: production-path fixtures prove disposable mutation/original invariance, target-local evidence
   absence, external CreateNew refusal on overwrite, Windows/POSIX existing-file and create denial, external write
   success, normal and lost-lease recovery, inside-target candidate refusal, and protection-before-host-preflight.
   The durable zero-spend proof is `quality/t071-controller-containment-proof.json`. The non-convergence guard may
   reset only after the full deterministic registry and exact-commit CI pass on the corrected candidate. The final
   local registry passed all 73 suites in 763.2 seconds and scoped governance passed in 11.6 seconds with historical
-  warnings only; hosted exact-commit proof remains pending.
+  warnings only. Hosted run `29771340851` at `11b10dd1592d81fa098fbc8782eb6a2cc59ed82f` then exposed the three
+  platform subcases before spend; the corrected Windows deterministic sequence and privileged-Linux production path
+  pass under Pester 5.7.1. The corrected full registry passes 73/73 in 783.5 seconds and scoped governance passes in
+  11.2 seconds with historical warnings only. Corrected hosted exact-commit proof remains pending.
 
 ### Resolution Strategies
 

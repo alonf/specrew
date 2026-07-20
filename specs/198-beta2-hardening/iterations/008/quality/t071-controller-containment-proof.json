@@ -58,6 +58,37 @@
     "frozen_reviewer_target_is_os_read_only_before_harness_preflight": true,
     "only_external_candidate_parent_is_write_probed": true,
     "normal_and_lost_lease_cleanup_are_tested": true,
-    "provider_spend_permitted_by_this_artifact": false
+    "provider_spend_permitted_by_this_artifact": false,
+    "platform_strategy": {
+      "windows": "recursive-current-identity-deny-acl",
+      "linux_uid_0": "read-only-self-bind-mount",
+      "ordinary_posix_and_macos": "recursive-mode-write-removal"
+    }
+  },
+  "portability_correction_proof": {
+    "first_hosted_run": "29771340851",
+    "first_hosted_commit": "11b10dd1592d81fa098fbc8782eb6a2cc59ed82f",
+    "first_hosted_outcome": "pre-spend target-protection failure on Windows, Linux, and macOS deterministic jobs",
+    "windows": {
+      "pester_version": "5.7.1",
+      "exact_deterministic_suite_sequence_passed": true
+    },
+    "linux_uid_0": {
+      "pester_version": "5.7.1",
+      "production_orchestrator_and_target_port_tests_passed": 30,
+      "failed": 0
+    },
+    "full_registry": {
+      "suite_count": 73,
+      "failed": 0,
+      "duration_seconds": 783.5
+    },
+    "scoped_governance": {
+      "passed": true,
+      "duration_seconds": 11.2,
+      "warnings": "historical-only"
+    },
+    "corrected_hosted_run": null,
+    "provider_invoked": false
   }
 }

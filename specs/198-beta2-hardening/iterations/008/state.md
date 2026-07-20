@@ -73,7 +73,9 @@
   refusal. No provider was invoked by either diagnostic.
 - **Implementation**: verification now runs in a second exact-digest worktree; joined implementer evidence is an
   external controller-owned CreateNew artifact; the byte-identical reviewer target is OS-protected read-only before
-  host/runtime preflight while the external candidate path stays writable. Normal and lost-lease cleanup are paired.
+  host/runtime preflight while the external candidate path stays writable. Recursive Windows deny ACLs cover
+  explicit child allows; privileged Linux uses a read-only self-bind rather than bypassable mode bits; ordinary
+  POSIX/macOS uses portable mode arguments. Normal and lost-lease cleanup are paired.
 - **Guard**: T066 remains paused. Reset the non-convergence guard only after T071 full deterministic verification,
   exact-commit three-OS CI, and a durable fresh candidate preparation all pass.
 
@@ -332,7 +334,13 @@
   cleanup plus false-allow/false-deny pairs. The first full registry exposed six stale target-local-evidence fixture
   reads; after those fixtures consumed the external path through the real scope, the failed suite passed 11/11 and
   the final full registry passed all 73 suites in 763.2 seconds. Scoped governance passed in 11.6 seconds with
-  historical warnings only. Exact-commit CI remains before T071 completes and the T066 guard resets.
+  historical warnings only. Candidate `11b10dd1592d81fa098fbc8782eb6a2cc59ed82f` then reached hosted run
+  `29771340851`: general validation remained green, but all three deterministic fake-provider jobs stopped before
+  spend at target protection. The portable correction now uses recursive deny ACLs on Windows, a read-only bind
+  mount for uid 0 on Linux, and BSD-compatible chmod arguments on macOS; local Pester 5.7.1 proof passes the exact
+  Windows deterministic sequence and the privileged-Linux production protection path. The corrected full registry
+  passes all 73 suites in 783.5 seconds and scoped governance passes in 11.2 seconds with historical warnings only.
+  A corrected exact-commit CI run remains before T071 completes and the T066 guard resets.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
 - T070 is complete. T071 is the only implementation task in progress; T066 is paused until its deterministic proof,

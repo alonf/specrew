@@ -986,6 +986,7 @@ function Invoke-ReviewCampaignRun {
             $preflight = @{ target = $targetReady; target_protection = [bool]$protection.ok; store = $true; contract = [bool]$contract.valid; containment = $targetReady; verification = [bool]$verification.ok; harness = [bool]$harnessReady.ok; runtime = [bool]$runtimeReady.ok }
             if (@($preflight.Values | Where-Object { -not [bool]$_ }).Count -gt 0) {
                 $reason = 'preflight-failed:' + (@($preflight.Keys | Where-Object { -not [bool]$preflight[$_] } | Sort-Object) -join ',')
+                if (-not [bool]$protection.ok) { $reason += ':' + [string]$protection.reason }
                 $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
                 $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome preflight-failed
                 Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds

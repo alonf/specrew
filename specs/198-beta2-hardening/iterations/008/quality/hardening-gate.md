@@ -126,7 +126,11 @@ reviewer; isolated the invalid strict-MCP `{}` startup vector; and implemented d
 external CreateNew evidence, OS read-only target protection/recovery, and the corrected MCP document. Focused
 production coverage passes 86/86. After correcting six end-to-end fixtures that still expected target-local evidence,
 the failed suite passed 11/11, the final full registry passed all 73 suites in 763.2 seconds, and scoped governance
-passed in 11.6 seconds with historical warnings only. Exact-commit three-OS CI remains before guard reset.
+passed in 11.6 seconds with historical warnings only. Hosted run `29771340851` then failed all three deterministic
+jobs before spend at target protection: Linux CI runs as uid 0, macOS requires BSD-compatible chmod arguments, and
+Windows needed recursive denies for explicit child allows. The corrected Windows sequence and privileged-Linux
+production path pass locally under Pester 5.7.1; the corrected full registry passes 73/73 in 783.5 seconds and
+scoped governance passes in 11.2 seconds. Corrected exact-commit three-OS CI remains before guard reset.
 
 ### T066 Attempt and Slot Ledger
 

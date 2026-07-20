@@ -187,7 +187,7 @@ Stdout is telemetry and is never parsed for authority.
         $result = Invoke-OrchestratorFixture -Context $context -Target $target -Harness $harness -Runtime $runtime
 
         $result.invoked | Should -BeFalse
-        $result.reason | Should -Match 'target_protection'
+        $result.reason | Should -Be 'preflight-failed:harness,runtime,target_protection:fixture-protection-refused'
         $harnessCalls | Should -Be 0
         $runtimeCalls | Should -Be 0
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 0
