@@ -129,7 +129,11 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         })
         $spec.command | Should -Be 'claude'
         $spec.prompt_transport | Should -Be 'stdin'
-        $spec.argument_list | Should -Be @('-p', '--no-session-persistence', '--setting-sources', 'user', '--permission-mode', 'bypassPermissions')
+        $spec.argument_list | Should -Be @(
+            '-p', '--no-session-persistence', '--setting-sources', '', '--disable-slash-commands', '--no-chrome',
+            '--strict-mcp-config', '--mcp-config', '{}', '--tools', 'Read,Glob,Grep,Write',
+            '--permission-mode', 'bypassPermissions'
+        )
         $spec.working_directory | Should -Be ([IO.Path]::GetFullPath($invocation.snapshot_path))
         $spec.candidate_result_path | Should -Be ([IO.Path]::GetFullPath($invocation.candidate_result_path))
         $spec.stdout_authority | Should -BeFalse
@@ -139,6 +143,8 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $spec.stdin_text | Should -Match 'run-one'
         $spec.stdin_text | Should -Match 'digest-one'
         $spec.stdin_text | Should -Match '__RUN_ID__ as literal scope text' -Because 'replacement must not recursively expand reviewer-supplied scope text'
+        $spec.stdin_text | Should -Match 'Use Write only for the exact candidate result path'
+        $spec.stdin_text | Should -Match 'Do not run tests, shell commands, installers, update commands, or repository automation'
         $spec.stdin_text | Should -Not -Match 'must-not-copy'
     }
 

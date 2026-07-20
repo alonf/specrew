@@ -50,9 +50,10 @@ function Get-ContinuousCoReviewReviewerHostRows {
     # Hosts with an empty agentic_args have no headless agentic CLI yet (the worktree model needs one); they remain
     # selectable/authorizable but are not agentically invokable until their command is filled in.
     return @(
-        # Print mode is non-persistent and ignores project/local settings. The frozen snapshot is reviewer
-        # input, never a place for session/config writes; user-level authentication remains available.
-        @{ host = 'claude'; command = 'claude'; agentic_args = @('-p', '--no-session-persistence', '--setting-sources', 'user', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85; default_timeout_seconds = 600; production_harness_id = 'claude-code-file-primary'; production_constructor = 'New-ReviewClaudeFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
+        # Keep OAuth/keychain authentication while loading no user/project/local settings, memories, hooks,
+        # skills, or MCPs. The reviewer receives read-only inspection tools plus Write solely for the external
+        # candidate path; it cannot run repository commands that generate files inside the frozen snapshot.
+        @{ host = 'claude'; command = 'claude'; agentic_args = @('-p', '--no-session-persistence', '--setting-sources', '', '--disable-slash-commands', '--no-chrome', '--strict-mcp-config', '--mcp-config', '{}', '--tools', 'Read,Glob,Grep,Write', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85; default_timeout_seconds = 600; production_harness_id = 'claude-code-file-primary'; production_constructor = 'New-ReviewClaudeFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
         # codex runs with --dangerously-bypass-approvals-and-sandbox BY DESIGN: the worktree reviewer already runs in an
         # EPHEMERAL, isolated, read-only-source git-tree worktree (precisely the "externally sandboxed environment" that
         # flag is documented for). codex's INNER Windows restricted-token sandbox is therefore redundant AND fragile

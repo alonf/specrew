@@ -12,6 +12,10 @@ if (-not (Get-Command -Name 'Test-ReviewAuthorityContractObject' -ErrorAction Si
 function ConvertTo-ReviewAuthorityCanonicalValue {
     param([AllowNull()]$Value)
     if ($null -eq $Value) { return $null }
+    # PowerShell's pipeline adapter can make scalar items report as [pscustomobject] even though
+    # their BaseObject is still a string/value type. Preserve scalars before object-property
+    # canonicalization so arrays of strings/numbers never serialize as {Length:...} wrappers.
+    if ($Value -is [string] -or $Value -is [ValueType]) { return $Value }
     if ($Value -is [System.Collections.IDictionary]) {
         $ordered = [ordered]@{}
         foreach ($key in @($Value.Keys | Sort-Object { [string]$_ })) { $ordered[[string]$key] = ConvertTo-ReviewAuthorityCanonicalValue -Value $Value[$key] }

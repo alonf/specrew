@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-19T23:22:08Z"
+updated_at: "2026-07-20T00:11:50Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -98,7 +98,7 @@ tasks:
     status: "in_progress"
     started_at: "2026-07-19T13:06:00Z"
     completed_at: ""
-    blocked_reason: "Attempts 01, 02, 05, 06, and 07 each spent one Claude slot and returned valid incomplete; attempts 03 and 04 failed safely before provider with zero spend. Attempt 07 verified prior corrections, explicitly found support lifecycle clean, and exposed recovery-binding/reason observability plus an undiagnosed snapshot-integrity failure. Recovery round-trip, additive reasons, non-persistent Claude settings isolation, and bounded integrity diagnostics pass 98/98 focused tests; exact-candidate proof is in progress."
+    blocked_reason: "Attempts 01, 02, 05, 06, 07, and 08 each spent one Claude slot; attempts 03 and 04 failed safely before provider with zero spend. Attempt 08 passed exact CI/controller verification but exited without a candidate after ambient user settings generated snapshot files; its persisted recovery fact also exposed scalar-array canonicalization. CreateNew recovery round-trip and isolated Claude tool/settings regressions pass; snapshot-integrity failure has recurred in attempts 07/08, so one more recurrence requires replan."
   T029:
     title: "Release v0.40.0-beta2 after separately authorized release gate"
     status: "pending"

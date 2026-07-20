@@ -73,6 +73,17 @@ Describe 'Immutable review authority JSON store (T045)' {
         (Read-ReviewAuthorityFactFile -Path $first.path -ContractName GrantFact).slots | Should -Be 1
     }
 
+    It 'preserves scalar arrays as scalar JSON values during canonicalization' {
+        $json = ConvertTo-ReviewAuthorityCanonicalJson -Fact ([pscustomobject][ordered]@{
+            paths = @('one/path', 'two/path')
+            counts = @(1, 2)
+        })
+        $roundTrip = $json | ConvertFrom-Json
+        $roundTrip.paths | Should -Be @('one/path', 'two/path')
+        $roundTrip.counts | Should -Be @(1, 2)
+        $json | Should -Not -Match '"Length"'
+    }
+
     It 'fails closed on traversal, identity substitution, run-stage mismatch, and torn JSON' {
         $store = Join-Path $TestDrive 'closed'
         { Write-ReviewAuthorityImmutableFact -StoreRoot $store -RelativePath '../escape.json' -Fact (New-StoreGrant) -ContractName GrantFact } | Should -Throw -ExpectedMessage '*invalid-relative-path*'

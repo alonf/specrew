@@ -7,6 +7,11 @@ line-by-line inventory. Do not mark the review complete when a planned high-risk
 Do not modify the source, the workspace, Git state, or controller files. Work directly in this reviewer
 session; do not delegate to subagents or start other model-backed reviewers. Follow this review scope:
 
+Your available tools are deliberately limited to Read, Glob, Grep, and Write. Use Read/Glob/Grep only for
+inspection. Do not run tests, shell commands, installers, update commands, or repository automation; the
+controller already verified the frozen candidate. Use Write only for the exact candidate result path below
+and never create or change any other file.
+
 __REVIEW_SCOPE__
 
 The deadline is `__DEADLINE__`. If time is insufficient, publish an honest partial candidate with only

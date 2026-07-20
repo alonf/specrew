@@ -312,7 +312,7 @@
 
 ### DRIFT-198-I008-016 — attempt 07 lost the changed-path cause behind snapshot-integrity failure
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: diagnostic correction proved by attempt 08; reviewer-isolation follow-up is DRIFT-198-I008-018
 - **Severity**: runtime-integrity/diagnostic defect
 - **Type**: implementation/operability drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -320,12 +320,42 @@
   post-runtime integrity classified the snapshot changed and forced `containment-violated`. The old controller
   disposed the snapshot and published only that generic reason; no durable evidence identifies the changed path,
   so this record does not speculate that a particular file caused it.
-- **Correction**: Claude print mode now disables session persistence and loads user settings only, excluding
-  project/local settings from the frozen input. Any remaining integrity failure publishes its classification and at
-  most 20 bounded relative changed paths in `failure_reason` before disposal.
-- **Paired evidence**: harness-contract proof asserts the non-persistent/user-only production vector; a campaign
-  integrity fixture mutates `.claude/settings.local.json` and proves the terminal non-approving result retains that
-  exact relative path. The five focused authority/recovery/target/harness/campaign suites pass 98/98.
+- **Correction**: any integrity failure publishes its classification and at most 20 bounded relative changed paths
+  in `failure_reason` before disposal. The initial non-persistent/user-only Claude vector was insufficient isolation
+  and is superseded by DRIFT-198-I008-018.
+- **Paired evidence**: a campaign integrity fixture mutates `.claude/settings.local.json` and proves the terminal
+  non-approving result retains that exact relative path. Attempt 08 then proved the real path by retaining
+  `.review/implementer-evidence.json` and generated `.scratch/distribution-module-update/**` entries.
+
+### DRIFT-198-I008-017 — immutable canonicalization corrupted recovery string arrays
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: major recovery-evidence defect
+- **Type**: implementation/evidence drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 08's immutable `recovery.json` persisted every `machinery_paths` string as an object
+  containing only its `Length`. PowerShell's pipeline adapter made scalar array elements appear as PSCustomObject to
+  the canonicalizer, so the new recovery binding was structurally destroyed after pre-write contract validation.
+- **Correction**: canonicalization preserves strings and value types before dictionary/object recursion. Historical
+  malformed evidence remains immutable; every new fact retains scalar arrays as scalar JSON.
+- **Paired evidence**: a direct canonicalization pair covers string and integer arrays, rejects any `Length` wrapper,
+  and a real Git-target RecoveryFact is written via CreateNew, contract-read, rehydrated, and classified current.
+
+### DRIFT-198-I008-018 — Claude user settings leaked hooks/instructions into the frozen reviewer
+
+- **Status**: correction implemented; exact-digest signoff pending
+- **Severity**: major reviewer-isolation defect
+- **Type**: integration/runtime-integrity drift
+- **Requirements**: FR-048, NFR-002, NFR-007
+- **Observed evidence**: attempt 08 passed deterministic preflight and invoked Claude once, but the retained `user`
+  setting source admitted ambient behavior. The process exited 1 without a candidate after creating
+  `.review/implementer-evidence.json` and `.scratch/distribution-module-update/**`; integrity refused approval.
+- **Correction**: the production vector keeps OAuth/keychain authentication but supplies an empty setting-source
+  list, disables skills and Chrome integration, uses a strict empty MCP config, and limits built-in tools to
+  Read/Glob/Grep plus Write for the external candidate file. The prompt forbids commands and every other write.
+- **Paired evidence**: the exact argument vector and prompt restrictions are asserted through the production harness
+  builder; local Claude 2.1.215 accepts the vector without provider invocation. Snapshot-integrity failure has now
+  recurred in attempts 07/08; one further recurrence triggers the three-round non-convergence stop.
 
 ### Resolution Strategies
 

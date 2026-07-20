@@ -98,7 +98,13 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
                 -InvocationStartedAt '2026-07-19T00:00:01Z' -InvocationStartedMonotonicMs 10
 
             (Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $fact).valid | Should -BeTrue
-            $recovered = Get-ReviewRecoverySnapshot -Fact $fact
+            $store = Join-Path $TestDrive 'authority-recovery-binding'
+            $written = Write-ReviewAuthorityImmutableFact -StoreRoot $store -RelativePath 'recovery.json' -Fact $fact `
+                -ContractName RecoveryFact -ExpectedCampaignId cmp-recovery-binding -ExpectedRunId run-recovery-binding `
+                -ExpectedTargetDigest $snapshot.target_digest
+            $persisted = Read-ReviewAuthorityFactFile -Path $written.path -ContractName RecoveryFact
+            $persisted.machinery_paths | Should -Be $snapshot.machinery_paths
+            $recovered = Get-ReviewRecoverySnapshot -Fact $persisted
             $recovered.recovery_binding_complete | Should -BeTrue
             $recovered.verification_plan_present | Should -Be $snapshot.verification_plan_present
             $recovered.verification_plan_sha256 | Should -Be $snapshot.verification_plan_sha256

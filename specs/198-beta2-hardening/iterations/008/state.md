@@ -7,7 +7,7 @@
 **Tasks Remaining**: T066, T029, T067
 **In Progress**: T066
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-19T23:22:08Z
+**Updated**: 2026-07-20T00:11:50Z
 
 ## Planning Authorization
 
@@ -49,8 +49,8 @@
 
 - **Authorization**: reprice T070 honestly and complete the full scope with no SP ceiling before T066
   re-preparation; stop only for non-convergence or a genuine architectural surprise.
-- **Estimate**: 4.0 SP. T066's six observed correction classes later reprice T066 to 5.5 SP and the iteration
-  to 26.0/26 SP with no nominal headroom.
+- **Estimate**: 4.0 SP. T066's seven observed correction classes later reprice T066 to 6.0 SP and the iteration
+  to 26.5/26 SP, an explicit 0.5 SP overcommit under the standing progress authorization.
 - **Architecture**: one host-independent core owns the live owner-scoped baseline, status/content fingerprints,
   delta, and packet-demand decision. Host adapters supply only genuine prompt-boundary events.
 - **Host scope**: Claude/Codex `UserPromptSubmit`, Copilot `userPromptSubmitted`, Cursor `beforeSubmitPrompt`, and
@@ -63,9 +63,9 @@
 
 ## Readiness Summary
 
-- **Plan/capacity**: 26.0/26 story_points; 18 tasks; no nominal headroom. Conservatively applying +17% to all
-  7.25 SP still-open work, including T066's sixth correction class, forecasts 27.23 SP. Nominal scope exactly fits;
-  the 1.23 SP stress overage is explicit calibration risk, not hidden work or authorization to add scope.
+- **Plan/capacity**: 26.5/26 story_points; 18 tasks; 0.5 SP explicit overcommit. Conservatively applying +17% to
+  all 7.75 SP still-open work, including T066's seventh correction class, forecasts 27.82 SP. The 1.82 SP stress
+  overage is explicit calibration risk; no optional scope is added.
 - **Traceability**: PASS; 18/18 tasks have valid selected refs and metadata, 32/32 selected requirements have
   coverage, and no task/progress mismatch exists.
 - **Hardening**: planning-time `Overall Verdict: ready`; the exact before-implement verdict is captured. Runtime
@@ -74,7 +74,7 @@
   completed successfully at plan commit `08e86496`.
 - **Team/sequence**: one serial Implementer; T068 then T069 before supplier/distribution work; T066 is the
   independent Reviewer boundary.
-- **Provider budget**: attempts 01, 02, 05, 06, and 07 each invoked Claude once and spent one immutable slot. Attempts
+- **Provider budget**: attempts 01, 02, 05, 06, 07, and 08 each invoked Claude once and spent one immutable slot. Attempts
   03 and 04 failed during controller verification, invoked no provider, spent no slot, and released their reservations.
   The standing bounded progress grant still requires a new run ID/fact for every invocation and forbids hidden or
   unchanged retry.
@@ -277,9 +277,23 @@
   and user-only settings, and publishes a bounded relative changed-path diagnostic if integrity still fails. The five
   focused authority/recovery/target/harness/campaign suites pass 98/98. T066 is repriced to 5.5 SP, bringing the
   iteration to 26.0/26 SP.
+- T066 attempt 08 invoked Claude once as
+  `run-t066-claude-windows-24c3a902-f3faf556-08` against commit
+  `24c3a9020d4d1b194aad1f6526320d8703a3a7ce` and reproducible digest
+  `f3faf55678b775f247afb8e8263a5374bcb885bd`. Exact-commit CI run `29707876205` passed all eight jobs and the
+  controller completed its deterministic preflight before one immutable spend. The runtime exited 1 without a
+  candidate and integrity correctly refused the modified snapshot, retaining `.review/implementer-evidence.json`
+  and generated `.scratch/distribution-module-update/**` paths. The persisted recovery fact simultaneously exposed
+  scalar-array canonicalization that converted machinery paths to `{Length}` objects.
+- The seventh correction class preserves scalar arrays through immutable canonicalization, round-trips the actual
+  RecoveryFact through CreateNew, and invokes Claude with no user/project/local settings, skills, Chrome, or ambient
+  MCPs. Its built-in tools are limited to Read/Glob/Grep plus Write for the external candidate path, and the prompt
+  forbids commands and every other write. Changed suites pass 44/44; the six focused suites total 109/109. T066 is
+  repriced to 6.0 SP, bringing the iteration to 26.5/26 SP. Snapshot-integrity failure has now recurred in attempts
+  07/08; a third consecutive recurrence stops for replan.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 is complete. T066 is correcting attempt 07's recovery/currentness findings and runtime-integrity failure and will rerun
+- T070 is complete. T066 is correcting attempt 08's recovery serialization and ambient-reviewer isolation failure and will rerun
   exact-digest deterministic/hosted proof before a fresh independent run. The maintainer's standing authorization permits further bounded correction/review actions
   while evidence is converging; every provider invocation still receives a unique run ID and immutable slot fact.
   Attempt 07's reviewer explicitly found the support-lifecycle area clean. The general three-round recurring-class
