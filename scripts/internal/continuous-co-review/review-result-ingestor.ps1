@@ -23,6 +23,7 @@ function Get-ReviewRunStagingPaths {
         staging_path = $runRoot
         candidate_result_path = Join-Path $runRoot 'candidate.json'
         candidate_report_path = Join-Path $runRoot 'candidate.md'
+        implementer_evidence_path = Join-Path $runRoot 'implementer-evidence.json'
     }
 }
 

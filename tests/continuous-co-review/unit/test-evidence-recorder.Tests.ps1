@@ -284,6 +284,34 @@ Describe 'Copy-ContinuousCoReviewImplementerEvidence' {
         $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
         (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $bare -DigestTreeId $digest) | Should -BeFalse
     }
+
+    It 'projects to a controller-owned external path exactly once without touching the reviewer target' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-external-projection')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $null = Write-ContinuousCoReviewTestEvidence -RepoRoot $repo -Suite 'unit' -Passed 4 -ExitCode 0
+
+        $reviewTarget = Join-Path $TestDrive 'frozen-review-target'
+        $controllerRoot = Join-Path $TestDrive 'controller-owned-staging'
+        [IO.Directory]::CreateDirectory($reviewTarget) | Out-Null
+        [IO.Directory]::CreateDirectory($controllerRoot) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $reviewTarget 'sentinel.txt'), 'unchanged')
+        $before = Get-ChildItem -LiteralPath $reviewTarget -Recurse -File | ForEach-Object {
+            [pscustomobject]@{ path = $_.FullName; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
+        }
+        $output = Join-Path $controllerRoot 'implementer-evidence.json'
+
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -OutputPath $output -DigestTreeId $digest) | Should -BeTrue
+        $projected = Get-Content -LiteralPath $output -Raw | ConvertFrom-Json
+        [string]$projected.reviewed_digest_tree_id | Should -Be $digest
+        @($projected.suites)[0].passed | Should -Be 4
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -OutputPath $output -DigestTreeId $digest) | Should -BeFalse -Because 'CreateNew projection never overwrites an existing controller artifact'
+
+        $after = Get-ChildItem -LiteralPath $reviewTarget -Recurse -File | ForEach-Object {
+            [pscustomobject]@{ path = $_.FullName; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
+        }
+        ($after | ConvertTo-Json -Compress) | Should -Be ($before | ConvertTo-Json -Compress)
+        Test-Path -LiteralPath (Join-Path $reviewTarget '.review/implementer-evidence.json') | Should -BeFalse
+    }
 }
 
 Describe 'Get-ContinuousCoReviewSlimPrompt implementer-evidence block' {

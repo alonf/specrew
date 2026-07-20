@@ -131,9 +131,12 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $spec.prompt_transport | Should -Be 'stdin'
         $spec.argument_list | Should -Be @(
             '-p', '--no-session-persistence', '--setting-sources', '', '--disable-slash-commands', '--no-chrome',
-            '--strict-mcp-config', '--mcp-config', '{}', '--tools', 'Read,Glob,Grep,Write',
+            '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--tools', 'Read,Glob,Grep,Write',
             '--permission-mode', 'bypassPermissions'
         )
+        @($spec.argument_list | Where-Object { $_ -ceq '{}' }).Count | Should -Be 0 -Because 'an empty object is not a valid strict Claude MCP document and aborts before review startup'
+        [array]::IndexOf(@($spec.argument_list), '--mcp-config') | Should -BeGreaterOrEqual 0
+        $spec.argument_list[[array]::IndexOf(@($spec.argument_list), '--mcp-config') + 1] | Should -Be '{"mcpServers":{}}'
         $spec.working_directory | Should -Be ([IO.Path]::GetFullPath($invocation.snapshot_path))
         $spec.candidate_result_path | Should -Be ([IO.Path]::GetFullPath($invocation.candidate_result_path))
         $spec.stdout_authority | Should -BeFalse

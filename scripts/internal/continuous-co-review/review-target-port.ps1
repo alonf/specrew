@@ -136,11 +136,6 @@ function New-GitReviewTargetSnapshot {
         if ($checkout.exit_code -ne 0) { throw ('review-target-tree-checkout-failed:' + $checkout.stderr) }
         $snapshotPath = if ([string]::IsNullOrWhiteSpace($prefix)) { $workspaceRoot } else { Join-Path $workspaceRoot $prefix }
         if (-not [IO.Directory]::Exists($snapshotPath)) { throw 'review-target-snapshot-subtree-missing' }
-        if ($verificationPlan.present) {
-            $verificationPlanPath = Join-Path $snapshotPath '.specrew/verification-plan.json'
-            [IO.Directory]::CreateDirectory((Split-Path -Parent $verificationPlanPath)) | Out-Null
-            [IO.File]::WriteAllBytes($verificationPlanPath, [byte[]]$verificationPlan.bytes)
-        }
         if ((Test-ReviewTargetPathUnderRoot -Path $workspaceRoot -Root $gitRoot) -or (Test-ReviewTargetPathUnderRoot -Path $workspaceRoot -Root $origin)) { throw 'review-target-worktree-inside-origin' }
         if (-not (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) {
             . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
@@ -152,6 +147,7 @@ function New-GitReviewTargetSnapshot {
             origin_head_before = $before.origin_head; origin_digest_before = $before.reviewed_state_digest
             machinery_paths = @($before.machinery_paths); machinery_paths_sha256 = $before.machinery_paths_sha256
             verification_plan_present = [bool]$verificationPlan.present; verification_plan_sha256 = $verificationPlan.sha256
+            verification_plan_bytes = $(if ($verificationPlan.present) { [byte[]]$verificationPlan.bytes } else { $null })
             source_hashes_before = $sourceHashes; suppression_environment = Get-ReviewTargetSuppressionEnvironment
         }
     }
@@ -160,6 +156,195 @@ function New-GitReviewTargetSnapshot {
         # A failed add never proves ownership of a path that appeared after the pre-check. Leave it
         # untouched; only a successfully registered worktree is safe for this invocation to remove.
         throw
+    }
+}
+
+function New-GitReviewTargetVerificationCopy {
+    <#
+        Creates a second linked worktree from the already-frozen target identity. Controller
+        verification executes only in this copy; the reviewer target remains byte-identical to
+        its initial baseline. No live origin state is re-resolved here.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [string]$RunId = ([string]$Snapshot.run_id + '-verification')
+    )
+    foreach ($name in @('target_digest', 'snapshot_path', 'workspace_root', 'git_root', 'origin_repo', 'origin_head_before')) {
+        if (-not $Snapshot.PSObject.Properties[$name] -or [string]::IsNullOrWhiteSpace([string]$Snapshot.$name)) {
+            throw "review-target-verification-copy-missing:$name"
+        }
+    }
+    if (-not (Test-ReviewAuthorityIdentifier -Value $RunId -Kind run)) { throw "review-target-invalid-run-id:$RunId" }
+    $gitRoot = [IO.Path]::GetFullPath([string]$Snapshot.git_root)
+    $externalRoot = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath([string]$Snapshot.workspace_root))
+    $workspaceRoot = Join-Path $externalRoot ('rt-' + (New-ReviewTargetWorkspaceToken))
+    if ([IO.Directory]::Exists($workspaceRoot) -or [IO.File]::Exists($workspaceRoot)) { throw 'review-target-workspace-collision' }
+
+    $relativeSnapshot = [IO.Path]::GetRelativePath([IO.Path]::GetFullPath([string]$Snapshot.workspace_root), [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path))
+    if ($relativeSnapshot.StartsWith('..')) { throw 'review-target-verification-copy-subtree-invalid' }
+    $added = $false
+    try {
+        $add = Invoke-ReviewTargetGit -WorkingDirectory $gitRoot -Arguments @('worktree', 'add', '--detach', '--no-checkout', $workspaceRoot, [string]$Snapshot.origin_head_before)
+        if ($add.exit_code -ne 0) { throw ('review-target-worktree-add-failed:' + $add.stderr) }
+        $added = $true
+        $checkout = Invoke-ReviewTargetGit -WorkingDirectory $workspaceRoot -Arguments @('read-tree', '--reset', '-u', [string]$Snapshot.target_digest)
+        if ($checkout.exit_code -ne 0) { throw ('review-target-tree-checkout-failed:' + $checkout.stderr) }
+        $snapshotPath = if ($relativeSnapshot -ceq '.') { $workspaceRoot } else { Join-Path $workspaceRoot $relativeSnapshot }
+        if (-not [IO.Directory]::Exists($snapshotPath)) { throw 'review-target-snapshot-subtree-missing' }
+
+        if ([bool]$Snapshot.verification_plan_present) {
+            if (-not $Snapshot.PSObject.Properties['verification_plan_bytes'] -or $null -eq $Snapshot.verification_plan_bytes) {
+                throw 'review-target-verification-copy-plan-bytes-missing'
+            }
+            $bytes = [byte[]]$Snapshot.verification_plan_bytes
+            $sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+            if ($sha256 -cne [string]$Snapshot.verification_plan_sha256) { throw 'review-target-verification-copy-plan-mismatch' }
+            $targetPlan = Join-Path $snapshotPath '.specrew/verification-plan.json'
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $targetPlan)) | Out-Null
+            [IO.File]::WriteAllBytes($targetPlan, $bytes)
+        }
+        if (-not (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) {
+            . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
+        }
+        return [pscustomobject]@{
+            schema_version = '1.0'; target_kind = 'code-verification-copy'; run_id = $RunId
+            target_digest = [string]$Snapshot.target_digest; snapshot_path = $snapshotPath; workspace_root = $workspaceRoot
+            origin_repo = [string]$Snapshot.origin_repo; git_root = $gitRoot
+            origin_head_before = [string]$Snapshot.origin_head_before; origin_digest_before = [string]$Snapshot.origin_digest_before
+            machinery_paths = @($Snapshot.machinery_paths); machinery_paths_sha256 = [string]$Snapshot.machinery_paths_sha256
+            verification_plan_present = [bool]$Snapshot.verification_plan_present; verification_plan_sha256 = [string]$Snapshot.verification_plan_sha256
+            source_hashes_before = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshotPath
+            suppression_environment = Get-ReviewTargetSuppressionEnvironment
+        }
+    }
+    catch {
+        if ($added) { $null = Invoke-ReviewTargetGit -WorkingDirectory $gitRoot -Arguments @('worktree', 'remove', '--force', $workspaceRoot) }
+        throw
+    }
+}
+
+function Invoke-ReviewTargetChmod {
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $start = [Diagnostics.ProcessStartInfo]::new()
+    $start.FileName = 'chmod'
+    foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add($argument) }
+    $start.UseShellExecute = $false; $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::new(); $process.StartInfo = $start
+    [void]$process.Start(); $stdout = $process.StandardOutput.ReadToEnd(); $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit(); $exitCode = $process.ExitCode; $process.Dispose()
+    return [pscustomobject]@{ exit_code = $exitCode; stdout = $stdout.Trim(); stderr = $stderr.Trim() }
+}
+
+function Disable-ReviewTargetReadOnlyProtection {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Snapshot, [AllowNull()]$Lease)
+    $root = [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path)
+    if (-not [IO.Directory]::Exists($root)) { return [pscustomobject]@{ ok = $true; reason = 'snapshot-already-absent' } }
+    try {
+        if ([OperatingSystem]::IsWindows()) {
+            $sections = [Security.AccessControl.AccessControlSections]::All
+            if ($null -ne $Lease -and $Lease.PSObject.Properties['original_sddl'] -and -not [string]::IsNullOrWhiteSpace([string]$Lease.original_sddl)) {
+                $acl = Get-Acl -LiteralPath $root
+                $acl.SetSecurityDescriptorSddlForm([string]$Lease.original_sddl, $sections)
+                Set-Acl -LiteralPath $root -AclObject $acl
+            }
+            else {
+                # Crash recovery has no in-memory lease. The external worktree is controller-created
+                # and starts without an explicit deny; remove only this identity's explicit deny ACE.
+                $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+                $acl = Get-Acl -LiteralPath $root
+                foreach ($rule in @($acl.Access | Where-Object { $_.AccessControlType -eq [Security.AccessControl.AccessControlType]::Deny -and -not $_.IsInherited })) {
+                    $ruleSid = try { $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value } catch { '' }
+                    if ($ruleSid -ceq $currentSid) { [void]$acl.RemoveAccessRuleSpecific($rule) }
+                }
+                Set-Acl -LiteralPath $root -AclObject $acl
+            }
+        }
+        else {
+            $restored = Invoke-ReviewTargetChmod -Arguments @('-R', 'u+w', '--', $root)
+            if ($restored.exit_code -ne 0) { throw ('chmod-restore-failed:' + $restored.stderr) }
+        }
+        return [pscustomobject]@{ ok = $true; reason = 'review-target-write-protection-removed' }
+    }
+    catch { return [pscustomobject]@{ ok = $false; reason = ('review-target-write-protection-restore-failed:' + $_.Exception.Message) } }
+}
+
+function Enable-ReviewTargetReadOnlyProtection {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)][string]$ExternalWritablePath
+    )
+    $root = [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path)
+    $external = [IO.Path]::GetFullPath($ExternalWritablePath)
+    if (Test-ReviewTargetPathUnderRoot -Path $external -Root $root) {
+        return [pscustomobject]@{ ok = $false; reason = 'review-target-writable-path-inside-snapshot'; lease = $null }
+    }
+    $externalParent = [IO.Path]::GetDirectoryName($external)
+    if (-not [IO.Directory]::Exists($externalParent)) {
+        return [pscustomobject]@{ ok = $false; reason = 'review-target-writable-parent-missing'; lease = $null }
+    }
+    $lease = $null
+    try {
+        if ([OperatingSystem]::IsWindows()) {
+            $acl = Get-Acl -LiteralPath $root
+            $originalSddl = $acl.GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::All)
+            $rights = [Security.AccessControl.FileSystemRights]::WriteData -bor [Security.AccessControl.FileSystemRights]::AppendData -bor `
+                [Security.AccessControl.FileSystemRights]::WriteAttributes -bor [Security.AccessControl.FileSystemRights]::WriteExtendedAttributes -bor `
+                [Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles
+            $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
+            $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+                [Security.Principal.WindowsIdentity]::GetCurrent().User, $rights, $inheritance,
+                [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Deny
+            )
+            [void]$acl.AddAccessRule($rule)
+            Set-Acl -LiteralPath $root -AclObject $acl
+            $lease = [pscustomobject]@{ platform = 'windows'; original_sddl = $originalSddl }
+        }
+        else {
+            $protected = Invoke-ReviewTargetChmod -Arguments @('-R', 'a-w', '--', $root)
+            if ($protected.exit_code -ne 0) { throw ('chmod-protect-failed:' + $protected.stderr) }
+            $lease = [pscustomobject]@{ platform = 'posix'; original_sddl = $null }
+        }
+
+        $firstFile = Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction Stop | Select-Object -First 1
+        if ($null -eq $firstFile) { throw 'review-target-write-protection-no-probe-file' }
+        $existingBlocked = $false
+        try {
+            $stream = [IO.File]::Open($firstFile.FullName, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+            $stream.Dispose()
+        }
+        catch { $existingBlocked = $true }
+        $newPath = Join-Path $root ('.specrew-readonly-probe-' + [guid]::NewGuid().ToString('N'))
+        $createBlocked = $false
+        try {
+            $stream = [IO.File]::Open($newPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+            $stream.Dispose()
+        }
+        catch { $createBlocked = $true }
+        $externalProbe = Join-Path $externalParent ('.specrew-external-write-probe-' + [guid]::NewGuid().ToString('N'))
+        $externalWritable = $false
+        try {
+            $stream = [IO.File]::Open($externalProbe, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+            $stream.Dispose(); [IO.File]::Delete($externalProbe); $externalWritable = $true
+        }
+        catch { $externalWritable = $false }
+        if (-not $existingBlocked -or -not $createBlocked -or -not $externalWritable) {
+            $null = Disable-ReviewTargetReadOnlyProtection -Snapshot $Snapshot -Lease $lease
+            if ([IO.File]::Exists($newPath)) { [IO.File]::Delete($newPath) }
+            if ([IO.File]::Exists($externalProbe)) { [IO.File]::Delete($externalProbe) }
+            return [pscustomobject]@{ ok = $false; reason = 'review-target-write-protection-probe-failed'; lease = $null }
+        }
+        return [pscustomobject]@{
+            ok = $true; reason = 'review-target-os-read-only'; lease = $lease
+            existing_write_blocked = $existingBlocked; create_blocked = $createBlocked; external_writable = $externalWritable
+        }
+    }
+    catch {
+        if ($null -ne $lease) { $null = Disable-ReviewTargetReadOnlyProtection -Snapshot $Snapshot -Lease $lease }
+        return [pscustomobject]@{ ok = $false; reason = ('review-target-write-protection-failed:' + $_.Exception.Message); lease = $null }
     }
 }
 
@@ -214,6 +399,7 @@ function Remove-GitReviewTargetSnapshot {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Snapshot)
     $gitRoot = [string]$Snapshot.git_root; $workspaceRoot = [string]$Snapshot.workspace_root
+    $null = Disable-ReviewTargetReadOnlyProtection -Snapshot $Snapshot -Lease $null
     $remove = Invoke-ReviewTargetGit -WorkingDirectory $gitRoot -Arguments @('worktree', 'remove', '--force', $workspaceRoot)
     $null = Invoke-ReviewTargetGit -WorkingDirectory $gitRoot -Arguments @('worktree', 'prune')
     return [pscustomobject]@{ removed = ($remove.exit_code -eq 0 -and -not [IO.Directory]::Exists($workspaceRoot)); failure_reason = $(if ($remove.exit_code -eq 0) { $null } else { $remove.stderr }) }

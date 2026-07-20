@@ -6,6 +6,7 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-run-reconciler.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
 
         function script:New-TargetRepo {
             param([Parameter(Mandatory)][string]$Path)
@@ -111,6 +112,93 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
             $recovered.machinery_paths | Should -Be $snapshot.machinery_paths
             $recovered.machinery_paths_sha256 | Should -Be $snapshot.machinery_paths_sha256
             (Test-GitReviewTargetCurrentness -Snapshot $recovered).classification | Should -Be 'current'
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
+    }
+
+    It 'runs controller preparation in an independent exact-digest copy and leaves the frozen target byte-identical' {
+        $origin = Join-Path $TestDrive 'origin-verification-copy'
+        $external = Join-Path $TestDrive 'external-verification-copy'
+        New-TargetRepo -Path $origin
+        $planPath = Join-Path $origin '.specrew/verification-plan.json'
+        [IO.File]::WriteAllText($planPath, '{"schema_version":"1.0","plan_id":"copy","commands":[]}')
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-copy-control -ExternalRoot $external
+        $copy = $null
+        try {
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specrew/verification-plan.json') | Should -BeFalse
+            $before = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshot.snapshot_path
+            $copy = New-GitReviewTargetVerificationCopy -Snapshot $snapshot -RunId run-copy-disposable
+            $copy.target_digest | Should -Be $snapshot.target_digest
+            [IO.File]::ReadAllBytes((Join-Path $copy.snapshot_path '.specrew/verification-plan.json')) | Should -Be $snapshot.verification_plan_bytes
+            [IO.File]::WriteAllText((Join-Path $copy.snapshot_path 'controller-output.tmp'), 'controller-owned')
+            $after = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshot.snapshot_path
+            ($after | ConvertTo-Json -Depth 5 -Compress) | Should -Be ($before | ConvertTo-Json -Depth 5 -Compress)
+            (Test-GitReviewTargetSnapshotIntegrity -Snapshot $snapshot).intact | Should -BeTrue
+        }
+        finally {
+            if ($null -ne $copy) { (Remove-GitReviewTargetSnapshot -Snapshot $copy).removed | Should -BeTrue }
+            (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue
+        }
+    }
+
+    It 'OS-protects the frozen target while leaving external controller staging writable and restores cleanup' {
+        $origin = Join-Path $TestDrive 'origin-readonly'
+        $external = Join-Path $TestDrive 'external-readonly'
+        $staging = Join-Path $TestDrive 'controller-staging'
+        New-TargetRepo -Path $origin
+        [IO.Directory]::CreateDirectory($staging) | Out-Null
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-readonly -ExternalRoot $external
+        $protection = $null
+        try {
+            $candidate = Join-Path $staging 'candidate.json'
+            $protection = Enable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -ExternalWritablePath $candidate
+            $protection.ok | Should -BeTrue -Because $protection.reason
+            $protection.existing_write_blocked | Should -BeTrue
+            $protection.create_blocked | Should -BeTrue
+            $protection.external_writable | Should -BeTrue
+            { [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'blocked.txt'), 'no') } | Should -Throw
+            [IO.File]::WriteAllText($candidate, '{}')
+            Test-Path -LiteralPath $candidate | Should -BeTrue
+            (Disable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -Lease $protection.lease).ok | Should -BeTrue
+            $protection = $null
+            [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'restored.txt'), 'yes')
+        }
+        finally {
+            if ($null -ne $protection) { Disable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -Lease $protection.lease | Out-Null }
+            (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue
+        }
+    }
+
+    It 'recovers a protected frozen target after an in-memory protection lease is lost' {
+        $origin = Join-Path $TestDrive 'origin-readonly-recovery'
+        $external = Join-Path $TestDrive 'external-readonly-recovery'
+        $staging = Join-Path $TestDrive 'controller-staging-recovery'
+        New-TargetRepo -Path $origin
+        [IO.Directory]::CreateDirectory($staging) | Out-Null
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-readonly-recovery -ExternalRoot $external
+        try {
+            $candidate = Join-Path $staging 'candidate.json'
+            $protection = Enable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -ExternalWritablePath $candidate
+            $protection.ok | Should -BeTrue -Because $protection.reason
+            { [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'blocked-before-recovery.txt'), 'no') } | Should -Throw
+
+            # Simulate a controller restart: the durable snapshot fact survives, but the in-memory
+            # ACL/mode lease does not. Recovery must remove only the protection it owns.
+            (Disable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -Lease $null).ok | Should -BeTrue
+            [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'restored-by-recovery.txt'), 'yes')
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path 'restored-by-recovery.txt') | Should -BeTrue
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
+    }
+
+    It 'rejects a writable candidate path inside the frozen target' {
+        $origin = Join-Path $TestDrive 'origin-readonly-false-allow'
+        New-TargetRepo -Path $origin
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-readonly-false-allow -ExternalRoot (Join-Path $TestDrive 'external-readonly-false-allow')
+        try {
+            $result = Enable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -ExternalWritablePath (Join-Path $snapshot.snapshot_path 'candidate.json')
+            $result.ok | Should -BeFalse
+            $result.reason | Should -Be 'review-target-writable-path-inside-snapshot'
         }
         finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
     }

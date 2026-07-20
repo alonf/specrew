@@ -4,10 +4,10 @@
 **Current Phase**: before-implement
 **Iteration Status**: executing
 **Last Completed Task**: T070
-**Tasks Remaining**: T066, T029, T067
-**In Progress**: T066
+**Tasks Remaining**: T029, T066, T067
+**In Progress**: T071
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-20T00:11:50Z
+**Updated**: 2026-07-20T18:41:49.5813801Z
 
 ## Planning Authorization
 
@@ -61,12 +61,28 @@
   invoked once. Its valid incomplete result is retained in the attempt ledger. Later bounded progress authority
   permits new unique runs while evidence converges; it never permits hidden retry or duplicate unchanged action.
 
+## T071 Diagnostic/Containment Replan
+
+- **Authorization**: after attempt 09 produced the third consecutive snapshot-integrity recurrence, pause T066 and
+  execute a bounded diagnostic/containment slice with zero provider spend until deterministic proof completes.
+- **Estimate**: 5.0 SP, raising the iteration to 31.5/26 SP. The +17% stress factor applied only to the 12.75 SP
+  open work forecasts 33.67/26 SP; the overcommit is explicit and no release/Proposal 209 scope is folded in.
+- **Proof result**: the exact frozen plan changed 2212 paths only in its disposable execution copy while an
+  initially identical frozen control changed zero. Provider-free Claude startup proved `--mcp-config {}` was the
+  immediate abort, while `{"mcpServers":{}}` reached a closed-loopback API transport with zero hooks and no trust
+  refusal. No provider was invoked by either diagnostic.
+- **Implementation**: verification now runs in a second exact-digest worktree; joined implementer evidence is an
+  external controller-owned CreateNew artifact; the byte-identical reviewer target is OS-protected read-only before
+  host/runtime preflight while the external candidate path stays writable. Normal and lost-lease cleanup are paired.
+- **Guard**: T066 remains paused. Reset the non-convergence guard only after T071 full deterministic verification,
+  exact-commit three-OS CI, and a durable fresh candidate preparation all pass.
+
 ## Readiness Summary
 
-- **Plan/capacity**: 26.5/26 story_points; 18 tasks; 0.5 SP explicit overcommit. Conservatively applying +17% to
-  all 7.75 SP still-open work, including T066's seventh correction class, forecasts 27.82 SP. The 1.82 SP stress
-  overage is explicit calibration risk; no optional scope is added.
-- **Traceability**: PASS; 18/18 tasks have valid selected refs and metadata, 32/32 selected requirements have
+- **Plan/capacity**: 31.5/26 story_points; 19 tasks; 5.5 SP explicit overcommit. Conservatively applying +17% only
+  to 12.75 SP open work forecasts 33.67/26. The 7.67 SP stress overage is explicit calibration risk; no optional
+  scope is added.
+- **Traceability**: PASS; 19/19 tasks have valid selected refs and metadata, 32/32 selected requirements have
   coverage, and no task/progress mismatch exists.
 - **Hardening**: planning-time `Overall Verdict: ready`; the exact before-implement verdict is captured. Runtime
   evidence remains task-owned.
@@ -74,10 +90,10 @@
   completed successfully at plan commit `08e86496`.
 - **Team/sequence**: one serial Implementer; T068 then T069 before supplier/distribution work; T066 is the
   independent Reviewer boundary.
-- **Provider budget**: attempts 01, 02, 05, 06, 07, and 08 each invoked Claude once and spent one immutable slot. Attempts
-  03 and 04 failed during controller verification, invoked no provider, spent no slot, and released their reservations.
-  The standing bounded progress grant still requires a new run ID/fact for every invocation and forbids hidden or
-  unchanged retry.
+- **Provider budget**: attempts 01, 02, 05, 06, 07, 08, and 09 each invoked Claude once and spent one immutable
+  slot. Attempts 03 and 04 failed during controller verification, invoked no provider, spent no slot, and released
+  their reservations. Attempt 09 triggered the non-convergence pause; T071 diagnostics and implementation spend
+  zero provider slots. A later run still requires a new run ID/fact and changed deterministic evidence.
 - **Release**: T029 has a separate release gate; T067 validates published beta without stable promotion.
 - **Authorization**: implementation is authorized against task commit `364fbe88`; provider and release actions
   remain separately gated.
@@ -86,6 +102,12 @@
   `tasks -> before-implement` crossing. This is recorded under DRIFT-198-I008-001 and grants no authority.
 
 ## Execution Summary
+
+<!-- specrew:task-progress-summary:begin -->
+- Execution is in progress.
+- Task progress: 15 complete, 1 in-progress, 3 pending, 0 blocked.
+- Latest completed task: T070
+<!-- specrew:task-progress-summary:end -->
 
 - T068 is implemented: stale supplied boundary commits fail before state mutation, while an already-authorized
   completed boundary opens its next crossing at current `HEAD` and the corresponding Git tree.
@@ -291,14 +313,31 @@
   forbids commands and every other write. Changed suites pass 44/44; the six focused suites total 109/109. T066 is
   repriced to 6.0 SP, bringing the iteration to 26.5/26 SP. Snapshot-integrity failure has now recurred in attempts
   07/08; a third consecutive recurrence stops for replan.
+- T066 attempt 09 invoked Claude once as
+  `run-t066-claude-windows-6667a373-2c29cb53-09` against commit
+  `6667a3739ca487d41ef90df34d235783468d599a` and reproducible digest
+  `2c29cb53005f7cc314d0734539dd6dde6aedbcb2`. Exact-commit CI run `29709194209` and controller verification were
+  green, but the provider process exited 1 without a candidate and integrity again reported the controller-created
+  `.review/implementer-evidence.json` plus regenerated `.scratch/distribution-module-update/**` tree. One slot was
+  spent. This third recurrence activated the non-convergence stop; T066 paused before any further invocation.
+- The authorized zero-spend T071 probe ran the frozen two-command plan against a disposable initially identical
+  copy. The untouched frozen control changed zero paths; only the disposable copy changed 2212 controller-owned
+  paths. A provider-free read-only Claude 2.1.215 startup captured the effective vector and bounded stderr: the old
+  strict MCP `{}` document aborted before hooks/trust/API, while `{"mcpServers":{}}` reached only the deliberately
+  closed loopback API transport with zero registered hooks and no trust refusal.
+- T071 now creates an exact-digest disposable verification worktree from the frozen identity and captured plan,
+  projects joined evidence through CreateNew to controller staging, byte-checks the untouched reviewer target, and
+  OS-protects it before any host/runtime preflight. Only the external candidate parent is write-probed. Focused
+  production target/verification/evidence/harness/orchestrator suites pass 86/86, including normal and lost-lease
+  cleanup plus false-allow/false-deny pairs. The first full registry exposed six stale target-local-evidence fixture
+  reads; after those fixtures consumed the external path through the real scope, the failed suite passed 11/11 and
+  the final full registry passed all 73 suites in 763.2 seconds. Scoped governance passed in 11.6 seconds with
+  historical warnings only. Exact-commit CI remains before T071 completes and the T066 guard resets.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 is complete. T066 is correcting attempt 08's recovery serialization and ambient-reviewer isolation failure and will rerun
-  exact-digest deterministic/hosted proof before a fresh independent run. The maintainer's standing authorization permits further bounded correction/review actions
-  while evidence is converging; every provider invocation still receives a unique run ID and immutable slot fact.
-  Attempt 07's reviewer explicitly found the support-lifecycle area clean. The general three-round recurring-class
-  or non-decreasing-count stop remains in force for later evidence.
-
+- T070 is complete. T071 is the only implementation task in progress; T066 is paused until its deterministic proof,
+  full registry, exact-commit hosted proof, and fresh preparation are all durable. No provider is invoked during
+  T071. Any later provider invocation still receives a unique run ID and immutable slot fact.
 ## Notes
 
 - T068 retains the stale record and null-pending sync as regression evidence; neither is authority. New boundary

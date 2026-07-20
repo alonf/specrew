@@ -174,6 +174,25 @@ Stdout is telemetry and is never parsed for authority.
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 3
     }
 
+    It 'stops before harness or runtime preflight when OS target protection is unavailable' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'target-protection-preflight')
+        $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
+        $target.protect = { param($snapshot, $candidatePath) [pscustomobject]@{ ok = $false; reason = 'fixture-protection-refused'; lease = $null } }
+        $harnessCalls = 0; $runtimeCalls = 0
+        $harness = New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)
+        $runtime = New-ReviewFixtureRuntimePort
+        $harness.preflight = { param($invocation) $harnessCalls++; [pscustomobject]@{ ok = $true; reason = 'must-not-reach' } }.GetNewClosure()
+        $runtime.preflight = { param($invocation) $runtimeCalls++; [pscustomobject]@{ ok = $true; reason = 'must-not-reach' } }.GetNewClosure()
+
+        $result = Invoke-OrchestratorFixture -Context $context -Target $target -Harness $harness -Runtime $runtime
+
+        $result.invoked | Should -BeFalse
+        $result.reason | Should -Match 'target_protection'
+        $harnessCalls | Should -Be 0
+        $runtimeCalls | Should -Be 0
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 0
+    }
+
     It 'bounds a long target preflight exception, releases allowance, and publishes the failure' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'long-preflight')
         $longTarget = [pscustomobject]@{

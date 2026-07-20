@@ -83,12 +83,16 @@ function New-GitReviewTargetPort {
     $prepareCommand = Get-Command -Name 'New-GitReviewTargetSnapshot' -CommandType Function
     $currentnessCommand = Get-Command -Name 'Test-GitReviewTargetCurrentness' -CommandType Function
     $integrityCommand = Get-Command -Name 'Test-GitReviewTargetSnapshotIntegrity' -CommandType Function
+    $protectCommand = Get-Command -Name 'Enable-ReviewTargetReadOnlyProtection' -CommandType Function
+    $unprotectCommand = Get-Command -Name 'Disable-ReviewTargetReadOnlyProtection' -CommandType Function
     $disposeCommand = Get-Command -Name 'Remove-GitReviewTargetSnapshot' -CommandType Function
     $prepare = { param($runId) & $prepareCommand -OriginRepo $OriginRepo -RunId $runId -ExternalRoot $ExternalRoot }.GetNewClosure()
     $currentness = { param($snapshot) & $currentnessCommand -Snapshot $snapshot }.GetNewClosure()
     $integrity = { param($snapshot) & $integrityCommand -Snapshot $snapshot }.GetNewClosure()
+    $protect = { param($snapshot, $externalWritablePath) & $protectCommand -Snapshot $snapshot -ExternalWritablePath $externalWritablePath }.GetNewClosure()
+    $unprotect = { param($snapshot, $lease) & $unprotectCommand -Snapshot $snapshot -Lease $lease }.GetNewClosure()
     $dispose = { param($snapshot) & $disposeCommand -Snapshot $snapshot }.GetNewClosure()
-    return [pscustomobject]@{ kind = 'git'; prepare = $prepare; currentness = $currentness; integrity = $integrity; dispose = $dispose }
+    return [pscustomobject]@{ kind = 'git'; prepare = $prepare; currentness = $currentness; integrity = $integrity; protect = $protect; unprotect = $unprotect; dispose = $dispose }
 }
 
 function New-ReviewFixtureTargetPort {
@@ -104,8 +108,10 @@ function New-ReviewFixtureTargetPort {
     $prepare = { param($runId) [pscustomobject]@{ schema_version = '1.0'; target_kind = 'fixture'; run_id = $runId; target_digest = $TargetDigest; snapshot_path = $SnapshotPath; workspace_root = $SnapshotPath; origin_repo = $null; suppression_environment = $suppressionEnvironment } }.GetNewClosure()
     $checkCurrentness = { param($snapshot) [pscustomobject]@{ classification = $Currentness; exact = ($Currentness -ceq 'current'); reason = 'fixture-currentness' } }.GetNewClosure()
     $checkIntegrity = { param($snapshot) [pscustomobject]@{ intact = $IntegrityPass; classification = $(if ($IntegrityPass) { 'intact' } else { 'snapshot-tampered' }); changed_paths = @($IntegrityChangedPaths) } }.GetNewClosure()
+    $protect = { param($snapshot, $externalWritablePath) [pscustomobject]@{ ok = $true; reason = 'fixture-read-only'; lease = $null } }
+    $unprotect = { param($snapshot, $lease) [pscustomobject]@{ ok = $true; reason = 'fixture-read-only-removed' } }
     $dispose = { param($snapshot) [pscustomobject]@{ removed = $true; failure_reason = $null } }
-    return [pscustomobject]@{ kind = 'fixture'; prepare = $prepare; currentness = $checkCurrentness; integrity = $checkIntegrity; dispose = $dispose }
+    return [pscustomobject]@{ kind = 'fixture'; prepare = $prepare; currentness = $checkCurrentness; integrity = $checkIntegrity; protect = $protect; unprotect = $unprotect; dispose = $dispose }
 }
 
 function New-ReviewFixtureHarnessPort {
@@ -308,7 +314,7 @@ function Add-ReviewCampaignVerificationSupport {
 
 function Invoke-ReviewCampaignFrozenVerification {
     [CmdletBinding()]
-    param([Parameter(Mandatory)]$Snapshot)
+    param([Parameter(Mandatory)]$Snapshot, [string]$EvidencePath)
 
     foreach ($name in @('Get-ContinuousCoReviewSelectedVerificationPlan', 'Invoke-ContinuousCoReviewVerificationPlan')) {
         if (-not (Get-Command -Name $name -ErrorAction SilentlyContinue)) {
@@ -420,10 +426,19 @@ function Invoke-ReviewCampaignFrozenVerification {
         }
     }
 
-    $reviewDirectory = Join-Path $snapshotPath '.review'
-    [IO.Directory]::CreateDirectory($reviewDirectory) | Out-Null
-    $injected = Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $snapshotPath -WorktreePath $snapshotPath -DigestTreeId $targetDigest -Plan $selected.plan
-    $injectedPath = Join-Path $reviewDirectory 'implementer-evidence.json'
+    $injectedPath = if ([string]::IsNullOrWhiteSpace($EvidencePath)) {
+        $reviewDirectory = Join-Path $snapshotPath '.review'
+        [IO.Directory]::CreateDirectory($reviewDirectory) | Out-Null
+        Join-Path $reviewDirectory 'implementer-evidence.json'
+    }
+    else { [IO.Path]::GetFullPath($EvidencePath) }
+    if ((Test-ReviewTargetPathUnderRoot -Path $injectedPath -Root $snapshotPath) -and -not [string]::IsNullOrWhiteSpace($EvidencePath)) {
+        return [pscustomobject]@{
+            ok = $false; reason = 'verification-evidence-path-inside-frozen-target'; state = 'verification-preflight-failed'
+            review_scope_suffix = ''; command_count = $planIds.Count; evidence_count = $evidence.Count
+        }
+    }
+    $injected = Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $snapshotPath -OutputPath $injectedPath -DigestTreeId $targetDigest -Plan $selected.plan
     if (-not $injected -or -not [IO.File]::Exists($injectedPath)) {
         return [pscustomobject]@{
             ok = $false; reason = 'verification-evidence-injection-failed'; state = 'verification-preflight-failed'
@@ -455,7 +470,7 @@ and was removed before reviewer harness preflight; the reviewer-visible tree rem
     }
     $scopeSuffix = @"
 
-CONTROLLER VERIFICATION EVIDENCE: Read .review/implementer-evidence.json. The controller executed the selected
+CONTROLLER VERIFICATION EVIDENCE: Read the controller-owned file at $injectedPath. The controller executed the selected
 project verification plan against this exact frozen digest before reviewer launch and injected one joined record
 for each of $($planIds.Count) declared command(s). Treat failed, timed-out, or missing-required-result records as
 approval-blocking evidence; never turn a configured verification failure into a clean result.
@@ -480,7 +495,52 @@ $supportScope
 
 function New-ReviewProductionVerificationPort {
     $command = Get-Command -Name 'Invoke-ReviewCampaignFrozenVerification' -CommandType Function
-    $execute = { param($snapshot) & $command -Snapshot $snapshot }.GetNewClosure()
+    $copyCommand = Get-Command -Name 'New-GitReviewTargetVerificationCopy' -CommandType Function
+    $disposeCommand = Get-Command -Name 'Remove-GitReviewTargetSnapshot' -CommandType Function
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1') }
+    $hashCommand = Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -CommandType Function
+    $execute = {
+        param($snapshot, $paths)
+        if ($null -eq $paths -or -not $paths.PSObject.Properties['implementer_evidence_path']) {
+            return [pscustomobject]@{ ok = $false; reason = 'verification-external-evidence-path-missing'; state = 'verification-preflight-failed'; review_scope_suffix = ''; command_count = 0; evidence_count = 0 }
+        }
+        $originalBefore = & $hashCommand -WorktreePath ([string]$snapshot.snapshot_path)
+        $verificationCopy = $null
+        $result = $null
+        $disposeFailure = $null
+        try {
+            $verificationCopy = & $copyCommand -Snapshot $snapshot
+            $result = & $command -Snapshot $verificationCopy -EvidencePath ([string]$paths.implementer_evidence_path)
+        }
+        catch {
+            $result = [pscustomobject]@{ ok = $false; reason = ('verification-copy-failed:' + $_.Exception.Message); state = 'verification-preflight-failed'; review_scope_suffix = ''; command_count = 0; evidence_count = 0 }
+        }
+        finally {
+            if ($null -ne $verificationCopy) {
+                try {
+                    $disposed = & $disposeCommand -Snapshot $verificationCopy
+                    if (-not [bool]$disposed.removed) { $disposeFailure = [string]$disposed.failure_reason }
+                }
+                catch { $disposeFailure = [string]$_.Exception.Message }
+            }
+        }
+        $originalAfter = & $hashCommand -WorktreePath ([string]$snapshot.snapshot_path)
+        $changed = [Collections.Generic.List[string]]::new()
+        foreach ($key in @(@($originalBefore.Keys) + @($originalAfter.Keys) | Sort-Object -Unique)) {
+            $beforeValue = if ($originalBefore.ContainsKey($key)) { [string]$originalBefore[$key] } else { '<missing>' }
+            $afterValue = if ($originalAfter.ContainsKey($key)) { [string]$originalAfter[$key] } else { '<missing>' }
+            if ($beforeValue -cne $afterValue) { $changed.Add([string]$key) | Out-Null }
+        }
+        if ($changed.Count -gt 0) {
+            return [pscustomobject]@{ ok = $false; reason = ('verification-mutated-original-frozen-target:' + (@($changed | Select-Object -First 20) -join ',')); state = 'verification-preflight-failed'; review_scope_suffix = ''; command_count = 0; evidence_count = 0 }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($disposeFailure)) {
+            return [pscustomobject]@{ ok = $false; reason = ('verification-copy-disposal-failed:' + $disposeFailure); state = 'verification-preflight-failed'; review_scope_suffix = ''; command_count = 0; evidence_count = 0 }
+        }
+        $result | Add-Member -NotePropertyName original_frozen_target_unchanged -NotePropertyValue $true -Force
+        $result | Add-Member -NotePropertyName verification_copy_disposed -NotePropertyValue $true -Force
+        return $result
+    }.GetNewClosure()
     return [pscustomobject]@{ kind = 'production'; execute = $execute }
 }
 
@@ -890,12 +950,13 @@ function Invoke-ReviewCampaignRun {
     $reservation = $reservationResult.fact
     Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage reserved -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $placeholderDigest -HarnessId ([string]$HarnessPort.id) -State reserved) | Out-Null
 
-    $snapshot = $null; $disposeSnapshot = $true
+    $snapshot = $null; $disposeSnapshot = $true; $targetProtection = $null
     try {
         try {
             $snapshot = & $TargetPort.prepare $RunId
             $targetDigest = [string]$snapshot.target_digest
-            $verification = & $VerificationPort.execute $snapshot
+            $paths = Initialize-ReviewRunStaging -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId
+            $verification = & $VerificationPort.execute $snapshot $paths
             if (-not [bool]$verification.ok) {
                 $reason = [string]$verification.reason
                 $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
@@ -904,7 +965,6 @@ function Invoke-ReviewCampaignRun {
                 return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path; report_path = $failed.report_path }
             }
             $effectiveReviewScope = $ReviewScope + [string]$verification.review_scope_suffix
-            $paths = Initialize-ReviewRunStaging -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId
             $deadline = ([DateTimeOffset]::Parse((Read-ReviewClockUtc -ClockPort $ClockPort))).AddSeconds($TimeoutSeconds).ToString('o')
             $invocation = [pscustomobject][ordered]@{
                 schema_version = '1.0'; campaign_id = $CampaignId; run_id = $RunId; target_digest = $targetDigest
@@ -913,9 +973,17 @@ function Invoke-ReviewCampaignRun {
             }
             $contract = Test-ReviewAuthorityContractObject -ContractName ReviewInvocation -InputObject $invocation -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId -ExpectedTargetDigest $targetDigest
             $targetReady = -not [string]::IsNullOrWhiteSpace($targetDigest) -and [IO.Directory]::Exists([string]$snapshot.snapshot_path) -and [IO.File]::Exists([string]$invocation.prompt_path)
-            $harnessReady = & $HarnessPort.preflight $invocation
-            $runtimeReady = & $RuntimePort.preflight $invocation
-            $preflight = @{ target = $targetReady; store = $true; contract = [bool]$contract.valid; containment = $targetReady; verification = [bool]$verification.ok; harness = [bool]$harnessReady.ok; runtime = [bool]$runtimeReady.ok }
+            $protection = if ($TargetPort.PSObject.Properties['protect']) {
+                & $TargetPort.protect $snapshot ([string]$invocation.candidate_result_path)
+            }
+            elseif ([string]$TargetPort.kind -ceq 'fixture') { [pscustomobject]@{ ok = $true; reason = 'fixture-read-only'; lease = $null } }
+            else { [pscustomobject]@{ ok = $false; reason = 'review-target-protection-port-missing'; lease = $null } }
+            if ([bool]$protection.ok) { $targetProtection = $protection.lease }
+            # Protection is a prerequisite, not merely another collected boolean. Do not let a
+            # host adapter inspect or bootstrap inside an unprotected governed target.
+            $harnessReady = if ([bool]$protection.ok) { & $HarnessPort.preflight $invocation } else { [pscustomobject]@{ ok = $false; reason = 'blocked-by-target-protection' } }
+            $runtimeReady = if ([bool]$protection.ok) { & $RuntimePort.preflight $invocation } else { [pscustomobject]@{ ok = $false; reason = 'blocked-by-target-protection' } }
+            $preflight = @{ target = $targetReady; target_protection = [bool]$protection.ok; store = $true; contract = [bool]$contract.valid; containment = $targetReady; verification = [bool]$verification.ok; harness = [bool]$harnessReady.ok; runtime = [bool]$runtimeReady.ok }
             if (@($preflight.Values | Where-Object { -not [bool]$_ }).Count -gt 0) {
                 $reason = 'preflight-failed:' + (@($preflight.Keys | Where-Object { -not [bool]$preflight[$_] } | Sort-Object) -join ',')
                 $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
@@ -1037,6 +1105,9 @@ function Invoke-ReviewCampaignRun {
         return [pscustomobject]@{ status = 'awaiting-termination-verification'; reason = $ingress.reason; invoked = $true; result = $null; result_path = $null }
     }
     finally {
-        if ($null -ne $snapshot -and $disposeSnapshot) { try { $null = & $TargetPort.dispose $snapshot } catch { $null = $_ } }
+        if ($null -ne $snapshot -and $disposeSnapshot) {
+            if ($TargetPort.PSObject.Properties['unprotect']) { try { $null = & $TargetPort.unprotect $snapshot $targetProtection } catch { $null = $_ } }
+            try { $null = & $TargetPort.dispose $snapshot } catch { $null = $_ }
+        }
     }
 }

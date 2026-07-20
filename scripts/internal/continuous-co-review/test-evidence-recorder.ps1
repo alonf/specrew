@@ -145,13 +145,14 @@ function Get-ContinuousCoReviewTestEvidenceForDigest {
 
 function Copy-ContinuousCoReviewImplementerEvidence {
     <#
-        Injects digest-matched evidence into the reviewer worktree as .review/implementer-evidence.json.
-        Returns $true only when a matching record was injected; a mismatch, a missing record, or any
-        failure returns $false (the reviewer then simply has no evidence - never wrong evidence).
+        Projects digest-matched evidence to a controller-owned reviewer-readable path. The legacy
+        WorktreePath form remains for older callers; production campaigns pass OutputPath outside
+        the frozen target. Returns $true only when a matching record was projected.
     #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [Parameter(Mandatory)][string]$WorktreePath,
+        [string]$WorktreePath,
+        [string]$OutputPath,
         [AllowEmptyString()][string]$DigestTreeId,
         # The ACTUAL SELECTED VerificationPlan (the FR-049 supplier seam; maintainer wiring directive
         # 2026-07-15): plan-run joinability is enforced against ITS command set and NOTHING else - the
@@ -163,8 +164,15 @@ function Copy-ContinuousCoReviewImplementerEvidence {
         if ([string]::IsNullOrWhiteSpace($DigestTreeId)) { return $false }
         $record = Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $RepoRoot -DigestTreeId $DigestTreeId
         if ($null -eq $record) { return $false }
-        $reviewDir = Join-Path $WorktreePath '.review'
-        if (-not (Test-Path -LiteralPath $reviewDir -PathType Container)) { return $false }
+        if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+            if ([string]::IsNullOrWhiteSpace($WorktreePath)) { return $false }
+            $reviewDir = Join-Path $WorktreePath '.review'
+            if (-not (Test-Path -LiteralPath $reviewDir -PathType Container)) { return $false }
+            $OutputPath = Join-Path $reviewDir 'implementer-evidence.json'
+        }
+        $outputFull = [IO.Path]::GetFullPath($OutputPath)
+        $outputParent = [IO.Path]::GetDirectoryName($outputFull)
+        if (-not [IO.Directory]::Exists($outputParent) -or [IO.File]::Exists($outputFull)) { return $false }
 
         # FR-048 JOIN AT THE INJECTION BOUNDARY (review finding f1, run 20260714T201103653; maintainer wiring
         # directive 2026-07-15): the duplicate / joinability contract gates the PRODUCTION copy, not only
@@ -239,7 +247,13 @@ function Copy-ContinuousCoReviewImplementerEvidence {
         }
         catch { $null = $_ }
         $scrubbed = ConvertTo-ContinuousCoReviewOriginRelativized -Content ($record | ConvertTo-Json -Depth 8) -OriginRoots $originRoots
-        [System.IO.File]::WriteAllText((Join-Path $reviewDir 'implementer-evidence.json'), $scrubbed)
+        $stream = [IO.File]::Open($outputFull, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        try {
+            $bytes = [Text.UTF8Encoding]::new($false).GetBytes($scrubbed)
+            $stream.Write($bytes, 0, $bytes.Length)
+            $stream.Flush($true)
+        }
+        finally { $stream.Dispose() }
         return $true
     }
     catch {

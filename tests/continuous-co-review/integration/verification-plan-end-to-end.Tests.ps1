@@ -123,8 +123,14 @@ Describe 'Supplier to campaign deterministic end-to-end project matrix (T065)' {
             $preflight = {
                 param($invocation)
                 $Capture.preflight_count++
-                $evidencePath = Join-Path ([string]$invocation.snapshot_path) '.review/implementer-evidence.json'
-                if ([IO.File]::Exists($evidencePath)) { $Capture.evidence = [IO.File]::ReadAllText($evidencePath) | ConvertFrom-Json }
+                $targetEvidencePath = Join-Path ([string]$invocation.snapshot_path) '.review/implementer-evidence.json'
+                $Capture.target_evidence_present = [IO.File]::Exists($targetEvidencePath)
+                $match = [regex]::Match([string]$invocation.review_scope, '(?m)^CONTROLLER VERIFICATION EVIDENCE: Read the controller-owned file at (?<path>.+?)\. The controller executed')
+                if ($match.Success) {
+                    $evidencePath = $match.Groups['path'].Value
+                    $Capture.evidence_path = $evidencePath
+                    if ([IO.File]::Exists($evidencePath)) { $Capture.evidence = [IO.File]::ReadAllText($evidencePath) | ConvertFrom-Json }
+                }
                 return [pscustomobject]@{ ok = $true; reason = 'fixture-ready' }
             }.GetNewClosure()
             $invoke = {
@@ -172,13 +178,15 @@ Describe 'Supplier to campaign deterministic end-to-end project matrix (T065)' {
         $materialize.selection.source_kind | Should -Be $source_kind
 
         $context = New-T065Context -Root (Join-Path $root 'controller') -Token $shape
-        $capture = [pscustomobject]@{ preflight_count = 0; invoke_count = 0; evidence = $null }
+        $capture = [pscustomobject]@{ preflight_count = 0; invoke_count = 0; evidence = $null; evidence_path = $null; target_evidence_present = $null }
         $headBefore = (& git -C $repo rev-parse HEAD).Trim(); $statusBefore = @(& git -C $repo status --porcelain=v1 --untracked-files=all)
         $result = Invoke-T065Campaign -Repo $repo -Context $context -Capture $capture
 
         $result.status | Should -Be 'terminal' -Because $result.reason
         $result.result.can_approve_current | Should -BeTrue
         $capture.invoke_count | Should -Be 1
+        $capture.target_evidence_present | Should -BeFalse -Because 'production evidence is controller-owned and external to the OS-read-only reviewer target'
+        [IO.Path]::IsPathFullyQualified([string]$capture.evidence_path) | Should -BeTrue
         @($capture.evidence.runs | ForEach-Object { [string]$_.command_id }) | Should -Be $expected
         @($capture.evidence.runs | Where-Object { -not [bool]$_.command_succeeded }).Count | Should -Be 0
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId $context.campaign_id -Kind spend).Count | Should -Be 1

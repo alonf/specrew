@@ -66,8 +66,13 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
                         Where-Object { Test-Path -LiteralPath (Join-Path ([string]$invocation.snapshot_path) $_) }
                 )
                 $Capture | Add-Member -NotePropertyName verification_support_visible_at_preflight -NotePropertyValue @($visibleSupport) -Force
-                $path = Join-Path ([string]$invocation.snapshot_path) '.review/implementer-evidence.json'
-                if ([IO.File]::Exists($path)) { $Capture.evidence = [IO.File]::ReadAllText($path) | ConvertFrom-Json }
+                $match = [regex]::Match([string]$invocation.review_scope, 'CONTROLLER VERIFICATION EVIDENCE: Read the controller-owned file at (?<path>[^\r\n]+)\. The controller')
+                if ($match.Success) {
+                    $path = [string]$match.Groups['path'].Value
+                    $Capture | Add-Member -NotePropertyName evidence_path -NotePropertyValue $path -Force
+                    if ([IO.File]::Exists($path)) { $Capture.evidence = [IO.File]::ReadAllText($path) | ConvertFrom-Json }
+                }
+                $Capture | Add-Member -NotePropertyName target_evidence_present -NotePropertyValue ([IO.File]::Exists((Join-Path ([string]$invocation.snapshot_path) '.review/implementer-evidence.json'))) -Force
                 return [pscustomobject]@{ ok = $true; reason = 'fixture-ready' }
             }.GetNewClosure()
             $invoke = {
@@ -111,6 +116,8 @@ Describe 'Frozen-target verification and exact-digest campaign injection (T064)'
         $capture.review_scope | Should -Not -Match 'Tracked methodology support used by verification' -Because 'an empty support manifest must not fabricate a staging event'
         @($capture.evidence.runs | ForEach-Object { [string]$_.command_id }) | Should -Be @('first-git', 'second-pwsh')
         @($capture.evidence.runs | Where-Object { -not [bool]$_.command_succeeded }).Count | Should -Be 0
+        $capture.target_evidence_present | Should -BeFalse
+        (Test-ReviewTargetPathUnderRoot -Path $capture.evidence_path -Root $repo) | Should -BeFalse
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-t064 -Kind spend).Count | Should -Be 1
         (& git -C $repo rev-parse HEAD).Trim() | Should -Be $headBefore
         @(& git -C $repo status --porcelain=v1 --untracked-files=all) | Should -Be $statusBefore
@@ -200,14 +207,17 @@ exit 0
                 (New-T064Command -Id 'captured-vocabulary' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', $probe))
             ))
         $snapshot = New-GitReviewTargetSnapshot -OriginRepo $repo -RunId run-captured-vocabulary -ExternalRoot (Join-Path $root 'targets')
+        $verificationCopy = $null
         try {
             Remove-Item -LiteralPath $marker -Force
             [IO.File]::WriteAllText($support, 'dirty-live-content')
-
-            $result = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
+            $verificationCopy = New-GitReviewTargetVerificationCopy -Snapshot $snapshot
+            $evidencePath = Join-Path $root 'controller-evidence.json'
+            $result = Invoke-ReviewCampaignFrozenVerification -Snapshot $verificationCopy -EvidencePath $evidencePath
 
             $result.ok | Should -BeTrue -Because $result.reason
-            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.custom-host/specrew') | Should -BeFalse -Because 'captured support is purged after verification'
+            Test-Path -LiteralPath (Join-Path $verificationCopy.snapshot_path '.custom-host/specrew') | Should -BeFalse -Because 'captured support is purged after verification'
+            (Test-GitReviewTargetSnapshotIntegrity -Snapshot $snapshot).intact | Should -BeTrue
             $currentness = Test-GitReviewTargetCurrentness -Snapshot $snapshot
             $currentness.exact | Should -BeFalse
             $currentness.reasons | Should -Be @('origin-head-or-reviewed-digest-moved', 'machinery-paths-changed')
@@ -215,7 +225,10 @@ exit 0
             Test-Path -LiteralPath $marker | Should -BeFalse -Because 'origin marker drift is observed, never repaired or copied back'
             [IO.File]::ReadAllText($support) | Should -Be 'dirty-live-content'
         }
-        finally { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null }
+        finally {
+            if ($null -ne $verificationCopy) { Remove-GitReviewTargetSnapshot -Snapshot $verificationCopy | Out-Null }
+            Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null
+        }
     }
 
     It 'refuses a machinery vocabulary that no longer matches the frozen target binding' {
@@ -241,20 +254,25 @@ exit 0
                 (New-T064Command -Id 'red-with-support' -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', $probe))
             ))
         $snapshot = New-GitReviewTargetSnapshot -OriginRepo $repo -RunId run-support-cleanup -ExternalRoot (Join-Path $root 'targets')
+        $verificationCopy = $null
         try {
             $baselineBefore = $snapshot.source_hashes_before | ConvertTo-Json -Depth 20 -Compress
-            $result = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
+            $verificationCopy = New-GitReviewTargetVerificationCopy -Snapshot $snapshot
+            $result = Invoke-ReviewCampaignFrozenVerification -Snapshot $verificationCopy -EvidencePath (Join-Path $root 'red-evidence.json')
             $result.ok | Should -BeFalse
             $result.reason | Should -Be 'verification-command-failed:red-with-support:diagnostics-require-command-scoped-disclosure'
-            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specify/support.txt') | Should -BeFalse
-            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specify/generated-by-verification.txt') | Should -BeFalse
-            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specrew/verification-plan.json') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $verificationCopy.snapshot_path '.specify/support.txt') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $verificationCopy.snapshot_path '.specify/generated-by-verification.txt') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $verificationCopy.snapshot_path '.specrew/verification-plan.json') | Should -BeFalse
             $after = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $snapshot.snapshot_path
             $treeDelta = @(& git -C $snapshot.snapshot_path diff --name-status $snapshot.target_digest $after.tree_id 2>&1)
             $after.tree_id | Should -Be $snapshot.target_digest -Because ($treeDelta -join '; ')
             ($snapshot.source_hashes_before | ConvertTo-Json -Depth 20 -Compress) | Should -Be $baselineBefore -Because 'a failed verification never re-baselines partial controller preparation'
         }
-        finally { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null }
+        finally {
+            if ($null -ne $verificationCopy) { Remove-GitReviewTargetSnapshot -Snapshot $verificationCopy | Out-Null }
+            Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null
+        }
     }
 
     It 'attempts exact cleanup and the complete machinery purge when support staging fails' {
@@ -357,7 +375,8 @@ exit 0
         Set-T064Plan -Repo $repo -Plan $plan
         $snapshot = New-GitReviewTargetSnapshot -OriginRepo $repo -RunId run-plan-currentness -ExternalRoot (Join-Path $root 'targets')
         try {
-            [IO.File]::Exists((Join-Path $snapshot.snapshot_path '.specrew/verification-plan.json')) | Should -BeTrue
+            [IO.File]::Exists((Join-Path $snapshot.snapshot_path '.specrew/verification-plan.json')) | Should -BeFalse -Because 'the plan is frozen in controller memory and materialized only in the disposable verification copy'
+            [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([byte[]]$snapshot.verification_plan_bytes)).ToLowerInvariant() | Should -Be $snapshot.verification_plan_sha256
             $initial = Test-GitReviewTargetCurrentness -Snapshot $snapshot
             $initial.exact | Should -BeTrue
             $plan.plan_id = 't064.changed-plan.v1'; Set-T064Plan -Repo $repo -Plan $plan

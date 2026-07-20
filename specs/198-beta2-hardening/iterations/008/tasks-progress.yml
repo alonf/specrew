@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-20T00:11:50Z"
+updated_at: "2026-07-20T18:41:49.5813801Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -10,28 +10,10 @@ tasks:
     completed_at: "2026-07-18T21:03:36Z"
     blocked_reason: ""
   T069:
-    title: "Multi-session Stop/capture integrity repair"
+    title: "Multi-session stop/capture integrity repair"
     status: "done"
     started_at: "2026-07-18T21:03:36Z"
     completed_at: "2026-07-18T21:53:06Z"
-    blocked_reason: ""
-  T062:
-    title: "Deterministic verification-plan supplier and bounded selection catalog"
-    status: "done"
-    started_at: "2026-07-18T21:53:06Z"
-    completed_at: "2026-07-18T22:09:46Z"
-    blocked_reason: ""
-  T063:
-    title: "Init/update/setup materialization and guarded refresh"
-    status: "done"
-    started_at: "2026-07-18T22:09:46Z"
-    completed_at: "2026-07-18T22:20:07Z"
-    blocked_reason: ""
-  T064:
-    title: "Frozen-target verification execution and exact-digest campaign injection"
-    status: "done"
-    started_at: "2026-07-18T22:20:07Z"
-    completed_at: "2026-07-18T22:41:27Z"
     blocked_reason: ""
   T021:
     title: "Methodology gate template and provider-keyed deploy"
@@ -81,6 +63,30 @@ tasks:
     started_at: "2026-07-18T23:40:37Z"
     completed_at: "2026-07-19T00:08:46Z"
     blocked_reason: ""
+  T029:
+    title: "Release `v0.40.0-beta2` after separately authorized release gate"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T062:
+    title: "Deterministic verification-plan supplier and bounded selection catalog"
+    status: "done"
+    started_at: "2026-07-18T21:53:06Z"
+    completed_at: "2026-07-18T22:09:46Z"
+    blocked_reason: ""
+  T063:
+    title: "Init/update/setup materialization, guarded refresh, and actionable configuration UX"
+    status: "done"
+    started_at: "2026-07-18T22:09:46Z"
+    completed_at: "2026-07-18T22:20:07Z"
+    blocked_reason: ""
+  T064:
+    title: "Frozen-target verification execution and exact-digest campaign evidence injection"
+    status: "done"
+    started_at: "2026-07-18T22:20:07Z"
+    completed_at: "2026-07-18T22:41:27Z"
+    blocked_reason: ""
   T065:
     title: "Supplier/runner/injection deterministic end-to-end fixture matrix"
     status: "done"
@@ -88,23 +94,23 @@ tasks:
     completed_at: "2026-07-19T00:24:09Z"
     blocked_reason: ""
   T070:
-    title: "Host-independent conformance turn-delta core and supported-host adapters"
+    title: "Host-independent conformance turn-delta core and supported-host prompt adapters"
     status: "done"
     started_at: "2026-07-19T13:37:10Z"
     completed_at: "2026-07-19T14:39:59Z"
     blocked_reason: ""
-  T066:
-    title: "Full deterministic verification, frozen support and recovery/currentness integrity, three-OS CI, and independent signoff"
+  T071:
+    title: "Disposable controller verification, external evidence projection, OS read-only reviewer target, and Claude startup correction"
     status: "in_progress"
+    started_at: "2026-07-20T17:48:02Z"
+    completed_at: ""
+    blocked_reason: "Zero-provider focused proof, all 73 registered suites, and scoped governance are green; exact-commit three-OS CI remains before the T066 guard can reset."
+  T066:
+    title: "Full deterministic verification, three-OS CI, pre-spend red-verification gate, frozen pinned-support lifecycle, recovery/currentness integrity, and independent signoff"
+    status: "pending"
     started_at: "2026-07-19T13:06:00Z"
     completed_at: ""
-    blocked_reason: "Attempts 01, 02, 05, 06, 07, and 08 each spent one Claude slot; attempts 03 and 04 failed safely before provider with zero spend. Attempt 08 passed exact CI/controller verification but exited without a candidate after ambient user settings generated snapshot files; its persisted recovery fact also exposed scalar-array canonicalization. CreateNew recovery round-trip and isolated Claude tool/settings regressions pass; snapshot-integrity failure has recurred in attempts 07/08, so one more recurrence requires replan."
-  T029:
-    title: "Release v0.40.0-beta2 after separately authorized release gate"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "Paused after attempt 09 became the third consecutive snapshot-integrity recurrence. T071 must finish zero-spend deterministic proof, full verification, exact-commit CI, and fresh preparation before the non-convergence guard resets."
   T067:
     title: "Published-beta fresh-consumer dogfood and stable-promotion input"
     status: "pending"

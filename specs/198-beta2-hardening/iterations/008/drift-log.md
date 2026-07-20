@@ -357,6 +357,40 @@
   builder; local Claude 2.1.215 accepts the vector without provider invocation. Snapshot-integrity failure has now
   recurred in attempts 07/08; one further recurrence triggers the three-round non-convergence stop.
 
+### DRIFT-198-I008-019 — controller preparation mutated the frozen reviewer target before Claude startup
+
+- **Status**: deterministic containment correction implemented; local full verification green; exact-commit CI and signoff pending
+- **Severity**: blocking runtime-integrity defect
+- **Type**: architecture/containment drift
+- **Requirements**: FR-048, SC-015, NFR-002, NFR-007
+- **Observed evidence**: attempt 09 invoked Claude once against commit
+  `6667a3739ca487d41ef90df34d235783468d599a` and digest
+  `2c29cb53005f7cc314d0734539dd6dde6aedbcb2`. The process exited 1 after roughly 1.8 seconds without a candidate;
+  the already-completed controller phase had placed `.review/implementer-evidence.json` and regenerated
+  `.scratch/distribution-module-update/**` content in the same target later attributed to reviewer tamper. This was
+  the third consecutive snapshot-integrity recurrence, so T066 stopped under the non-convergence rule before any
+  further slot.
+- **Root-cause proof**: a zero-provider control/disposable experiment ran the exact frozen two-command plan for
+  1013.039 seconds. The untouched frozen control retained zero changed paths; the disposable verification copy
+  produced 2212 controller-owned changes: one implementer-evidence projection, 2210 distribution scratch paths,
+  and controller cleanup of the captured plan. A provider-free Claude 2.1.215 launch then showed the shipped
+  `--mcp-config {}` vector failed in 0.388 seconds because `mcpServers` was absent. The corrected
+  `{"mcpServers":{}}` vector reached a closed-loopback API transport with zero registered hooks and no workspace-
+  trust refusal. Neither probe invoked a provider.
+- **Correction**: controller verification runs in a second disposable worktree built from the frozen commit/digest
+  and captured plan bytes. Its joined implementer evidence is projected with CreateNew to the external controller
+  staging path. The original reviewer target is verified byte-identical, then OS-protected read-only before any
+  harness/runtime preflight; only the external candidate parent is write-probed. Windows restores the exact ACL on
+  normal cleanup and removes the controller-owned deny rule after a lost in-memory lease; POSIX restores owner write
+  mode. Claude receives the schema-valid strict empty-MCP document.
+- **Paired evidence**: production-path fixtures prove disposable mutation/original invariance, target-local evidence
+  absence, external CreateNew refusal on overwrite, Windows/POSIX existing-file and create denial, external write
+  success, normal and lost-lease recovery, inside-target candidate refusal, and protection-before-host-preflight.
+  The durable zero-spend proof is `quality/t071-controller-containment-proof.json`. The non-convergence guard may
+  reset only after the full deterministic registry and exact-commit CI pass on the corrected candidate. The final
+  local registry passed all 73 suites in 763.2 seconds and scoped governance passed in 11.6 seconds with historical
+  warnings only; hosted exact-commit proof remains pending.
+
 ### Resolution Strategies
 
 The following resolution strategies remain available if drift is detected later in execution:
