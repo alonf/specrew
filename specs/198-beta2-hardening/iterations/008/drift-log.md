@@ -22,9 +22,18 @@
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution rate**: 50% (3/6 resolved; DRIFT-198-I008-004/005/006 remain open through exact-digest signoff)
+**Total drift events**: 20
+**Resolution rate**: 100% (20/20 resolved; correction drifts 004–019 independently closed by T066 run 11)
 **Specification drift**: None detected
+
+The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
+FR-036, FR-040–FR-042, FR-044–FR-049, FR-055, FR-056, SC-008–SC-015, NFR-002, and NFR-007 scope. Clean
+run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / digest
+`eb9643d51780361d1009ba3267e7e14cb011b385` with zero findings. The direct-child six-file evidence commit
+`3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
+`29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
+scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. T029 release and T067
+published-beta validation remain deliberately pending behind their named boundaries.
 
 ## Events
 
@@ -106,7 +115,7 @@
 
 ### DRIFT-198-I008-004 — T066 self-plan omitted its production child-environment declaration
 
-- **Status**: correction implemented; exact-digest signoff pending after attempt 02 intermittent verification failure
+- **Status**: resolved by the corrected plan contract and clean T066 run 11
 - **Severity**: blocking verification-integrity defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
@@ -132,7 +141,7 @@
 
 ### DRIFT-198-I008-005 — red controller verification spent a provider slot and suppressed actionable diagnostics
 
-- **Status**: correction implemented; full exact-candidate verification pending
+- **Status**: resolved by the zero-spend preflight correction and clean T066 run 11
 - **Severity**: major cost/integrity defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
@@ -153,7 +162,7 @@
 
 ### DRIFT-198-I008-006 — machinery-stripped reviewer snapshot was not a complete verification repository
 
-- **Status**: correction implemented; exact-candidate full verification and signoff pending
+- **Status**: resolved by pinned-support/disposable verification and clean T066 run 11
 - **Severity**: blocking verification-integrity defect
 - **Type**: architecture/evidence drift
 - **Requirements**: FR-048, FR-049, SC-015, NFR-002, NFR-007
@@ -179,7 +188,7 @@
 
 ### DRIFT-198-I008-007 — plan-level time was persisted as every serial command's observed time
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by per-command observed clocks and clean T066 run 11
 - **Severity**: major evidence-honesty defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-015, FR-048, NFR-002, NFR-007
@@ -197,7 +206,7 @@
 
 ### DRIFT-198-I008-008 — empty support manifest produced false reviewer teaching
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by conditional support teaching and clean T066 run 11
 - **Severity**: minor teaching/evidence defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -210,7 +219,7 @@
 
 ### DRIFT-198-I008-009 — staging rollback could hide cleanup failures and skip its purge backstop
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by fail-loud two-layer cleanup and clean T066 run 11
 - **Severity**: note-level rollback-observability defect
 - **Type**: implementation/robustness drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -224,7 +233,7 @@
 
 ### DRIFT-198-I008-010 — pinned support staging collided with the captured current verification plan
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by current-plan precedence and clean T066 run 11
 - **Severity**: major target-integrity defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, FR-049, NFR-002, NFR-007
@@ -239,7 +248,7 @@
 
 ### DRIFT-198-I008-011 — support staging recomputed a live machinery vocabulary after target freeze
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by frozen machinery-vocabulary binding and clean T066 run 11
 - **Severity**: minor determinism/currentness defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -256,7 +265,7 @@
 
 ### DRIFT-198-I008-012 — failed verification re-baselined source hashes
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by success-only rebaseline and clean T066 run 11
 - **Severity**: note-level failure-path defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -269,7 +278,7 @@
 
 ### DRIFT-198-I008-013 — verification returned a vestigial degradation field with no reachable path
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by removal of the unreachable contract field and clean T066 run 11
 - **Severity**: note-level contract/plumbing defect
 - **Type**: implementation drift
 - **Requirements**: FR-048, NFR-002
@@ -283,7 +292,7 @@
 
 ### DRIFT-198-I008-014 — crash-recovery facts omitted target currentness bindings
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by recovery binding round-trip and clean T066 run 11
 - **Severity**: minor recovery-observability defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -299,7 +308,7 @@
 
 ### DRIFT-198-I008-015 — later currentness checks overwrote earlier divergence reasons
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by additive currentness reasons and clean T066 run 11
 - **Severity**: note-level observability defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -312,7 +321,7 @@
 
 ### DRIFT-198-I008-016 — attempt 07 lost the changed-path cause behind snapshot-integrity failure
 
-- **Status**: diagnostic correction proved by attempt 08; reviewer-isolation follow-up is DRIFT-198-I008-018
+- **Status**: resolved by bounded changed-path evidence, T071 containment, and clean T066 run 11
 - **Severity**: runtime-integrity/diagnostic defect
 - **Type**: implementation/operability drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -329,7 +338,7 @@
 
 ### DRIFT-198-I008-017 — immutable canonicalization corrupted recovery string arrays
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by scalar-array canonicalization proof and clean T066 run 11
 - **Severity**: major recovery-evidence defect
 - **Type**: implementation/evidence drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -343,7 +352,7 @@
 
 ### DRIFT-198-I008-018 — Claude user settings leaked hooks/instructions into the frozen reviewer
 
-- **Status**: correction implemented; exact-digest signoff pending
+- **Status**: resolved by the isolated Claude launch contract and clean T066 run 11
 - **Severity**: major reviewer-isolation defect
 - **Type**: integration/runtime-integrity drift
 - **Requirements**: FR-048, NFR-002, NFR-007
@@ -359,7 +368,7 @@
 
 ### DRIFT-198-I008-019 — controller preparation mutated the frozen reviewer target before Claude startup
 
-- **Status**: resolved by T071 deterministic containment correction and exact-commit three-OS hosted proof; T066 signoff pending
+- **Status**: resolved by T071 containment/three-OS proof and clean T066 run 11
 - **Severity**: blocking runtime-integrity defect
 - **Type**: architecture/containment drift
 - **Requirements**: FR-048, SC-015, NFR-002, NFR-007
@@ -396,6 +405,24 @@
   11.2 seconds with historical warnings only. Hosted retry run `29775507402` passed all eight jobs at exact commit
   `b3fb1ab3037342ec7677cad694a0f7567789b7c2`; the original push run `29773556546` was cancelled after an unrelated
   macOS runner wedge and carries no authority. T071 completed with zero provider spend and reset the T066 guard.
+
+### DRIFT-198-I008-020 — finalized T066 review grouping did not satisfy iteration-level review schema
+
+- **Status**: resolved in the authorized post-signoff lifecycle projection
+- **Severity**: minor governance-artifact defect
+- **Type**: lifecycle/schema drift, not implementation drift
+- **Requirements**: NFR-002
+- **Observed evidence**: after the human approved review signoff and `plan.md` truthfully entered `reviewing`, the
+  scoped governance validator reached `review.md` and failed under strict mode because the finalized T066-oriented
+  table used header `Task group` and grouped completed tasks. The iteration validator requires header `Task` and one
+  verdict row for every plan task. The earlier `executing` status had prevented that schema path from running.
+- **Correction**: preserve approved commit `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` and its one external
+  finalization fact unchanged. In the later review-signoff boundary projection only, expand all 19 task rows,
+  retain pass/done for completed T066 scope, mark T029/T067 blocked in plan/progress/review behind their real
+  release/publication dependencies, and set the iteration-level overall verdict to blocked rather than falsely
+  treating unexecuted work as passed.
+- **Evidence**: the scoped Iteration 008 governance validator passes after the projection; no authority code,
+  reviewed implementation identity, provider result, attempt ledger, or finalization fact changes.
 
 ### Resolution Strategies
 

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-20T18:41:49.5813801Z"
+updated_at: "2026-07-20T23:11:38Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -65,10 +65,10 @@ tasks:
     blocked_reason: ""
   T029:
     title: "Release `v0.40.0-beta2` after separately authorized release gate"
-    status: "pending"
+    status: "blocked"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "awaiting fresh explicit T029 release authorization"
   T062:
     title: "Deterministic verification-plan supplier and bounded selection catalog"
     status: "done"
@@ -107,13 +107,13 @@ tasks:
     blocked_reason: ""
   T066:
     title: "Full deterministic verification, three-OS CI, pre-spend red-verification gate, frozen pinned-support lifecycle, recovery/currentness integrity, and independent signoff"
-    status: "in_progress"
+    status: "done"
     started_at: "2026-07-19T13:06:00Z"
-    completed_at: ""
+    completed_at: "2026-07-21T01:54:14.4458468+03:00"
     blocked_reason: ""
   T067:
     title: "Published-beta fresh-consumer dogfood and stable-promotion input"
-    status: "pending"
+    status: "blocked"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "depends on actual T029 beta publication; validate-not-promote"

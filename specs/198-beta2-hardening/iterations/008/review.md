@@ -2,13 +2,15 @@
 
 **Task**: T066
 **Status**: pass — clean independent attempt 11 approves the reviewed parent and the bounded finalization envelope carries only these six evidence files
-**Overall Verdict**: accepted for T066 review-signoff; Iteration 008 release tasks remain separately gated
+**Overall Verdict**: blocked pending separately authorized T029 release and post-publication T067 validation; T066 review signoff is accepted
 **Reviewer**: Claude Code through the production `claude-code-file-primary` harness
 **Recorded**: 2026-07-21
 **Reviewed Commit**: `9a6b88540088be2ff82fec145079b3f8765e863e`
 **Reviewed-State Digest**: `eb9643d51780361d1009ba3267e7e14cb011b385`
 
 The maintainer authorized attempt 11 as exactly one invocation with no hidden retry and a stop on any finding, invalid output, timeout, runtime failure, or target drift. The run completed with a valid, current, zero-finding pass under verified containment and termination. The approved finalization envelope permits one direct child containing only the six enumerated review-evidence files and publishes one immutable binding fact outside the reviewed digest. T029 release and T067 published-beta dogfood remain separate later authorities.
+
+Post-signoff lifecycle projection: commit `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` remains the immutable approved six-file finalization. This later boundary projection expands the grouped T066 verdicts into the repository governance schema and records T029/T067 as blocked execution carry-forwards. It does not publish another finalization fact or change the reviewed implementation identity.
 
 ## Review Mechanism
 
@@ -54,16 +56,27 @@ Totals reconcile mechanically: 11 unique runs, 11 immutable grants, 9 provider i
 
 ## Task Verdicts
 
-| Task group | Verdict | Notes |
+| Task | Verdict | Notes |
 | --- | --- | --- |
 | T068 | pass | Actual closeout identity replaces stale pending-boundary citations. |
-| T069, T070 | pass | Owner-scoped capture and host-independent turn delta prevent stale/shared attribution across all five prompt adapters. |
-| T062–T065 | pass | Governed verification-plan selection, materialization, execution, evidence injection, and matrix are delivered. |
-| T021–T028 | pass | Distribution tail is deny-by-default, provider-aware, hash-guarded, applicability-filtered, and consumer-safe. |
+| T069 | pass | Owner-scoped capture prevents stale/shared attribution across concurrent sessions. |
+| T021 | pass | Methodology workflow deployment is provider-gated. |
+| T022 | pass | Work-kind workflow resolves from its deployed path. |
+| T023 | pass | Consumer deployment is deny-by-default. |
+| T024 | pass | Machine-local host configuration is excluded from deployment. |
+| T025 | pass | Hash-guard update healing preserves modified consumer files. |
+| T026 | pass | Greenfield bootstrap and brownfield offer behavior are distinct and explicit. |
+| T027 | pass | Closeout teaching follows the resolved release model. |
+| T028 | pass | Consumer deny checks and applicability provenance are enforced. |
+| T029 | blocked | Beta publication requires a fresh explicit release authorization after T066 signoff. |
+| T062 | pass | Verification-plan selection uses governed precedence and no invented default. |
+| T063 | pass | Init/update materialization is hash-guarded and actionable. |
+| T064 | pass | Frozen-target verification and exact-digest evidence injection fail closed. |
+| T065 | pass | The supplier/runner/injection end-to-end matrix is complete. |
+| T070 | pass | Host-independent turn delta and all five prompt adapters are proven. |
 | T071 | pass | Verification is disposable; evidence is external; reviewer target is OS read-only; Claude startup is isolated. |
 | T066 | pass | Attempt 11 independently approves the exact corrected commit/digest with zero findings. |
-| T029 | separate authority required | Beta publication is not authorized by T066 review-signoff. |
-| T067 | pending after T029 | Fresh-consumer dogfood validates the published beta without stable promotion. |
+| T067 | blocked | Fresh-consumer dogfood waits for T029 publication and cannot promote stable. |
 
 ## Correction Verification
 
@@ -81,4 +94,4 @@ No code-review finding remains open against the reviewed parent. T029 and T067 a
 
 ## Acceptance Condition Status
 
-Every attempt and provider spend is visible. Attempts 03 and 04 consumed no provider spend. Attempt 09 triggered the required non-convergence pause. T071 reset the guard only after deterministic and three-OS proof. Run 10 cleanly reviewed its target, and the provider-free gate then refused before fact publication on a newly exposed classifier mismatch. The correction was independently verified by clean run 11. The controller-owned finalization envelope may now carry only these six review artifacts and publish the one-time reviewed/finalized binding. Human review-signoff remains the next separate verdict boundary.
+Every attempt and provider spend is visible. Attempts 03 and 04 consumed no provider spend. Attempt 09 triggered the required non-convergence pause. T071 reset the guard only after deterministic and three-OS proof. Run 10 cleanly reviewed its target, and the provider-free gate then refused before fact publication on a newly exposed classifier mismatch. The correction was independently verified by clean run 11. The controller-owned finalization envelope carried only the six approved review artifacts and published the one-time reviewed/finalized binding. Human review signoff is now authorized; the next executable gate is the separate T029 release authorization.

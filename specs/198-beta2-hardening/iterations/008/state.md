@@ -1,13 +1,13 @@
 # Iteration State: 008
 
 **Schema**: v1
-**Current Phase**: before-implement
+**Current Phase**: review-signoff
 **Iteration Status**: executing
-**Last Completed Task**: T071
-**Tasks Remaining**: T029, T066, T067
-**In Progress**: T066
+**Last Completed Task**: T066
+**Tasks Remaining**: T029, T067
+**In Progress**: none; T029 awaits separate release authority and T067 awaits actual beta publication
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-20T20:20:47.8892535Z
+**Updated**: 2026-07-20T23:11:38Z
 
 ## Planning Authorization
 
@@ -44,6 +44,22 @@
   evidence, not authority.
 - **Scope**: execute the selected 18 SP implementation in order. This verdict grants no provider invocation,
   beta publication, or stable promotion.
+
+## Review-Signoff Verdict
+
+- **Verdict**: `approved for review-signoff`.
+- **Authorization identity**: `auth-49e9c83ff289af795ac4e61ad09a88ab4f395a5647e4f40ef7ded3fb62ec0992`,
+  hook-captured from the human reply at `2026-07-20T23:11:38Z` for `before-implement -> review-signoff`.
+- **Reviewed implementation**: commit `9a6b88540088be2ff82fec145079b3f8765e863e`, canonical digest
+  `eb9643d51780361d1009ba3267e7e14cb011b385`.
+- **Independent result**: Claude run `run-t066-claude-windows-9a6b8854-eb9643d5-11` is complete, valid,
+  current, and pass with verified containment/termination and zero findings.
+- **Finalized boundary**: controller-owned evidence commit `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466`
+  is the direct child of the reviewed commit, changes exactly the six allowlisted review-evidence files, and is
+  joined exactly once to the reviewed digest by the external authority-store finalization fact. Exact-commit CI
+  run `29785802064` passed all eight jobs.
+- **Authority limit**: this verdict completes T066 and permits retrospective preparation. It does not authorize
+  T029 publication, T067 execution before publication, or stable promotion.
 
 ## Full-Scope T070 Authorization
 
@@ -92,13 +108,14 @@
   completed successfully at plan commit `08e86496`.
 - **Team/sequence**: one serial Implementer; T068 then T069 before supplier/distribution work; T066 is the
   independent Reviewer boundary.
-- **Provider budget**: attempts 01, 02, 05, 06, 07, 08, and 09 each invoked Claude once and spent one immutable
-  slot. Attempts 03 and 04 failed during controller verification, invoked no provider, spent no slot, and released
-  their reservations. Attempt 09 triggered the non-convergence pause; T071 diagnostics and implementation spend
-  zero provider slots. A later run still requires a new run ID/fact and changed deterministic evidence.
+- **Provider budget**: eleven T066 attempts are durable. Attempts 01, 02, and 05–11 each invoked Claude once and
+  spent one immutable slot; attempts 03 and 04 stopped during controller verification with zero invocation/spend
+  and released reservations. Attempt 09 triggered the non-convergence pause, T071 reset it with zero provider
+  spend, run 10 passed its reviewed tree but exposed a provider-free finalization classifier mismatch, and clean
+  run 11 independently approved the corrected tree. There was no hidden retry.
 - **Release**: T029 has a separate release gate; T067 validates published beta without stable promotion.
-- **Authorization**: implementation is authorized against task commit `364fbe88`; provider and release actions
-  remain separately gated.
+- **Authorization**: review signoff is authorized against the reviewed/finalized pair `9a6b8854` / `3fb3a1fc`.
+  Release actions remain separately gated.
 - **Live sync containment**: canonical sync at task commit `29cf84084fd65da9f4199466a9aa4dccc5105958`
   returned success with `pending_verdict_has_pending: false` and null pending identity despite the open
   `tasks -> before-implement` crossing. This is recorded under DRIFT-198-I008-001 and grants no authority.
@@ -106,9 +123,9 @@
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Execution is in progress.
-- Task progress: 15 complete, 1 in-progress, 3 pending, 0 blocked.
-- Latest completed task: T070
+- Execution is at authorized review signoff.
+- Task progress: 17 complete, 0 in-progress, 0 pending, 2 blocked.
+- Latest completed task: T066
 <!-- specrew:task-progress-summary:end -->
 
 - T068 is implemented: stale supplied boundary commits fail before state mutation, while an already-authorized
@@ -346,9 +363,11 @@
   T071 is complete with zero provider spend and the T066 non-convergence guard is reset.
 - Iteration 008 combines the FR-048/FR-049/SC-015 production supplier/injection slice with the never-opened
   Iteration 004 distribution/release tail because the combined 15 SP core fits the 26 SP cap.
-- T070 and T071 are complete. T066 has resumed for a fresh committed candidate, exact-commit hosted proof, and
-  durable preparation. T071 invoked no provider. Any later provider invocation still receives a unique run ID and
-  immutable slot fact.
+- T070 and T071 are complete. T066 completed through eleven immutable attempts: nine provider invocations and two
+  zero-spend controller stops. Run 11 is the clean exact-digest independent result; the six-file finalization is
+  bound exactly once and its exact commit passed all eight hosted jobs. The review-signoff verdict is captured.
+- T029 remains pending behind a fresh explicit release grant. T067 follows actual beta publication and remains
+  validate-not-promote.
 ## Notes
 
 - T068 retains the stale record and null-pending sync as regression evidence; neither is authority. New boundary
