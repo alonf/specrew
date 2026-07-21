@@ -45,7 +45,10 @@ function Write-ReviewRuntimeProgressSample {
     )
     if ($null -eq $Progress) { return }
     try {
-        & $Progress ([pscustomobject][ordered]@{
+        # Runtime progress is informational. Discard at this boundary as well as at the
+        # orchestration and renderer boundaries so a caller cannot turn the runtime's
+        # authoritative return value into an array by emitting display output.
+        $null = & $Progress ([pscustomobject][ordered]@{
             process_tree_live = $ProcessTreeLive
             output_activity = Test-ReviewRuntimeOutputActivity -CandidateResultPath $CandidateResultPath
         })

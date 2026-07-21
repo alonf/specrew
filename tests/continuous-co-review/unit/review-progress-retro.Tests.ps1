@@ -6,6 +6,7 @@ Describe 'Informational review progress and retrospective evidence projection (T
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-progress-projection.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-retro-projection.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-runtime-contract.ps1')
 
         function script:New-T058Finding {
             param(
@@ -85,6 +86,13 @@ Describe 'Informational review progress and retrospective evidence projection (T
         $pipelineOutput = @(& $outputting.sink (New-ReviewProgressEvent -CampaignId cmp-demo -RunId run-three -Stage running -ObservedAt '2026-07-16T00:00:00Z' -ElapsedMilliseconds 0))
         $pipelineOutput | Should -BeNullOrEmpty -Because 'an informational renderer cannot contaminate its caller pipeline'
         @($outputting.events).Count | Should -Be 1
+    }
+
+    It 'discards output from a runtime progress sink at the adapter boundary' {
+        $pipelineOutput = @(Write-ReviewRuntimeProgressSample -Progress { param($sample) 'runtime-progress-sentinel' } `
+            -CandidateResultPath (Join-Path $TestDrive 'candidate.json') -ProcessTreeLive $true)
+
+        $pipelineOutput | Should -BeNullOrEmpty -Because 'runtime progress cannot join the authoritative runtime-result pipeline'
     }
 
     It 'derives timing, heartbeat, duplicate, and safe usage diagnostics without authority' {

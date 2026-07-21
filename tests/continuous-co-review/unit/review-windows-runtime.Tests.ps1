@@ -152,8 +152,10 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $scripts = New-T056FixtureScripts -Root $root
         $harness = New-T056ProcessHarness -Invocation $invocation -Scripts $scripts -Mode timeout -TimeoutSeconds 1
         $started = [Collections.Generic.List[string]]::new(); $onStarted = { $started.Add('started') | Out-Null }.GetNewClosure()
-        $heartbeats = [Collections.Generic.List[object]]::new(); $progress = { param($sample) $heartbeats.Add($sample) | Out-Null }.GetNewClosure()
-        $result = & (New-ReviewWindowsRuntimePort -TimeoutSeconds 1 -TerminationGraceSeconds 0).invoke $harness $invocation $onStarted @{} $progress
+        $heartbeats = [Collections.Generic.List[object]]::new(); $progress = { param($sample) $heartbeats.Add($sample) | Out-Null; 'runtime-progress-sentinel' }.GetNewClosure()
+        $runtimeOutput = @(& (New-ReviewWindowsRuntimePort -TimeoutSeconds 1 -TerminationGraceSeconds 0).invoke $harness $invocation $onStarted @{} $progress)
+        $runtimeOutput.Count | Should -Be 1 -Because 'an output-producing runtime progress sink cannot change the scalar runtime result'
+        $result = $runtimeOutput[0]
         $result.runtime_outcome | Should -Be 'timed-out'
         $result.termination_verified | Should -BeTrue -Because $result.failure_reason
         $result.failure_reason | Should -Match 'process tree verified dead and streams closed'

@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 27
-**Resolution rate**: 92.6% (25/27 resolved; DRIFT-198-I008-026 and DRIFT-198-I008-027 await hosted and fresh-review proof)
+**Total drift events**: 28
+**Resolution rate**: 96.4% (27/28 resolved; DRIFT-198-I008-028 awaits hosted and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -33,8 +33,8 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
 `29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
 scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
-added DRIFT-198-I008-021–027: 021–025 are corrected and exact-head verified, while 026–027 are locally corrected
-and still require hosted plus fresh independent-review proof. T029 release and T067 published-beta validation
+added DRIFT-198-I008-021–028: 021–027 are corrected and exact-head verified, while 028 is locally corrected
+and still requires hosted plus fresh independent-review proof. T029 release and T067 published-beta validation
 remain deliberately pending behind their named boundaries.
 
 ## Events
@@ -525,7 +525,7 @@ remain deliberately pending behind their named boundaries.
 
 ### DRIFT-198-I008-026 — informational progress renderer output stranded an invoked run
 
-- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Status**: resolved by commit `9b32d8e79ae511b2ac1cf5c97cffac2eb9ae8732`, exact-head CI, and run 03
 - **Severity**: major authority-lifecycle defect
 - **Type**: implementation/progress-isolation drift
 - **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 correction review
@@ -542,11 +542,13 @@ remain deliberately pending behind their named boundaries.
   Renderer exceptions and argument mutation remain contained exactly as before.
 - **Paired evidence**: the projection unit fixture returns a sentinel and proves zero pipeline output. The real
   orchestration composition fixture uses an output-producing renderer, receives exactly one scalar terminal run
-  result, and retains its approving fixture verdict.
+  result, and retains its approving fixture verdict. Exact-head runs `29856856265`, `29856856269`, and
+  `29856856271` passed; current, valid, complete Claude run
+  `run-t029-claude-windows-9b32d8e7-f270afb3-03` verified the correction and found no current leak.
 
 ### DRIFT-198-I008-027 — successful child exit could still hang during output drain
 
-- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Status**: resolved by commit `9b32d8e79ae511b2ac1cf5c97cffac2eb9ae8732`, exact-head CI, and run 03
 - **Severity**: note-level robustness defect
 - **Type**: incomplete anti-hang implementation
 - **Requirements**: FR-039, SC-012; T029 release acceptance
@@ -562,7 +564,28 @@ remain deliberately pending behind their named boundaries.
 - **Paired evidence**: the existing fake Squad still completes normally and returns its output. A new mode exits
   zero after spawning a descendant that retains the redirected handles; the launcher must fail with the typed
   bounded drain contract rather than hang or return success, and the fixture cleans up and proves its descendant
-  dead.
+  dead. Exact-head runs `29856856265`, `29856856269`, and `29856856271` passed; current, valid, complete Claude
+  run `run-t029-claude-windows-9b32d8e7-f270afb3-03` verified the symmetric 10-second drain contract.
+
+### DRIFT-198-I008-028 — runtime progress adapter relied on upstream output suppression
+
+- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Severity**: note-level latent authority robustness defect
+- **Type**: incomplete defense-in-depth implementation
+- **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 release acceptance
+- **Observed evidence**: current, valid, complete Claude run
+  `run-t029-claude-windows-9b32d8e7-f270afb3-03` verified both prior corrections but found a third progress-sink
+  invocation boundary in `Write-ReviewRuntimeProgressSample`. Its bare invocation could forward caller output into
+  the runtime adapter pipeline. Production had no current leak because the orchestrator sink returned nothing,
+  but correctness depended on an invariant two layers away.
+- **Authoritative requirement**: FR-063 makes progress informational and non-authoritative; FR-061 requires one
+  truthful terminal result. Each adapter boundary must therefore contain advisory sink output locally rather than
+  relying on a particular caller implementation.
+- **Correction**: discard the progress callback's pipeline output inside `Write-ReviewRuntimeProgressSample`,
+  matching the orchestration and external-renderer boundaries.
+- **Paired evidence**: a pure runtime-sampler fixture makes the callback return a sentinel and proves no pipeline
+  output. The real Windows Job Object timeout fixture uses the same output-producing callback and still returns
+  exactly one scalar runtime result while preserving its heartbeat and verified process-tree termination evidence.
 
 ### Resolution Strategies
 

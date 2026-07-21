@@ -215,3 +215,24 @@ parsing, and the cross-platform live-console fixture. The complete Feature 198 r
 `state.md` phase edit; the same staged candidate passes from a clean detached worktree in 23.6 seconds with only
 historical dashboard warnings. Hosted exact-head CI and a fresh independent review remain required. This
 correction grants and spends no provider slot.
+
+## Run 03 Review and Runtime-Progress Boundary Correction
+
+Commit `9b32d8e79ae511b2ac1cf5c97cffac2eb9ae8732` passed exact-head Specrew CI `29856856265`, Test
+`29856856269`, and Cross-Platform Validation `29856856271`. Its canonical reviewed-state digest
+`f270afb385572d71d08ebeb5cf2fd8bad4900b70` reproduced three times from the clean detached review source.
+
+Authorized Claude run `run-t029-claude-windows-9b32d8e7-f270afb3-03` spent one provider slot. The controller
+completed both frozen verification commands before spend, invoked exactly once under verified Windows Job Object
+containment, verified target currentness and termination, and published a complete, current, valid result. Claude
+verified the progress-renderer and bounded-drain corrections but returned one note-level latent finding: the
+runtime sampler still invoked its progress callback without discarding callback output locally. Production did not
+currently leak because the upstream orchestration callback returned nothing, but the adapter boundary depended on
+that distant invariant.
+
+The correction discards callback output inside `Write-ReviewRuntimeProgressSample`, symmetrically with the two
+previously hardened boundaries. A pure sampler fixture makes the callback return a sentinel and proves zero output;
+the real Windows Job Object timeout fixture uses an output-producing callback and still receives exactly one scalar
+runtime result while retaining heartbeat and process-tree evidence. The focused 14-test progress/runtime set passes.
+The complete Feature 198 registry passes all 74 suites in 876.3 seconds. Hosted exact-head verification and a fresh
+independent review are required before manual retest and merge handoff.
