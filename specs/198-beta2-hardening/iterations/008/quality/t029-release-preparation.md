@@ -125,7 +125,9 @@ both directions: Windows must include both the shell meta-rule and `-LiteralPath
 prompts must exclude that Windows-only block.
 
 The corrected native Linux contract lane then reached the review replay contract and exposed a campaign-cutover
-ordering regression: an explicit unavailable `--host` reached feature/allowance resolution before the promised
-honor-or-surface refusal. The public campaign door now validates an explicit host's catalog entry, executable,
-and authorization before identity, authority-store, target, or provider work. Refusal remains loud, reports the
-resolved timeout, and writes neither legacy pending state nor campaign authority evidence.
+ordering regression: an explicit unavailable `--host` reached allowance resolution before the promised
+honor-or-surface refusal. Cross-platform run `29804856293` caught the first correction masking invalid-design
+input on hosted runners without Claude. The campaign application service now validates an explicit host's catalog
+entry, executable, and authorization after input/design validation but before authority-store, target, or provider
+work. Refusal remains loud, reports the resolved timeout, and writes neither legacy pending state nor campaign
+authority evidence.

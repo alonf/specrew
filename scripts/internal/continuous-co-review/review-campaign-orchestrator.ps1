@@ -771,6 +771,7 @@ function Invoke-ReviewCampaignCommand {
         [string]$IterationNumber,
         [string]$RunId,
         [string]$ReviewerHost,
+        [switch]$ReviewerHostExplicit,
         [string]$Model,
         [string]$GrantAuthorizationRef,
         [AllowEmptyCollection()][string[]]$DesignContextRefs = @(),
@@ -814,6 +815,25 @@ function Invoke-ReviewCampaignCommand {
             authority_mode = 'campaign'; design_context = [string]$designContext.classification
             resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
             diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+        }
+    }
+    if ($ReviewerHostExplicit) {
+        $hostDefinition = Get-ContinuousCoReviewProductionHarnessDefinition -HostName $ReviewerHost
+        $hostCommandAvailable = $null -ne $hostDefinition -and
+            -not [string]::IsNullOrWhiteSpace([string]$hostDefinition.command) -and
+            $null -ne (Get-Command -Name ([string]$hostDefinition.command) -ErrorAction SilentlyContinue)
+        $hostAuthorized = -not [string]::IsNullOrWhiteSpace($GrantAuthorizationRef)
+        if ($null -eq $hostDefinition -or -not $hostCommandAvailable -or -not $hostAuthorized) {
+            return [pscustomobject][ordered]@{
+                status = 'not-started'
+                reason = "requested-host-not-available: '$ReviewerHost' is not installed+authorized+cataloged (an explicit --host is honoured or surfaced, never silently substituted)"
+                invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
+                target_lineage = $identity.target_lineage; authority_mode = 'campaign'
+                design_context = [string]$designContext.classification
+                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+                resolved_timeout_seconds = $TimeoutSeconds
+                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+            }
         }
     }
     if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }

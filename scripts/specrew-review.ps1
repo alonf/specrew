@@ -799,32 +799,6 @@ if ($Live) {
             }
             $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 600 }
             $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
-            if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) {
-                $hostDefinition = Get-ContinuousCoReviewProductionHarnessDefinition -HostName $campaignHost
-                $hostCommandAvailable = $null -ne $hostDefinition -and
-                    -not [string]::IsNullOrWhiteSpace([string]$hostDefinition.command) -and
-                    $null -ne (Get-Command -Name ([string]$hostDefinition.command) -ErrorAction SilentlyContinue)
-                $hostAuthorized = -not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)
-                if ($null -eq $hostDefinition -or -not $hostCommandAvailable -or -not $hostAuthorized) {
-                    $reason = "requested-host-not-available: '$campaignHost' is not installed+authorized+cataloged (an explicit --host is honoured or surfaced, never silently substituted)"
-                    if ($Json) {
-                        [pscustomobject][ordered]@{
-                            run_id = [string]$parsedArgs.RunId; status = 'not-started'; reason = $reason
-                            invoked = $false; resolved_timeout_seconds = $tos
-                        } | ConvertTo-Json -Depth 4
-                    }
-                    elseif ($Quiet) { Write-Host ("review-run run_id={0} status=not-started invoked=false reason={1} timeout_seconds={2}" -f $parsedArgs.RunId, $reason, $tos) }
-                    else {
-                        $border = ('=' * 60)
-                        Write-Host $border -ForegroundColor Red
-                        Write-Host 'SPECREW CO-REVIEW DID NOT RUN' -ForegroundColor Red
-                        Write-Host $border -ForegroundColor Red
-                        Write-Host ("Run: {0}   Reason: {1}" -f $parsedArgs.RunId, $reason)
-                        Write-Host ("Resolved timeout: {0} seconds" -f $tos)
-                    }
-                    exit 1
-                }
-            }
             $progressSink = $null
             if (-not $Json -and -not $Quiet) {
                 $formatProgressCommand = Get-Command -Name 'Format-ReviewProgressEvent' -CommandType Function
@@ -836,6 +810,7 @@ if ($Live) {
             }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
+                -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
                 -DesignContextRefs @($parsedArgs.DesignContextRefs) -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
             if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
             elseif ($Quiet) {
@@ -846,7 +821,8 @@ if ($Live) {
                 $border = ('=' * 60)
                 $color = if ($null -ne $campaignRun.result -and [bool]$campaignRun.result.can_approve_current) { 'Green' } else { 'Yellow' }
                 Write-Host $border -ForegroundColor $color
-                Write-Host 'SPECREW CAMPAIGN REVIEW' -ForegroundColor $color
+                $campaignHeading = if (-not [bool]$campaignRun.invoked -and [string]$campaignRun.status -cne 'terminal') { 'SPECREW CO-REVIEW DID NOT RUN' } else { 'SPECREW CAMPAIGN REVIEW' }
+                Write-Host $campaignHeading -ForegroundColor $color
                 Write-Host $border -ForegroundColor $color
                 Write-Host ("Campaign: {0}" -f $campaignRun.campaign_id)
                 Write-Host ("Run: {0}  Status: {1}  Invoked: {2}" -f $campaignRun.run_id, $campaignRun.status, $campaignRun.invoked)
@@ -856,6 +832,9 @@ if ($Live) {
                     foreach ($finding in @($campaignRun.result.findings)) { Write-Host ("  [{0}] {1}: {2}" -f $finding.severity, $finding.title, $finding.description) }
                 }
                 else { Write-Host ("Reason: {0}" -f $campaignRun.reason) -ForegroundColor Yellow }
+                if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) {
+                    Write-Host ("Resolved timeout: {0} seconds" -f $campaignRun.resolved_timeout_seconds)
+                }
                 $usage = $campaignRun.diagnostics.usage
                 Write-Host ("Observed elapsed: {0:n1}s  Heartbeats: {1}  Usage: {2}" -f ([long]$campaignRun.diagnostics.elapsed_ms / 1000), $campaignRun.diagnostics.heartbeat_count, $usage.status)
                 if ([string]$usage.status -ceq 'available') {

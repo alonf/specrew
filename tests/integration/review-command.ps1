@@ -200,10 +200,13 @@ Write-Host "`nTest 5: live review REFUSES an unregistered host loudly (honour-or
 # must fail with a stated reason and write NO gate evidence - never silently substitute a harness.
 $liveProjectRoot = Join-Path $scratchRoot 'live-project'
 $liveSourcePath = Join-Path $liveProjectRoot 'src\sample.ps1'
+$liveIterationDirectory = Join-Path $liveProjectRoot 'specs\001-live\iterations\001'
 $null = New-Item -ItemType Directory -Path (Split-Path -Parent $liveSourcePath) -Force
+$null = New-Item -ItemType Directory -Path $liveIterationDirectory -Force
 $null = New-Item -ItemType Directory -Path (Join-Path $liveProjectRoot '.specrew') -Force
 [System.IO.File]::WriteAllText((Join-Path $liveProjectRoot '.specrew\config.yml'), "project_name: live-review`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText($liveSourcePath, "function Get-Sample { 'before' }`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $liveProjectRoot 'specs\001-live\spec.md'), "# Live Review Fixture`n", [System.Text.UTF8Encoding]::new($false))
 Invoke-Git -Repository $liveProjectRoot -Arguments @('init', '--initial-branch=main') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.email', 'specrew-test@example.invalid') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.name', 'Specrew Test') | Out-Null
@@ -217,6 +220,8 @@ $liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     '--live',
     '--host', 'fixture',
     '--code-writer-host', 'claude',
+    '--feature', '001-live',
+    '--iteration', '001',
     '--run-id', $liveRunId
 )
 if ($liveResult.ExitCode -eq 0) {

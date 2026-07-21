@@ -132,6 +132,23 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         Test-Path -LiteralPath (Join-Path $root '.specrew/review/authority') | Should -BeFalse -Because 'invalid explicit context fails before grant or store creation'
     }
 
+    It 'refuses an explicit unavailable host after design validation and before authority-store work' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-unavailable-host')
+        $config = New-CampaignConfig -Root $root
+        $store = Join-Path $root '.specrew/review/authority'
+
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
+            -RunId 'run-public-unavailable-host' -ReviewerHost 'fixture' -ReviewerHostExplicit `
+            -GrantAuthorizationRef 'human-slot-public-unavailable-host' -DesignContextRefs @('specs/001-demo/spec.md') `
+            -TimeoutSeconds 30 -AuthorityConfigPath $config -StoreRoot $store
+
+        $run.status | Should -Be 'not-started'
+        $run.invoked | Should -BeFalse
+        $run.reason | Should -Match '^requested-host-not-available:'
+        $run.resolved_timeout_seconds | Should -Be 30
+        Test-Path -LiteralPath $store | Should -BeFalse -Because 'unavailable host refusal precedes grant persistence and all campaign authority facts'
+    }
+
     It 'reloads a recorded one-time reviewer authorization through the public campaign call path' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-recorded-authorization')
         $configDirectory = Join-Path $root '.specrew'
