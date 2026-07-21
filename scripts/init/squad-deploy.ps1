@@ -22,7 +22,10 @@ Set-StrictMode -Version Latest
 function Test-SquadInitSupportsNonInteractive {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ProbeRoot
+        [string]$ProbeRoot,
+
+        [ValidateRange(1, 7200)]
+        [int]$TimeoutSeconds = 30
     )
 
     $probeDirectory = Join-Path $ProbeRoot ('.specrew-squad-probe-{0}' -f [guid]::NewGuid().ToString('N'))
@@ -30,7 +33,12 @@ function Test-SquadInitSupportsNonInteractive {
     New-Item -Path $probeDirectory -ItemType Directory -Force | Out-Null
     try {
         try {
-            $probeResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList @('init', '--non-interactive') -WorkingDirectory $probeDirectory
+            $probeResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList @('init', '--non-interactive') -WorkingDirectory $probeDirectory -TimeoutSeconds $TimeoutSeconds
+        }
+        catch [System.TimeoutException] {
+            # A timed-out capability probe is an operational failure, not evidence that the option is unsupported.
+            # Preserve the fatal signal so init cannot silently continue through the compatibility scaffold.
+            throw
         }
         catch {
             return $false

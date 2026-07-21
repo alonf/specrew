@@ -157,7 +157,30 @@ allowlist, real packaged-module bootstrap, idempotent rerun, command-surface dep
 publication, CLI-version behavior, and installed Spec Kit `0.12.9` / Squad `0.11.0` validation. The first bounded
 aggregate run passed 73/74 suites; only the T025 distribution-update fixture exceeded 300 seconds because it leaked
 an unrelated PSGallery query. Adding its existing `--skip-update-check` test flag left production unchanged and the
-same real update assertions passed in 82.5 seconds. The corrected committed candidate still requires hosted
-aggregate/three-OS CI and a fresh independent review before the maintainer manual retest and merge handoff.
+same real update assertions passed in 82.5 seconds. Commit `acc39fea9bbafeaca2a21b0b4a183c57f868be80` then
+passed all 21 PR checks across exact-head workflow runs `29827129094`, `29827134174`, `29827134218`, and
+`29827134230`. Its fresh independent review returned only the bounded-wait note recorded below, so manual retest
+and merge handoff remained blocked on that correction rather than on the immediate-EOF implementation.
 
 No provider, merge, tag, workflow dispatch, publication, or stable-promotion action occurred during this correction.
+
+## Independent Review Finding and Fatal-Timeout Correction
+
+Exact-digest Claude run `run-t029-claude-windows-acc39fea-da3428b3-01` reviewed commit
+`acc39fea9bbafeaca2a21b0b4a183c57f868be80` at canonical digest
+`da3428b344ffb06e2c8688d3697cc4baaa79f512`. Both configured verification commands passed; containment,
+termination, validation, and currentness were verified. The run spent its one authorized slot and returned one
+note-level finding: the launcher closed stdin but still waited without a production timeout.
+
+The maintainer accepted the robustness correction and clarified the failure semantics: reaching the timeout means
+the child failed, so it must never become evidence that `--non-interactive` is unsupported and must never select
+the fallback scaffold. The launcher now requires an explicit timeout, requests whole-tree termination, verifies
+the process exit, bounds post-kill diagnostic draining, and throws `System.TimeoutException` with stable timeout,
+termination, and diagnostic fields. The probe uses 30 seconds and rethrows timeout; production init uses 120
+seconds and aborts loudly.
+
+The paired fixture retains the normal open-parent-input/EOF proof and adds a fake Squad that ignores EOF and spawns
+a child. A one-second probe bound must throw the typed timeout, report verified termination, and leave the child
+dead. Ordinary completed non-support remains the only route to the direct scaffold fallback. The corrected local
+Feature 198 registry passes all 74 suites in 787.7 seconds. Hosted verification and exact-digest independent review
+remain required before the maintainer's manual retest.

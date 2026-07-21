@@ -19,6 +19,7 @@ $runnerPath = Join-Path $scratchRoot 'runner.ps1'
 $resultPath = Join-Path $scratchRoot 'result.json'
 $stdoutPath = Join-Path $scratchRoot 'runner.stdout'
 $stderrPath = Join-Path $scratchRoot 'runner.stderr'
+$timeoutChildPidPath = Join-Path $scratchRoot 'timeout-child.pid'
 $runner = $null
 
 try {
@@ -29,6 +30,14 @@ try {
     # process cannot complete before the bounded timeout. A correct launcher gives each invocation immediate EOF.
     $fakeSquadPath = Join-Path $fakeBin $(if ($IsWindows) { 'squad.ps1' } else { 'squad' })
     $fakeSquadBody = @'
+if ($env:SPECREW_TEST_SQUAD_HANG -ceq '1') {
+    $child = Start-Process -FilePath ([Environment]::ProcessPath) `
+        -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120') `
+        -PassThru
+    [IO.File]::WriteAllText($env:SPECREW_TEST_CHILD_PID_PATH, [string]$child.Id)
+    while ($true) { Start-Sleep -Seconds 1 }
+}
+
 $stdinText = [Console]::In.ReadToEnd()
 if ($args.Count -lt 1 -or $args[0] -cne 'init') {
     [Console]::Error.WriteLine('expected-init')
@@ -63,13 +72,45 @@ $projectRoot = Join-Path $ScratchRoot 'project'
 New-Item -ItemType Directory -Path $probeRoot, $projectRoot -Force | Out-Null
 
 $plan = Get-SquadInitPlan -ProbeRoot $probeRoot
-$actual = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $plan.ArgumentList -WorkingDirectory $projectRoot
+$actual = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $plan.ArgumentList -WorkingDirectory $projectRoot -TimeoutSeconds 5
+
+$timeoutProbeReturned = $false
+$timeoutExceptionType = $null
+$timeoutExceptionMessage = $null
+$env:SPECREW_TEST_SQUAD_HANG = '1'
+$env:SPECREW_TEST_CHILD_PID_PATH = Join-Path $ScratchRoot 'timeout-child.pid'
+try {
+    $null = Test-SquadInitSupportsNonInteractive -ProbeRoot (Join-Path $ScratchRoot 'timeout-probe-root') -TimeoutSeconds 1
+    $timeoutProbeReturned = $true
+}
+catch [System.TimeoutException] {
+    $timeoutExceptionType = $_.Exception.GetType().FullName
+    $timeoutExceptionMessage = $_.Exception.Message
+}
+finally {
+    Remove-Item Env:SPECREW_TEST_SQUAD_HANG -ErrorAction SilentlyContinue
+    Remove-Item Env:SPECREW_TEST_CHILD_PID_PATH -ErrorAction SilentlyContinue
+}
+
+$timeoutChildPid = 0
+$timeoutChildAlive = $false
+$timeoutChildPidPath = Join-Path $ScratchRoot 'timeout-child.pid'
+if (Test-Path -LiteralPath $timeoutChildPidPath -PathType Leaf) {
+    $timeoutChildPid = [int](Get-Content -LiteralPath $timeoutChildPidPath -Raw -Encoding UTF8)
+    $timeoutChildAlive = $null -ne (Get-Process -Id $timeoutChildPid -ErrorAction SilentlyContinue)
+}
+
 [ordered]@{
     supports_non_interactive = [bool]$plan.SupportsNonInteractive
     argument_list = @($plan.ArgumentList)
     actual_exit_code = [int]$actual.ExitCode
     actual_output = @($actual.Output)
     actual_squad_exists = Test-Path -LiteralPath (Join-Path $projectRoot '.squad') -PathType Container
+    timeout_probe_returned = $timeoutProbeReturned
+    timeout_exception_type = $timeoutExceptionType
+    timeout_exception_message = $timeoutExceptionMessage
+    timeout_child_pid = $timeoutChildPid
+    timeout_child_alive = $timeoutChildAlive
 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $ResultPath -Encoding utf8NoBOM
 '@, [Text.UTF8Encoding]::new($false))
 
@@ -110,8 +151,17 @@ $actual = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $p
         if ((@($result.actual_output) -join "`n") -cnotmatch 'stdin_redirected=True;stdin_length=0') {
             Write-Fail 'real Squad init child did not observe redirected stdin with immediate EOF'
         }
+        if ($result.timeout_probe_returned -or $result.timeout_exception_type -cne 'System.TimeoutException') {
+            Write-Fail 'a timed-out capability probe must throw a fatal TimeoutException instead of selecting fallback'
+        }
+        if ([string]$result.timeout_exception_message -cnotmatch '^native-command-timeout:file=squad:timeout_seconds=1:termination=verified:diagnostics=complete') {
+            Write-Fail 'timeout failure did not carry the stable timeout, termination, and diagnostics contract'
+        }
+        if ([int]$result.timeout_child_pid -le 0 -or [bool]$result.timeout_child_alive) {
+            Write-Fail 'timeout did not prove that the complete fake Squad descendant process tree was terminated'
+        }
         if (-not $script:Failed) {
-            Write-Pass 'Squad capability probe and real init both finish with immediate stdin EOF while their parent input remains open'
+            Write-Pass 'Squad normal paths finish on EOF; timeout fails fatally and terminates the descendant process tree'
         }
     }
 
@@ -121,11 +171,15 @@ $actual = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $p
     if ($utilitiesSource -notmatch 'RedirectStandardInput\s*=\s*\$true' -or $utilitiesSource -notmatch 'StandardInput\.Close\(\)') {
         Write-Fail 'closed-input primitive must redirect and immediately close child stdin'
     }
-    if ($squadDeploySource -notmatch "Invoke-NativeCommandWithClosedInput\s+-FilePath\s+'squad'") {
-        Write-Fail 'Squad capability probe must use the closed-input primitive'
+    if ($utilitiesSource -notmatch 'WaitForExit\(\$TimeoutSeconds \* 1000\)' -or $utilitiesSource -notmatch 'Kill\(\$true\)') {
+        Write-Fail 'closed-input primitive must bound completion and terminate the complete process tree'
     }
-    if ($initSource -notmatch "Invoke-NativeCommandWithClosedInput\s+-FilePath\s+'squad'") {
-        Write-Fail 'production specrew init Squad invocation must use the closed-input primitive'
+    if ($squadDeploySource -notmatch 'Invoke-NativeCommandWithClosedInput\s+-FilePath\s+''squad''.*-TimeoutSeconds\s+\$TimeoutSeconds' -or
+        $squadDeploySource -notmatch 'catch\s+\[System\.TimeoutException\]\s*\{\s*[^}]*throw') {
+        Write-Fail 'Squad capability probe must use its explicit bound and preserve timeout as a fatal failure'
+    }
+    if ($initSource -notmatch "Invoke-NativeCommandWithClosedInput\s+-FilePath\s+'squad'.*-TimeoutSeconds\s+120") {
+        Write-Fail 'production specrew init Squad invocation must use the closed-input primitive with its explicit bound'
     }
     if (-not $script:Failed) {
         Write-Pass 'both production Squad call sites are structurally pinned to the closed-input primitive'
@@ -135,6 +189,13 @@ finally {
     if ($null -ne $runner) {
         try { $runner.StandardInput.Close() } catch { }
         $runner.Dispose()
+    }
+    if (Test-Path -LiteralPath $timeoutChildPidPath -PathType Leaf) {
+        $timeoutChildPid = [int](Get-Content -LiteralPath $timeoutChildPidPath -Raw -Encoding UTF8)
+        $timeoutChild = Get-Process -Id $timeoutChildPid -ErrorAction SilentlyContinue
+        if ($null -ne $timeoutChild) {
+            try { $timeoutChild.Kill($true) } catch { }
+        }
     }
     if (Test-Path -LiteralPath $scratchRoot) {
         Remove-Item -LiteralPath $scratchRoot -Recurse -Force -ErrorAction SilentlyContinue

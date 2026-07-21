@@ -426,7 +426,7 @@ published-beta validation remain deliberately pending behind their named boundar
 
 ### DRIFT-198-I008-021 — Squad 0.11.0 hidden TTY prompts blocked real-console init
 
-- **Status**: correction implemented; full verification, fresh independent review, and maintainer manual retest pending
+- **Status**: immediate-EOF correction verified; follow-on DRIFT-198-I008-025 and maintainer manual retest pending
 - **Severity**: release-blocking integration defect
 - **Type**: implementation/toolchain-validation drift
 - **Requirements**: FR-039, SC-012; T029 release acceptance
@@ -448,7 +448,7 @@ published-beta validation remain deliberately pending behind their named boundar
 
 ### DRIFT-198-I008-022 — distribution integration test treated Squad-owned workflows as Specrew allowlist drift
 
-- **Status**: resolved by narrowing the assertion to Specrew-managed workflows; full verification pending
+- **Status**: resolved and verified by narrowing the assertion to Specrew-managed workflows
 - **Severity**: minor test-contract defect
 - **Type**: test drift
 - **Requirements**: FR-026; T023 acceptance
@@ -466,7 +466,7 @@ published-beta validation remain deliberately pending behind their named boundar
 
 ### DRIFT-198-I008-023 — version-check cache dirtied a fresh bootstrap after its baseline commit
 
-- **Status**: resolved by the canonical per-session ignore contract; full verification pending
+- **Status**: resolved and verified by the canonical per-session ignore contract
 - **Severity**: major fresh-consumer defect
 - **Type**: implementation/file-classification drift
 - **Requirements**: FR-029, SC-008; T026 acceptance
@@ -483,7 +483,7 @@ published-beta validation remain deliberately pending behind their named boundar
 
 ### DRIFT-198-I008-024 — T025 template fixture leaked an unrelated PSGallery network check
 
-- **Status**: test correction implemented; isolated and hosted aggregate verification pending
+- **Status**: resolved and verified by isolated plus hosted aggregate execution
 - **Severity**: minor deterministic-gate defect
 - **Type**: test-harness drift
 - **Requirements**: FR-028, SC-009; T025 acceptance
@@ -497,6 +497,27 @@ published-beta validation remain deliberately pending behind their named boundar
   its dedicated integration suite and production is unchanged.
 - **Evidence**: one isolated corrected T025 run must finish under its 300-second registry budget; the committed
   candidate then requires the normal hosted aggregate gate rather than treating the earlier 73/74 run as green.
+
+### DRIFT-198-I008-025 — closed-input launcher still allowed an unbounded child wait
+
+- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Severity**: note-level robustness defect
+- **Type**: incomplete anti-hang implementation
+- **Requirements**: FR-039, SC-012; T029 release acceptance
+- **Observed evidence**: exact-digest Claude run `run-t029-claude-windows-acc39fea-da3428b3-01` verified the
+  immediate-EOF correction and all configured tests but found that `Invoke-NativeCommandWithClosedInput` still
+  called parameterless `WaitForExit()`. Squad 0.11.0 exits correctly on non-TTY EOF, but any future child that
+  ignored EOF could recreate the indefinite-wait class. The result was complete, valid, contained, current, and
+  non-approving with one note finding and no blocking or major defects.
+- **Authoritative requirement**: FR-039 requires the Squad 0.11.0 scratch probe and layout suites; SC-012 requires
+  `specrew init` to complete against the pinned toolchain. A timeout cannot satisfy either obligation and is failure,
+  not compatibility evidence.
+- **Correction**: require an explicit timeout at both call sites; on expiry request whole-tree termination, verify
+  exit, bound diagnostic draining, and throw `System.TimeoutException`. The 30-second capability probe rethrows the
+  timeout instead of selecting fallback; the production init call uses 120 seconds and aborts loudly.
+- **Paired evidence**: the existing fake completes normally after immediate EOF. A second mode ignores EOF, spawns
+  a descendant, and must hit a one-second bound, throw the stable typed failure, and leave the descendant dead.
+  The registered three-OS fixture proves both directions; full/hosted gates and fresh review remain pending.
 
 ### Resolution Strategies
 

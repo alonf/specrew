@@ -134,7 +134,11 @@ function Invoke-NativeCommandWithClosedInput {
         [string[]]$ArgumentList,
 
         [Parameter(Mandatory = $true)]
-        [string]$WorkingDirectory
+        [string]$WorkingDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 7200)]
+        [int]$TimeoutSeconds
     )
 
     $resolvedCommand = @(Get-Command -Name $FilePath -CommandType Application, ExternalScript -ErrorAction Stop)[0]
@@ -166,7 +170,66 @@ function Invoke-NativeCommandWithClosedInput {
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
         $process.StandardInput.Close()
-        $process.WaitForExit()
+
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            $terminationError = $null
+            try {
+                if (-not $process.HasExited) {
+                    $process.Kill($true)
+                }
+            }
+            catch {
+                $terminationError = [string]$_.Exception.Message
+            }
+
+            $terminationVerified = $false
+            try {
+                $terminationVerified = $process.WaitForExit(10000)
+            }
+            catch {
+                if ([string]::IsNullOrWhiteSpace($terminationError)) {
+                    $terminationError = [string]$_.Exception.Message
+                }
+            }
+
+            # Diagnostic collection is bounded too. A descendant retaining an inherited output handle must not
+            # turn the timeout path into a second indefinite wait after the process-tree kill request.
+            $diagnosticOutput = [System.Collections.Generic.List[string]]::new()
+            $diagnosticsComplete = $false
+            try {
+                $diagnosticsComplete = [System.Threading.Tasks.Task]::WaitAll(
+                    [System.Threading.Tasks.Task[]]@($stdoutTask, $stderrTask),
+                    10000
+                )
+                if ($diagnosticsComplete) {
+                    foreach ($streamText in @($stdoutTask.GetAwaiter().GetResult(), $stderrTask.GetAwaiter().GetResult())) {
+                        if (-not [string]::IsNullOrEmpty($streamText)) {
+                            foreach ($line in @($streamText -split '\r?\n')) {
+                                if (-not [string]::IsNullOrEmpty($line)) {
+                                    $diagnosticOutput.Add($line) | Out-Null
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch {
+                $diagnosticsComplete = $false
+            }
+
+            $terminationState = if ($terminationVerified) { 'verified' } else { 'unverified' }
+            $diagnosticState = if ($diagnosticsComplete) { 'complete' } else { 'incomplete' }
+            $message = "native-command-timeout:file=$FilePath`:timeout_seconds=$TimeoutSeconds`:termination=$terminationState`:diagnostics=$diagnosticState"
+            if (-not [string]::IsNullOrWhiteSpace($terminationError)) {
+                $message += (':termination_error=' + ($terminationError -replace '[\r\n]+', ' '))
+            }
+            if ($diagnosticOutput.Count -gt 0) {
+                $boundedDiagnostic = (@($diagnosticOutput | Select-Object -First 3) -join ' | ')
+                if ($boundedDiagnostic.Length -gt 500) { $boundedDiagnostic = $boundedDiagnostic.Substring(0, 500) }
+                $message += (':output=' + $boundedDiagnostic)
+            }
+            throw [System.TimeoutException]::new($message)
+        }
 
         $output = [System.Collections.Generic.List[string]]::new()
         foreach ($streamText in @($stdoutTask.GetAwaiter().GetResult(), $stderrTask.GetAwaiter().GetResult())) {
