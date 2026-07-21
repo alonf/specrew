@@ -111,3 +111,8 @@ true, while PowerShell's `Get-Item` excluded the dot-directory as hidden. `Copy-
 The same native run then reached the final prompt assertion and exposed its Windows-only separator regex; that
 assertion now accepts both native separators. The speculative aggregate commit-pinning machinery was removed; it
 did not address the reproduced failure.
+
+Run `29801334882` passed all 73 honesty suites and then exposed two stale release-tree contracts in the broader
+bootstrap lane. The bootstrap-provider's canonical/module/project mirrors are re-synchronized byte-for-byte, and
+the old TG-004a assertion now reflects T070's approved Claude `UserPromptSubmit` B3/turn-start adapter while still
+forbidding the expensive `PostToolUse` registration.
