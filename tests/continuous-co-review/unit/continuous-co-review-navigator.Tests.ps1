@@ -136,6 +136,78 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         }
     }
 
+    It 'campaign intake: a valid pre-feature workspace is an expected silent no-op' {
+        $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
+        try {
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be 'campaign-not-applicable:no-active-feature'
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign intake: an active feature without an iteration is an expected silent no-op' {
+        $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path $featureRoot -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be 'campaign-not-applicable:no-active-iteration'
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign intake: malformed active feature state still fails closed through the packet gate' {
+        $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
+        try {
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.reason | Should -Be 'campaign-packet-gate-failed'
+            $decision.stop_block | Should -Match 'review-campaign-active-feature-unresolved'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign intake: an advanced lifecycle cursor with a missing iteration still fails closed' {
+        $root = script:New-NavigatorProject -BoundaryType 'before-implement' -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path $featureRoot -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.reason | Should -Be 'campaign-packet-gate-failed'
+            $decision.stop_block | Should -Match 'review-campaign-active-iteration-unresolved'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     AfterAll {
         # The suite must never leave git identity on the Specrew repo (the fan-out hygiene rule).
         Push-Location $script:RepoRoot

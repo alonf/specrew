@@ -31,7 +31,8 @@ function New-TempDir {
 
 $canonicalPerSession = @(
     '.specrew/last-*', '.specify/feature.json', '.specrew/start-context.json',
-    '.specrew/host-history.json', '.specrew/.cache/', '.specrew/version-check-cache.json', '.squad/sessions/',
+    '.specrew/host-history.json', '.specrew/.cache/', '.specrew/version-check-cache.json',
+    '.specrew/handover/', '.specrew/runtime/', '.squad/sessions/',
     '.squad/decisions/inbox/', '.specrew/last-validator-summary.json',
     '.specrew/active-sessions.yml',  # added in Iteration 2a (T020c, FR-005 gap fix)
     '.agents/hooks.json',            # Antigravity hook config carries per-developer launcher paths.
@@ -86,6 +87,12 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $projB '.specrew') -Force | Out-Null
     $tracked = Join-Path $projB '.specrew/last-start-prompt.md'
     Set-Content -LiteralPath $tracked -Value 'session prompt' -Encoding UTF8
+    $runtime = Join-Path $projB '.specrew/runtime/navigator.jsonl'
+    $handover = Join-Path $projB '.specrew/handover/session-handover.md'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $runtime) -Force | Out-Null
+    New-Item -ItemType Directory -Path (Split-Path -Parent $handover) -Force | Out-Null
+    Set-Content -LiteralPath $runtime -Value '{}' -Encoding UTF8
+    Set-Content -LiteralPath $handover -Value '# handover' -Encoding UTF8
     $keep = Join-Path $projB 'README.md'
     Set-Content -LiteralPath $keep -Value '# project' -Encoding UTF8
     git add -A 2>$null
@@ -98,8 +105,12 @@ try {
 
     $afterTracked = @(git ls-files)
     Assert-True ($afterTracked -notcontains '.specrew/last-start-prompt.md') "T015: per-session file removed from git index"
+    Assert-True ($afterTracked -notcontains '.specrew/runtime/navigator.jsonl') "T015: runtime evidence removed from git index"
+    Assert-True ($afterTracked -notcontains '.specrew/handover/session-handover.md') "T015: handover evidence removed from git index"
     Assert-True ($afterTracked -contains 'README.md') "T015: unrelated tracked file (README.md) untouched"
     Assert-True (Test-Path -LiteralPath $tracked) "T015: working-tree copy of per-session file still present (not deleted)"
+    Assert-True (Test-Path -LiteralPath $runtime) "T015: working-tree runtime evidence remains present"
+    Assert-True (Test-Path -LiteralPath $handover) "T015: working-tree handover evidence remains present"
     Assert-True ($removed -contains '.specrew/last-start-prompt.md') "T015: function reports the removed path"
 }
 finally {

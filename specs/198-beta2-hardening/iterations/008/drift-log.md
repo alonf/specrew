@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 29
-**Resolution rate**: 96.6% (28/29 resolved; DRIFT-198-I008-029 awaits hosted and fresh-review proof)
+**Total drift events**: 31
+**Resolution rate**: 93.5% (29/31 resolved; DRIFT-198-I008-030/031 await hosted and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -33,9 +33,9 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
 `29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
 scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
-added DRIFT-198-I008-021–029: 021–028 are corrected and exact-head verified, while 029 is locally corrected
-and still requires hosted plus fresh independent-review proof. T029 release and T067 published-beta validation
-remain deliberately pending behind their named boundaries.
+added DRIFT-198-I008-021–031: 021–029 are corrected and exact-head independently verified, while the early
+Copilot workshop exposed 030/031 and their local corrections still require hosted plus fresh independent-review
+proof. T029 release and T067 published-beta validation remain deliberately pending behind their named boundaries.
 
 ## Events
 
@@ -591,7 +591,7 @@ remain deliberately pending behind their named boundaries.
 
 ### DRIFT-198-I008-029 — fixture runtime did not model production progress containment
 
-- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Status**: resolved by commit `73f1487a8c24b607499075042e9e67b5ecabb22c`, exact-head CI, and clean run 05
 - **Severity**: note-level test-fidelity defect
 - **Type**: incomplete regression-model implementation
 - **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 release acceptance
@@ -606,6 +606,43 @@ remain deliberately pending behind their named boundaries.
 - **Paired evidence**: the direct fixture-port regression supplies an output-producing progress callback and
   asserts that the port returns exactly one scalar completed runtime result. The existing full orchestration
   renderer regression remains green and continues to prove the composed terminal result is scalar.
+
+### DRIFT-198-I008-030 — greenfield Copilot intake rendered a false campaign-authority failure after every turn
+
+- **Status**: local correction, real-workspace replay, and all 74 registered suites pass; hosted verification and fresh independent review pending
+- **Severity**: release-blocking workflow defect
+- **Type**: applicability/authority-routing drift
+- **Requirements**: FR-055, FR-056, NFR-002; T029 manual-test acceptance
+- **Observed evidence**: the first Copilot CLI workshop in a newly initialized project had no active feature or
+  iteration, which is the legitimate greenfield intake state. Every answer nevertheless rendered
+  `review-campaign-active-feature-unresolved` as a campaign block. The campaign-authoritative worktree navigator
+  called the signoff packet gate on every Stop without first distinguishing an inapplicable pre-feature or
+  pre-iteration workspace from malformed active state. No provider review was launched or spent.
+- **Correction**: the always-on navigator now returns explicit silent no-op reasons for valid pre-feature and
+  pre-iteration intake. Once any active lifecycle signal exists, malformed or missing identity still routes
+  through the authoritative packet gate and fails closed; the signoff gate itself is unchanged.
+- **Paired evidence**: deterministic fixtures cover silent valid pre-feature and pre-iteration workspaces plus a
+  malformed active feature marker and an advanced lifecycle cursor whose iteration disappeared; both invalid
+  directions still emit the named campaign block. A read-only production-source replay against
+  `C:/Dev/article-amplifier` returns `campaign-not-applicable:no-active-feature`, injects no text, and leaves its
+  Git status unchanged.
+
+### DRIFT-198-I008-031 — fresh init omitted generated runtime and handover directories from downstream ignore rules
+
+- **Status**: local correction and all 74 registered suites pass; hosted verification and fresh independent review pending
+- **Severity**: release-blocking consumer-hygiene defect
+- **Type**: distribution/file-classification drift
+- **Requirements**: FR-027, SC-008, NFR-002; T029 manual-test acceptance
+- **Observed evidence**: after one real Copilot session, the otherwise clean `C:/Dev/article-amplifier` consumer
+  reported `.specrew/runtime/` and `.specrew/handover/` as untracked. Specrew's own repository ignored both, but
+  the canonical per-session list used by `specrew init` omitted them, so downstream `.gitignore` generation could
+  not preserve a clean application worktree.
+- **Correction**: both directories are canonical per-session patterns written before runtime deployment. Existing
+  tracked copies are removed only from the index; local evidence remains on disk.
+- **Paired evidence**: the production helper and fresh-init ordering fixture prove both patterns are emitted,
+  ignored by Git, untracked when previously indexed, retained locally, and idempotent. The broader F-051
+  classification fixture proves the same index-versus-working-copy behavior for representative files in both
+  directories.
 
 ### Resolution Strategies
 

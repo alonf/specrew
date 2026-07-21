@@ -15,6 +15,10 @@ $pattern = '.claude/settings.local.json'
 Assert-True ($pattern -cin @(Get-SpecrewPerSessionPattern)) 'T024: Claude machine-local config is a canonical per-session pattern'
 $versionCachePattern = '.specrew/version-check-cache.json'
 Assert-True ($versionCachePattern -cin @(Get-SpecrewPerSessionPattern)) 'T024: version-check cache is a canonical per-session pattern'
+$runtimePatterns = @('.specrew/runtime/', '.specrew/handover/')
+foreach ($runtimePattern in $runtimePatterns) {
+    Assert-True ($runtimePattern -cin @(Get-SpecrewPerSessionPattern)) "T024: $runtimePattern is a canonical per-session pattern"
+}
 
 $initSource = [IO.File]::ReadAllText((Join-Path $repoRoot 'scripts\specrew-init.ps1'))
 $ignoreCall = $initSource.IndexOf('Update-GitignoreForSession -ProjectRoot $resolvedProjectPath', [StringComparison]::Ordinal)
@@ -31,6 +35,12 @@ try {
     [IO.File]::WriteAllText((Join-Path $scratch 'README.md'), "# fixture`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $scratch $pattern), "{}`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText((Join-Path $scratch $versionCachePattern), "{}`n", [Text.UTF8Encoding]::new($false))
+    foreach ($runtimePattern in $runtimePatterns) {
+        $fixturePath = Join-Path $scratch ($runtimePattern.TrimEnd('/') + '/fixture.json')
+        $null = New-Item -ItemType Directory -Path (Split-Path -Parent $fixturePath) -Force
+        [IO.File]::WriteAllText($fixturePath, "{}`n", [Text.UTF8Encoding]::new($false))
+        git -C $scratch add -f ($runtimePattern.TrimEnd('/') + '/fixture.json')
+    }
     git -C $scratch add README.md
     git -C $scratch add -f $pattern
     git -C $scratch add -f $versionCachePattern
@@ -41,6 +51,13 @@ try {
     $removed = @(Remove-TrackedPerSessionFiles -ProjectRoot $scratch)
     Assert-True ($pattern -cin $removed) 'T024: previously tracked local config is removed from the index'
     Assert-True ($versionCachePattern -cin $removed) 'T024: previously tracked version-check cache is removed from the index'
+    foreach ($runtimePattern in $runtimePatterns) {
+        $fixtureRelativePath = $runtimePattern.TrimEnd('/') + '/fixture.json'
+        Assert-True ($fixtureRelativePath -cin $removed) "T024: previously tracked $runtimePattern evidence is removed from the index"
+        Assert-True (Test-Path -LiteralPath (Join-Path $scratch $fixtureRelativePath) -PathType Leaf) "T024: untracking preserves $runtimePattern evidence on disk"
+        git -C $scratch check-ignore --quiet $fixtureRelativePath
+        Assert-True ($LASTEXITCODE -eq 0) "T024: Git confirms $runtimePattern evidence is ignored"
+    }
     Assert-True (Test-Path -LiteralPath (Join-Path $scratch $pattern) -PathType Leaf) 'T024: untracking preserves the machine-local config on disk'
     Assert-True (Test-Path -LiteralPath (Join-Path $scratch $versionCachePattern) -PathType Leaf) 'T024: untracking preserves the version-check cache on disk'
 

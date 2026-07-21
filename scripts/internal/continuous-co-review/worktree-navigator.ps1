@@ -10,6 +10,93 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot 'co-review-service.ps1')   # brings the legacy navigator (reap/stage/dedup) + the service (fire/identity)
 
+function Get-ReviewCampaignNavigatorScopeApplicability {
+    # Campaign authority is installed before a greenfield project has an active feature or iteration. Those
+    # intake states are expected no-ops, not authority failures. Once any active-feature signal exists, malformed
+    # or missing state remains applicable so the packet gate below fails closed with the authoritative reason.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    $featureRoot = $null
+    $activeFeatureSignal = $false
+    $activeIterationSignal = $false
+    $featureJsonPath = Join-Path $RepoRoot '.specify/feature.json'
+    if (Test-Path -LiteralPath $featureJsonPath -PathType Leaf) {
+        $activeFeatureSignal = $true
+        try {
+            $featureJson = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if (($featureJson.PSObject.Properties.Name -contains 'feature_directory') -and
+                -not [string]::IsNullOrWhiteSpace([string]$featureJson.feature_directory)) {
+                $candidate = Join-Path $RepoRoot ([string]$featureJson.feature_directory)
+                if (Test-Path -LiteralPath $candidate -PathType Container) { $featureRoot = $candidate }
+            }
+        }
+        catch { return [pscustomobject]@{ applicable = $true; reason = 'active-feature-state-invalid' } }
+    }
+
+    $startContextPath = Join-Path $RepoRoot '.specrew/start-context.json'
+    if (Test-Path -LiteralPath $startContextPath -PathType Leaf) {
+        try {
+            $startContext = Get-Content -LiteralPath $startContextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $featurePath = $null
+            if ($startContext.PSObject.Properties['session_state'] -and $null -ne $startContext.session_state) {
+                if ($startContext.session_state.PSObject.Properties['feature_path']) {
+                    $featurePath = [string]$startContext.session_state.feature_path
+                }
+                if ($startContext.session_state.PSObject.Properties['boundary_type'] -and
+                    -not [string]::IsNullOrWhiteSpace([string]$startContext.session_state.boundary_type)) {
+                    $activeFeatureSignal = $true
+                    $activeIterationSignal = $true
+                }
+            }
+            elseif ($startContext.PSObject.Properties['feature_path']) {
+                $featurePath = [string]$startContext.feature_path
+            }
+            if ($startContext.PSObject.Properties['boundary_enforcement'] -and $null -ne $startContext.boundary_enforcement) {
+                foreach ($cursorName in @('last_authorized_boundary', 'pending_next_boundary', 'pending_crossing')) {
+                    if ($startContext.boundary_enforcement.PSObject.Properties[$cursorName] -and
+                        $null -ne $startContext.boundary_enforcement.$cursorName -and
+                        -not [string]::IsNullOrWhiteSpace([string]$startContext.boundary_enforcement.$cursorName)) {
+                        $activeFeatureSignal = $true
+                        $activeIterationSignal = $true
+                    }
+                }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($featurePath)) {
+                $activeFeatureSignal = $true
+                $candidate = if ([IO.Path]::IsPathRooted($featurePath)) { $featurePath } else { Join-Path $RepoRoot $featurePath }
+                if (Test-Path -LiteralPath $candidate -PathType Container) { $featureRoot = $candidate }
+            }
+        }
+        catch { return [pscustomobject]@{ applicable = $true; reason = 'active-session-state-invalid' } }
+    }
+
+    if ($null -eq $featureRoot) {
+        $branch = @(& git -C $RepoRoot branch --show-current 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $branch.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace([string]$branch[0])) {
+            $candidate = Join-Path $RepoRoot ('specs/' + [string]$branch[0])
+            if (Test-Path -LiteralPath $candidate -PathType Container) {
+                $featureRoot = $candidate
+                $activeFeatureSignal = $true
+            }
+        }
+    }
+
+    if ($null -eq $featureRoot) {
+        if ($activeFeatureSignal) { return [pscustomobject]@{ applicable = $true; reason = 'active-feature-unresolved' } }
+        return [pscustomobject]@{ applicable = $false; reason = 'campaign-not-applicable:no-active-feature' }
+    }
+
+    $iterationsRoot = Join-Path $featureRoot 'iterations'
+    $iterations = @(if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
+            Get-ChildItem -LiteralPath $iterationsRoot -Directory | Where-Object { $_.Name -match '^\d{3,}$' }
+        })
+    if ($iterations.Count -eq 0) {
+        if ($activeIterationSignal) { return [pscustomobject]@{ applicable = $true; reason = 'active-iteration-unresolved' } }
+        return [pscustomobject]@{ applicable = $false; reason = 'campaign-not-applicable:no-active-iteration' }
+    }
+    return [pscustomobject]@{ applicable = $true; reason = 'campaign-applicable' }
+}
+
 function Invoke-ContinuousCoReviewWorktreeNavigator {
     # Param shape MATCHES the legacy Invoke-ContinuousCoReviewNavigator so the provider config-selects between
     # the two by name with the SAME @navParams. -SessionStart = the cross-session sweep. -CodeWriterHost threads
@@ -34,6 +121,11 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
     }
     if ([bool]$authority.campaign_authority_enabled) {
         if ($SessionStart) { $decision.reason = 'campaign-cross-session-no-legacy-reap'; return $decision }
+        $scope = Get-ReviewCampaignNavigatorScopeApplicability -RepoRoot $resolved
+        if (-not [bool]$scope.applicable) {
+            $decision.reason = [string]$scope.reason
+            return $decision
+        }
         try { $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolved }
         catch {
             $decision.reason = 'campaign-packet-gate-failed'

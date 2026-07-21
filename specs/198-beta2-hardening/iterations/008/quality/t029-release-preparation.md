@@ -257,3 +257,30 @@ orchestrator test file passes 20/20. The complete Feature 198 registry passes al
 A clean staged-tree governance check passes in 18.906 seconds with only the known historical dashboard warnings.
 Hosted exact-head verification and a fresh independent review remain required before manual retest and merge
 handoff.
+
+## Run 05 Clean Review and Early Copilot Workshop Corrections
+
+Commit `73f1487a8c24b607499075042e9e67b5ecabb22c` passed all required exact-head pull-request checks at canonical
+digest `a28ea7967d8f070a4beb451111aa6f2aaa1d9a87`. Authorized Claude run
+`run-t029-claude-windows-73f1487a-a28ea796-05` invoked exactly once and published a complete/pass/current/valid
+result with verified containment and termination, `can_approve_current=true`, and zero findings. That evidence
+closes DRIFT-198-I008-029 and authorizes the maintainer's manual pre-merge test; it does not authorize merge,
+tagging, workflow dispatch, publication, or stable promotion.
+
+The resulting real Copilot CLI workshop then exposed two distinct release blockers before feature creation:
+
+- the campaign-authoritative Stop navigator treated the legitimate absence of an active feature/iteration as an
+  authority-read failure and injected `review-campaign-active-feature-unresolved` after every workshop answer;
+- downstream init omitted `.specrew/runtime/` and `.specrew/handover/` from the canonical per-session ignore list,
+  so the first hook session dirtied the otherwise clean application worktree with generated evidence.
+
+The scoped correction keeps the signoff packet gate fail closed for malformed active state or a missing iteration
+after lifecycle advancement, but makes valid
+pre-feature and pre-iteration intake explicit silent no-ops. It also classifies both generated directories as
+per-session state, with index-only cleanup that preserves local evidence. Focused navigator pairs pass 4/4; the
+file-classification and production fresh-init ordering suites pass; and a read-only invocation of the corrected
+production navigator against `C:/Dev/article-amplifier` returns `campaign-not-applicable:no-active-feature`, emits
+no stop block or injected note, and leaves the observed Git status unchanged. The complete Feature 198 registry
+passes all 74 suites in 905.3 seconds. Hosted exact-head CI, fresh independent review, and a from-scratch
+maintainer retest remain required. No provider, merge, tag, workflow dispatch, publication, or stable-promotion
+action occurred in this local correction.
