@@ -70,6 +70,10 @@ if (-not (Get-Command -Name 'Get-ReviewAuthorityTimingLimits' -ErrorAction Silen
     $script:NavigatorReviewAuthorityCore = Join-Path $PSScriptRoot 'review-authority-core.ps1'
     if (Test-Path -LiteralPath $script:NavigatorReviewAuthorityCore -PathType Leaf) { . $script:NavigatorReviewAuthorityCore }
 }
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue)) {
+    $script:NavigatorReviewerHostCatalog = Join-Path $PSScriptRoot 'reviewer-host-catalog.ps1'
+    if (Test-Path -LiteralPath $script:NavigatorReviewerHostCatalog -PathType Leaf) { . $script:NavigatorReviewerHostCatalog }
+}
 
 function Get-ContinuousCoReviewNavigatorModuleBase {
     # T082 HAZARD A: the detached reviewer pwsh runs with cwd = the materialized read-only WORKTREE,
@@ -94,47 +98,6 @@ function Get-ContinuousCoReviewNavigatorModuleBase {
         }
     }
     return $null
-}
-
-function Get-ContinuousCoReviewNavigatorTimeoutSeconds {
-    # T082 / condition-c: the co-review timeout config scalar. iteration 002 proved a real codex
-    # full-iteration review needs ~300s (a 120s rerun timed out, so no findings landed). This raises the
-    # navigator default OFF 120 to a value that clears a real codex run, and makes it project-overridable
-    # via .specrew/config.yml `co_review_timeout_seconds` (mirroring Get-ContinuousCoReviewGateEnforcementEnabled's
-    # quote-strip + inline-comment-tolerant grammar). This is the ADAPTER/host-call budget (how long the
-    # reviewer process may run); the launcher's own supervisor TimeoutSec is kept ABOVE it (see
-    # Invoke-ContinuousCoReviewNavigator) so the adapter times out gracefully before the supervisor hard-kills.
-    # F-198 FR-022 resolution chain: explicit flag (handled by CALLERS - explicit always wins,
-    # DEC-197-I010-007) -> project config `co_review_timeout_seconds` -> catalog per-host
-    # `default_timeout_seconds` (when -HostName is known) -> the 600-second FLOOR (maintainer
-    # ruling: "300 is too short according to all our tests"; the floor is the terminal
-    # fallback, never a clamp on explicit values).
-    param([Parameter(Mandatory)][string]$RepoRoot, [int]$Default = 600, [AllowNull()][string]$HostName)
-    $maxTimeoutSeconds = [int](Get-ReviewAuthorityTimingLimits).max_invocation_timeout_seconds
-    $configPath = Join-Path $RepoRoot '.specrew/config.yml'
-    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
-        $configLines = @()
-        try {
-            $configLines = @(Get-Content -LiteralPath $configPath -Encoding UTF8)
-        }
-        catch { $null = $_ }
-        foreach ($line in $configLines) {
-            if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
-                $parsed = 0
-                if ([int]::TryParse(($Matches['value'].Trim()), [ref]$parsed) -and $parsed -gt 0) {
-                    if ($parsed -gt $maxTimeoutSeconds) {
-                        throw ('co-review-timeout-exceeds-maximum:{0}:{1}' -f $parsed, $maxTimeoutSeconds)
-                    }
-                    return $parsed
-                }
-            }
-        }
-    }
-    if (-not [string]::IsNullOrWhiteSpace($HostName) -and (Get-Command -Name 'Get-ContinuousCoReviewHostDefaultTimeoutSeconds' -ErrorAction SilentlyContinue)) {
-        $catalogValue = Get-ContinuousCoReviewHostDefaultTimeoutSeconds -HostName $HostName
-        if ($null -ne $catalogValue -and [int]$catalogValue -gt 0) { return [int]$catalogValue }
-    }
-    return $Default
 }
 
 function Get-ContinuousCoReviewNavigatorFeatureRoot {

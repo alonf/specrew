@@ -130,6 +130,39 @@ function Get-ContinuousCoReviewHostDefaultTimeoutSeconds {
     return $null
 }
 
+function Get-ContinuousCoReviewNavigatorTimeoutSeconds {
+    # Shared by the navigator and the public campaign door. Explicit flags are handled by callers;
+    # this function owns the remaining config -> host catalog -> 600-second floor chain so the two
+    # execution paths cannot silently diverge. The config read fails closed at the authority timing
+    # ceiling that also validates invocation parameters.
+    param([Parameter(Mandatory)][string]$RepoRoot, [int]$Default = 600, [AllowNull()][string]$HostName)
+    $maxTimeoutSeconds = [int](Get-ReviewAuthorityTimingLimits).max_invocation_timeout_seconds
+    $configPath = Join-Path $RepoRoot '.specrew/config.yml'
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        $configLines = @()
+        try {
+            $configLines = @(Get-Content -LiteralPath $configPath -Encoding UTF8)
+        }
+        catch { $null = $_ }
+        foreach ($line in $configLines) {
+            if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
+                $parsed = 0
+                if ([int]::TryParse(($Matches['value'].Trim()), [ref]$parsed) -and $parsed -gt 0) {
+                    if ($parsed -gt $maxTimeoutSeconds) {
+                        throw ('co-review-timeout-exceeds-maximum:{0}:{1}' -f $parsed, $maxTimeoutSeconds)
+                    }
+                    return $parsed
+                }
+            }
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($HostName)) {
+        $catalogValue = Get-ContinuousCoReviewHostDefaultTimeoutSeconds -HostName $HostName
+        if ($null -ne $catalogValue -and [int]$catalogValue -gt 0) { return [int]$catalogValue }
+    }
+    return $Default
+}
+
 function Get-ContinuousCoReviewHostAgenticCommand {
     # The agentic invocation for a reviewer host, looked up from the catalog DATA above (host-NEUTRAL: the invocation
     # core calls this instead of switching on host names). Returns @{ file; pre_args; prompt_via_stdin } or $null

@@ -211,7 +211,7 @@ Invoke-Git -Repository $liveProjectRoot -Arguments @('add', '.') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('commit', '-m', 'baseline') | Out-Null
 Add-Content -LiteralPath $liveSourcePath -Value "function Get-SampleAfter { 'after' }" -Encoding UTF8
 
-$liveRunId = 'test-live-unregistered-host'
+$liveRunId = 'run-test-live-unregistered'
 $liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'review', '--project-path', $liveProjectRoot,
     '--live',
@@ -237,21 +237,17 @@ if (Test-Path -LiteralPath (Join-Path $liveProjectRoot ".specrew\review\inline\$
 }
 # D-197-I010-006 / F-198 FR-022 budget-drift regression: with NO --timeout-seconds, the --live door
 # must resolve the SAME config/catalog/floor chain as the auto path. An unknown host reaches the
-# intentional 600-second terminal floor (300 was superseded as too short); the refused run still
-# writes its status envelope.
+# intentional 600-second terminal floor (300 was superseded as too short). Campaign fail-fast
+# reports that resolved budget but writes no legacy pending or authority-store evidence.
 $liveStatusPath = Join-Path $liveProjectRoot ".specrew\review\pending\$liveRunId\status.json"
 if (Test-Path -LiteralPath $liveStatusPath -PathType Leaf) {
-    $liveStatus = Get-Content -LiteralPath $liveStatusPath -Raw | ConvertFrom-Json
-    if ([int]$liveStatus.timeout_seconds -ne 600) {
-        Write-Fail ("default --live budget must use the shared 600s terminal floor, got '{0}'" -f $liveStatus.timeout_seconds)
-        exit 1
-    }
-    Write-Pass 'Default --live budget resolves through the shared chain to the 600s terminal floor'
-}
-else {
-    Write-Fail "expected the refused run's status envelope at $liveStatusPath (needed for the default-budget assertion)"
+    Write-Fail 'campaign unregistered-host fail-fast must not write a legacy pending status envelope'
     exit 1
 }
+if (-not (Assert-Contains -Content $liveOutput -Pattern 'Resolved timeout:\s+600 seconds' -FailureMessage 'the refusal must report the shared 600s terminal floor')) {
+    exit 1
+}
+Write-Pass 'Default --live budget resolves through the shared chain to the 600s terminal floor'
 Write-Pass 'Live review refuses an unregistered host loudly and writes no gate evidence'
 
 Write-Host "`nTest 6: --ack-degraded with a flag-shaped run-id fails with precise usage (downstream field bug 2026-07-09)"

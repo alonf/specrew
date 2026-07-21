@@ -117,3 +117,15 @@ bootstrap lane. The bootstrap-provider's canonical/module/project mirrors are re
 the old TG-004a assertion now reflects T070's approved Claude `UserPromptSubmit` B3/turn-start adapter while still
 forbidding the expensive `PostToolUse` registration. The intentional self-host iteration reference keeps its
 firewall provenance annotation in all three mirrors.
+
+Run `29802463361` passed the deterministic gate and narrowed the remaining red state to the Linux contract lane.
+Production deliberately renders the Windows shell rule only when `$IsWindows`, but the start-command integration
+test still required that rule on every platform. The corrected regression preserves the production contract in
+both directions: Windows must include both the shell meta-rule and `-LiteralPath` guidance, while non-Windows
+prompts must exclude that Windows-only block.
+
+The corrected native Linux contract lane then reached the review replay contract and exposed a campaign-cutover
+ordering regression: an explicit unavailable `--host` reached feature/allowance resolution before the promised
+honor-or-surface refusal. The public campaign door now validates an explicit host's catalog entry, executable,
+and authorization before identity, authority-store, target, or provider work. Refusal remains loud, reports the
+resolved timeout, and writes neither legacy pending state nor campaign authority evidence.

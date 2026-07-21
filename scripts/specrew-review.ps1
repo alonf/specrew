@@ -797,8 +797,34 @@ if ($Live) {
                     $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
                 }
             }
-            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 900 }
+            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 600 }
             $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
+            if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) {
+                $hostDefinition = Get-ContinuousCoReviewProductionHarnessDefinition -HostName $campaignHost
+                $hostCommandAvailable = $null -ne $hostDefinition -and
+                    -not [string]::IsNullOrWhiteSpace([string]$hostDefinition.command) -and
+                    $null -ne (Get-Command -Name ([string]$hostDefinition.command) -ErrorAction SilentlyContinue)
+                $hostAuthorized = -not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)
+                if ($null -eq $hostDefinition -or -not $hostCommandAvailable -or -not $hostAuthorized) {
+                    $reason = "requested-host-not-available: '$campaignHost' is not installed+authorized+cataloged (an explicit --host is honoured or surfaced, never silently substituted)"
+                    if ($Json) {
+                        [pscustomobject][ordered]@{
+                            run_id = [string]$parsedArgs.RunId; status = 'not-started'; reason = $reason
+                            invoked = $false; resolved_timeout_seconds = $tos
+                        } | ConvertTo-Json -Depth 4
+                    }
+                    elseif ($Quiet) { Write-Host ("review-run run_id={0} status=not-started invoked=false reason={1} timeout_seconds={2}" -f $parsedArgs.RunId, $reason, $tos) }
+                    else {
+                        $border = ('=' * 60)
+                        Write-Host $border -ForegroundColor Red
+                        Write-Host 'SPECREW CO-REVIEW DID NOT RUN' -ForegroundColor Red
+                        Write-Host $border -ForegroundColor Red
+                        Write-Host ("Run: {0}   Reason: {1}" -f $parsedArgs.RunId, $reason)
+                        Write-Host ("Resolved timeout: {0} seconds" -f $tos)
+                    }
+                    exit 1
+                }
+            }
             $progressSink = $null
             if (-not $Json -and -not $Quiet) {
                 $formatProgressCommand = Get-Command -Name 'Format-ReviewProgressEvent' -CommandType Function
