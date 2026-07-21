@@ -128,7 +128,11 @@ function ConvertTo-ContinuousCoReviewOriginRelativized {
     $out = $Content
     $ci = [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
     foreach ($root in ($OriginRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.Length } -Descending)) {
-        $full = [System.IO.Path]::GetFullPath($root).TrimEnd([char]'\', [char]'/')
+        # A review bundle can contain an origin captured on another OS. Do not ask the current platform to
+        # resolve a foreign Windows absolute root: on Linux GetFullPath('C:\Dev\repo') prefixes the current
+        # Unix directory and prevents the real origin from being scrubbed.
+        $foreignWindowsAbsolute = $root -match '^[A-Za-z]:[\\/]' -or $root -match '^\\\\'
+        $full = $(if ($foreignWindowsAbsolute) { $root } else { [System.IO.Path]::GetFullPath($root) }).TrimEnd([char]'\', [char]'/')
         $fwd = $full.Replace('\', '/')
         $bwd = $full.Replace('/', '\')
         # file:/// URL form first (most specific), then the JSON-ESCAPED backslash form (review finding f5,

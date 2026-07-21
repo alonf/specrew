@@ -3,6 +3,12 @@ $ErrorActionPreference = 'Stop'
 # Trace: T059 / FR-060, FR-061, FR-062, FR-064 / SC-017, SC-018, SC-019,
 # SC-020, SC-021, NFR-007. These are deterministic fake-provider processes; passing
 # never promotes a harness/OS pair to live support.
+BeforeDiscovery {
+    # A generic unprivileged Linux lane cannot create/delegate a cgroup v2 root. The dedicated three-OS
+    # review-runtime job sets SPECREW_REQUIRE_POSIX_RUNTIME_PROOF=1, provisions the bounded cgroup root, and
+    # must run every native case. Only the duplicate generic honesty lane skips those native process cases.
+    $script:SkipUnprivilegedGenericLinuxNativeCases = $IsLinux -and $env:SPECREW_REQUIRE_POSIX_RUNTIME_PROOF -ne '1'
+}
 Describe 'T059 all-adapter fake-process and native-runtime fault matrix' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
@@ -152,7 +158,7 @@ exit 0
         $env:PATH = $script:OriginalPath
     }
 
-    It 'runs the <harness_name> production adapter vector through one native contained fake-provider process' -ForEach @(
+    It 'runs the <harness_name> production adapter vector through one native contained fake-provider process' -Skip:$script:SkipUnprivilegedGenericLinuxNativeCases -ForEach @(
         @{ harness_name = 'claude' }, @{ harness_name = 'codex' }, @{ harness_name = 'copilot' }, @{ harness_name = 'cursor-agent' }, @{ harness_name = 'antigravity' }
     ) {
         $slug = $harness_name.Replace('-agent', '')
@@ -168,7 +174,7 @@ exit 0
         $candidate.candidate.verdict | Should -Be 'pass'
     }
 
-    It 'rejects prose-wrapped output from the <harness_name> fake process through strict ingress with no hidden retry' -ForEach @(
+    It 'rejects prose-wrapped output from the <harness_name> fake process through strict ingress with no hidden retry' -Skip:$script:SkipUnprivilegedGenericLinuxNativeCases -ForEach @(
         @{ harness_name = 'claude' }, @{ harness_name = 'codex' }, @{ harness_name = 'copilot' }, @{ harness_name = 'cursor-agent' }, @{ harness_name = 'antigravity' }
     ) {
         $slug = $harness_name.Replace('-agent', '')
@@ -188,7 +194,7 @@ exit 0
         [IO.File]::ReadAllText($case.count_path) | Should -Be '1' -Because 'strict ingress never invokes or retries a provider'
     }
 
-    It 'kills a timed-out fake provider and descendant before publishing partial timeout evidence' {
+    It 'kills a timed-out fake provider and descendant before publishing partial timeout evidence' -Skip:$script:SkipUnprivilegedGenericLinuxNativeCases {
         $case = New-T059Case -Root (Join-Path $TestDrive 'timeout-tree') -HostName claude -Mode timeout -RunId 'run-timeout-tree'
         # Five seconds is still bounded while leaving enough cold-start margin on hosted/virtualized
         # POSIX runners for the fake provider to create its descendant before timeout containment fires.

@@ -65,8 +65,10 @@ Describe 'T060 local Windows and Linux smoke package' {
         $longestTrackedPath = @($trackedPaths | Sort-Object Length -Descending | Select-Object -First 1)[0]
         $legacyPrefix = 'C:\Dev\.t060-targets\review-target-run-t060-cursor-windows-maximum-identifier-01-00000000000000000000000000000000'
         $boundedPrefix = 'C:\Dev\.t060-targets\rt-AAAAAAAAAAAAAAAA'
-        (Join-Path $legacyPrefix $longestTrackedPath).Length | Should -BeGreaterThan 259
-        (Join-Path $boundedPrefix $longestTrackedPath).Length | Should -BeLessThan 260
+        # These are deliberately Windows path-length assertions and must remain lexical on non-Windows hosts;
+        # Join-Path would try to resolve the synthetic C: drive and fail before checking the contract.
+        ($legacyPrefix.TrimEnd('\') + '\' + $longestTrackedPath.Replace('/', '\')).Length | Should -BeGreaterThan 259
+        ($boundedPrefix.TrimEnd('\') + '\' + $longestTrackedPath.Replace('/', '\')).Length | Should -BeLessThan 260
         $script:TargetPortSource | Should -Match ([regex]::Escape("'rt-' + (New-ReviewTargetWorkspaceToken)"))
     }
 

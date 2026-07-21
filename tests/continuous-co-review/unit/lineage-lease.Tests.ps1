@@ -73,6 +73,34 @@ if (`$r.acquired) { while (-not (Test-Path -LiteralPath '$finishFile')) { Start-
         $r2.reason | Should -Be 'duplicate-same-generation'
     }
 
+    It '2b. Linux process-start identity is identical across the owner and a separate observer' -Skip:(-not $IsLinux) {
+        $repo = New-LeaseRepo
+        $module = (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/co-review-lineage-lease.ps1') -replace '\\', '/'
+        $identityFile = (Join-Path $repo 'owner-identity.txt') -replace '\\', '/'
+        $releaseFile = (Join-Path $repo 'release.flag') -replace '\\', '/'
+        $ownerScript = Join-Path $repo 'identity-owner.ps1'
+        $ownerSource = @"
+. '$module'
+Set-Content -LiteralPath '$identityFile' -Value (Get-ContinuousCoReviewProcessStartIdentity -ProcessId `$PID) -Encoding UTF8
+while (-not (Test-Path -LiteralPath '$releaseFile')) { Start-Sleep -Milliseconds 10 }
+"@
+        Set-Content -LiteralPath $ownerScript -Value $ownerSource -Encoding UTF8
+        $owner = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-File', $ownerScript) -PassThru
+        try {
+            $deadline = [DateTime]::UtcNow.AddSeconds(10)
+            while (-not (Test-Path -LiteralPath $identityFile -PathType Leaf) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 10 }
+            Test-Path -LiteralPath $identityFile -PathType Leaf | Should -BeTrue -Because 'the owner must publish its self-observed start identity'
+            $ownerIdentity = (Get-Content -LiteralPath $identityFile -Raw).Trim()
+            $observerIdentity = Get-ContinuousCoReviewProcessStartIdentity -ProcessId $owner.Id
+            $observerIdentity | Should -Be $ownerIdentity -Because 'lease liveness is evaluated by a different process than the owner that recorded it'
+            (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $owner.Id -ProcessStartId $ownerIdentity) | Should -BeTrue
+        }
+        finally {
+            Set-Content -LiteralPath $releaseFile -Value done -Encoding UTF8
+            if (-not $owner.WaitForExit(10000)) { Stop-Process -Id $owner.Id -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
     It '3. newer tree while an older generation is active (live owner): QUEUED as pending, not concurrently spawned' {
         $repo = New-LeaseRepo
         $r1 = Request-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L' -Generation 'genA' -RunId 'run1' -AcquiringPid $PID
@@ -232,6 +260,13 @@ if (`$r.acquired) { while (-not (Test-Path -LiteralPath '$finishFile')) { Start-
     It '8. PID-reuse protection: a matching PID but a DIFFERENT process-start identity is NOT the owner' {
         (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $PID -ProcessStartId 'a-different-start-id') | Should -BeFalse -Because 'a reused PID belonging to another process is not the owner'
         (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $PID -ProcessStartId (Get-ContinuousCoReviewProcessStartIdentity -ProcessId $PID)) | Should -BeTrue
+        if ($IsLinux) {
+            $legacyLiveIdentity = ('{0}:{1}' -f $PID, (Get-Process -Id $PID).StartTime.ToUniversalTime().Ticks)
+            (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $PID -ProcessStartId $legacyLiveIdentity) | Should -BeTrue -Because 'an in-flight lease written before the /proc upgrade must be suppressed conservatively, not stolen'
+            $legacyDead = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'exit 0') -PassThru
+            $null = $legacyDead.WaitForExit(10000)
+            (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $legacyDead.Id -ProcessStartId ("$($legacyDead.Id):1")) | Should -BeFalse -Because 'legacy compatibility does not keep a lease alive after its PID exits'
+        }
         (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $null -ProcessStartId '') | Should -BeFalse
     }
 

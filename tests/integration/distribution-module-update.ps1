@@ -110,6 +110,8 @@ $moduleParentRoot = Join-Path $scratchRoot 'module'
 $previousModuleRoot = Join-Path $moduleParentRoot $previousVersion
 $currentModuleRoot = Join-Path $moduleParentRoot $currentVersion
 $projectRoot = Join-Path $scratchRoot 'project'
+$sourceSnapshotRoot = Join-Path $scratchRoot 'source-snapshot'
+$sourceArchivePath = Join-Path $scratchRoot 'source-snapshot.tar'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -118,15 +120,32 @@ if (Test-Path -LiteralPath $scratchRoot) {
 $null = New-Item -ItemType Directory -Path $previousModuleRoot -Force
 $null = New-Item -ItemType Directory -Path $currentModuleRoot -Force
 $null = New-Item -ItemType Directory -Path $projectRoot -Force
+$null = New-Item -ItemType Directory -Path $sourceSnapshotRoot -Force
+
+# Use one immutable Git snapshot for both simulated module versions. Copying each top-level surface directly
+# from the live checkout created an observed Test-Path/Get-Item race in the isolated honesty lane. `stash create`
+# captures tracked working-tree edits without changing the index or worktree, so local pre-commit runs still test
+# the developer's candidate while clean CI naturally falls back to HEAD.
+[string]$sourceSnapshotRef = (& git -C $repoRoot -c user.name='Specrew Test' -c user.email='specrew-test@local' stash create 'distribution-module-update source snapshot' 2>$null | Select-Object -Last 1)
+if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the immutable distribution source snapshot.' }
+$sourceSnapshotRef = $sourceSnapshotRef.Trim()
+if ([string]::IsNullOrWhiteSpace($sourceSnapshotRef)) { $sourceSnapshotRef = 'HEAD' }
+& git -C $repoRoot archive --format=tar --output=$sourceArchivePath $sourceSnapshotRef
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $sourceArchivePath -PathType Leaf)) {
+    throw 'Failed to create the immutable distribution source snapshot.'
+}
+& tar -xf $sourceArchivePath -C $sourceSnapshotRoot
+if ($LASTEXITCODE -ne 0) { throw 'Failed to extract the immutable distribution source snapshot.' }
+Remove-Item -LiteralPath $sourceArchivePath -Force
 
 foreach ($moduleRoot in @($previousModuleRoot, $currentModuleRoot)) {
     foreach ($surface in @('scripts', 'extensions', '.specify', '.squad', '.github', 'templates', 'hosts')) {
-        Copy-Surface -SourcePath (Join-Path $repoRoot $surface) -DestinationPath (Join-Path $moduleRoot $surface)
+        Copy-Surface -SourcePath (Join-Path $sourceSnapshotRoot $surface) -DestinationPath (Join-Path $moduleRoot $surface)
     }
     $contractsTargetParent = Join-Path $moduleRoot 'specs\197-continuous-co-review'
     $null = New-Item -ItemType Directory -Path $contractsTargetParent -Force
     Copy-Surface `
-        -SourcePath (Join-Path $repoRoot 'specs\197-continuous-co-review\contracts') `
+        -SourcePath (Join-Path $sourceSnapshotRoot 'specs\197-continuous-co-review\contracts') `
         -DestinationPath (Join-Path $contractsTargetParent 'contracts')
 }
 

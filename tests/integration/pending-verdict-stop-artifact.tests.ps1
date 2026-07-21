@@ -254,7 +254,7 @@ try {
     $stalePlain = (($staleOutput -replace "`e\[[0-9;?]*[ -/]*[@-~]", '') -replace '\s+', ' ').Trim()
     $hasCurrentExplanation =
         ($stalePlain -match 'is stale; the actual current boundary commit is') -and
-        ($stalePlain -match [regex]::Escape("HEAD '$actualCloseout'"))
+        ($stalePlain -match [regex]::Escape($actualCloseout))
     if ($staleResult.ExitCode -eq 0 -or -not $hasCurrentExplanation) {
         Fail ("Stale pre-closeout parent was not refused with the current-commit explanation. Output:`n{0}" -f ($staleResult.Output -join [Environment]::NewLine))
     }

@@ -37,10 +37,23 @@ function Get-ContinuousCoReviewLineageLeasePath {
     Join-Path (Get-ContinuousCoReviewLineageLeaseDir -RepoRoot $RepoRoot) ($hash + '.json')
 }
 
-# Process-START identity (PID + start-time ticks) - the PID-reuse guard. '' when the process is gone.
+# Process-START identity (PID + an OS-stable start marker) - the PID-reuse guard. '' when the process is gone.
 function Get-ContinuousCoReviewProcessStartIdentity {
     param([Parameter(Mandatory)][int]$ProcessId)
     try {
+        if ($IsLinux) {
+            # Process.StartTime on Linux is reconstructed independently by each observing process and can
+            # differ by several milliseconds. That made a live lease owner look dead to another process,
+            # permitting sequential/concurrent lease theft. /proc stat field 22 is the kernel start tick and
+            # is identical across observers. The command field can contain spaces or ')' characters, so split
+            # only after its final closing parenthesis; the remaining zero-based field 19 is stat field 22.
+            $stat = [System.IO.File]::ReadAllText("/proc/$ProcessId/stat")
+            $commandEnd = $stat.LastIndexOf(')')
+            if ($commandEnd -lt 0) { return '' }
+            $fields = @($stat.Substring($commandEnd + 1).Trim() -split '\s+')
+            if ($fields.Count -le 19 -or $fields[19] -notmatch '^\d+$') { return '' }
+            return ('{0}:linux-start-ticks:{1}' -f $ProcessId, $fields[19])
+        }
         $p = Get-Process -Id $ProcessId -ErrorAction Stop
         return ('{0}:{1}' -f $ProcessId, $p.StartTime.ToUniversalTime().Ticks)
     }
@@ -58,6 +71,13 @@ function Test-ContinuousCoReviewLeaseOwnerAlive {
     if ([string]::IsNullOrWhiteSpace($ProcessStartId)) { return $false }
     $current = Get-ContinuousCoReviewProcessStartIdentity -ProcessId $pidInt
     if ([string]::IsNullOrWhiteSpace($current)) { return $false }   # no such process -> dead
+    if ($IsLinux -and $ProcessStartId -match ('^{0}:\d+$' -f [regex]::Escape([string]$pidInt))) {
+        # Conservative compatibility for leases written by the pre-/proc Linux format. Its StartTime value
+        # cannot be compared reliably across observers. A still-existing PID is therefore treated as live
+        # (safe suppression) until that legacy owner exits or explicit remediation occurs; never steal on an
+        # uncertain identity during an in-place upgrade.
+        return $true
+    }
     return ($current -eq [string]$ProcessStartId)                   # same PID AND same start -> alive; else dead / PID-reused
 }
 
@@ -65,7 +85,7 @@ function Get-ContinuousCoReviewLineageLease {
     param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][AllowEmptyString()][string]$LineageId)
     $path = Get-ContinuousCoReviewLineageLeasePath -RepoRoot $RepoRoot -LineageId $LineageId
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
-    try { return (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
+    try { return (Get-Content -LiteralPath $path -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop) } catch { return $null }
 }
 
 # Queue a NEWER reviewed tree as the lease's pending_tree (advisory hint for the next acquire). Guarded by the

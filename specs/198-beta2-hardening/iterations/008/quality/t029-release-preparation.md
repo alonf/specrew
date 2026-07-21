@@ -77,3 +77,24 @@ PR #3090 initially exposed three bounded problems before merge handoff:
   post-hoc disposition precedent. It records T035–T039 as delivered and T040 as deferred, does not fabricate a
   review/retro/closeout cycle, and grants no new implementation authority. The explicit Iteration 005 governance
   validation passes.
+
+The subsequent required deterministic gate run `29795301413` exposed seven Linux/aggregate-lane defects rather
+than release-surface failures. The bounded correction keeps the proof obligations intact:
+
+- origin-root scrubbing now recognizes foreign Windows absolute paths without resolving them as Unix-relative;
+- Linux lease liveness uses the kernel `/proc/<pid>/stat` start tick, with a cross-process regression and
+  conservative compatibility for in-flight legacy lease records;
+- the detached-service handoff fixture creates its harmless process before installing the Pester mock, avoiding
+  Linux mock recursion while still proving that a failed handoff stops the process and releases the lease;
+- stale-boundary output and synthetic Windows path-length assertions are lexical and formatting-independent;
+- the distribution-upgrade fixture archives one immutable tracked candidate snapshot instead of repeatedly
+  copying from a live checkout;
+- unprivileged generic Linux skips only the duplicate native-process matrix cases; the dedicated three-OS job
+  retains `SPECREW_REQUIRE_POSIX_RUNTIME_PROOF=1`, provisions cgroup v2, and must execute every adapter/runtime
+  case.
+
+Local correction evidence is provider-free: the two script regressions pass; Windows Pester records 45 passed and
+one Linux-only skip, including all eleven native fake-provider/Job Object cases; WSL Pester records the origin,
+lease, service, and generic-lane corrections green, with eleven explicitly reported unprivileged cgroup skips.
+The PR remains blocked until fresh required checks verify the committed correction on hosted Windows, Linux, and
+macOS.

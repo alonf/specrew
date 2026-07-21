@@ -108,10 +108,13 @@ Describe 'Continuous co-review service lease-gated spawn (T019 step 6 piece 2b)'
             }
         }
         else {
+            # Create the harmless process before installing the Start-Process mock. Calling even the
+            # module-qualified cmdlet from inside a Pester mock re-enters the mock on Linux and overflows the
+            # call stack, so the mock only returns this already-created process to the production handoff path.
+            $script:HandoffFixtureProcess = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120') -PassThru
+            Set-Content -LiteralPath (Join-Path $TestDrive 'lease-handoff-pid.txt') -Value $script:HandoffFixtureProcess.Id -Encoding UTF8
             Mock -CommandName Start-Process -MockWith {
-                $p = Microsoft.PowerShell.Management\Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120') -PassThru
-                Set-Content -LiteralPath (Join-Path $TestDrive 'lease-handoff-pid.txt') -Value $p.Id -Encoding UTF8
-                $p
+                $script:HandoffFixtureProcess
             }
         }
         # FORCE the ownership handoff to fail: the post-spawn transaction must then stop the supervisor.
