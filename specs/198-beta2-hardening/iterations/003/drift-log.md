@@ -496,7 +496,7 @@ T027, with no reopen of the shipped firewall (T004–T006).
 
 - **Divergence (recurring; root cause identified 2026-07-14)**: `Update-IterationStateFromTaskProgress`
   (`scripts/internal/task-progress.ps1`) replaced the ENTIRE `## Execution Summary` section — everything up to
-  the next `## ` heading — with its three generated digest bullets on EVERY task-progress sync. Any hook- or
+  the next level-two (`##`) heading — with its three generated digest bullets on EVERY task-progress sync. Any hook- or
   command-driven sync therefore silently destroyed the hand-authored execution narrative in a committed
   state.md. Two observed hits: the iteration-003 "reset" repaired in commit `47106751` (previous session; root
   cause then unidentified) and the 2026-07-14T15:29Z truncation of this iteration's state.md (642 lines →

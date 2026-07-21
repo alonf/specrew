@@ -38,7 +38,7 @@ No stable tag or promotion is part of T029.
 
 The first local release-surface assertion stopped before the broader suite because its extension-manifest regex
 anchored `version:` at column zero. Both shipped extension manifests correctly store the base version as the
-indented YAML line `  version: "0.40.0"`; extension surfaces do not carry the prerelease suffix. The maintainer
+indented YAML key/value `version: "0.40.0"`; extension surfaces do not carry the prerelease suffix. The maintainer
 authorized one corrected validation attempt. The corrected assertion accepts YAML indentation while still
 requiring the exact base value `0.40.0`; only `Specrew.psd1` requires `Prerelease = 'beta2'`.
 

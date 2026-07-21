@@ -38,8 +38,8 @@ The smoke script persists only `authenticated`, not the account, workspace, toke
 
 Official setup sources:
 
-- https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-macos?view=powershell-7.6
-- https://developers.openai.com/codex/cli
+- <https://learn.microsoft.com/en-us/powershell/scripting/install/install-powershell-on-macos?view=powershell-7.6>
+- <https://developers.openai.com/codex/cli>
 
 ## 2. Clone the exact handoff commit
 

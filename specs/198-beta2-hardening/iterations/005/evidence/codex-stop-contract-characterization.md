@@ -22,6 +22,7 @@
 | **Trust gate?** | **Untrusted hooks are SILENTLY skipped headlessly** (no receipt, no warning, exit 0). This is the dominant real-world risk, not the response shape. |
 
 ### Verdict on FR-051
+
 Specrew's **current model is CORRECT and now VERIFIED** for Codex 0.144.1's headless surface:
 `RefocusHookBindings.DispatcherRuntime.StopBlockShape = 'decision-block'` → `{"decision":"block","reason":…}` is exactly the shape that gates. The Codex-manual `{"continue":…,"stopReason":…,"systemMessage":…}` shape that FR-051 flagged as a candidate **does NOT work** on this version — do NOT switch the adapter to it. `DecisionOnlyEvents = ['Stop']` emitting `{}` for non-block Stop is also correct (empty = allow).
 
@@ -32,12 +33,15 @@ Specrew's **current model is CORRECT and now VERIFIED** for Codex 0.144.1's head
 ## 2. Hook I/O contract (as Codex 0.144.1 actually delivers it)
 
 **hooks.json format consumed by 0.144.1 = exactly what Specrew deploys today.** The real machine's `~/.codex/hooks.json` (Specrew-deployed, untouched by this probe) and the probe's isolated copy both use:
+
 ```json
 { "hooks": { "<Event>": [ { "hooks": [ { "type":"command", "command":"…", "timeout":30 } ] } ] } }
 ```
+
 Events keyed in **PascalCase** in hooks.json (`SessionStart`, `UserPromptSubmit`, `Stop`); Codex normalizes them to **snake_case** internally (`session_start`, `user_prompt_submit`, `stop`) for the trust-state keys in `config.toml`.
 
 **Stop hook STDIN payload** (Claude-compatible — this is what the hook receives):
+
 ```json
 {
   "session_id": "019f5d73-…",
@@ -51,6 +55,7 @@ Events keyed in **PascalCase** in hooks.json (`SessionStart`, `UserPromptSubmit`
   "last_assistant_message": "PONG"
 }
 ```
+
 Note `stop_hook_active` (loop guard) and `last_assistant_message` (lets a Stop hook inspect whether the required content was rendered — the mechanism Specrew's packet-at-stop check relies on) are both present, exactly like Claude.
 
 **SessionStart STDIN payload:** `{session_id, transcript_path, cwd, hook_event_name:"SessionStart", model, permission_mode, source:"startup"}`.
@@ -76,7 +81,7 @@ All runs: `codex exec --json --skip-git-repo-check --dangerously-bypass-approval
 | **PH** | `{}` at project-level `<cwd>/.codex/hooks.json`; CODEX_HOME has NO hooks.json | bypass | **1 fire** | turn.completed, exit 0 | **Project-level hook placement is discovered and fires.** |
 
 `--dangerously-bypass-hook-trust` emits a **visible audit event** in the `--json` stream each run:
-`{"type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}`
+``{"type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}``
 
 ---
 
@@ -91,10 +96,12 @@ All runs: `codex exec --json --skip-git-repo-check --dangerously-bypass-approval
 ## 5. The trust gate (root cause of "flaky headless hook-firing")
 
 Codex 0.144.1 gates every hook behind a **persisted trust hash**. In `$CODEX_HOME/config.toml`:
+
 ```toml
 [hooks.state.'C:\Users\alon\.codex\hooks.json:stop:0:0']
 trusted_hash = "sha256:ee3693c4…"
 ```
+
 (keyed `<hooks.json-absolute-path>:<snake_case_event>:<idx>:<idx>`).
 
 - Interactive Codex can PROMPT to approve a hook and record its `trusted_hash`.
@@ -107,6 +114,7 @@ trusted_hash = "sha256:ee3693c4…"
 ## 6. How this maps to Specrew's current Codex model
 
 Current model (`hosts/codex/host.psd1`, `scripts/internal/specrew-hook-dispatcher.ps1`, and the 185 `stop-block-capability-matrix.md`):
+
 - `StopBlockShape = 'decision-block'` → **CONFIRMED correct** for 0.144.1.
 - `DecisionOnlyEvents = ['Stop']` emitting `{}` for non-block Stop → **CONFIRMED correct** (empty allows).
 - 185 matrix claim "Codex Stop `decision:block` … + built-in `stop_hook_active`" → **CONFIRMED**, with one refinement: the built-in piece is the `stop_hook_active` **flag**; it is **advisory** (the hook must honor it) and there is **no observed hard iteration cap** — do not rely on Codex to self-terminate a runaway blocker. Specrew's own consecutive-block counter is load-bearing (as the 145 HANG analysis already assumed).
@@ -117,6 +125,7 @@ Current model (`hosts/codex/host.psd1`, `scripts/internal/specrew-hook-dispatche
 ## 7. Implications for the adapter step (NOT done here — for maintainer decision)
 
 The response shape needs **no change**. The load-bearing follow-ups the observed contract surfaces:
+
 1. **Trust gate (highest priority).** Specrew-deployed Codex hooks fire in interactive sessions only after trust is established; **headless/governed-exec contexts silently skip untrusted hooks.** Options to weigh: seed/verify the `trusted_hash` at deploy time; pass `--dangerously-bypass-hook-trust` for Specrew-owned headless invocations (already the reviewer's doctrine of running codex in a disposable trusted worktree); and have hook-health (FR-053) detect never-fired/untrusted rather than assuming a deployed config is live.
 2. **Fail-open on malformed + allow.** Codex does not flag malformed hook stdout — the dispatcher MUST guarantee well-formed `{"decision":"block","reason":…}` (or `{}`), because a malformed emit becomes a silent governance bypass.
 3. **Advisory loop guard.** Keep honoring `stop_hook_active` / the consecutive-block counter; Codex will not cap the loop for us.
@@ -136,6 +145,7 @@ The response shape needs **no change**. The load-bearing follow-ups the observed
 - **No cloud-agent probes.** Only the local installed CLI (`codex exec`, `codex doctor`, `codex --help`) was exercised.
 
 ### Infrastructure notes / honest limitations
+
 - **Interactive (TTY) Stop-firing could not be observed** — no PTY in this environment; Codex refuses non-TTY interactive (`stdin is not a terminal`). Characterization covers the **headless `exec` surface** (what the reviewer host adapter uses) plus the shared hook-engine contract. Interactive-surface Stop-block firing should be dogfood-verified separately on a real terminal before relying on it for interactive governance.
 - No infra FAILURES occurred (auth worked, exec ran, hooks fired). The only "non-clean" exit was the intentional Scenario-C timeout (exit 124).
 

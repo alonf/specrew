@@ -778,7 +778,26 @@ if ($Live) {
     if ([bool]$authorityDecision.campaign_authority_enabled) {
         try {
             . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
-            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName ([string]$parsedArgs.Host)) } else { 900 }
+            # A project-level `specrew review --host ... --authorization-ref ...` records the
+            # human grant in reviewer-hosts.json. Normal campaign runs must reload that exact
+            # selected entry; otherwise the public command drops the reference and reaches the
+            # authority store with no allowance. An explicit per-run reference remains highest
+            # precedence. Reusing a persisted reference is safe: campaign authority derives one
+            # immutable one-slot grant id from it and never mints another slot for a later run.
+            $campaignHost = [string]$parsedArgs.Host
+            $campaignModel = [string]$parsedArgs.Model
+            $campaignGrantAuthorizationRef = [string]$parsedArgs.AuthorizationRef
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) {
+                $configuredReviewer = Resolve-ContinuousCoReviewConfiguredReviewerCandidate -RepoRoot $resolvedProjectPath `
+                    -ReviewerConfigPath ([string]$parsedArgs.ReviewerConfigPath) -RequestedHost $campaignHost `
+                    -RequestedModel $campaignModel -CodeWriterHost ([string]$parsedArgs.CodeWriterHost)
+                if ($null -ne $configuredReviewer) {
+                    if ([string]::IsNullOrWhiteSpace($campaignHost)) { $campaignHost = [string]$configuredReviewer.host }
+                    if ([string]::IsNullOrWhiteSpace($campaignModel)) { $campaignModel = [string]$configuredReviewer.model }
+                    $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
+                }
+            }
+            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 900 }
             $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
             $progressSink = $null
             if (-not $Json -and -not $Quiet) {
@@ -790,8 +809,8 @@ if ($Live) {
                 }.GetNewClosure()
             }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
-                -RunId ([string]$parsedArgs.RunId) -ReviewerHost ([string]$parsedArgs.Host) -GrantAuthorizationRef ([string]$parsedArgs.AuthorizationRef) `
-                -DesignContextRefs @($parsedArgs.DesignContextRefs) -Model ([string]$parsedArgs.Model) -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
+                -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
+                -DesignContextRefs @($parsedArgs.DesignContextRefs) -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
             if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
             elseif ($Quiet) {
                 $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }

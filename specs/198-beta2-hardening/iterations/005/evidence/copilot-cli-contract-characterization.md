@@ -54,6 +54,7 @@ Read from source (no speculative edit):
   *"verify locally at binding implementation."* **This probe is that local verification.**
 
 The deployed user hook's base64 `-HostBinding` decodes to (confirms the manifest is what is live on disk):
+
 ```json
 {"BootstrapDeliveryEvents":["SessionStart"],"B3DeliveryEvents":["PostToolUse","UserPromptSubmit"],
  "RefocusTriggerByEvent":{"PostToolUse":"b3","UserPromptSubmit":"b3"},"SuppressedRefocusEvents":[],
@@ -62,6 +63,7 @@ The deployed user hook's base64 `-HostBinding` decodes to (confirms the manifest
 ```
 
 ### CLI hook surface (from `copilot --help` + `copilot help config` / `help environment`)
+
 - `-p, --prompt <text>` — non-interactive, **exits after completion**. `-i, --interactive <prompt>` — interactive, auto-runs the prompt. `--allow-all-tools` — required for non-interactive mode.
 - **No `--hooks` / `--no-hooks` CLI flag.** Hook control is CONFIG, not flag:
   - `disableAllHooks` (config, default `false`) — "disable all hooks (repo-level and user-level)".
@@ -85,11 +87,13 @@ and the JSON payload Copilot passes on stdin). Discovery = which sentinels appea
 | C2 | same repo hooks, project added to `trustedFolders` | **repo** | `copilot -p` | **FIRES** — all repo events fired. Only change between C1→C2 was the trust entry. |
 
 ### Observed event payloads (`-p`, new session)
+
 - `sessionStart`: `{"sessionId","timestamp","cwd","source":"new","initialPrompt":…}` — **`source:"new"`** for a fresh `-p` session (relevant to the B1 post-compaction `source` question: a compaction `source` value was not observed here because single-shot `-p` performs no compaction).
 - `userPromptSubmitted`: `{"sessionId","timestamp","cwd","prompt":…}`.
 - `agentStop`: `{"sessionId","timestamp","cwd","transcriptPath","stopReason":"end_turn"}`.
 
 ### Does `-p` need an opt-in to load PROJECT/REPO hooks? — YES, and the exact opt-in
+
 - **`-p` does NOT load repo/project hooks by default** (C1: untrusted fresh project → repo hooks silent, even with `--allow-all-tools`).
 - **The opt-in is FOLDER TRUST**: the project folder must appear in **`trustedFolders`** (written to `$COPILOT_HOME/settings.json`). Once trusted, `-p` loads and fires repo hooks (C2).
 - Interactive mode grants trust via a prompt the first time a folder is opened; `-p` is non-interactive and cannot prompt, so an **untrusted** folder's repo hooks are **silently skipped** — this is the accidental-bypass surface (see §5). `--allow-all-tools` / `--allow-all` do NOT auto-trust for hook-loading purposes (C1 used `--allow-all-tools`).
@@ -128,6 +132,7 @@ REAL Copilot firing, both ways:
 | D2 — reviewer-mode `-p` | `SPECREW_REFOCUS_DISABLE=1` | **YES** | `RESULT=SUPPRESSED` — kill-switch no-ops it; no injection. |
 
 **The load-bearing distinction:**
+
 - **INTENTIONAL reviewer suppression** = the hook **FIRES**, then the launcher/dispatcher kill-switch
   (`SPECREW_REFOCUS_DISABLE=1`, set on the reviewer process at `worktree-reviewer.ps1:1438`, inherited by hook
   children) makes it a **deliberate no-op**. Because `copilot -p` DOES fire user hooks (§3), the real

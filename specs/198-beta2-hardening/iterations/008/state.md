@@ -383,6 +383,7 @@
   bound exactly once and its exact commit passed all eight hosted jobs. The review-signoff verdict is captured.
 - T029 release preparation is authorized through a green PR, then stops for the maintainer's approving review
   and explicit merge instruction. T067 follows actual beta publication and remains validate-not-promote.
+
 ## Notes
 
 - T068 retains the stale record and null-pending sync as regression evidence; neither is authority. New boundary

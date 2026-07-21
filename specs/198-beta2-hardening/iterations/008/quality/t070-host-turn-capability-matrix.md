@@ -18,10 +18,10 @@ translation from a genuine native prompt boundary to the core's `UserPromptSubmi
 
 Official capability references:
 
-- Claude hooks: https://code.claude.com/docs/en/hooks
-- GitHub Copilot hooks: https://docs.github.com/en/copilot/reference/hooks-reference
-- Cursor prompt hook: https://cursor.com/marketplace/hooks/beforesubmitprompt
-- Cursor CLI hook coverage: https://cursor.com/changelog/page/9
+- Claude hooks: <https://code.claude.com/docs/en/hooks>
+- GitHub Copilot hooks: <https://docs.github.com/en/copilot/reference/hooks-reference>
+- Cursor prompt hook: <https://cursor.com/marketplace/hooks/beforesubmitprompt>
+- Cursor CLI hook coverage: <https://cursor.com/changelog/page/9>
 
 ## Capability-Absent Contract
 

@@ -132,6 +132,39 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         Test-Path -LiteralPath (Join-Path $root '.specrew/review/authority') | Should -BeFalse -Because 'invalid explicit context fails before grant or store creation'
     }
 
+    It 'reloads a recorded one-time reviewer authorization through the public campaign call path' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-recorded-authorization')
+        $configDirectory = Join-Path $root '.specrew'
+        New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
+        $reviewerConfig = Join-Path $configDirectory 'reviewer-hosts.json'
+        $recordedAuthorization = 'human-recorded-public-campaign-slot'
+        [IO.File]::WriteAllText($reviewerConfig, (([ordered]@{
+            schema_version = '1.0'
+            hosts = @([ordered]@{
+                host = 'provider-free-probe'; model = 'provider-free-probe'; adapter_id = 'reviewer-host-adapter-provider-free-probe'
+                allowed = $true; installed = $true; review_class_rank = 100; model_source = 'fixture'; cost_class = 'free-local-fixture'
+                authorization_ref = $recordedAuthorization; fallback_allowed = $false
+            })
+        }) | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+
+        $publicScript = Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'
+        $pwsh = (Get-Process -Id $PID).Path
+        $output = @(& $pwsh -NoProfile -File $publicScript -ProjectPath $root -FeatureId '001-demo' -IterationNumber '007' `
+            -Live -RunId 'run-public-recorded-authorization' -ReviewerConfigPath $reviewerConfig -TimeoutSeconds 30 -Json 2>&1)
+        $exitCode = $LASTEXITCODE
+        $text = ($output | Out-String)
+
+        $exitCode | Should -Be 1
+        $text | Should -Match '"harness_id":\s*"provider-free-probe"' -Because 'the provider-free failure result proves the selected recorded host reached production preflight'
+        $text | Should -Match 'verification-not-configured:' -Because 'the fixture deliberately stops before any provider-capable harness can run'
+        $store = Join-Path $root '.specrew/review/authority'
+        $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId 'cmp-001-demo-i007' -Kind grants)
+        $grants.Count | Should -Be 1
+        $grants[0].authorization_ref | Should -Be $recordedAuthorization
+        $grants[0].slots | Should -Be 1
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId 'cmp-001-demo-i007' -Kind spend).Count | Should -Be 0 -Because 'this regression must never invoke a provider'
+    }
+
     It 'passes validated repo-relative design context through the frozen campaign invocation without changing target identity' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'design-valid')
         $config = New-CampaignConfig -Root $root
@@ -475,7 +508,10 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match 'DesignContextRefs' -Because 'the public parser output must reach campaign validation'
         $source | Should -Match '\$boundDesignContextRefs\s*=\s*@\(\$DesignContextRef\s*\|\s*Where-Object' -Because 'an omitted named array must not become one empty explicit design-context ref'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "PSObject\.Properties\['store_root'\]" -Because 'a pre-store not-started result must render without a second property error'
-        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-Model\s+\(\[string\]\$parsedArgs\.Model\)' -Because 'the public model selection must reach campaign production-port construction'
+        $campaignSource = $source.Substring($campaignBranch, $legacy - $campaignBranch)
+        $campaignSource | Should -Match 'Resolve-ContinuousCoReviewConfiguredReviewerCandidate' -Because 'normal live runs must reload the recorded project-level reviewer grant'
+        $campaignSource | Should -Match '-GrantAuthorizationRef\s+\$campaignGrantAuthorizationRef' -Because 'the recorded authorization must reach campaign authority'
+        $campaignSource | Should -Match '-Model\s+\$campaignModel' -Because 'the resolved public model selection must reach campaign production-port construction'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-TargetRoot\s+\(\[string\]\$parsedArgs\.RunRoot\)' -Because 'the public workspace-root override must reach the singular target policy'
         $source | Should -Match '--reconcile-run'
         $source | Should -Match 'Invoke-ReviewRunReconciliation' -Because 'the public recovery surface must execute the immutable reconciliation plan'
