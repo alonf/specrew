@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 20
-**Resolution rate**: 100% (20/20 resolved; correction drifts 004–019 independently closed by T066 run 11)
+**Total drift events**: 27
+**Resolution rate**: 92.6% (25/27 resolved; DRIFT-198-I008-026 and DRIFT-198-I008-027 await hosted and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -32,8 +32,10 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 `eb9643d51780361d1009ba3267e7e14cb011b385` with zero findings. The direct-child six-file evidence commit
 `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
 `29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
-scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. T029 release and T067
-published-beta validation remain deliberately pending behind their named boundaries.
+scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
+added DRIFT-198-I008-021–027: 021–025 are corrected and exact-head verified, while 026–027 are locally corrected
+and still require hosted plus fresh independent-review proof. T029 release and T067 published-beta validation
+remain deliberately pending behind their named boundaries.
 
 ## Events
 
@@ -426,7 +428,7 @@ published-beta validation remain deliberately pending behind their named boundar
 
 ### DRIFT-198-I008-021 — Squad 0.11.0 hidden TTY prompts blocked real-console init
 
-- **Status**: immediate-EOF correction verified; follow-on DRIFT-198-I008-025 and maintainer manual retest pending
+- **Status**: resolved by the immediate-EOF correction and exact-head proof; maintainer manual retest remains a T029 release gate
 - **Severity**: release-blocking integration defect
 - **Type**: implementation/toolchain-validation drift
 - **Requirements**: FR-039, SC-012; T029 release acceptance
@@ -500,7 +502,7 @@ published-beta validation remain deliberately pending behind their named boundar
 
 ### DRIFT-198-I008-025 — closed-input launcher still allowed an unbounded child wait
 
-- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Status**: resolved by commit `249992b7b6bf7b96da6ade1b4a9f4d648d9c1f9e` and exact-head required CI; follow-on DRIFT-198-I008-027 remains open
 - **Severity**: note-level robustness defect
 - **Type**: incomplete anti-hang implementation
 - **Requirements**: FR-039, SC-012; T029 release acceptance
@@ -517,7 +519,50 @@ published-beta validation remain deliberately pending behind their named boundar
   timeout instead of selecting fallback; the production init call uses 120 seconds and aborts loudly.
 - **Paired evidence**: the existing fake completes normally after immediate EOF. A second mode ignores EOF, spawns
   a descendant, and must hit a one-second bound, throw the stable typed failure, and leave the descendant dead.
-  The registered three-OS fixture proves both directions; full/hosted gates and fresh review remain pending.
+  The registered fixture proves both directions; the local 74/74 registry and exact-head pull-request runs
+  `29848194319`, `29848194342`, and `29848194521` passed. Fresh run 02 verified this correction but exposed the
+  distinct success-drain gap recorded as DRIFT-198-I008-027.
+
+### DRIFT-198-I008-026 — informational progress renderer output stranded an invoked run
+
+- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Severity**: major authority-lifecycle defect
+- **Type**: implementation/progress-isolation drift
+- **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 correction review
+- **Observed evidence**: authorized Claude run `run-t029-claude-windows-249992b7-e897e2dd-02` spent exactly one
+  slot, wrote a raw candidate, and exited under verified Windows Job Object containment. The external progress
+  renderer returned display text to PowerShell's success pipeline. Both the collector and lower-level progress
+  writer forwarded that return value, so the runtime adapter result became an array and terminalization failed on
+  missing property `process_tree_live`. Restart reconciliation subsequently published one current, valid,
+  partial/incomplete spent-abandoned result without invoking a provider again.
+- **Authoritative requirement**: FR-061 requires every invoked run, including post-invocation controller failures,
+  to publish exactly one terminal authority result. FR-063 makes progress informational; it cannot change authority
+  or runtime result shape.
+- **Correction**: discard sink return values at both the orchestration writer and external-renderer collector.
+  Renderer exceptions and argument mutation remain contained exactly as before.
+- **Paired evidence**: the projection unit fixture returns a sentinel and proves zero pipeline output. The real
+  orchestration composition fixture uses an output-producing renderer, receives exactly one scalar terminal run
+  result, and retains its approving fixture verdict.
+
+### DRIFT-198-I008-027 — successful child exit could still hang during output drain
+
+- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Severity**: note-level robustness defect
+- **Type**: incomplete anti-hang implementation
+- **Requirements**: FR-039, SC-012; T029 release acceptance
+- **Observed evidence**: provider-free reconciliation of run 02 preserved Claude's valid finding that the normal
+  path called `GetResult()` on stdout/stderr tasks without a bound after the root process exited. A descendant
+  retaining an inherited pipe could therefore recreate a secondary indefinite wait even though the command met
+  its invocation timeout.
+- **Authoritative requirement**: SC-012 requires real pinned-toolchain init to complete. A process exit followed by
+  an unbounded output wait is failure, not successful completion, and cannot satisfy that gate.
+- **Correction**: the normal path now uses the same named 10-second output-drain bound as timeout diagnostics.
+  Incomplete drain throws `System.TimeoutException` with stable file, drain-bound, verified-root-exit, and
+  incomplete-diagnostics fields; it never returns a successful command result.
+- **Paired evidence**: the existing fake Squad still completes normally and returns its output. A new mode exits
+  zero after spawning a descendant that retains the redirected handles; the launcher must fail with the typed
+  bounded drain contract rather than hang or return success, and the fixture cleans up and proves its descendant
+  dead.
 
 ### Resolution Strategies
 

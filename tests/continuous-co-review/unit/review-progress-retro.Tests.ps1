@@ -80,6 +80,11 @@ Describe 'Informational review progress and retrospective evidence projection (T
         $original.authority | Should -BeTrue -Because 'the fixture renderer mutated only its own argument'
         $mutating.events[0].authority | Should -BeFalse
         $mutating.events[0].message | Should -Be 'controller message'
+
+        $outputting = New-ReviewProgressCollector -ExternalSink { param($event) 'renderer-pipeline-sentinel' }
+        $pipelineOutput = @(& $outputting.sink (New-ReviewProgressEvent -CampaignId cmp-demo -RunId run-three -Stage running -ObservedAt '2026-07-16T00:00:00Z' -ElapsedMilliseconds 0))
+        $pipelineOutput | Should -BeNullOrEmpty -Because 'an informational renderer cannot contaminate its caller pipeline'
+        @($outputting.events).Count | Should -Be 1
     }
 
     It 'derives timing, heartbeat, duplicate, and safe usage diagnostics without authority' {

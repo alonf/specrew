@@ -72,7 +72,10 @@ function New-ReviewProgressCollector {
                 for ($i = 0; $i -lt $events.Count; $i++) { if ([string]$events[$i].stage -ceq 'running') { $replace = $i; break } }
                 if ($replace -ge 0) { $events.RemoveAt($replace); $events.Add($snapshot) | Out-Null }
             }
-            if ($null -ne $ExternalSink) { try { & $ExternalSink $event } catch { $null = $_ } }
+            # A renderer is informational only. Its pipeline output must never join the runtime adapter's
+            # authoritative return value (an output-producing sink previously converted that object into an
+            # array and stranded an invoked run before terminal publication).
+            if ($null -ne $ExternalSink) { try { $null = & $ExternalSink $event } catch { $null = $_ } }
         }
         catch { $null = $_ }
     }.GetNewClosure()

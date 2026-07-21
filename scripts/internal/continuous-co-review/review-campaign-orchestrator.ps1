@@ -61,7 +61,9 @@ function Write-ReviewOrchestrationProgress {
         $event = New-ReviewProgressEvent -CampaignId $CampaignId -RunId $RunId -Stage $Stage -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) `
             -ElapsedMilliseconds $ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds -Message $Message -ProcessTreeLive $ProcessTreeLive `
             -OutputActivity $OutputActivity -ValidatedFindingCount $ValidatedFindingCount -Usage $Usage
-        & $Sink $event
+        # Progress is side-channel information. Never let a sink's return values join the runtime adapter's
+        # pipeline and change the shape of the authority-bearing result.
+        $null = & $Sink $event
     }
     catch {
         # Progress is informational. A renderer/collector failure cannot change review authority,

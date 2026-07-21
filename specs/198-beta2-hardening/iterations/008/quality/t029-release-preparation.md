@@ -184,3 +184,34 @@ a child. A one-second probe bound must throw the typed timeout, report verified 
 dead. Ordinary completed non-support remains the only route to the direct scaffold fallback. The corrected local
 Feature 198 registry passes all 74 suites in 787.7 seconds. Hosted verification and exact-digest independent review
 remain required before the maintainer's manual retest.
+
+## Run 02 Reconciliation and Follow-on Corrections
+
+Commit `249992b7b6bf7b96da6ade1b4a9f4d648d9c1f9e` passed the required exact-head pull-request workflows:
+Specrew CI `29848194319`, Cross-Platform Validation `29848194342`, and Test `29848194521`. A separate
+push-triggered Windows job could not resolve Pester from PSGallery; the identical-head pull-request job passed
+without a code change, so that transient availability failure did not justify another workflow retry.
+
+Authorized run `run-t029-claude-windows-249992b7-e897e2dd-02` reviewed canonical digest
+`e897e2dd8b4f53778b4b2eef54c8a967aa842d65` and spent exactly one provider slot. Claude wrote a complete raw
+candidate, but an output-producing progress renderer escaped into the PowerShell pipeline and changed the runtime
+result into an array. Terminal publication failed on missing property `process_tree_live`; the contained reviewer
+PID was verified dead, and no retry occurred. The maintainer then authorized provider-free reconciliation.
+Reconciliation used the immutable spend/recovery facts and existing candidate, invoked no provider, retired the
+claim, and published one current/valid partial-incomplete result with `runtime_outcome=abandoned` and verified
+termination/containment.
+
+The reconciled result preserves one note finding: after a successful root exit, stdout/stderr `GetResult()` calls
+were still unbounded. The correction is paired and narrow:
+
+- orchestration and external-renderer boundaries both discard every progress-sink return value; projection and
+  real orchestration fixtures return a sentinel yet publish no extra pipeline object;
+- normal output draining uses the same named 10-second bound as timeout diagnostics; a root-exit/descendant-pipe
+  fixture must throw the stable typed drain-timeout contract instead of hanging or returning success.
+
+Focused local proof passes the five progress/retro tests, all nineteen campaign-orchestrator tests, PowerShell
+parsing, and the cross-platform live-console fixture. The complete Feature 198 registry passes all 74 suites in
+910.5 seconds. Scoped governance in the primary worktree correctly refused an unrelated pre-existing local
+`state.md` phase edit; the same staged candidate passes from a clean detached worktree in 23.6 seconds with only
+historical dashboard warnings. Hosted exact-head CI and a fresh independent review remain required. This
+correction grants and spends no provider slot.

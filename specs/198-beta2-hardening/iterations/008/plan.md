@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: reviewing
-**Capacity**: 32.75/26 story_points
+**Capacity**: 33.75/26 story_points
 **Started**: 2026-07-18
 **Completed**:
 **Planning Baseline**: `ec2287c0b950ceb78522f3b5aae8dd94d4710a88`
@@ -98,6 +98,15 @@ therefore requires an explicit bound, kills and verifies the complete process tr
 and throws a typed timeout. The capability probe rethrows that timeout instead of selecting the fallback scaffold.
 T029 is now 2.0 SP; total selected effort is 32.75/26 SP, a disclosed 6.75 SP overcommit.
 
+Fresh run 02 then verified the invocation-timeout correction but exposed two bounded follow-ons. First, an
+output-producing informational progress renderer escaped into PowerShell's success pipeline and changed the
+runtime result shape, stranding the invoked run until provider-free reconciliation. Second, the reconciled
+candidate found that normal post-exit stdout/stderr draining was still unbounded. The maintainer authorized a
+provider-free reconciliation plus both corrections. T029 gains 1.0 SP: 0.4 for two-level progress-output
+suppression and its real-call-path fixture, 0.4 for symmetric bounded success draining and its inherited-handle
+fixture, and 0.2 for reconciliation/traceability/full proof. T029 is now 3.0 SP; total selected effort is
+33.75/26 SP, a disclosed 7.75 SP overcommit. No new provider invocation is part of this amendment.
+
 ## Objective
 
 Finish the Beta2 release line in one capacity-bounded iteration by combining:
@@ -179,7 +188,7 @@ the published beta from a fresh consumer; it does not promote a stable version.
 | T026 | Announced greenfield bootstrap commit and brownfield offer | FR-029, SC-008 | US4 | 0.5 | Implementer | scripts/specrew-init.ps1, scripts/internal/**, tests/** | done | Implementer | 0.5 | passed |
 | T027 | Release-model resolver and applicable closeout teaching | FR-030, SC-010 | US4 | 1.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, templates/lifecycle/**, tests/** | done | Implementer | 1.0 | passed |
 | T028 | Consumer deny checks, prompt fixture, and applicability firewall | FR-035, FR-036, FR-046, FR-047, SC-011 | US5 | 2.0 | Implementer | extensions/specrew-speckit/data/**, extensions/specrew-speckit/**, .specify/extensions/specrew-speckit/**, scripts/internal/**, templates/**, tests/** | done | Implementer | 2.0 | passed |
-| T029 | Release `v0.40.0-beta2` after separately authorized release gate | FR-039, FR-040, SC-012, SC-013 | Release | 2.0 | Implementer | Specrew.psd1, CHANGELOG.md, README.md, docs/**, scripts/init/**, scripts/specrew-init.ps1, scripts/internal/validate-versions.ps1, .github/workflows/** | blocked | Implementer | 2.0 | bounded live-console correction implemented; hosted CI, fresh independent review, maintainer manual retest, and merge authority remain pending |
+| T029 | Release `v0.40.0-beta2` after separately authorized release gate | FR-039, FR-040, FR-061, FR-063, SC-012, SC-013, SC-020, SC-021 | Release | 3.0 | Implementer | Specrew.psd1, CHANGELOG.md, README.md, docs/**, scripts/init/**, scripts/specrew-init.ps1, scripts/internal/continuous-co-review/**, scripts/internal/validate-versions.ps1, .github/workflows/** | blocked | Implementer | 3.0 | progress-output and success-drain corrections locally verified; hosted CI, fresh independent review, maintainer manual retest, and merge authority remain pending |
 | T062 | Deterministic verification-plan supplier and bounded selection catalog | FR-049, SC-015, NFR-007 | US3 | 1.25 | Implementer | scripts/internal/continuous-co-review/verification-plan-supplier.ps1, extensions/specrew-speckit/data/**, .specify/extensions/specrew-speckit/data/**, tests/continuous-co-review/** | done | Implementer | 1.25 | passed |
 | T063 | Init/update/setup materialization, guarded refresh, and actionable configuration UX | FR-049, SC-008, SC-009, SC-015 | US3 | 1.5 | Implementer | scripts/specrew-init.ps1, scripts/specrew-update.ps1, scripts/internal/**, extensions/specrew-speckit/**, .specify/extensions/specrew-speckit/**, tests/** | done | Implementer | 1.5 | passed |
 | T064 | Frozen-target verification execution and exact-digest campaign evidence injection | FR-048, FR-049, SC-015 | US3 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/continuous-co-review/** | done | Implementer | 1.5 | passed |
@@ -215,9 +224,9 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 | --- | --- | --- |
 | Effort Unit | story_points | Repository-configured unit |
 | Capacity per Iteration | 26 | Current project cap |
-| Planned Effort | 32.75 | Core finish line plus T068–T071, seven observed T066 correction classes, and the T029 live-console init corrections |
+| Planned Effort | 33.75 | Core finish line plus T068–T071, seven observed T066 correction classes, and the T029 live-console/review-runtime corrections |
 | Overcommit Threshold | 1.0 | No overcommit allowed |
-| Capacity Status | overcommitted | T071 and the T029 observed corrections are explicit; the iteration is 6.75 SP over cap |
+| Capacity Status | overcommitted | T071 and the T029 observed corrections are explicit; the iteration is 7.75 SP over cap |
 | Iteration Bounding | scope | Beta2 supplier, distribution, release, and published-beta proof form one coherent finish line |
 | Time Limit (hours) | n/a | Scope-bounded iteration |
 | Defer Strategy | manual | No requirement or optional repair is silently included or dropped |
@@ -231,7 +240,7 @@ after T061. The feature-level tasks artifact is amended under the recorded plan-
 - Full validation/signoff, its seven observed evidence/recovery/runtime-integrity correction classes, and post-publish consumer proof T066–T067 total 7.0 SP.
 - The tasks verdict selected T068 (0.75 SP) and T069 (2.25 SP), raising the original executable baseline to 18.0 SP.
 - The full-scope 2026-07-19 amendment reprices T070 to 4.0 SP with no SP ceiling.
-- Selected total: 32.75 SP. T071 plus the T029 live-console corrections create a disclosed 6.75 SP overcommit; no optional scope may be added silently.
+- Selected total: 33.75 SP. T071 plus the T029 live-console/review-runtime corrections create a disclosed 7.75 SP overcommit; no optional scope may be added silently.
 
 Iterations 001 and 002 expanded about 16–17% from plan to actual. Conservatively applying 17% to all 7.75 SP
 still-open work after T071 is added is 12.75 SP. Applying 17% to only that open work forecasts 33.67 SP total,
@@ -252,9 +261,9 @@ evidence.
 | Conformance turn-delta core and five host adapters | 4.0 | T070 |
 | Verification-copy isolation, external evidence, read-only target, and launch correction | 5.0 | T071 |
 | Full verification, seven evidence/recovery/runtime-integrity correction classes, and independent review | 6.0 | T066 |
-| Authorized prerelease publication and live-console init corrections | 2.0 | T029 |
+| Authorized prerelease publication and live-console/review-runtime corrections | 3.0 | T029 |
 | Published-beta consumer dogfood | 1.0 | T067 |
-| **Total** | **32.75** | Includes the disclosed 6.75 SP evidence-driven overcommit |
+| **Total** | **33.75** | Includes the disclosed 7.75 SP evidence-driven overcommit |
 
 ### Provider and Review-Round Budget
 

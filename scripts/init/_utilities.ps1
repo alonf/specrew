@@ -165,6 +165,7 @@ function Invoke-NativeCommandWithClosedInput {
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
+    $outputDrainTimeoutMilliseconds = 10000
     try {
         [void]$process.Start()
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
@@ -199,7 +200,7 @@ function Invoke-NativeCommandWithClosedInput {
             try {
                 $diagnosticsComplete = [System.Threading.Tasks.Task]::WaitAll(
                     [System.Threading.Tasks.Task[]]@($stdoutTask, $stderrTask),
-                    10000
+                    $outputDrainTimeoutMilliseconds
                 )
                 if ($diagnosticsComplete) {
                     foreach ($streamText in @($stdoutTask.GetAwaiter().GetResult(), $stderrTask.GetAwaiter().GetResult())) {
@@ -229,6 +230,27 @@ function Invoke-NativeCommandWithClosedInput {
                 $message += (':output=' + $boundedDiagnostic)
             }
             throw [System.TimeoutException]::new($message)
+        }
+
+        # The root process can exit while a descendant still owns an inherited output handle. Bound the normal
+        # drain just like the timeout path so a nominally successful child cannot create a secondary hang.
+        $outputDrainComplete = $false
+        try {
+            $outputDrainComplete = [System.Threading.Tasks.Task]::WaitAll(
+                [System.Threading.Tasks.Task[]]@($stdoutTask, $stderrTask),
+                $outputDrainTimeoutMilliseconds
+            )
+        }
+        catch {
+            throw [System.InvalidOperationException]::new(
+                "native-command-output-drain-failed:file=$FilePath`:process_exit=verified",
+                $_.Exception
+            )
+        }
+        if (-not $outputDrainComplete) {
+            throw [System.TimeoutException]::new(
+                "native-command-output-drain-timeout:file=$FilePath`:drain_timeout_ms=$outputDrainTimeoutMilliseconds`:process_exit=verified`:diagnostics=incomplete"
+            )
         }
 
         $output = [System.Collections.Generic.List[string]]::new()

@@ -103,6 +103,19 @@ Stdout is telemetry and is never parsed for authority.
         @($events | Where-Object { $null -ne $_.validated_finding_count -and $_.stage -ne 'terminal' }).Count | Should -Be 0
     }
 
+    It 'contains output-producing progress renderers across the real orchestration call path' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'outputting-progress-renderer')
+        $outputtingSink = { param($event) 'renderer-pipeline-sentinel' }
+        $pipelineResult = @(Invoke-OrchestratorFixture -Context $context `
+            -Target (New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one) `
+            -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) `
+            -Runtime (New-ReviewFixtureRuntimePort) -ProgressSink $outputtingSink)
+
+        $pipelineResult.Count | Should -Be 1 -Because 'renderer output must not join the runtime result pipeline'
+        $pipelineResult[0].status | Should -Be 'terminal' -Because $pipelineResult[0].reason
+        $pipelineResult[0].result.can_approve_current | Should -BeTrue
+    }
+
     It 'warns about a duplicate target-harness-contract before a separately authorized rerun spends' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'duplicate-warning') -Slots 2
         $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one

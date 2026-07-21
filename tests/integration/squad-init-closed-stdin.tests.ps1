@@ -20,6 +20,7 @@ $resultPath = Join-Path $scratchRoot 'result.json'
 $stdoutPath = Join-Path $scratchRoot 'runner.stdout'
 $stderrPath = Join-Path $scratchRoot 'runner.stderr'
 $timeoutChildPidPath = Join-Path $scratchRoot 'timeout-child.pid'
+$drainChildPidPath = Join-Path $scratchRoot 'drain-child.pid'
 $runner = $null
 
 try {
@@ -36,6 +37,16 @@ if ($env:SPECREW_TEST_SQUAD_HANG -ceq '1') {
         -PassThru
     [IO.File]::WriteAllText($env:SPECREW_TEST_CHILD_PID_PATH, [string]$child.Id)
     while ($true) { Start-Sleep -Seconds 1 }
+}
+
+if ($env:SPECREW_TEST_SQUAD_DRAIN_HANG -ceq '1') {
+    $child = Start-Process -FilePath ([Environment]::ProcessPath) `
+        -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120') `
+        -NoNewWindow `
+        -PassThru
+    [IO.File]::WriteAllText($env:SPECREW_TEST_DRAIN_CHILD_PID_PATH, [string]$child.Id)
+    Write-Output 'root-exited-after-spawning-output-holder'
+    exit 0
 }
 
 $stdinText = [Console]::In.ReadToEnd()
@@ -100,6 +111,39 @@ if (Test-Path -LiteralPath $timeoutChildPidPath -PathType Leaf) {
     $timeoutChildAlive = $null -ne (Get-Process -Id $timeoutChildPid -ErrorAction SilentlyContinue)
 }
 
+$drainCallReturned = $false
+$drainExceptionType = $null
+$drainExceptionMessage = $null
+$env:SPECREW_TEST_SQUAD_DRAIN_HANG = '1'
+$env:SPECREW_TEST_DRAIN_CHILD_PID_PATH = Join-Path $ScratchRoot 'drain-child.pid'
+$drainRoot = Join-Path $ScratchRoot 'drain-root'
+New-Item -ItemType Directory -Path $drainRoot -Force | Out-Null
+try {
+    $null = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList @('init', '--non-interactive') -WorkingDirectory $drainRoot -TimeoutSeconds 5
+    $drainCallReturned = $true
+}
+catch [System.TimeoutException] {
+    $drainExceptionType = $_.Exception.GetType().FullName
+    $drainExceptionMessage = $_.Exception.Message
+}
+finally {
+    Remove-Item Env:SPECREW_TEST_SQUAD_DRAIN_HANG -ErrorAction SilentlyContinue
+    Remove-Item Env:SPECREW_TEST_DRAIN_CHILD_PID_PATH -ErrorAction SilentlyContinue
+}
+
+$drainChildPid = 0
+$drainChildAliveAfterCleanup = $false
+$drainChildPidPath = Join-Path $ScratchRoot 'drain-child.pid'
+if (Test-Path -LiteralPath $drainChildPidPath -PathType Leaf) {
+    $drainChildPid = [int](Get-Content -LiteralPath $drainChildPidPath -Raw -Encoding UTF8)
+    $drainChild = Get-Process -Id $drainChildPid -ErrorAction SilentlyContinue
+    if ($null -ne $drainChild) {
+        try { $drainChild.Kill($true) } catch { }
+        try { [void]$drainChild.WaitForExit(5000) } catch { }
+    }
+    $drainChildAliveAfterCleanup = $null -ne (Get-Process -Id $drainChildPid -ErrorAction SilentlyContinue)
+}
+
 [ordered]@{
     supports_non_interactive = [bool]$plan.SupportsNonInteractive
     argument_list = @($plan.ArgumentList)
@@ -111,6 +155,11 @@ if (Test-Path -LiteralPath $timeoutChildPidPath -PathType Leaf) {
     timeout_exception_message = $timeoutExceptionMessage
     timeout_child_pid = $timeoutChildPid
     timeout_child_alive = $timeoutChildAlive
+    drain_call_returned = $drainCallReturned
+    drain_exception_type = $drainExceptionType
+    drain_exception_message = $drainExceptionMessage
+    drain_child_pid = $drainChildPid
+    drain_child_alive_after_cleanup = $drainChildAliveAfterCleanup
 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $ResultPath -Encoding utf8NoBOM
 '@, [Text.UTF8Encoding]::new($false))
 
@@ -133,9 +182,9 @@ if (Test-Path -LiteralPath $timeoutChildPidPath -PathType Leaf) {
 
     # Intentionally DO NOT close $runner.StandardInput until after it exits. This simulates the live console that
     # exposed the release regression while remaining deterministic in CI and on all three supported OSes.
-    if (-not $runner.WaitForExit(15000)) {
+    if (-not $runner.WaitForExit(30000)) {
         try { $runner.Kill($true) } catch { }
-        Write-Fail 'Squad probe or real init inherited the still-open parent stdin and did not finish within 15 seconds'
+        Write-Fail 'Squad probe or real init inherited the still-open parent stdin and did not finish within 30 seconds'
     }
     elseif ($runner.ExitCode -ne 0) {
         Write-Fail ("closed-input runner exited {0}: stdout={1}; stderr={2}" -f $runner.ExitCode, $stdoutTask.GetAwaiter().GetResult(), $stderrTask.GetAwaiter().GetResult())
@@ -160,8 +209,17 @@ if (Test-Path -LiteralPath $timeoutChildPidPath -PathType Leaf) {
         if ([int]$result.timeout_child_pid -le 0 -or [bool]$result.timeout_child_alive) {
             Write-Fail 'timeout did not prove that the complete fake Squad descendant process tree was terminated'
         }
+        if ($result.drain_call_returned -or $result.drain_exception_type -cne 'System.TimeoutException') {
+            Write-Fail 'a successful root exit with an inherited output holder must fail instead of hanging or returning success'
+        }
+        if ([string]$result.drain_exception_message -cnotmatch '^native-command-output-drain-timeout:file=squad:drain_timeout_ms=10000:process_exit=verified:diagnostics=incomplete') {
+            Write-Fail 'success-path output-drain failure did not carry the stable bounded failure contract'
+        }
+        if ([int]$result.drain_child_pid -le 0 -or [bool]$result.drain_child_alive_after_cleanup) {
+            Write-Fail 'output-holder fixture cleanup did not leave its descendant dead'
+        }
         if (-not $script:Failed) {
-            Write-Pass 'Squad normal paths finish on EOF; timeout fails fatally and terminates the descendant process tree'
+            Write-Pass 'Squad normal paths finish on EOF; invocation and output-drain timeouts both fail fatally without hanging'
         }
     }
 
@@ -173,6 +231,9 @@ if (Test-Path -LiteralPath $timeoutChildPidPath -PathType Leaf) {
     }
     if ($utilitiesSource -notmatch 'WaitForExit\(\$TimeoutSeconds \* 1000\)' -or $utilitiesSource -notmatch 'Kill\(\$true\)') {
         Write-Fail 'closed-input primitive must bound completion and terminate the complete process tree'
+    }
+    if ($utilitiesSource -notmatch 'Task\]::WaitAll\(' -or $utilitiesSource -notmatch 'native-command-output-drain-timeout') {
+        Write-Fail 'closed-input primitive must bound normal output draining and fail loudly when EOF never arrives'
     }
     if ($squadDeploySource -notmatch 'Invoke-NativeCommandWithClosedInput\s+-FilePath\s+''squad''.*-TimeoutSeconds\s+\$TimeoutSeconds' -or
         $squadDeploySource -notmatch 'catch\s+\[System\.TimeoutException\]\s*\{\s*[^}]*throw') {
@@ -195,6 +256,13 @@ finally {
         $timeoutChild = Get-Process -Id $timeoutChildPid -ErrorAction SilentlyContinue
         if ($null -ne $timeoutChild) {
             try { $timeoutChild.Kill($true) } catch { }
+        }
+    }
+    if (Test-Path -LiteralPath $drainChildPidPath -PathType Leaf) {
+        $drainChildPid = [int](Get-Content -LiteralPath $drainChildPidPath -Raw -Encoding UTF8)
+        $drainChild = Get-Process -Id $drainChildPid -ErrorAction SilentlyContinue
+        if ($null -ne $drainChild) {
+            try { $drainChild.Kill($true) } catch { }
         }
     }
     if (Test-Path -LiteralPath $scratchRoot) {
