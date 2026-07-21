@@ -18,13 +18,20 @@
 # which is a separate endpoint and reliably reachable from CI runners.
 FROM ubuntu:22.04
 
-# Toolchain required by harness Phases 4-5. specrew init/update perform git
-# operations and shell out to the specify (spec-kit) and squad CLIs. The minimal
-# PowerShell base image has none of these. Versions are pinned to match the CI
-# contract lane (.github/workflows/specrew-ci.yml SPEC_KIT_VERSION / SQUAD_VERSION).
+# Toolchain required by harness Phases 4-5. Phase 4 deliberately bootstraps the
+# published v0.27.6 baseline with its era-compatible CLI contract. Phase 5 loads
+# the candidate and exercises its production `specrew update --all` path to move
+# both tools to the current single-tested pins. Keeping both identities explicit
+# prevents a pin sweep from silently making the historical baseline unbootable.
+ARG BASELINE_SPEC_KIT_VERSION=0.8.4
+ARG BASELINE_SQUAD_VERSION=0.9.1
 ARG SPEC_KIT_VERSION=0.12.9
 ARG SQUAD_VERSION=0.11.0
-ENV PATH="/root/.local/bin:${PATH}"
+ENV PATH="/root/.local/bin:${PATH}" \
+    SPECREW_HARNESS_BASELINE_SPEC_KIT_VERSION="${BASELINE_SPEC_KIT_VERSION}" \
+    SPECREW_HARNESS_BASELINE_SQUAD_VERSION="${BASELINE_SQUAD_VERSION}" \
+    SPECREW_HARNESS_TARGET_SPEC_KIT_VERSION="${SPEC_KIT_VERSION}" \
+    SPECREW_HARNESS_TARGET_SQUAD_VERSION="${SQUAD_VERSION}"
 
 # Install PowerShell from Microsoft's apt package feed + base toolchain.
 # Folded into one layer to minimise image size.
@@ -55,12 +62,12 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+    && npm install -g "@bradygaster/squad-cli@${BASELINE_SQUAD_VERSION}"
 
 # uv + specify (spec-kit) CLI (uv installs to /root/.local/bin, on PATH above)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
     && /root/.local/bin/uv tool install --force specify-cli \
-        --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
+        --from "git+https://github.com/github/spec-kit.git@v${BASELINE_SPEC_KIT_VERSION}"
 
 # Install baseline Specrew v0.27.6 from PSGallery as the reference version
 RUN pwsh -Command "Install-Module -Name Specrew -RequiredVersion 0.27.6 -Repository PSGallery -Scope AllUsers -Force -AllowClobber"

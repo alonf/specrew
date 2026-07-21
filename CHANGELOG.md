@@ -4,6 +4,47 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.40.0-beta2] - 2026-07-21
+
+Features 197 and 198 harden Continuous Co-Review and complete the Beta2 supplier, injection,
+distribution, stop/capture, and release-readiness slice. **BETA** — this prerelease is not a stable
+promotion; fresh-consumer validation of the published package remains T067 work.
+
+### Added
+
+- **Deterministic review plans and exact-state evidence:** repository-owned verification plans are selected
+  without invented defaults, run against frozen disposable targets, and join controller-owned evidence only
+  when the commit and canonical reviewed-state digest match.
+- **Multi-harness, OS-contained review:** Claude, Codex, Copilot, Cursor, and Antigravity adapters use a strict
+  file-primary JSON contract under Windows Job Objects, Linux cgroups/process groups, or macOS process groups,
+  with bounded runtime, verified termination, immutable attempt accounting, and currentness reporting.
+- **Distribution and release hardening:** downstream setup deploys only provider-applicable assets, update
+  healing is hash-guarded, greenfield and brownfield initialization remain distinct, and prerelease publication
+  is separated from stable promotion.
+
+### Fixed
+
+- **Stop/capture attribution:** boundary capture is owner-scoped across sessions, stale binding is rejected,
+  and a host-independent turn-delta core compares live Git identity plus dirty-path content fingerprints instead
+  of attributing pre-existing worktree dirt to the current conversation turn.
+- **Reviewer target integrity:** verification executes in a disposable copy; reviewer targets are OS-level
+  read-only; joined implementer evidence stays outside the target; provider startup cannot bootstrap project
+  hooks into the isolated reviewer.
+- **Review convergence and signoff:** invalid output, timeout, runtime failure, target drift, and repeated
+  non-convergence stop visibly. The final candidate passed an independent Claude review with zero findings and
+  an immutable reviewed/finalized binding.
+
+### Known Beta Limitations
+
+- **Copilot and Cursor turn attribution is degraded:** Beta2 uses session-baseline semantics over a baseline
+  refreshed from live Git state at SessionStart. Degraded output says **currently dirty in the worktree**, never
+  **this turn**, and owner-attribution suppression remains active.
+- **Cursor clean-current signoff was not obtained:** its free-credit live runs prove adapter/runtime behavior but
+  do not establish a clean current approval for the release candidate. The independent release signoff is the
+  clean Claude result recorded by Iteration 008.
+- **No stable promotion is included:** T067 must install and exercise the actually published Beta2 package before
+  any separately authorized stable-release decision.
+
 ## [0.40.0-beta1] - 2026-07-09
 
 Feature 197 (Continuous Co-Review) **feature-complete** (iterations 009-010 since the 0.39.0-beta1

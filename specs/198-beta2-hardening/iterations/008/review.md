@@ -2,7 +2,7 @@
 
 **Task**: T066
 **Status**: pass — clean independent attempt 11 approves the reviewed parent and the bounded finalization envelope carries only these six evidence files
-**Overall Verdict**: blocked pending separately authorized T029 release and post-publication T067 validation; T066 review signoff is accepted
+**Overall Verdict**: blocked at the protected-branch T029 merge handoff and post-publication T067 validation; T066 review signoff is accepted
 **Reviewer**: Claude Code through the production `claude-code-file-primary` harness
 **Recorded**: 2026-07-21
 **Reviewed Commit**: `9a6b88540088be2ff82fec145079b3f8765e863e`
@@ -68,7 +68,7 @@ Totals reconcile mechanically: 11 unique runs, 11 immutable grants, 9 provider i
 | T026 | pass | Greenfield bootstrap and brownfield offer behavior are distinct and explicit. |
 | T027 | pass | Closeout teaching follows the resolved release model. |
 | T028 | pass | Consumer deny checks and applicability provenance are enforced. |
-| T029 | blocked | Beta publication requires a fresh explicit release authorization after T066 signoff. |
+| T029 | blocked | Release preparation is authorized through a green PR; merge waits for maintainer approval and an explicit merge instruction. |
 | T062 | pass | Verification-plan selection uses governed precedence and no invented default. |
 | T063 | pass | Init/update materialization is hash-guarded and actionable. |
 | T064 | pass | Frozen-target verification and exact-digest evidence injection fail closed. |
@@ -90,8 +90,8 @@ Totals reconcile mechanically: 11 unique runs, 11 immutable grants, 9 provider i
 
 ## Gap Ledger
 
-No code-review finding remains open against the reviewed parent. T029 and T067 are explicit execution carry-forwards, not hidden review gaps: T029 still requires separate release authority; T067 waits for the actual published beta and cannot promote stable. Proposal 209 remains separately scheduled.
+No code-review finding remains open against the reviewed parent. T029 and T067 are explicit execution carry-forwards, not hidden review gaps: T029 preparation is authorized only through a green release PR and then stops for maintainer merge authority; T067 waits for the actual published beta and cannot promote stable. Proposal 209 remains separately scheduled.
 
 ## Acceptance Condition Status
 
-Every attempt and provider spend is visible. Attempts 03 and 04 consumed no provider spend. Attempt 09 triggered the required non-convergence pause. T071 reset the guard only after deterministic and three-OS proof. Run 10 cleanly reviewed its target, and the provider-free gate then refused before fact publication on a newly exposed classifier mismatch. The correction was independently verified by clean run 11. The controller-owned finalization envelope carried only the six approved review artifacts and published the one-time reviewed/finalized binding. Human review signoff is now authorized; the next executable gate is the separate T029 release authorization.
+Every attempt and provider spend is visible. Attempts 03 and 04 consumed no provider spend. Attempt 09 triggered the required non-convergence pause. T071 reset the guard only after deterministic and three-OS proof. Run 10 cleanly reviewed its target, and the provider-free gate then refused before fact publication on a newly exposed classifier mismatch. The correction was independently verified by clean run 11. The controller-owned finalization envelope carried only the six approved review artifacts and published the one-time reviewed/finalized binding. Human review signoff is authorized; T029 release preparation is authorized through green PR checks and then stops for maintainer merge authority.

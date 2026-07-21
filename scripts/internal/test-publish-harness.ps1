@@ -8,8 +8,9 @@
 # Validations performed:
 # 1. FileList integrity: Every Specrew.psd1 FileList entry exists on disk
 # 2. Version pin drift: .specrew/config.yml specrew_version matches Specrew.psd1 ModuleVersion (Prop 134)
-# 3. Clean initialization: `specrew init` succeeds in a fresh project
-# 4. Clean update: `specrew update` transitions succeed without corruption
+# 3. Clean initialization: `specrew init` succeeds in a fresh project under the baseline-era toolchain
+# 4. Clean update: the candidate's production `specrew update --all` upgrades tools and project surfaces
+# 5. Exact toolchain transition: Spec Kit 0.8.4 / Squad 0.9.1 -> the candidate's pinned versions
 
 [CmdletBinding()]
 param(
@@ -45,6 +46,50 @@ function Write-Section {
     Write-Host "========================================" -ForegroundColor Cyan
 }
 
+function Assert-HarnessToolchain {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Phase,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedSpecKitVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedSquadVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ValidationScriptPath
+    )
+
+    $results = @(
+        & $ValidationScriptPath `
+            -MinimumSpecKitVersion $ExpectedSpecKitVersion `
+            -MinimumSquadVersion $ExpectedSquadVersion `
+            -PassThru
+    )
+
+    $expectedByPlatform = @{
+        'Spec Kit' = $ExpectedSpecKitVersion
+        'Squad'    = $ExpectedSquadVersion
+    }
+
+    foreach ($platform in @('Spec Kit', 'Squad')) {
+        $result = @($results | Where-Object { $_.Platform -eq $platform })
+        if ($result.Count -ne 1) {
+            Write-Fail "$Phase toolchain probe did not return exactly one $platform result."
+            exit 1
+        }
+
+        $expected = $expectedByPlatform[$platform]
+        if (-not $result[0].IsInstalled -or -not $result[0].IsOperational -or $result[0].Version -ne $expected) {
+            Write-Fail "$Phase $platform identity mismatch." ("Expected exact version {0}; observed version={1}, installed={2}, operational={3}, probe_error={4}" -f $expected, $result[0].Version, $result[0].IsInstalled, $result[0].IsOperational, $result[0].ProbeError)
+            exit 1
+        }
+    }
+
+    Write-Pass ("{0} toolchain is exact: Spec Kit {1}, Squad {2}" -f $Phase, $ExpectedSpecKitVersion, $ExpectedSquadVersion)
+}
+
 # -----------------------------------------------------------------------------
 # Phase 1: Validate Candidate Structure
 # -----------------------------------------------------------------------------
@@ -74,6 +119,28 @@ Write-Pass "Successfully parsed Specrew.psd1"
 
 $candidateVersion = $manifest.ModuleVersion
 Write-Host "Candidate version: $candidateVersion" -ForegroundColor Cyan
+
+$toolchainValidationPath = Join-Path -Path $CandidatePath -ChildPath 'extensions/specrew-speckit/scripts/validate-versions.ps1'
+if (-not (Test-Path -LiteralPath $toolchainValidationPath -PathType Leaf)) {
+    Write-Fail 'Candidate toolchain validator is missing.' "Expected: $toolchainValidationPath"
+    exit 1
+}
+
+$baselineSpecKitVersion = $env:SPECREW_HARNESS_BASELINE_SPEC_KIT_VERSION
+$baselineSquadVersion = $env:SPECREW_HARNESS_BASELINE_SQUAD_VERSION
+$targetSpecKitVersion = $env:SPECREW_HARNESS_TARGET_SPEC_KIT_VERSION
+$targetSquadVersion = $env:SPECREW_HARNESS_TARGET_SQUAD_VERSION
+foreach ($requiredIdentity in @(
+    [pscustomobject]@{ Name = 'baseline Spec Kit'; Value = $baselineSpecKitVersion },
+    [pscustomobject]@{ Name = 'baseline Squad'; Value = $baselineSquadVersion },
+    [pscustomobject]@{ Name = 'target Spec Kit'; Value = $targetSpecKitVersion },
+    [pscustomobject]@{ Name = 'target Squad'; Value = $targetSquadVersion }
+)) {
+    if ([string]::IsNullOrWhiteSpace($requiredIdentity.Value)) {
+        Write-Fail ("Harness identity is missing: {0}." -f $requiredIdentity.Name)
+        exit 1
+    }
+}
 
 # -----------------------------------------------------------------------------
 # Phase 2: FileList Integrity Check (FR-003)
@@ -148,6 +215,12 @@ Write-Pass "Version pin check PASSED. Config and manifest are synchronized at ve
 # -----------------------------------------------------------------------------
 
 Write-Section "Phase 4: Test Project Initialization"
+
+Assert-HarnessToolchain `
+    -Phase 'Baseline' `
+    -ExpectedSpecKitVersion $baselineSpecKitVersion `
+    -ExpectedSquadVersion $baselineSquadVersion `
+    -ValidationScriptPath $toolchainValidationPath
 
 # Create a clean test project directory
 $testProjectPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "specrew-test-$(Get-Random)"
@@ -226,19 +299,25 @@ try {
     }
     Write-Host "Active module version: $($loadedModule.Version)" -ForegroundColor Cyan
     
-    # Run specrew update to transition from baseline to candidate. specrew-update.ps1
-    # uses a [switch] param block: -Specrew updates the Specrew-managed assets from the
-    # loaded candidate module; -SkipUpdateCheck avoids the PSGallery latest-version probe
-    # (the candidate 0.28.0 isn't published yet — that's what this harness gates). There
-    # is no -Force / -NonInteractive switch on update.
-    Write-Host "Running specrew update to apply candidate version..."
+    # Run the candidate's production all-scope update. This is intentionally the
+    # consumer path rather than a harness-owned CLI install: it upgrades Spec Kit and
+    # Squad from the baseline-era identities to the candidate's max_tested pins while
+    # refreshing the Specrew-managed surfaces. -SkipUpdateCheck avoids only the
+    # PSGallery latest-version probe (the candidate is not published yet).
+    Write-Host "Running specrew update --all to upgrade the toolchain and apply candidate version..."
     try {
-        Update-Specrew -Specrew -SkipUpdateCheck
-        Write-Pass "specrew update succeeded"
+        Update-Specrew -All -SkipUpdateCheck
+        Write-Pass "specrew update --all succeeded"
     } catch {
         Write-Fail "specrew update failed during baseline->candidate transition" $_.Exception.Message
         exit 1
     }
+
+    Assert-HarnessToolchain `
+        -Phase 'Candidate' `
+        -ExpectedSpecKitVersion $targetSpecKitVersion `
+        -ExpectedSquadVersion $targetSquadVersion `
+        -ValidationScriptPath $toolchainValidationPath
     
     # Verify updated config reflects candidate version
     $updatedConfigPath = Join-Path -Path $testProjectPath -ChildPath '.specrew/config.yml'
@@ -328,6 +407,7 @@ Write-Host "  ✓ FileList integrity ($($fileList.Count) files)" -ForegroundColo
 Write-Host "  ✓ Version pin synchronization (Prop 134)" -ForegroundColor Green
 Write-Host "  ✓ Clean project initialization" -ForegroundColor Green
 Write-Host "  ✓ Clean update transition (v0.27.6 → v$candidateVersion)" -ForegroundColor Green
+Write-Host "  ✓ Production toolchain transition (Spec Kit $baselineSpecKitVersion → $targetSpecKitVersion; Squad $baselineSquadVersion → $targetSquadVersion)" -ForegroundColor Green
 Write-Host "  ✓ No duplicate Squad entries (FR-013)" -ForegroundColor Green
 Write-Host ""
 Write-Host "Candidate is READY for PSGallery publication." -ForegroundColor Green

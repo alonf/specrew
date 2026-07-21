@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-20T23:11:38Z"
+updated_at: "2026-07-21T01:34:45Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
@@ -68,7 +68,7 @@ tasks:
     status: "blocked"
     started_at: ""
     completed_at: ""
-    blocked_reason: "awaiting fresh explicit T029 release authorization"
+    blocked_reason: "release preparation authorized through green PR; awaiting maintainer approving review and explicit merge instruction"
   T062:
     title: "Deterministic verification-plan supplier and bounded selection catalog"
     status: "done"

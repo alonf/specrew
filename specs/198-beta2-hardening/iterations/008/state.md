@@ -5,9 +5,9 @@
 **Iteration Status**: executing
 **Last Completed Task**: T066
 **Tasks Remaining**: T029, T067
-**In Progress**: none; T029 awaits separate release authority and T067 awaits actual beta publication
+**In Progress**: none; T029 is authorized through a green release PR and then waits for maintainer merge authority; T067 awaits actual beta publication
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-20T23:11:38Z
+**Updated**: 2026-07-21T01:34:45Z
 
 ## Planning Authorization
 
@@ -60,6 +60,21 @@
   run `29785802064` passed all eight jobs.
 - **Authority limit**: this verdict completes T066 and permits retrospective preparation. It does not authorize
   T029 publication, T067 execution before publication, or stable promotion.
+
+## T029 Prerelease Delivery Authorization
+
+- **Authorized source**: commit `923b16b4fb03db7eea0f61ad1538504e387cc605`.
+- **Authorized scope**: prepare `v0.40.0-beta2`, run local validation, push the preparation commit, open the
+  release PR, and wait for its checks to pass.
+- **Mandatory stop**: after green PR checks, hand the merge to the maintainer. The authoring identity must not
+  attempt an admin bypass or retry a protected-branch refusal. Merge, tag, publication, and visibility remain
+  pending the maintainer's explicit merge instruction.
+- **Release notes**: include the known Beta2 limitation that Copilot and Cursor use session-baseline semantics
+  over the live-refreshed SessionStart baseline, with owner suppression retained and no **this turn** claim.
+- **Publication evidence due after merge**: immutable tag, publish workflow run, and visible PSGallery listing.
+- **Credential fact**: `PSGALLERY_API_KEY` is present in repository secrets as of 2026-05-18. Secret values are
+  never copied into evidence. Historical signing secrets do not change the active unsigned publication path.
+- **Promotion boundary**: no stable promotion is authorized.
 
 ## Full-Scope T070 Authorization
 
@@ -366,8 +381,8 @@
 - T070 and T071 are complete. T066 completed through eleven immutable attempts: nine provider invocations and two
   zero-spend controller stops. Run 11 is the clean exact-digest independent result; the six-file finalization is
   bound exactly once and its exact commit passed all eight hosted jobs. The review-signoff verdict is captured.
-- T029 remains pending behind a fresh explicit release grant. T067 follows actual beta publication and remains
-  validate-not-promote.
+- T029 release preparation is authorized through a green PR, then stops for the maintainer's approving review
+  and explicit merge instruction. T067 follows actual beta publication and remains validate-not-promote.
 ## Notes
 
 - T068 retains the stale record and null-pending sync as regression evidence; neither is authority. New boundary
