@@ -108,4 +108,6 @@ still snapshot tracked pre-commit edits. No release surface, version, tag, or pu
 Runs `29798607395` and `29800204611` narrowed the aggregate gate to the same 72/73 Linux-only failure. A native
 WSL reproduction proved that the archived `.specify` directory existed and was readable: `Test-Path` returned
 true, while PowerShell's `Get-Item` excluded the dot-directory as hidden. `Copy-Surface` now uses `Get-Item -Force`.
-The speculative aggregate commit-pinning machinery was removed; it did not address the reproduced failure.
+The same native run then reached the final prompt assertion and exposed its Windows-only separator regex; that
+assertion now accepts both native separators. The speculative aggregate commit-pinning machinery was removed; it
+did not address the reproduced failure.

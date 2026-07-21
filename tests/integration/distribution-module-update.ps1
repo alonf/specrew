@@ -360,7 +360,7 @@ $promptPath = Join-Path $projectRoot '.specrew\last-start-prompt.md'
 $promptContent = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
 foreach ($pattern in @(
         '## ACTION REQUIRED: Unresolved Template Refresh Artifacts',
-        '\.specrew\\template-conflicts\\',
+        '\.specrew[\\/]template-conflicts[\\/]',
         '\.conflict',
         '\.deletion',
         'accept-new',
