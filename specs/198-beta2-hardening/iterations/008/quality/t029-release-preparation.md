@@ -115,4 +115,5 @@ did not address the reproduced failure.
 Run `29801334882` passed all 73 honesty suites and then exposed two stale release-tree contracts in the broader
 bootstrap lane. The bootstrap-provider's canonical/module/project mirrors are re-synchronized byte-for-byte, and
 the old TG-004a assertion now reflects T070's approved Claude `UserPromptSubmit` B3/turn-start adapter while still
-forbidding the expensive `PostToolUse` registration.
+forbidding the expensive `PostToolUse` registration. The intentional self-host iteration reference keeps its
+firewall provenance annotation in all three mirrors.
