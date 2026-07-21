@@ -131,3 +131,33 @@ input on hosted runners without Claude. The campaign application service now val
 entry, executable, and authorization after input/design validation but before authority-store, target, or provider
 work. Refusal remains loud, reports the resolved timeout, and writes neither legacy pending state nor campaign
 authority evidence.
+
+## Manual Live-Console Init Correction
+
+The maintainer's pre-merge PowerShell 7.6.3 test against candidate
+`b5f17296afa7336d6302dc76b02c67d7d12d41df` reached **Running squad init** and waited indefinitely. Squad CLI
+0.11.0 branches its two wizard prompts on `process.stdin.isTTY` despite receiving `--non-interactive`; Specrew
+captured output while inheriting console input, making the prompt invisible and leaving it able to wait forever.
+
+The correction resolves external applications and Windows npm `.ps1` shims through one cross-platform process
+launcher, redirects stdin, and closes it immediately. Both the scratch capability probe and the production Squad
+init call use that primitive. The deterministic regression deliberately keeps the parent process's input pipe open;
+its fake Squad waits for EOF, so either old call path times out while both corrected paths finish, retain
+`init --non-interactive`, observe zero-length redirected stdin, and create `.squad`.
+
+The real packaged-module bootstrap then exposed two adjacent test/consumer hygiene defects. Squad-owned workflow
+files were incorrectly counted as additions to Specrew's exact two-file template allowlist; the combined test now
+asserts exactness only over Specrew-managed `specrew-*` names while the dedicated source/manifest/deploy allowlist
+test stays unchanged. The generated `.specrew/version-check-cache.json` was ignored in the self-host repository but
+not in downstream projects; it is now canonical per-session state, ignored before creation, untracked without
+deleting its local copy, and idempotent on a second init.
+
+Focused evidence is green: the closed-stdin regression, file-classification pairs, exact Specrew workflow
+allowlist, real packaged-module bootstrap, idempotent rerun, command-surface deploy, Crew bootstrap, dry-run
+publication, CLI-version behavior, and installed Spec Kit `0.12.9` / Squad `0.11.0` validation. The first bounded
+aggregate run passed 73/74 suites; only the T025 distribution-update fixture exceeded 300 seconds because it leaked
+an unrelated PSGallery query. Adding its existing `--skip-update-check` test flag left production unchanged and the
+same real update assertions passed in 82.5 seconds. The corrected committed candidate still requires hosted
+aggregate/three-OS CI and a fresh independent review before the maintainer manual retest and merge handoff.
+
+No provider, merge, tag, workflow dispatch, publication, or stable-promotion action occurred during this correction.

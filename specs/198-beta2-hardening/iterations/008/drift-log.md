@@ -424,6 +424,80 @@ published-beta validation remain deliberately pending behind their named boundar
 - **Evidence**: the scoped Iteration 008 governance validator passes after the projection; no authority code,
   reviewed implementation identity, provider result, attempt ledger, or finalization fact changes.
 
+### DRIFT-198-I008-021 — Squad 0.11.0 hidden TTY prompts blocked real-console init
+
+- **Status**: correction implemented; full verification, fresh independent review, and maintainer manual retest pending
+- **Severity**: release-blocking integration defect
+- **Type**: implementation/toolchain-validation drift
+- **Requirements**: FR-039, SC-012; T029 release acceptance
+- **Observed evidence**: the maintainer ran `specrew init --Force` from a real PowerShell 7.6.3 console against
+  candidate `b5f17296afa7336d6302dc76b02c67d7d12d41df`. Init reached **Running squad init** and waited indefinitely.
+  Squad CLI 0.11.0 received `--non-interactive`, but its memory-strategy and Copilot-member prompts branch on
+  `process.stdin.isTTY`. Specrew's output-capturing probe and its production call both inherited live console stdin,
+  hiding the prompt text while leaving the child able to wait for user input. Non-TTY CI and Docker runs took
+  Squad's default branch and therefore did not expose the defect.
+- **Correction**: resolve the external command cross-platform (including Windows npm `.ps1` shims), launch it with
+  redirected stdin, and close that stream immediately. Both the scratch capability probe and production Squad init
+  use the same primitive. Other init subprocesses were audited: they are bounded query/version calls or have their
+  own explicit force/preflight contracts; no second wizard-style invocation was found.
+- **Paired evidence**: `tests/integration/squad-init-closed-stdin.tests.ps1` keeps the parent process's redirected
+  input deliberately open. A fake Squad waits for EOF, so either old call path deterministically times out; the
+  corrected probe and production invocation both finish, retain `init --non-interactive`, observe redirected
+  zero-length stdin, and create `.squad`. The suite is registered in the bounded Feature 198 gate. Fresh full-gate,
+  three-OS CI, independent-review, and human live-console evidence will be appended before merge.
+
+### DRIFT-198-I008-022 — distribution integration test treated Squad-owned workflows as Specrew allowlist drift
+
+- **Status**: resolved by narrowing the assertion to Specrew-managed workflows; full verification pending
+- **Severity**: minor test-contract defect
+- **Type**: test drift
+- **Requirements**: FR-026; T023 acceptance
+- **Observed evidence**: the post-correction distribution bootstrap completed real Squad 0.11.0 init, then the
+  legacy integration test rejected `squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, and
+  `sync-squad-labels.yml` merely because the final project contained more than the two Specrew-managed workflow
+  templates. The dedicated T023 fixture already proves the source tree, module manifest, and real bundled-template
+  deployment contain exactly `specrew-methodology-gate.yml` and `specrew-work-kind.yml`. Squad creates its own
+  separately named workflows during the later dependency-owned init step.
+- **Correction**: retain the exact allowlist assertion over `specrew-*` workflows in the combined distribution
+  bootstrap while allowing Squad-owned names to remain Squad's responsibility. The dedicated source/manifest/
+  deployment allowlist test remains unchanged and still fails on any extra Specrew-managed consumer workflow.
+- **Evidence**: `tests/integration/distribution-module-init.ps1` now distinguishes the two ownership surfaces;
+  the corrected real packaged-module bootstrap and the dedicated T023 allowlist fixture must both pass.
+
+### DRIFT-198-I008-023 — version-check cache dirtied a fresh bootstrap after its baseline commit
+
+- **Status**: resolved by the canonical per-session ignore contract; full verification pending
+- **Severity**: major fresh-consumer defect
+- **Type**: implementation/file-classification drift
+- **Requirements**: FR-029, SC-008; T026 acceptance
+- **Observed evidence**: after the real packaged-module bootstrap created and announced
+  `chore(specrew): bootstrap scaffold`, `git status --porcelain=v1 --untracked-files=all` reported the newly written
+  `.specrew/version-check-cache.json`. The self-host repository ignored that cache, but the canonical downstream
+  per-session patterns omitted it, so fresh projects received no equivalent rule and did not remain clean.
+- **Correction**: classify `.specrew/version-check-cache.json` as per-session cache state. Fresh init writes the
+  ignore rule before version checks can leave the file behind; a later init also removes any mistakenly tracked
+  copy from the index without deleting the local cache.
+- **Paired evidence**: the production file-classification fixture begins with both the Claude local config and
+  version cache force-tracked, proves both are untracked but preserved, proves Git ignores each, and proves the
+  second update is idempotent. The real packaged-module bootstrap must finish with a clean committed baseline.
+
+### DRIFT-198-I008-024 — T025 template fixture leaked an unrelated PSGallery network check
+
+- **Status**: test correction implemented; isolated and hosted aggregate verification pending
+- **Severity**: minor deterministic-gate defect
+- **Type**: test-harness drift
+- **Requirements**: FR-028, SC-009; T025 acceptance
+- **Observed evidence**: the 74-suite Feature 198 registry passed 73 suites and timed out only
+  `tests/integration/distribution-module-update.ps1` at its exact 300-second child ceiling. The fixture invokes the
+  real `specrew update --specrew` template-healing path but omitted the existing `--skip-update-check` switch, so
+  it also reached the unrelated PSGallery availability query. The gate produced no assertion failure before the
+  timeout; all other 73 suites, including the new live-console init case, passed.
+- **Correction**: keep the production update path and every template/hash/advisory assertion, but pass
+  `--skip-update-check` in this deterministic template fixture. PSGallery/version-query behavior remains covered by
+  its dedicated integration suite and production is unchanged.
+- **Evidence**: one isolated corrected T025 run must finish under its 300-second registry budget; the committed
+  candidate then requires the normal hosted aggregate gate rather than treating the earlier 73/74 run as green.
+
 ### Resolution Strategies
 
 The following resolution strategies remain available if drift is detected later in execution:

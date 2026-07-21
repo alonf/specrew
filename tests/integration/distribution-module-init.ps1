@@ -193,8 +193,9 @@ if ($missingPaths.Count -gt 0) {
 $workflowRoot = Join-Path -Path $projectRoot -ChildPath '.github\workflows'
 $workflowNames = @(Get-ChildItem -LiteralPath $workflowRoot -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object Name)
 $expectedWorkflowNames = @('specrew-methodology-gate.yml', 'specrew-work-kind.yml')
-if (($workflowNames -join '|') -cne ($expectedWorkflowNames -join '|')) {
-    Write-Fail ("Distribution bootstrap workflow allowlist mismatch. Expected [{0}], got [{1}]." -f ($expectedWorkflowNames -join ', '), ($workflowNames -join ', '))
+$specrewManagedWorkflowNames = @($workflowNames | Where-Object { $_ -like 'specrew-*' })
+if (($specrewManagedWorkflowNames -join '|') -cne ($expectedWorkflowNames -join '|')) {
+    Write-Fail ("Specrew-managed distribution workflow allowlist mismatch. Expected [{0}], got [{1}]. Squad-owned workflows are outside this assertion." -f ($expectedWorkflowNames -join ', '), ($specrewManagedWorkflowNames -join ', '))
     exit 1
 }
 if ($firstRunOutput -notmatch 'Created bootstrap commit [0-9a-f]{40}: chore\(specrew\): bootstrap scaffold') {

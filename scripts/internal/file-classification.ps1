@@ -26,6 +26,7 @@ $script:SpecrewPerSessionPatterns = @(
     '.specrew/start-context.json'
     '.specrew/host-history.json'
     '.specrew/.cache/'
+    '.specrew/version-check-cache.json'
     '.squad/sessions/'
     '.squad/decisions/inbox/'
     '.specrew/last-validator-summary.json'

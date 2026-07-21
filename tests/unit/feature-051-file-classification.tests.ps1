@@ -31,7 +31,7 @@ function New-TempDir {
 
 $canonicalPerSession = @(
     '.specrew/last-*', '.specify/feature.json', '.specrew/start-context.json',
-    '.specrew/host-history.json', '.specrew/.cache/', '.squad/sessions/',
+    '.specrew/host-history.json', '.specrew/.cache/', '.specrew/version-check-cache.json', '.squad/sessions/',
     '.squad/decisions/inbox/', '.specrew/last-validator-summary.json',
     '.specrew/active-sessions.yml',  # added in Iteration 2a (T020c, FR-005 gap fix)
     '.agents/hooks.json',            # Antigravity hook config carries per-developer launcher paths.

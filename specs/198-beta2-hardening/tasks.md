@@ -77,10 +77,13 @@ Iteration 008 plan and readiness gate.
 - [x] T026 [owner: Implementer] [sp: 0.5] **Bootstrap commit** — greenfield auto `chore(specrew): bootstrap scaffold` announced; brownfield explicit recorded offer (Trace: FR-029, SC-008; owns: init tail)
 - [x] T027 [owner: Implementer] [sp: 1.0] **Release-model resolver + closeout teaching** — governance-file-else-inference; closeout renders ONLY applicable steps + names N/A reasons; beta-before-stable scoped to publish targets; init records model ask-once; lifecycle template line fixed (Trace: FR-030, SC-010; owns: `shared-governance.ps1` resolver + closeout rendering + `templates/lifecycle/software-feature-lifecycle.md`)
 - [x] T028 [owner: Implementer] [sp: 2.0] **Consumer-side deny checks + prompt fixture + inoculation + technology-assumption firewall** — gateway advisory + update heal read the shipped list (flag-only user files; rewrite hash-verified Specrew-owned); `PromptFixtureTest` renders all prompt surfaces vs anything-but-Specrew fixture, zero hits; refocus inoculation line deployed. **AMENDMENT (205-W7–W9; spec FR-046/FR-047; carried into Iteration 004 ownership 2026-07-13 — W10 ALREADY realized by T018/FR-015; does NOT reopen T004–T006)**: extend the ONE versioned deny-list with `stack-assumption` + `delivery-assumption` classes; enforce applicability provenance on every downstream-FACING technology/delivery statement (exactly one of `project-detected` / `profile-selected` / `provider-gated` / `example-only` — NO global ban on technology names; explicitly selected stack presets + provider-gated templates stay valid); fix absolute `C:/Dev/Specrew` examples and make Windows/PowerShell implementation teaching applicability-gated; add the heterogeneous consumer fixtures (Python/non-Pester test command, non-GitHub repo, no-publish/release target) proving no inapplicable technology/delivery mandate renders. COMPOSES WITH T021–T023 (provider-gated consumer CI) and T027 (release-model-aware lifecycle). (Trace: FR-035, FR-036, FR-046, FR-047, SC-011; owns: gateway advisory step, heal surface, deny-list data + taxonomy, `tests/**`, refocus content, consumer-deployed teaching/templates)
-- [ ] T029 [owner: Implementer] [sp: 0.75] **Release v0.40.0-beta2** — run the seven-surface pre-tag deterministic check; align `psgallery-release-credentials.md` with tag-driven auto-publish; then, only after T066 passes and the maintainer grants a separate release authorization, create tag `v0.40.0-beta2` (ModuleVersion 0.40.0, Prerelease beta2) and record the publication result. Acceptance: version surfaces agree before tag creation, the tag workflow publishes the prerelease, and no release action occurs under the before-implement or provider grant. (Trace: FR-040, SC-012, SC-013; owns: manifests, CHANGELOG, README, docs/operations, `scripts/internal/validate-versions.ps1`, release workflow, tag; depends: T066 and a fresh human release authorization)
+- [ ] T029 [owner: Implementer] [sp: 1.5] **Release v0.40.0-beta2** — run the seven-surface pre-tag deterministic check; align `psgallery-release-credentials.md` with tag-driven auto-publish; correct the manual-test release blocker by running both the Squad 0.11.0 capability probe and production init with immediate stdin EOF; then, only after fresh independent review and the maintainer's merge instruction, create tag `v0.40.0-beta2` (ModuleVersion 0.40.0, Prerelease beta2) and record the publication result. Acceptance: version surfaces agree; a deterministic live-console fixture keeps parent stdin open while both Squad paths finish without a prompt; the corrected PR is green and independently reviewed before merge; the tag workflow publishes the prerelease; and no stable promotion occurs. (Trace: FR-039, FR-040, SC-012, SC-013, DRIFT-198-I008-021; owns: manifests, CHANGELOG, README, docs/operations, `scripts/init/**`, `scripts/specrew-init.ps1`, `scripts/internal/validate-versions.ps1`, release workflow, tag; depends: T066 evidence plus fresh review of the post-signoff correction and maintainer merge authority)
 
 **Current T029 blocker correction**: Iterations 005 and 007 are complete. T029 now depends on Iteration 008 tasks
 T062–T066, a green exact-digest signoff, and its own fresh human release authorization.
+The 2026-07-21 manual test adds 0.75 SP to T029: Squad 0.11.0's TTY-only wizard must be isolated from inherited
+console stdin in both the probe and real init, proven deterministically and covered by a fresh independent review
+before the protected-branch merge handoff resumes.
 
 ## Iteration 005 — Local-host Beta2 compatibility certification (Beta2 RELEASE BLOCKER; ~4.0 SP provisional, pending 005 design calibration; reviewer-instructed 2026-07-14; issue #3084 = Beta3 follow-up)
 
@@ -194,7 +197,7 @@ T065 and T066. T029 remains after independent signoff and a separate release ver
 | FR-018, FR-019 | T020 | | FR-035, FR-036, FR-046, FR-047 | T028 |
 | FR-033 | T005 | | FR-040 | T029 |
 | FR-034 | T006 | | FR-037 | T004 |
-| FR-038 | T001, T002 | | FR-039 | T003 |
+| FR-038 | T001, T002 | | FR-039 | T003, T029 |
 | FR-041 | T030 | | FR-042 | T031 |
 | FR-043 | T032 | | FR-044 | T033 |
 | FR-057 | T041, T042, T043, T044, T045, T048 | | SC-017 | T041, T043, T045, T049, T050 |
@@ -277,6 +280,7 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
 | FR-029 | T026, T066 | Greenfield bootstrap and brownfield offer |
 | FR-030 | T027, T066 | Release-model-specific closeout |
 | FR-035, FR-036, FR-046, FR-047 | T028, T066 | Consumer deny checks, prompt fixtures, applicability firewall |
+| FR-039 | T029 | Live-console Squad 0.11.0 probe and production init complete with immediate stdin EOF |
 | FR-040 | T029, T066 | Separately authorized beta2 release and version proof |
 | FR-041, FR-042 | T068, T069, T066 | Exact crossing binding plus injected/multi-session capture integrity |
 | FR-044, FR-045 | T068, T066 | Append-only correction compatibility and current crossing authority |
@@ -295,7 +299,7 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
 | NFR-007 | T068, T069, T070, T062, T063, T064, T065, T071, T066 | Paired false-allow/false-deny fixtures |
 
 - **Verdict**: PASS for the approved Iteration 008 tasks scope
-- **Coverage ratio**: 32/32 scoped requirements (100%)
+- **Coverage ratio**: 33/33 scoped requirements (100%)
 - **Task count**: 19 (T021–T029 and T062–T071)
 - **Orphan tasks**: none
 - **Invalid requirement references**: none

@@ -763,7 +763,13 @@ if (-not $SpecKitExtensionOnly -and $shouldInitializeSquad) {
             Add-Action -Actions $actions -Step 'squad-init' -Outcome 'would initialize .squad via squad init --non-interactive'
         }
         else {
-            Invoke-NativeCommand -FilePath 'squad' -ArgumentList $squadInitPlan.ArgumentList -WorkingDirectory $resolvedProjectPath
+            $squadInitResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $squadInitPlan.ArgumentList -WorkingDirectory $resolvedProjectPath
+            foreach ($line in $squadInitResult.Output) {
+                Write-Host $line
+            }
+            if ($squadInitResult.ExitCode -ne 0) {
+                throw ("Command failed: squad {0}" -f ($squadInitPlan.ArgumentList -join ' '))
+            }
             Add-Action -Actions $actions -Step 'squad-init' -Outcome 'initialized .squad via squad init --non-interactive'
         }
     }

@@ -211,7 +211,7 @@ $consumerGuidanceBeforeHash = (Get-FileHash -LiteralPath $consumerGuidancePath -
 $updateResult = Invoke-ModuleScript `
     -ModuleRoot $currentModuleRoot `
     -ScriptRelativePath 'scripts\specrew-update.ps1' `
-    -Arguments @('-ProjectPath', $projectRoot, '--specrew')
+    -Arguments @('-ProjectPath', $projectRoot, '--specrew', '--skip-update-check')
 
 if ($updateResult.ExitCode -ne 0) {
     Write-Fail ("specrew update failed with exit code {0}. Output:`n{1}" -f $updateResult.ExitCode, ($updateResult.Output -join [Environment]::NewLine))

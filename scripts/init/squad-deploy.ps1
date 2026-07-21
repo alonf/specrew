@@ -30,7 +30,7 @@ function Test-SquadInitSupportsNonInteractive {
     New-Item -Path $probeDirectory -ItemType Directory -Force | Out-Null
     try {
         try {
-            $probeResult = Invoke-NativeCommandForOutput -FilePath 'squad' -ArgumentList @('init', '--non-interactive') -WorkingDirectory $probeDirectory
+            $probeResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList @('init', '--non-interactive') -WorkingDirectory $probeDirectory
         }
         catch {
             return $false
