@@ -153,7 +153,7 @@ function New-ReviewFixtureRuntimePort {
             containment_id = 'fixture-contained-process'; process_id = $PID
             process_started_at = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o')
         })
-        if ($null -ne $progress) { try { & $progress ([pscustomobject]@{ process_tree_live = $true; output_activity = $false }) } catch { $null = $_ } }
+        if ($null -ne $progress) { try { $null = & $progress ([pscustomobject]@{ process_tree_live = $true; output_activity = $false }) } catch { $null = $_ } }
         $harnessResult = & $harness.invoke $invocation $environment
         return [pscustomobject]@{
             runtime_outcome = $Outcome; termination_verified = $TerminationVerified; containment = $Containment

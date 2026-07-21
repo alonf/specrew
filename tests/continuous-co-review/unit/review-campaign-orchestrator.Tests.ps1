@@ -116,6 +116,17 @@ Stdout is telemetry and is never parsed for authority.
         $pipelineResult[0].result.can_approve_current | Should -BeTrue
     }
 
+    It 'models production progress-output containment in the fixture runtime port' {
+        $runtime = New-ReviewFixtureRuntimePort
+        $harness = [pscustomobject]@{
+            invoke = { param($invocation, $environment) [pscustomobject]@{ output_activity = $false } }
+        }
+        $runtimeOutput = @(& $runtime.invoke $harness ([pscustomobject]@{}) {} @{} { param($sample) 'fixture-runtime-progress-sentinel' })
+
+        $runtimeOutput.Count | Should -Be 1 -Because 'the fixture must model the production runtime progress-discard boundary'
+        $runtimeOutput[0].runtime_outcome | Should -Be 'completed'
+    }
+
     It 'warns about a duplicate target-harness-contract before a separately authorized rerun spends' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'duplicate-warning') -Slots 2
         $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one

@@ -236,3 +236,24 @@ the real Windows Job Object timeout fixture uses an output-producing callback an
 runtime result while retaining heartbeat and process-tree evidence. The focused 14-test progress/runtime set passes.
 The complete Feature 198 registry passes all 74 suites in 876.3 seconds. Hosted exact-head verification and a fresh
 independent review are required before manual retest and merge handoff.
+
+## Run 04 Review and Fixture-Runtime Fidelity Correction
+
+Commit `ac919fae2a227edb2f4baabcc464c55c9369d88d` passed exact-head Specrew CI `29862411243`, Test
+`29862411018`, and Cross-Platform Validation `29862411082`. Its canonical reviewed-state digest
+`ade3639ada692a7ed57591d623b1e4d089d1fb08` reproduced three times from the clean detached review source.
+
+Authorized Claude run `run-t029-claude-windows-ac919fae-ade3639a-04` spent one provider slot. The frozen
+verification plan completed before spend, the reviewer ran once under verified Windows Job Object containment,
+and the controller published a complete, current, valid terminal result. The run verified all three production
+progress-discard boundaries, the bounded successful output drain, immutable authority, exact-target currentness,
+traceability, and release identity. It returned one note-level test-fidelity finding: the fixture runtime still
+invoked its progress callback without discarding callback output locally.
+
+The fixture correction is symmetric and test-only in behavior: `New-ReviewFixtureRuntimePort` now discards the
+callback return value exactly as the production sampler does. A direct fixture-port regression supplies an
+output-producing callback and proves that the port returns one scalar completed runtime result. The full
+orchestrator test file passes 20/20. The complete Feature 198 registry passes all 74 suites in 836.135 seconds.
+A clean staged-tree governance check passes in 18.906 seconds with only the known historical dashboard warnings.
+Hosted exact-head verification and a fresh independent review remain required before manual retest and merge
+handoff.

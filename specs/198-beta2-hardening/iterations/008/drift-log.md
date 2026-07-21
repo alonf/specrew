@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 28
-**Resolution rate**: 96.4% (27/28 resolved; DRIFT-198-I008-028 awaits hosted and fresh-review proof)
+**Total drift events**: 29
+**Resolution rate**: 96.6% (28/29 resolved; DRIFT-198-I008-029 awaits hosted and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -33,7 +33,7 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
 `29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
 scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
-added DRIFT-198-I008-021–028: 021–027 are corrected and exact-head verified, while 028 is locally corrected
+added DRIFT-198-I008-021–029: 021–028 are corrected and exact-head verified, while 029 is locally corrected
 and still requires hosted plus fresh independent-review proof. T029 release and T067 published-beta validation
 remain deliberately pending behind their named boundaries.
 
@@ -569,7 +569,7 @@ remain deliberately pending behind their named boundaries.
 
 ### DRIFT-198-I008-028 — runtime progress adapter relied on upstream output suppression
 
-- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Status**: resolved by commit `ac919fae2a227edb2f4baabcc464c55c9369d88d`, exact-head CI, and run 04
 - **Severity**: note-level latent authority robustness defect
 - **Type**: incomplete defense-in-depth implementation
 - **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 release acceptance
@@ -586,6 +586,26 @@ remain deliberately pending behind their named boundaries.
 - **Paired evidence**: a pure runtime-sampler fixture makes the callback return a sentinel and proves no pipeline
   output. The real Windows Job Object timeout fixture uses the same output-producing callback and still returns
   exactly one scalar runtime result while preserving its heartbeat and verified process-tree termination evidence.
+  Exact-head runs `29862411243`, `29862411018`, and `29862411082` passed; current, valid, complete Claude run
+  `run-t029-claude-windows-ac919fae-ade3639a-04` verified all three production boundaries.
+
+### DRIFT-198-I008-029 — fixture runtime did not model production progress containment
+
+- **Status**: local correction verified; hosted verification and fresh independent review pending
+- **Severity**: note-level test-fidelity defect
+- **Type**: incomplete regression-model implementation
+- **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 release acceptance
+- **Observed evidence**: current, valid, complete Claude run
+  `run-t029-claude-windows-ac919fae-ade3639a-04` found that `New-ReviewFixtureRuntimePort` still called its
+  progress callback without discarding output. Production was fully contained, but the test double depended on
+  the upstream callback returning nothing and could not independently detect the old runtime-result array defect.
+- **Authoritative requirement**: FR-063 makes progress advisory and FR-061 requires one scalar terminal authority
+  result. A fixture used by orchestration tests must model that production boundary rather than encode a weaker
+  contract.
+- **Correction**: discard fixture progress-callback output locally, matching the production runtime sampler.
+- **Paired evidence**: the direct fixture-port regression supplies an output-producing progress callback and
+  asserts that the port returns exactly one scalar completed runtime result. The existing full orchestration
+  renderer regression remains green and continues to prove the composed terminal result is scalar.
 
 ### Resolution Strategies
 
