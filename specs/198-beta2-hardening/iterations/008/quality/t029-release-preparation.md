@@ -106,3 +106,9 @@ ANSI/layout. The distribution fixture uses checked-out `HEAD` as its immutable s
 earlier suite's shared-checkout dirt cannot redefine the candidate; standalone local runs still snapshot tracked
 pre-commit edits. The exact CI-mode pair passes locally. No release surface, version, tag, or publication action
 changed in this correction.
+
+Specrew CI run `29798607395` narrowed the aggregate gate to 72/73 and exposed the remaining identity flaw: an
+earlier lifecycle fixture had moved the symbolic `HEAD`, so that name no longer denoted the candidate even though
+the Git object itself was immutable. The aggregate runner now captures the full commit object once before any
+child starts and supplies it to the distribution fixture. Standalone runs retain the read-only tracked-edit
+snapshot behavior.

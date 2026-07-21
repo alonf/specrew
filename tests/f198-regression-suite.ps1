@@ -16,6 +16,15 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
+# Child suites are allowed to exercise Git lifecycle behavior against the checkout. Capture the
+# candidate commit object before any child starts so later distribution fixtures never confuse a
+# moved HEAD with the immutable source candidate that this aggregate run was asked to validate.
+[string]$suiteSourceSnapshotRef = (& git -C $repoRoot rev-parse --verify 'HEAD^{commit}' 2>$null | Select-Object -Last 1)
+if ($LASTEXITCODE -ne 0 -or $suiteSourceSnapshotRef.Trim() -notmatch '^[0-9a-f]{40}$') {
+    throw 'Failed to capture the aggregate suite source commit.'
+}
+$env:SPECREW_TEST_SOURCE_SNAPSHOT_REF = $suiteSourceSnapshotRef.Trim()
+
 $registry = @(
     @{ area = 'boundary ratchet (FR-001..FR-005, cycle-scoped)'; path = 'tests/unit/boundary-ratchet.tests.ps1'; kind = 'script' }
     @{ area = 'append-only scoped authorization correction ledger (FR-004/SC-014)'; path = 'tests/unit/boundary-correction-ledger.tests.ps1'; kind = 'script' }
