@@ -98,3 +98,11 @@ one Linux-only skip, including all eleven native fake-provider/Job Object cases;
 lease, service, and generic-lane corrections green, with eleven explicitly reported unprivileged cgroup skips.
 The PR remains blocked until fresh required checks verify the committed correction on hosted Windows, Linux, and
 macOS.
+
+Fresh deterministic run `29797440970` then passed 71/73 honesty suites and narrowed the remaining red state to
+two fixture-isolation assertions. The stale-boundary fixture now checks the semantic invariant directly: nonzero
+refusal, the exact live 40-hex commit in output, and byte-unchanged authority context, independent of native-error
+ANSI/layout. The distribution fixture uses checked-out `HEAD` as its immutable source under `CI=true`, so an
+earlier suite's shared-checkout dirt cannot redefine the candidate; standalone local runs still snapshot tracked
+pre-commit edits. The exact CI-mode pair passes locally. No release surface, version, tag, or publication action
+changed in this correction.

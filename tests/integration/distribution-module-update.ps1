@@ -123,13 +123,16 @@ $null = New-Item -ItemType Directory -Path $projectRoot -Force
 $null = New-Item -ItemType Directory -Path $sourceSnapshotRoot -Force
 
 # Use one immutable Git snapshot for both simulated module versions. Copying each top-level surface directly
-# from the live checkout created an observed Test-Path/Get-Item race in the isolated honesty lane. `stash create`
-# captures tracked working-tree edits without changing the index or worktree, so local pre-commit runs still test
-# the developer's candidate while clean CI naturally falls back to HEAD.
-[string]$sourceSnapshotRef = (& git -C $repoRoot -c user.name='Specrew Test' -c user.email='specrew-test@local' stash create 'distribution-module-update source snapshot' 2>$null | Select-Object -Last 1)
-if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the immutable distribution source snapshot.' }
-$sourceSnapshotRef = $sourceSnapshotRef.Trim()
-if ([string]::IsNullOrWhiteSpace($sourceSnapshotRef)) { $sourceSnapshotRef = 'HEAD' }
+# from the live checkout created an observed Test-Path/Get-Item race in the isolated honesty lane. CI validates
+# the immutable checked-out candidate commit even if a preceding suite dirtied the shared checkout. Standalone
+# local runs use `stash create` (without changing index/worktree) so tracked pre-commit edits remain testable.
+$sourceSnapshotRef = 'HEAD'
+if ($env:CI -ine 'true') {
+    [string]$localSnapshotRef = (& git -C $repoRoot -c user.name='Specrew Test' -c user.email='specrew-test@local' stash create 'distribution-module-update source snapshot' 2>$null | Select-Object -Last 1)
+    if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the immutable distribution source snapshot.' }
+    $localSnapshotRef = $localSnapshotRef.Trim()
+    if (-not [string]::IsNullOrWhiteSpace($localSnapshotRef)) { $sourceSnapshotRef = $localSnapshotRef }
+}
 & git -C $repoRoot archive --format=tar --output=$sourceArchivePath $sourceSnapshotRef
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $sourceArchivePath -PathType Leaf)) {
     throw 'Failed to create the immutable distribution source snapshot.'

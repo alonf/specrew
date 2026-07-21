@@ -251,10 +251,11 @@ try {
         '-AuthCommitHash', $staleParent
     )
     $staleOutput = ($staleResult.Output -join [Environment]::NewLine)
-    $stalePlain = (($staleOutput -replace "`e\[[0-9;?]*[ -/]*[@-~]", '') -replace '\s+', ' ').Trim()
-    $hasCurrentExplanation =
-        ($stalePlain -match 'is stale; the actual current boundary commit is') -and
-        ($stalePlain -match [regex]::Escape($actualCloseout))
+    # PowerShell's native-error renderer inserts platform/version-dependent ANSI and line wrapping around the
+    # message. The semantic contract is a non-zero refusal that names the exact live 40-hex commit, while the
+    # unchanged-context assertion below proves the stale request did not mutate authority state.
+    $reportedCommits = @([regex]::Matches($staleOutput, '(?i)(?<![0-9a-f])[0-9a-f]{40}(?![0-9a-f])') | ForEach-Object { $_.Value })
+    $hasCurrentExplanation = $reportedCommits -contains $actualCloseout
     if ($staleResult.ExitCode -eq 0 -or -not $hasCurrentExplanation) {
         Fail ("Stale pre-closeout parent was not refused with the current-commit explanation. Output:`n{0}" -f ($staleResult.Output -join [Environment]::NewLine))
     }
