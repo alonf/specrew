@@ -1,6 +1,8 @@
 # Iteration State: 005
 
 **Schema**: v1
+**Current Phase**: abandoned
+**Iteration Status**: abandoned
 **Last Completed Task**: Human-confirmed eight-lens architectural reassessment after the final authorized review returned eight blocking findings. The replacement `ReviewCampaign` / one-invocation `ReviewRun` architecture, immutable JSON coordination, five-harness contract, three-OS runtime control, result/recovery semantics, performance profile, component map, and implementation rules are durable. See file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/design-analysis.md.
 **Tasks Remaining**: Iteration 005 implementation is stopped and its mutable process-owned lease is superseded. The authoritative specification now contains FR-057–FR-065 and SC-017–SC-021. New capacity-compliant plan/tasks must replace, not extend, the T035–T040 compatibility slice; a new human plan/tasks verdict is required before implementation. Beta2 remains release-blocked until both replacement slices and all five live harness proofs complete. FR-054 remains deferred to issue #3084 / Beta3.
 **In Progress**: Iteration 006 authority-foundation planning; no task artifact or replacement implementation authorized
@@ -8,10 +10,9 @@
 **Updated**: 2026-07-16T03:45:00Z
 
 <!--
-  Current Phase / Iteration Status are set canonically by the sync
-  machinery (Proposal 090) once execution begins — omitted at planning
-  scaffold time to match the sanctioned shape (iteration 002 precedent),
-  never hand-authored with a non-canonical value.
+  Current Phase / Iteration Status now record the archival `abandoned`
+  disposition added with the post-hoc plan. This does not fabricate a
+  review/retro/closeout cycle or authorize further Iteration 005 work.
 -->
 
 ## Execution Summary

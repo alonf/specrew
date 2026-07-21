@@ -60,3 +60,20 @@ entries, base-version parity at `0.40.0`, exact baseline tool identities, succes
 initialization, production-path upgrades to the exact candidate pins, project transition to `0.40.0`, post-update
 FileList integrity, and zero duplicate Squad rows. The strengthened harness-contract regression also passed before
 the container run. No second Docker harness run was used.
+
+## Release PR Gate Corrections
+
+PR #3090 initially exposed three bounded problems before merge handoff:
+
+- Markdown lint reported 31 mechanical findings across eight historical/current Markdown files. The exact
+  PR-changed Markdown surface now passes `markdownlint`, with no content change beyond the necessary nested-code
+  wording repairs.
+- Independent review found that campaign-mode `specrew review --live` did not reload a project-level recorded
+  reviewer authorization. Commit `e305ecec` routes the persisted selected host/model/reference through the existing
+  selection policy into the one-slot campaign grant. A real public-command, provider-free regression proves one
+  grant fact, zero spend facts, and fail-closed preflight; 85 focused campaign/selection/authorization tests pass.
+- Changed-only governance surfaced the already-recorded Iteration 005 missing-`plan.md` exception. Iteration 005 now
+  has an archival `abandoned` plan plus matching canonical state fields, following the repository's existing
+  post-hoc disposition precedent. It records T035–T039 as delivered and T040 as deferred, does not fabricate a
+  review/retro/closeout cycle, and grants no new implementation authority. The explicit Iteration 005 governance
+  validation passes.
