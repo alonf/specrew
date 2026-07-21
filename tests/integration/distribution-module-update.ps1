@@ -27,7 +27,7 @@ function Copy-Surface {
         throw "Missing required source path '$SourcePath'."
     }
 
-    $item = Get-Item -LiteralPath $SourcePath
+    $item = Get-Item -Force -LiteralPath $SourcePath
     if ($item.PSIsContainer) {
         Copy-Item -LiteralPath $SourcePath -Destination $DestinationPath -Recurse -Force
         return
@@ -122,23 +122,15 @@ $null = New-Item -ItemType Directory -Path $currentModuleRoot -Force
 $null = New-Item -ItemType Directory -Path $projectRoot -Force
 $null = New-Item -ItemType Directory -Path $sourceSnapshotRoot -Force
 
-# Use one immutable Git snapshot for both simulated module versions. The aggregate suite supplies the exact
-# commit object captured before any child starts because lifecycle fixtures may legitimately move HEAD. A
-# standalone run uses `stash create` (without changing index/worktree) so tracked pre-commit edits remain testable.
-$sourceSnapshotRef = [string]$env:SPECREW_TEST_SOURCE_SNAPSHOT_REF
-if (-not [string]::IsNullOrWhiteSpace($sourceSnapshotRef)) {
-    $sourceSnapshotRef = $sourceSnapshotRef.Trim()
-    if ($sourceSnapshotRef -notmatch '^[0-9a-f]{40}$') {
-        throw 'The aggregate distribution source snapshot is not a full commit object ID.'
-    }
-    & git -C $repoRoot cat-file -e "${sourceSnapshotRef}^{commit}" 2>$null
-    if ($LASTEXITCODE -ne 0) { throw 'The aggregate distribution source snapshot is not available as a commit.' }
-}
-else {
+# Use one immutable Git snapshot for both simulated module versions. CI validates the checked-out candidate
+# commit even if a preceding suite dirtied the shared checkout. Standalone local runs use `stash create`
+# (without changing index/worktree) so tracked pre-commit edits remain testable.
+$sourceSnapshotRef = 'HEAD'
+if ($env:CI -ine 'true') {
     [string]$localSnapshotRef = (& git -C $repoRoot -c user.name='Specrew Test' -c user.email='specrew-test@local' stash create 'distribution-module-update source snapshot' 2>$null | Select-Object -Last 1)
     if ($LASTEXITCODE -ne 0) { throw 'Failed to resolve the immutable distribution source snapshot.' }
     $localSnapshotRef = $localSnapshotRef.Trim()
-    $sourceSnapshotRef = if ([string]::IsNullOrWhiteSpace($localSnapshotRef)) { 'HEAD' } else { $localSnapshotRef }
+    if (-not [string]::IsNullOrWhiteSpace($localSnapshotRef)) { $sourceSnapshotRef = $localSnapshotRef }
 }
 & git -C $repoRoot archive --format=tar --output=$sourceArchivePath $sourceSnapshotRef
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $sourceArchivePath -PathType Leaf)) {

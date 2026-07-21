@@ -100,15 +100,12 @@ The PR remains blocked until fresh required checks verify the committed correcti
 macOS.
 
 Fresh deterministic run `29797440970` then passed 71/73 honesty suites and narrowed the remaining red state to
-two fixture-isolation assertions. The stale-boundary fixture now checks the semantic invariant directly: nonzero
-refusal, the exact live 40-hex commit in output, and byte-unchanged authority context, independent of native-error
-ANSI/layout. The distribution fixture uses checked-out `HEAD` as its immutable source under `CI=true`, so an
-earlier suite's shared-checkout dirt cannot redefine the candidate; standalone local runs still snapshot tracked
-pre-commit edits. The exact CI-mode pair passes locally. No release surface, version, tag, or publication action
-changed in this correction.
+two fixture assertions. The stale-boundary fixture now checks the semantic invariant directly: nonzero refusal,
+the exact live 40-hex commit in output, and byte-unchanged authority context, independent of native-error
+ANSI/layout. The distribution fixture uses one Git archive for both module simulations; standalone local runs
+still snapshot tracked pre-commit edits. No release surface, version, tag, or publication action changed.
 
-Specrew CI run `29798607395` narrowed the aggregate gate to 72/73 and exposed the remaining identity flaw: an
-earlier lifecycle fixture had moved the symbolic `HEAD`, so that name no longer denoted the candidate even though
-the Git object itself was immutable. The aggregate runner now captures the full commit object once before any
-child starts and supplies it to the distribution fixture. Standalone runs retain the read-only tracked-edit
-snapshot behavior.
+Runs `29798607395` and `29800204611` narrowed the aggregate gate to the same 72/73 Linux-only failure. A native
+WSL reproduction proved that the archived `.specify` directory existed and was readable: `Test-Path` returned
+true, while PowerShell's `Get-Item` excluded the dot-directory as hidden. `Copy-Surface` now uses `Get-Item -Force`.
+The speculative aggregate commit-pinning machinery was removed; it did not address the reproduced failure.
