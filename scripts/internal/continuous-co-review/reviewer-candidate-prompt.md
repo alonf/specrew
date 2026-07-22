@@ -32,8 +32,12 @@ run_id = "__RUN_ID__"
 target_digest = "__TARGET_DIGEST__"
 completion = "complete" or "partial"
 verdict = "pass", "findings", or "incomplete"
-summary = bounded plain text
+summary = concise plain text
 findings = array of objects with exactly: local_id, severity, title, description, and optional location
+
+Keep the candidate well inside the schema bounds: summary at most 2000 characters; no more than 50
+findings; each local_id at most 48 characters, title at most 160, description at most 3000, and location
+at most 800. Shorten prose instead of exceeding a budget; never truncate the JSON object.
 
 Each `severity` is one of `blocking`, `major`, `minor`, or `note`. Use unique, run-local `local_id` values.
 `location`, when present, must be one plain JSON string such as `path/to/file:line`; never an object,

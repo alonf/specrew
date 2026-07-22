@@ -99,6 +99,19 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $validation.errors | Should -Contain 'prompt-contract-missing:location-string-type'
     }
 
+    It 'rejects a prompt that omits the conservative candidate-size budgets' {
+        $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
+        $weakened = [regex]::Replace(
+            $template,
+            '(?is)Keep the candidate well inside the schema bounds:.+?never truncate the JSON object\.',
+            'Keep the candidate concise.'
+        )
+        $validation = Test-ReviewFilePrimaryPromptTemplate -Template $weakened
+        $validation.valid | Should -BeFalse
+        $validation.errors | Should -Contain 'prompt-contract-missing:summary-budget'
+        $validation.errors | Should -Contain 'prompt-contract-missing:finding-budgets'
+    }
+
     It 'catalogs all five production vectors under the same file-primary contract without implementing absent adapters' {
         $expected = @('claude', 'codex', 'copilot', 'cursor-agent', 'antigravity')
         foreach ($hostName in $expected) {
@@ -191,6 +204,15 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $read = Read-HarnessCandidateText -Root (Join-Path $TestDrive 'valid-findings') -Text $withFindings
         $read.valid | Should -BeTrue
         @($read.candidate.findings).Count | Should -Be 1
+    }
+
+    It 'rejects a candidate whose summary exceeds the strict ingress maximum' {
+        $candidate = New-HarnessCandidate
+        $candidate.summary = 'x' * 4001
+        $read = Read-HarnessCandidateText -Root (Join-Path $TestDrive 'summary-too-long') -Text ($candidate | ConvertTo-Json -Depth 20 -Compress)
+        $read.valid | Should -BeFalse
+        $read.category | Should -Be 'schema-invalid'
+        $read.errors | Should -Contain 'too-long:summary:4000'
     }
 
     It 'rejects prose, fences, trailing text, malformed JSON, unknown fields, missing fields, identity drift, and unsupported versions' -ForEach @(

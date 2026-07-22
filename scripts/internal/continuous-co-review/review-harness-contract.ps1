@@ -43,7 +43,9 @@ function Test-ReviewFilePrimaryPromptTemplate {
         @{ name = 'source-read-only'; pattern = '(?is)do\s+not\s+modify\s+the\s+source' },
         @{ name = 'single-reviewer-session'; pattern = '(?is)do\s+not\s+delegate\s+to\s+subagents\s+or\s+start\s+other\s+model-backed\s+reviewers' },
         @{ name = 'risk-based-completion'; pattern = '(?is)risk-based\s+inspection.+not\s+required\s+to\s+open\s+every\s+file.+complete\s+candidate.+requested\s+review\s+scope.+high-risk\s+check' },
-        @{ name = 'location-string-type'; pattern = '(?is)`?location`?.+when\s+present.+plain\s+JSON\s+string.+never\s+an\s+object.+array.+number.+boolean' }
+        @{ name = 'location-string-type'; pattern = '(?is)`?location`?.+when\s+present.+plain\s+JSON\s+string.+never\s+an\s+object.+array.+number.+boolean' },
+        @{ name = 'summary-budget'; pattern = '(?is)summary\s+at\s+most\s+2000\s+characters' },
+        @{ name = 'finding-budgets'; pattern = '(?is)no\s+more\s+than\s+50\s+findings.+local_id\s+at\s+most\s+48\s+characters.+title\s+at\s+most\s+160.+description\s+at\s+most\s+3000.+location\s+at\s+most\s+800.+shorten\s+prose.+never\s+truncate\s+the\s+JSON\s+object' }
     )) {
         if ($Template -notmatch $rule.pattern) { $errors.Add(('prompt-contract-missing:' + $rule.name)) | Out-Null }
     }

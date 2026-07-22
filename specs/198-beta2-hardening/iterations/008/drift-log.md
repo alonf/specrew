@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 42
-**Resolution rate**: 88.1% (37/42 resolved; DRIFT-198-I008-038/039/041/042 await fresh independent review, and DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof)
+**Total drift events**: 43
+**Resolution rate**: 86.0% (37/43 resolved; DRIFT-198-I008-038/039/041/042 await fresh independent review, DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof, and DRIFT-198-I008-043 awaits exact-head and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -864,6 +864,36 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   passed all 76 registered suites in 1,343.7 seconds and scoped governance in 21.880 seconds. Its Test run
   `29951947552`, Specrew CI `29951948377`, Cross-Platform PR `29951947673`, and Cross-Platform push
   `29951942654` all succeeded, including both macOS runtime jobs.
+
+### DRIFT-198-I008-043 — reviewer prompt omitted the numeric candidate budgets enforced by strict ingress
+
+- **Status**: corrected locally; focused contract proof passes 27/27; exact-head CI and fresh independent review pending
+- **Severity**: release-review blocker
+- **Type**: incomplete file-primary prompt contract
+- **Requirements**: FR-060, FR-063, NFR-002; T029 release acceptance
+- **Observed evidence**: run `run-t029-claude-windows-b39e3fce-e231860c-12` completed its frozen verification
+  plan and invoked Claude exactly once against commit `b39e3fce0d185941878ad27c019dc2dd66b82b3a` / digest
+  `e231860c254278f7006486d26a5906c9eaa05c78`. Strict ingress rejected the raw file-primary candidate as
+  `schema-invalid: too-long:summary:4000` because its summary contained 4,051 characters. The immutable result is
+  therefore `invalid-output`, has no validated findings, and cannot approve the target. The raw rejected payload's
+  single note is unvalidated evidence and is not promoted or repaired under this correction.
+- **Correction**: the production prompt now states conservative budgets below every schema maximum: 2,000 summary
+  characters, 50 findings, 48-character local IDs, 160-character titles, 3,000-character descriptions, and
+  800-character locations. It tells the reviewer to shorten prose and never truncate the JSON object. The prompt
+  validator requires both the summary and per-finding budget clauses, preventing an adapter from silently reverting
+  to the ambiguous word `bounded`.
+- **Paired evidence**: the deterministic contract suite rejects a prompt with the budget paragraph removed while
+  retaining the existing overlong-candidate rejection and valid raw-file acceptance cases. One exact-head CI pass
+  and one fresh invocation are the only remaining proof cycle; any new invalid output, finding, runtime failure, or
+  drift stops instead of starting another correction loop.
+
+#### T029 run-12 release-preparation evidence
+
+- **Provider accounting**: one unique invocation and one spend; no hidden retry.
+- **Controller proof**: the frozen verification plan completed before spend and the target remained current.
+- **Authoritative outcome**: strict invalid-output rejection; no validated finding and no approval effect.
+- **Next action**: one conservative prompt-contract correction, exact-head CI, and one new run identity. A clean
+  result returns T029 to the maintainer's manual workshop test; any other outcome returns to the maintainer.
 
 ### Resolution Strategies
 
