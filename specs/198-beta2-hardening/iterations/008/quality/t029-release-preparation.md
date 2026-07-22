@@ -464,3 +464,12 @@ the closure. Three concurrent WSL executions then passed all six applicable case
 and the Windows contract path passed with expected POSIX skips. Reviewer execution remains independently bounded;
 readiness or cleanup failure still returns no authority. The complete registry, exact-head CI, and fresh independent
 review remain required before the completed-workshop manual retest.
+
+### Exact-head proof for the POSIX and workshop-state candidate
+
+Detached clean commit `47298c66f7f6908a658a95d7c4b7e89787c4a64a` passed the complete 76-suite Feature 198
+registry in 1,343.7 seconds and scoped Iteration 008 governance in 21.880 seconds. Hosted exact-head Test run
+`29951947552`, Specrew CI run `29951948377`, Cross-Platform PR run `29951947673`, and Cross-Platform push run
+`29951942654` all succeeded. Both macOS fake-provider runtime jobs passed, so the original process-group failure was
+not retried unchanged; it was corrected and re-proved. Fresh independent review remains the only automated gate
+before the from-scratch Copilot workshop test through the final lens and the restored ordinary Stop behavior.

@@ -23,7 +23,7 @@
 ## Summary
 
 **Total drift events**: 42
-**Resolution rate**: 88.1% (37/42 resolved; DRIFT-198-I008-038/039 await fresh independent review, DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof, and DRIFT-198-I008-041/042 await exact-head/review proof)
+**Resolution rate**: 88.1% (37/42 resolved; DRIFT-198-I008-038/039/041/042 await fresh independent review, and DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -785,8 +785,8 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-040 — model-authored workshop marker was absent in a real Copilot lens turn
 
-- **Status**: corrected locally; all 76 registered suites pass; hosted CI, fresh independent review, and from-scratch
-  completion retest pending
+- **Status**: corrected; all 76 registered suites and exact-head hosted CI pass; fresh independent review and
+  from-scratch completion retest pending
 - **Severity**: release-blocking workshop UX and lifecycle-completion defect
 - **Type**: unstable cross-host control signal and incomplete durable completion proof
 - **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
@@ -819,8 +819,8 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-041 — the frozen full-registry command had no controller-overhead margin
 
-- **Status**: corrected locally; command-scoped diagnostic proof captured; exact-head CI and fresh independent
-  review pending
+- **Status**: corrected; command-scoped diagnostic and exact-head CI proof captured; fresh independent review
+  pending
 - **Severity**: release-review blocker
 - **Type**: verification-budget configuration drift
 - **Requirements**: FR-048, FR-049, SC-015, NFR-002; T029 release acceptance
@@ -840,7 +840,7 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-042 — POSIX containment proof used startup windows below observed host latency
 
-- **Status**: corrected locally; three concurrent WSL proofs pass; exact-head CI proof pending
+- **Status**: corrected; three concurrent WSL and exact-head hosted CI proofs pass; fresh independent review pending
 - **Severity**: release-check stability blocker
 - **Type**: timing-sensitive containment fixture and startup-budget drift
 - **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
@@ -860,7 +860,10 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   handshake proceeds to the independently bounded execution timeout. The existing timeout case must observe a real
   child and prove it dead; capability absence, permanent membership failure, and cleanup failure remain fail-closed.
   Three concurrent WSL executions each passed all six applicable cases with two expected cgroup-delegation skips;
-  the Windows contract path passed four cases with four expected POSIX skips.
+  the Windows contract path passed four cases with four expected POSIX skips. Clean detached commit `47298c66`
+  passed all 76 registered suites in 1,343.7 seconds and scoped governance in 21.880 seconds. Its Test run
+  `29951947552`, Specrew CI `29951948377`, Cross-Platform PR `29951947673`, and Cross-Platform push
+  `29951942654` all succeeded, including both macOS runtime jobs.
 
 ### Resolution Strategies
 
