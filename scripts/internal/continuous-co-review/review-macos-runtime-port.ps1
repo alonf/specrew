@@ -66,6 +66,24 @@ function Test-ReviewMacProcessGroupMembership {
     return $null -ne $observed -and [int]$observed -eq $ProcessId
 }
 
+function Wait-ReviewMacProcessGroupMembership {
+    param(
+        [Parameter(Mandatory)]$Descriptor,
+        [Parameter(Mandatory)]$Ready,
+        [Parameter(Mandatory)][int]$ProcessId,
+        [ValidateRange(25, 5000)][int]$TimeoutMilliseconds = 1000,
+        [ValidateRange(1, 100)][int]$PollMilliseconds = 25,
+        [scriptblock]$MembershipProbe
+    )
+    if (-not $MembershipProbe) { $MembershipProbe = ${function:Test-ReviewMacProcessGroupMembership} }
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        if (& $MembershipProbe -Descriptor $Descriptor -Ready $Ready -ProcessId $ProcessId) { return $true }
+        [Threading.Thread]::Sleep($PollMilliseconds)
+    } while ($watch.ElapsedMilliseconds -lt $TimeoutMilliseconds)
+    return $false
+}
+
 function Test-ReviewMacProcessGroupAvailability {
     if (-not $IsMacOS) { return [pscustomobject]@{ ok = $false; reason = 'macos-process-group-wrong-platform' } }
     foreach ($name in @('ps')) {
@@ -84,7 +102,7 @@ function Test-ReviewMacProcessGroupAvailability {
         $stdoutDrain = $process.StandardOutput.BaseStream.CopyToAsync([IO.Stream]::Null); $stderrDrain = $process.StandardError.BaseStream.CopyToAsync([IO.Stream]::Null)
         $ready = Wait-ReviewPosixReadyFile -Path $readyPath -ExpectedMode process-group -TimeoutMilliseconds 5000
         $descriptor = [pscustomobject]@{ pgid = $process.Id; mode = 'process-group' }
-        if ($null -eq $ready -or -not (Test-ReviewMacProcessGroupMembership -Descriptor $descriptor -Ready $ready -ProcessId $process.Id)) { throw 'macos-process-group-probe-membership-failed' }
+        if ($null -eq $ready -or -not (Wait-ReviewMacProcessGroupMembership -Descriptor $descriptor -Ready $ready -ProcessId $process.Id)) { throw 'macos-process-group-probe-membership-failed' }
         $process.StandardInput.Close(); [void]$process.WaitForExit(5000)
         [void]$stdoutDrain.Wait(5000); [void]$stderrDrain.Wait(5000)
         if (-not (Wait-ReviewMacProcessGroupEmpty -Descriptor $descriptor -TimeoutMilliseconds 5000)) { throw 'macos-process-group-probe-cleanup-failed' }
@@ -107,7 +125,7 @@ function New-ReviewMacOSRuntimePort {
         [ValidateRange(0, 10)][int]$TerminationGraceSeconds = 5,
         [scriptblock]$CapabilityProbe
     )
-    $membershipCommand = ${function:Test-ReviewMacProcessGroupMembership}
+    $membershipCommand = ${function:Wait-ReviewMacProcessGroupMembership}
     $stopCommand = ${function:Stop-ReviewMacProcessGroup}
     $waitCommand = ${function:Wait-ReviewMacProcessGroupEmpty}
     $getGroupCommand = ${function:Get-ReviewMacProcessGroupPids}

@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 36
-**Resolution rate**: 86.1% (31/36 resolved; DRIFT-198-I008-032–036 await exact-head CI and fresh-review proof; 032 also awaits the clean-project retest)
+**Total drift events**: 37
+**Resolution rate**: 83.8% (31/37 resolved; DRIFT-198-I008-032–037 await a fully green exact-head PR and fresh-review proof; 032 also awaits the clean-project retest)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -33,9 +33,10 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
 `29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
 scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
-added DRIFT-198-I008-021–036: 021–031 are corrected and exact-head independently verified. The later Copilot
-workshop exposed 032; review run 08 verified its core correction and found the bounded 033–036 follow-ons, whose
-local corrections now require exact-head CI and fresh independent review. DRIFT-032 additionally requires the
+added DRIFT-198-I008-021–037: 021–031 are corrected and exact-head independently verified. The later Copilot
+workshop exposed 032; review run 08 verified its core correction and found the bounded 033–036 follow-ons. Their
+first exact-head PR exposed the macOS capability-probe race recorded as 037. These local corrections now require a
+fully green exact-head PR and fresh independent review. DRIFT-032 additionally requires the
 clean-project workshop retest. T029 release and T067 published-beta validation remain deliberately pending behind
 their named boundaries.
 
@@ -728,6 +729,24 @@ their named boundaries.
 - **Paired evidence**: Windows, current-OS POSIX, and fixture regressions make `onStarted` return a sentinel and
   assert exactly one scalar runtime result. Focused runtime/orchestrator suites pass 31 tests with four expected
   non-Windows skips.
+
+### DRIFT-198-I008-037 — macOS membership capability probe made one transient observation
+
+- **Status**: corrected locally; focused pair and full 75-suite registry pass; hosted verification and fresh independent review pending
+- **Severity**: release-gate flake
+- **Type**: insufficiently stabilized native capability observation
+- **Requirements**: FR-061, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: exact-head commit `2b918ae69125ca4a537d19aa1604d5d167b0b874` passed Test
+  `29912180092`, Specrew CI `29912180102`, and Cross-Platform push `29912176060`. Cross-Platform PR
+  `29912180099` failed only its macOS deterministic runtime job: the process host wrote its post-`setsid` ready
+  receipt, then the capability probe's single `ps` membership read returned false. The identical-head push macOS
+  job passed the same suite minutes earlier, isolating a transient observation rather than a callback regression.
+- **Correction**: membership verification now polls the same exact PID/PGID/ready-receipt invariant for at most
+  one second at 25 ms intervals. It never changes the expected identity and still fails closed when the invariant
+  does not stabilize. The production availability probe and real runtime verification use the same helper.
+- **Paired evidence**: an injected sequence `false,false,true` succeeds on the third read; a permanently false
+  probe performs multiple reads and returns false within a 25 ms bound. The complete Feature 198 registry passes
+  all 75 suites in 998.1 seconds after the correction.
 
 ### Resolution Strategies
 

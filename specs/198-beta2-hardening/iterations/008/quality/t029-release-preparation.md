@@ -357,3 +357,19 @@ pass; the three runtime/orchestrator files pass 31 tests with four expected non-
 aggregate passes all 75 registered suites in 1,077.1 seconds. Exact-head hosted proof and a fresh independent
 review remain required. No merge, tag, publication,
 or stable promotion is authorized.
+
+## Exact-Head macOS Probe Failure and Stabilization
+
+Commit `2b918ae69125ca4a537d19aa1604d5d167b0b874` passed exact-head Test `29912180092`, Specrew CI
+`29912180102`, and Cross-Platform push `29912176060`. Cross-Platform PR `29912180099` failed only the macOS
+deterministic runtime job. Its process host wrote the post-`setsid` ready receipt, then the availability probe made
+one membership read and returned `macos-process-group-probe-membership-failed`. The identical-head push macOS job
+passed the same suite, and the failure preceded the corrected `onStarted` boundary.
+
+The correction does not weaken identity or containment. A shared helper polls the same descriptor PGID, ready
+receipt containment ID, process PID, and observed PGID for at most one second at 25 ms intervals. Both the
+availability probe and live runtime verification use it. A transient `false,false,true` fixture succeeds exactly
+on its third read; a permanently false fixture performs multiple reads and still fails closed within 25 ms.
+The complete Feature 198 registry passes all 75 suites in 998.1 seconds after the correction. A fully green
+exact-head PR and fresh independent review remain required. No workflow retry, provider invocation, merge, tag,
+publication, or stable promotion was performed by this correction.

@@ -110,6 +110,21 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         (& $mac.preflight $invocation).reason | Should -Be 'fixture-macos-unavailable'
     }
 
+    It 'bounds transient macOS membership observation and still fails closed when it never stabilizes' {
+        $descriptor = [pscustomobject]@{ pgid = 42; mode = 'process-group' }
+        $ready = [pscustomobject]@{ containment_id = 42; mode = 'process-group' }
+        $sequence = [Collections.Generic.Queue[bool]]::new(); $sequence.Enqueue($false); $sequence.Enqueue($false); $sequence.Enqueue($true)
+        $observations = [Collections.Generic.List[bool]]::new()
+        $transientProbe = { param($Descriptor, $Ready, $ProcessId) $next = $sequence.Dequeue(); $observations.Add($next) | Out-Null; return $next }.GetNewClosure()
+        Wait-ReviewMacProcessGroupMembership -Descriptor $descriptor -Ready $ready -ProcessId 42 -TimeoutMilliseconds 100 -PollMilliseconds 1 -MembershipProbe $transientProbe | Should -BeTrue
+        $observations.Count | Should -Be 3
+
+        $refusedObservations = [Collections.Generic.List[bool]]::new()
+        $refusedProbe = { param($Descriptor, $Ready, $ProcessId) $refusedObservations.Add($false) | Out-Null; return $false }.GetNewClosure()
+        Wait-ReviewMacProcessGroupMembership -Descriptor $descriptor -Ready $ready -ProcessId 42 -TimeoutMilliseconds 25 -PollMilliseconds 1 -MembershipProbe $refusedProbe | Should -BeFalse
+        $refusedObservations.Count | Should -BeGreaterThan 1
+    }
+
     It 'selects exactly one production runtime for the current operating system' {
         $runtime = New-ReviewProductionRuntimePort -TimeoutSeconds 5
         if ($IsWindows) { $runtime.id | Should -Be 'windows-job-object-runtime' }
