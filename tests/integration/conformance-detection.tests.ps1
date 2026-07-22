@@ -70,9 +70,9 @@ function New-Spec {
 }
 
 function New-LensApplicability {
-    # Write both the feature projection and the exact iteration artifact. The feature projection feeds the
-    # existing progress accessor; FR-056 authorizes a workshop-intermediate Stop only from the exact iteration.
-    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate', [string]$Iteration = '001')
+    # Write the feature-level intake truth and, unless FeatureOnly is selected, the exact later
+    # design-analysis iteration artifact. FR-056 validates the scope named by the assistant marker.
+    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate', [string]$Iteration = '001', [switch]$FeatureOnly)
     $dir = Join-Path $Proj (Join-Path 'specs' $FeatureRef)
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $workshop = [ordered]@{}
@@ -80,9 +80,11 @@ function New-LensApplicability {
     $obj = [ordered]@{ workshop_intake = $true; confirmation_required = $true; selected = $Selected; workshop = $workshop }
     $json = $obj | ConvertTo-Json -Depth 6
     Set-Content -LiteralPath (Join-Path $dir 'lens-applicability.json') -Value $json -Encoding UTF8
-    $iterationDir = Join-Path $dir ("iterations/{0}" -f $Iteration)
-    New-Item -ItemType Directory -Path $iterationDir -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $iterationDir 'lens-applicability.json') -Value $json -Encoding UTF8
+    if (-not $FeatureOnly) {
+        $iterationDir = Join-Path $dir ("iterations/{0}" -f $Iteration)
+        New-Item -ItemType Directory -Path $iterationDir -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $iterationDir 'lens-applicability.json') -Value $json -Encoding UTF8
+    }
     Save-FixtureStructure -Proj $Proj -Message 'fixture lens state'
 }
 
@@ -311,6 +313,15 @@ The architecture-core discussion has established the component boundary and the 
 
 Should the repository own that transition directly, or should the application service own it behind a port?
 <!-- SPECREW-WORKSHOP-QUESTION: feature=050-host-neutral-gate; iteration=001; lens=architecture-core -->
+'@
+
+$featureWorkshopQuestion = @'
+### architecture-core lens
+
+The architecture-core intake discussion has established the product boundary and the remaining choice is who owns the durable transition. The feature-level agenda still names this as the first unfinished lens.
+
+Should the repository own that transition directly, or should the application service own it behind a port?
+<!-- SPECREW-WORKSHOP-QUESTION: feature=050-host-neutral-gate; scope=feature; lens=architecture-core -->
 '@
 
 try {
@@ -856,6 +867,59 @@ try {
     $r16d = Invoke-Conformance -Proj $p16d -TranscriptPath $t16d
     if (-not $r16d.Blocked -or $r16d.Out -notmatch 'five-part context packet') { Fail "Case 16d: a marker/artifact for a non-active iteration MUST NOT bypass material enforcement. Out: $($r16d.Out)" }
     Write-Pass "Case 16d: stale iteration state and its matching marker cannot suppress the active iteration's packet"
+
+    # ---- Case 16e / live T029 regression: specify/intake has a feature-level agenda but no iteration yet. The
+    #      explicit feature-scope marker binds to that durable truth and leaves the lens question as the final turn.
+    $p16e = New-Fixture -Working '' -LastAuth ''
+    New-Spec -Proj $p16e
+    New-LensApplicability -Proj $p16e -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
+    New-HandoverSnapshot -Proj $p16e -ChangedUserFiles 2
+    $t16e = New-Transcript -Proj $p16e -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
+    $r16e = Invoke-Conformance -Proj $p16e -TranscriptPath $t16e
+    if ($r16e.Blocked -or $r16e.Out -match 'five-part context packet') { Fail "Case 16e: a proved feature-level intake question MUST remain the final visible turn. Out: $($r16e.Out)" }
+    $featureHandoverPath = Join-Path $p16e '.specrew\handover\workshop-question.json'
+    if (-not (Test-Path -LiteralPath $featureHandoverPath -PathType Leaf)) { Fail 'Case 16e: feature-level workshop-intermediate must persist bounded re-entry context' }
+    $featureHandover = Get-Content -LiteralPath $featureHandoverPath -Raw | ConvertFrom-Json
+    if ([string]$featureHandover.scope -ne 'feature' -or [string]$featureHandover.feature_ref -ne '050-host-neutral-gate' -or -not [string]::IsNullOrWhiteSpace([string]$featureHandover.iteration_number) -or [string]$featureHandover.lens -ne 'architecture-core') {
+        Fail "Case 16e: feature-level re-entry context must retain scope/feature/lens with no invented iteration: $($featureHandover | ConvertTo-Json -Compress)"
+    }
+    Write-Pass "Case 16e: feature-level intake question stops once without a generic packet or invented iteration"
+
+    # ---- Case 16f: a feature marker cannot borrow feature-level state once an active iteration exists.
+    $p16f = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16f
+    New-LensApplicability -Proj $p16f -Selected @('architecture-core','data-storage') -Done @()
+    New-HandoverSnapshot -Proj $p16f -ChangedUserFiles 2
+    $t16f = New-Transcript -Proj $p16f -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
+    $r16f = Invoke-Conformance -Proj $p16f -TranscriptPath $t16f
+    if (-not $r16f.Blocked -or $r16f.Out -notmatch 'five-part context packet') { Fail "Case 16f: feature scope MUST NOT suppress material enforcement after iteration activation. Out: $($r16f.Out)" }
+    Write-Pass "Case 16f: feature-scope marker fails closed after lifecycle state enters an iteration"
+
+    # ---- Case 16g: the inverse mismatch also fails closed. Feature-only intake state cannot satisfy an iteration
+    #      marker when there is no active iteration, even if the marker names a plausible number.
+    $p16g = New-Fixture -Working '' -LastAuth ''
+    New-Spec -Proj $p16g
+    New-LensApplicability -Proj $p16g -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
+    New-HandoverSnapshot -Proj $p16g -ChangedUserFiles 2
+    $t16g = New-Transcript -Proj $p16g -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
+    $r16g = Invoke-Conformance -Proj $p16g -TranscriptPath $t16g
+    if (-not $r16g.Blocked -or $r16g.Out -notmatch 'five-part context packet') { Fail "Case 16g: an iteration marker without active iteration truth MUST fail closed. Out: $($r16g.Out)" }
+    Write-Pass "Case 16g: iteration-scope marker cannot borrow feature-level intake state"
+
+    # ---- Case 16h: malformed lifecycle state with a boundary but no iteration cannot fall back to feature
+    #      scope. The absence of an iteration is valid only before lifecycle activation, not after identity loss.
+    $p16h = New-Fixture -Working 'plan' -LastAuth 'plan'
+    $ctx16hPath = Join-Path $p16h '.specrew\start-context.json'
+    $ctx16h = Get-Content -LiteralPath $ctx16hPath -Raw | ConvertFrom-Json
+    $ctx16h.session_state.PSObject.Properties.Remove('iteration_number')
+    [IO.File]::WriteAllText($ctx16hPath, ($ctx16h | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+    New-Spec -Proj $p16h
+    New-LensApplicability -Proj $p16h -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
+    New-HandoverSnapshot -Proj $p16h -ChangedUserFiles 2
+    $t16h = New-Transcript -Proj $p16h -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
+    $r16h = Invoke-Conformance -Proj $p16h -TranscriptPath $t16h
+    if (-not $r16h.Blocked -or $r16h.Out -notmatch 'five-part context packet') { Fail "Case 16h: active lifecycle state with missing iteration MUST NOT borrow feature workshop scope. Out: $($r16h.Out)" }
+    Write-Pass "Case 16h: malformed active lifecycle state cannot borrow the feature-level workshop exception"
 
     # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) cannot prove an intermediate pause;
     #      a real boundary stop blocks again.

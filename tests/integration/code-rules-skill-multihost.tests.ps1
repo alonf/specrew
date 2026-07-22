@@ -49,8 +49,10 @@ Assert-Match -Text $ws -Pattern '(?i)grouped, pre-checked|grouped pre-checked|gr
 Assert-Match -Text $ws -Pattern 'dependency_policy' 'T015: dependency-selection capture (FR-013)'
 Assert-Match -Text $ws -Pattern '(?i)code-rules\.local\.yml' 'T015: project overlay for company/org rules (FR-012)'
 Assert-Match -Text $ws -Pattern '`code-implementation`' 'T015: code-implementation is in the lens enumeration'
-Assert-Match -Text $ws -Pattern '<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; iteration=<NNN>; lens=<lens-id> -->' 'T052: genuine pending lens questions carry the exact workshop-intermediate marker contract'
-Assert-Match -Text $ws -Pattern '(?i)exact iteration.+lens-applicability\.json' 'T052: marker production requires exact durable iteration state'
+Assert-Match -Text $ws -Pattern '<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; scope=feature; lens=<lens-id> -->' 'T052: feature-level intake questions carry the explicit feature-scope marker contract'
+Assert-Match -Text $ws -Pattern '<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; iteration=<NNN>; lens=<lens-id> -->' 'T052: design-analysis questions retain the exact iteration marker contract'
+Assert-Match -Text $ws -Pattern '(?is)specify/intake.+feature-level.+lens-applicability\.json.+design-analysis.+exact iteration' 'T052: skill selects marker and durable state by the real workshop scope'
+Assert-Match -Text $ws -Pattern '(?i)Never invent an iteration number' 'T052: feature-level intake cannot fabricate an iteration identity'
 Assert-Match -Text $ws -Pattern '(?is)Never put it on a handover.+lifecycle-boundary packet' 'T052: handover and lifecycle boundaries cannot borrow the workshop-intermediate marker'
 
 # ---------------------------------------------------------------------------

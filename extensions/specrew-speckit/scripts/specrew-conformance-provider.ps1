@@ -47,7 +47,8 @@
 #   Esc-interrupted turn / headless exec (a real-host dogfood concern). (3) DETECTION SCOPE: boundary enforcement
 #   keys off gate state; material-work enforcement keys off the current rolling-handover Stop snapshot. If either
 #   signal is unavailable, the provider fails open. (4) a workshop pause is intermediate only when its exact
-#   feature/iteration/current-lens state and visible pending question validate; lifecycle boundary state always wins.
+#   feature-level intake OR feature/iteration design-analysis scope, current-lens state, and visible pending
+#   question validate; lifecycle boundary state always wins.
 #   Fully FAIL-OPEN: any error / uncertainty
 #   degrades to NO block (allow the stop) - blocking is the narrow exception, never the default.
 
@@ -433,35 +434,51 @@ function Test-SpecrewWorkshopComplete {
 
 function Resolve-SpecrewWorkshopQuestionPause {
     # FR-056: the workshop exception is marker-and-durable-state, not prose inference.
-    # The assistant marker names the exact feature/iteration/lens; the matching iteration artifact must
-    # prove that lens is the first remaining selected lens; and the visible body must contain real lens
-    # content followed by an explicit question. Lifecycle boundary state always wins before this helper.
+    # The assistant marker names either the exact feature-level intake scope or the exact
+    # feature/iteration design-analysis scope plus lens. The matching applicability artifact must prove that
+    # lens is the first remaining selected lens, and the visible body must contain real lens content followed
+    # by an explicit question. Lifecycle boundary state always wins before this helper.
     param(
         [string]$ProjectRoot,
         [AllowNull()][string]$ActiveFeatureRef,
         [AllowNull()][string]$ActiveIterationNumber,
+        [bool]$HasActiveLifecycleBoundary,
         [AllowNull()][string]$LastAssistantText,
         [bool]$HasPendingVerdict
     )
-    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-question-unproven'; feature_ref = $null; iteration_number = $null; lens = $null; question = $null; message_hash = $null }
+    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-question-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; question = $null; message_hash = $null }
     try {
         if ($HasPendingVerdict) { $result.reason = 'lifecycle-boundary-overrides-workshop'; return $result }
-        if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef) -or [string]::IsNullOrWhiteSpace($ActiveIterationNumber) -or [string]::IsNullOrWhiteSpace($LastAssistantText)) { return $result }
-        $markerPattern = '<!--\s*SPECREW-WORKSHOP-QUESTION:\s*feature=(?<feature>[0-9]{3}-[a-z0-9][a-z0-9-]{0,63});\s*iteration=(?<iteration>[0-9]{3,});\s*lens=(?<lens>[a-z][a-z0-9-]{1,63})\s*-->'
+        if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef) -or [string]::IsNullOrWhiteSpace($LastAssistantText)) { return $result }
+        $markerPattern = '<!--\s*SPECREW-WORKSHOP-QUESTION:\s*feature=(?<feature>[0-9]{3}-[a-z0-9][a-z0-9-]{0,63});\s*(?:(?:scope=(?<featureScope>feature))|(?:iteration=(?<iteration>[0-9]{3,})));\s*lens=(?<lens>[a-z][a-z0-9-]{1,63})\s*-->'
         $matches = @([regex]::Matches($LastAssistantText, $markerPattern, [Text.RegularExpressions.RegexOptions]::CultureInvariant))
         if ($matches.Count -ne 1) { $result.reason = 'workshop-question-marker-missing-or-ambiguous'; return $result }
         $match = $matches[0]
         $featureRef = [string]$match.Groups['feature'].Value
         $iteration = [string]$match.Groups['iteration'].Value
         $lens = [string]$match.Groups['lens'].Value
+        $scope = if ($match.Groups['featureScope'].Success) { 'feature' } else { 'iteration' }
         if ($featureRef -cne $ActiveFeatureRef) { $result.reason = 'workshop-question-feature-mismatch'; return $result }
-        if ($iteration -cne $ActiveIterationNumber) { $result.reason = 'workshop-question-iteration-mismatch'; return $result }
-
-        $iterationRoot = Join-Path $ProjectRoot ("specs/{0}/iterations/{1}" -f $featureRef, $iteration)
-        $applicabilityPath = Join-Path $iterationRoot 'lens-applicability.json'
-        if (-not (Test-Path -LiteralPath $applicabilityPath -PathType Leaf)) { $result.reason = 'workshop-question-iteration-state-missing'; return $result }
+        $featureRoot = Join-Path $ProjectRoot ("specs/{0}" -f $featureRef)
+        $workshopRoot = $null
+        if ($scope -eq 'feature') {
+            # A feature-scope marker is valid only before an iteration exists. It cannot be used to borrow the
+            # feature projection after lifecycle state has advanced into an iteration.
+            if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $result.reason = 'workshop-question-feature-scope-after-lifecycle-activation'; return $result }
+            $applicabilityPath = Join-Path $featureRoot 'lens-applicability.json'
+            $workshopRoot = Join-Path $featureRoot 'workshop'
+            if (-not (Test-Path -LiteralPath $applicabilityPath -PathType Leaf)) { $result.reason = 'workshop-question-feature-state-missing'; return $result }
+        }
+        else {
+            if ([string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $result.reason = 'workshop-question-active-iteration-missing'; return $result }
+            if ($iteration -cne $ActiveIterationNumber) { $result.reason = 'workshop-question-iteration-mismatch'; return $result }
+            $iterationRoot = Join-Path $featureRoot ("iterations/{0}" -f $iteration)
+            $applicabilityPath = Join-Path $iterationRoot 'lens-applicability.json'
+            $workshopRoot = Join-Path $iterationRoot 'workshop'
+            if (-not (Test-Path -LiteralPath $applicabilityPath -PathType Leaf)) { $result.reason = 'workshop-question-iteration-state-missing'; return $result }
+        }
         $item = Get-Item -LiteralPath $applicabilityPath -ErrorAction Stop
-        if ($item.Length -gt 262144) { $result.reason = 'workshop-question-iteration-state-oversized'; return $result }
+        if ($item.Length -gt 262144) { $result.reason = 'workshop-question-applicability-state-oversized'; return $result }
         $applicability = Get-Content -LiteralPath $applicabilityPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 20 -ErrorAction Stop
         $selectedProperty = $applicability.PSObject.Properties['selected']
         if (-not $selectedProperty -or $null -eq $selectedProperty.Value) { $result.reason = 'workshop-question-selected-lenses-missing'; return $result }
@@ -475,9 +492,8 @@ function Resolve-SpecrewWorkshopQuestionPause {
                 if ($movedOn -and [bool]$movedOn.Value) { $null = $done.Add([string]$property.Name) }
             }
         }
-        $recordsRoot = Join-Path $iterationRoot 'workshop'
-        if (Test-Path -LiteralPath $recordsRoot -PathType Container) {
-            foreach ($record in @(Get-ChildItem -LiteralPath $recordsRoot -Filter '*.md' -File -ErrorAction Stop)) {
+        if (Test-Path -LiteralPath $workshopRoot -PathType Container) {
+            foreach ($record in @(Get-ChildItem -LiteralPath $workshopRoot -Filter '*.md' -File -ErrorAction Stop)) {
                 $null = $done.Add([IO.Path]::GetFileNameWithoutExtension($record.Name))
             }
         }
@@ -492,8 +508,9 @@ function Resolve-SpecrewWorkshopQuestionPause {
         if ($question.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$question[0])) { $result.reason = 'workshop-question-text-missing'; return $result }
         $result.valid = $true
         $result.reason = 'durable-current-lens-question'
+        $result.scope = $scope
         $result.feature_ref = $featureRef
-        $result.iteration_number = $iteration
+        $result.iteration_number = if ($scope -eq 'iteration') { $iteration } else { $null }
         $result.lens = $lens
         $result.question = ([string]$question[0]).Trim()
         $result.message_hash = Get-SpecrewFireIdentity -Parts @($body)
@@ -515,7 +532,7 @@ function Update-SpecrewWorkshopQuestionHandover {
         $dir = Split-Path -Parent $path
         if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         $record = [ordered]@{
-            schema = 'v1'; status = 'pending-human-answer'; feature_ref = [string]$Decision.feature_ref
+            schema = 'v1'; status = 'pending-human-answer'; scope = [string]$Decision.scope; feature_ref = [string]$Decision.feature_ref
             iteration_number = [string]$Decision.iteration_number; lens = [string]$Decision.lens
             question = [string]$Decision.question; message_hash = [string]$Decision.message_hash
             recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
@@ -847,7 +864,7 @@ try {
         }
     }
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
-    $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
+    $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
     $workshopIntermediate = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
     if ($workshopIntermediate) { $rawHit = $false }
     # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.
@@ -1102,7 +1119,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_feature = $(if ($workshopIntermediate) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopIntermediate) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopIntermediate) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopIntermediate) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopIntermediate) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopIntermediate) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopIntermediate) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

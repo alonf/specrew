@@ -188,10 +188,14 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
    and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
    **Mark only a genuine pending lens question (FR-055/FR-056).** Before you stop and wait for an answer,
-   ensure the exact iteration's `lens-applicability.json` exists and reflects the current confirmed agenda. The
-   visible message must name the exact current lens id and end with the question. Then append this exact marker
-   as the final line, replacing all placeholders:
+   ensure the applicability artifact for the CURRENT workshop scope exists and reflects the current confirmed
+   agenda. During specify/intake, use the feature-level `specs/<feature>/lens-applicability.json` and append this
+   exact marker as the final line:
+   `<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; scope=feature; lens=<lens-id> -->`.
+   During the later design-analysis workshop, use the exact iteration's `lens-applicability.json` and append:
    `<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; iteration=<NNN>; lens=<lens-id> -->`.
+   Never invent an iteration number during feature-level intake. The visible message must name the exact current
+   lens id and end with the question immediately before the marker.
    Use the marker only while waiting on the human's answer to that current lens. Never put it on a handover,
    completion, abandonment, or lifecycle-boundary packet; a lifecycle boundary always uses its six-section
    packet. The Stop provider validates the marker against the exact first remaining lens, so prose that merely

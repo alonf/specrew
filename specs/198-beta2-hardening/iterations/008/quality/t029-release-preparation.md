@@ -284,3 +284,46 @@ no stop block or injected note, and leaves the observed Git status unchanged. Th
 passes all 74 suites in 905.3 seconds. Hosted exact-head CI, fresh independent review, and a from-scratch
 maintainer retest remain required. No provider, merge, tag, workflow dispatch, publication, or stable-promotion
 action occurred in this local correction.
+
+## Run 06 Preflight Correction and Run 07 Clean Review
+
+Commit `4e34209ea7b77706883238e46ed049242bf80da5` passed the complete 74-suite Feature 198 registry, scoped
+governance from an exact clean worktree, and the required exact-head workflows: Specrew CI `29875238272`, Test
+`29875238264`, Cross-Platform pull request `29875238262`, and Cross-Platform push `29875236067`. The canonical
+reviewed-state digest reproduced as `739b76f61599e3c316f277333b0bc0fc1f9337f3`.
+
+Run `run-t029-claude-windows-4e34209e-739b76f6-06` stopped at harness preflight because the controller supplied
+an explicit Claude model override to a catalog constructor that deliberately exposes no model parameter. The
+run published a preflight failure, invoked no provider, wrote no spend fact, and released its reservation. A
+provider-free catalog probe proved that omitting the override produces the supported
+`claude-code-file-primary` port; no shipped-product correction or duplicate invocation was warranted.
+
+Run `run-t029-claude-windows-4e34209e-739b76f6-07` reused that released, unspent human slot with the catalog
+contract unchanged. It invoked Claude exactly once, spent one immutable slot, ran under verified containment,
+and published complete/pass/current/valid evidence with `can_approve_current=true`, verified termination, and
+zero findings. Its claim was released. This closes DRIFT-198-I008-030 and DRIFT-198-I008-031 and permitted the
+next from-scratch maintainer test; it did not authorize merge, tag, workflow dispatch, publication, or stable
+promotion.
+
+## Feature-Level Workshop Stop Correction
+
+The clean-project Copilot retest completed `specrew init --force` without waiting on Squad, and Git confirmed
+`.specrew/runtime/` plus `.specrew/handover/` were ignored. The first feature workshop then exposed
+DRIFT-198-I008-032: feature-level specify/intake has no iteration, but the Stop provider and workshop skill only
+modeled iteration-scoped questions. After Copilot rendered the `architecture-core` lens and asked how to pace its
+decisions, conformance forced the generic five-heading material-work packet. The live journal recorded a material
+real stop with no workshop identity, matching the deterministic diagnosis.
+
+The narrow correction adds no prose heuristic. The assistant must emit one explicit scope marker, and the
+provider must join it to the corresponding current durable artifact:
+
+- feature-level intake uses `scope=feature` and `specs/<feature>/lens-applicability.json`, only while no active
+  iteration exists;
+- design analysis retains `iteration=<NNN>` and the exact iteration applicability artifact;
+- feature-after-iteration and iteration-without-active-iteration mismatches retain ordinary packet enforcement;
+- lifecycle boundaries retain their six-section verdict packet and fabricated workshop prose remains ineligible.
+
+Focused provider parsing, the full conformance-detection matrix, and the all-host workshop-skill parity suite
+pass. Full registered verification, hosted exact-head CI, fresh independent review, and another from-scratch
+maintainer workshop test remain required. No provider, merge, tag, publication, or stable-promotion action was
+performed by this correction.

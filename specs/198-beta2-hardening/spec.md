@@ -925,14 +925,18 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   explicitly awaits the human's answer, the Stop provider MUST classify that pause as a workshop-intermediate
   stop and MUST NOT force the generic five-heading non-boundary context packet. The rendered workshop turn is
   already the re-entry context and remains the final visible message. This exception MUST be deterministic and
-  narrowly scoped to the active feature, iteration, lens, and pending human question; prose that merely claims
-  to be a workshop MUST NOT suppress enforcement. Lifecycle boundary stops override workshop state and retain
-  their full boundary packet. Leaving, abandoning, or handing over a workshop without a pending lens question
-  retains the ordinary non-boundary material-work packet requirement. Regression fixtures MUST cover: (a) an
-  active workshop lens question stops once with no duplicate five-heading packet; (b) the same material turn
-  outside durable workshop state still requires the packet; (c) a fabricated workshop phrase cannot bypass
-  enforcement; (d) a lifecycle boundary during a workshop still requires the boundary packet; and (e) an
-  interrupted workshop handover still renders sufficient durable re-entry context.
+  narrowly scoped to either (1) the active feature-level specify/intake agenda before any iteration exists, or
+  (2) the active feature + exact iteration during design analysis, plus the current lens and pending human
+  question. The assistant marker MUST declare which scope it uses; a feature-scope marker after iteration
+  activation or an iteration marker without active iteration truth MUST fail closed. Prose that merely claims to
+  be a workshop MUST NOT suppress enforcement. Lifecycle boundary stops override workshop state and retain their
+  full boundary packet. Leaving, abandoning, or handing over a workshop without a pending lens question retains
+  the ordinary non-boundary material-work packet requirement. Regression fixtures MUST cover: (a) active
+  feature-level intake and iteration-level workshop questions each stop once with no duplicate five-heading
+  packet; (b) the same material turn outside durable workshop state still requires the packet; (c) fabricated
+  workshop prose and cross-scope markers cannot bypass enforcement; (d) a lifecycle boundary during a workshop
+  still requires the boundary packet; and (e) an interrupted workshop handover still renders sufficient durable
+  re-entry context without inventing an iteration identity.
 
 #### Controlled external review rearchitecture — owner: implementer + reviewer; Beta2 release blocker
 
@@ -1357,10 +1361,11 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
   prompt — never a silent success and never a Specrew/Pester default. The
   beta2 feature/release MUST NOT close until this end-to-end path has a
   production plan supplier feeding the FR-048 seam. (Release dependency.)
-- **SC-016 (workshop-intermediate Stop UX)**: A material architecture-lens turn with durable active-workshop
-  state, rendered lens content, and a pending human question stops exactly once without a generic five-heading
-  follow-up; the equivalent non-workshop turn still demands that packet, and a lifecycle boundary still demands
-  its boundary packet. (FR-056)
+- **SC-016 (workshop-intermediate Stop UX)**: Material architecture-lens turns with either durable feature-level
+  intake state or durable exact-iteration design-analysis state, rendered lens content, an explicit matching
+  scope marker, and a pending human question stop exactly once without a generic five-heading follow-up. The
+  equivalent non-workshop or scope-mismatched turn still demands that packet, and a lifecycle boundary still
+  demands its boundary packet. (FR-056)
 - **SC-017 (authority/allowance concurrency)**: Barrier-synchronized multi-process
   fixtures prove exactly one winner for the next claim generation, no two active
   claims per lineage, no reservation/spend above human grants, idempotent identical

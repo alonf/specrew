@@ -609,7 +609,7 @@ proof. T029 release and T067 published-beta validation remain deliberately pendi
 
 ### DRIFT-198-I008-030 — greenfield Copilot intake rendered a false campaign-authority failure after every turn
 
-- **Status**: local correction, real-workspace replay, and all 74 registered suites pass; hosted verification and fresh independent review pending
+- **Status**: resolved by commit `4e34209ea7b77706883238e46ed049242bf80da5`, exact-head CI, and clean run 07
 - **Severity**: release-blocking workflow defect
 - **Type**: applicability/authority-routing drift
 - **Requirements**: FR-055, FR-056, NFR-002; T029 manual-test acceptance
@@ -625,11 +625,13 @@ proof. T029 release and T067 published-beta validation remain deliberately pendi
   malformed active feature marker and an advanced lifecycle cursor whose iteration disappeared; both invalid
   directions still emit the named campaign block. A read-only production-source replay against
   `C:/Dev/article-amplifier` returns `campaign-not-applicable:no-active-feature`, injects no text, and leaves its
-  Git status unchanged.
+  Git status unchanged. Exact-head Specrew CI `29875238272`, Test `29875238264`, Cross-Platform PR
+  `29875238262`, and Cross-Platform push `29875236067` passed. Claude run
+  `run-t029-claude-windows-4e34209e-739b76f6-07` published complete/pass/current/valid evidence with zero findings.
 
 ### DRIFT-198-I008-031 — fresh init omitted generated runtime and handover directories from downstream ignore rules
 
-- **Status**: local correction and all 74 registered suites pass; hosted verification and fresh independent review pending
+- **Status**: resolved by commit `4e34209ea7b77706883238e46ed049242bf80da5`, exact-head CI, and clean run 07
 - **Severity**: release-blocking consumer-hygiene defect
 - **Type**: distribution/file-classification drift
 - **Requirements**: FR-027, SC-008, NFR-002; T029 manual-test acceptance
@@ -642,7 +644,34 @@ proof. T029 release and T067 published-beta validation remain deliberately pendi
 - **Paired evidence**: the production helper and fresh-init ordering fixture prove both patterns are emitted,
   ignored by Git, untracked when previously indexed, retained locally, and idempotent. The broader F-051
   classification fixture proves the same index-versus-working-copy behavior for representative files in both
-  directories.
+  directories. The from-scratch Article Amplifier retest completed init without a hang; `git check-ignore -v`
+  bound both generated directories to the new canonical rules. The exact-head CI and clean run 07 evidence named
+  in DRIFT-030 independently cover the same reviewed tree.
+
+### DRIFT-198-I008-032 — feature-level intake workshop was forced into the generic material-work packet
+
+- **Status**: local correction and focused dual-scope regression matrix pass; full/hosted verification, fresh independent review, and clean-project retest pending
+- **Severity**: release-blocking workshop UX defect
+- **Type**: scope-model mismatch
+- **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
+- **Observed evidence**: after DRIFT-030/031 were fixed and independently reviewed, a from-scratch Copilot workshop
+  created `specs/001-medium-auto-promote/lens-applicability.json`, rendered the `architecture-core` lens and its
+  pacing question, then received the generic five-heading material-work Stop directive. The conformance journal
+  recorded `block_kind=material`, `stop_intent=real`, and null workshop identity. The product intake correctly had
+  no iteration yet. The provider required a numeric active iteration and only read
+  `specs/<feature>/iterations/<NNN>/lens-applicability.json`; the workshop skill likewise required an iteration
+  marker the host could not truthfully emit. FR-056 existed, but its only executable scope was the later
+  design-analysis workshop rather than the feature-level intake workshop that users encounter first.
+- **Correction**: workshop markers now declare either `scope=feature` for specify/intake or `iteration=<NNN>` for
+  design analysis. The provider validates the declared scope against the corresponding durable applicability
+  artifact and current lens. A feature marker is rejected after iteration activation; an iteration marker is
+  rejected when active iteration truth is absent. The skill explicitly forbids inventing an iteration during
+  feature-level intake, and all host copies remain byte-identical.
+- **Paired evidence**: the exact Article Amplifier shape—feature agenda, no iteration, current architecture lens,
+  visible question, and feature marker—stops without a generic packet and writes bounded handover context with
+  `scope=feature` and no iteration number. Reverse-direction fixtures prove both cross-scope markers fail closed;
+  existing iteration, fabricated-prose, stale-iteration, ordinary-material, and lifecycle-boundary cases remain
+  green. The complete focused conformance and multi-host skill suites pass.
 
 ### Resolution Strategies
 
