@@ -58,9 +58,26 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $validation = Test-ReviewFilePrimaryPromptTemplate -Template $template
         $validation.valid | Should -BeTrue -Because ($validation.errors -join ', ')
         $validation.byte_count | Should -BeLessOrEqual (Get-ReviewHarnessContractLimits).max_prompt_template_bytes
-        foreach ($placeholder in @('__RUN_ID__', '__TARGET_DIGEST__', '__CANDIDATE_RESULT_PATH__', '__REVIEW_SCOPE__', '__DEADLINE__')) {
+        foreach ($placeholder in (Get-ReviewFilePrimaryPromptPlaceholders)) {
             ([regex]::Matches($template, [regex]::Escape($placeholder))).Count | Should -Be 1
         }
+    }
+
+    It 'derives every advertised prompt budget below the central ingress maximum' {
+        $authority = Get-ReviewAuthorityCandidateLimits
+        $advertised = Get-ReviewHarnessContractLimits
+        $advertised.advertised_summary_characters | Should -BeLessOrEqual $authority.max_summary_characters
+        $advertised.advertised_findings | Should -BeLessOrEqual $authority.max_findings
+        $advertised.advertised_local_id_characters | Should -BeLessOrEqual $authority.max_local_id_characters
+        $advertised.advertised_title_characters | Should -BeLessOrEqual $authority.max_title_characters
+        $advertised.advertised_description_characters | Should -BeLessOrEqual $authority.max_description_characters
+        $advertised.advertised_location_characters | Should -BeLessOrEqual $authority.max_location_characters
+
+        $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
+        $rendered = Render-ReviewFilePrimaryPrompt -Template $template -Invocation (New-HarnessInvocation -Root (Join-Path $TestDrive 'derived-budgets'))
+        $rendered | Should -Match "summary at most $($advertised.advertised_summary_characters) characters"
+        $rendered | Should -Match "no more than $($advertised.advertised_findings) findings"
+        $rendered | Should -Not -Match '__MAX_[A-Z0-9_]+__'
     }
 
     It 'rejects missing, repeated, unknown, and oversized prompt-template contracts' {
@@ -77,6 +94,18 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $validation = Test-ReviewFilePrimaryPromptTemplate -Template $weakened
         $validation.valid | Should -BeFalse
         $validation.errors | Should -Contain 'prompt-contract-missing:single-reviewer-session'
+    }
+
+    It 'rejects a prompt that falsely claims every host restricts the exposed tool set' {
+        $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
+        $weakened = [regex]::Replace(
+            $template,
+            '(?is)The approved review contract permits only Read.+?outside the approved review contract\.',
+            'Your available tools are deliberately limited to Read, Glob, Grep, and Write.'
+        )
+        $validation = Test-ReviewFilePrimaryPromptTemplate -Template $weakened
+        $validation.valid | Should -BeFalse
+        $validation.errors | Should -Contain 'prompt-contract-missing:host-tool-posture'
     }
 
     It 'rejects a prompt that makes complete mean exhaustive file-by-file inventory' {
@@ -160,6 +189,7 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $spec.stdin_text | Should -Match 'digest-one'
         $spec.stdin_text | Should -Match '__RUN_ID__ as literal scope text' -Because 'replacement must not recursively expand reviewer-supplied scope text'
         $spec.stdin_text | Should -Match 'Use Write only for the exact candidate result path'
+        $spec.stdin_text | Should -Match 'Even if\s+the host exposes additional tools, they are outside the approved review contract'
         $spec.stdin_text | Should -Match 'Do not run tests, shell commands, installers, update commands, or repository automation'
         $spec.stdin_text | Should -Not -Match 'must-not-copy'
     }

@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 43
-**Resolution rate**: 86.0% (37/43 resolved; DRIFT-198-I008-038/039/041/042 await fresh independent review, DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof, and DRIFT-198-I008-043 awaits exact-head and fresh-review proof)
+**Total drift events**: 47
+**Resolution rate**: 89.4% (42/47 resolved; DRIFT-198-I008-040 awaits the completed-workshop retest, and DRIFT-198-I008-044–047 await exact-head and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -40,9 +40,10 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   residual directions. Commit `d5046896` and exact-head CI `29922949655` corrected 038/039, and the fresh Article
   Amplifier test proved feature-level intake reaches its first lens, closing 032. That same test exposed 040: the
   model-authored workshop marker is not a stable cross-host authority surface. The strict artifact-derived
-  replacement is focused-green but still needs full/hosted/fresh-review proof and a from-scratch test through final
-  lens completion. T029 release and T067 published-beta validation remain deliberately pending behind their named
-  boundaries.
+  replacement passed full and hosted proof plus current/valid run 13, but still needs a from-scratch test through
+  final lens completion. Run 13 independently closed 038/039/041–043 and found four bounded, real follow-ons now
+  recorded as 044–047. T029 release and T067 published-beta validation remain deliberately pending behind their
+  named boundaries.
 
 ## Events
 
@@ -755,7 +756,7 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-038 — absent start context did not consult durable on-disk iteration truth
 
-- **Status**: corrected locally; focused and full 75-suite verification pass; hosted verification and fresh independent review pending
+- **Status**: resolved by exact-head CI and current/valid review run 13
 - **Severity**: note-level workshop false-allow
 - **Type**: incomplete lifecycle-state corroboration
 - **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
@@ -771,7 +772,7 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-039 — static macOS identity mismatch consumed the transient observation budget
 
-- **Status**: corrected locally; focused and full 75-suite verification pass; hosted verification and fresh independent review pending
+- **Status**: resolved by exact-head CI and current/valid review run 13
 - **Severity**: note-level bounded-runtime robustness defect
 - **Type**: avoidable wait on immutable mismatch
 - **Requirements**: FR-061, SC-020, SC-021, NFR-002; T029 release acceptance
@@ -785,7 +786,7 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-040 — model-authored workshop marker was absent in a real Copilot lens turn
 
-- **Status**: corrected; all 76 registered suites and exact-head hosted CI pass; fresh independent review and
+- **Status**: corrected; all 76 registered suites, exact-head hosted CI, and current/valid review run 13 pass;
   from-scratch completion retest pending
 - **Severity**: release-blocking workshop UX and lifecycle-completion defect
 - **Type**: unstable cross-host control signal and incomplete durable completion proof
@@ -819,8 +820,7 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-041 — the frozen full-registry command had no controller-overhead margin
 
-- **Status**: corrected; command-scoped diagnostic and exact-head CI proof captured; fresh independent review
-  pending
+- **Status**: resolved by command-scoped diagnostic, exact-head CI, and current/valid review run 13
 - **Severity**: release-review blocker
 - **Type**: verification-budget configuration drift
 - **Requirements**: FR-048, FR-049, SC-015, NFR-002; T029 release acceptance
@@ -840,7 +840,7 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-042 — POSIX containment proof used startup windows below observed host latency
 
-- **Status**: corrected; three concurrent WSL and exact-head hosted CI proofs pass; fresh independent review pending
+- **Status**: resolved by three concurrent WSL proofs, exact-head hosted CI, and current/valid review run 13
 - **Severity**: release-check stability blocker
 - **Type**: timing-sensitive containment fixture and startup-budget drift
 - **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
@@ -867,8 +867,8 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-043 — reviewer prompt omitted the numeric candidate budgets enforced by strict ingress
 
-- **Status**: corrected locally; focused contract proof passes 27/27 and the corrected orchestrator suite passes
-  20/20; exact-head CI and fresh independent review pending
+- **Status**: resolved by exact-head CI and current/valid review run 13; its central-binding follow-on is
+  DRIFT-198-I008-046
 - **Severity**: release-review blocker
 - **Type**: incomplete file-primary prompt contract
 - **Requirements**: FR-060, FR-063, NFR-002; T029 release acceptance
@@ -898,6 +898,76 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 - **Authoritative outcome**: strict invalid-output rejection; no validated finding and no approval effect.
 - **Next action**: one conservative prompt-contract correction, exact-head CI, and one new run identity. A clean
   result returns T029 to the maintainer's manual workshop test; any other outcome returns to the maintainer.
+
+#### T029 run-13 release-review evidence
+
+- **Reviewed identity**: commit `7fc336002e948c6e4ab85d08b4ed25417f15d70d`, Git tree
+  `b143d61511c04da1c66dc87a19f1bda727980f0e`, reproducible reviewed-state digest
+  `dcfb81caa02f86260983b106bd5ce9756d2aeb7d`.
+- **Controller verification**: the frozen full registry passed in 1,252.6 seconds and scoped governance passed in
+  10.5 seconds. Exact-head Test `29958462624`, Specrew CI `29958462702`, Cross-Platform PR `29958463090`, and
+  Cross-Platform push `29958457180` all succeeded.
+- **Provider accounting**: run `run-t029-claude-windows-7fc33600-dcfb81ca-13` used exactly one invocation and one
+  spend under `standing-human-grant-t029-progress-20260723-slot-13`; no hidden retry.
+- **Authoritative outcome**: valid, current, complete `findings` with verified containment and termination. Four
+  non-blocking findings were published; the target is not approved. They map one-to-one to DRIFT-198-I008-044–047.
+
+### DRIFT-198-I008-044 — POSIX ready-file parsing abandoned the remaining handshake budget
+
+- **Status**: corrected locally; direct runtime and adjacent fault-matrix tests pass; exact-head CI and fresh
+  independent review pending
+- **Severity**: minor release-review finding
+- **Type**: transient readiness race
+- **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: run 13 finding `finding-b7906b41e1459649` proved that file existence followed by an
+  incomplete `WriteAllText` receipt caused one failed parse to terminate the full 15-second handshake allowance.
+- **Correction**: the reader now retries only transient read/UTF-8/JSON failures within the existing named bound.
+  A parsed receipt with missing or wrong schema, mode, or PID still fails immediately and creates no authority.
+- **Paired evidence**: an existing receipt that is malformed on the first read and valid on the second succeeds
+  after exactly two reads; a valid wrong-mode receipt returns null after exactly one read.
+
+### DRIFT-198-I008-045 — shared prompt described Claude-only tool enforcement as universal
+
+- **Status**: corrected locally; prompt, process-spec, and orchestrator contract tests pass; exact-head CI and
+  fresh independent review pending
+- **Severity**: minor release-review finding
+- **Type**: cross-host contract honesty gap
+- **Requirements**: FR-060, FR-063, NFR-002; T029 release acceptance
+- **Observed evidence**: run 13 finding `finding-b8848da62a92e85b` established that only Claude receives an
+  enforced `Read,Glob,Grep,Write` tool allowlist while the same shared prompt is rendered for broader-tool hosts.
+- **Correction**: the prompt now states the host-neutral approved review contract: extra host-exposed tools remain
+  outside that contract. The no-shell, read-only source, and exact candidate-file-only write rules remain explicit.
+- **Paired evidence**: validation rejects reintroduction of the false universal tool claim, and the rendered
+  production process-spec test proves the host-neutral contract reaches the reviewer.
+
+### DRIFT-198-I008-046 — advertised candidate budgets were not bound to ingress maxima
+
+- **Status**: corrected locally; authority, harness, and orchestrator contract tests pass; exact-head CI and fresh
+  independent review pending
+- **Severity**: minor release-review finding
+- **Type**: duplicated contract limits
+- **Requirements**: FR-060, FR-063, NFR-002; T029 release acceptance
+- **Observed evidence**: run 13 finding `finding-184deaa1f017b715` established that prompt digits, prompt-validator
+  digits, and strict-ingress maxima could diverge independently.
+- **Correction**: one named authority candidate-limit table now drives ingress. Conservative prompt budgets are
+  derived as fixed fractions of those maxima and rendered through validated one-use placeholders; no numeric
+  prompt budget is duplicated in the template or its regex guard.
+- **Paired evidence**: direct tests prove every advertised value is at or below its central maximum, all budget
+  placeholders render away, and over-limit summary/local-ID candidates still fail strict ingress.
+
+### DRIFT-198-I008-047 — POSIX stdout failure short-circuited stderr drain observation
+
+- **Status**: corrected locally; direct runtime and cross-platform fault-matrix tests pass; exact-head CI and fresh
+  independent review pending
+- **Severity**: note-level release-review finding
+- **Type**: incomplete stream-closure observation
+- **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: run 13 finding `finding-cf5886d07afa96fc` proved PowerShell `-and` could skip the stderr
+  wait whenever stdout did not close within its bound, in both normal and catch paths.
+- **Correction**: one helper observes stdout and stderr separately within one shared five-second drain budget, then
+  combines the two results. Both runtime paths use the helper; failure remains fail-closed.
+- **Paired evidence**: an injected false stdout result still invokes and records the independent successful stderr
+  wait exactly once, while the combined closure result remains false.
 
 ### Resolution Strategies
 

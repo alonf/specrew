@@ -120,6 +120,27 @@ Describe 'Review authority closed contracts (T042)' {
         ($beyond.errors -join ';') | Should -Match 'out-of-range:duration_ms'
     }
 
+    It 'publishes one named candidate-limit contract and enforces it at ingress' {
+        $limits = Get-ReviewAuthorityCandidateLimits
+        $limits.max_summary_characters | Should -Be 4000
+        $limits.max_findings | Should -Be 100
+        $limits.max_local_id_characters | Should -Be 64
+        $limits.max_title_characters | Should -Be 200
+        $limits.max_description_characters | Should -Be 4000
+        $limits.max_location_characters | Should -Be 1000
+
+        $summary = New-Candidate
+        $summary.summary = 'x' * ($limits.max_summary_characters + 1)
+        $summaryValidation = Test-ReviewAuthorityContractObject -ContractName ReviewerCandidate -InputObject $summary
+        $summaryValidation.valid | Should -BeFalse
+        $summaryValidation.errors | Should -Contain "too-long:summary:$($limits.max_summary_characters)"
+
+        $finding = New-CandidateFinding -LocalId ('x' * ($limits.max_local_id_characters + 1))
+        $findingValidation = Test-ReviewAuthorityContractObject -ContractName ReviewerCandidate -InputObject (New-Candidate -Verdict findings -Findings @($finding))
+        $findingValidation.valid | Should -BeFalse
+        $findingValidation.errors | Should -Contain "findings[0].too-long:local_id:$($limits.max_local_id_characters)"
+    }
+
     It 'accepts historical recovery facts without target bindings but rejects a partial binding group' {
         $historical = [pscustomobject][ordered]@{
             schema_version = '1.0'; fact_type = 'recovery'; campaign_id = 'cmp-demo'; run_id = 'run-one'; target_digest = 'digest-one'; harness_id = 'fixture'

@@ -4,18 +4,36 @@ Set-StrictMode -Version Latest
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewProductionHarnessDefinition' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'reviewer-host-catalog.ps1')
 }
+if (-not (Get-Command -Name 'Get-ReviewAuthorityCandidateLimits' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'review-authority-core.ps1')
+}
 
 # Shared synchronous process/file contract for production review harnesses. Reviewers write one bounded
 # candidate JSON object to the controller-owned path. Stdout may be observed as transient activity, but it
 # is never parsed, extracted, or copied into candidate authority.
 
 function Get-ReviewHarnessContractLimits {
+    $authority = Get-ReviewAuthorityCandidateLimits
     return [pscustomobject][ordered]@{
         schema_version = '1.0'
         max_prompt_template_bytes = 32768
         max_rendered_prompt_bytes = 65536
         max_candidate_bytes = 262144
+        advertised_summary_characters = [int][Math]::Floor($authority.max_summary_characters / 2)
+        advertised_findings = [int][Math]::Floor($authority.max_findings / 2)
+        advertised_local_id_characters = [int][Math]::Floor(($authority.max_local_id_characters * 3) / 4)
+        advertised_title_characters = [int][Math]::Floor(($authority.max_title_characters * 4) / 5)
+        advertised_description_characters = [int][Math]::Floor(($authority.max_description_characters * 3) / 4)
+        advertised_location_characters = [int][Math]::Floor(($authority.max_location_characters * 4) / 5)
     }
+}
+
+function Get-ReviewFilePrimaryPromptPlaceholders {
+    return @(
+        '__RUN_ID__', '__TARGET_DIGEST__', '__CANDIDATE_RESULT_PATH__', '__REVIEW_SCOPE__', '__DEADLINE__',
+        '__MAX_SUMMARY_CHARACTERS__', '__MAX_FINDINGS__', '__MAX_LOCAL_ID_CHARACTERS__',
+        '__MAX_TITLE_CHARACTERS__', '__MAX_DESCRIPTION_CHARACTERS__', '__MAX_LOCATION_CHARACTERS__'
+    )
 }
 
 function Test-ReviewFilePrimaryPromptTemplate {
@@ -27,7 +45,7 @@ function Test-ReviewFilePrimaryPromptTemplate {
     $bytes = [Text.Encoding]::UTF8.GetByteCount($Template)
     if ($bytes -gt $limits.max_prompt_template_bytes) { $errors.Add("prompt-template-too-large:$($limits.max_prompt_template_bytes)") | Out-Null }
 
-    $required = @('__RUN_ID__', '__TARGET_DIGEST__', '__CANDIDATE_RESULT_PATH__', '__REVIEW_SCOPE__', '__DEADLINE__')
+    $required = Get-ReviewFilePrimaryPromptPlaceholders
     foreach ($placeholder in $required) {
         $count = ([regex]::Matches($Template, [regex]::Escape($placeholder))).Count
         if ($count -ne 1) { $errors.Add(('prompt-placeholder-count:{0}:{1}' -f $placeholder, $count)) | Out-Null }
@@ -41,11 +59,12 @@ function Test-ReviewFilePrimaryPromptTemplate {
         @{ name = 'no-fences'; pattern = '(?is)no\s+Markdown\s+fences' },
         @{ name = 'stdout-non-authority'; pattern = '(?is)stdout.+never\s+parsed\s+for\s+authority' },
         @{ name = 'source-read-only'; pattern = '(?is)do\s+not\s+modify\s+the\s+source' },
+        @{ name = 'host-tool-posture'; pattern = '(?is)approved\s+review\s+contract\s+permits\s+only\s+Read.+Glob.+Grep.+exact\s+candidate-file\s+Write.+host\s+exposes\s+additional\s+tools.+outside\s+the\s+approved\s+review\s+contract' },
         @{ name = 'single-reviewer-session'; pattern = '(?is)do\s+not\s+delegate\s+to\s+subagents\s+or\s+start\s+other\s+model-backed\s+reviewers' },
         @{ name = 'risk-based-completion'; pattern = '(?is)risk-based\s+inspection.+not\s+required\s+to\s+open\s+every\s+file.+complete\s+candidate.+requested\s+review\s+scope.+high-risk\s+check' },
         @{ name = 'location-string-type'; pattern = '(?is)`?location`?.+when\s+present.+plain\s+JSON\s+string.+never\s+an\s+object.+array.+number.+boolean' },
-        @{ name = 'summary-budget'; pattern = '(?is)summary\s+at\s+most\s+2000\s+characters' },
-        @{ name = 'finding-budgets'; pattern = '(?is)no\s+more\s+than\s+50\s+findings.+local_id\s+at\s+most\s+48\s+characters.+title\s+at\s+most\s+160.+description\s+at\s+most\s+3000.+location\s+at\s+most\s+800.+shorten\s+prose.+never\s+truncate\s+the\s+JSON\s+object' }
+        @{ name = 'summary-budget'; pattern = '(?is)summary\s+at\s+most\s+__MAX_SUMMARY_CHARACTERS__\s+characters' },
+        @{ name = 'finding-budgets'; pattern = '(?is)no\s+more\s+than\s+__MAX_FINDINGS__\s+findings.+local_id\s+at\s+most\s+__MAX_LOCAL_ID_CHARACTERS__\s+characters.+title\s+at\s+most\s+__MAX_TITLE_CHARACTERS__.+description\s+at\s+most\s+__MAX_DESCRIPTION_CHARACTERS__.+location\s+at\s+most\s+__MAX_LOCATION_CHARACTERS__.+shorten\s+prose.+never\s+truncate\s+the\s+JSON\s+object' }
     )) {
         if ($Template -notmatch $rule.pattern) { $errors.Add(('prompt-contract-missing:' + $rule.name)) | Out-Null }
     }
@@ -60,18 +79,24 @@ function Render-ReviewFilePrimaryPrompt {
     )
     $validation = Test-ReviewFilePrimaryPromptTemplate -Template $Template
     if (-not $validation.valid) { throw ('review-file-primary-prompt-invalid:' + ($validation.errors -join ',')) }
+    $limits = Get-ReviewHarnessContractLimits
     $values = @{
         '__RUN_ID__' = [string]$Invocation.run_id
         '__TARGET_DIGEST__' = [string]$Invocation.target_digest
         '__CANDIDATE_RESULT_PATH__' = [IO.Path]::GetFullPath([string]$Invocation.candidate_result_path)
         '__REVIEW_SCOPE__' = [string]$Invocation.review_scope
         '__DEADLINE__' = [string]$Invocation.deadline
+        '__MAX_SUMMARY_CHARACTERS__' = [string]$limits.advertised_summary_characters
+        '__MAX_FINDINGS__' = [string]$limits.advertised_findings
+        '__MAX_LOCAL_ID_CHARACTERS__' = [string]$limits.advertised_local_id_characters
+        '__MAX_TITLE_CHARACTERS__' = [string]$limits.advertised_title_characters
+        '__MAX_DESCRIPTION_CHARACTERS__' = [string]$limits.advertised_description_characters
+        '__MAX_LOCATION_CHARACTERS__' = [string]$limits.advertised_location_characters
     }
     $rendered = [regex]::Replace($Template, '__[A-Z0-9_]+__', [Text.RegularExpressions.MatchEvaluator]{
         param($match)
         return [string]$values[[string]$match.Value]
     })
-    $limits = Get-ReviewHarnessContractLimits
     $bytes = [Text.Encoding]::UTF8.GetByteCount($rendered)
     if ($bytes -gt $limits.max_rendered_prompt_bytes) { throw "review-file-primary-rendered-prompt-too-large:$($limits.max_rendered_prompt_bytes)" }
     return $rendered

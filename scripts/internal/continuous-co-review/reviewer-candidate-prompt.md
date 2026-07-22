@@ -7,10 +7,11 @@ line-by-line inventory. Do not mark the review complete when a planned high-risk
 Do not modify the source, the workspace, Git state, or controller files. Work directly in this reviewer
 session; do not delegate to subagents or start other model-backed reviewers. Follow this review scope:
 
-Your available tools are deliberately limited to Read, Glob, Grep, and Write. Use Read/Glob/Grep only for
-inspection. Do not run tests, shell commands, installers, update commands, or repository automation; the
-controller already verified the frozen candidate. Use Write only for the exact candidate result path below
-and never create or change any other file.
+The approved review contract permits only Read, Glob, Grep, and the exact candidate-file Write. Even if
+the host exposes additional tools, they are outside the approved review contract. Use Read/Glob/Grep only
+for inspection. Do not run tests, shell commands, installers, update commands, or repository automation;
+the controller already verified the frozen candidate. Use Write only for the exact candidate result path
+below and never create or change any other file.
 
 __REVIEW_SCOPE__
 
@@ -35,9 +36,10 @@ verdict = "pass", "findings", or "incomplete"
 summary = concise plain text
 findings = array of objects with exactly: local_id, severity, title, description, and optional location
 
-Keep the candidate well inside the schema bounds: summary at most 2000 characters; no more than 50
-findings; each local_id at most 48 characters, title at most 160, description at most 3000, and location
-at most 800. Shorten prose instead of exceeding a budget; never truncate the JSON object.
+Keep the candidate well inside the schema bounds: summary at most __MAX_SUMMARY_CHARACTERS__ characters;
+no more than __MAX_FINDINGS__ findings; each local_id at most __MAX_LOCAL_ID_CHARACTERS__ characters,
+title at most __MAX_TITLE_CHARACTERS__, description at most __MAX_DESCRIPTION_CHARACTERS__, and location
+at most __MAX_LOCATION_CHARACTERS__. Shorten prose instead of exceeding a budget; never truncate the JSON object.
 
 Each `severity` is one of `blocking`, `major`, `minor`, or `note`. Use unique, run-local `local_id` values.
 `location`, when present, must be one plain JSON string such as `path/to/file:line`; never an object,

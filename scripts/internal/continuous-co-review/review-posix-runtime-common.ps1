@@ -26,22 +26,48 @@ function Wait-ReviewPosixReadyFile {
     param(
         [Parameter(Mandatory)][string]$Path,
         [Parameter(Mandatory)][ValidateSet('linux-cgroup', 'process-group')][string]$ExpectedMode,
-        [ValidateRange(100, 30000)][int]$TimeoutMilliseconds = $script:ReviewPosixContainmentHandshakeTimeoutMilliseconds
+        [ValidateRange(100, 30000)][int]$TimeoutMilliseconds = $script:ReviewPosixContainmentHandshakeTimeoutMilliseconds,
+        [scriptblock]$ReadText = { param($ReadyPath) [IO.File]::ReadAllText($ReadyPath, [Text.UTF8Encoding]::new($false, $true)) },
+        [scriptblock]$Sleep = { param($Milliseconds) [Threading.Thread]::Sleep($Milliseconds) }
     )
     $watch = [Diagnostics.Stopwatch]::StartNew()
     while ($watch.ElapsedMilliseconds -lt $TimeoutMilliseconds) {
         if ([IO.File]::Exists($Path)) {
             try {
-                $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false, $true))
+                $text = & $ReadText $Path
                 $ready = $text | ConvertFrom-Json -Depth 8
-                if ([string]$ready.schema_version -cne '1.0' -or [string]$ready.mode -cne $ExpectedMode -or [int]$ready.pid -lt 1) { return $null }
-                return $ready
             }
-            catch { return $null }
+            catch {
+                & $Sleep 20
+                continue
+            }
+            if ($null -eq $ready -or $null -eq $ready.PSObject.Properties['schema_version'] -or
+                $null -eq $ready.PSObject.Properties['mode'] -or $null -eq $ready.PSObject.Properties['pid']) { return $null }
+            [int]$readyPid = 0
+            if (-not [int]::TryParse([string]$ready.pid, [ref]$readyPid) -or
+                [string]$ready.schema_version -cne '1.0' -or [string]$ready.mode -cne $ExpectedMode -or $readyPid -lt 1) { return $null }
+            return $ready
         }
-        [Threading.Thread]::Sleep(20)
+        & $Sleep 20
     }
     return $null
+}
+
+function Wait-ReviewPosixOutputDrains {
+    param(
+        [AllowNull()]$StdoutDrain,
+        [AllowNull()]$StderrDrain,
+        [ValidateRange(1, 30000)][int]$TimeoutMilliseconds = 5000
+    )
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    $stdoutClosed = try { [bool]$StdoutDrain.Wait($TimeoutMilliseconds) } catch { $false }
+    $remaining = [int][Math]::Max(0, $TimeoutMilliseconds - $watch.ElapsedMilliseconds)
+    $stderrClosed = try { [bool]$StderrDrain.Wait($remaining) } catch { $false }
+    return [pscustomobject]@{
+        stdout_closed = $stdoutClosed
+        stderr_closed = $stderrClosed
+        all_closed = ($stdoutClosed -and $stderrClosed)
+    }
 }
 
 function Test-ReviewPosixProcessDead {
@@ -70,6 +96,7 @@ function New-ReviewPosixRuntimePort {
     $validateSpecCommand = ${function:Test-ReviewRuntimeProcessSpec}
     $resolveExecutableCommand = ${function:Resolve-ReviewPosixExecutable}
     $waitReadyCommand = ${function:Wait-ReviewPosixReadyFile}
+    $waitOutputDrainsCommand = ${function:Wait-ReviewPosixOutputDrains}
     $testDeadCommand = ${function:Test-ReviewPosixProcessDead}
     $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
     $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
@@ -164,7 +191,8 @@ function New-ReviewPosixRuntimePort {
             $exitCode = if ($exited) { $process.ExitCode } else { $null }
             & $StopContainment $descriptor $(if ($timedOut) { $TerminationGraceSeconds } else { 0 })
             if (-not $process.HasExited) { [void]$process.WaitForExit(5000) }
-            $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
+            $streamState = & $waitOutputDrainsCommand -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
+            $streamsClosed = $streamState.all_closed
             $containmentEmpty = [bool](& $WaitContainmentEmpty $descriptor 5000)
             $rootDead = & $testDeadCommand -ProcessId $process.Id
             $cleanupVerified = [bool](& $CleanupContainment $descriptor)
@@ -174,17 +202,19 @@ function New-ReviewPosixRuntimePort {
                 return [pscustomobject]@{
                     runtime_outcome = 'timed-out'; termination_verified = $terminationVerified; containment = $(if ($containmentVerified) { 'verified' } else { 'unknown' })
                     failure_reason = $(if ($terminationVerified) { "timeout after $effectiveTimeout seconds; $Containment process tree verified dead, streams closed, containment cleaned" } else { "timeout after $effectiveTimeout seconds; termination verification failed" })
-                    process_tree_live = (-not $terminationVerified); output_activity = $outputActivity; streams_closed = $streamsClosed; cleanup_verified = $cleanupVerified
+                    process_tree_live = (-not $terminationVerified); output_activity = $outputActivity; streams_closed = $streamsClosed
+                    stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed; cleanup_verified = $cleanupVerified
                 }
             }
             if (-not $terminationVerified) {
-                return [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = $false; containment = 'unknown'; failure_reason = "$Containment termination, stream closure, or cleanup verification failed"; process_tree_live = $true; output_activity = $outputActivity; streams_closed = $streamsClosed; cleanup_verified = $cleanupVerified; exit_code = $exitCode }
+                return [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = $false; containment = 'unknown'; failure_reason = "$Containment termination, stream closure, or cleanup verification failed"; process_tree_live = $true; output_activity = $outputActivity; streams_closed = $streamsClosed; stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed; cleanup_verified = $cleanupVerified; exit_code = $exitCode }
             }
             $outcome = if ($exitCode -eq 0) { 'completed' } else { 'terminated' }
             return [pscustomobject]@{
                 runtime_outcome = $outcome; termination_verified = $true; containment = 'verified'
                 failure_reason = $(if ($exitCode -eq 0) { $null } else { "reviewer-process-exit-code:$exitCode" })
-                process_tree_live = $false; output_activity = $outputActivity; streams_closed = $streamsClosed; cleanup_verified = $cleanupVerified; exit_code = $exitCode
+                process_tree_live = $false; output_activity = $outputActivity; streams_closed = $streamsClosed
+                stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed; cleanup_verified = $cleanupVerified; exit_code = $exitCode
             }
         }
         catch {
@@ -193,12 +223,13 @@ function New-ReviewPosixRuntimePort {
             try { $process.StandardInput.Close() } catch { $null = $_ }
             if ($null -ne $descriptor) { try { & $StopContainment $descriptor 0 } catch { $null = $_ } }
             try { if (-not $process.HasExited) { [void]$process.WaitForExit(5000) } } catch { $null = $_ }
-            $streamsClosed = try { $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000) } catch { $false }
+            $streamState = & $waitOutputDrainsCommand -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
+            $streamsClosed = $streamState.all_closed
             $containmentEmpty = if ($null -ne $descriptor) { try { [bool](& $WaitContainmentEmpty $descriptor 5000) } catch { $false } } else { $false }
             $rootDead = try { & $testDeadCommand -ProcessId $process.Id } catch { $false }
             $cleanupVerified = if ($null -ne $descriptor) { try { [bool](& $CleanupContainment $descriptor) } catch { $false } } else { $false }
             $verified = $streamsClosed -and $containmentEmpty -and $rootDead -and $cleanupVerified
-            return [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = $verified; containment = $(if ($containmentVerified) { 'verified' } else { 'unknown' }); failure_reason = ("$Platform-runtime-failed:" + $why); process_tree_live = (-not $verified); output_activity = $false; streams_closed = $streamsClosed; cleanup_verified = $cleanupVerified }
+            return [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = $verified; containment = $(if ($containmentVerified) { 'verified' } else { 'unknown' }); failure_reason = ("$Platform-runtime-failed:" + $why); process_tree_live = (-not $verified); output_activity = $false; streams_closed = $streamsClosed; stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed; cleanup_verified = $cleanupVerified }
         }
         finally {
             if ($null -ne $descriptor) { try { & $CleanupContainment $descriptor | Out-Null } catch { $null = $_ } }

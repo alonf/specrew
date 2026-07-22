@@ -90,6 +90,46 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         }
     }
 
+    It 'retries a transiently unreadable ready receipt but rejects a valid identity mismatch immediately' {
+        $path = Join-Path $TestDrive 'ready.json'
+        [IO.File]::WriteAllText($path, '')
+        $script:readyReceiptReads = 0
+        $transientRead = {
+            param($ReadyPath)
+            $null = $script:readyReceiptReads++
+            if ($script:readyReceiptReads -eq 1) { return '{' }
+            return '{"schema_version":"1.0","mode":"process-group","pid":42}'
+        }
+        $ready = Wait-ReviewPosixReadyFile -Path $path -ExpectedMode process-group -TimeoutMilliseconds 100 -ReadText $transientRead -Sleep { param($Milliseconds) }
+        $ready.pid | Should -Be 42
+        $script:readyReceiptReads | Should -Be 2
+
+        $script:mismatchedReadyReceiptReads = 0
+        $mismatchRead = {
+            param($ReadyPath)
+            $null = $script:mismatchedReadyReceiptReads++
+            return '{"schema_version":"1.0","mode":"linux-cgroup","pid":42}'
+        }
+        Wait-ReviewPosixReadyFile -Path $path -ExpectedMode process-group -TimeoutMilliseconds 100 -ReadText $mismatchRead -Sleep { param($Milliseconds) } | Should -BeNullOrEmpty
+        $script:mismatchedReadyReceiptReads | Should -Be 1
+    }
+
+    It 'awaits stderr independently when stdout does not close within its bound' {
+        $script:stdoutCalls = 0
+        $script:stderrCalls = 0
+        $stdout = [pscustomobject]@{}
+        $stdout | Add-Member -MemberType ScriptMethod -Name Wait -Value { param($Milliseconds) $script:stdoutCalls++; return $false }
+        $stderr = [pscustomobject]@{}
+        $stderr | Add-Member -MemberType ScriptMethod -Name Wait -Value { param($Milliseconds) $script:stderrCalls++; return $true }
+
+        $state = Wait-ReviewPosixOutputDrains -StdoutDrain $stdout -StderrDrain $stderr -TimeoutMilliseconds 25
+        $state.stdout_closed | Should -BeFalse
+        $state.stderr_closed | Should -BeTrue
+        $state.all_closed | Should -BeFalse
+        $script:stdoutCalls | Should -Be 1
+        $script:stderrCalls | Should -Be 1
+    }
+
     It 'shares the closed process contract and rejects scalar argument transport before launch' {
         $invocation = New-T057Invocation -Root (Join-Path $TestDrive 'contract')
         $spec = [pscustomobject][ordered]@{

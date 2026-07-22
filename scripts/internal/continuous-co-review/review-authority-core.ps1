@@ -8,6 +8,14 @@ Set-StrictMode -Version Latest
 $script:ReviewAuthorityMaxInvocationTimeoutSeconds = 7200
 $script:ReviewAuthorityMaxTerminationGraceSeconds = 10
 $script:ReviewAuthorityOrchestrationOverheadAllowanceSeconds = 120
+$script:ReviewAuthorityCandidateLimits = [ordered]@{
+    max_summary_characters = 4000
+    max_findings = 100
+    max_local_id_characters = 64
+    max_title_characters = 200
+    max_description_characters = 4000
+    max_location_characters = 1000
+}
 # A terminal duration includes the invocation timeout, termination grace, and bounded controller
 # overhead. Keep this value derived here so changing any contributing ceiling changes the schema
 # bound in the same edit; measured duration evidence is validated as observed and is never clamped.
@@ -23,6 +31,17 @@ function Get-ReviewAuthorityTimingLimits {
         max_termination_grace_seconds = $script:ReviewAuthorityMaxTerminationGraceSeconds
         orchestration_overhead_allowance_seconds = $script:ReviewAuthorityOrchestrationOverheadAllowanceSeconds
         max_duration_ms = $script:ReviewAuthorityMaxDurationMilliseconds
+    }
+}
+
+function Get-ReviewAuthorityCandidateLimits {
+    return [pscustomobject][ordered]@{
+        max_summary_characters = $script:ReviewAuthorityCandidateLimits.max_summary_characters
+        max_findings = $script:ReviewAuthorityCandidateLimits.max_findings
+        max_local_id_characters = $script:ReviewAuthorityCandidateLimits.max_local_id_characters
+        max_title_characters = $script:ReviewAuthorityCandidateLimits.max_title_characters
+        max_description_characters = $script:ReviewAuthorityCandidateLimits.max_description_characters
+        max_location_characters = $script:ReviewAuthorityCandidateLimits.max_location_characters
     }
 }
 
@@ -219,6 +238,7 @@ function Test-ReviewAuthorityFinding {
         [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors,
         [Parameter(Mandatory)][int]$Index
     )
+    $limits = Get-ReviewAuthorityCandidateLimits
     $prefix = "findings[$Index]"
     $allowed = if ($Kind -ceq 'candidate') {
         @('local_id', 'severity', 'title', 'description', 'location')
@@ -232,19 +252,19 @@ function Test-ReviewAuthorityFinding {
         return
     }
     if ($Kind -ceq 'candidate') {
-        Test-ReviewAuthorityStringField -Object $Finding -Name 'local_id' -Errors $nested -MaxLength 64
+        Test-ReviewAuthorityStringField -Object $Finding -Name 'local_id' -Errors $nested -MaxLength $limits.max_local_id_characters
     }
     else {
         Test-ReviewAuthorityIdField -Object $Finding -Name 'finding_id' -Kind finding -Errors $nested
-        Test-ReviewAuthorityStringField -Object $Finding -Name 'source_local_id' -Errors $nested -MaxLength 64
+        Test-ReviewAuthorityStringField -Object $Finding -Name 'source_local_id' -Errors $nested -MaxLength $limits.max_local_id_characters
         Test-ReviewAuthorityIdField -Object $Finding -Name 'lineage_id' -Kind lineage -Errors $nested
         Test-ReviewAuthorityStringField -Object $Finding -Name 'relevance' -Errors $nested -MaxLength 32 -Enum @('current', 'snapshot-moved', 'unknown')
         Test-ReviewAuthorityStringField -Object $Finding -Name 'resolution' -Errors $nested -MaxLength 32 -Enum @('open', 'resolved', 'superseded')
     }
     Test-ReviewAuthorityStringField -Object $Finding -Name 'severity' -Errors $nested -MaxLength 16 -Enum @('blocking', 'major', 'minor', 'note')
-    Test-ReviewAuthorityStringField -Object $Finding -Name 'title' -Errors $nested -MaxLength 200
-    Test-ReviewAuthorityStringField -Object $Finding -Name 'description' -Errors $nested -MaxLength 4000
-    Test-ReviewAuthorityStringField -Object $Finding -Name 'location' -Errors $nested -MaxLength 1000 -Optional
+    Test-ReviewAuthorityStringField -Object $Finding -Name 'title' -Errors $nested -MaxLength $limits.max_title_characters
+    Test-ReviewAuthorityStringField -Object $Finding -Name 'description' -Errors $nested -MaxLength $limits.max_description_characters
+    Test-ReviewAuthorityStringField -Object $Finding -Name 'location' -Errors $nested -MaxLength $limits.max_location_characters -Optional
     foreach ($error in $nested) { Add-ReviewAuthorityError -Errors $Errors -Message "$prefix.$error" }
 }
 
@@ -263,6 +283,7 @@ function Test-ReviewAuthorityContractObject {
     )
 
     $errors = [System.Collections.Generic.List[string]]::new()
+    $candidateLimits = Get-ReviewAuthorityCandidateLimits
     $fields = switch ($ContractName) {
         'ReviewCampaign' { @('schema_version', 'campaign_id', 'target_lineage', 'created_at') }
         'ReviewRun' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'state') }
@@ -317,7 +338,7 @@ function Test-ReviewAuthorityContractObject {
         'ReviewerCandidate' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'verdict' -Errors $errors -MaxLength 16 -Enum @('pass', 'findings', 'incomplete')
-            Test-ReviewAuthorityStringField -Object $InputObject -Name 'summary' -Errors $errors -MaxLength 4000
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'summary' -Errors $errors -MaxLength $candidateLimits.max_summary_characters
         }
         'ReviewResult' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial', 'none')
@@ -329,7 +350,7 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'validation' -Errors $errors -MaxLength 16 -Enum @('valid', 'invalid', 'not-produced')
             Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'can_approve_current' -Errors $errors
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'failure_reason' -Errors $errors -MaxLength 2000 -Optional
-            Test-ReviewAuthorityStringField -Object $InputObject -Name 'summary' -Errors $errors -MaxLength 4000
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'summary' -Errors $errors -MaxLength $candidateLimits.max_summary_characters
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'started_at' -Errors $errors -MaxLength 64
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'ended_at' -Errors $errors -MaxLength 64
             Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'duration_ms' -Errors $errors -Minimum 0 -Maximum $script:ReviewAuthorityMaxDurationMilliseconds
@@ -447,10 +468,10 @@ function Test-ReviewAuthorityContractObject {
             }
             else {
                 $array = @($findings)
-                if ($array.Count -gt 100) { Add-ReviewAuthorityError -Errors $errors -Message 'too-many:findings:100' }
+                if ($array.Count -gt $candidateLimits.max_findings) { Add-ReviewAuthorityError -Errors $errors -Message ("too-many:findings:$($candidateLimits.max_findings)") }
                 $candidateLocalIds = $null
                 if ($ContractName -ceq 'ReviewerCandidate') { $candidateLocalIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal) }
-                for ($i = 0; $i -lt [Math]::Min($array.Count, 100); $i++) {
+                for ($i = 0; $i -lt [Math]::Min($array.Count, $candidateLimits.max_findings); $i++) {
                     Test-ReviewAuthorityFinding -Finding $array[$i] -Kind $(if ($ContractName -ceq 'ReviewerCandidate') { 'candidate' } else { 'terminal' }) -Errors $errors -Index $i
                     if ($null -ne $candidateLocalIds) {
                         $localId = Get-ReviewAuthorityProperty -Object $array[$i] -Name 'local_id'
