@@ -123,6 +123,12 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $refusedProbe = { param($Descriptor, $Ready, $ProcessId) $refusedObservations.Add($false) | Out-Null; return $false }.GetNewClosure()
         Wait-ReviewMacProcessGroupMembership -Descriptor $descriptor -Ready $ready -ProcessId 42 -TimeoutMilliseconds 25 -PollMilliseconds 1 -MembershipProbe $refusedProbe | Should -BeFalse
         $refusedObservations.Count | Should -BeGreaterThan 1
+
+        $identityMismatchObservations = [Collections.Generic.List[bool]]::new()
+        $identityMismatchProbe = { param($Descriptor, $Ready, $ProcessId) $identityMismatchObservations.Add($true) | Out-Null; return $true }.GetNewClosure()
+        $mismatchedDescriptor = [pscustomobject]@{ pgid = 41; mode = 'process-group' }
+        Wait-ReviewMacProcessGroupMembership -Descriptor $mismatchedDescriptor -Ready $ready -ProcessId 42 -TimeoutMilliseconds 100 -PollMilliseconds 1 -MembershipProbe $identityMismatchProbe | Should -BeFalse
+        $identityMismatchObservations.Count | Should -Be 0
     }
 
     It 'selects exactly one production runtime for the current operating system' {

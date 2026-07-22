@@ -468,6 +468,11 @@ function Resolve-SpecrewWorkshopQuestionPause {
             # start context cannot prove pre-iteration state, so the exception fails closed in that case.
             if ($StartContextState -eq 'unreadable') { $result.reason = 'workshop-question-start-context-unreadable'; return $result }
             if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $result.reason = 'workshop-question-feature-scope-after-lifecycle-activation'; return $result }
+            $iterationsRoot = Join-Path $featureRoot 'iterations'
+            if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
+                $numericIterations = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction Stop | Where-Object { $_.Name -match '^[0-9]{3,}$' })
+                if ($numericIterations.Count -gt 0) { $result.reason = 'workshop-question-feature-scope-after-lifecycle-activation'; return $result }
+            }
             $applicabilityPath = Join-Path $featureRoot 'lens-applicability.json'
             $workshopRoot = Join-Path $featureRoot 'workshop'
             if (-not (Test-Path -LiteralPath $applicabilityPath -PathType Leaf)) { $result.reason = 'workshop-question-feature-state-missing'; return $result }

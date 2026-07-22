@@ -933,6 +933,19 @@ try {
     if (-not $r16i.Blocked -or $r16i.Out -notmatch 'five-part context packet') { Fail "Case 16i: unreadable start context MUST NOT prove the feature-level workshop exception. Out: $($r16i.Out)" }
     Write-Pass "Case 16i: unreadable start context fails closed for the feature-level workshop exception"
 
+    # ---- Case 16j: an absent start context is valid only for genuinely pre-iteration intake. Durable numeric
+    #      iteration state on disk proves lifecycle activation even when a host was launched outside specrew start.
+    $p16j = New-Fixture -Working '' -LastAuth ''
+    Remove-Item -LiteralPath (Join-Path $p16j '.specrew\start-context.json') -Force
+    New-Spec -Proj $p16j
+    New-LensApplicability -Proj $p16j -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
+    New-Item -ItemType Directory -Path (Join-Path $p16j 'specs\050-host-neutral-gate\iterations\001') -Force | Out-Null
+    New-HandoverSnapshot -Proj $p16j -ChangedUserFiles 2
+    $t16j = New-Transcript -Proj $p16j -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
+    $r16j = Invoke-Conformance -Proj $p16j -TranscriptPath $t16j
+    if (-not $r16j.Blocked -or $r16j.Out -notmatch 'five-part context packet') { Fail "Case 16j: on-disk iteration truth MUST prevent feature-scope suppression when start context is absent. Out: $($r16j.Out)" }
+    Write-Pass "Case 16j: on-disk numeric iteration truth fails closed when start context is absent"
+
     # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) cannot prove an intermediate pause;
     #      a real boundary stop blocks again.
     $p17 = New-Fixture -Working 'plan' -LastAuth 'clarify'

@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 37
-**Resolution rate**: 83.8% (31/37 resolved; DRIFT-198-I008-032–037 await a fully green exact-head PR and fresh-review proof; 032 also awaits the clean-project retest)
+**Total drift events**: 39
+**Resolution rate**: 92.3% (36/39 resolved; DRIFT-198-I008-032 awaits the clean-project retest and DRIFT-198-I008-038/039 await full, hosted, and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -35,9 +35,10 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
 added DRIFT-198-I008-021–037: 021–031 are corrected and exact-head independently verified. The later Copilot
 workshop exposed 032; review run 08 verified its core correction and found the bounded 033–036 follow-ons. Their
-first exact-head PR exposed the macOS capability-probe race recorded as 037. These local corrections now require a
-fully green exact-head PR and fresh independent review. DRIFT-032 additionally requires the
-clean-project workshop retest. T029 release and T067 published-beta validation remain deliberately pending behind
+first exact-head PR exposed the macOS capability-probe race recorded as 037. Commit `bb780bf1` then passed every
+exact-head workflow, and current/valid run 10 independently verified 032–037 before finding the bounded 038/039
+residual directions. DRIFT-032 additionally requires the clean-project workshop retest; 038/039 require full,
+hosted, and fresh-review proof. T029 release and T067 published-beta validation remain deliberately pending behind
 their named boundaries.
 
 ## Events
@@ -653,7 +654,7 @@ their named boundaries.
 
 ### DRIFT-198-I008-032 — feature-level intake workshop was forced into the generic material-work packet
 
-- **Status**: local correction and 75-suite registered verification pass; hosted verification, fresh independent review, and clean-project retest pending
+- **Status**: exact-head CI and independent review pass; clean-project retest pending
 - **Severity**: release-blocking workshop UX defect
 - **Type**: scope-model mismatch
 - **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
@@ -678,7 +679,7 @@ their named boundaries.
 
 ### DRIFT-198-I008-033 — drift summary did not reflect the current event set
 
-- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Status**: resolved by exact-head commit `bb780bf1` and current/valid review run 10
 - **Severity**: minor governance-artifact defect
 - **Type**: stale summary projection
 - **Requirements**: NFR-002; T029 release acceptance
@@ -689,7 +690,7 @@ their named boundaries.
 
 ### DRIFT-198-I008-034 — all-host workshop skill parity was outside every automated aggregate
 
-- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Status**: resolved by exact-head commit `bb780bf1` and current/valid review run 10
 - **Severity**: minor regression-gate defect
 - **Type**: verification-plan coverage drift
 - **Requirements**: FR-056, SC-016, NFR-002; T029 release acceptance
@@ -702,7 +703,7 @@ their named boundaries.
 
 ### DRIFT-198-I008-035 — unreadable start context could falsely prove feature-level intake
 
-- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Status**: resolved by exact-head commit `bb780bf1` and current/valid review run 10
 - **Severity**: minor workshop false-allow
 - **Type**: fail-open lifecycle-state handling
 - **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 release acceptance
@@ -717,7 +718,7 @@ their named boundaries.
 
 ### DRIFT-198-I008-036 — runtime start callbacks relied on distant output-suppression invariants
 
-- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Status**: resolved by exact-head commit `bb780bf1` and current/valid review run 10
 - **Severity**: note-level latent authority robustness defect
 - **Type**: incomplete callback-boundary containment
 - **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 release acceptance
@@ -732,7 +733,7 @@ their named boundaries.
 
 ### DRIFT-198-I008-037 — macOS membership capability probe made one transient observation
 
-- **Status**: corrected locally; focused pair and full 75-suite registry pass; hosted verification and fresh independent review pending
+- **Status**: resolved by exact-head commit `bb780bf1` and current/valid review run 10
 - **Severity**: release-gate flake
 - **Type**: insufficiently stabilized native capability observation
 - **Requirements**: FR-061, SC-020, SC-021, NFR-002; T029 release acceptance
@@ -747,6 +748,36 @@ their named boundaries.
 - **Paired evidence**: an injected sequence `false,false,true` succeeds on the third read; a permanently false
   probe performs multiple reads and returns false within a 25 ms bound. The complete Feature 198 registry passes
   all 75 suites in 998.1 seconds after the correction.
+
+### DRIFT-198-I008-038 — absent start context did not consult durable on-disk iteration truth
+
+- **Status**: corrected locally; focused and full 75-suite verification pass; hosted verification and fresh independent review pending
+- **Severity**: note-level workshop false-allow
+- **Type**: incomplete lifecycle-state corroboration
+- **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
+- **Observed evidence**: current/valid review run 10 verified DRIFT-032–037, then found that an entirely absent
+  `.specrew/start-context.json` remained eligible for feature-scope suppression even when
+  `specs/<feature>/iterations/<NNN>/` proved the feature had already entered an iteration. This can occur when a
+  host is launched outside `specrew start`; the feature-level agenda and first-remaining lens still had to match.
+- **Correction**: feature-scope validation now rejects any durable numeric iteration directory before reading the
+  feature agenda. Context-absent greenfield intake remains valid only when no such iteration exists.
+- **Paired evidence**: case 16e retains genuine pre-iteration intake; new case 16j removes start context, creates
+  numeric iteration truth, and requires the ordinary five-part material packet. The complete Feature 198
+  registry passes all 75 suites in 1,088.1 seconds.
+
+### DRIFT-198-I008-039 — static macOS identity mismatch consumed the transient observation budget
+
+- **Status**: corrected locally; focused and full 75-suite verification pass; hosted verification and fresh independent review pending
+- **Severity**: note-level bounded-runtime robustness defect
+- **Type**: avoidable wait on immutable mismatch
+- **Requirements**: FR-061, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: run 10 found that the bounded helper repeated immutable descriptor-PGID and ready-receipt
+  identity checks inside the live `ps` polling loop. A mismatch was safe and bounded but could never stabilize, so
+  it unnecessarily consumed the full one-second observation allowance.
+- **Correction**: immutable descriptor/receipt identity is checked once before the loop; only live process-group
+  observation is polled. Valid identity retains the transient-success and permanent-live-failure behavior.
+- **Paired evidence**: a mismatched descriptor fails without invoking an injected always-true live probe, while
+  the existing `false,false,true` and permanently-false live observation fixtures remain green.
 
 ### Resolution Strategies
 

@@ -373,3 +373,26 @@ on its third read; a permanently false fixture performs multiple reads and still
 The complete Feature 198 registry passes all 75 suites in 998.1 seconds after the correction. A fully green
 exact-head PR and fresh independent review remain required. No workflow retry, provider invocation, merge, tag,
 publication, or stable promotion was performed by this correction.
+
+## Run 09 Preflight Failure, Run 10 Findings, and Bounded Corrections
+
+Exact-head commit `bb780bf10fef648a1a10aba2eed276dafd66a579` passed Test `29915171840`, Specrew CI
+`29915171829`, Cross-Platform PR `29915171809`, and Cross-Platform push `29915168880`. Its canonical digest
+reproduced as `ce09f758c40d0957b060212b65f16793696ded7b`.
+
+Run 09 invoked no provider and wrote no spend fact. The controller was incorrectly given the detached review
+worktree as its external snapshot root, so its verification copy was nested inside the frozen origin; Windows
+then refused long-path disposal. The immutable reservation was released. A provider-free corrected-layout probe
+created the snapshot and verification copy under `C:/Dev/.specrew-targets`, proved both were outside the origin,
+and disposed both successfully.
+
+Run 10 used separate origin, authority-store, staging, and snapshot roots. It invoked Claude exactly once under
+verified containment and published complete/current/valid findings evidence for digest `ce09f758...`. Controller
+verification passed the 75-suite registry in 1,081.9 seconds and scoped governance in 11.7 seconds. The reviewer
+independently verified DRIFT-032–037 and returned two note-level residuals, recorded as DRIFT-038/039: absent
+start context did not consult durable numeric iteration directories, and immutable macOS identity mismatch paid
+the transient live-observation wait budget. The narrow corrections add the on-disk denial direction and split
+one-shot identity validation from live polling. Their focused matrices pass. Full registered verification,
+and the complete Feature 198 registry passes all 75 suites in 1,088.1 seconds. Exact-head CI, fresh independent
+review, and the clean-project workshop retest remain required. No merge, tag,
+publication, or stable promotion is authorized.

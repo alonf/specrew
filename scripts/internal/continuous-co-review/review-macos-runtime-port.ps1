@@ -59,11 +59,21 @@ function Stop-ReviewMacProcessGroup {
     try { $null = [SpecrewReviewMacSignalNative]::killpg($pgid, 9) } catch { $null = $_ }
 }
 
-function Test-ReviewMacProcessGroupMembership {
+function Test-ReviewMacProcessGroupIdentity {
     param([Parameter(Mandatory)]$Descriptor, [Parameter(Mandatory)]$Ready, [Parameter(Mandatory)][int]$ProcessId)
-    if ([int]$Descriptor.pgid -ne $ProcessId -or [int]$Ready.containment_id -ne $ProcessId) { return $false }
+    return ([int]$Descriptor.pgid -eq $ProcessId -and [int]$Ready.containment_id -eq $ProcessId)
+}
+
+function Test-ReviewMacProcessGroupLiveMembership {
+    param([Parameter(Mandatory)]$Descriptor, [Parameter(Mandatory)]$Ready, [Parameter(Mandatory)][int]$ProcessId)
     $observed = Get-SpecrewProcessGroupId -TargetPid $ProcessId
     return $null -ne $observed -and [int]$observed -eq $ProcessId
+}
+
+function Test-ReviewMacProcessGroupMembership {
+    param([Parameter(Mandatory)]$Descriptor, [Parameter(Mandatory)]$Ready, [Parameter(Mandatory)][int]$ProcessId)
+    if (-not (Test-ReviewMacProcessGroupIdentity -Descriptor $Descriptor -Ready $Ready -ProcessId $ProcessId)) { return $false }
+    return Test-ReviewMacProcessGroupLiveMembership -Descriptor $Descriptor -Ready $Ready -ProcessId $ProcessId
 }
 
 function Wait-ReviewMacProcessGroupMembership {
@@ -75,7 +85,8 @@ function Wait-ReviewMacProcessGroupMembership {
         [ValidateRange(1, 100)][int]$PollMilliseconds = 25,
         [scriptblock]$MembershipProbe
     )
-    if (-not $MembershipProbe) { $MembershipProbe = ${function:Test-ReviewMacProcessGroupMembership} }
+    if (-not (Test-ReviewMacProcessGroupIdentity -Descriptor $Descriptor -Ready $Ready -ProcessId $ProcessId)) { return $false }
+    if (-not $MembershipProbe) { $MembershipProbe = ${function:Test-ReviewMacProcessGroupLiveMembership} }
     $watch = [Diagnostics.Stopwatch]::StartNew()
     do {
         if (& $MembershipProbe -Descriptor $Descriptor -Ready $Ready -ProcessId $ProcessId) { return $true }
