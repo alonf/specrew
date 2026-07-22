@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 40
-**Resolution rate**: 92.5% (37/40 resolved; DRIFT-198-I008-038/039 await fresh independent review and DRIFT-198-I008-040 awaits hosted, fresh-review, and completed-workshop retest proof)
+**Total drift events**: 41
+**Resolution rate**: 90.2% (37/41 resolved; DRIFT-198-I008-038/039 await fresh independent review, DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof, and DRIFT-198-I008-041 awaits exact-head/review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -816,6 +816,27 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   seconds. The primary-worktree governance command reached only the unrelated dirty `state.md` value `implement`;
   the clean detached candidate then passed scoped Iteration 008 governance in 18.4 seconds with only the repository's
   known dashboard/handoff warnings.
+
+### DRIFT-198-I008-041 — the frozen full-registry command had no controller-overhead margin
+
+- **Status**: corrected locally; command-scoped diagnostic proof captured; exact-head CI and fresh independent
+  review pending
+- **Severity**: release-review blocker
+- **Type**: verification-budget configuration drift
+- **Requirements**: FR-048, FR-049, SC-015, NFR-002; T029 release acceptance
+- **Observed evidence**: run `run-t029-claude-windows-4400076f-70c86564-11` invoked no provider and released its
+  reservation after `f198-full-registry` returned a suppressed failure. A human-authorized, command-scoped,
+  8 KiB-capped diagnostic replay in a disposable exact-commit worktree proved that no suite had failed: the
+  registry printed 75 passing suites and was killed at exactly 1,200.149 seconds before its final suite/summary.
+  The same 76-suite registry had completed cleanly in 1,113.6 seconds locally and in exact-head Specrew CI, so
+  the configured 1,200-second command ceiling left insufficient margin for the recorded-run process and isolated
+  environment overhead.
+- **Correction**: raise only the declared `f198-full-registry` verification-plan timeout from 1,200 to 1,500
+  seconds. The campaign remains bounded at 2,400 seconds, the per-suite ceiling remains 300 seconds, and no
+  reviewer/runtime/provider limit changes.
+- **Paired evidence**: the 1,200-second attempt is durable as timed-out command-scoped evidence with provider
+  invocation false. The replacement plan must complete the same 76-suite command within 1,500 seconds before a
+  fresh run may claim or spend a provider slot; a failure still stops before provider invocation.
 
 ### Resolution Strategies
 

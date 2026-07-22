@@ -431,3 +431,18 @@ governance in 18.4 seconds with only the repository's known dashboard/handoff wa
 Exact-head hosted CI, fresh independent review, and a fresh-project Copilot test through the final selected lens
 remain required. No merge, tag, workflow dispatch, publication, or stable promotion is authorized by this
 correction.
+
+## Run 11 Pre-Provider Verification Timeout
+
+Exact-head commit `4400076f6987b547fdc6bfb1bfbcfb483920a966` passed the clean detached 76-suite registry in
+1,113.6 seconds, scoped governance in 19.2 seconds, and PR Test, Specrew CI, and Cross-Platform workflows.
+Campaign run `run-t029-claude-windows-4400076f-70c86564-11` nevertheless stopped before provider invocation:
+its frozen `f198-full-registry` command exceeded the plan's 1,200-second ceiling. The reservation was released,
+no spend fact exists, and the run cannot be reused.
+
+The required human-authorized diagnostic disclosure was scoped only to `f198-full-registry`, capped at 8 KiB,
+credential-pattern redacted, and executed in a disposable exact-commit worktree. It showed 75 named passing suites
+before the process was killed at 1,200.149 seconds; stderr was empty and no failing suite was reported. This binds
+the failure to missing controller-overhead margin, not a product-test failure. The plan now grants that single
+command 1,500 seconds while retaining the 300-second per-suite and 2,400-second campaign ceilings. A fresh run must
+complete the frozen plan before any provider claim or spend.

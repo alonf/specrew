@@ -12,7 +12,7 @@
         "-PerTestTimeoutSeconds",
         "300"
       ],
-      "timeout_seconds": 1200,
+      "timeout_seconds": 1500,
       "env_refs": [
         "PATH",
         "PATHEXT",
