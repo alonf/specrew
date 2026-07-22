@@ -111,7 +111,7 @@ function Test-ReviewMacProcessGroupAvailability {
         $process = [Diagnostics.Process]::new(); $process.StartInfo = $startInfo
         if (-not $process.Start()) { throw 'macos-process-group-probe-start-failed' }
         $stdoutDrain = $process.StandardOutput.BaseStream.CopyToAsync([IO.Stream]::Null); $stderrDrain = $process.StandardError.BaseStream.CopyToAsync([IO.Stream]::Null)
-        $ready = Wait-ReviewPosixReadyFile -Path $readyPath -ExpectedMode process-group -TimeoutMilliseconds 5000
+        $ready = Wait-ReviewPosixReadyFile -Path $readyPath -ExpectedMode process-group -TimeoutMilliseconds $script:ReviewPosixContainmentHandshakeTimeoutMilliseconds
         $descriptor = [pscustomobject]@{ pgid = $process.Id; mode = 'process-group' }
         if ($null -eq $ready -or -not (Wait-ReviewMacProcessGroupMembership -Descriptor $descriptor -Ready $ready -ProcessId $process.Id)) { throw 'macos-process-group-probe-membership-failed' }
         $process.StandardInput.Close(); [void]$process.WaitForExit(5000)

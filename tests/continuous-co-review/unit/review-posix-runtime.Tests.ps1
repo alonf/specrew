@@ -163,8 +163,10 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
 
     It 'exercises the native process-group mechanism on Unix without promoting cross-OS support' -Skip:$IsWindows {
         $root = Join-Path $TestDrive 'portable-pgid'; $invocation = New-T057Invocation -Root $root
-        $scripts = New-T057FixtureScripts -Root $root; $harness = New-T057Harness -Invocation $invocation -Scripts $scripts -Mode timeout -TimeoutSeconds 1
-        $port = New-ReviewMacOSRuntimePort -TimeoutSeconds 1 -TerminationGraceSeconds 0 -CapabilityProbe { [pscustomobject]@{ ok = $true; reason = 'fixture-posix-pgid-ready' } }
+        # The assertion needs a real nested descendant before timeout. One second is below a cold
+        # PowerShell startup on loaded CI/WSL hosts, so use a still-bounded five-second fixture window.
+        $scripts = New-T057FixtureScripts -Root $root; $harness = New-T057Harness -Invocation $invocation -Scripts $scripts -Mode timeout -TimeoutSeconds 5
+        $port = New-ReviewMacOSRuntimePort -TimeoutSeconds 5 -TerminationGraceSeconds 0 -CapabilityProbe { [pscustomobject]@{ ok = $true; reason = 'fixture-posix-pgid-ready' } }
         $heartbeats = [Collections.Generic.List[object]]::new(); $progress = { param($sample) $heartbeats.Add($sample) | Out-Null }.GetNewClosure()
         $runtime = & $port.invoke $harness $invocation {} @{} $progress
         $runtime.runtime_outcome | Should -Be 'timed-out' -Because $runtime.failure_reason

@@ -446,3 +446,21 @@ before the process was killed at 1,200.149 seconds; stderr was empty and no fail
 the failure to missing controller-overhead margin, not a product-test failure. The plan now grants that single
 command 1,500 seconds while retaining the 300-second per-suite and 2,400-second campaign ceilings. A fresh run must
 complete the frozen plan before any provider claim or spend.
+
+## Exact-Head POSIX Timing Correction
+
+Commit `0acd05a59ecae9868c225ca29b3c80ab6a17bb8e` passed the Test, Cross-Platform PR, and
+Cross-Platform push workflows. Specrew CI run `29949990624` failed only the portable native process-group
+fixture: the isolated containment host missed its fixed five-second ready-file window and the runtime correctly
+returned fail-closed `abandoned`. A provider-free WSL replay exposed the fixture's second timing assumption: after
+the containment handshake succeeded, its one-second reviewer timeout could expire before the nested fixture wrote
+`child.pid`.
+
+The bounded correction records DRIFT-198-I008-042, introduces a named 15-second containment-handshake budget used
+by production invocation and the macOS capability probe, and gives the descendant-reap fixture a five-second
+execution window. The first WSL proof rejected a direct `$script:` lookup inside the generated runtime closure
+because its dynamic module resolved the value as zero; the final code captures the named value before constructing
+the closure. Three concurrent WSL executions then passed all six applicable cases with two expected cgroup skips,
+and the Windows contract path passed with expected POSIX skips. Reviewer execution remains independently bounded;
+readiness or cleanup failure still returns no authority. The complete registry, exact-head CI, and fresh independent
+review remain required before the completed-workshop manual retest.

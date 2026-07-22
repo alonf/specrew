@@ -1,6 +1,11 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Starting the isolated PowerShell containment host can exceed five seconds on a loaded hosted runner
+# or a low-resource local machine. Keep the handshake separately and explicitly bounded; reviewer
+# execution time remains governed by the invocation timeout after the handshake succeeds.
+$script:ReviewPosixContainmentHandshakeTimeoutMilliseconds = 15000
+
 if (-not (Get-Command -Name 'Test-ReviewRuntimeProcessSpec' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'review-runtime-contract.ps1')
 }
@@ -21,7 +26,7 @@ function Wait-ReviewPosixReadyFile {
     param(
         [Parameter(Mandatory)][string]$Path,
         [Parameter(Mandatory)][ValidateSet('linux-cgroup', 'process-group')][string]$ExpectedMode,
-        [ValidateRange(100, 30000)][int]$TimeoutMilliseconds = 5000
+        [ValidateRange(100, 30000)][int]$TimeoutMilliseconds = $script:ReviewPosixContainmentHandshakeTimeoutMilliseconds
     )
     $watch = [Diagnostics.Stopwatch]::StartNew()
     while ($watch.ElapsedMilliseconds -lt $TimeoutMilliseconds) {
@@ -68,6 +73,7 @@ function New-ReviewPosixRuntimePort {
     $testDeadCommand = ${function:Test-ReviewPosixProcessDead}
     $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
     $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
+    $handshakeTimeoutMilliseconds = $script:ReviewPosixContainmentHandshakeTimeoutMilliseconds
     $hostPath = Join-Path $PSScriptRoot 'review-posix-process-host.ps1'
     $pwshPath = [IO.Path]::GetFullPath((Get-Process -Id $PID).Path)
 
@@ -117,7 +123,7 @@ function New-ReviewPosixRuntimePort {
             $started = $true
             $stdoutDrain = $process.StandardOutput.BaseStream.CopyToAsync([IO.Stream]::Null)
             $stderrDrain = $process.StandardError.BaseStream.CopyToAsync([IO.Stream]::Null)
-            $ready = & $waitReadyCommand -Path $readyPath -ExpectedMode $HostMode -TimeoutMilliseconds 5000
+            $ready = & $waitReadyCommand -Path $readyPath -ExpectedMode $HostMode -TimeoutMilliseconds $handshakeTimeoutMilliseconds
             if ($null -eq $ready -or [int]$ready.pid -ne $process.Id) { throw "$Platform-containment-handshake-failed" }
             $containmentVerified = [bool](& $VerifyContainment $descriptor $ready $process.Id)
             if (-not $containmentVerified) { throw "$Platform-containment-verification-failed" }

@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 41
-**Resolution rate**: 90.2% (37/41 resolved; DRIFT-198-I008-038/039 await fresh independent review, DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof, and DRIFT-198-I008-041 awaits exact-head/review proof)
+**Total drift events**: 42
+**Resolution rate**: 88.1% (37/42 resolved; DRIFT-198-I008-038/039 await fresh independent review, DRIFT-198-I008-040 awaits fresh-review and completed-workshop retest proof, and DRIFT-198-I008-041/042 await exact-head/review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -837,6 +837,30 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 - **Paired evidence**: the 1,200-second attempt is durable as timed-out command-scoped evidence with provider
   invocation false. The replacement plan must complete the same 76-suite command within 1,500 seconds before a
   fresh run may claim or spend a provider slot; a failure still stops before provider invocation.
+
+### DRIFT-198-I008-042 — POSIX containment proof used startup windows below observed host latency
+
+- **Status**: corrected locally; three concurrent WSL proofs pass; exact-head CI proof pending
+- **Severity**: release-check stability blocker
+- **Type**: timing-sensitive containment fixture and startup-budget drift
+- **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: exact-head Specrew CI run `29949990624` failed only the portable native process-group
+  fixture. Its isolated containment host did not publish the ready handshake within the fixed five-second window,
+  so the runtime correctly failed closed as `abandoned` instead of reaching the expected timeout path. A WSL replay
+  then reached the timeout path but showed the second race: the one-second reviewer window expired before the nested
+  fixture had published `child.pid`. The three other exact-head workflows were green, including the full
+  cross-platform PR and push matrices; no workshop-state assertion failed.
+- **Correction**: use one named 15-second bound for containment-host readiness in both the production invocation
+  and macOS capability probe, capturing the value into the runtime port before its generated closure is created.
+  Keep reviewer execution independently bounded by its invocation timeout. Give the native descendant-reap fixture
+  five seconds so it proves an actually-started child is killed rather than racing cold PowerShell startup. The
+  first WSL proof correctly rejected a direct `$script:` reference inside the generated closure because that dynamic
+  module resolved the value as zero; the captured closure value is the corrected implementation.
+- **Paired evidence**: missing or invalid readiness still returns no authority after the named bound, while a valid
+  handshake proceeds to the independently bounded execution timeout. The existing timeout case must observe a real
+  child and prove it dead; capability absence, permanent membership failure, and cleanup failure remain fail-closed.
+  Three concurrent WSL executions each passed all six applicable cases with two expected cgroup-delegation skips;
+  the Windows contract path passed four cases with four expected POSIX skips.
 
 ### Resolution Strategies
 
