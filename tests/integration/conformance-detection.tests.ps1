@@ -921,6 +921,18 @@ try {
     if (-not $r16h.Blocked -or $r16h.Out -notmatch 'five-part context packet') { Fail "Case 16h: active lifecycle state with missing iteration MUST NOT borrow feature workshop scope. Out: $($r16h.Out)" }
     Write-Pass "Case 16h: malformed active lifecycle state cannot borrow the feature-level workshop exception"
 
+    # ---- Case 16i: an existing but unreadable start context cannot prove that feature intake is still
+    #      pre-iteration. The feature-scope exception therefore fails closed instead of swallowing the packet.
+    $p16i = New-Fixture -Working 'plan' -LastAuth 'plan'
+    [IO.File]::WriteAllText((Join-Path $p16i '.specrew\start-context.json'), '{not-json', [Text.UTF8Encoding]::new($false))
+    New-Spec -Proj $p16i
+    New-LensApplicability -Proj $p16i -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
+    New-HandoverSnapshot -Proj $p16i -ChangedUserFiles 2
+    $t16i = New-Transcript -Proj $p16i -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
+    $r16i = Invoke-Conformance -Proj $p16i -TranscriptPath $t16i
+    if (-not $r16i.Blocked -or $r16i.Out -notmatch 'five-part context packet') { Fail "Case 16i: unreadable start context MUST NOT prove the feature-level workshop exception. Out: $($r16i.Out)" }
+    Write-Pass "Case 16i: unreadable start context fails closed for the feature-level workshop exception"
+
     # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) cannot prove an intermediate pause;
     #      a real boundary stop blocks again.
     $p17 = New-Fixture -Working 'plan' -LastAuth 'clarify'

@@ -187,7 +187,7 @@ function New-ReviewWindowsRuntimePort {
                 containment_kind = 'job-object'; containment_id = ('job-object-process-' + $process.Id)
                 process_id = $process.Id; process_started_at = $process.StartTime.ToUniversalTime().ToString('o')
             }
-            try { & $onStarted $runtimeReceipt }
+            try { $null = & $onStarted $runtimeReceipt }
             catch {
                 & $stopContainmentCommand -Containment $containment -GraceSeconds 0
                 [void]$process.WaitForExit(5000)

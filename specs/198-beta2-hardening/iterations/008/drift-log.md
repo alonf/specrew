@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 31
-**Resolution rate**: 93.5% (29/31 resolved; DRIFT-198-I008-030/031 await hosted and fresh-review proof)
+**Total drift events**: 36
+**Resolution rate**: 86.1% (31/36 resolved; DRIFT-198-I008-032–036 await exact-head CI and fresh-review proof; 032 also awaits the clean-project retest)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -33,9 +33,11 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
 `29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
 scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
-added DRIFT-198-I008-021–031: 021–029 are corrected and exact-head independently verified, while the early
-Copilot workshop exposed 030/031 and their local corrections still require hosted plus fresh independent-review
-proof. T029 release and T067 published-beta validation remain deliberately pending behind their named boundaries.
+added DRIFT-198-I008-021–036: 021–031 are corrected and exact-head independently verified. The later Copilot
+workshop exposed 032; review run 08 verified its core correction and found the bounded 033–036 follow-ons, whose
+local corrections now require exact-head CI and fresh independent review. DRIFT-032 additionally requires the
+clean-project workshop retest. T029 release and T067 published-beta validation remain deliberately pending behind
+their named boundaries.
 
 ## Events
 
@@ -650,7 +652,7 @@ proof. T029 release and T067 published-beta validation remain deliberately pendi
 
 ### DRIFT-198-I008-032 — feature-level intake workshop was forced into the generic material-work packet
 
-- **Status**: local correction and focused dual-scope regression matrix pass; full/hosted verification, fresh independent review, and clean-project retest pending
+- **Status**: local correction and 75-suite registered verification pass; hosted verification, fresh independent review, and clean-project retest pending
 - **Severity**: release-blocking workshop UX defect
 - **Type**: scope-model mismatch
 - **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
@@ -672,6 +674,60 @@ proof. T029 release and T067 published-beta validation remain deliberately pendi
   `scope=feature` and no iteration number. Reverse-direction fixtures prove both cross-scope markers fail closed;
   existing iteration, fabricated-prose, stale-iteration, ordinary-material, and lifecycle-boundary cases remain
   green. The complete focused conformance and multi-host skill suites pass.
+
+### DRIFT-198-I008-033 — drift summary did not reflect the current event set
+
+- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Severity**: minor governance-artifact defect
+- **Type**: stale summary projection
+- **Requirements**: NFR-002; T029 release acceptance
+- **Observed evidence**: current/valid review run 08 found that this summary still reported 31 events, described
+  DRIFT-030/031 as open, and omitted DRIFT-032 even though the event body recorded 32 events and resolved 030/031.
+- **Correction**: the summary now counts the complete event set and names only the genuinely open proof/retest
+  obligations. This event and the other run-08 findings are included rather than hidden from the new total.
+
+### DRIFT-198-I008-034 — all-host workshop skill parity was outside every automated aggregate
+
+- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Severity**: minor regression-gate defect
+- **Type**: verification-plan coverage drift
+- **Requirements**: FR-056, SC-016, NFR-002; T029 release acceptance
+- **Observed evidence**: run 08 confirmed the copies were byte-identical but found that
+  `code-rules-skill-multihost.tests.ps1`, the only test enforcing that property, was absent from the Feature 198
+  registry and every explicit hosted workflow list.
+- **Correction**: the parity suite is now a named Feature 198 registry row. The controller verification plan and
+  every hosted aggregate that runs the registry therefore exercise the canonical-template/four-host equality.
+- **Paired evidence**: the direct parity suite passes and the registry contains the exact named path.
+
+### DRIFT-198-I008-035 — unreadable start context could falsely prove feature-level intake
+
+- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Severity**: minor workshop false-allow
+- **Type**: fail-open lifecycle-state handling
+- **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 release acceptance
+- **Observed evidence**: run 08 found the existing `$startContextReadable` variable was written but never used.
+  When `.specrew/start-context.json` existed but could not be parsed, iteration and boundary truth fell back to
+  null/false and a valid feature marker could suppress the material packet even though pre-iteration state was
+  unproven.
+- **Correction**: the provider carries an explicit `absent|readable|unreadable` state. Missing context remains the
+  valid greenfield intake shape; an existing unreadable context fails closed before feature-scope suppression.
+- **Paired evidence**: case 16e retains the context-absent allow direction; new case 16i corrupts the existing
+  context and requires the ordinary five-part packet. The complete conformance matrix passes.
+
+### DRIFT-198-I008-036 — runtime start callbacks relied on distant output-suppression invariants
+
+- **Status**: corrected locally; 75-suite registered verification passes; exact-head CI and fresh independent review pending
+- **Severity**: note-level latent authority robustness defect
+- **Type**: incomplete callback-boundary containment
+- **Requirements**: FR-061, FR-063, SC-020, SC-021; T029 release acceptance
+- **Observed evidence**: run 08 found bare `onStarted` callback invocations in the Windows port, shared POSIX port,
+  and fixture port. Production currently returned no callback output, but a future output value could join the
+  adapter pipeline and turn the scalar runtime result into an array, repeating the DRIFT-028/029 class.
+- **Correction**: all three ports discard `onStarted` output locally while retaining exception handling and spend
+  publication semantics.
+- **Paired evidence**: Windows, current-OS POSIX, and fixture regressions make `onStarted` return a sentinel and
+  assert exactly one scalar runtime result. Focused runtime/orchestrator suites pass 31 tests with four expected
+  non-Windows skips.
 
 ### Resolution Strategies
 

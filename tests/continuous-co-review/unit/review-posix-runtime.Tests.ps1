@@ -159,11 +159,13 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         if (-not (Assert-T057CapabilityOrSkip)) { return }
         $root = Join-Path $TestDrive 'clean'; $invocation = New-T057Invocation -Root $root
         $scripts = New-T057FixtureScripts -Root $root; $harness = New-T057Harness -Invocation $invocation -Scripts $scripts -Mode complete -TimeoutSeconds 5
-        $started = [Collections.Generic.List[string]]::new(); $onStarted = { $started.Add('started') | Out-Null }.GetNewClosure()
+        $started = [Collections.Generic.List[string]]::new(); $onStarted = { $started.Add('started') | Out-Null; 'runtime-start-sentinel' }.GetNewClosure()
         $port = Get-T057RuntimePort -TimeoutSeconds 5
         $preflight = & $port.preflight $invocation
         $preflight.ok | Should -BeTrue -Because $preflight.reason
-        $result = & $port.invoke $harness $invocation $onStarted @{}
+        $runtimeOutput = @(& $port.invoke $harness $invocation $onStarted @{})
+        $runtimeOutput.Count | Should -Be 1 -Because 'an output-producing onStarted callback cannot change the scalar runtime result'
+        $result = $runtimeOutput[0]
         $result.runtime_outcome | Should -Be 'completed' -Because $result.failure_reason
         $result.termination_verified | Should -BeTrue -Because $result.failure_reason
         $result.streams_closed | Should -BeTrue

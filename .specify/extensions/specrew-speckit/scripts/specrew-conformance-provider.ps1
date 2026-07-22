@@ -443,6 +443,7 @@ function Resolve-SpecrewWorkshopQuestionPause {
         [AllowNull()][string]$ActiveFeatureRef,
         [AllowNull()][string]$ActiveIterationNumber,
         [bool]$HasActiveLifecycleBoundary,
+        [ValidateSet('absent', 'readable', 'unreadable')][string]$StartContextState = 'absent',
         [AllowNull()][string]$LastAssistantText,
         [bool]$HasPendingVerdict
     )
@@ -463,7 +464,9 @@ function Resolve-SpecrewWorkshopQuestionPause {
         $workshopRoot = $null
         if ($scope -eq 'feature') {
             # A feature-scope marker is valid only before an iteration exists. It cannot be used to borrow the
-            # feature projection after lifecycle state has advanced into an iteration.
+            # feature projection after lifecycle state has advanced into an iteration. An existing but unreadable
+            # start context cannot prove pre-iteration state, so the exception fails closed in that case.
+            if ($StartContextState -eq 'unreadable') { $result.reason = 'workshop-question-start-context-unreadable'; return $result }
             if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $result.reason = 'workshop-question-feature-scope-after-lifecycle-activation'; return $result }
             $applicabilityPath = Join-Path $featureRoot 'lens-applicability.json'
             $workshopRoot = Join-Path $featureRoot 'workshop'
@@ -687,14 +690,15 @@ try {
     $activeFeatureRef = $null
     $activeIterationNumber = $null
     $activeFeatureFromSessionState = $false
-    $startContextReadable = $false
+    $startContextState = 'absent'
     $hasActiveLifecycleBoundary = $false
     $hasBoundaryAuthorization = $false
     try {
         $scPath = Join-Path $projectRoot '.specrew/start-context.json'
         if (Test-Path -LiteralPath $scPath -PathType Leaf) {
+            $startContextState = 'unreadable'
             $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
-            $startContextReadable = $true
+            $startContextState = 'readable'
             if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['feature_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.session_state.feature_ref)) {
                 $activeFeatureRef = [string]$sc.session_state.feature_ref
                 $activeFeatureFromSessionState = $true
@@ -864,7 +868,7 @@ try {
         }
     }
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
-    $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
+    $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
     $workshopIntermediate = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
     if ($workshopIntermediate) { $rawHit = $false }
     # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.

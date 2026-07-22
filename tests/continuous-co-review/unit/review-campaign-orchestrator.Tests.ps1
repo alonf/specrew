@@ -116,14 +116,14 @@ Stdout is telemetry and is never parsed for authority.
         $pipelineResult[0].result.can_approve_current | Should -BeTrue
     }
 
-    It 'models production progress-output containment in the fixture runtime port' {
+    It 'models production callback-output containment in the fixture runtime port' {
         $runtime = New-ReviewFixtureRuntimePort
         $harness = [pscustomobject]@{
             invoke = { param($invocation, $environment) [pscustomobject]@{ output_activity = $false } }
         }
-        $runtimeOutput = @(& $runtime.invoke $harness ([pscustomobject]@{}) {} @{} { param($sample) 'fixture-runtime-progress-sentinel' })
+        $runtimeOutput = @(& $runtime.invoke $harness ([pscustomobject]@{}) { 'fixture-runtime-start-sentinel' } @{} { param($sample) 'fixture-runtime-progress-sentinel' })
 
-        $runtimeOutput.Count | Should -Be 1 -Because 'the fixture must model the production runtime progress-discard boundary'
+        $runtimeOutput.Count | Should -Be 1 -Because 'the fixture must model the production runtime callback-discard boundaries'
         $runtimeOutput[0].runtime_outcome | Should -Be 'completed'
     }
 

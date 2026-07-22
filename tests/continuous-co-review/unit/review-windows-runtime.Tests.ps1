@@ -99,8 +99,10 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
     It 'rejects a malformed process spec before onStarted and before any provider spend' {
         $invocation = New-T056Invocation -Root (Join-Path $TestDrive 'invalid-spec')
         $harness = [pscustomobject]@{ id = 'invalid'; build_process = { param($i, $e) [pscustomobject]@{ schema_version = '1.0' } } }
-        $started = [Collections.Generic.List[string]]::new(); $onStarted = { $started.Add('started') | Out-Null }.GetNewClosure()
-        $result = & (New-ReviewWindowsRuntimePort -TimeoutSeconds 5 -TerminationGraceSeconds 0).invoke $harness $invocation $onStarted @{}
+        $started = [Collections.Generic.List[string]]::new(); $onStarted = { $started.Add('started') | Out-Null; 'runtime-start-sentinel' }.GetNewClosure()
+        $runtimeOutput = @(& (New-ReviewWindowsRuntimePort -TimeoutSeconds 5 -TerminationGraceSeconds 0).invoke $harness $invocation $onStarted @{})
+        $runtimeOutput.Count | Should -Be 1 -Because 'an output-producing onStarted callback cannot change the scalar runtime result'
+        $result = $runtimeOutput[0]
         $result.runtime_outcome | Should -Be 'launch-failed'
         $result.failure_reason | Should -Match 'runtime-process-spec-invalid'
         $started.Count | Should -Be 0

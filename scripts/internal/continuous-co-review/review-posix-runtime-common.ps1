@@ -128,7 +128,7 @@ function New-ReviewPosixRuntimePort {
                 containment_id = $containmentId; process_id = $process.Id
                 process_started_at = $process.StartTime.ToUniversalTime().ToString('o')
             }
-            try { & $onStarted $runtimeReceipt }
+            try { $null = & $onStarted $runtimeReceipt }
             catch { throw ('runtime-start-callback-failed:' + $_.Exception.Message) }
 
             $environmentDelta = [ordered]@{}

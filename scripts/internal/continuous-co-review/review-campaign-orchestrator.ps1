@@ -148,7 +148,7 @@ function New-ReviewFixtureRuntimePort {
     $invoke = {
         param($harness, $invocation, $onStarted, $environment, $progress)
         if ($Outcome -ceq 'launch-failed') { return [pscustomobject]@{ runtime_outcome = 'launch-failed'; termination_verified = $true; containment = 'unknown'; failure_reason = $(if ($FailureReason) { $FailureReason } else { 'fixture launch failed' }); process_tree_live = $false; output_activity = $false } }
-        & $onStarted ([pscustomobject][ordered]@{
+        $null = & $onStarted ([pscustomobject][ordered]@{
             schema_version = '1.0'; runtime_id = 'fixture-runtime'; platform = 'fixture'; containment_kind = 'fixture'
             containment_id = 'fixture-contained-process'; process_id = $PID
             process_started_at = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o')

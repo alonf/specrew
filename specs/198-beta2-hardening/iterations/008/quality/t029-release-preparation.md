@@ -324,6 +324,36 @@ provider must join it to the corresponding current durable artifact:
 - lifecycle boundaries retain their six-section verdict packet and fabricated workshop prose remains ineligible.
 
 Focused provider parsing, the full conformance-detection matrix, and the all-host workshop-skill parity suite
-pass. Full registered verification, hosted exact-head CI, fresh independent review, and another from-scratch
+pass. The corrected aggregate later passes all 75 registered suites in 1,077.1 seconds. Hosted exact-head CI,
+fresh independent review, and another from-scratch
 maintainer workshop test remain required. No provider, merge, tag, publication, or stable-promotion action was
 performed by this correction.
+
+## Run 08 Findings and Bounded Corrections
+
+Commit `d7c1aa219b18e473aa4366598b869d7ecded689e` passed the complete 74-suite Feature 198 registry and scoped
+governance from an exact detached worktree. Exact-head Specrew CI `29906336961`, Test `29906337278`, and
+Cross-Platform push `29906331493` passed. The pull-request Cross-Platform run `29906337367` passed every product
+job but failed its clean Ubuntu container twice on Ubuntu archive/security mirror size/hash mismatches; the
+identical-head push run passed that job, so no third unchanged retry or product correction was made.
+
+The canonical reviewed-state digest reproduced three times as
+`e099f549d9e972d1e63720e846925dd7f873d73e`. Authorized Claude run
+`run-t029-claude-windows-d7c1aa21-e099f549-08` invoked exactly once, spent one immutable slot, completed both
+controller verification commands, and published complete/current/valid findings evidence under verified Windows
+Job Object containment and termination. It independently verified the core feature/iteration workshop contract,
+lifecycle precedence, marker/artifact join, cross-scope refusals, ordinary material enforcement, and host teaching.
+It returned four bounded follow-ons recorded as DRIFT-198-I008-033–036:
+
+- correct the stale drift summary;
+- register the all-host skill parity suite in the Feature 198 aggregate;
+- distinguish missing greenfield context from an existing unreadable context and fail the latter closed;
+- discard `onStarted` callback output locally in Windows, shared POSIX, and fixture runtime ports.
+
+The corrections are deliberately small. New conformance case 16i corrupts an existing start context and requires
+the normal packet while case 16e retains the valid absent-context intake path. Windows, POSIX, and fixture
+`onStarted` callbacks return sentinels yet yield one scalar runtime result. Focused conformance and parity suites
+pass; the three runtime/orchestrator files pass 31 tests with four expected non-Windows skips. The Feature 198
+aggregate passes all 75 registered suites in 1,077.1 seconds. Exact-head hosted proof and a fresh independent
+review remain required. No merge, tag, publication,
+or stable promotion is authorized.
