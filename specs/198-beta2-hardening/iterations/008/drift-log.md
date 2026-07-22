@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 39
-**Resolution rate**: 92.3% (36/39 resolved; DRIFT-198-I008-032 awaits the clean-project retest and DRIFT-198-I008-038/039 await full, hosted, and fresh-review proof)
+**Total drift events**: 40
+**Resolution rate**: 92.5% (37/40 resolved; DRIFT-198-I008-038/039 await fresh independent review and DRIFT-198-I008-040 awaits hosted, fresh-review, and completed-workshop retest proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -32,14 +32,17 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 `eb9643d51780361d1009ba3267e7e14cb011b385` with zero findings. The direct-child six-file evidence commit
 `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466` is bound exactly once outside that digest, and its exact CI run
 `29785802064` passed all eight jobs. No omitted, unauthorized, or contradictory implementation remains in T066
-scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
-added DRIFT-198-I008-021–037: 021–031 are corrected and exact-head independently verified. The later Copilot
-workshop exposed 032; review run 08 verified its core correction and found the bounded 033–036 follow-ons. Their
-first exact-head PR exposed the macOS capability-probe race recorded as 037. Commit `bb780bf1` then passed every
-exact-head workflow, and current/valid run 10 independently verified 032–037 before finding the bounded 038/039
-residual directions. DRIFT-032 additionally requires the clean-project workshop retest; 038/039 require full,
-hosted, and fresh-review proof. T029 release and T067 published-beta validation remain deliberately pending behind
-their named boundaries.
+  scope; DRIFT-198-I008-020 normalizes only the post-signoff lifecycle projection. The T029 manual-test correction
+  added DRIFT-198-I008-021–037: 021–031 are corrected and exact-head independently verified. The later Copilot
+  workshop exposed 032; review run 08 verified its core correction and found the bounded 033–036 follow-ons. Their
+  first exact-head PR exposed the macOS capability-probe race recorded as 037. Commit `bb780bf1` then passed every
+  exact-head workflow, and current/valid run 10 independently verified 032–037 before finding the bounded 038/039
+  residual directions. Commit `d5046896` and exact-head CI `29922949655` corrected 038/039, and the fresh Article
+  Amplifier test proved feature-level intake reaches its first lens, closing 032. That same test exposed 040: the
+  model-authored workshop marker is not a stable cross-host authority surface. The strict artifact-derived
+  replacement is focused-green but still needs full/hosted/fresh-review proof and a from-scratch test through final
+  lens completion. T029 release and T067 published-beta validation remain deliberately pending behind their named
+  boundaries.
 
 ## Events
 
@@ -654,7 +657,7 @@ their named boundaries.
 
 ### DRIFT-198-I008-032 — feature-level intake workshop was forced into the generic material-work packet
 
-- **Status**: exact-head CI and independent review pass; clean-project retest pending
+- **Status**: resolved by commit `d5046896`, exact-head CI `29922949655`, and the fresh Article Amplifier retest reaching the first architecture lens
 - **Severity**: release-blocking workshop UX defect
 - **Type**: scope-model mismatch
 - **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
@@ -675,7 +678,8 @@ their named boundaries.
   visible question, and feature marker—stops without a generic packet and writes bounded handover context with
   `scope=feature` and no iteration number. Reverse-direction fixtures prove both cross-scope markers fail closed;
   existing iteration, fabricated-prose, stale-iteration, ordinary-material, and lifecycle-boundary cases remain
-  green. The complete focused conformance and multi-host skill suites pass.
+  green. The complete focused conformance and multi-host skill suites pass. DRIFT-198-I008-040 supersedes the
+  marker-as-authority mechanism after the real host omitted it, without reopening the feature-scope correction.
 
 ### DRIFT-198-I008-033 — drift summary did not reflect the current event set
 
@@ -778,6 +782,37 @@ their named boundaries.
   observation is polled. Valid identity retains the transient-success and permanent-live-failure behavior.
 - **Paired evidence**: a mismatched descriptor fails without invoking an injected always-true live probe, while
   the existing `false,false,true` and permanently-false live observation fixtures remain green.
+
+### DRIFT-198-I008-040 — model-authored workshop marker was absent in a real Copilot lens turn
+
+- **Status**: corrected locally; all 76 registered suites pass; hosted CI, fresh independent review, and from-scratch
+  completion retest pending
+- **Severity**: release-blocking workshop UX and lifecycle-completion defect
+- **Type**: unstable cross-host control signal and incomplete durable completion proof
+- **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
+- **Observed evidence**: the fresh Article Amplifier project initialized from commit `d5046896`, created a valid
+  feature-level eight-lens agenda, persisted product-domain records, opened `architecture-core`, rendered its
+  decision content and pacing question, then received the generic five-section packet. The last assistant text and
+  conformance journal contained no `SPECREW-WORKSHOP-QUESTION` marker (`dx_lat_hits=0`, null workshop scope). Candidate
+  and deployed provider/skill hashes matched, ruling out stale bits. Copilot used ordinary assistant prose in this
+  turn, so there was no native question-tool payload to trust either.
+- **Correction**: one pure strict accessor derives `absent|invalid|active|complete` from the exact current feature or
+  iteration artifact. Actual root booleans, a nonempty unique selected agenda, no unselected records, an ordered
+  completed prefix, full agenda/decision/depth/moved-on/confirmation fields, matching confirmation scope, and a
+  nonempty bounded Markdown record are required. Active state suppresses only the generic non-boundary packet;
+  lifecycle boundaries retain precedence. Complete or invalid state restores ordinary Stop behavior. The host skill
+  writes each Markdown record before its full structured completion entry, so the final structured write is the
+  deterministic active-to-complete transition. Model comments, environment variables, and question-tool transcript
+  shapes are explicitly non-authoritative; the bounded handover file is projection only.
+- **Paired evidence**: the exact unmarked Copilot-style feature and iteration turns remain conversational; marker/no-
+  marker and question/no-question prose do not change classification; stale iteration and on-disk lifecycle truth
+  retain scope denial; boundary state wins; loose moved-on, missing record, duplicate agenda, out-of-order completion,
+  and malformed JSON all require ordinary Stop behavior; full valid completion restores both material and lifecycle
+  packet enforcement. The strict metadata suite, complete real-provider matrix (including 16k–16o denial fixtures),
+  and byte-identical all-host skill parity suite pass; the complete 76-suite Feature 198 registry passes in 1,083.1
+  seconds. The primary-worktree governance command reached only the unrelated dirty `state.md` value `implement`;
+  the clean detached candidate then passed scoped Iteration 008 governance in 18.4 seconds with only the repository's
+  known dashboard/handoff warnings.
 
 ### Resolution Strategies
 

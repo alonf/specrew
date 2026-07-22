@@ -70,20 +70,36 @@ function New-Spec {
 }
 
 function New-LensApplicability {
-    # Write the feature-level intake truth and, unless FeatureOnly is selected, the exact later
-    # design-analysis iteration artifact. FR-056 validates the scope named by the assistant marker.
+    # Write strict feature-level intake truth and, unless FeatureOnly is selected, the exact later
+    # design-analysis iteration artifact. Completed lenses carry the full workshop contract and a matching durable
+    # Markdown record; the Stop classifier deliberately rejects a loose moved_on flag or a file by itself.
     param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate', [string]$Iteration = '001', [switch]$FeatureOnly)
     $dir = Join-Path $Proj (Join-Path 'specs' $FeatureRef)
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $workshop = [ordered]@{}
-    foreach ($d in $Done) { $workshop[$d] = [ordered]@{ moved_on = $true } }
+    foreach ($d in $Done) {
+        $workshop[$d] = [ordered]@{
+            agenda = @('Fixture decision topic')
+            decision = "Fixture decision for $d"
+            depth = 'full'
+            moved_on = $true
+            confirmation = 'human-confirmed'
+            confirmation_scope = 'lens-question'
+        }
+    }
     $obj = [ordered]@{ workshop_intake = $true; confirmation_required = $true; selected = $Selected; workshop = $workshop }
     $json = $obj | ConvertTo-Json -Depth 6
     Set-Content -LiteralPath (Join-Path $dir 'lens-applicability.json') -Value $json -Encoding UTF8
+    $featureWorkshopDir = Join-Path $dir 'workshop'
+    if ($Done.Count -gt 0) { New-Item -ItemType Directory -Path $featureWorkshopDir -Force | Out-Null }
+    foreach ($d in $Done) { Set-Content -LiteralPath (Join-Path $featureWorkshopDir ($d + '.md')) -Value "# $d`n`nFixture decision record.`n" -Encoding UTF8 }
     if (-not $FeatureOnly) {
         $iterationDir = Join-Path $dir ("iterations/{0}" -f $Iteration)
         New-Item -ItemType Directory -Path $iterationDir -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $iterationDir 'lens-applicability.json') -Value $json -Encoding UTF8
+        $iterationWorkshopDir = Join-Path $iterationDir 'workshop'
+        if ($Done.Count -gt 0) { New-Item -ItemType Directory -Path $iterationWorkshopDir -Force | Out-Null }
+        foreach ($d in $Done) { Set-Content -LiteralPath (Join-Path $iterationWorkshopDir ($d + '.md')) -Value "# $d`n`nFixture decision record.`n" -Encoding UTF8 }
     }
     Save-FixtureStructure -Proj $Proj -Message 'fixture lens state'
 }
@@ -814,24 +830,26 @@ try {
     if ($r15.Blocked) { Fail "Case 15: with no readable last message the provider MUST NOT block (cannot claim the packet is absent; 145 F1-CC). Out: $($r15.Out)" }
     Write-Pass "Case 15: an unreadable last message (no transcript / CC unresolved) degrades to NO block (fail-open, never fail-closed on a missing component; 145 F1-CC)"
 
-    # ---- Case 16 / FR-056(a,e): exact feature+iteration+first-remaining-lens state plus the current question marker
-    #      produces one workshop-intermediate pause, no generic packet, and a durable bounded re-entry record.
+    # ---- Case 16 / FR-056(a,e): exact, strict feature+iteration state is sufficient by itself. This reproduces the
+    #      real Copilot failure: ordinary assistant prose asks the current lens question but contains no hidden marker.
+    #      The workshop remains conversational and a bounded, non-authoritative re-entry projection is retained.
     $p16 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16
     New-LensApplicability -Proj $p16 -Selected @('architecture-core','data-storage') -Done @()
     New-HandoverSnapshot -Proj $p16 -ChangedUserFiles 2
-    $t16 = New-Transcript -Proj $p16 -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
+    $liveWorkshopQuestion = 'Lens 1 of 8: architecture-core. The current design question is how to decompose the ingestion, approval, and publisher responsibilities. Would you rather answer the decisions together, or one at a time?'
+    $t16 = New-Transcript -Proj $p16 -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16a = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
     $r16bDuplicate = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
-    if ($r16a.Blocked -or $r16a.Out -match 'five-part context packet') { Fail "Case 16: a proved current-lens question MUST remain the final visible turn. Out: $($r16a.Out)" }
+    if ($r16a.Blocked -or $r16a.Out -match 'five-part context packet') { Fail "Case 16: strict active workshop state MUST leave the unmarked current-lens question as the final visible turn. Out: $($r16a.Out)" }
     if ($r16bDuplicate.Blocked -or $r16bDuplicate.Out -match 'five-part context packet') { Fail "Case 16: a duplicate Stop delivery MUST remain a no-op. Out: $($r16bDuplicate.Out)" }
     $workshopHandoverPath = Join-Path $p16 '.specrew\handover\workshop-question.json'
     if (-not (Test-Path -LiteralPath $workshopHandoverPath -PathType Leaf)) { Fail 'Case 16: workshop-intermediate must persist bounded re-entry context' }
     $workshopHandover = Get-Content -LiteralPath $workshopHandoverPath -Raw | ConvertFrom-Json
-    if ([string]$workshopHandover.feature_ref -ne '050-host-neutral-gate' -or [string]$workshopHandover.iteration_number -ne '001' -or [string]$workshopHandover.lens -ne 'architecture-core' -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.question)) {
-        Fail "Case 16: durable re-entry context must retain exact feature/iteration/lens/question: $($workshopHandover | ConvertTo-Json -Compress)"
+    if ([string]$workshopHandover.schema -ne 'v2' -or [string]$workshopHandover.feature_ref -ne '050-host-neutral-gate' -or [string]$workshopHandover.iteration_number -ne '001' -or [string]$workshopHandover.lens -ne 'architecture-core' -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.artifact_path) -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.question)) {
+        Fail "Case 16: durable re-entry projection must retain exact artifact/feature/iteration/lens/question: $($workshopHandover | ConvertTo-Json -Compress)"
     }
-    Write-Pass "Case 16: exact current-lens question stops once without a generic packet and retains durable re-entry context"
+    Write-Pass "Case 16: strict active iteration workshop state suppresses the generic packet without a model marker and retains durable re-entry context"
 
     # ---- Case 16b / FR-056(d): lifecycle boundary state has precedence even when every workshop-question signal
     #      is otherwise valid. The six-section packet and exact boundary marker remain mandatory.
@@ -842,19 +860,18 @@ try {
     $t16b = New-Transcript -Proj $p16b -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
     $r16b = Invoke-Conformance -Proj $p16b -TranscriptPath $t16b
     if (-not $r16b.Blocked -or $r16b.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 16b: a lifecycle boundary MUST override workshop state and demand the boundary packet. Out: $($r16b.Out)" }
-    Write-Pass "Case 16b: lifecycle boundary state overrides the workshop marker and retains the six-section contract"
+    Write-Pass "Case 16b: lifecycle boundary state overrides active workshop artifacts and retains the six-section contract"
 
-    # ---- Case 16c / FR-056(c): durable remaining-lens state plus prose that merely claims a workshop is still
-    #      insufficient. Without the exact marker/current-lens proof, a material hand-back owes the packet.
+    # ---- Case 16c / FR-056(c): assistant prose is not authority in either direction. Even prose with no question,
+    #      lens name, or marker cannot turn a valid active workshop into an ordinary material hand-back.
     $p16c = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16c
     New-LensApplicability -Proj $p16c -Selected @('architecture-core','data-storage') -Done @()
     New-HandoverSnapshot -Proj $p16c -ChangedUserFiles 2
-    $fabricatedWorkshop = 'I am in the architecture-core workshop and this is definitely a lens question. The component material is finished and the rest can wait. Which ownership option should we choose?'
-    $t16c = New-Transcript -Proj $p16c -Turns @(@{ role = 'assistant'; text = $fabricatedWorkshop })
+    $t16c = New-Transcript -Proj $p16c -Turns @(@{ role = 'assistant'; text = 'I saved the current discussion and am pausing for your response.' })
     $r16c = Invoke-Conformance -Proj $p16c -TranscriptPath $t16c
-    if (-not $r16c.Blocked -or $r16c.Out -notmatch 'five-part context packet') { Fail "Case 16c: workshop-claim prose without the exact marker MUST NOT bypass material enforcement. Out: $($r16c.Out)" }
-    Write-Pass "Case 16c: fabricated workshop prose cannot bypass the ordinary material-work packet"
+    if ($r16c.Blocked -or $r16c.Out -match 'five-part context packet') { Fail "Case 16c: valid active workshop state MUST suppress the generic packet independently of assistant prose. Out: $($r16c.Out)" }
+    Write-Pass "Case 16c: active workshop classification is independent of assistant prose and question-tool rendering"
 
     # ---- Case 16d / FR-056 narrow scope: a real old iteration artifact and matching marker are still stale when
     #      active session state names another iteration. The old question cannot suppress the current Stop packet.
@@ -868,13 +885,13 @@ try {
     if (-not $r16d.Blocked -or $r16d.Out -notmatch 'five-part context packet') { Fail "Case 16d: a marker/artifact for a non-active iteration MUST NOT bypass material enforcement. Out: $($r16d.Out)" }
     Write-Pass "Case 16d: stale iteration state and its matching marker cannot suppress the active iteration's packet"
 
-    # ---- Case 16e / live T029 regression: specify/intake has a feature-level agenda but no iteration yet. The
-    #      explicit feature-scope marker binds to that durable truth and leaves the lens question as the final turn.
+    # ---- Case 16e / live T029 regression: specify/intake has a feature-level agenda but no iteration yet. Its strict
+    #      durable state, not an assistant marker, leaves the lens question as the final turn.
     $p16e = New-Fixture -Working '' -LastAuth ''
     New-Spec -Proj $p16e
     New-LensApplicability -Proj $p16e -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
     New-HandoverSnapshot -Proj $p16e -ChangedUserFiles 2
-    $t16e = New-Transcript -Proj $p16e -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
+    $t16e = New-Transcript -Proj $p16e -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16e = Invoke-Conformance -Proj $p16e -TranscriptPath $t16e
     if ($r16e.Blocked -or $r16e.Out -match 'five-part context packet') { Fail "Case 16e: a proved feature-level intake question MUST remain the final visible turn. Out: $($r16e.Out)" }
     $featureHandoverPath = Join-Path $p16e '.specrew\handover\workshop-question.json'
@@ -885,26 +902,26 @@ try {
     }
     Write-Pass "Case 16e: feature-level intake question stops once without a generic packet or invented iteration"
 
-    # ---- Case 16f: a feature marker cannot borrow feature-level state once an active iteration exists.
+    # ---- Case 16f: a stale feature marker cannot redirect controller scope. The active iteration artifact wins.
     $p16f = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16f
     New-LensApplicability -Proj $p16f -Selected @('architecture-core','data-storage') -Done @()
     New-HandoverSnapshot -Proj $p16f -ChangedUserFiles 2
     $t16f = New-Transcript -Proj $p16f -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
     $r16f = Invoke-Conformance -Proj $p16f -TranscriptPath $t16f
-    if (-not $r16f.Blocked -or $r16f.Out -notmatch 'five-part context packet') { Fail "Case 16f: feature scope MUST NOT suppress material enforcement after iteration activation. Out: $($r16f.Out)" }
-    Write-Pass "Case 16f: feature-scope marker fails closed after lifecycle state enters an iteration"
+    if ($r16f.Blocked -or $r16f.Out -match 'five-part context packet') { Fail "Case 16f: model text MUST NOT redirect away from valid active iteration state. Out: $($r16f.Out)" }
+    Write-Pass "Case 16f: active iteration artifact wins over a stale model-authored feature marker"
 
-    # ---- Case 16g: the inverse mismatch also fails closed. Feature-only intake state cannot satisfy an iteration
-    #      marker when there is no active iteration, even if the marker names a plausible number.
+    # ---- Case 16g: the inverse model-text mismatch also has no authority. Genuine feature intake state wins over
+    #      an iteration-shaped comment when no lifecycle iteration exists.
     $p16g = New-Fixture -Working '' -LastAuth ''
     New-Spec -Proj $p16g
     New-LensApplicability -Proj $p16g -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
     New-HandoverSnapshot -Proj $p16g -ChangedUserFiles 2
     $t16g = New-Transcript -Proj $p16g -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
     $r16g = Invoke-Conformance -Proj $p16g -TranscriptPath $t16g
-    if (-not $r16g.Blocked -or $r16g.Out -notmatch 'five-part context packet') { Fail "Case 16g: an iteration marker without active iteration truth MUST fail closed. Out: $($r16g.Out)" }
-    Write-Pass "Case 16g: iteration-scope marker cannot borrow feature-level intake state"
+    if ($r16g.Blocked -or $r16g.Out -match 'five-part context packet') { Fail "Case 16g: model text MUST NOT redirect away from valid feature intake state. Out: $($r16g.Out)" }
+    Write-Pass "Case 16g: feature intake artifact wins over an iteration-shaped model comment"
 
     # ---- Case 16h: malformed lifecycle state with a boundary but no iteration cannot fall back to feature
     #      scope. The absence of an iteration is valid only before lifecycle activation, not after identity loss.
@@ -945,6 +962,53 @@ try {
     $r16j = Invoke-Conformance -Proj $p16j -TranscriptPath $t16j
     if (-not $r16j.Blocked -or $r16j.Out -notmatch 'five-part context packet') { Fail "Case 16j: on-disk iteration truth MUST prevent feature-scope suppression when start context is absent. Out: $($r16j.Out)" }
     Write-Pass "Case 16j: on-disk numeric iteration truth fails closed when start context is absent"
+
+    # ---- Cases 16k-16o: incomplete or corrupt completion evidence never suppresses the packet. These are the
+    #      stable-finish guarantees: completion requires the full structured record AND its durable Markdown file,
+    #      in selected order, from a uniquely selected agenda with readable JSON.
+    $p16k = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16k
+    New-LensApplicability -Proj $p16k -Selected @('architecture-core','data-storage') -Done @()
+    $loosePath = Join-Path $p16k 'specs\050-host-neutral-gate\iterations\001\lens-applicability.json'
+    [IO.File]::WriteAllText($loosePath, '{"workshop_intake":true,"confirmation_required":true,"selected":["architecture-core","data-storage"],"workshop":{"architecture-core":{"moved_on":true}}}', [Text.UTF8Encoding]::new($false))
+    New-HandoverSnapshot -Proj $p16k -ChangedUserFiles 2
+    $r16k = Invoke-Conformance -Proj $p16k -TranscriptPath (New-Transcript -Proj $p16k -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
+    if (-not $r16k.Blocked -or $r16k.Out -notmatch 'five-part context packet') { Fail "Case 16k: a loose moved_on flag MUST fail closed. Out: $($r16k.Out)" }
+    Write-Pass "Case 16k: a moved_on flag without the full completion contract cannot suppress normal Stop behavior"
+
+    $p16l = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16l
+    New-LensApplicability -Proj $p16l -Selected @('architecture-core','data-storage') -Done @('architecture-core')
+    Remove-Item -LiteralPath (Join-Path $p16l 'specs\050-host-neutral-gate\iterations\001\workshop\architecture-core.md') -Force
+    New-HandoverSnapshot -Proj $p16l -ChangedUserFiles 2
+    $r16l = Invoke-Conformance -Proj $p16l -TranscriptPath (New-Transcript -Proj $p16l -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
+    if (-not $r16l.Blocked -or $r16l.Out -notmatch 'five-part context packet') { Fail "Case 16l: a completed record without its Markdown artifact MUST fail closed. Out: $($r16l.Out)" }
+    Write-Pass "Case 16l: structured completion without its durable lens record cannot suppress normal Stop behavior"
+
+    $p16m = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16m
+    New-LensApplicability -Proj $p16m -Selected @('architecture-core','architecture-core') -Done @()
+    New-HandoverSnapshot -Proj $p16m -ChangedUserFiles 2
+    $r16m = Invoke-Conformance -Proj $p16m -TranscriptPath (New-Transcript -Proj $p16m -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
+    if (-not $r16m.Blocked -or $r16m.Out -notmatch 'five-part context packet') { Fail "Case 16m: duplicate selected lenses MUST fail closed. Out: $($r16m.Out)" }
+    Write-Pass "Case 16m: an ambiguous duplicate lens agenda cannot suppress normal Stop behavior"
+
+    $p16n = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16n
+    New-LensApplicability -Proj $p16n -Selected @('architecture-core','data-storage') -Done @('data-storage')
+    New-HandoverSnapshot -Proj $p16n -ChangedUserFiles 2
+    $r16n = Invoke-Conformance -Proj $p16n -TranscriptPath (New-Transcript -Proj $p16n -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
+    if (-not $r16n.Blocked -or $r16n.Out -notmatch 'five-part context packet') { Fail "Case 16n: out-of-order completion MUST fail closed. Out: $($r16n.Out)" }
+    Write-Pass "Case 16n: out-of-order completion cannot suppress normal Stop behavior"
+
+    $p16o = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16o
+    New-LensApplicability -Proj $p16o -Selected @('architecture-core','data-storage') -Done @()
+    [IO.File]::WriteAllText((Join-Path $p16o 'specs\050-host-neutral-gate\iterations\001\lens-applicability.json'), '{not-json', [Text.UTF8Encoding]::new($false))
+    New-HandoverSnapshot -Proj $p16o -ChangedUserFiles 2
+    $r16o = Invoke-Conformance -Proj $p16o -TranscriptPath (New-Transcript -Proj $p16o -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
+    if (-not $r16o.Blocked -or $r16o.Out -notmatch 'five-part context packet') { Fail "Case 16o: malformed applicability JSON MUST fail closed. Out: $($r16o.Out)" }
+    Write-Pass "Case 16o: malformed durable workshop state cannot suppress normal Stop behavior"
 
     # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) cannot prove an intermediate pause;
     #      a real boundary stop blocks again.

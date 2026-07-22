@@ -49,11 +49,12 @@ Assert-Match -Text $ws -Pattern '(?i)grouped, pre-checked|grouped pre-checked|gr
 Assert-Match -Text $ws -Pattern 'dependency_policy' 'T015: dependency-selection capture (FR-013)'
 Assert-Match -Text $ws -Pattern '(?i)code-rules\.local\.yml' 'T015: project overlay for company/org rules (FR-012)'
 Assert-Match -Text $ws -Pattern '`code-implementation`' 'T015: code-implementation is in the lens enumeration'
-Assert-Match -Text $ws -Pattern '<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; scope=feature; lens=<lens-id> -->' 'T052: feature-level intake questions carry the explicit feature-scope marker contract'
-Assert-Match -Text $ws -Pattern '<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; iteration=<NNN>; lens=<lens-id> -->' 'T052: design-analysis questions retain the exact iteration marker contract'
-Assert-Match -Text $ws -Pattern '(?is)specify/intake.+feature-level.+lens-applicability\.json.+design-analysis.+exact iteration' 'T052: skill selects marker and durable state by the real workshop scope'
-Assert-Match -Text $ws -Pattern '(?i)Never invent an iteration number' 'T052: feature-level intake cannot fabricate an iteration identity'
-Assert-Match -Text $ws -Pattern '(?is)Never put it on a handover.+lifecycle-boundary packet' 'T052: handover and lifecycle boundaries cannot borrow the workshop-intermediate marker'
+Assert-Match -Text $ws -Pattern '(?is)controller-owned workshop state.+feature-level.+lens-applicability\.json.+exact iteration' 'T052: skill selects durable authority by the real feature/iteration workshop scope'
+Assert-Match -Text $ws -Pattern '(?i)Do not rely on a model-authored hidden marker' 'T052: model comments and question-tool transcripts are explicitly non-authoritative'
+Assert-Match -Text $ws -Pattern '(?is)write the nonempty `workshop/<lens-id>\.md`.+then persist.+moved_on: true' 'T052: lens completion uses the durable record-before-structured-entry order'
+Assert-Match -Text $ws -Pattern '(?is)final selected lens.+workshop `complete`.+ordinary Stop behavior resumes' 'T052: final completion explicitly restores ordinary Stop behavior'
+Assert-Match -Text $ws -Pattern '(?is)loose flag.+missing record.+malformed artifact.+cannot keep\s+the\s+exception active' 'T052: malformed or incomplete completion fails closed instead of suppressing forever'
+Assert-Match -Text $ws -Pattern '(?i)Never invent an iteration during feature intake' 'T052: feature-level intake cannot fabricate an iteration identity'
 
 # ---------------------------------------------------------------------------
 # T016 — multi-host parity (FR-005, SC-003)

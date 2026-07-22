@@ -187,19 +187,22 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
    and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
-   **Mark only a genuine pending lens question (FR-055/FR-056).** Before you stop and wait for an answer,
-   ensure the applicability artifact for the CURRENT workshop scope exists and reflects the current confirmed
-   agenda. During specify/intake, use the feature-level `specs/<feature>/lens-applicability.json` and append this
-   exact marker as the final line:
-   `<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; scope=feature; lens=<lens-id> -->`.
-   During the later design-analysis workshop, use the exact iteration's `lens-applicability.json` and append:
-   `<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; iteration=<NNN>; lens=<lens-id> -->`.
-   Never invent an iteration number during feature-level intake. The visible message must name the exact current
-   lens id and end with the question immediately before the marker.
-   Use the marker only while waiting on the human's answer to that current lens. Never put it on a handover,
-   completion, abandonment, or lifecycle-boundary packet; a lifecycle boundary always uses its six-section
-   packet. The Stop provider validates the marker against the exact first remaining lens, so prose that merely
-   says a workshop is active cannot bypass the ordinary re-entry packet.
+   **Keep the controller-owned workshop state durable and complete (FR-055/FR-056).** Before you stop and wait
+   for an answer, ensure the applicability artifact for the CURRENT workshop scope exists and reflects the current
+   confirmed agenda. During specify/intake, authority is the feature-level
+   `specs/<feature>/lens-applicability.json`; during design analysis it is the exact iteration's
+   `specs/<feature>/iterations/<NNN>/lens-applicability.json`. Never invent an iteration during feature intake.
+   Do not rely on a model-authored hidden marker, an environment variable, or a host question-tool transcript:
+   hosts can omit, transform, or swallow those surfaces. The Stop controller derives `active` only from the exact
+   scoped artifact's nonempty, unique selected agenda and its strict ordered completion records. While that state
+   is valid and incomplete, ordinary lens questions remain conversational and the generic five-section
+   non-boundary packet is suppressed; a real lifecycle boundary still has precedence.
+   **Finish each lens durably in this order:** write the nonempty `workshop/<lens-id>.md` decision record first,
+   then persist that lens's full step-6 entry with `moved_on: true`. On the final selected lens, that second write
+   makes the workshop `complete` and ordinary Stop behavior resumes immediately. A loose flag, missing record,
+   duplicate/out-of-order lens, malformed artifact, or mismatched confirmation is invalid and cannot keep the
+   exception active. Never render the generic five-section packet merely to ask or answer an ordinary lens
+   question; use the six-section packet only for a genuine lifecycle boundary.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
    A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five

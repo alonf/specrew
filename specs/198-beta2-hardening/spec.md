@@ -920,23 +920,26 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   demand; (c) substantial state-changing work → packet required; (d) long read-only investigation → packet
   required; (e) an already-valid packet → accepted without another turn; (f) a boundary stop keeps the
   six-section contract.
-- **FR-056 (workshop-aware intermediate Stop — maintainer directive 2026-07-16)**: While a design workshop is
-  durably recorded as in progress and the assistant has rendered the current lens content plus a question that
-  explicitly awaits the human's answer, the Stop provider MUST classify that pause as a workshop-intermediate
-  stop and MUST NOT force the generic five-heading non-boundary context packet. The rendered workshop turn is
-  already the re-entry context and remains the final visible message. This exception MUST be deterministic and
-  narrowly scoped to either (1) the active feature-level specify/intake agenda before any iteration exists, or
-  (2) the active feature + exact iteration during design analysis, plus the current lens and pending human
-  question. The assistant marker MUST declare which scope it uses; a feature-scope marker after iteration
-  activation or an iteration marker without active iteration truth MUST fail closed. Prose that merely claims to
-  be a workshop MUST NOT suppress enforcement. Lifecycle boundary stops override workshop state and retain their
-  full boundary packet. Leaving, abandoning, or handing over a workshop without a pending lens question retains
-  the ordinary non-boundary material-work packet requirement. Regression fixtures MUST cover: (a) active
-  feature-level intake and iteration-level workshop questions each stop once with no duplicate five-heading
-  packet; (b) the same material turn outside durable workshop state still requires the packet; (c) fabricated
-  workshop prose and cross-scope markers cannot bypass enforcement; (d) a lifecycle boundary during a workshop
-  still requires the boundary packet; and (e) an interrupted workshop handover still renders sufficient durable
-  re-entry context without inventing an iteration identity.
+- **FR-056 (workshop-aware intermediate Stop — maintainer directives 2026-07-16 / 2026-07-22)**: While the exact
+  current design-workshop scope is durably and strictly recorded as active, the Stop provider MUST classify its
+  pauses as workshop-intermediate and MUST NOT force the generic five-heading non-boundary packet. The rendered
+  workshop turn is already the conversational re-entry context. Classification MUST be controller-owned and
+  independent of model-authored comments, environment variables, prose heuristics, or host question-tool
+  transcripts. Authority is either (1) the active feature-level `lens-applicability.json` before any lifecycle or
+  durable numeric iteration exists, or (2) the active feature + exact iteration's artifact during design analysis.
+  The strict artifact requires actual-boolean `workshop_intake=true` and `confirmation_required=true`, a nonempty
+  unique valid selected-lens agenda, and a workshop record map containing no unselected lens. Completed lenses MUST
+  form an ordered prefix; each requires a nonempty agenda array, single decision string, depth, `moved_on=true`, a
+  valid confirmation/confirmation-scope pair, and a matching nonempty bounded `workshop/<lens>.md` record. The first
+  remaining selected lens is the current lens. All selected lenses satisfying that contract makes the workshop
+  complete, at which point ordinary Stop behavior MUST resume immediately. Loose flags, file-only completion,
+  missing records, duplicate or out-of-order lenses, malformed/oversized artifacts, unreadable lifecycle identity,
+  stale feature/iteration scope, or mismatched confirmation MUST fail closed toward ordinary Stop enforcement.
+  Lifecycle boundary stops always override active workshop state and retain their full boundary packet. A bounded
+  handover projection MAY retain the derived scope/current lens/last visible question but is never authority.
+  Regression fixtures MUST cover active feature and iteration state without a marker, host prose/question-tool
+  independence, exact-scope and boundary precedence, complete-state restoration, and both directions of every
+  malformed/incomplete completion class.
 
 #### Controlled external review rearchitecture — owner: implementer + reviewer; Beta2 release blocker
 
@@ -1361,11 +1364,12 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
   prompt — never a silent success and never a Specrew/Pester default. The
   beta2 feature/release MUST NOT close until this end-to-end path has a
   production plan supplier feeding the FR-048 seam. (Release dependency.)
-- **SC-016 (workshop-intermediate Stop UX)**: Material architecture-lens turns with either durable feature-level
-  intake state or durable exact-iteration design-analysis state, rendered lens content, an explicit matching
-  scope marker, and a pending human question stop exactly once without a generic five-heading follow-up. The
-  equivalent non-workshop or scope-mismatched turn still demands that packet, and a lifecycle boundary still
-  demands its boundary packet. (FR-056)
+- **SC-016 (workshop-intermediate Stop UX)**: Material design-lens turns with either strict active feature-level
+  intake state or strict active exact-iteration design-analysis state stop without a generic five-heading
+  follow-up across hosts, whether the host used plain prose, a native question tool, or no hidden marker. Completing
+  every selected lens with its full structured record plus matching Markdown artifact restores ordinary Stop
+  behavior on the next stop. Malformed, incomplete, stale, or cross-scope state cannot suppress that behavior, and
+  a lifecycle boundary still demands its boundary packet. (FR-056)
 - **SC-017 (authority/allowance concurrency)**: Barrier-synchronized multi-process
   fixtures prove exactly one winner for the next claim generation, no two active
   claims per lineage, no reservation/spend above human grants, idempotent identical

@@ -396,3 +396,35 @@ one-shot identity validation from live polling. Their focused matrices pass. Ful
 and the complete Feature 198 registry passes all 75 suites in 1,088.1 seconds. Exact-head CI, fresh independent
 review, and the clean-project workshop retest remain required. No merge, tag,
 publication, or stable promotion is authorized.
+
+## Durable Workshop Lifecycle Correction
+
+The fresh Article Amplifier Copilot retest against exact candidate `d5046896` passed initialization, per-session
+ignore behavior, campaign inapplicability, feature creation, product-domain capture, agenda confirmation, and entry
+into the first `architecture-core` lens. It then exposed DRIFT-198-I008-040: Copilot's ordinary assistant response
+contained the lens content and pacing question but omitted the model-authored workshop marker. Candidate and deployed
+provider/skill hashes were identical, and the live conformance journal recorded `dx_lat_hits=0` with null workshop
+scope. This is a control-signal defect, not stale installation and not evidence that a question tool specifically
+swallowed the marker.
+
+The correction removes model output from workshop authority. A new pure metadata accessor classifies only the exact
+current feature or iteration's durable `lens-applicability.json` as `absent`, `invalid`, `active`, or `complete`.
+Active requires strict root booleans, a nonempty unique selected agenda, ordered full completion records, matching
+confirmation provenance, and a nonempty bounded Markdown artifact for every completed lens. Complete requires that
+contract for every selected lens. The skill now writes the lens Markdown first and its full structured completion
+second; the final structured write deterministically restores ordinary Stop behavior. Malformed, partial, stale,
+cross-scope, or unreadable state cannot suppress the packet, and lifecycle boundaries retain precedence. The local
+handover remains a bounded projection and is never read as authority. Environment variables and model/question-tool
+markers are not used.
+
+Focused proof is green: the strict metadata tests cover active, complete, missing-record, out-of-order, and malformed
+states; the complete real-provider conformance matrix covers unmarked Copilot-style feature/iteration pauses,
+host-prose independence, scope/boundary precedence, completed-state restoration, and loose/missing/duplicate/out-of-
+order/malformed denial directions; all host workshop-skill copies and both provider/template mirrors are byte-
+identical. The complete Feature 198 registry passes all 76 explicit suites in 1,083.1 seconds. The scoped governance
+command in the primary worktree stopped only on the unrelated pre-existing dirty `state.md` phase `implement`; the
+committed base value is canonical `review-signoff`, and the clean detached candidate passed scoped Iteration 008
+governance in 18.4 seconds with only the repository's known dashboard/handoff warnings.
+Exact-head hosted CI, fresh independent review, and a fresh-project Copilot test through the final selected lens
+remain required. No merge, tag, workflow dispatch, publication, or stable promotion is authorized by this
+correction.
