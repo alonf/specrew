@@ -803,13 +803,16 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   lifecycle boundaries retain precedence. Complete or invalid state restores ordinary Stop behavior. The host skill
   writes each Markdown record before its full structured completion entry, so the final structured write is the
   deterministic active-to-complete transition. Model comments, environment variables, and question-tool transcript
-  shapes are explicitly non-authoritative; the bounded handover file is projection only.
+  shapes are explicitly non-authoritative; the bounded handover file is projection only. A pre-review instruction
+  audit found an older checkpoint paragraph that still listed the structured entry before the Markdown record; all
+  host and template copies now state the same Markdown-first order and distinguish feature from iteration paths.
 - **Paired evidence**: the exact unmarked Copilot-style feature and iteration turns remain conversational; marker/no-
   marker and question/no-question prose do not change classification; stale iteration and on-disk lifecycle truth
   retain scope denial; boundary state wins; loose moved-on, missing record, duplicate agenda, out-of-order completion,
   and malformed JSON all require ordinary Stop behavior; full valid completion restores both material and lifecycle
   packet enforcement. The strict metadata suite, complete real-provider matrix (including 16k–16o denial fixtures),
-  and byte-identical all-host skill parity suite pass; the complete 76-suite Feature 198 registry passes in 1,083.1
+  and byte-identical all-host skill parity suite pass. The parity suite also rejects any reintroduction of the
+  contradictory checkpoint order; the complete 76-suite Feature 198 registry passes in 1,083.1
   seconds. The primary-worktree governance command reached only the unrelated dirty `state.md` value `implement`;
   the clean detached candidate then passed scoped Iteration 008 governance in 18.4 seconds with only the repository's
   known dashboard/handoff warnings.

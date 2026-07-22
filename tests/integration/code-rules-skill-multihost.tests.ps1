@@ -52,6 +52,7 @@ Assert-Match -Text $ws -Pattern '`code-implementation`' 'T015: code-implementati
 Assert-Match -Text $ws -Pattern '(?is)controller-owned workshop state.+feature-level.+lens-applicability\.json.+exact iteration' 'T052: skill selects durable authority by the real feature/iteration workshop scope'
 Assert-Match -Text $ws -Pattern '(?i)Do not rely on a model-authored hidden marker' 'T052: model comments and question-tool transcripts are explicitly non-authoritative'
 Assert-Match -Text $ws -Pattern '(?is)write the nonempty `workshop/<lens-id>\.md`.+then persist.+moved_on: true' 'T052: lens completion uses the durable record-before-structured-entry order'
+Assert-Match -Text $ws -Pattern '(?is)Checkpoint this lens durable.+persist the Markdown decision record FIRST.+ONLY AFTER.+complete `lens-applicability\.json` entry.+moved_on: true' 'T052: checkpoint procedure cannot contradict the record-before-structured-entry order'
 Assert-Match -Text $ws -Pattern '(?is)final selected lens.+workshop `complete`.+ordinary Stop behavior resumes' 'T052: final completion explicitly restores ordinary Stop behavior'
 Assert-Match -Text $ws -Pattern '(?is)loose flag.+missing record.+malformed artifact.+cannot keep\s+the\s+exception active' 'T052: malformed or incomplete completion fails closed instead of suppressing forever'
 Assert-Match -Text $ws -Pattern '(?i)Never invent an iteration during feature intake' 'T052: feature-level intake cannot fabricate an iteration identity'

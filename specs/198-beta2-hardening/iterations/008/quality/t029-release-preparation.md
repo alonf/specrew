@@ -415,7 +415,10 @@ contract for every selected lens. The skill now writes the lens Markdown first a
 second; the final structured write deterministically restores ordinary Stop behavior. Malformed, partial, stale,
 cross-scope, or unreadable state cannot suppress the packet, and lifecycle boundaries retain precedence. The local
 handover remains a bounded projection and is never read as authority. Environment variables and model/question-tool
-markers are not used.
+markers are not used. A final instruction audit found one older checkpoint paragraph that contradicted the new
+write order and named only the feature-level record path. Before review spend, all six host/template copies were
+corrected to require the exact scoped Markdown record first and the full structured entry second; a dedicated
+parity assertion now prevents that contradiction from returning.
 
 Focused proof is green: the strict metadata tests cover active, complete, missing-record, out-of-order, and malformed
 states; the complete real-provider conformance matrix covers unmarked Copilot-style feature/iteration pauses,

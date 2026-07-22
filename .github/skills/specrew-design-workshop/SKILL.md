@@ -317,10 +317,13 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      that lives only in the chat scrollback is lost.
 7. **Checkpoint this lens durable, THEN re-invoke for the next (F-174 — survive a mid-workshop exit/switch).**
    The workshop is long, and an exit or host-switch mid-workshop is expected, not exceptional — so make each
-   lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens: **(a)** write
-   this lens's `lens-applicability.json` record (step 6) and persist its diagram to
-   `specs/<feature>/workshop/<lens-id>.md` **now**; **(b)** refresh the rolling handover through the core save
-   path by running the handover provider with `--source workshop` (one line; the SAME path the hooks use):
+   lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens:
+   **(a) persist the Markdown decision record FIRST** at the exact current scope's
+   `workshop/<lens-id>.md` — `specs/<feature>/workshop/<lens-id>.md` during specify/intake, or
+   `specs/<feature>/iterations/<NNN>/workshop/<lens-id>.md` during design analysis; **(b) ONLY AFTER that
+   nonempty file exists**, write the lens's complete `lens-applicability.json` entry from step 6 with
+   `moved_on: true`; **(c)** refresh the rolling handover through the core save path by running the handover
+   provider with `--source workshop` (one line; the SAME path the hooks use):
    `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/specrew-handover-provider.ps1 --project-root . --source workshop`
    — this captures the freshly-written `workshop/` files into the handover so a resuming session inherits the
    progress. (On the Claude host the `PostToolUse` hook ALSO refreshes the handover automatically the moment you
