@@ -867,7 +867,8 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-043 — reviewer prompt omitted the numeric candidate budgets enforced by strict ingress
 
-- **Status**: corrected locally; focused contract proof passes 27/27; exact-head CI and fresh independent review pending
+- **Status**: corrected locally; focused contract proof passes 27/27 and the corrected orchestrator suite passes
+  20/20; exact-head CI and fresh independent review pending
 - **Severity**: release-review blocker
 - **Type**: incomplete file-primary prompt contract
 - **Requirements**: FR-060, FR-063, NFR-002; T029 release acceptance
@@ -881,11 +882,14 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   characters, 50 findings, 48-character local IDs, 160-character titles, 3,000-character descriptions, and
   800-character locations. It tells the reviewer to shorten prose and never truncate the JSON object. The prompt
   validator requires both the summary and per-finding budget clauses, preventing an adapter from silently reverting
-  to the ambiguous word `bounded`.
+  to the ambiguous word `bounded`. The first exact-head Cross-Platform runs correctly exposed two orchestrator
+  fixtures that had copied the older prompt contract inline; all three OS jobs rejected those fixtures identically.
+  The fixtures now consume the canonical production prompt, removing the second contract surface.
 - **Paired evidence**: the deterministic contract suite rejects a prompt with the budget paragraph removed while
-  retaining the existing overlong-candidate rejection and valid raw-file acceptance cases. One exact-head CI pass
-  and one fresh invocation are the only remaining proof cycle; any new invalid output, finding, runtime failure, or
-  drift stops instead of starting another correction loop.
+  retaining the existing overlong-candidate rejection and valid raw-file acceptance cases. The exact previously
+  failing orchestrator suite then passes 20/20 against the canonical prompt. One exact-head CI pass and one fresh
+  invocation are the only remaining proof cycle; any new invalid output, finding, runtime failure, or drift stops
+  instead of starting another correction loop.
 
 #### T029 run-12 release-preparation evidence
 

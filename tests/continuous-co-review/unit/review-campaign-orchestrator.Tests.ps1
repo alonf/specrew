@@ -50,23 +50,11 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
                 [Parameter(Mandatory)]$FileCandidate,
                 [Parameter(Mandatory)][string]$Stdout
             )
-            $promptPath = Join-Path $TestDrive ('claude-file-primary-' + [guid]::NewGuid().ToString('N') + '.md')
-            [IO.File]::WriteAllText($promptPath, @'
-Write the candidate directly to this exact path:
-CANDIDATE_RESULT_PATH=__CANDIDATE_RESULT_PATH__
-The run is __RUN_ID__ and the target digest is __TARGET_DIGEST__.
-Review scope: __REVIEW_SCOPE__
-Deadline: __DEADLINE__
-Do not modify the source. The file must contain ONLY the raw JSON object: no prose and no Markdown fences.
-Do not delegate to subagents or start other model-backed reviewers.
-Use risk-based inspection; you are not required to open every file. A complete candidate means the requested review scope received reasonable risk coverage. Do not complete while a high-risk check remains.
-Stdout is telemetry and is never parsed for authority.
-`location`, when present, must be one plain JSON string; never an object, array, number, or boolean.
-'@)
+            $promptPath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md'
             $candidateText = if ($FileCandidate -is [string]) { $FileCandidate } else { $FileCandidate | ConvertTo-Json -Depth 20 -Compress }
             $agentInvoker = {
                 param($worktreePath, $prompt, $timeout)
-                $match = [regex]::Match($prompt, '(?m)^CANDIDATE_RESULT_PATH=(?<path>.+)$')
+                $match = [regex]::Match($prompt, '(?ms)Write the candidate directly to this exact path:\s*(?<path>[^\r\n]+)')
                 if (-not $match.Success) { throw 'fixture-candidate-path-not-in-prompt' }
                 [IO.File]::WriteAllText($match.Groups['path'].Value.Trim(), $candidateText, [Text.UTF8Encoding]::new($false))
                 return [pscustomobject]@{
