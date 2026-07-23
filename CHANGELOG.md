@@ -33,6 +33,9 @@ promotion; fresh-consumer validation of the published package remains T067 work.
 - **Review convergence and signoff:** invalid output, timeout, runtime failure, target drift, and repeated
   non-convergence stop visibly. The final candidate passed an independent Claude review with zero findings and
   an immutable reviewed/finalized binding.
+- **Claude workshop context preservation:** the Claude deployment of `specrew-design-workshop` removes
+  `AskUserQuestion` for the full workshop and uses visible numbered prose choices, preventing the picker from
+  swallowing a rendered lens agenda, diagram, or component map. Other hosts retain structured-question UX.
 
 ### Known Beta Limitations
 

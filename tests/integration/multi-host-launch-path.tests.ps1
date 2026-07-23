@@ -287,13 +287,16 @@ $claudeInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interaction
 # by conduct -- six amendments and even a runtime PreToolUse hook-deny were gamed (the model reworded the
 # menu to claim content was "shown above" that it never rendered). The deterministic fix: boundary VERDICT
 # stops route through the specrew-gate-stop skill, whose frontmatter disallows AskUserQuestion, so the
-# picker is removed for the stop and the packet MUST render as Markdown. The verdict response contract is
-# unchanged, and the design workshop + clarify questions keep the picker.
+# picker is removed for the stop and the packet MUST render as Markdown. The design-workshop skill
+# independently removes the same unsafe picker for workshop questions; clarify questions keep it.
 if ($claudeInteraction -notmatch 'specrew-gate-stop' -or $claudeInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
     Write-Fail "Claude interaction guidance did not route boundary verdict stops through the specrew-gate-stop skill with the shared response contract:`n$claudeInteraction"
 }
 if ($claudeInteraction -notmatch 'disallows the AskUserQuestion tool' -or $claudeInteraction -notmatch 'is a Rule 46 violation') {
     Write-Fail "Claude interaction guidance does not remove the picker at the boundary verdict stop (165 collapse fix):`n$claudeInteraction"
+}
+if ($claudeInteraction -notmatch 'specrew-design-workshop skill independently disallows AskUserQuestion' -or $claudeInteraction -notmatch 'Clarify questions remain unaffected') {
+    Write-Fail "Claude interaction guidance does not distinguish workshop picker removal from unaffected clarify questions:`n$claudeInteraction"
 }
 
 $copilotInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'copilot'

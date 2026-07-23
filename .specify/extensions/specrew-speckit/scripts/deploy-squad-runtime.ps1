@@ -525,6 +525,37 @@ function Get-SpecrewSkillHostScopes {
     return $scopes
 }
 
+function Get-SpecrewSkillContentForHost {
+    param(
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostName
+    )
+
+    # Some skill capabilities are host-specific even though the conduct itself is shared.
+    # Keep the canonical metadata explicit, then materialize only the frontmatter understood
+    # by that host. In particular, Claude's AskUserQuestion picker can replace the assistant
+    # prose that precedes it, so the design-workshop skill removes that tool on Claude while
+    # preserving structured-question UX on the other hosts.
+    $claudeDisallowedToolsPattern = '(?m)^claude-disallowed-tools\s*:\s*(?<tools>[^\r\n]+)(?<newline>\r?\n)'
+    if (-not [regex]::IsMatch($Content, $claudeDisallowedToolsPattern)) {
+        return $Content
+    }
+
+    if ($HostName.Equals('claude', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return [regex]::Replace(
+            $Content,
+            $claudeDisallowedToolsPattern,
+            'disallowed-tools: ${tools}${newline}'
+        )
+    }
+
+    return [regex]::Replace($Content, $claudeDisallowedToolsPattern, '')
+}
+
 function Test-SpecrewSkillAppliesToHost {
     param(
         [Parameter(Mandatory = $true)]
@@ -730,7 +761,8 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
         }
 
         Ensure-Directory -Path $skillDirectoryPath -Actions $actions
-        Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath 'SKILL.md') -Content $definition.CurrentContent -Actions $actions
+        $hostContent = Get-SpecrewSkillContentForHost -Content $definition.CurrentContent -HostName $activeSkillRoot.Name
+        Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath 'SKILL.md') -Content $hostContent -Actions $actions
         Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath '.specrew-managed') -Content (Get-ManagedSkillMarkerContent -SkillDirectory $definition.Directory) -Actions $actions
     }
 }
