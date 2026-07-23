@@ -95,7 +95,9 @@ function Invoke-ModuleScript {
     )
 
     $scriptPath = Join-Path $ModuleRoot $ScriptRelativePath
-    $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @Arguments 2>&1)
+    # This helper is automation-only. Pipe one empty line and then EOF so child scripts cannot
+    # inherit a live console and block on an invisible Read-Host prompt while output is captured.
+    $output = @([string]::Empty | & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath @Arguments 2>&1)
     return [pscustomobject]@{
         ExitCode = $LASTEXITCODE
         Output   = @($output | ForEach-Object { [string]$_ })

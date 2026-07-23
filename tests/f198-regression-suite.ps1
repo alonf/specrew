@@ -16,10 +16,57 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
+function Get-CallerRepositorySnapshot {
+    $head = @(& git -C $repoRoot rev-parse --verify HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $head.Count -ne 1) {
+        throw "Cannot snapshot the caller repository HEAD at '$repoRoot'."
+    }
+
+    $branch = @(& git -C $repoRoot symbolic-ref --quiet --short HEAD 2>$null)
+    if ($LASTEXITCODE -eq 1) {
+        $branch = @('(detached)')
+    }
+    elseif ($LASTEXITCODE -ne 0 -or $branch.Count -ne 1) {
+        throw "Cannot snapshot the caller repository branch at '$repoRoot'."
+    }
+
+    $localConfig = @(& git -C $repoRoot config --local --list --show-origin 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot snapshot the caller repository local Git configuration at '$repoRoot'."
+    }
+
+    $status = @(& git -C $repoRoot status --porcelain=v1 --untracked-files=all 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot snapshot the caller repository status at '$repoRoot'."
+    }
+
+    return [pscustomobject]@{
+        Head        = [string]$head[0]
+        Branch      = [string]$branch[0]
+        LocalConfig = @($localConfig | ForEach-Object { [string]$_ })
+        Status      = @($status | ForEach-Object { [string]$_ })
+    }
+}
+
+function Get-CallerRepositoryContamination {
+    param(
+        [Parameter(Mandatory = $true)]$Baseline
+    )
+
+    $current = Get-CallerRepositorySnapshot
+    $changes = [System.Collections.Generic.List[string]]::new()
+    if ($current.Branch -cne $Baseline.Branch) { $changes.Add("branch '$($Baseline.Branch)' -> '$($current.Branch)'") | Out-Null }
+    if ($current.Head -cne $Baseline.Head) { $changes.Add("HEAD '$($Baseline.Head)' -> '$($current.Head)'") | Out-Null }
+    if (($current.LocalConfig -join "`n") -cne ($Baseline.LocalConfig -join "`n")) { $changes.Add('worktree-local Git config changed') | Out-Null }
+    if (($current.Status -join "`n") -cne ($Baseline.Status -join "`n")) { $changes.Add('tracked/untracked status changed') | Out-Null }
+    return @($changes)
+}
+
 $registry = @(
     @{ area = 'boundary ratchet (FR-001..FR-005, cycle-scoped)'; path = 'tests/unit/boundary-ratchet.tests.ps1'; kind = 'script' }
     @{ area = 'append-only scoped authorization correction ledger (FR-004/SC-014)'; path = 'tests/unit/boundary-correction-ledger.tests.ps1'; kind = 'script' }
     @{ area = 'current commit/tree pending-crossing binding (FR-041/FR-042/FR-044/FR-045)'; path = 'tests/integration/pending-verdict-stop-artifact.tests.ps1'; kind = 'script' }
+    @{ area = 'DRIFT-198-I008-056–058 caller isolation, Pester container honesty, and closed automation stdin'; path = 'tests/unit/regression-harness-isolation.tests.ps1'; kind = 'script' }
     @{ area = 'budget resolution + provenance (FR-021..FR-023)'; path = 'tests/unit/budget-resolution.tests.ps1'; kind = 'script' }
     @{ area = 'tracker honesty check (FR-020)'; path = 'tests/unit/tracker-honesty-check.tests.ps1'; kind = 'script' }
     @{ area = 'self-leak firewall (FR-033/FR-037)'; path = 'tests/unit/self-leak-lint.tests.ps1'; kind = 'script' }
@@ -105,6 +152,7 @@ $registry = @(
 )
 
 $failed = New-Object System.Collections.Generic.List[string]
+$callerBaseline = Get-CallerRepositorySnapshot
 foreach ($t in $registry) {
     $full = Join-Path $repoRoot $t.path
     if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
@@ -115,7 +163,9 @@ foreach ($t in $registry) {
     $outFile = [System.IO.Path]::GetTempFileName()
     $errFile = [System.IO.Path]::GetTempFileName()
     if ($t.kind -eq 'pester') {
-        $cmd = ("`$env:SPECREW_MODULE_PATH='{0}'; `$r = Invoke-Pester -Path '{1}' -Output Detailed -PassThru; exit ([int]`$r.FailedCount)" -f $repoRoot, $full)
+        # FailedCount covers failed It blocks but can remain zero for a failed BeforeAll/AfterAll container.
+        # The aggregate must honor Pester's terminal Result or suite-level hygiene failures become false-green.
+        $cmd = ("`$env:SPECREW_MODULE_PATH='{0}'; `$r = Invoke-Pester -Path '{1}' -Output Detailed -PassThru; if (`$r.Result -ne 'Passed') {{ exit 1 }}; exit 0" -f $repoRoot, $full)
         $procArgs = @('-NoProfile', '-Command', $cmd)
     }
     else {
@@ -128,12 +178,24 @@ foreach ($t in $registry) {
         Write-Host ("FAIL (TIMEOUT > {0}s): {1} -> {2}" -f $PerTestTimeoutSeconds, $t.area, $t.path) -ForegroundColor Red
         $failed.Add("$($t.path) — TIMEOUT (>$PerTestTimeoutSeconds s)") | Out-Null
         Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
+        $contamination = @(Get-CallerRepositoryContamination -Baseline $callerBaseline)
+        if ($contamination.Count -gt 0) {
+            Write-Host ("FAIL (CALLER REPOSITORY CONTAMINATED): {0} -> {1}" -f $t.area, ($contamination -join '; ')) -ForegroundColor Red
+            $failed.Add("$($t.path) — caller repository contamination") | Out-Null
+            break
+        }
         continue
     }
     $proc.WaitForExit()
     $exit = $proc.ExitCode
     $out = ((Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) + "`n" + (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue))
     Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
+    $contamination = @(Get-CallerRepositoryContamination -Baseline $callerBaseline)
+    if ($contamination.Count -gt 0) {
+        Write-Host ("FAIL (CALLER REPOSITORY CONTAMINATED): {0} -> {1}" -f $t.area, ($contamination -join '; ')) -ForegroundColor Red
+        $failed.Add("$($t.path) — caller repository contamination") | Out-Null
+        break
+    }
     if ($exit -ne 0) {
         Write-Host ("FAIL (exit {0}): {1} -> {2}" -f $exit, $t.area, $t.path) -ForegroundColor Red
         Write-Host "----- last 40 lines -----"

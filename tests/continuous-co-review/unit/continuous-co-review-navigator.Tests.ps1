@@ -25,6 +25,20 @@ Describe 'T078/T079 continuous co-review navigator (reap + fire + dedup + orphan
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-navigator.ps1')   # T019 piece 3: the fire entry (brings co-review-service + the lease)
 
+        function script:Get-LocalGitUserConfigSnapshot {
+            param([Parameter(Mandatory = $true)][string]$Root)
+
+            $lines = @(& git -C $Root config --local --get-regexp '^user\.' 2>$null)
+            if ($LASTEXITCODE -notin @(0, 1)) {
+                throw "Unable to read local Git user configuration from '$Root'."
+            }
+            return @($lines | ForEach-Object { [string]$_ })
+        }
+
+        # Preserve the caller's exact baseline. A legitimate worktree-local identity is not contamination;
+        # changing or removing it during this suite is.
+        $script:RepoLocalUserConfigBaseline = @(script:Get-LocalGitUserConfigSnapshot -Root $script:RepoRoot)
+
         # A self-contained governed "project": a real git repo (so the digest + merge-base resolve) with
         # a .specrew/ dir + a start-context.json whose boundary_type puts us in the implement window.
         # Uses `git -c user.*` per-invocation - never mutates a real repo's config.
@@ -174,6 +188,78 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'campaign intake: a feature-level <Boundary> cursor without an iteration is an expected silent no-op' -TestCases @(
+        @{ Boundary = 'specify' }
+        @{ Boundary = 'clarify' }
+    ) {
+        param($Boundary)
+        $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path $featureRoot -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be 'campaign-not-applicable:no-active-iteration'
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign intake: the v2 <Boundary> crossing shape without an iteration is an expected silent no-op' -TestCases @(
+        @{ Boundary = 'specify'; FromBoundary = 'intake' }
+        @{ Boundary = 'clarify'; FromBoundary = 'specify' }
+    ) {
+        param($Boundary, $FromBoundary)
+        $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path $featureRoot -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            ([ordered]@{
+                    schema = 'v2'
+                    boundary_enforcement = [ordered]@{
+                        enabled = $true
+                        last_authorized_boundary = $null
+                        pending_next_boundary = $Boundary
+                        pending_crossing = [ordered]@{
+                            from_boundary = $FromBoundary
+                            to_boundary = $Boundary
+                            working_boundary = $Boundary
+                        }
+                    }
+                    feature_path = $featureRoot
+                    session_state = [ordered]@{
+                        active = $true
+                        boundary_type = $Boundary
+                        feature_ref = '001-demo'
+                        feature_path = $featureRoot
+                        iteration_number = ''
+                    }
+                } | ConvertTo-Json -Depth 8) |
+                Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be 'campaign-not-applicable:no-active-iteration'
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'campaign intake: malformed active feature state still fails closed through the packet gate' {
         $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
         try {
@@ -186,6 +272,32 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
             $decision.reason | Should -Be 'campaign-packet-gate-failed'
             $decision.stop_block | Should -Match 'review-campaign-active-feature-unresolved'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign intake: an explicit iteration number with a missing iteration still fails closed' {
+        $root = script:New-NavigatorProject -BoundaryType 'specify' -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path $featureRoot -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            ([ordered]@{
+                    session_state = [ordered]@{
+                        boundary_type = 'specify'
+                        feature_path = $featureRoot
+                        iteration_number = '001'
+                    }
+                } | ConvertTo-Json -Depth 6) |
+                Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.reason | Should -Be 'campaign-packet-gate-failed'
+            $decision.stop_block | Should -Match 'review-campaign-active-iteration-unresolved'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -208,14 +320,73 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    AfterAll {
-        # The suite must never leave git identity on the Specrew repo (the fan-out hygiene rule).
-        Push-Location $script:RepoRoot
+    It 'campaign intake: a v2 iteration-bound cursor with a missing iteration still fails closed' {
+        $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
         try {
-            $userCfg = @(& git config --local --get-regexp '^user\.' 2>$null)
-            $userCfg.Count | Should -Be 0
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path $featureRoot -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            ([ordered]@{
+                    schema = 'v2'
+                    boundary_enforcement = [ordered]@{
+                        last_authorized_boundary = 'tasks'
+                        pending_next_boundary = 'before-implement'
+                        pending_crossing = [ordered]@{
+                            from_boundary = 'tasks'
+                            to_boundary = 'before-implement'
+                            working_boundary = 'before-implement'
+                        }
+                    }
+                    feature_path = $featureRoot
+                } | ConvertTo-Json -Depth 8) |
+                Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.reason | Should -Be 'campaign-packet-gate-failed'
+            $decision.stop_block | Should -Match 'review-campaign-active-iteration-unresolved'
         }
-        finally { Pop-Location }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    AfterAll {
+        # The suite must preserve, not outlaw, the caller's worktree-local Git identity.
+        $currentUserConfig = @(script:Get-LocalGitUserConfigSnapshot -Root $script:RepoRoot)
+        ($currentUserConfig -join "`n") | Should -Be ($script:RepoLocalUserConfigBaseline -join "`n")
+    }
+
+    It 'the Git identity hygiene baseline supports both empty and pre-existing local configuration' {
+        $emptyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('nav-config-empty-' + [guid]::NewGuid().ToString('N'))
+        $configuredRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('nav-config-existing-' + [guid]::NewGuid().ToString('N'))
+        try {
+            foreach ($root in @($emptyRoot, $configuredRoot)) {
+                New-Item -ItemType Directory -Path $root -Force | Out-Null
+                & git -C $root init -q 2>&1 | Out-Null
+                $LASTEXITCODE | Should -Be 0
+            }
+
+            @(script:Get-LocalGitUserConfigSnapshot -Root $emptyRoot).Count | Should -Be 0
+
+            & git -C $configuredRoot config --local user.name 'Existing User'
+            & git -C $configuredRoot config --local user.email 'existing@example.test'
+            $baseline = @(script:Get-LocalGitUserConfigSnapshot -Root $configuredRoot)
+            $baseline.Count | Should -Be 2
+
+            # Per-invocation test identity must not replace or remove the repository's baseline.
+            & git -C $configuredRoot -c user.name='Invocation User' -c user.email='invocation@example.test' commit --allow-empty -q -m seed
+            $LASTEXITCODE | Should -Be 0
+            ((script:Get-LocalGitUserConfigSnapshot -Root $configuredRoot) -join "`n") | Should -Be ($baseline -join "`n")
+        }
+        finally {
+            foreach ($root in @($emptyRoot, $configuredRoot)) {
+                if (Test-Path -LiteralPath $root) {
+                    Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
     }
 
     It 'FINDING 2 (conservative reap): a TRANSIENT Get-Process error does NOT reap a running entry' {

@@ -10,6 +10,45 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot 'co-review-service.ps1')   # brings the legacy navigator (reap/stage/dedup) + the service (fire/identity)
 
+function Test-ReviewCampaignBoundaryRequiresIteration {
+    # Feature-level intake legitimately has an active lifecycle cursor before any iteration exists.
+    # Only a cursor at plan or later proves that a missing iteration is suspicious. Unknown or
+    # malformed non-empty cursor values fail closed by returning true.
+    param(
+        [AllowNull()]
+        $BoundaryCursor
+    )
+
+    if ($null -eq $BoundaryCursor) { return $false }
+
+    $candidates = [System.Collections.Generic.List[string]]::new()
+    if ($BoundaryCursor -is [string]) {
+        if ([string]::IsNullOrWhiteSpace([string]$BoundaryCursor)) { return $false }
+        $candidates.Add([string]$BoundaryCursor) | Out-Null
+    }
+    else {
+        # pending_crossing is an object. Its destination/working boundary determines whether
+        # iteration state is expected; from_boundary may still be the pre-feature 'intake'.
+        foreach ($propertyName in @('working_boundary', 'to_boundary')) {
+            if (($BoundaryCursor.PSObject.Properties.Name -contains $propertyName) -and
+                -not [string]::IsNullOrWhiteSpace([string]$BoundaryCursor.$propertyName)) {
+                $candidates.Add([string]$BoundaryCursor.$propertyName) | Out-Null
+            }
+        }
+        if ($candidates.Count -eq 0) { return $true }
+    }
+
+    foreach ($candidate in $candidates) {
+        $normalized = $candidate.Trim().ToLowerInvariant()
+        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
+            try { $normalized = Normalize-SpecrewCanonicalBoundaryType -Boundary $candidate }
+            catch { return $true }
+        }
+        if ($normalized -notin @('intake', 'specify', 'clarify')) { return $true }
+    }
+    return $false
+}
+
 function Get-ReviewCampaignNavigatorScopeApplicability {
     # Campaign authority is installed before a greenfield project has an active feature or iteration. Those
     # intake states are expected no-ops, not authority failures. Once any active-feature signal exists, malformed
@@ -42,10 +81,17 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
                 if ($startContext.session_state.PSObject.Properties['feature_path']) {
                     $featurePath = [string]$startContext.session_state.feature_path
                 }
+                if ($startContext.session_state.PSObject.Properties['iteration_number'] -and
+                    -not [string]::IsNullOrWhiteSpace([string]$startContext.session_state.iteration_number)) {
+                    $activeFeatureSignal = $true
+                    $activeIterationSignal = $true
+                }
                 if ($startContext.session_state.PSObject.Properties['boundary_type'] -and
                     -not [string]::IsNullOrWhiteSpace([string]$startContext.session_state.boundary_type)) {
                     $activeFeatureSignal = $true
-                    $activeIterationSignal = $true
+                    if (Test-ReviewCampaignBoundaryRequiresIteration -BoundaryCursor $startContext.session_state.boundary_type) {
+                        $activeIterationSignal = $true
+                    }
                 }
             }
             elseif ($startContext.PSObject.Properties['feature_path']) {
@@ -57,7 +103,9 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
                         $null -ne $startContext.boundary_enforcement.$cursorName -and
                         -not [string]::IsNullOrWhiteSpace([string]$startContext.boundary_enforcement.$cursorName)) {
                         $activeFeatureSignal = $true
-                        $activeIterationSignal = $true
+                        if (Test-ReviewCampaignBoundaryRequiresIteration -BoundaryCursor $startContext.boundary_enforcement.$cursorName) {
+                            $activeIterationSignal = $true
+                        }
                     }
                 }
             }

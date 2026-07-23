@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 53
-**Resolution rate**: 79.2% (42/53 resolved; DRIFT-198-I008-040 awaits the completed-workshop retest, and DRIFT-198-I008-044–053 await exact-head and fresh-review proof)
+**Total drift events**: 58
+**Resolution rate**: 72.4% (42/58 resolved; DRIFT-198-I008-040 awaits completed-workshop reconciliation, and DRIFT-198-I008-044–058 await their named exact-head, full-registry, manual, or fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -44,7 +44,10 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   final lens completion. Run 13 independently closed 038/039/041–043 and found four bounded, real follow-ons now
   recorded as 044–047. Run 14 and the resumed Article Amplifier test exposed six bounded follow-ons recorded as
   048–053: four runtime/contract gaps and two durable workshop-state gaps. T029 release and T067 published-beta
-  validation remain deliberately pending behind their named boundaries.
+  validation remain deliberately pending behind their named boundaries. Exact-head CI then exposed 054. The next
+  completed-workshop and regression pass exposed 055–058: a feature-level campaign false error, a primary-worktree
+  branch-contamination path, a local-Git-identity baseline error, and one more live-console stdin inheritance hang.
+  Each is bounded to the active bug bash.
 
 ## Events
 
@@ -1074,6 +1077,80 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 - **Paired evidence**: source-contract assertions bind the closed cleanup-budget payload and timeout mapping. The
   native WSL cgroup suite passes all 11 applicable cases, including clean-exit descendant reaping and timeout tree
   death; the Windows contract path passes seven cases with four expected POSIX skips.
+
+### DRIFT-198-I008-055 — feature-level specify/clarify Stop invoked an iteration-bound campaign gate
+
+- **Status**: corrected locally; exact feature-level and fail-closed iteration fixtures plus all 78 registry suites
+  pass; exact-head CI and fresh manual proof pending
+- **Severity**: manual-test blocker
+- **Type**: lifecycle-scope classification drift
+- **Requirements**: FR-055, FR-056, NFR-002, NFR-007; T029 manual-test acceptance
+- **Observed evidence**: at the valid Article Amplifier `specify` boundary, before any iteration existed, Claude's
+  Stop hook emitted `Campaign review authority could not be read safely:
+  review-campaign-active-iteration-unresolved`. Campaign applicability treated every nonempty lifecycle cursor as
+  proof that an iteration must exist, including feature-level `specify` and `clarify` cursors.
+- **Tracking**: GitHub issue #3099.
+- **Correction**: feature-level `intake`, `specify`, and `clarify` cursors are expected no-iteration states and
+  bypass the iteration-bound campaign packet gate. An explicit iteration number, `plan`-or-later cursor, malformed
+  active cursor, or missing iteration at an iteration-bound crossing still fails closed.
+- **Paired evidence**: v1 and exact v2 `specify`/`clarify` shapes produce the silent
+  `campaign-not-applicable:no-active-iteration` no-op; explicit and advanced iteration signals retain the existing
+  `review-campaign-active-iteration-unresolved` block.
+
+### DRIFT-198-I008-056 — nested regression fixture could switch the caller's primary branch
+
+- **Status**: corrected locally; focused isolation proof and all 78 registry suites pass; exact-head CI pending
+- **Severity**: release-blocking repository contamination defect
+- **Type**: test-fixture isolation drift
+- **Requirements**: NFR-002, NFR-007; T029 release acceptance
+- **Observed evidence**: the Feature 198 registry started at `2026-07-23 22:31:59`; at `22:32:40` the primary
+  worktree reflog recorded `checkout: moving from 198-beta2-hardening to 001-test-feature`. The first feature
+  fixture initialized nested repositories under the primary checkout, did not validate `git init`, and then ran
+  `checkout -b 001-test-feature`. If initialization failed or raced, Git could discover and mutate the ancestor
+  repository. A later fix commit initially landed on that test branch and required a non-force recovery.
+- **Tracking**: GitHub issue #3100.
+- **Correction**: the affected fixture uses a unique system-temp root outside the caller repository, checks every
+  mutating Git command, verifies `rev-parse --show-toplevel` equals the intended fixture root, and supplies commit
+  identity per invocation. The full registry snapshots branch, HEAD, local config, and status, then stops on any
+  per-suite contamination.
+- **Paired evidence**: the corrected focused run preserved branch, HEAD, local config, and exact status. The full
+  78-suite registry exercised the same invariant after every child without reporting contamination.
+
+### DRIFT-198-I008-057 — navigator hygiene footer rejected a legitimate local Git identity
+
+- **Status**: corrected locally; focused navigator proof and all 78 registry suites pass; exact-head CI pending
+- **Severity**: release-blocking deterministic-suite defect
+- **Type**: test-baseline honesty drift
+- **Requirements**: NFR-002, NFR-007; T029 release acceptance
+- **Observed evidence**: the navigator suite's `AfterAll` asserted the caller repository had zero local `user.*`
+  config entries. The release worktree legitimately has worktree-local `user.name` and `user.email`, so the footer
+  failed even though the suite did not create or change them and would re-fail every full run.
+- **Tracking**: GitHub issue #3101.
+- **Correction**: the suite captures the caller's exact pre-run local user-config baseline and requires exact
+  preservation afterward. It neither exempts later mutations nor clears legitimate configuration. Temporary test
+  commits continue to use per-invocation identity.
+- **Paired evidence**: dedicated empty-config and pre-existing-config fixtures prove both baselines, including that
+  a per-invocation identity does not replace the configured repository baseline.
+
+### DRIFT-198-I008-058 — distribution-update automation inherited live-console stdin
+
+- **Status**: corrected locally; focused distribution-update proof and all 78 registry suites pass; exact-head CI
+  pending
+- **Severity**: release-blocking deterministic-suite hang
+- **Type**: console-differential test-harness drift
+- **Requirements**: NFR-002, NFR-007; T029 release acceptance
+- **Observed evidence**: the full registry killed `distribution-module-update.ps1` after 300 seconds. A focused
+  live-console run consistently reached its final captured child,
+  `specrew-start.ps1 -NoLaunch "Review template conflicts"`, then stopped consuming CPU or producing output.
+  The automation helper used `& pwsh` with inherited TTY stdin, so an interactive prompt waited invisibly inside
+  the captured stream. CI's non-TTY stdin takes a different branch.
+- **Tracking**: GitHub issue #3102; broader Beta3 prevention remains tracked separately by #3092.
+- **Correction**: the automation-only module-script helper sends one empty line followed by EOF to every child.
+  Child scripts therefore take their deterministic noninteractive defaults and cannot inherit the caller console.
+  The existing aggregate timeout remains a loud independent failure bound.
+- **Paired evidence**: the regression-harness contract rejects reintroduction of a direct stdin-inheriting
+  `& pwsh` call. The focused distribution-update suite completed through its final `specrew start` assertion, and
+  the same suite passed inside the complete 78-suite live-console registry.
 
 ### Resolution Strategies
 

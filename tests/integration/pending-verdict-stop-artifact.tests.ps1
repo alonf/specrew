@@ -23,10 +23,22 @@ function Invoke-TestScript {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $env:SPECREW_MODULE_PATH = $repoRoot
 $syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
-$scratchRoot = Join-Path $repoRoot '.scratch\pending-verdict-stop-artifact'
+$scratchRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-pending-verdict-' + [guid]::NewGuid().ToString('N'))
 
-if (Test-Path -LiteralPath $scratchRoot) {
-    Remove-Item -LiteralPath $scratchRoot -Recurse -Force
+function Invoke-FixtureGit {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
+    )
+
+    $output = @(& git -C $ProjectRoot @Arguments 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw ("Fixture git command failed in '{0}': git {1}`n{2}" -f
+            $ProjectRoot,
+            ($Arguments -join ' '),
+            ($output -join [Environment]::NewLine))
+    }
+    return @($output)
 }
 
 function New-TestProject {
@@ -73,13 +85,23 @@ function New-TestProject {
     }
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), ($context | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
 
-    $null = & git -C $projectRoot init --quiet 2>&1
-    $null = & git -C $projectRoot config user.email 'test@specrew.local' 2>&1
-    $null = & git -C $projectRoot config user.name 'Test User' 2>&1
-    $null = & git -C $projectRoot add -A 2>&1
-    $null = & git -C $projectRoot commit -m 'Seed repository' --quiet 2>&1
-    $null = & git -C $projectRoot branch -M main 2>&1
-    $null = & git -C $projectRoot checkout -b 001-test-feature 2>&1
+    $null = Invoke-FixtureGit -ProjectRoot $projectRoot -Arguments @('init', '--quiet')
+    $fixtureTopLevel = [System.IO.Path]::GetFullPath(
+        [string](Invoke-FixtureGit -ProjectRoot $projectRoot -Arguments @('rev-parse', '--show-toplevel') | Select-Object -First 1)
+    ).TrimEnd('\', '/')
+    $expectedTopLevel = [System.IO.Path]::GetFullPath($projectRoot).TrimEnd('\', '/')
+    if (-not $fixtureTopLevel.Equals($expectedTopLevel, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Fixture repository escaped its isolated root. Expected '$expectedTopLevel'; Git resolved '$fixtureTopLevel'."
+    }
+
+    $null = Invoke-FixtureGit -ProjectRoot $projectRoot -Arguments @('add', '-A')
+    $null = Invoke-FixtureGit -ProjectRoot $projectRoot -Arguments @(
+        '-c', 'user.email=test@specrew.local',
+        '-c', 'user.name=Test User',
+        'commit', '-m', 'Seed repository', '--quiet'
+    )
+    $null = Invoke-FixtureGit -ProjectRoot $projectRoot -Arguments @('branch', '-M', 'main')
+    $null = Invoke-FixtureGit -ProjectRoot $projectRoot -Arguments @('checkout', '-b', '001-test-feature')
 
     return $projectRoot
 }
@@ -239,8 +261,12 @@ try {
     $closeoutProject = New-TestProject -Name 'closeout-current-not-stale-parent' -LastAuthorizedBoundary 'iteration-closeout'
     $staleParent = (& git -C $closeoutProject rev-parse HEAD).Trim()
     [System.IO.File]::AppendAllText((Join-Path $closeoutProject 'README.md'), "`nActual closeout artifact.`n", [System.Text.UTF8Encoding]::new($false))
-    $null = & git -C $closeoutProject add README.md 2>&1
-    $null = & git -C $closeoutProject commit -m 'Actual closeout boundary' --quiet 2>&1
+    $null = Invoke-FixtureGit -ProjectRoot $closeoutProject -Arguments @('add', 'README.md')
+    $null = Invoke-FixtureGit -ProjectRoot $closeoutProject -Arguments @(
+        '-c', 'user.email=test@specrew.local',
+        '-c', 'user.name=Test User',
+        'commit', '-m', 'Actual closeout boundary', '--quiet'
+    )
     $actualCloseout = (& git -C $closeoutProject rev-parse HEAD).Trim()
     $beforeRejectedSync = Get-Content -LiteralPath (Join-Path $closeoutProject '.specrew\start-context.json') -Raw -Encoding UTF8
     $staleResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
