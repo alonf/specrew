@@ -132,7 +132,11 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $hostSource | Should -Not -Match '\.WaitForExit\(\)'
         $hostSource | Should -Match 'WaitForExit\(\$timeoutSeconds \* 1000\)'
         $hostSource | Should -Match 'Wait-ReviewRuntimeOutputDrains'
+        $hostSource | Should -Not -Match 'if \(-not \$streamState\.all_closed\) \{ exit 125 \}'
         $commonSource | Should -Match 'timeout_seconds = \$effectiveTimeout'
+        $commonSource | Should -Match 'termination_wait_milliseconds = \$nestedTerminationWaitMilliseconds'
+        $commonSource | Should -Match 'drain_timeout_milliseconds = \$nestedDrainTimeoutMilliseconds'
+        $commonSource | Should -Match '\$timedOut = \(-not \$exited\) -or \(\$exitCode -eq 124\)'
         $commonSource | Should -Not -Match 'function Wait-ReviewPosixOutputDrains'
     }
 

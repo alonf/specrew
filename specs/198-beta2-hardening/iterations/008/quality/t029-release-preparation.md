@@ -506,3 +506,26 @@ remained, that sole unchanged suite passed every assertion in isolation in 30 se
 made for the harness collision and the expensive registry was not repeated unchanged. Clean detached commit
 `2825b91a` passed scoped Iteration 008 governance in 26.5 seconds with only the repository's known dashboard
 warnings. Hosted exact-head CI and one fresh independent review remain required.
+
+## Exact-Head POSIX Containment Ownership Correction
+
+Exact-head commit `2feb4f276608342dfdd5335cf0d0628f9065afa7` passed the ordinary Test, Lint, self-leak,
+contract, deterministic-gate, wrapper, and standard Ubuntu/macOS validation jobs. The dedicated deterministic
+review-runtime matrix exposed one real regression in both POSIX jobs. On macOS, the clean-exit descendant fixture
+returned `timed-out` after the nested host waited for reviewer pipes that the descendant still owned. The outer
+controller could not stop that process group until the host exited. Ubuntu's native matrix completed, then its
+privileged PowerShell process ended without a Pester terminal record during the later suite sequence; no assertion
+failure was published.
+
+The correction records DRIFT-198-I008-054 and separates the two deadlines. The nested host enforces the reviewer
+execution timeout and receives bounded termination/drain cleanup values in its closed payload. It observes both
+drains concurrently, but does not claim authority over pipe closure while descendants remain in the outer native
+containment. The controller allows only that bounded host cleanup overhead, maps nested exit `124` back to the
+reviewer timeout, then stops containment and verifies descendant death, both outer streams, and cleanup before it
+returns terminal evidence.
+
+Focused Windows contract proof passes seven cases with four expected POSIX skips. A privileged WSL cgroup-v2 run
+passes all 11 native POSIX cases in 36.4 seconds, including the formerly failing clean-exit descendant and the
+timeout descendant. The exact failed Ubuntu suite prefix was also inspected: the native fake-provider matrix had
+passed all 13 tests before the old process ended later without a test result, so no speculative CI isolation or
+unrelated workflow change was made. Exact-head hosted CI must determine whether any blocker remains.

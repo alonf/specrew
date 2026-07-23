@@ -1057,6 +1057,24 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   specify gate names both lenses/values; all six skill copies are byte-identical; and the real Stop-provider matrix
   proves a conflict blocks before the next lens with only the targeted reconciliation.
 
+### DRIFT-198-I008-054 — nested POSIX drain ownership raced descendant containment cleanup
+
+- **Status**: corrected locally; Windows contract and native Linux cgroup proofs pass; exact-head CI pending
+- **Severity**: release-blocking exact-head CI regression
+- **Type**: nested process/stream ownership deadlock
+- **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: exact-head Cross-Platform PR run `29972125902` and push run `29972124054` failed both
+  POSIX deterministic jobs. The macOS clean-exit descendant fixture reached its five-second controller deadline
+  while the nested host waited for reviewer pipes still held by that descendant. The controller could not reap the
+  descendant until the host returned, so the two bounded owners waited on each other.
+- **Correction**: the nested host still observes both reviewer drains concurrently within a bounded budget, but an
+  incomplete inner drain no longer overrides an exited reviewer root. The outer controller receives a separate
+  bounded host cleanup allowance, remains the sole containment owner, reaps descendants, and verifies its own
+  streams before publishing terminal evidence. Nested exit `124` is preserved as reviewer-timeout authority.
+- **Paired evidence**: source-contract assertions bind the closed cleanup-budget payload and timeout mapping. The
+  native WSL cgroup suite passes all 11 applicable cases, including clean-exit descendant reaping and timeout tree
+  death; the Windows contract path passes seven cases with four expected POSIX skips.
+
 ### Resolution Strategies
 
 The following resolution strategies remain available if drift is detected later in execution:

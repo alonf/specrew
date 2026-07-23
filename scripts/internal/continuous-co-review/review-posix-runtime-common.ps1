@@ -6,6 +6,12 @@ Set-StrictMode -Version Latest
 # execution time remains governed by the invocation timeout after the handshake succeeds.
 $script:ReviewPosixContainmentHandshakeTimeoutMilliseconds = 15000
 
+# The nested host enforces the reviewer execution deadline. Give that host a separate, bounded
+# cleanup window so it can terminate a timed-out reviewer and observe both redirected streams
+# without racing the outer containment controller's execution deadline.
+$script:ReviewPosixNestedTerminationWaitMilliseconds = 5000
+$script:ReviewPosixNestedDrainTimeoutMilliseconds = 5000
+
 if (-not (Get-Command -Name 'Test-ReviewRuntimeProcessSpec' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'review-runtime-contract.ps1')
 }
@@ -84,6 +90,8 @@ function New-ReviewPosixRuntimePort {
     $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
     $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
     $handshakeTimeoutMilliseconds = $script:ReviewPosixContainmentHandshakeTimeoutMilliseconds
+    $nestedTerminationWaitMilliseconds = $script:ReviewPosixNestedTerminationWaitMilliseconds
+    $nestedDrainTimeoutMilliseconds = $script:ReviewPosixNestedDrainTimeoutMilliseconds
     $hostPath = Join-Path $PSScriptRoot 'review-posix-process-host.ps1'
     $pwshPath = [IO.Path]::GetFullPath((Get-Process -Id $PID).Path)
 
@@ -154,11 +162,13 @@ function New-ReviewPosixRuntimePort {
                 executable = $executable; argument_list = @($spec.argument_list); working_directory = [string]$spec.working_directory
                 environment_delta = $environmentDelta; prompt_transport = [string]$spec.prompt_transport; stdin_text = $(if ($spec.prompt_transport -ceq 'stdin') { [string]$spec.stdin_text } else { $null })
                 timeout_seconds = $effectiveTimeout
+                termination_wait_milliseconds = $nestedTerminationWaitMilliseconds
+                drain_timeout_milliseconds = $nestedDrainTimeoutMilliseconds
             }
             $process.StandardInput.Write(($payload | ConvertTo-Json -Compress -Depth 12))
             $process.StandardInput.Close()
 
-            $timeoutMilliseconds = [long]$effectiveTimeout * 1000
+            $timeoutMilliseconds = ([long]$effectiveTimeout * 1000) + $nestedTerminationWaitMilliseconds + $nestedDrainTimeoutMilliseconds
             $waitWatch = [Diagnostics.Stopwatch]::StartNew()
             & $writeProgressCommand -Progress $progress -CandidateResultPath ([string]$spec.candidate_result_path) -ProcessTreeLive $true
             $exited = $process.HasExited
@@ -171,8 +181,8 @@ function New-ReviewPosixRuntimePort {
                     & $writeProgressCommand -Progress $progress -CandidateResultPath ([string]$spec.candidate_result_path) -ProcessTreeLive $true
                 }
             }
-            $timedOut = -not $exited
             $exitCode = if ($exited) { $process.ExitCode } else { $null }
+            $timedOut = (-not $exited) -or ($exitCode -eq 124)
             & $StopContainment $descriptor $(if ($timedOut) { $TerminationGraceSeconds } else { 0 })
             if (-not $process.HasExited) { [void]$process.WaitForExit(5000) }
             $streamState = & $waitOutputDrainsCommand -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000

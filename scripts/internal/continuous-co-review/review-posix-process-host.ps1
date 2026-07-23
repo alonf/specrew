@@ -50,13 +50,23 @@ try {
     $payloadText = [Console]::In.ReadToEnd()
     if ([string]::IsNullOrWhiteSpace($payloadText)) { exit 124 }
     $payload = $payloadText | ConvertFrom-Json -Depth 20
-    foreach ($name in @('executable', 'argument_list', 'working_directory', 'environment_delta', 'prompt_transport', 'timeout_seconds')) {
+    foreach ($name in @('executable', 'argument_list', 'working_directory', 'environment_delta', 'prompt_transport', 'timeout_seconds', 'termination_wait_milliseconds', 'drain_timeout_milliseconds')) {
         if (-not $payload.PSObject.Properties[$name]) { throw "posix-host-payload-missing:$name" }
     }
     if ([string]$payload.prompt_transport -cnotin @('stdin', 'argument')) { throw 'posix-host-prompt-transport-invalid' }
     [int]$timeoutSeconds = 0
     if (-not [int]::TryParse([string]$payload.timeout_seconds, [ref]$timeoutSeconds) -or $timeoutSeconds -lt 1 -or $timeoutSeconds -gt 7200) {
         throw 'posix-host-timeout-invalid'
+    }
+    [int]$terminationWaitMilliseconds = 0
+    if (-not [int]::TryParse([string]$payload.termination_wait_milliseconds, [ref]$terminationWaitMilliseconds) -or
+        $terminationWaitMilliseconds -lt 1 -or $terminationWaitMilliseconds -gt 30000) {
+        throw 'posix-host-termination-wait-invalid'
+    }
+    [int]$drainTimeoutMilliseconds = 0
+    if (-not [int]::TryParse([string]$payload.drain_timeout_milliseconds, [ref]$drainTimeoutMilliseconds) -or
+        $drainTimeoutMilliseconds -lt 1 -or $drainTimeoutMilliseconds -gt 30000) {
+        throw 'posix-host-drain-timeout-invalid'
     }
 
     $startInfo = [Diagnostics.ProcessStartInfo]::new()
@@ -82,15 +92,17 @@ try {
     $reviewerTimedOut = -not $reviewer.WaitForExit($timeoutSeconds * 1000)
     if ($reviewerTimedOut) {
         try { $reviewer.Kill($true) } catch { $null = $_ }
-        try { [void]$reviewer.WaitForExit(5000) } catch { $null = $_ }
+        try { [void]$reviewer.WaitForExit($terminationWaitMilliseconds) } catch { $null = $_ }
     }
     $exitCode = if ($reviewer.HasExited) { $reviewer.ExitCode } else { 125 }
-    $streamState = Wait-ReviewRuntimeOutputDrains -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
+    $null = Wait-ReviewRuntimeOutputDrains -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds $drainTimeoutMilliseconds
     try { $reviewer.StandardOutput.Close() } catch { $null = $_ }
     try { $reviewer.StandardError.Close() } catch { $null = $_ }
     $reviewer.Dispose()
     if ($reviewerTimedOut) { exit 124 }
-    if (-not $streamState.all_closed) { exit 125 }
+    # Descendants can legitimately retain the reviewer's pipe handles after its root exits. The
+    # outer controller owns the containment and reaps those descendants after this host returns;
+    # incomplete nested drains therefore cannot override the reviewer's successful exit code.
     exit $exitCode
 }
 catch {
