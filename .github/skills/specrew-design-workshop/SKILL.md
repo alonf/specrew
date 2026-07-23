@@ -203,6 +203,10 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    duplicate/out-of-order lens, malformed artifact, or mismatched confirmation is invalid and cannot keep the
    exception active. Never render the generic five-section packet merely to ask or answer an ordinary lens
    question; use the six-section packet only for a genuine lifecycle boundary.
+   **Carry binding decisions across lenses.** Before opening a new lens, reread the completed records' durable
+   `bindings`. A delegated/default decision may fill an unresolved gap, but it MUST NOT contradict an earlier
+   human-confirmed binding. If the human intentionally changes a binding, reconcile every affected lens record
+   to the same value before moving on; never leave two durable answers for one architectural fact.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
    A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five
@@ -281,12 +285,16 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
      **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
      SC-026), plus **`confirmation_scope`** — `lens-question` for `human-confirmed`, `explicit-delegation` for
-     `human-delegated`, or `explicit-skip` for `human-skipped`. Exact shape — get it right the first time:
+      `human-delegated`, or `explicit-skip` for `human-skipped`. Exact shape — get it right the first time:
 
-     ```json
-     { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
-       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question" } } }
-     ```
+     Record every load-bearing or cross-lens decision in an optional `bindings` object using stable lowercase
+     keys and token values. Reuse the same key whenever another lens touches that decision. Repeated values must
+     match exactly; the controller stops on a conflict before the workshop can finish.
+
+      ```json
+      { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
+        "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question", "bindings": { "article-initiation": "on-demand" } } } }
+      ```
 
      It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and `decision` is a singular
      string, NOT a `decisions` array — the inverted nesting or a `decisions` array FAILS the SC-021 gate. Extra

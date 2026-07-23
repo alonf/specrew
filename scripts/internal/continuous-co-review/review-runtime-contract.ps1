@@ -37,6 +37,42 @@ function Test-ReviewRuntimeOutputActivity {
     catch { return $false }
 }
 
+function Wait-ReviewRuntimeOutputDrains {
+    [CmdletBinding()]
+    param(
+        [AllowNull()][Threading.Tasks.Task]$StdoutDrain,
+        [AllowNull()][Threading.Tasks.Task]$StderrDrain,
+        [ValidateRange(1, 30000)][int]$TimeoutMilliseconds = 5000
+    )
+
+    # Both redirected streams must receive the same bounded wall-clock opportunity to finish.
+    # Waiting them sequentially can spend the complete budget on stdout and give stderr no wait;
+    # short-circuit boolean expressions can skip stderr altogether.
+    if ($null -eq $StdoutDrain -or $null -eq $StderrDrain) {
+        return [pscustomobject]@{ stdout_closed = $false; stderr_closed = $false; all_closed = $false }
+    }
+
+    try {
+        $null = [Threading.Tasks.Task]::WaitAll(
+            [Threading.Tasks.Task[]]@($StdoutDrain, $StderrDrain),
+            $TimeoutMilliseconds
+        )
+    }
+    catch {
+        # Faulted/cancelled drains are represented by their terminal status below. Drain
+        # verification is evidence, so it fails closed instead of changing process control.
+        $null = $_
+    }
+
+    $stdoutClosed = $StdoutDrain.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion
+    $stderrClosed = $StderrDrain.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion
+    return [pscustomobject]@{
+        stdout_closed = $stdoutClosed
+        stderr_closed = $stderrClosed
+        all_closed = ($stdoutClosed -and $stderrClosed)
+    }
+}
+
 function Write-ReviewRuntimeProgressSample {
     param(
         [AllowNull()][scriptblock]$Progress,

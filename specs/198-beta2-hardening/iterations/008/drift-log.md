@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 47
-**Resolution rate**: 89.4% (42/47 resolved; DRIFT-198-I008-040 awaits the completed-workshop retest, and DRIFT-198-I008-044–047 await exact-head and fresh-review proof)
+**Total drift events**: 53
+**Resolution rate**: 79.2% (42/53 resolved; DRIFT-198-I008-040 awaits the completed-workshop retest, and DRIFT-198-I008-044–053 await exact-head and fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -42,8 +42,9 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   model-authored workshop marker is not a stable cross-host authority surface. The strict artifact-derived
   replacement passed full and hosted proof plus current/valid run 13, but still needs a from-scratch test through
   final lens completion. Run 13 independently closed 038/039/041–043 and found four bounded, real follow-ons now
-  recorded as 044–047. T029 release and T067 published-beta validation remain deliberately pending behind their
-  named boundaries.
+  recorded as 044–047. Run 14 and the resumed Article Amplifier test exposed six bounded follow-ons recorded as
+  048–053: four runtime/contract gaps and two durable workshop-state gaps. T029 release and T067 published-beta
+  validation remain deliberately pending behind their named boundaries.
 
 ## Events
 
@@ -968,6 +969,93 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   combines the two results. Both runtime paths use the helper; failure remains fail-closed.
 - **Paired evidence**: an injected false stdout result still invokes and records the independent successful stderr
   wait exactly once, while the combined closure result remains false.
+
+### DRIFT-198-I008-048 — Windows runtime did not independently prove both redirected streams closed
+
+- **Status**: corrected locally; focused Windows runtime suite passes; exact-head CI and fresh review pending
+- **Severity**: release-review blocker
+- **Type**: incomplete terminal-evidence aggregation
+- **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: run 14 found three Windows paths that combined `$stdoutDrain.Wait(...) -and
+  $stderrDrain.Wait(...)`, allowing stdout failure to skip stderr entirely. Terminal objects exposed only the
+  aggregate flag, and the exception path could call the process-dead check without bounded stream/job evidence.
+- **Correction**: all post-launch Windows paths use the shared concurrent two-stream drain helper, publish both
+  per-stream fields, and combine stream, Job Object, and root-process evidence before claiming termination.
+- **Paired evidence**: clean-exit, timeout, degraded-containment, and source-contract tests prove both fields exist,
+  both successful drains are true, no short-circuit expression remains, and the exception path uses the same helper.
+
+### DRIFT-198-I008-049 — candidate byte ceiling remained duplicated outside central authority
+
+- **Status**: corrected locally; authority/harness/ingress suites pass; exact-head CI and fresh review pending
+- **Severity**: release-review blocker
+- **Type**: duplicated closed-contract limit
+- **Requirements**: FR-060, FR-063, NFR-002; T029 release acceptance
+- **Observed evidence**: run 14 found the `262144` candidate-byte ceiling repeated in authority validation,
+  result ingress, and the harness projection even after DRIFT-198-I008-046 centralized the other candidate limits.
+- **Correction**: `max_candidate_bytes` now lives in the single authority candidate-limit table. Validation defaults,
+  result ingress, and harness advertisement consume that value; ingress passes it explicitly to the reader.
+- **Paired evidence**: tests prove the authority value, harness equality, explicit ingress propagation, and that no
+  duplicate numeric ceiling remains in the harness or ingestor source.
+
+### DRIFT-198-I008-050 — sequential POSIX drain accounting could give stderr no usable wait budget
+
+- **Status**: corrected locally; focused shared/POSIX runtime suite passes; exact-head CI and fresh review pending
+- **Severity**: release-review blocker
+- **Type**: asymmetric bounded-cleanup evidence
+- **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: run 14 found that the POSIX helper waited stdout for the full shared five-second budget,
+  then calculated a zero-millisecond remainder for stderr. Although stderr was called, it received no meaningful
+  opportunity to complete.
+- **Correction**: one runtime-contract helper waits both `Task` drains concurrently within a single five-second
+  wall-clock ceiling, then inspects each task's terminal status independently. Windows and POSIX share it.
+- **Paired evidence**: a bounded incomplete-stdout/completed-stderr fixture returns independent false/true evidence
+  within one wall-clock budget, and source tests prevent the removed sequential helper from returning.
+
+### DRIFT-198-I008-051 — POSIX child host could wait forever and skip one success-path drain
+
+- **Status**: corrected locally; focused POSIX runtime contract suite passes; exact-head CI and fresh review pending
+- **Severity**: release-review blocker
+- **Type**: nested-process timeout and drain robustness gap
+- **Requirements**: FR-061, FR-063, SC-020, SC-021, NFR-002; T029 release acceptance
+- **Observed evidence**: run 14 found an unbounded parameterless reviewer `WaitForExit()` inside the containment host.
+  Its sequential drains also shared one `try`, so an exception on stdout could skip stderr.
+- **Correction**: the controller sends the already-computed effective timeout in the closed host payload. The host
+  validates it, uses bounded `WaitForExit`, kills the complete reviewer tree on expiry, and applies the shared
+  independent drain contract before returning success. No parameterless reviewer wait remains.
+- **Paired evidence**: source-contract tests require the bounded payload/wait/helper path and reject both the old
+  parameterless wait and the removed host-local sequential drain shape.
+
+### DRIFT-198-I008-052 — placeholder handover feature hid the sole active workshop
+
+- **Status**: corrected locally; strict metadata and full Stop-provider matrices pass; exact-head CI and fresh review pending
+- **Severity**: manual-test blocker
+- **Type**: durable feature-identity resolution drift
+- **Requirements**: FR-055, FR-056, SC-016, NFR-002; T029 manual-test acceptance
+- **Observed evidence**: the Article Amplifier Copilot run held a valid feature-level workshop, but its rolling
+  handover still said `(no active feature)`. The Stop provider accepted any nonblank handover value, never fell back
+  to the only durable feature directory, and forced the generic five-part packet on a plain-text lens question.
+- **Correction**: session/handover candidates must match the canonical feature-ref shape and exist under `specs/`.
+  Placeholder values are ignored; fallback occurs only when exactly one spec feature exists, while multi-feature
+  ambiguity continues to fail closed.
+- **Paired evidence**: the real Stop-provider matrix reproduces a readable anchorless context, placeholder handover,
+  sole active feature workshop, plain assistant question, and proves no generic packet or block is emitted.
+
+### DRIFT-198-I008-053 — later delegated lenses could contradict an earlier human-confirmed decision
+
+- **Status**: corrected locally; strict state, specify gate, skill parity, and Stop-provider matrices pass; exact-head CI and fresh review pending
+- **Severity**: manual-test blocker
+- **Type**: cross-lens durable-decision consistency drift
+- **Requirements**: FR-056, SC-016, NFR-002, NFR-003; T029 manual-test acceptance
+- **Observed evidence**: `architecture-core.md` locked on-demand article initiation, but a later delegated integration
+  decision persisted scheduled RSS polling and the next lens proceeded. Individual lens records were complete, yet
+  the combined workshop no longer described one coherent system.
+- **Correction**: load-bearing cross-lens decisions use optional stable `bindings` in each completed lens record.
+  Repeated keys must have identical lowercase token values. A conflict invalidates workshop progression, blocks the
+  specify boundary, and produces a targeted reconciliation instruction—not the generic five-part packet. The skill
+  requires rereading prior bindings and reconciling every affected record after an intentional human change.
+- **Paired evidence**: matching, conflicting, and malformed binding fixtures cover strict lifecycle state; the
+  specify gate names both lenses/values; all six skill copies are byte-identical; and the real Stop-provider matrix
+  proves a conflict blocks before the next lens with only the targeted reconciliation.
 
 ### Resolution Strategies
 

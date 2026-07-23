@@ -123,6 +123,26 @@ try {
     $strictComplete = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
     Assert-True ($strictComplete.status -eq 'complete' -and @($strictComplete.remaining).Count -eq 0 -and @($strictComplete.completed).Count -eq 2) 'strict workshop: every full record + Markdown yields complete state (ordinary Stop resumes)'
 
+    $completedArchitecture['bindings'] = [ordered]@{ 'article-initiation' = 'on-demand' }
+    $completedData['bindings'] = [ordered]@{ 'article-initiation' = 'on-demand' }
+    $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $strictConsistentBindings = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($strictConsistentBindings.status -eq 'complete') 'strict workshop: repeated cross-lens bindings with the same value remain valid'
+
+    $completedData.bindings['article-initiation'] = 'scheduled-polling'
+    $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $strictConflict = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($strictConflict.status -eq 'invalid' -and $strictConflict.reason -eq 'workshop-decision-binding-conflict' -and $strictConflict.binding_conflict.prior_lens -eq 'architecture-core' -and $strictConflict.binding_conflict.lens -eq 'data-storage') 'strict workshop: contradictory cross-lens bindings fail closed with exact provenance'
+
+    $completedData.bindings = [ordered]@{ 'Article Initiation' = 'on demand' }
+    $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $strictMalformedBindings = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($strictMalformedBindings.status -eq 'invalid' -and $strictMalformedBindings.reason -eq 'workshop-decision-bindings-invalid') 'strict workshop: malformed binding keys or values fail closed'
+
+    $completedData.Remove('bindings')
+    $completedArchitecture.Remove('bindings')
+    $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+
     Remove-Item -LiteralPath (Join-Path $strictWorkshopDir 'data-storage.md') -Force
     $strictMissingRecord = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
     Assert-True ($strictMissingRecord.status -eq 'invalid' -and $strictMissingRecord.reason -eq 'workshop-completed-record-missing') 'strict workshop: a completed claim without its durable Markdown record is invalid'

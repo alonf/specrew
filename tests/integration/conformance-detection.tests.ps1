@@ -73,7 +73,7 @@ function New-LensApplicability {
     # Write strict feature-level intake truth and, unless FeatureOnly is selected, the exact later
     # design-analysis iteration artifact. Completed lenses carry the full workshop contract and a matching durable
     # Markdown record; the Stop classifier deliberately rejects a loose moved_on flag or a file by itself.
-    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate', [string]$Iteration = '001', [switch]$FeatureOnly)
+    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate', [string]$Iteration = '001', [hashtable]$BindingsByLens = @{}, [switch]$FeatureOnly)
     $dir = Join-Path $Proj (Join-Path 'specs' $FeatureRef)
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $workshop = [ordered]@{}
@@ -86,6 +86,7 @@ function New-LensApplicability {
             confirmation = 'human-confirmed'
             confirmation_scope = 'lens-question'
         }
+        if ($BindingsByLens.ContainsKey($d)) { $workshop[$d]['bindings'] = $BindingsByLens[$d] }
     }
     $obj = [ordered]@{ workshop_intake = $true; confirmation_required = $true; selected = $Selected; workshop = $workshop }
     $json = $obj | ConvertTo-Json -Depth 6
@@ -900,9 +901,36 @@ try {
     if ([string]$featureHandover.scope -ne 'feature' -or [string]$featureHandover.feature_ref -ne '050-host-neutral-gate' -or -not [string]::IsNullOrWhiteSpace([string]$featureHandover.iteration_number) -or [string]$featureHandover.lens -ne 'architecture-core') {
         Fail "Case 16e: feature-level re-entry context must retain scope/feature/lens with no invented iteration: $($featureHandover | ConvertTo-Json -Compress)"
     }
-    Write-Pass "Case 16e: feature-level intake question stops once without a generic packet or invented iteration"
+Write-Pass "Case 16e: feature-level intake question stops once without a generic packet or invented iteration"
 
-    # ---- Case 16f: a stale feature marker cannot redirect controller scope. The active iteration artifact wins.
+# ---- Case 16e2 / live Copilot regression: the rolling handover can legitimately carry the pre-intake
+# placeholder `(no active feature)`. It is context, not an identity. With exactly one durable feature workshop,
+# the controller must ignore the placeholder, resolve that sole feature, and keep a plain-text question conversational.
+$p16e2 = New-Fixture -Working '' -LastAuth ''
+New-Spec -Proj $p16e2
+New-LensApplicability -Proj $p16e2 -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
+New-HandoverSnapshot -Proj $p16e2 -ChangedUserFiles 2 -ActiveFeature '(no active feature)'
+$t16e2 = New-Transcript -Proj $p16e2 -Turns @(@{ role = 'assistant'; text = 'Should we continue with the next architecture decision?' })
+$r16e2 = Invoke-Conformance -Proj $p16e2 -TranscriptPath $t16e2
+if ($r16e2.Blocked -or $r16e2.Out -match 'five-part context packet') { Fail "Case 16e2: a placeholder handover feature MUST NOT hide the sole durable active workshop. Out: $($r16e2.Out)" }
+Write-Pass "Case 16e2: placeholder handover identity falls back only to the sole durable feature workshop"
+
+# ---- Case 16e3: repeated load-bearing bindings are durable cross-lens truth. A later delegated/default
+# lens cannot silently contradict a prior human-confirmed decision or continue to another lens.
+$p16e3 = New-Fixture -Working '' -LastAuth ''
+New-Spec -Proj $p16e3
+$bindingFixture = @{
+    'architecture-core' = [ordered]@{ 'article-initiation' = 'on-demand' }
+    'integration-api' = [ordered]@{ 'article-initiation' = 'scheduled-polling' }
+}
+New-LensApplicability -Proj $p16e3 -Selected @('architecture-core','integration-api','devops-operations') -Done @('architecture-core','integration-api') -BindingsByLens $bindingFixture -FeatureOnly
+New-HandoverSnapshot -Proj $p16e3 -ChangedUserFiles 2
+$t16e3 = New-Transcript -Proj $p16e3 -Turns @(@{ role = 'assistant'; text = 'Preparing the DevOps lens now.' })
+$r16e3 = Invoke-Conformance -Proj $p16e3 -TranscriptPath $t16e3
+if (-not $r16e3.Blocked -or $r16e3.Out -notmatch 'WORKSHOP DECISION CONFLICT' -or $r16e3.Out -notmatch 'article-initiation' -or $r16e3.Out -match '## What I Just Did') { Fail "Case 16e3: contradictory durable bindings MUST produce only the targeted workshop reconciliation. Out: $($r16e3.Out)" }
+Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation without the generic packet"
+
+# ---- Case 16f: a stale feature marker cannot redirect controller scope. The active iteration artifact wins.
     $p16f = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16f
     New-LensApplicability -Proj $p16f -Selected @('architecture-core','data-storage') -Done @()

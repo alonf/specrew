@@ -8,6 +8,10 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+if (-not (Get-Command -Name 'Wait-ReviewRuntimeOutputDrains' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'review-runtime-contract.ps1')
+}
+
 function Initialize-ReviewPosixSessionType {
     if ('SpecrewReviewPosixSessionNative' -as [type]) { return }
     Add-Type -TypeDefinition @'
@@ -46,10 +50,14 @@ try {
     $payloadText = [Console]::In.ReadToEnd()
     if ([string]::IsNullOrWhiteSpace($payloadText)) { exit 124 }
     $payload = $payloadText | ConvertFrom-Json -Depth 20
-    foreach ($name in @('executable', 'argument_list', 'working_directory', 'environment_delta', 'prompt_transport')) {
+    foreach ($name in @('executable', 'argument_list', 'working_directory', 'environment_delta', 'prompt_transport', 'timeout_seconds')) {
         if (-not $payload.PSObject.Properties[$name]) { throw "posix-host-payload-missing:$name" }
     }
     if ([string]$payload.prompt_transport -cnotin @('stdin', 'argument')) { throw 'posix-host-prompt-transport-invalid' }
+    [int]$timeoutSeconds = 0
+    if (-not [int]::TryParse([string]$payload.timeout_seconds, [ref]$timeoutSeconds) -or $timeoutSeconds -lt 1 -or $timeoutSeconds -gt 7200) {
+        throw 'posix-host-timeout-invalid'
+    }
 
     $startInfo = [Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = [IO.Path]::GetFullPath([string]$payload.executable)
@@ -71,12 +79,18 @@ try {
         $reviewer.StandardInput.Write([string]$payload.stdin_text)
     }
     $reviewer.StandardInput.Close()
-    $reviewer.WaitForExit()
-    $exitCode = $reviewer.ExitCode
+    $reviewerTimedOut = -not $reviewer.WaitForExit($timeoutSeconds * 1000)
+    if ($reviewerTimedOut) {
+        try { $reviewer.Kill($true) } catch { $null = $_ }
+        try { [void]$reviewer.WaitForExit(5000) } catch { $null = $_ }
+    }
+    $exitCode = if ($reviewer.HasExited) { $reviewer.ExitCode } else { 125 }
+    $streamState = Wait-ReviewRuntimeOutputDrains -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
     try { $reviewer.StandardOutput.Close() } catch { $null = $_ }
     try { $reviewer.StandardError.Close() } catch { $null = $_ }
-    try { [void]$stdoutDrain.Wait(1000); [void]$stderrDrain.Wait(1000) } catch { $null = $_ }
     $reviewer.Dispose()
+    if ($reviewerTimedOut) { exit 124 }
+    if (-not $streamState.all_closed) { exit 125 }
     exit $exitCode
 }
 catch {

@@ -129,6 +129,8 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $result.runtime_outcome | Should -Be 'containment-violated'
         $result.containment | Should -Be 'violated'
         $result.failure_reason | Should -Be 'windows-job-object-assignment-failed:fixture-assignment-failed'
+        $result.PSObject.Properties.Name | Should -Contain 'stdout_stream_closed'
+        $result.PSObject.Properties.Name | Should -Contain 'stderr_stream_closed'
         $started.Count | Should -Be 0 -Because 'spend authority starts only after required containment is verified'
     }
 
@@ -142,6 +144,8 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $result.termination_verified | Should -BeTrue
         $result.containment | Should -Be 'verified'
         $result.streams_closed | Should -BeTrue
+        $result.stdout_stream_closed | Should -BeTrue
+        $result.stderr_stream_closed | Should -BeTrue
         $result.process_tree_live | Should -BeFalse
         $started.Count | Should -Be 1
         $childPid = [int]([IO.File]::ReadAllText($harness.child_pid_path))
@@ -162,12 +166,22 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $result.termination_verified | Should -BeTrue -Because $result.failure_reason
         $result.failure_reason | Should -Match 'process tree verified dead and streams closed'
         $result.streams_closed | Should -BeTrue
+        $result.stdout_stream_closed | Should -BeTrue
+        $result.stderr_stream_closed | Should -BeTrue
         $result.process_tree_live | Should -BeFalse
         $started.Count | Should -Be 1
         $heartbeats.Count | Should -BeGreaterThan 0
         @($heartbeats | Where-Object { -not [bool]$_.process_tree_live }).Count | Should -Be 0 -Because 'runtime heartbeats only describe the live wait; terminal death is controller evidence'
         $childPid = [int]([IO.File]::ReadAllText($harness.child_pid_path))
         (Get-Process -Id $childPid -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
+    }
+
+    It 'uses the shared two-stream drain helper on every post-launch return path' {
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-windows-runtime-port.ps1') -Raw
+        $source | Should -Not -Match '\$stdoutDrain\.Wait\([^)]*\)\s*-and\s*\$stderrDrain\.Wait'
+        ([regex]::Matches($source, '& \$waitOutputDrainsCommand')).Count | Should -BeGreaterOrEqual 4
+        ([regex]::Matches($source, 'stdout_stream_closed')).Count | Should -BeGreaterOrEqual 4
+        ([regex]::Matches($source, 'stderr_stream_closed')).Count | Should -BeGreaterOrEqual 4
     }
 
     It 'recovers an interrupted receipt by killing the recorded process identity' {

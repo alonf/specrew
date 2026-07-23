@@ -66,6 +66,7 @@ Describe 'Shared production review harness contract and strict candidate matrix 
     It 'derives every advertised prompt budget below the central ingress maximum' {
         $authority = Get-ReviewAuthorityCandidateLimits
         $advertised = Get-ReviewHarnessContractLimits
+        $advertised.max_candidate_bytes | Should -Be $authority.max_candidate_bytes
         $advertised.advertised_summary_characters | Should -BeLessOrEqual $authority.max_summary_characters
         $advertised.advertised_findings | Should -BeLessOrEqual $authority.max_findings
         $advertised.advertised_local_id_characters | Should -BeLessOrEqual $authority.max_local_id_characters
@@ -78,6 +79,17 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $rendered | Should -Match "summary at most $($advertised.advertised_summary_characters) characters"
         $rendered | Should -Match "no more than $($advertised.advertised_findings) findings"
         $rendered | Should -Not -Match '__MAX_[A-Z0-9_]+__'
+    }
+
+    It 'keeps candidate byte authority in one source and passes it explicitly to ingress' {
+        $authoritySource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-core.ps1') -Raw
+        $harnessSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-harness-contract.ps1') -Raw
+        $ingressSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-result-ingestor.ps1') -Raw
+        ([regex]::Matches($authoritySource, '262144')).Count | Should -Be 1
+        $harnessSource | Should -Not -Match '262144'
+        $ingressSource | Should -Not -Match '262144'
+        $harnessSource | Should -Match 'max_candidate_bytes = \$authority\.max_candidate_bytes'
+        $ingressSource | Should -Match 'Read-ReviewCandidateResult.+-MaxBytes \$candidateLimits\.max_candidate_bytes'
     }
 
     It 'rejects missing, repeated, unknown, and oversized prompt-template contracts' {

@@ -446,7 +446,7 @@ function Resolve-SpecrewWorkshopQuestionPause {
         [AllowNull()][string]$LastAssistantText,
         [bool]$HasPendingVerdict
     )
-    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; question = $null; message_hash = $null; artifact_path = $null }
+    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; question = $null; message_hash = $null; artifact_path = $null; binding_conflict = $null }
     try {
         if ($HasPendingVerdict) { $result.reason = 'lifecycle-boundary-overrides-workshop'; return $result }
         if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef)) { return $result }
@@ -481,6 +481,13 @@ function Resolve-SpecrewWorkshopQuestionPause {
         }
         if ($null -eq $state -or [string]$state.status -ne 'active') {
             $result.reason = if ($null -ne $state -and -not [string]::IsNullOrWhiteSpace([string]$state.reason)) { [string]$state.reason } else { 'workshop-state-unproven' }
+            if ($null -ne $state) {
+                $result.scope = $scope
+                $result.feature_ref = $ActiveFeatureRef
+                $result.iteration_number = if ($scope -eq 'iteration') { $iteration } else { $null }
+                $result.artifact_path = [string]$state.artifact_path
+                if ($state.PSObject.Properties['binding_conflict']) { $result.binding_conflict = $state.binding_conflict }
+            }
             return $result
         }
 
@@ -501,6 +508,12 @@ function Resolve-SpecrewWorkshopQuestionPause {
         return $result
     }
     catch { $result.reason = 'workshop-question-state-unreadable'; return $result }
+}
+
+function Test-SpecrewScopedFeatureRef {
+    param([string]$ProjectRoot, [AllowNull()][string]$FeatureRef)
+    if ([string]::IsNullOrWhiteSpace($FeatureRef) -or $FeatureRef -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$') { return $false }
+    return Test-Path -LiteralPath (Join-Path (Join-Path $ProjectRoot 'specs') $FeatureRef) -PathType Container
 }
 
 function Update-SpecrewWorkshopQuestionHandover {
@@ -659,7 +672,7 @@ try {
     $hasPending = ($null -ne $pending -and [bool]$pending.HasPendingVerdict)
 
     # Any feature spec on disk (cheap dir check) -> the substantial + #1 triggers need this.
-    $anySpec = $false; $specPath = $null
+    $anySpec = $false; $specPath = $null; $specs = @()
     try {
         $specs = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'specs') -Directory -ErrorAction Stop |
             ForEach-Object { Join-Path $_.FullName 'spec.md' } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
@@ -681,8 +694,8 @@ try {
             $startContextState = 'unreadable'
             $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
             $startContextState = 'readable'
-            if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['feature_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.session_state.feature_ref)) {
-                $activeFeatureRef = [string]$sc.session_state.feature_ref
+            if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['feature_ref'] -and (Test-SpecrewScopedFeatureRef -ProjectRoot $projectRoot -FeatureRef ([string]$sc.session_state.feature_ref))) {
+                $activeFeatureRef = ([string]$sc.session_state.feature_ref).Trim()
                 $activeFeatureFromSessionState = $true
             }
             if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['iteration_number'] -and ([string]$sc.session_state.iteration_number -cmatch '^[0-9]{3,}$')) {
@@ -709,10 +722,10 @@ try {
     # In a multi-feature repo, falling back to the first specs/* directory can incorrectly borrow an abandoned
     # feature's workshop state. Prefer the current rolling Stop handover when lifecycle state is still anchorless.
     $handoverContextSignal = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -AnySnapshot
-    if (-not $activeFeatureFromSessionState -and $null -ne $handoverContextSignal -and -not [string]::IsNullOrWhiteSpace([string]$handoverContextSignal.active_feature)) {
-        $activeFeatureRef = [string]$handoverContextSignal.active_feature
+    if (-not $activeFeatureFromSessionState -and $null -ne $handoverContextSignal -and (Test-SpecrewScopedFeatureRef -ProjectRoot $projectRoot -FeatureRef ([string]$handoverContextSignal.active_feature))) {
+        $activeFeatureRef = ([string]$handoverContextSignal.active_feature).Trim()
     }
-    if ([string]::IsNullOrWhiteSpace($activeFeatureRef) -and -not [string]::IsNullOrWhiteSpace($specPath)) {
+    if ([string]::IsNullOrWhiteSpace($activeFeatureRef) -and $specs.Count -eq 1 -and -not [string]::IsNullOrWhiteSpace($specPath)) {
         $activeFeatureRef = Split-Path (Split-Path $specPath -Parent) -Leaf
     }
     # #3 RAW SPEC KIT - a CHEAP raw-text scan of the recent tail (NO per-line JSON parse). NEGATION GUARD: skip a
@@ -792,10 +805,12 @@ try {
     # A lifecycle boundary still has precedence inside the resolver. ---
     $workshopQuestion = $null
     $workshopStateInProgress = $false
+    $workshopConflictState = $false
     if ($hasPending -or $anySpec -or $rawHit -or $materialStop) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $null -HasPendingVerdict $hasPending
         $workshopStateInProgress = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
+        $workshopConflictState = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
     }
 
     # --- EXPENSIVE transcript parse ONLY on a MATERIAL-TURN stop (T099/FR-040, design N3): the per-line
@@ -810,7 +825,7 @@ try {
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
     }
-    if ($hasPending -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress) {
+    if ($hasPending -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
             $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
@@ -856,7 +871,8 @@ try {
     # Artifact classification remains identical whether the host emitted plain prose, a question tool, or a comment.
     $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
     $workshopIntermediate = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
-    if ($workshopIntermediate) { $rawHit = $false }
+    $workshopConflict = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
+    if ($workshopIntermediate -or $workshopConflict) { $rawHit = $false }
     # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.
     # It was an UNCONFIRMED mitigation (the instrumented false-negative never reproduced) and it taxed every
     # material stop AND starved the navigator (order 50) of the shared 20s Stop budget, so co-review stopped firing.
@@ -873,7 +889,7 @@ try {
     # never blocks the stop. The force-continue loop is unaffected (each forced re-render is a NEW message).
     $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
     $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("wq={0}" -f [int][bool]$workshopIntermediate), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("wq={0}" -f [int][bool]$workshopIntermediate), ("wc={0}" -f [int][bool]$workshopConflict), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
     $lastFirePath = $materialRuntime.LastFirePath
     if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
         try {
@@ -925,7 +941,7 @@ try {
     $materialInitialBlock = (-not $hasPending) -and $materialStop -and (-not $packetPresent) -and (-not $materialAlreadySatisfied)
     $materialRetryBlock = (-not $hasPending) -and (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $packetPresent)
     $materialBlock = $materialInitialBlock -or $materialRetryBlock
-    $blockKind = if ($boundaryBlock) { 'boundary' } elseif ($materialBlock) { 'material' } else { 'none' }
+    $blockKind = if ($boundaryBlock) { 'boundary' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -934,7 +950,7 @@ try {
     # ($blockKind -eq 'material' -and $canAssess). BOUNDARY stops, 'none', an unavailable classifier, and EVERY error
     # leave $stopIntentOutcome at its 'real' default -> today's real-stop enforcement is preserved byte-for-byte. The
     # classifier is dot-sourced fail-open: the ONE pure, self-contained contract file (sibling of bootstrap; no _load).
-    $stopIntentOutcome = if ($workshopIntermediate) { 'workshop-intermediate' } else { 'real' }
+    $stopIntentOutcome = if ($workshopIntermediate) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } else { 'real' }
     $stopIntentReason = if ($workshopIntermediate) { [string]$workshopQuestion.reason } else { $null }
     $stopIntentContinueKey = $null
     $stopIntentContinueCount = 0
@@ -1002,6 +1018,10 @@ try {
     elseif ($blockKind -eq 'material' -and -not [string]::IsNullOrWhiteSpace($materialRetryKey)) {
         [string]$materialRetryKey
     }
+    elseif ($blockKind -eq 'workshop-conflict') {
+        $conflict = $workshopQuestion.binding_conflict
+        ("workshop-conflict|{0}|{1}|{2}|{3}" -f [string]$workshopQuestion.feature_ref, [string]$conflict.binding, [string]$conflict.prior_value, [string]$conflict.value)
+    }
     else { 'na' }
 
     if ($stopIntentContinue) {
@@ -1022,7 +1042,7 @@ try {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
             $cappedKind = $blockKind
-            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } else { 'verdict marker' }
+            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } else { 'verdict marker' }
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
@@ -1045,6 +1065,10 @@ try {
                     [void]$sb.AppendLine(("This is a BOUNDARY stop into '{0}' (the first unauthorized boundary); emit the contiguous verdict marker as the LAST line." -f $toBoundary))
                 }
                 [void]$sb.AppendLine('Do NOT record the authorization yourself; the verdict is captured from your rendered packet + the human''s reply.')
+            }
+            elseif ($blockKind -eq 'workshop-conflict') {
+                $conflict = $workshopQuestion.binding_conflict
+                [void]$sb.AppendLine(("Specrew: WORKSHOP DECISION CONFLICT - durable binding '{0}' was '{1}' in lens '{2}' but is now '{3}' in lens '{4}'. Do not move to another lens or render the generic five-part packet. If the later value was a delegated/default choice, restore it to the earlier human-confirmed value and continue. If the human intentionally changed the decision, ask one concise conversational reconciliation question and update every affected lens record to the same value before continuing." -f $conflict.binding, $conflict.prior_value, $conflict.prior_lens, $conflict.value, $conflict.lens))
             }
             elseif ($blockKind -eq 'material') {
                 [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')
@@ -1100,7 +1124,7 @@ try {
             # FR-045a: a continuation directive is NOT a packet-render block - label it distinctly so the flush-race
             # forensic (which keys off 'stop-block' + a low dx_lat_hits to catch mid-flush truncation) does not treat a
             # by-design non-packet continue message as a partial-read suspect.
-            $evt = if ($workshopIntermediate) { 'workshop-intermediate' } elseif ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
+            $evt = if ($workshopIntermediate) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
             # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.

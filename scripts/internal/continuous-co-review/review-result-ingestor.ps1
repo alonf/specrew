@@ -45,7 +45,7 @@ function Read-ReviewCandidateResult {
         [Parameter(Mandatory)][string]$Path,
         [Parameter(Mandatory)][string]$ExpectedRunId,
         [Parameter(Mandatory)][string]$ExpectedTargetDigest,
-        [int]$MaxBytes = 262144
+        [int]$MaxBytes = $script:ReviewAuthorityCandidateLimits.max_candidate_bytes
     )
     if (-not [IO.File]::Exists($Path)) { return [pscustomobject]@{ present = $false; valid = $false; category = 'candidate-missing'; errors = @('candidate-missing'); candidate = $null } }
     $stream = [IO.FileStream]::new($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
@@ -154,7 +154,8 @@ function Invoke-ReviewResultIngress {
         [object[]]$PriorFindings = @()
     )
     $paths = Get-ReviewRunStagingPaths -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId
-    $candidateRead = Read-ReviewCandidateResult -Path $paths.candidate_result_path -ExpectedRunId $RunId -ExpectedTargetDigest $TargetDigest
+    $candidateLimits = Get-ReviewAuthorityCandidateLimits
+    $candidateRead = Read-ReviewCandidateResult -Path $paths.candidate_result_path -ExpectedRunId $RunId -ExpectedTargetDigest $TargetDigest -MaxBytes $candidateLimits.max_candidate_bytes
     $effectiveOutcome = $RuntimeOutcome
     if ($RuntimeOutcome -ceq 'completed' -and -not $candidateRead.valid) {
         $effectiveOutcome = if ($candidateRead.category -ceq 'identity-mismatch') { 'identity-mismatch' } else { 'invalid-output' }

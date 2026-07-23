@@ -387,6 +387,15 @@ $scE3 = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath)
 Assert-True ($scE3.Count -eq 1 -and (($scE3 -join '|') -match 'confirmation_scope') -and (($scE3 -join '|') -match 'lens-question')) 'SC-026/#2212: human-confirmed requires confirmation_scope lens-question'
 Write-Pass 'SC-026: per-lens confirmation provenance floor (declared provenance + scoped evidence required, marker-gated, grandfather-safe; truthfulness is SC-027 dogfood)'
 
+# Cross-lens load-bearing decisions use stable bindings. Matching repeated bindings pass; contradictions and
+# malformed binding shapes cannot cross the specify boundary.
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a","b"],"workshop":{"a":{"agenda":["q1"],"decision":"on demand","depth":"full","moved_on":true,"confirmation":"human-confirmed","confirmation_scope":"lens-question","bindings":{"article-initiation":"on-demand"}},"b":{"agenda":["q2"],"decision":"still on demand","depth":"light","moved_on":true,"confirmation":"human-delegated","confirmation_scope":"explicit-delegation","bindings":{"article-initiation":"on-demand"}}}}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 0) 'cross-lens binding floor: matching stable bindings pass'
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a","b"],"workshop":{"a":{"agenda":["q1"],"decision":"on demand","depth":"full","moved_on":true,"confirmation":"human-confirmed","confirmation_scope":"lens-question","bindings":{"article-initiation":"on-demand"}},"b":{"agenda":["q2"],"decision":"poll","depth":"light","moved_on":true,"confirmation":"human-delegated","confirmation_scope":"explicit-delegation","bindings":{"article-initiation":"scheduled-polling"}}}}', [System.Text.UTF8Encoding]::new($false))
+$bindingErrors = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath)
+Assert-True ($bindingErrors.Count -eq 1 -and ($bindingErrors[0] -match "article-initiation") -and ($bindingErrors[0] -match "on-demand") -and ($bindingErrors[0] -match "scheduled-polling")) 'cross-lens binding floor: a delegated later lens cannot contradict the earlier durable decision'
+Write-Pass 'cross-lens workshop binding consistency is enforced at the specify boundary'
+
 # --- Iteration 9 T004/T005 (SC-025, Amendment A6): co-design-record floor ---
 # Marker-gated by `co_design` in lens-applicability.json + grandfather-safe; presence-only (the
 # collaboration QUALITY is SC-024's runtime dogfood, not this gate). Mirrors the SC-021 floor shape.

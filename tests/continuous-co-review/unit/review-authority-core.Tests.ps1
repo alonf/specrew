@@ -122,6 +122,7 @@ Describe 'Review authority closed contracts (T042)' {
 
     It 'publishes one named candidate-limit contract and enforces it at ingress' {
         $limits = Get-ReviewAuthorityCandidateLimits
+        $limits.max_candidate_bytes | Should -Be 262144
         $limits.max_summary_characters | Should -Be 4000
         $limits.max_findings | Should -Be 100
         $limits.max_local_id_characters | Should -Be 64

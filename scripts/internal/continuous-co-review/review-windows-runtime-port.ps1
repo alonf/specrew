@@ -135,6 +135,7 @@ function New-ReviewWindowsRuntimePort {
     $resolveLaunchCommand = ${function:Resolve-ReviewWindowsProcessLaunch}
     $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
     $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
+    $waitOutputDrainsCommand = ${function:Wait-ReviewRuntimeOutputDrains}
 
     $preflight = {
         param($invocation)
@@ -148,7 +149,7 @@ function New-ReviewWindowsRuntimePort {
 
     $invoke = {
         param($harness, $invocation, $onStarted, $environment, $progress)
-        $process = $null; $containment = $null; $started = $false
+        $process = $null; $containment = $null; $spec = $null; $started = $false
         $stdoutDrain = $null; $stderrDrain = $null
         try {
             if ($null -eq $harness -or -not $harness.PSObject.Properties['build_process'] -or $harness.build_process -isnot [scriptblock]) {
@@ -179,8 +180,15 @@ function New-ReviewWindowsRuntimePort {
             $containment = & $newContainmentCommand -ChildPid $process.Id
             if ($containment.mode -cne 'job-object') {
                 & $stopContainmentCommand -Containment $containment -GraceSeconds 0
-                [void]$process.WaitForExit(5000); $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
-                return [pscustomobject]@{ runtime_outcome = 'containment-violated'; termination_verified = ($streamsClosed -and (& $testProcessDeadCommand -ProcessId $process.Id)); containment = 'violated'; failure_reason = ('windows-job-object-assignment-failed:' + [string]$containment.degraded_reason); process_tree_live = $false; output_activity = [IO.File]::Exists([string]$spec.candidate_result_path) }
+                [void]$process.WaitForExit(5000)
+                $streamState = & $waitOutputDrainsCommand -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
+                $rootDead = & $testProcessDeadCommand -ProcessId $process.Id
+                return [pscustomobject]@{
+                    runtime_outcome = 'containment-violated'; termination_verified = ($streamState.all_closed -and $rootDead)
+                    containment = 'violated'; failure_reason = ('windows-job-object-assignment-failed:' + [string]$containment.degraded_reason)
+                    process_tree_live = (-not $rootDead); output_activity = [IO.File]::Exists([string]$spec.candidate_result_path)
+                    streams_closed = $streamState.all_closed; stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed
+                }
             }
             $runtimeReceipt = [pscustomobject][ordered]@{
                 schema_version = '1.0'; runtime_id = 'windows-job-object-runtime'; platform = 'windows'
@@ -191,9 +199,17 @@ function New-ReviewWindowsRuntimePort {
             catch {
                 & $stopContainmentCommand -Containment $containment -GraceSeconds 0
                 [void]$process.WaitForExit(5000)
-                $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
+                $streamState = & $waitOutputDrainsCommand -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
                 $jobEmpty = if ($containment.mode -ceq 'job-object') { & $waitJobEmptyCommand -JobHandle $containment.job_handle } else { $false }
-                return [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = ($streamsClosed -and $jobEmpty -and (& $testProcessDeadCommand -ProcessId $process.Id)); containment = $(if ($containment.mode -ceq 'job-object') { 'verified' } else { 'unknown' }); failure_reason = ('runtime-start-callback-failed:' + $_.Exception.Message); process_tree_live = $false; output_activity = [IO.File]::Exists([string]$spec.candidate_result_path) }
+                $rootDead = & $testProcessDeadCommand -ProcessId $process.Id
+                $verified = $streamState.all_closed -and $jobEmpty -and $rootDead
+                return [pscustomobject]@{
+                    runtime_outcome = 'abandoned'; termination_verified = $verified
+                    containment = $(if ($containment.mode -ceq 'job-object') { 'verified' } else { 'unknown' })
+                    failure_reason = ('runtime-start-callback-failed:' + $_.Exception.Message); process_tree_live = (-not $verified)
+                    output_activity = [IO.File]::Exists([string]$spec.candidate_result_path); streams_closed = $streamState.all_closed
+                    stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed
+                }
             }
             if ([string]$spec.prompt_transport -ceq 'stdin') {
                 try { $process.StandardInput.Write([string]$spec.stdin_text) } catch { $null = $_ }
@@ -218,7 +234,8 @@ function New-ReviewWindowsRuntimePort {
             $exitCode = if ($exited) { $process.ExitCode } else { $null }
             & $stopContainmentCommand -Containment $containment -GraceSeconds $(if ($timedOut) { $TerminationGraceSeconds } else { 0 })
             if (-not $process.HasExited) { [void]$process.WaitForExit(5000) }
-            $streamsClosed = $stdoutDrain.Wait(5000) -and $stderrDrain.Wait(5000)
+            $streamState = & $waitOutputDrainsCommand -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
+            $streamsClosed = $streamState.all_closed
             $jobEmpty = & $waitJobEmptyCommand -JobHandle $containment.job_handle
             $rootDead = & $testProcessDeadCommand -ProcessId $process.Id
             $terminationVerified = $streamsClosed -and $jobEmpty -and $rootDead
@@ -228,27 +245,43 @@ function New-ReviewWindowsRuntimePort {
                     runtime_outcome = 'timed-out'; termination_verified = $terminationVerified; containment = 'verified'
                     failure_reason = $(if ($terminationVerified) { "timeout after $effectiveTimeout seconds; Windows Job Object process tree verified dead and streams closed" } else { "timeout after $effectiveTimeout seconds; termination verification failed" })
                     process_tree_live = (-not $terminationVerified); output_activity = $outputActivity; streams_closed = $streamsClosed
+                    stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed
                 }
             }
             if (-not $terminationVerified) {
                 return [pscustomobject]@{
                     runtime_outcome = 'abandoned'; termination_verified = $false; containment = 'unknown'
                     failure_reason = 'Windows Job Object termination or stream-closure verification failed'
-                    process_tree_live = $true; output_activity = $outputActivity; streams_closed = $streamsClosed; exit_code = $exitCode
+                    process_tree_live = $true; output_activity = $outputActivity; streams_closed = $streamsClosed
+                    stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed; exit_code = $exitCode
                 }
             }
             $outcome = if ($exitCode -eq 0) { 'completed' } else { 'terminated' }
             return [pscustomobject]@{
                 runtime_outcome = $outcome; termination_verified = $terminationVerified; containment = 'verified'
                 failure_reason = $(if ($exitCode -eq 0) { $null } else { "reviewer-process-exit-code:$exitCode" })
-                process_tree_live = (-not $terminationVerified); output_activity = $outputActivity; streams_closed = $streamsClosed; exit_code = $exitCode
+                process_tree_live = (-not $terminationVerified); output_activity = $outputActivity; streams_closed = $streamsClosed
+                stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed; exit_code = $exitCode
             }
         }
         catch {
-            if (-not $started) { return [pscustomobject]@{ runtime_outcome = 'launch-failed'; termination_verified = $true; containment = 'unknown'; failure_reason = ('runtime-launch-failed:' + $_.Exception.Message); process_tree_live = $false; output_activity = $false } }
+            $why = $_.Exception.Message
+            if (-not $started) { return [pscustomobject]@{ runtime_outcome = 'launch-failed'; termination_verified = $true; containment = 'unknown'; failure_reason = ('runtime-launch-failed:' + $why); process_tree_live = $false; output_activity = $false } }
+            try { $process.StandardInput.Close() } catch { $null = $_ }
             if ($null -ne $containment) { try { & $stopContainmentCommand -Containment $containment -GraceSeconds 0 } catch { $null = $_ } }
             if ($null -ne $process) { try { [void]$process.WaitForExit(5000) } catch { $null = $_ } }
-            return [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = $(if ($null -ne $process) { & $testProcessDeadCommand -ProcessId $process.Id } else { $false }); containment = 'unknown'; failure_reason = ('windows-runtime-failed:' + $_.Exception.Message); process_tree_live = $false; output_activity = $false }
+            $streamState = & $waitOutputDrainsCommand -StdoutDrain $stdoutDrain -StderrDrain $stderrDrain -TimeoutMilliseconds 5000
+            $jobEmpty = if ($null -ne $containment -and $containment.mode -ceq 'job-object') {
+                try { [bool](& $waitJobEmptyCommand -JobHandle $containment.job_handle) } catch { $false }
+            } else { $false }
+            $rootDead = try { & $testProcessDeadCommand -ProcessId $process.Id } catch { $false }
+            $verified = $streamState.all_closed -and $jobEmpty -and $rootDead
+            $outputActivity = if ($null -ne $spec) { & $testOutputActivityCommand -CandidateResultPath ([string]$spec.candidate_result_path) } else { $false }
+            return [pscustomobject]@{
+                runtime_outcome = 'abandoned'; termination_verified = $verified; containment = $(if ($jobEmpty) { 'verified' } else { 'unknown' })
+                failure_reason = ('windows-runtime-failed:' + $why); process_tree_live = (-not $verified); output_activity = $outputActivity
+                streams_closed = $streamState.all_closed; stdout_stream_closed = $streamState.stdout_closed; stderr_stream_closed = $streamState.stderr_closed
+            }
         }
         finally {
             if ($null -ne $containment) { try { & $closeContainmentCommand -Containment $containment } catch { $null = $_ } }

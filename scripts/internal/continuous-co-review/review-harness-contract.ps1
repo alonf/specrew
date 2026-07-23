@@ -18,7 +18,7 @@ function Get-ReviewHarnessContractLimits {
         schema_version = '1.0'
         max_prompt_template_bytes = 32768
         max_rendered_prompt_bytes = 65536
-        max_candidate_bytes = 262144
+        max_candidate_bytes = $authority.max_candidate_bytes
         advertised_summary_characters = [int][Math]::Floor($authority.max_summary_characters / 2)
         advertised_findings = [int][Math]::Floor($authority.max_findings / 2)
         advertised_local_id_characters = [int][Math]::Floor(($authority.max_local_id_characters * 3) / 4)

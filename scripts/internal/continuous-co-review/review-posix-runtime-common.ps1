@@ -53,23 +53,6 @@ function Wait-ReviewPosixReadyFile {
     return $null
 }
 
-function Wait-ReviewPosixOutputDrains {
-    param(
-        [AllowNull()]$StdoutDrain,
-        [AllowNull()]$StderrDrain,
-        [ValidateRange(1, 30000)][int]$TimeoutMilliseconds = 5000
-    )
-    $watch = [Diagnostics.Stopwatch]::StartNew()
-    $stdoutClosed = try { [bool]$StdoutDrain.Wait($TimeoutMilliseconds) } catch { $false }
-    $remaining = [int][Math]::Max(0, $TimeoutMilliseconds - $watch.ElapsedMilliseconds)
-    $stderrClosed = try { [bool]$StderrDrain.Wait($remaining) } catch { $false }
-    return [pscustomobject]@{
-        stdout_closed = $stdoutClosed
-        stderr_closed = $stderrClosed
-        all_closed = ($stdoutClosed -and $stderrClosed)
-    }
-}
-
 function Test-ReviewPosixProcessDead {
     param([Parameter(Mandatory)][int]$ProcessId)
     try { return $null -eq (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue) }
@@ -96,7 +79,7 @@ function New-ReviewPosixRuntimePort {
     $validateSpecCommand = ${function:Test-ReviewRuntimeProcessSpec}
     $resolveExecutableCommand = ${function:Resolve-ReviewPosixExecutable}
     $waitReadyCommand = ${function:Wait-ReviewPosixReadyFile}
-    $waitOutputDrainsCommand = ${function:Wait-ReviewPosixOutputDrains}
+    $waitOutputDrainsCommand = ${function:Wait-ReviewRuntimeOutputDrains}
     $testDeadCommand = ${function:Test-ReviewPosixProcessDead}
     $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
     $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
@@ -166,14 +149,15 @@ function New-ReviewPosixRuntimePort {
 
             $environmentDelta = [ordered]@{}
             foreach ($key in @($spec.environment_delta.Keys)) { $environmentDelta[[string]$key] = [string]$spec.environment_delta[$key] }
+            $effectiveTimeout = [Math]::Min($TimeoutSeconds, [int]$spec.timeout_seconds)
             $payload = [ordered]@{
                 executable = $executable; argument_list = @($spec.argument_list); working_directory = [string]$spec.working_directory
                 environment_delta = $environmentDelta; prompt_transport = [string]$spec.prompt_transport; stdin_text = $(if ($spec.prompt_transport -ceq 'stdin') { [string]$spec.stdin_text } else { $null })
+                timeout_seconds = $effectiveTimeout
             }
             $process.StandardInput.Write(($payload | ConvertTo-Json -Compress -Depth 12))
             $process.StandardInput.Close()
 
-            $effectiveTimeout = [Math]::Min($TimeoutSeconds, [int]$spec.timeout_seconds)
             $timeoutMilliseconds = [long]$effectiveTimeout * 1000
             $waitWatch = [Diagnostics.Stopwatch]::StartNew()
             & $writeProgressCommand -Progress $progress -CandidateResultPath ([string]$spec.candidate_result_path) -ProcessTreeLive $true

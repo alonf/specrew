@@ -9,6 +9,7 @@ $script:ReviewAuthorityMaxInvocationTimeoutSeconds = 7200
 $script:ReviewAuthorityMaxTerminationGraceSeconds = 10
 $script:ReviewAuthorityOrchestrationOverheadAllowanceSeconds = 120
 $script:ReviewAuthorityCandidateLimits = [ordered]@{
+    max_candidate_bytes = 262144
     max_summary_characters = 4000
     max_findings = 100
     max_local_id_characters = 64
@@ -36,6 +37,7 @@ function Get-ReviewAuthorityTimingLimits {
 
 function Get-ReviewAuthorityCandidateLimits {
     return [pscustomobject][ordered]@{
+        max_candidate_bytes = $script:ReviewAuthorityCandidateLimits.max_candidate_bytes
         max_summary_characters = $script:ReviewAuthorityCandidateLimits.max_summary_characters
         max_findings = $script:ReviewAuthorityCandidateLimits.max_findings
         max_local_id_characters = $script:ReviewAuthorityCandidateLimits.max_local_id_characters
@@ -550,7 +552,7 @@ function Test-ReviewAuthorityContractJson {
             'RecoveryFact', 'ReviewFinalizationFact'
         )][string]$ContractName,
         [Parameter(Mandatory)][AllowEmptyString()][string]$Json,
-        [int]$MaxBytes = 262144,
+        [int]$MaxBytes = $script:ReviewAuthorityCandidateLimits.max_candidate_bytes,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
         [string]$ExpectedTargetDigest

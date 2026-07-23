@@ -114,20 +114,26 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $script:mismatchedReadyReceiptReads | Should -Be 1
     }
 
-    It 'awaits stderr independently when stdout does not close within its bound' {
-        $script:stdoutCalls = 0
-        $script:stderrCalls = 0
-        $stdout = [pscustomobject]@{}
-        $stdout | Add-Member -MemberType ScriptMethod -Name Wait -Value { param($Milliseconds) $script:stdoutCalls++; return $false }
-        $stderr = [pscustomobject]@{}
-        $stderr | Add-Member -MemberType ScriptMethod -Name Wait -Value { param($Milliseconds) $script:stderrCalls++; return $true }
-
-        $state = Wait-ReviewPosixOutputDrains -StdoutDrain $stdout -StderrDrain $stderr -TimeoutMilliseconds 25
+    It 'observes both stream drains concurrently under one bounded wall-clock budget' {
+        $stdoutSource = [Threading.Tasks.TaskCompletionSource[bool]]::new()
+        $stderr = [Threading.Tasks.Task]::CompletedTask
+        $watch = [Diagnostics.Stopwatch]::StartNew()
+        $state = Wait-ReviewRuntimeOutputDrains -StdoutDrain $stdoutSource.Task -StderrDrain $stderr -TimeoutMilliseconds 25
+        $watch.Stop()
         $state.stdout_closed | Should -BeFalse
         $state.stderr_closed | Should -BeTrue
         $state.all_closed | Should -BeFalse
-        $script:stdoutCalls | Should -Be 1
-        $script:stderrCalls | Should -Be 1
+        $watch.ElapsedMilliseconds | Should -BeLessThan 250
+    }
+
+    It 'bounds the nested POSIX reviewer and uses the shared two-stream drain contract' {
+        $hostSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-posix-process-host.ps1') -Raw
+        $commonSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-posix-runtime-common.ps1') -Raw
+        $hostSource | Should -Not -Match '\.WaitForExit\(\)'
+        $hostSource | Should -Match 'WaitForExit\(\$timeoutSeconds \* 1000\)'
+        $hostSource | Should -Match 'Wait-ReviewRuntimeOutputDrains'
+        $commonSource | Should -Match 'timeout_seconds = \$effectiveTimeout'
+        $commonSource | Should -Not -Match 'function Wait-ReviewPosixOutputDrains'
     }
 
     It 'shares the closed process contract and rejects scalar argument transport before launch' {

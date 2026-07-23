@@ -210,6 +210,63 @@ function Get-SpecrewWorkshopProgress {
     }
 }
 
+function Test-SpecrewWorkshopDecisionBindings {
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)]$Applicability)
+
+    $seen = [ordered]@{}
+    $selected = if ($Applicability.PSObject.Properties['selected']) { @($Applicability.selected | ForEach-Object { [string]$_ }) } else { @() }
+    $records = if ($Applicability.PSObject.Properties['workshop']) { $Applicability.workshop } else { $null }
+    if ($null -eq $records) {
+        return [pscustomobject]@{ valid = $true; reason = 'workshop-decision-bindings-absent'; conflict = $null }
+    }
+
+    foreach ($lens in $selected) {
+        $entryProperty = $records.PSObject.Properties[$lens]
+        if (-not $entryProperty -or $null -eq $entryProperty.Value) { continue }
+        $entry = $entryProperty.Value
+        $movedProperty = $entry.PSObject.Properties['moved_on']
+        if (-not $movedProperty -or $movedProperty.Value -isnot [bool] -or -not [bool]$movedProperty.Value) { continue }
+
+        $bindingsProperty = $entry.PSObject.Properties['bindings']
+        if (-not $bindingsProperty) { continue } # Backward-compatible for workshop records created before bindings existed.
+        $bindings = $bindingsProperty.Value
+        if ($null -eq $bindings -or $bindings -is [System.Array] -or $bindings -is [string] -or $bindings -is [ValueType]) {
+            return [pscustomobject]@{
+                valid = $false; reason = 'workshop-decision-bindings-invalid'
+                conflict = [pscustomobject]@{ binding = $null; prior_lens = $null; prior_value = $null; lens = $lens; value = $null }
+            }
+        }
+
+        foreach ($bindingProperty in $bindings.PSObject.Properties) {
+            $name = [string]$bindingProperty.Name
+            $value = if ($bindingProperty.Value -is [string]) { ([string]$bindingProperty.Value).Trim() } else { '' }
+            if ($name -cnotmatch '^[a-z][a-z0-9.-]{0,63}$' -or $value -cnotmatch '^[a-z0-9][a-z0-9._-]{0,127}$') {
+                return [pscustomobject]@{
+                    valid = $false; reason = 'workshop-decision-bindings-invalid'
+                    conflict = [pscustomobject]@{ binding = $name; prior_lens = $null; prior_value = $null; lens = $lens; value = $value }
+                }
+            }
+            if ($seen.Contains($name)) {
+                $prior = $seen[$name]
+                if ([string]$prior.value -cne $value) {
+                    return [pscustomobject]@{
+                        valid = $false; reason = 'workshop-decision-binding-conflict'
+                        conflict = [pscustomobject]@{
+                            binding = $name; prior_lens = [string]$prior.lens; prior_value = [string]$prior.value
+                            lens = $lens; value = $value
+                        }
+                    }
+                }
+            }
+            else { $seen[$name] = [pscustomobject]@{ lens = $lens; value = $value } }
+        }
+    }
+
+    return [pscustomobject]@{ valid = $true; reason = 'workshop-decision-bindings-consistent'; conflict = $null }
+}
+
 function Get-SpecrewWorkshopLifecycleState {
     # Strict, controller-owned workshop lifecycle truth for Stop classification. Unlike
     # Get-SpecrewWorkshopProgress (a deliberately lenient bootstrap/resume projection), this accessor treats the
@@ -237,7 +294,8 @@ function Get-SpecrewWorkshopLifecycleState {
             [string[]] $Selected = @(),
             [string[]] $Completed = @(),
             [string[]] $Remaining = @(),
-            [AllowNull()][string] $CurrentLens = $null
+            [AllowNull()][string] $CurrentLens = $null,
+            [AllowNull()]$BindingConflict = $null
         )
         [pscustomobject]@{
             status           = $Status
@@ -251,6 +309,7 @@ function Get-SpecrewWorkshopLifecycleState {
             completed        = @($Completed)
             remaining        = @($Remaining)
             current_lens     = $CurrentLens
+            binding_conflict = $BindingConflict
         }
     }
 
@@ -373,6 +432,11 @@ function Get-SpecrewWorkshopLifecycleState {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-record-empty' -Selected $selected -Completed $completed.ToArray()
             }
             $completed.Add($lens) | Out-Null
+        }
+
+        $bindingValidation = Test-SpecrewWorkshopDecisionBindings -Applicability $applicability
+        if (-not $bindingValidation.valid) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason ([string]$bindingValidation.reason) -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray() -BindingConflict $bindingValidation.conflict
         }
 
         if ($remaining.Count -eq 0) {

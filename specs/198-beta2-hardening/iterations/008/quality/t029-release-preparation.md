@@ -473,3 +473,36 @@ registry in 1,343.7 seconds and scoped Iteration 008 governance in 21.880 second
 `29951942654` all succeeded. Both macOS fake-provider runtime jobs passed, so the original process-group failure was
 not retried unchanged; it was corrected and re-proved. Fresh independent review remains the only automated gate
 before the from-scratch Copilot workshop test through the final lens and the restored ordinary Stop behavior.
+
+## Run 14 and Manual-Workshop Corrections
+
+Claude/Windows run `run-t029-claude-windows-cc7986ab-d3be700c-14` reviewed commit
+`cc7986abf1cbd1ee506ad594b20dc9d0bff26fcc` and returned four blocking runtime/contract findings. The Windows
+runtime could short-circuit stderr observation and did not expose per-stream terminal evidence; the candidate
+byte ceiling remained duplicated outside central authority; the POSIX controller's sequential drain budget could
+leave stderr no wait opportunity; and the POSIX containment host still had an unbounded reviewer wait plus a
+success path where one stream failure could skip the other drain. These findings are recorded as
+DRIFT-198-I008-048–051.
+
+The subsequent from-scratch Article Amplifier workshop exposed two additional manual-test blockers, recorded as
+DRIFT-198-I008-052/053. A placeholder handover feature `(no active feature)` prevented fallback to the sole valid
+durable workshop, so a normal lens question incorrectly received the generic five-part packet. Later, a delegated
+integration decision persisted scheduled Medium polling even though the earlier human-confirmed architecture lens
+had locked on-demand initiation; per-lens completeness alone did not detect the contradiction.
+
+The bounded correction now gives Windows and POSIX one shared concurrent stream-drain contract, requires explicit
+per-stream terminal evidence, bounds the nested POSIX reviewer process, and derives every candidate limit from the
+central authority table. Workshop feature identity accepts only an existing canonical feature reference and falls
+back only to one unambiguous durable feature. Optional stable cross-lens `bindings` make repeated load-bearing
+decisions consistent; a contradiction blocks the next lens and specify transition with a targeted reconciliation
+message rather than the generic packet. All six design-workshop skill/template copies and both conformance-provider
+mirrors remain byte-identical.
+
+Focused proof is green across the Windows runtime, POSIX runtime, authority/harness/ingress, strict workshop-state,
+design-analysis, skill-conduct, and full real-provider conformance matrices. The complete 76-suite registry ran for
+1,399.4 seconds: 75 suites passed, while `pending-verdict-stop-artifact.tests.ps1` collided with an orphaned first
+registry child after the outer shell wrapper was mistakenly stopped at ten seconds. Once no duplicate process
+remained, that sole unchanged suite passed every assertion in isolation in 30 seconds. No shipped correction was
+made for the harness collision and the expensive registry was not repeated unchanged. Clean detached commit
+`2825b91a` passed scoped Iteration 008 governance in 26.5 seconds with only the repository's known dashboard
+warnings. Hosted exact-head CI and one fresh independent review remain required.
