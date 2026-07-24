@@ -113,6 +113,7 @@
         'extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1',
         'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1',
         'extensions/specrew-speckit/scripts/drift-diff.ps1',
+        'extensions/specrew-speckit/scripts/initialize-workshop-controller-state.ps1',
         'extensions/specrew-speckit/scripts/intake/helpers/Detect-RepoStack.ps1',
         'extensions/specrew-speckit/scripts/intake/helpers/Load-CategoryCatalog.ps1',
         'extensions/specrew-speckit/scripts/intake/helpers/Load-PersonaCatalog.ps1',
