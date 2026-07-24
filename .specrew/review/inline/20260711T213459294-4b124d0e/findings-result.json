@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260711T213459294-4b124d0e",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T213459294-4b124d0e",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1",
+        "line_start": 784,
+        "line_end": 786
+      },
+      "severity": "blocking",
+      "kind": "verification-containment",
+      "design_reference": "Security-compliance lens; FR-010/T015; specs/198-beta2-hardening/iterations/003/design-analysis.md bounded in-worktree verification",
+      "comment": "The disposable verification copy is only a sibling directory, not a security boundary, so it does not make reviewer inputs 'structurally unable' to be altered as claimed. A declared PowerShell command runs with ambient filesystem authority and can enumerate the common temp parent (for example, Get-ChildItem .. -Directory -Filter 'specrew-review-*') and edit the actual reviewer worktree or any other host path; the wrapper hashes only $verifyCopyRoot, so that tampering is neither prevented nor reported. The regression fixture only mutates relative app.txt and therefore cannot falsify this escape. Run declared verification in an actually confined child environment, or snapshot/hash and refuse/rematerialize the certified reviewer tree after execution while also preventing/diagnosing out-of-root writes; add an abuse fixture that attempts a sibling/absolute-path write.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f2",
+      "source_run_id": "20260711T213459294-4b124d0e",
+      "location": {
+        "path": "specs/198-beta2-hardening/iterations/003/state.md",
+        "line_start": 190,
+        "line_end": 197
+      },
+      "severity": "blocking",
+      "kind": "untraceable-verification-claim",
+      "design_reference": "Verification-confidence lens; NFR-007 paired-test rule; T015 progress honesty",
+      "comment": "The state marks T015 done and presents the disposable-child fix as proven, but this review bundle contains no .review/verification/results.json (the engine therefore declared and ran nothing) and no iteration-003 coverage-evidence artifact with commands, exit codes, or logs. The only support is prose saying suites were green, while the relevant suites create/delete temp repositories and thus cannot be rerun under this read-only review contract. That is not traceable evidence for a security-critical completion claim, and it leaves the sibling-write escape in f1 untested. Attach runner-observed results for the exact declared focused commands (including the new out-of-root abuse case) before retaining the tested/done claim.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-11T21:37:32Z"
+}

@@ -104,6 +104,9 @@ Assert-Match -Text $skill -Pattern 'lens-question' 'skill #2212: confirmation_sc
 Assert-Match -Text $skill -Pattern 'explicit-delegation' 'skill #2212: confirmation_scope value explicit-delegation is documented'
 Assert-Match -Text $skill -Pattern 'explicit-skip' 'skill #2212: confirmation_scope value explicit-skip is documented'
 Assert-Match -Text $skill -Pattern '(?i)count self-check' 'skill A7: the count self-check (FR-038)'
+Assert-Match -Text $skill -Pattern '(?i)Carry binding decisions across lenses' 'skill: completed bindings are reread before a later lens'
+Assert-Match -Text $skill -Pattern '(?i)MUST NOT contradict an earlier\s+human-confirmed binding' 'skill: delegated defaults cannot overwrite a human-confirmed cross-lens decision'
+Assert-Match -Text $skill -Pattern '"bindings"\s*:\s*\{' 'skill: durable lens record shape includes stable cross-lens bindings'
 Assert-Match -Text $skill -Pattern '(?i)preparing the workshop' 'skill A7: the prep announcement (FR-040)'
 Assert-Match -Text $skill -Pattern '(?i)agenda as an assignment' 'skill A7: the agenda assignment (FR-040)'
 Assert-Match -Text $skill -Pattern '(?i)preparing lens' 'skill A7: the per-lens lazy-load progress cue (FR-040)'
@@ -114,13 +117,15 @@ Write-Pass 'skill A7: confirmation-integrity invariant + count + delegate/skip e
 Assert-Match -Text $skill -Pattern '(?i)approves what\s+is on screen' 'skill FR-037: at an approval point the diagram is rendered in-band, not referenced by file/count'
 Assert-Match -Text $skill -Pattern '(?i)IN ADDITION TO the\s+in-band render' 'skill FR-037: the workshop file is written AFTER + in addition to the in-band render, never instead'
 # General mechanism rule (testLenses11: the lens AGENDA was confirmed by count without rendering — a list, not
-# a diagram, so the diagram-scoped rule missed it). Anchored on render-before-the-menu; covers EVERY confirm
-# point incl. the agenda; keep-the-menu (good UX, maintainer-directed); be verbose.
+# a diagram, so the diagram-scoped rule missed it). Anchored on render-before-the-question; covers EVERY confirm
+# point incl. the agenda. Claude now removes the unsafe picker; other hosts retain structured questions.
 Assert-Match -Text $skill -Pattern '(?i)render \+ explain, THEN ask' 'skill FR-037 general: render+explain before the confirm menu (mechanism-anchored, not artifact-enumerated)'
 Assert-Match -Text $skill -Pattern '(?i)Be verbose' 'skill FR-037 general: be verbose — explain in prose first + self-explanatory menu wording'
-Assert-Match -Text $skill -Pattern '(?i)menu is good UX' 'skill FR-037 general: the menu stays (good UX); the fix is the missing render, never the menu'
+Assert-Match -Text $skill -Pattern '(?m)^claude-disallowed-tools:\s*AskUserQuestion\s*$' 'skill FR-037 general: canonical Claude deployment policy removes the picker that swallows rendered context'
+Assert-Match -Text $skill -Pattern '(?i)numbered prose list answered by typing' 'skill FR-037 general: Claude uses visible prose choices with a typed answer'
+Assert-Match -Text $skill -Pattern '(?i)Other hosts retain their structured\s+question UX' 'skill FR-037 general: non-Claude hosts retain structured questions'
 Assert-Match -Text $skill -Pattern '(?i)agenda \+ depths' 'skill FR-037 general: the lens agenda + depths is an explicit confirm-point (the testLenses11 gap the diagram-scoped rule missed)'
-Write-Pass 'skill FR-037: render+explain before the confirm menu at EVERY confirm point (agenda/diagram/map/options/verdict), verbose, menu kept — the testLenses8/11 Claude under-surfacing fix'
+Write-Pass 'skill FR-037: render+explain before every confirm point; Claude picker removed, typed choices visible, other-host structured UX preserved'
 # 165-retarget (2026-06-07 dogfood — the F-171 workshop on the current Claude model). Two host-neutral
 # conduct additions: (A) the human-facing chat-path orientation (humans hit dense menus they could not
 # follow + had to discover the free-text path themselves); (B) the file:///-links-before-the-menu rule
@@ -128,9 +133,9 @@ Write-Pass 'skill FR-037: render+explain before the confirm menu at EVERY confir
 # decide; other hosts render them in prose). Presence-locked here; the behavioral payoff is the next dogfood.
 Assert-Match -Text $skill -Pattern '(?i)Tell the human they can just talk' 'skill 165-A: the chat-path orientation (human can type a question / ask for a file instead of picking a menu option)'
 Assert-Match -Text $skill -Pattern '(?i)instead of picking a menu option' 'skill 165-A: the free-text-instead-of-menu phrasing'
-Assert-Match -Text $skill -Pattern '(?i)links go in your prose before the menu' 'skill 165-B: the file:///-links-before-the-confirm-menu rule (the Claude artifact-link drop)'
-Assert-Match -Text $skill -Pattern '(?i)does not linkify' 'skill 165-B: names why the menu fields cannot carry the links (the AskUserQuestion UI does not linkify file:///)'
-Write-Pass 'skill 165-retarget: chat-path orientation (A) + file:///-links-before-the-menu (B) — the F-171-dogfood host-neutral conduct fix'
+Assert-Match -Text $skill -Pattern '(?i)links go in your prose before the question' 'skill 165-B: file:/// links are visible in prose before confirmation'
+Assert-Match -Text $skill -Pattern '(?i)may not linkify' 'skill 165-B: structured question fields are not trusted to carry clickable file:/// links'
+Write-Pass 'skill 165-retarget: chat-path orientation plus visible file:/// links before confirmation'
 # Component-map FORM (testLenses11: the agent referenced "11-component map above" + counted "6 resource accessors"
 # instead of rendering the full diagram + a vocabulary-grouped named list). Fix = a prescriptive fill-in TEMPLATE
 # the agent completes (form > prose; harder to under-deliver; also helps weaker hosts), rendered before the ask.
@@ -144,15 +149,14 @@ Write-Pass 'skill component-map: prescriptive fill-in template (diagram + vocabu
 Assert-Match -Text $skill -Pattern '(?i)Workshop agenda' 'skill agenda: a fill-in agenda template (rendered in-band before the confirm menu, not crammed into the menu question)'
 Assert-Match -Text $skill -Pattern '(?i)the decision this lens will ask' 'skill agenda: the agenda template carries each lens depth + the concrete decision it raises (not just the name)'
 Write-Pass 'skill agenda: prescriptive fill-in agenda template (lenses + depth + per-lens decision, render-before-menu) — the testLenses11 agenda-render fix'
-# A8 / FR-041 (i12 + cross-host dogfood): after i11 proved render-before-the-menu CONDUCT is defeated on Claude
-# by the AskUserQuestion tool-gravity. The catalog-at-open front-load was REVERTED (testLenses11 cross-host: it
-# SKIMMED on Claude — a before-a-menu render — and was REDUNDANT on prose hosts that render the agenda inline).
-# What HELD is the per-lens conduct: open-question-first = the strongest CONDUCT lever (binary — a lens opened
-# with a presentation or a menu), dogfood-proven to render the lens content on Claude.
+# A8 / FR-041 (i12 + Beta2 manual test): render-before-menu conduct is defeated on Claude by
+# AskUserQuestion tool-gravity. The catalog-at-open front-load was reverted; the capability-level fix removes
+# the picker on Claude while preserving open-question-first as the cross-host conduct rule.
 Assert-Match -Text $skill -Pattern '(?i)never a menu first' 'skill A8: open-question-first — never open a lens with a menu (the per-lens render that HELD on Claude)'
 Assert-Match -Text $skill -Pattern '(?i)Binary\s+test: did this lens open' 'skill A8: the binary open-question-first test (a lens opened with a presentation, or a menu)'
 Assert-Match -Text $skill -Pattern '(?i)governing model' 'skill A8: the governing model (open-discussion renders hold on Claude; before-a-menu renders skim -> hook or host-variance, never another instruction)'
-Write-Pass 'skill A8/FR-041: open-question-first (the binary conduct lever, dogfood-proven on Claude) + the before-a-menu governing model; catalog-at-open reverted'
+Assert-Match -Text $skill -Pattern '(?i)capability-level\s+guard' 'skill A8: Claude fix is a capability-level guard, not another prompt instruction or hidden marker'
+Write-Pass 'skill A8/FR-041: open-question-first plus capability-level Claude picker removal; catalog-at-open remains reverted'
 # Pacing (i12 cross-host dogfood — testLenses11): the per-lens presentation WORKED but a dense lens (5 subjects
 # bundled into one open question) lands as a wall on EVERY host (Copilot's per-lens was hard for the same
 # reason). After presenting, the agent MUST offer all-at-once OR one-at-a-time, cross-host.

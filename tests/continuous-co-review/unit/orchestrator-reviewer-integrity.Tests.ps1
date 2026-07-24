@@ -1,0 +1,257 @@
+#requires -Version 7.0
+$ErrorActionPreference = 'Stop'
+
+# FR-010 (203 W3) — orchestrator behaviour after the maintainer's option-1 SIMPLIFICATION (2026-07-11).
+# The orchestrator no longer auto-runs declared verification, copies a sandbox, or re-runs commands per
+# review (those cases live as regression evidence in bounded-verification.Tests.ps1). Instead it applies
+# a REVIEWER-INVOCATION INTEGRITY check: it hashes source + authoritative reviewer inputs immediately
+# before and after the reviewer runs, permits ONLY the reviewer's own output (.review/findings.jsonl),
+# and FAILS the review on any other mutation (the reviewer must inspect, not edit, the certified tree).
+# This is MONITORED confinement, not OS-enforced isolation.
+Describe 'orchestrator does NOT auto-run verification, and integrity-checks the reviewer invocation (FR-010)' {
+    BeforeAll {
+        $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+        $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1')
+
+        # RunDir OUTSIDE the fixture repo (the reviewed-state digest includes untracked non-ignored files).
+        function script:New-RunDir { return (Join-Path ([System.IO.Path]::GetTempPath()) ('ri-runs-' + [guid]::NewGuid().ToString('N'))) }
+
+        function script:New-TempGitRepo {
+            $repo = Join-Path ([System.IO.Path]::GetTempPath()) ('ri-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $repo -Force | Out-Null
+            & git -C $repo init -q 2>&1 | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo 'app.txt') -Value 'content' -Encoding UTF8
+            New-Item -ItemType Directory -Path (Join-Path $repo 'specs/042-widget') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo 'specs/042-widget/spec.md') -Value '# widget spec' -Encoding UTF8
+            New-Item -ItemType Directory -Path (Join-Path $repo '.specify') -Force | Out-Null
+            ([pscustomobject]@{ feature_directory = 'specs/042-widget' } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $repo '.specify/feature.json') -Encoding UTF8
+            & git -C $repo -c user.name='t' -c user.email='t@t.local' add -A 2>&1 | Out-Null
+            & git -C $repo -c user.name='t' -c user.email='t@t.local' commit -q -m seed 2>&1 | Out-Null
+            return $repo
+        }
+        function script:StubHost { Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } } }
+        function script:ReviewerResult { param($id) [pscustomobject]@{ exit_code = 0; stdout = ('{"schema_version":"1.0","run_id":"' + $id + '","status":"findings","findings":[]}'); stderr = ''; telemetry = $null } }
+    }
+
+    It 'NEVER calls the bounded-verification helper automatically, and injects no verification results' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            $script:sawResultsFile = $null
+            Mock -CommandName Invoke-ContinuousCoReviewBoundedVerification -MockWith { @() }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                $script:sawResultsFile = Test-Path -LiteralPath (Join-Path $WorktreePath '.review/verification/results.json')
+                script:ReviewerResult 'ri-noauto'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-noauto' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'done'
+            $script:sawResultsFile | Should -Be $false -Because 'the orchestrator no longer injects orchestrator-run verification results'
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewBoundedVerification -Times 0 -Because 'the helper is opt-in only and must never run automatically'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'FAILS the review (reviewer-tampered-tree) when the reviewer mutates a SOURCE file' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                Set-Content -LiteralPath (Join-Path $WorktreePath 'app.txt') -Value 'REVIEWER-EDITED' -NoNewline   # editing the tree it certifies
+                script:ReviewerResult 'ri-tamper'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-tamper' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Be 'reviewer-tampered-tree'
+            [string]$st.message | Should -Match 'app\.txt'
+            [bool]$st.provider_spend | Should -Be $true -Because 'the model WAS invoked - invoked-failed class'
+            [bool]$st.round_consumed | Should -Be $true
+            (Get-Content -LiteralPath (Join-Path $rd 'result.out') -Raw) | Should -BeNullOrEmpty -Because 'a tampering reviewer''s findings are discarded'
+            $rs = Get-ContinuousCoReviewRoundState -RepoRoot $repo
+            @($rs.dispositions | Where-Object { $_.state -eq 'reviewer-tampered-tree' }).Count | Should -BeGreaterThan 0
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'FAILS the review when the reviewer rewrites an AUTHORITY input (.review/changes.diff)' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                Set-Content -LiteralPath (Join-Path $WorktreePath '.review/changes.diff') -Value 'FORGED' -NoNewline
+                script:ReviewerResult 'ri-auth'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-auth' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Be 'reviewer-tampered-tree'
+            [string]$st.message | Should -Match 'changes\.diff'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'ALLOWS the reviewer to write ONLY its own output (.review/findings.jsonl) - review completes' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                Set-Content -LiteralPath (Join-Path $WorktreePath '.review/findings.jsonl') -Value '{"finding_id":"f1"}' -NoNewline
+                script:ReviewerResult 'ri-output'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-output' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'done' -Because 'the reviewer''s own findings output is the ONE permitted write'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'does NOT false-flag a NEW file under a volatile reviewer-HOST runtime dir (.codex, ...)' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                New-Item -ItemType Directory -Path (Join-Path $WorktreePath '.codex') -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $WorktreePath '.codex/session.json') -Value '{}' -NoNewline   # NEW host ephemeral state
+                script:ReviewerResult 'ri-host'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-host' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'done' -Because 'a NEW host session file is churn, not source tampering'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'FAILS when the reviewer adds a persistent CONFIG file under a host dir (DRIFT-198-I003-006: not exempt churn)' {
+        # The host-churn exemption is a CHARACTERIZED ephemeral allowlist - a reviewer must NOT add persistent config
+        # (.codex/config.toml, .claude/settings.json) or an arbitrary file and still get a valid result.
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                New-Item -ItemType Directory -Path (Join-Path $WorktreePath '.codex') -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $WorktreePath '.codex/config.toml') -Value 'persist = true' -NoNewline   # NEW persistent config
+                script:ReviewerResult 'ri-cfg2'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-cfg2' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed' -Because 'a NEW persistent config under a host dir is tampering, not exempt churn (DRIFT-198-I003-006)'
+            [string]$st.failure_reason | Should -Be 'reviewer-tampered-tree'
+            [string]$st.message | Should -Match 'config\.toml'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'host-churn allowlist predicate (DRIFT-198-I003-006): characterized ephemeral outputs pass; config + unknown files fail' {
+        # ALLOWED - recognized ephemeral runtime outputs:
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/sessions/abc.jsonl' | Should -BeTrue -Because 'a session transcript is ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/history.jsonl' | Should -BeTrue -Because 'a .jsonl log is ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/projects/x/y.jsonl' | Should -BeTrue -Because 'a projects session file is ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/agent.lock' | Should -BeTrue -Because 'a lock file is ephemeral'
+        # DENIED - persistent config under a host dir:
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/config.toml' | Should -BeFalse -Because 'persistent config must FAIL integrity'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/settings.json' | Should -BeFalse -Because 'persistent config must FAIL integrity'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/settings.local.json' | Should -BeFalse
+        # DENIED - unrecognized file under a host dir:
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/mystery.dat' | Should -BeFalse -Because 'an unrecognized file is not characterized ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/payload.sh' | Should -BeFalse
+        # NOT under a host dir at all -> not churn (a real source path is judged by the normal integrity check):
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath 'src/app.ps1' | Should -BeFalse
+    }
+
+    It 'FAILS when the reviewer MODIFIES a PRE-EXISTING file inside a host-runtime dir (tracked config, not churn)' {
+        # Finding 3b5ae645: the host-dir exemption is NEW-files-only. A tracked config that the archive
+        # extracted (present in the PRE snapshot) must not be rewritable under .claude/.codex/... undetected.
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            $script:hc = 0
+            Mock -CommandName Get-ContinuousCoReviewWorktreeSourceHashes -MockWith {
+                $script:hc++
+                if ($script:hc -le 1) { return @{ '.claude/settings.json' = 'H1'; 'app.txt' = 'A' } }
+                return @{ '.claude/settings.json' = 'H2-REWRITTEN'; 'app.txt' = 'A' }   # a PRE-EXISTING host-dir config, rewritten
+            }
+            $script:reviewerInvoked = $false
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { $script:reviewerInvoked = $true; script:ReviewerResult 'ri-cfg' }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-cfg' -TimeoutSeconds 60
+            $script:reviewerInvoked | Should -Be $true -Because 'the tamper is detected AFTER the reviewer runs'
+            [string]$st.failure_reason | Should -Be 'reviewer-tampered-tree'
+            [string]$st.message | Should -Match 'settings\.json' -Because 'a modified pre-existing host-dir file is tampering, not exempt churn'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'T016 (FR-011 amended): a STRONG signal (exe/cwd under origin) FAILS the review (containment-violated) - loud origin-side record, redacted, findings discarded' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        $script:ContainOriginPath = Join-Path $repo 'app.txt'   # a REAL origin path the sampler will "observe"
+        try {
+            script:StubHost
+            # the sampler OBSERVES a reviewer-tree process whose EXECUTABLE resolves under origin (a STRONG signal, not
+            # a mere argv match); image is a FULL exe path so the record's bounded basename-only redaction can be asserted.
+            Mock -CommandName Get-ContinuousCoReviewContainmentSamples -MockWith { @(@{ pid = 4242; image = 'C:\tools\codex.exe'; source = 'exe'; path = $script:ContainOriginPath }) }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                & $Heartbeat ([pscustomobject]@{ child_pid = 4242 })   # fire ONE heartbeat -> the orchestrator samples + accumulates the violation
+                script:ReviewerResult 'ri-contain'                      # the reviewer then exits cleanly - the detector NEVER kills it mid-flight
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-contain' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Be 'containment-violated'
+            [string]$st.message | Should -Match 'app\.txt'
+            [string]$st.message | Should -Match 'STRONG' -Because 'only a strong cwd/exe signal hard-fails (FR-011 amended)'
+            [bool]$st.provider_spend | Should -Be $true -Because 'the model WAS invoked - invoked-failed class'
+            [bool]$st.round_consumed | Should -Be $true
+            $rec = @($st.containment_violations)[0]
+            [string]$rec.command_line | Should -Match 'redacted' -Because 'the record NEVER carries the raw command line'
+            [string]$rec.process | Should -Match 'image=codex\.exe' -Because 'process metadata is the image BASENAME, bounded'
+            ($st.containment_violations | ConvertTo-Json -Depth 6) | Should -Not -Match 'tools' -Because 'the full executable path is NOT persisted (bounded/redacted)'
+            (Get-Content -LiteralPath (Join-Path $rd 'result.out') -Raw) | Should -BeNullOrEmpty -Because 'a strong-signal containment violation discards findings'
+            $rs = Get-ContinuousCoReviewRoundState -RepoRoot $repo
+            @($rs.dispositions | Where-Object { $_.state -eq 'containment-violated' }).Count | Should -BeGreaterThan 0
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'T016 (FR-011 amended): an ARGV-only match is a DIAGNOSTIC WARNING - the review is NOT discarded, findings preserved, sampler health recorded' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        $script:ContainArgPath = Join-Path $repo 'app.txt'
+        try {
+            script:StubHost
+            # the sampler OBSERVES only a command-line ARGUMENT under origin (best-effort signal) - NOT a hard fail.
+            Mock -CommandName Get-ContinuousCoReviewContainmentSamples -MockWith { @(@{ pid = 4242; image = 'codex.exe'; source = 'arg'; path = $script:ContainArgPath }) }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                & $Heartbeat ([pscustomobject]@{ child_pid = 4242; running = $true })    # a RUNNING heartbeat
+                & $Heartbeat ([pscustomobject]@{ child_pid = 4242; running = $false })   # the FINAL sample after exit
+                script:ReviewerResult 'ri-argwarn'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-argwarn' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'done' -Because 'an argv-only match must NOT discard an otherwise valid review (FR-011 amended)'
+            $st.PSObject.Properties['failure_reason'] | Should -BeNullOrEmpty -Because 'a done review has no containment failure_reason'
+            (Get-Content -LiteralPath (Join-Path $rd 'result.out') -Raw) | Should -Not -BeNullOrEmpty -Because 'the valid review findings are PRESERVED'
+            @($st.containment_warnings).Count | Should -BeGreaterThan 0 -Because 'the argv match is recorded as a bounded diagnostic warning'
+            [string](@($st.containment_warnings)[0].path) | Should -Match 'app\.txt'
+            $st.sampler_health | Should -Not -BeNullOrEmpty -Because 'the monitor records its own health so weak visibility is never silent'
+            [int]$st.sampler_health.attempts | Should -BeGreaterThan 0
+            [bool]$st.sampler_health.final_sample_taken | Should -BeTrue -Because 'a FINAL sample is taken after the reviewer exits (no-heartbeat/short-lived gap surfaced, never silent)'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+Describe 'the slim prompt states strict read-only + monitored confinement honestly (FR-010/FR-013)' {
+    BeforeAll {
+        $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+        $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+    }
+
+    It 'tells the reviewer it is under integrity check, strictly read-only except .review/findings.jsonl' {
+        $p = Get-ContinuousCoReviewSlimPrompt -RunId 'x'
+        $p | Should -Match '(?i)READ-ONLY'
+        $p | Should -Match '\.review/findings\.jsonl'
+        $p | Should -Match '(?si)hashed\b.*before and after'
+    }
+
+    It 'no longer claims orchestrator-observed verification results, nor an OS sandbox' {
+        $p = Get-ContinuousCoReviewSlimPrompt -RunId 'x'
+        $p | Should -Not -Match 'BOUNDED VERIFICATION RESULTS'
+        $p | Should -Not -Match '(?i)orchestrator-observed'
+        $p | Should -Not -Match '(?i)cannot\s+(escape|reach)'
+    }
+}

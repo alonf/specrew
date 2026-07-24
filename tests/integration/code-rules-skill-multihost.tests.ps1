@@ -49,6 +49,13 @@ Assert-Match -Text $ws -Pattern '(?i)grouped, pre-checked|grouped pre-checked|gr
 Assert-Match -Text $ws -Pattern 'dependency_policy' 'T015: dependency-selection capture (FR-013)'
 Assert-Match -Text $ws -Pattern '(?i)code-rules\.local\.yml' 'T015: project overlay for company/org rules (FR-012)'
 Assert-Match -Text $ws -Pattern '`code-implementation`' 'T015: code-implementation is in the lens enumeration'
+Assert-Match -Text $ws -Pattern '(?is)controller-owned workshop state.+feature-level.+lens-applicability\.json.+exact iteration' 'T052: skill selects durable authority by the real feature/iteration workshop scope'
+Assert-Match -Text $ws -Pattern '(?i)Do not rely on a model-authored hidden marker' 'T052: model comments and question-tool transcripts are explicitly non-authoritative'
+Assert-Match -Text $ws -Pattern '(?is)write the nonempty `workshop/<lens-id>\.md`.+then persist.+moved_on: true' 'T052: lens completion uses the durable record-before-structured-entry order'
+Assert-Match -Text $ws -Pattern '(?is)Checkpoint this lens durable.+persist the Markdown decision record FIRST.+ONLY AFTER.+complete `lens-applicability\.json` entry.+moved_on: true' 'T052: checkpoint procedure cannot contradict the record-before-structured-entry order'
+Assert-Match -Text $ws -Pattern '(?is)final selected lens.+workshop `complete`.+ordinary Stop behavior resumes' 'T052: final completion explicitly restores ordinary Stop behavior'
+Assert-Match -Text $ws -Pattern '(?is)loose flag.+missing record.+malformed artifact.+cannot keep\s+the\s+exception active' 'T052: malformed or incomplete completion fails closed instead of suppressing forever'
+Assert-Match -Text $ws -Pattern '(?i)Never invent an iteration during feature intake' 'T052: feature-level intake cannot fabricate an iteration identity'
 
 # ---------------------------------------------------------------------------
 # T016 — multi-host parity (FR-005, SC-003)
@@ -64,21 +71,31 @@ Assert-True ($cr -notmatch '(?im)^\s*host[-_ ]?scope\s*:' -and $cr -notmatch '(?
 Assert-True (Test-Path -LiteralPath $codeRulesTpl) 'T016: specrew-code-rules (code-rules.md) is in the enumerated skills-template root -- the deploy-engine *.md fan-out source for every host (claude/cursor/github/agents)'
 Assert-Match -Text $cr -Pattern '(?ms)^---\s.*\bname:\s*"?specrew-code-rules"?' 'T016: code-rules.md frontmatter name => deploys as specrew-code-rules/SKILL.md per host'
 
-# design-workshop is already deployed; its template must be byte-identical across every host copy (parity).
+# design-workshop is already deployed. Its conduct body remains shared, while the deployer materializes
+# Claude's `claude-disallowed-tools` policy as real `disallowed-tools` frontmatter and removes that
+# canonical-only directive from the other hosts.
 $workshopCopies = @(
-    (Join-Path $repoRoot '.claude\skills\specrew-design-workshop\SKILL.md'),
-    (Join-Path $repoRoot '.agents\skills\specrew-design-workshop\SKILL.md'),
-    (Join-Path $repoRoot '.github\skills\specrew-design-workshop\SKILL.md'),
-    (Join-Path $repoRoot '.cursor\rules\specrew-design-workshop\SKILL.md')
+    [pscustomobject]@{ Host = 'claude'; Path = (Join-Path $repoRoot '.claude\skills\specrew-design-workshop\SKILL.md') },
+    [pscustomobject]@{ Host = 'agents'; Path = (Join-Path $repoRoot '.agents\skills\specrew-design-workshop\SKILL.md') },
+    [pscustomobject]@{ Host = 'github'; Path = (Join-Path $repoRoot '.github\skills\specrew-design-workshop\SKILL.md') },
+    [pscustomobject]@{ Host = 'cursor'; Path = (Join-Path $repoRoot '.cursor\rules\specrew-design-workshop\SKILL.md') }
 )
-$tplBytes = [System.IO.File]::ReadAllText($workshopTpl)
+$tplText = [System.IO.File]::ReadAllText($workshopTpl)
+Assert-Match -Text $tplText -Pattern '(?m)^claude-disallowed-tools:\s*AskUserQuestion\s*$' 'T016: canonical workshop template declares the Claude-only AskUserQuestion removal policy'
 foreach ($copy in $workshopCopies) {
-    Assert-True (Test-Path -LiteralPath $copy) "T016: design-workshop deployed copy exists: $copy"
-    Assert-True (([System.IO.File]::ReadAllText($copy)) -eq $tplBytes) "T016: design-workshop deployed copy is byte-identical to the template: $copy"
+    Assert-True (Test-Path -LiteralPath $copy.Path) "T016: design-workshop deployed copy exists: $($copy.Path)"
+    $expected = if ($copy.Host -eq 'claude') {
+        $tplText -replace '(?m)^claude-disallowed-tools:', 'disallowed-tools:'
+    }
+    else {
+        $tplText -replace '(?m)^claude-disallowed-tools:[^\r\n]*(\r?\n)', ''
+    }
+    $actual = [System.IO.File]::ReadAllText($copy.Path)
+    Assert-True ($actual -eq $expected) "T016: design-workshop deployed copy is the exact host-materialized template: $($copy.Path)"
 }
 # The code-implementation lens turn (T012/T013) is present in every deployed copy too (drift guard).
 foreach ($copy in $workshopCopies) {
-    Assert-Match -Text ([System.IO.File]::ReadAllText($copy)) -Pattern '(?im)^## The code-implementation lens' "T016: deployed copy carries the code-implementation lens turn: $copy"
+    Assert-Match -Text ([System.IO.File]::ReadAllText($copy.Path)) -Pattern '(?im)^## The code-implementation lens' "T016: deployed copy carries the code-implementation lens turn: $($copy.Path)"
 }
 
 Write-Host ''

@@ -1,6 +1,6 @@
 # Software-Feature Lifecycle (template)
 
-**Work kind**: `software-feature` · **Lifecycle weight**: full · **Produces a release**: yes (at feature-closeout → release)
+**Work kind**: `software-feature` · **Lifecycle weight**: full · **Delivery**: resolved from the recorded `release_model` at feature-closeout (`local-only` / `push-only` / `pr-flow` / `beta-stable`)
 
 Use this for product/runtime behavior and ordinary feature delivery — the **full** Specrew lifecycle.
 If your change is docs-only, a defect fix, or CI/infra, it is **not** a software-feature — reclassify to
@@ -30,6 +30,6 @@ retro -> iteration-closeout -> feature-closeout -> (release per the project's me
 ## Notes
 
 - Every boundary is a human-verdict stop; one approval advances at most one boundary.
-- The release SDLC is instantiated from the project's governance — GitHub/PSGallery are a Specrew-own
-  example, **not a downstream mandate**.
+- Render only the steps selected by the project's recorded release model. Prerelease validation followed by
+  stable promotion applies only to `beta-stable`; every omitted delivery step carries an explicit N/A reason.
 - A post-merge finding is a **new** work item, never a reopen of the merged feature.

@@ -49,6 +49,8 @@ function New-ApprovedStatusWorkspace {
     if (Test-Path -LiteralPath $Root) { Remove-Item -LiteralPath $Root -Recurse -Force }
     New-Item -ItemType Directory -Path $Root -Force | Out-Null
     git -C $Root init --quiet
+    git -C $Root config user.name 'Specrew Test'
+    git -C $Root config user.email 'specrew-test@example.invalid'
     pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'scripts\specrew-init.ps1') -ProjectPath $Root -Force -NoAgents | Out-Null
 
     $featurePath = Join-Path $Root 'specs\001-test'

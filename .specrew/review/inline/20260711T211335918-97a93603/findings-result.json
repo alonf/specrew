@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260711T211335918-97a93603",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T211335918-97a93603",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1",
+        "line_start": 779,
+        "line_end": 779
+      },
+      "severity": "blocking",
+      "kind": "verification-fail-open",
+      "design_reference": "FR-010 / NFR-007; requirements-NFR and observability-resilience lenses",
+      "comment": "The production caller silently catches any bounded-verification infrastructure exception, resets run_count to 0, and still spawns the reviewer. Because VerificationResultsPresent is false, worktree-reviewer.ps1:582 then tells that reviewer that no results file means the engine declared and ran NOTHING, even when verification_declared_count is nonzero. A wrapper failure (process start, temp-file/hash/read/write failure, etc.) can therefore erase declared verification and permit a full clean verdict; the exception is neither injected nor surfaced as a verification failure, and the tests cover successful/mutating/empty declarations but not a runner exception. Fail the run or inject a loud structured failure that preserves the declared count/commands, and add an end-to-end exception-path test.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f2",
+      "source_run_id": "20260711T211335918-97a93603",
+      "location": {
+        "path": "specs/198-beta2-hardening/tasks.md",
+        "line_start": 39,
+        "line_end": 46
+      },
+      "severity": "advisory",
+      "kind": "progress-tracker-drift",
+      "design_reference": "process/progress conformance; specs/198-beta2-hardening/iterations/003/plan.md:48-55 and state.md:4",
+      "comment": "The feature task checklist still marks T013, T014, T015, and T020 unchecked while the iteration plan marks all four done and state.md declares T015 last completed. This leaves the canonical progress surfaces contradictory. Reconcile tasks.md with the iteration plan/state (or document why the checklist intentionally has different semantics) so downstream lifecycle readers do not report completed work as outstanding.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f3",
+      "source_run_id": "20260711T211335918-97a93603",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/worktree-reviewer.ps1",
+        "line_start": 482,
+        "line_end": 506
+      },
+      "severity": "blocking",
+      "kind": "verification-mutates-reviewed-tree",
+      "design_reference": "FR-010 / SC-002 / NFR-007; security-compliance and test-integrity lenses",
+      "comment": "Invoke-ContinuousCoReviewBoundedVerification detects source mutations but neither restores the frozen snapshot nor aborts before reviewer execution. The orchestrator runs this wrapper on the same worktree later handed to the reviewer, so a declared test can modify/delete changed implementation, .review/changes.diff, or design context; the reviewer then inspects a tree different from the certified fire-time tree and may be steered or miss defects. Existing tests explicitly demonstrate mutation detection but do not prove snapshot preservation. Run verification in a disposable child copy, or fail and rematerialize/restore the certified tree before spawning the reviewer; add an orchestrator-path test asserting a mutating declaration cannot alter reviewer inputs.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-11T21:16:44Z"
+}

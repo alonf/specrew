@@ -56,10 +56,7 @@ For per-boundary handoffs:
 - **What needs your review** — cite inspection targets as `file:///` references and name high-impact choices, risks, and safe-skim areas.
 - **What happens next** — preview the next boundary and the immediate lifecycle step after approval.
 - **What I need from you** — name the boundary being authorized, cite the inspection targets as `file:///` references, and ask for the verdict required.
-- **Feature-closeout release SDLC ownership** — when the boundary is `feature-closeout`, include both rows:
-  - `AGENT NEXT ACTION:` executes the release SDLC **per the project's `.specrew/repository-governance.yml` (provider, `branch_model`, `review_gate`) and the project's own release/publish mechanism** — never assuming a specific forge or package registry — with human approval at each substantive step: Step 5 push the feature branch to the project's forge; Step 6 open the PR/MR via that forge (the provider adapter describes how); Step 7 self-review and address the project's `review_gate` (human approvals + comment resolution always-available; automated review opt-in); Step 8 merge per the `branch_model` after approvals/checks; Step 9 if the work produces a release, tag the merge commit (or the PASS-candidate fix commit if looping) and publish a prerelease per the project's release mechanism; Step 10 verify the prerelease published via the project's package/registry tooling; Step 11 PAUSE for the human manual test PASS/FAIL verdict on the installed prerelease in a clean environment; Step 12 if FAIL, fix on the release-truth branch, tag the next prerelease, and repeat from Step 9; Step 13 if PASS, tag the PASS-validated commit and publish the stable release per the project's release mechanism, then verify; Step 14 stop before any new feature work.
-  - `HUMAN ACTION NEEDED:` asks the human to approve each agent action when prompted and, at Step 11, install + exercise the prerelease via the project's package mechanism and report PASS or FAIL with evidence.
-  - **Specrew's own instantiation (a Specrew-specific example, NOT a downstream mandate)**: provider `github` + PowerShell Gallery — Step 6 `gh pr create`; Step 7 address Copilot's opt-in PR review; Step 10 `Find-Module Specrew -AllowPrerelease`; Step 11 `Install-Module Specrew -AllowPrerelease`; push `v<next-version>-beta.1` then promote `v<next-version>` stable.
+- **Feature-closeout delivery ownership** — copy the `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows from the resolved release-model block in the launch contract. Execute only non-N/A steps; never add a forge, review, publication, prerelease, or stable-promotion step that the resolved model omits. Prerelease validation before stable applies only to `beta-stable`.
 
 Worked boundary examples:
 
@@ -118,7 +115,7 @@ When human review or manual testing is needed:
 - Say exactly what should be reviewed or tested.
 - Name the owner when it matters.
 - Keep the next step concrete and singular.
-- If the next step is review of a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
+- If the next step is review of a local repository file, include a `file:///` URI resolved from the current project's absolute path.
 
 ### 4. Final Stop Message: Verification Gaps
 
@@ -176,7 +173,7 @@ Review and approve the bounded wording change before Iteration 002 proof work be
 ### Substantive Boundary Example
 
 **What I just did**
-I updated **the substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 boundary-discipline, console-substance, and click-through rules**. I aligned `file:///C:/Dev/Specrew/.github/agents/squad.agent.md`, `file:///C:/Dev/Specrew/extensions/specrew-speckit/prompts/coordinator-response.md`, and `file:///C:/Dev/Specrew/extensions/specrew-speckit/scripts/validate-governance.ps1`, recorded the canonical authorization shape in `.squad/decisions.md`, and verified the governing integration checks still pass before the next boundary.
+I updated **the substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 boundary-discipline, console-substance, and click-through rules**. I aligned `file:///absolute/project/path/.github/agents/squad.agent.md`, `file:///absolute/project/path/extensions/example/prompts/coordinator-response.md`, and `file:///absolute/project/path/extensions/example/scripts/validate-governance.ps1`, recorded the canonical authorization shape in `.squad/decisions.md`, and verified the governing integration checks still pass before the next boundary.
 
 **Why I stopped**
 I stopped at the review-boundary because the next lifecycle step is the review boundary, and per-boundary discipline allows only one explicitly authorized boundary advance at a time.
@@ -188,7 +185,7 @@ Review the boundary artifacts and the committed evidence; focus on the plan, har
 If approved, the Crew enters review and produces the review evidence before stopping again for review signoff.
 
 **What I need from you**
-Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md`, then approve or reject advancement to the review-boundary.
+Review `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/plan.md` and `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md`, then approve or reject advancement to the review-boundary.
 
 ### In-Flight Progress Update Example
 

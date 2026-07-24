@@ -93,6 +93,7 @@ Usage:
                  [--design-context-ref <path>] [--allowed-path <path>] [--forbidden-path <path>]
                  [--exclude-path <pattern>] [--reviewer-config <path>] [--schema-root <path>]
                  [--run-root <path>] [--timeout-seconds <seconds>] [--quiet | --json]
+  specrew review --reconcile-run <run-id> [--feature <id>] [--iteration <NNN>] [--json]
 
 Options:
   --project-path <path>  Target Specrew project (default: current directory)
@@ -102,8 +103,11 @@ Options:
   --ack-degraded <run-id>  Record a first-class human ack of DEGRADED review evidence (with --ack-reason)
   --ack-reason <text>    Why the degraded assurance level (partial/same-host) is acceptable for signoff
   --remediate <choice>   Record a review-problem remediation: more-time | different-host | narrow-scope |
-                         accept-partial | override-block (carried via round-state to the next run)
+                         accept-partial | override-block | resolved-against-disk | allowance-reset
+                         (resolved-against-disk clears a fixed finding but PRESERVES spent rounds;
+                         allowance-reset is the separate human-approved replenish of the round allowance)
   --scope <spec>         Human-directed scope for narrow-scope: code | process | path:<p> | function:<name>
+  --fix-evidence-ref <c> Commit that resolves the held finding (required by --remediate resolved-against-disk)
   --baseline-ref <ref>   Optional git ref/SHA baseline. Omit for a signoff run (auto-anchors
                          to the last pass or the merge-base with the trunk); supplying it
                          makes the run exploratory (it does not auto-anchor).
@@ -121,9 +125,10 @@ Options:
   --exclude-path         Diff path pattern to exclude; repeatable
   --reviewer-config      JSON host catalog override for live review
   --schema-root          Reviewer contract schema directory override
-  --run-root             Temporary immutable request-bundle workspace root
+  --run-root             External temporary workspace-root override (campaign snapshots must stay outside the repository)
   --timeout-seconds      Reviewer host timeout in seconds (default: 120)
   --preserve-debug       Keep temporary request-bundle workspaces after live review
+  --reconcile-run        Resume one interrupted campaign run without invoking a provider
   --quiet                Emit only the stable machine-parseable digest line
   --json                 Emit JSON summary instead of the visual reviewer summary
   --open                 Open reviewer-index.md and review-diagrams.md when present
@@ -153,7 +158,7 @@ function Convert-UnixStyleArguments {
         Live            = $Live
         Help            = $Help
         BaselineRef     = $null
-        TrunkName       = 'main'
+        TrunkName       = ''   # '' -> the shared trunk resolver auto-detects (config/origin-HEAD/upstream/conventional); --trunk overrides
         CheckpointId    = 'manual-live-review'
         RunId           = $null
         Host            = $null
@@ -172,9 +177,11 @@ function Convert-UnixStyleArguments {
         ForbiddenPaths  = @()
         ExcludedPathPatterns = @()
         AckDegradedRunId = $null
+        ReconcileRunId = $null
         AckReason       = $null
         Remediate       = $null
         Scope           = $null
+        FixEvidenceRef  = $null
         TimeoutSecondsExplicit = $false
     }
 
@@ -182,7 +189,7 @@ function Convert-UnixStyleArguments {
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
-            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope)(?:=(?<value>.+))?$' {
+            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|reconcile-run|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope|fix-evidence-ref)(?:=(?<value>.+))?$' {
                 $name = $Matches['name']
                 $value = $Matches['value']
                 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -196,6 +203,7 @@ function Convert-UnixStyleArguments {
                     'trunk' { $result.TrunkName = $value }
                     'checkpoint-id' { $result.CheckpointId = $value }
                     'run-id' { $result.RunId = $value }
+                    'reconcile-run' { $result.ReconcileRunId = $value }
                     'host' { $result.Host = $value }
                     'model' { $result.Model = $value }
                     'effort' { $result.Effort = $value }
@@ -208,6 +216,7 @@ function Convert-UnixStyleArguments {
                     'timeout-seconds' { $result.TimeoutSeconds = [int]$value; $result.TimeoutSecondsExplicit = $true }
                     'remediate' { $result.Remediate = $value }
                     'scope' { $result.Scope = $value }
+                    'fix-evidence-ref' { $result.FixEvidenceRef = $value }
                     'design-context-ref' { $result.DesignContextRefs = @($result.DesignContextRefs) + @($value) }
                     'allowed-path' { $result.AllowedPaths = @($result.AllowedPaths) + @($value) }
                     'forbidden-path' { $result.ForbiddenPaths = @($result.ForbiddenPaths) + @($value) }
@@ -627,10 +636,14 @@ if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.Review
 if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) { $parsedArgs.SchemaRoot = $SchemaRoot }
 if (-not [string]::IsNullOrWhiteSpace($RunRoot)) { $parsedArgs.RunRoot = $RunRoot }
 if ($TimeoutSeconds -gt 0) { $parsedArgs.TimeoutSeconds = $TimeoutSeconds }
-if (@($DesignContextRef).Count -gt 0) { $parsedArgs.DesignContextRefs = @($parsedArgs.DesignContextRefs) + @($DesignContextRef) }
-if (@($AllowedPath).Count -gt 0) { $parsedArgs.AllowedPaths = @($parsedArgs.AllowedPaths) + @($AllowedPath) }
-if (@($ForbiddenPath).Count -gt 0) { $parsedArgs.ForbiddenPaths = @($parsedArgs.ForbiddenPaths) + @($ForbiddenPath) }
-if (@($ExcludePath).Count -gt 0) { $parsedArgs.ExcludedPathPatterns = @($parsedArgs.ExcludedPathPatterns) + @($ExcludePath) }
+$boundDesignContextRefs = @($DesignContextRef | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+$boundAllowedPaths = @($AllowedPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+$boundForbiddenPaths = @($ForbiddenPath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+$boundExcludedPaths = @($ExcludePath | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+if ($boundDesignContextRefs.Count -gt 0) { $parsedArgs.DesignContextRefs = @($parsedArgs.DesignContextRefs) + $boundDesignContextRefs }
+if ($boundAllowedPaths.Count -gt 0) { $parsedArgs.AllowedPaths = @($parsedArgs.AllowedPaths) + $boundAllowedPaths }
+if ($boundForbiddenPaths.Count -gt 0) { $parsedArgs.ForbiddenPaths = @($parsedArgs.ForbiddenPaths) + $boundForbiddenPaths }
+if ($boundExcludedPaths.Count -gt 0) { $parsedArgs.ExcludedPathPatterns = @($parsedArgs.ExcludedPathPatterns) + $boundExcludedPaths }
 if ($PreserveDebug.IsPresent) { $parsedArgs.PreserveDebug = $true }
 
 $ProjectPath = $parsedArgs.ProjectPath
@@ -658,6 +671,31 @@ if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     exit 1
 }
 
+# FR-062: restart reconciliation is a first-class public operation. It never grants or
+# invokes a provider; it only executes the immutable plan for one already-recorded run.
+if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) {
+    try {
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        $authority = Get-ContinuousCoReviewAuthorityDecision
+        if (-not $authority.valid -or -not [bool]$authority.campaign_authority_enabled) { throw ('review-reconciliation-requires-campaign-authority:' + $authority.reason) }
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.ReconcileRunId)
+        $timeout = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { 900 }
+        $store = Join-Path $resolvedProjectPath '.specrew/review/authority'
+        $target = New-ReviewCampaignTargetPort -RepoRoot $resolvedProjectPath -RequestedRoot ([string]$parsedArgs.RunRoot)
+        $runtime = New-ReviewProductionRuntimePort -TimeoutSeconds $timeout
+        $reconciled = Invoke-ReviewRunReconciliation -StoreRoot $store -CampaignId $identity.campaign_id -RunId $identity.run_id `
+            -TargetLineage $identity.target_lineage -TargetPort $target -RuntimePort $runtime -ClockPort (New-ReviewSystemClockPort)
+        if ($Json) { $reconciled | ConvertTo-Json -Depth 30 }
+        else {
+            Write-Host ("review-reconciliation campaign={0} run_id={1} status={2} reason={3}" -f $identity.campaign_id, $identity.run_id, $reconciled.status, $reconciled.reason)
+            if ($null -ne $reconciled.result) { Write-Host ("verdict={0} completion={1} runtime_outcome={2}" -f $reconciled.result.verdict, $reconciled.result.completion, $reconciled.result.runtime_outcome) }
+        }
+        if ([string]$reconciled.status -notin @('complete', 'terminal')) { exit 1 }
+        exit 0
+    }
+    catch { Write-Error $_.Exception.Message; exit 1 }
+}
+
 # T094/FR-036: record the FIRST-CLASS human acknowledgement of degraded review evidence, then exit
 # (a standalone op, like authorize). This human-typed command IS the trust boundary the gate's ack
 # reader relies on - the recorded verdict lets a partial/same-host review satisfy signoff consciously.
@@ -683,6 +721,27 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) {
 # accept-partial/override-block act immediately. This human-typed command is the trust boundary.
 if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
     try {
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        $remediationAuthority = Get-ContinuousCoReviewAuthorityDecision
+        if (-not $remediationAuthority.valid -or [string]$remediationAuthority.mode -eq 'disabled') {
+            throw ("Review authority is unavailable ({0}); neither legacy nor campaign remediation may mutate review state." -f $remediationAuthority.reason)
+        }
+        if ([bool]$remediationAuthority.campaign_authority_enabled) {
+            if ([string]$parsedArgs.Remediate -cne 'override-block') { throw "Campaign remediation '$($parsedArgs.Remediate)' does not create signoff authority; use a new explicitly authorized run." }
+            if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.RunId) -or [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
+                throw 'Campaign override-block requires --run-id and --ack-reason; the disposition is never implicit.'
+            }
+            $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+            $actor = (& git -C $resolvedProjectPath config user.name 2>$null)
+            if ([string]::IsNullOrWhiteSpace([string]$actor)) { $actor = [string]$env:USERNAME }
+            if ([string]::IsNullOrWhiteSpace([string]$actor)) { $actor = 'human' }
+            $store = Join-Path $resolvedProjectPath '.specrew/review/authority'
+            $disposition = Add-ReviewCampaignHumanDisposition -StoreRoot $store -CampaignId $identity.campaign_id -RunId ([string]$parsedArgs.RunId) -Decision accept-current -AuthorizedBy ([string]$actor).Trim() -AuthorizationRef ("public-cli:override-block:{0}" -f $parsedArgs.RunId) -Rationale ([string]$parsedArgs.AckReason)
+            if ($Json) { $disposition | ConvertTo-Json -Depth 10 }
+            else { Write-Host ("campaign finding disposition recorded for run {0} by {1}" -f $parsedArgs.RunId, $actor) -ForegroundColor Green }
+            exit 0
+        }
+        if (-not [bool]$remediationAuthority.legacy_promotion_enabled) { throw 'Review authority is not available for legacy remediation.' }
         . (Join-Path $PSScriptRoot 'internal/continuous-co-review/worktree-review-orchestrator.ps1')
         $remParams = @{ RepoRoot = $resolvedProjectPath; Choice = [string]$parsedArgs.Remediate }
         if ($parsedArgs.TimeoutSecondsExplicit) { $remParams.TimeoutSeconds = [int]$parsedArgs.TimeoutSeconds }
@@ -690,10 +749,11 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
         if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Scope)) { $remParams.Scope = [string]$parsedArgs.Scope }
         if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.RunId)) { $remParams.RunId = [string]$parsedArgs.RunId }
         if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) { $remParams.Reason = [string]$parsedArgs.AckReason }
+        if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.FixEvidenceRef)) { $remParams.FixEvidenceRef = [string]$parsedArgs.FixEvidenceRef }
         $rem = Set-ContinuousCoReviewRemediationChoice @remParams
         if ($Json) { $rem | ConvertTo-Json -Depth 6 }
         else {
-            $applied = if ([string]$rem.choice -in @('accept-partial', 'override-block')) { 'recorded and applied immediately' } else { 'recorded - it shapes the NEXT review run' }
+            $applied = if ([string]$rem.choice -in @('accept-partial', 'override-block', 'resolved-against-disk', 'allowance-reset')) { 'recorded and applied immediately' } else { 'recorded - it shapes the NEXT review run' }
             Write-Host ("remediation '{0}' {1} (by {2})" -f $rem.choice, $applied, $rem.authorized_by) -ForegroundColor Green
         }
         exit 0
@@ -702,22 +762,112 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
 }
 
 if ($Live) {
-    # iter-008: the MANUAL door drives the worktree co-review SERVICE - the ONE method. It auto-resolves
-    # baseline/design-context/host (no required --host/--design-context-ref) and runs in a read-only worktree. The
-    # diff-cramming first cut of this never-released feature is being removed; there is no legacy path to select.
+    # Resolve the singular authority seam without loading campaign/runtime modules into the
+    # legacy command scope. The legacy timeout resolver depends on its historical load order.
+    . (Join-Path $PSScriptRoot 'internal/continuous-co-review/review-authority-cutover.ps1')
+    $authorityDecision = Get-ContinuousCoReviewAuthorityDecision
+    if (-not $authorityDecision.valid -or [string]$authorityDecision.mode -eq 'disabled') {
+        Write-Error ("Review authority is unavailable ({0}); neither legacy nor campaign review may run." -f $authorityDecision.reason)
+        exit 1
+    }
+
+    # T051 / FR-057 / FR-065: the existing public surface delegates to exactly one authority path.
+    # Campaign failure never falls back to the historical service, and the historical service never
+    # promotes after campaign cutover. T060 persisted the disabled barrier and then activated the
+    # checked-in campaign mode; the legacy branch below remains only for historical configurations.
+    if ([bool]$authorityDecision.campaign_authority_enabled) {
+        try {
+            . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+            # A project-level `specrew review --host ... --authorization-ref ...` records the
+            # human grant in reviewer-hosts.json. Normal campaign runs must reload that exact
+            # selected entry; otherwise the public command drops the reference and reaches the
+            # authority store with no allowance. An explicit per-run reference remains highest
+            # precedence. Reusing a persisted reference is safe: campaign authority derives one
+            # immutable one-slot grant id from it and never mints another slot for a later run.
+            $campaignHost = [string]$parsedArgs.Host
+            $campaignModel = [string]$parsedArgs.Model
+            $campaignGrantAuthorizationRef = [string]$parsedArgs.AuthorizationRef
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) {
+                $configuredReviewer = Resolve-ContinuousCoReviewConfiguredReviewerCandidate -RepoRoot $resolvedProjectPath `
+                    -ReviewerConfigPath ([string]$parsedArgs.ReviewerConfigPath) -RequestedHost $campaignHost `
+                    -RequestedModel $campaignModel -CodeWriterHost ([string]$parsedArgs.CodeWriterHost)
+                if ($null -ne $configuredReviewer) {
+                    if ([string]::IsNullOrWhiteSpace($campaignHost)) { $campaignHost = [string]$configuredReviewer.host }
+                    if ([string]::IsNullOrWhiteSpace($campaignModel)) { $campaignModel = [string]$configuredReviewer.model }
+                    $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
+                }
+            }
+            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 600 }
+            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
+            $progressSink = $null
+            if (-not $Json -and -not $Quiet) {
+                $formatProgressCommand = Get-Command -Name 'Format-ReviewProgressEvent' -CommandType Function
+                $progressSink = {
+                    param($event)
+                    $color = if ([string]$event.stage -in @('duplicate-warning', 'failed')) { 'Yellow' } elseif ([string]$event.stage -ceq 'terminal') { 'Cyan' } else { 'DarkGray' }
+                    Write-Host (& $formatProgressCommand -Event $event) -ForegroundColor $color
+                }.GetNewClosure()
+            }
+            $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
+                -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
+                -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
+                -DesignContextRefs @($parsedArgs.DesignContextRefs) -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
+            if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
+            elseif ($Quiet) {
+                $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }
+                Write-Host ("review-run campaign={0} run_id={1} status={2} verdict={3} invoked={4} elapsed_ms={5} usage={6}" -f $campaignRun.campaign_id, $campaignRun.run_id, $campaignRun.status, $verdict, ([bool]$campaignRun.invoked).ToString().ToLowerInvariant(), $campaignRun.diagnostics.elapsed_ms, $campaignRun.diagnostics.usage.status)
+            }
+            else {
+                $border = ('=' * 60)
+                $color = if ($null -ne $campaignRun.result -and [bool]$campaignRun.result.can_approve_current) { 'Green' } else { 'Yellow' }
+                Write-Host $border -ForegroundColor $color
+                $campaignHeading = if (-not [bool]$campaignRun.invoked -and [string]$campaignRun.status -cne 'terminal') { 'SPECREW CO-REVIEW DID NOT RUN' } else { 'SPECREW CAMPAIGN REVIEW' }
+                Write-Host $campaignHeading -ForegroundColor $color
+                Write-Host $border -ForegroundColor $color
+                Write-Host ("Campaign: {0}" -f $campaignRun.campaign_id)
+                Write-Host ("Run: {0}  Status: {1}  Invoked: {2}" -f $campaignRun.run_id, $campaignRun.status, $campaignRun.invoked)
+                if ($null -ne $campaignRun.result) {
+                    Write-Host ("Verdict: {0}  Completion: {1}  Currentness: {2}  Can approve current: {3}" -f $campaignRun.result.verdict, $campaignRun.result.completion, $campaignRun.result.currentness, $campaignRun.result.can_approve_current)
+                    if (-not [string]::IsNullOrWhiteSpace([string]$campaignRun.result.failure_reason)) { Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow }
+                    foreach ($finding in @($campaignRun.result.findings)) { Write-Host ("  [{0}] {1}: {2}" -f $finding.severity, $finding.title, $finding.description) }
+                }
+                else { Write-Host ("Reason: {0}" -f $campaignRun.reason) -ForegroundColor Yellow }
+                if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) {
+                    Write-Host ("Resolved timeout: {0} seconds" -f $campaignRun.resolved_timeout_seconds)
+                }
+                $usage = $campaignRun.diagnostics.usage
+                Write-Host ("Observed elapsed: {0:n1}s  Heartbeats: {1}  Usage: {2}" -f ([long]$campaignRun.diagnostics.elapsed_ms / 1000), $campaignRun.diagnostics.heartbeat_count, $usage.status)
+                if ([string]$usage.status -ceq 'available') {
+                    Write-Host ("Usage detail: input={0} output={1} total={2} cost_usd={3}" -f $usage.input_tokens, $usage.output_tokens, $usage.total_tokens, $usage.cost_usd)
+                }
+                $authorityStoreText = if ($campaignRun.PSObject.Properties['store_root'] -and -not [string]::IsNullOrWhiteSpace([string]$campaignRun.store_root)) {
+                    [string]$campaignRun.store_root
+                }
+                else { 'unavailable (run ended before authority-store creation)' }
+                Write-Host ("Authority store: {0}" -f $authorityStoreText)
+            }
+            if ([string]$campaignRun.status -cne 'terminal') { exit 1 }
+            exit 0
+        }
+        catch { Write-Error $_.Exception.Message; exit 1 }
+    }
+
+    # Legacy diagnostic path retained only while the singular cutover seam says mode=legacy.
     $coReviewEngine = 'worktree'
 
     if ($coReviewEngine -eq 'worktree') {
         try {
             . (Join-Path $PSScriptRoot 'internal/continuous-co-review/co-review-service.ps1')
-            # Budget resolution (D-197-I010-006 drift fix): explicit --timeout-seconds wins; otherwise the SAME
-            # config-aware default as the auto path (co_review_timeout_seconds, 300s baseline - the iteration-002
-            # lesson "a 120s budget cut a real review mid-flight" was fixed on the navigator but this door kept a
-            # hardcoded 120 for two months; first exercised by a downstream project 2026-07-09 and it starved an
-            # agentic reviewer verbatim). Per-host budget floors are the Proposal 102 catalog follow-up.
-            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds }
-            elseif (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -Default 300) }
-            else { 300 }
+            # Budget resolution (F-198 FR-021/FR-022, supersedes the D-197-I010-006 flat default):
+            # explicit --timeout-seconds wins (explicit-beats-config) -> project config -> catalog
+            # per-host default -> the 600-second floor. When an explicit value UNDERCUTS what the
+            # chain would resolve, warn AT RESOLUTION TIME so the operator sees the downgrade
+            # before losing a review cycle to it.
+            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName ([string]$parsedArgs.Host)) } else { 600 }
+            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
+            if ([int]$parsedArgs.TimeoutSeconds -gt 0 -and [int]$parsedArgs.TimeoutSeconds -lt $resolvedBudget) {
+                Write-Host ("[co-review] NOTE: your explicit budget ({0}s) is below the resolved budget for this setup ({1}s). Reviews here typically need the larger budget - a too-small one can end the review before it produces anything. If it gets cut short, ask me and I'll request your approval to re-run with the larger budget." -f [int]$parsedArgs.TimeoutSeconds, $resolvedBudget) -ForegroundColor Yellow
+            }
             # T093/FR-035: an explicit `--host X --live` is a reviewer-host REQUEST for this run -
             # honoured (even same-host, labelled) or surfaced, never silently substituted.
             $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.RunId) -BaselineRef ([string]$parsedArgs.BaselineRef) -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -RequestedHost ([string]$parsedArgs.Host) -TimeoutSeconds $tos
@@ -742,6 +892,13 @@ if ($Live) {
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
                         Write-Host '    specrew review --host <claude|codex|...> --authorization-ref <ref>'
+                    }
+                    elseif ($reason -match 'timeout|budget') {
+                        # F-198 FR-022 teaching (consumer-legible, amended approval UX): the sanctioned
+                        # next step is a bigger budget approved by the human - the assistant asks, the
+                        # human approves, the assistant re-runs. Never runtime-state surgery.
+                        Write-Host ("Inspect: {0}" -f $run.run_dir)
+                        Write-Host ("This looks like a review budget kill ({0}s was not enough). Ask your assistant to request your approval for a longer budget and re-run - or raise co_review_timeout_seconds in .specrew/config.yml yourself. A plain re-run with the same budget will likely die the same way." -f $tos) -ForegroundColor Yellow
                     }
                     else { Write-Host ("Inspect: {0}" -f $run.run_dir) }
                     Write-Host 'Do NOT substitute another review for this - the co-review must run to produce gate evidence.' -ForegroundColor Yellow

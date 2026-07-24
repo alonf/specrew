@@ -321,23 +321,30 @@ function Resolve-SpecrewBoundaryAuthCommitHash {
         [string]$AuthCommitHash
     )
 
-    if (-not [string]::IsNullOrWhiteSpace($AuthCommitHash) -and $AuthCommitHash -ne 'HEAD') {
-        return $AuthCommitHash.Trim()
-    }
-
     $resolvedHead = @(& git -C $ProjectRoot rev-parse --verify HEAD 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $resolvedHead.Count -gt 0) {
-        $candidateHead = $resolvedHead[0].ToString().Trim()
-        if ($candidateHead -match '^[0-9a-f]{40}$') {
-            return $candidateHead
-        }
+    if ($LASTEXITCODE -ne 0 -or $resolvedHead.Count -eq 0) {
+        throw 'Failed to resolve the current HEAD commit hash.'
+    }
+    $candidateHead = $resolvedHead[0].ToString().Trim().ToLowerInvariant()
+    if ($candidateHead -notmatch '^[0-9a-f]{40}$') {
+        throw 'Failed to resolve the current HEAD commit hash.'
     }
 
-    if ($AuthCommitHash -eq 'HEAD') {
-        throw "Failed to resolve literal HEAD to a concrete commit hash."
+    if ([string]::IsNullOrWhiteSpace($AuthCommitHash) -or $AuthCommitHash -eq 'HEAD') {
+        return $candidateHead
     }
 
-    return $null
+    $requested = $AuthCommitHash.Trim()
+    $resolvedRequested = @(& git -C $ProjectRoot rev-parse --verify ("{0}^{{commit}}" -f $requested) 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $resolvedRequested.Count -eq 0) {
+        throw "Boundary commit hash '$requested' does not resolve to a commit in the project repository."
+    }
+    $candidateRequested = $resolvedRequested[0].ToString().Trim().ToLowerInvariant()
+    if ($candidateRequested -ne $candidateHead) {
+        throw "Boundary commit hash '$candidateRequested' is stale; the actual current boundary commit is HEAD '$candidateHead'. Commit the boundary artifacts first, then sync that exact commit."
+    }
+
+    return $candidateHead
 }
 
 function New-SpecrewSessionState {
@@ -565,6 +572,10 @@ function Sync-SpecrewPendingVerdictStopArtifact {
         Boundary          = $null
         ApprovalPhrase    = $null
         Marker            = $null
+        CrossingId        = $null
+        BoundaryCommitHash = $null
+        ArtifactStateKind = $null
+        ArtifactStateId   = $null
     }
 
     if ($null -eq $pendingState -or -not [bool]$pendingState.HasPendingVerdict) {
@@ -588,9 +599,18 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
     $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pendingState.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pendingState.LastAuthorizedBoundary }
     $featureRef = if ([string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) { '(none)' } else { [string]$SessionState.feature_ref }
-    $authCommit = if ([string]::IsNullOrWhiteSpace([string]$SessionState.auth_commit_hash)) { '(none)' } else { [string]$SessionState.auth_commit_hash }
+    $boundaryCommit = if ([string]::IsNullOrWhiteSpace([string]$pendingState.BoundaryCommitHash)) { '(none)' } else { [string]$pendingState.BoundaryCommitHash }
+    $crossingId = if ([string]::IsNullOrWhiteSpace([string]$pendingState.CrossingId)) { '(legacy-unscoped)' } else { [string]$pendingState.CrossingId }
+    $artifactStateKind = if ([string]::IsNullOrWhiteSpace([string]$pendingState.ArtifactStateKind)) { '(none)' } else { [string]$pendingState.ArtifactStateKind }
+    $artifactStateId = if ([string]::IsNullOrWhiteSpace([string]$pendingState.ArtifactStateId)) { '(none)' } else { [string]$pendingState.ArtifactStateId }
     $workingBoundary = if ([string]::IsNullOrWhiteSpace([string]$pendingState.WorkingBoundary)) { [string]$SessionState.boundary_type } else { [string]$pendingState.WorkingBoundary }
-    $recordedAt = if ([string]::IsNullOrWhiteSpace([string]$SessionState.recorded_at)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { [string]$SessionState.recorded_at }
+    $recordedAt = if ([string]::IsNullOrWhiteSpace([string]$SessionState.recorded_at)) {
+        (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    else {
+        try { ([datetimeoffset]$SessionState.recorded_at).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
+        catch { ([string]$SessionState.recorded_at).Trim() }
+    }
 
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('# Specrew Pending Verdict Stop') | Out-Null
@@ -599,15 +619,17 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $lines.Add('') | Out-Null
     $lines.Add(('Boundary to ask for: {0}' -f $boundary)) | Out-Null
     $lines.Add(('Human approval phrase: {0}' -f $approvalPhrase)) | Out-Null
-    $lines.Add('Approval option 1: {0}' -f $approvalPhrase) | Out-Null
-    $lines.Add('Concise approval aliases: 1, option 1') | Out-Null
+    $lines.Add('Approval choice: {0}' -f $approvalPhrase) | Out-Null
+    $lines.Add('Numeric labels are non-authoritative; reply with the full human approval phrase.') | Out-Null
     $lines.Add('Marker last line exactly:') | Out-Null
     $lines.Add($marker) | Out-Null
     $lines.Add('') | Out-Null
     $lines.Add(('Working boundary: {0}' -f $workingBoundary)) | Out-Null
     $lines.Add(('Last authorized boundary: {0}' -f $lastAuthorized)) | Out-Null
     $lines.Add(('Feature: {0}' -f $featureRef)) | Out-Null
-    $lines.Add(('Auth commit hash: {0}' -f $authCommit)) | Out-Null
+    $lines.Add(('Crossing ID: {0}' -f $crossingId)) | Out-Null
+    $lines.Add(('Boundary commit hash: {0}' -f $boundaryCommit)) | Out-Null
+    $lines.Add(('Artifact state: {0} {1}' -f $artifactStateKind, $artifactStateId)) | Out-Null
     $lines.Add(('Multi-boundary gap: {0}' -f ([bool]$pendingState.IsMultiBoundaryGap).ToString().ToLowerInvariant())) | Out-Null
     $lines.Add(('Recorded at: {0}' -f $recordedAt)) | Out-Null
     $lines.Add('') | Out-Null
@@ -619,6 +641,10 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $result.Boundary = $boundary
     $result.ApprovalPhrase = $approvalPhrase
     $result.Marker = $marker
+    $result.CrossingId = $pendingState.CrossingId
+    $result.BoundaryCommitHash = $pendingState.BoundaryCommitHash
+    $result.ArtifactStateKind = $pendingState.ArtifactStateKind
+    $result.ArtifactStateId = $pendingState.ArtifactStateId
     return $result
 }
 
@@ -1500,6 +1526,14 @@ function Invoke-SpecrewBoundaryStateSync {
             -IterationNumber $effectiveIterationNumber | Out-Null
     }
 
+    # F-198 FR-002: the boundary ratchet. The first unapproved crossing still records (F-174 -
+    # no human was present to ask on a non-stopping host), but a SECOND advance while an earlier
+    # human-judgment crossing is unapproved refuses loudly here - deterministic, host-neutral,
+    # no hook dependency. Re-syncing the SAME boundary stays allowed (idempotent re-record).
+    Invoke-SpecrewBoundaryRatchetGate `
+        -ProjectRoot $paths.ProjectRoot `
+        -RequestedBoundary $BoundaryType | Out-Null
+
     Invoke-SpecrewIterationStateTruthGate `
         -ProjectRoot $paths.ProjectRoot `
         -BoundaryType $BoundaryType `
@@ -1615,6 +1649,12 @@ function Invoke-SpecrewBoundaryStateSync {
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
     $pendingVerdictStop = $null
     try {
+        Set-SpecrewPendingBoundaryCrossingScope `
+            -ProjectRoot $paths.ProjectRoot `
+            -WorkingBoundary $BoundaryType `
+            -BoundaryCommitHash $effectiveAuthCommitHash `
+            -RecordedAt $sessionState.recorded_at `
+            -OpenNextCrossingWhenBoundaryAuthorized | Out-Null
         $pendingVerdictStop = Sync-SpecrewPendingVerdictStopArtifact -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
     }
     catch {
@@ -1625,6 +1665,10 @@ function Invoke-SpecrewBoundaryStateSync {
             Boundary          = $null
             ApprovalPhrase    = $null
             Marker            = $null
+            CrossingId        = $null
+            BoundaryCommitHash = $null
+            ArtifactStateKind = $null
+            ArtifactStateId   = $null
         }
     }
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
@@ -1752,5 +1796,9 @@ function Invoke-SpecrewBoundaryStateSync {
         pending_verdict_boundary = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.Boundary } else { $null }
         pending_verdict_approval_phrase = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.ApprovalPhrase } else { $null }
         pending_verdict_marker = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.Marker } else { $null }
+        pending_verdict_crossing_id = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.CrossingId } else { $null }
+        pending_verdict_boundary_commit_hash = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.BoundaryCommitHash } else { $null }
+        pending_verdict_artifact_state_kind = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.ArtifactStateKind } else { $null }
+        pending_verdict_artifact_state_id = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.ArtifactStateId } else { $null }
     }
 }

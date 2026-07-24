@@ -1,0 +1,177 @@
+{
+  "schema": "v1",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "co_design": true,
+  "selected": [
+    "architecture-core",
+    "security-compliance",
+    "data-storage",
+    "integration-api",
+    "observability-resilience",
+    "component-design",
+    "requirements-nfr",
+    "code-implementation"
+  ],
+  "skipped": {
+    "product-domain": "The users, problem, MVP, and release purpose are unchanged by the Iteration 005 architectural reassessment.",
+    "ui-ux": "The blocking findings do not introduce a user-interface architecture decision.",
+    "devops-operations": "Deployment and release topology are unchanged unless a technical lens uncovers a new operational boundary."
+  },
+  "reason": "Iteration 005 exhausted its authorized review rounds and the final round returned eight blocking findings clustered around fail-open authority, inconsistent atomic mutation, missing consumer-side schema enforcement, probe-claim completeness, and injected-clock provenance. The maintainer confirmed this focused reassessment agenda before any lens decision was recorded.",
+  "reassessment_agenda": {
+    "architecture-core": {
+      "depth": "full",
+      "decision": "Choose the authority and lease decomposition, define fail-closed authority proof, and establish one atomic-mutation primitive."
+    },
+    "security-compliance": {
+      "depth": "full",
+      "decision": "Define trust boundaries and behavior when a supervisor, navigator, or consumer cannot prove authority or evidence validity."
+    },
+    "data-storage": {
+      "depth": "medium",
+      "decision": "Design lease ownership, generations and tokens, compare-and-swap semantics, crash recovery, and durable evidence identity."
+    },
+    "integration-api": {
+      "depth": "medium",
+      "decision": "Define contracts among supervisor, registry, navigator, and FindingsResult consumer, including validation and run-ID binding."
+    },
+    "observability-resilience": {
+      "depth": "medium",
+      "decision": "Model failure states, recovery, diagnostic evidence, and per-command time provenance without promoting uncertainty."
+    },
+    "component-design": {
+      "depth": "full",
+      "decision": "Co-build the complete component and responsibility map and walk acquisition, mutation, handoff, release, and promotion flows."
+    },
+    "requirements-nfr": {
+      "depth": "light",
+      "decision": "Turn fail-closed behavior, atomicity, directly observed timestamps, and verified probe claims into measurable invariants."
+    },
+    "code-implementation": {
+      "depth": "light",
+      "decision": "Identify only the implementation-rule changes forced by the revised architecture and retain the existing baseline otherwise."
+    }
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Reconstruct the simple controlled external review requirements before choosing mechanisms.",
+        "Choose the architectural center and decomposition method.",
+        "Separate active execution concurrency from durable result applicability.",
+        "Assign state-transition and re-review allowance ownership.",
+        "Set binding constraints, exclusions, the proving slice, and the Beta3 adapter roadmap."
+      ],
+      "decision": "Human confirmed ReviewCampaign above one-invocation ReviewRuns; a pure ReviewRun state-machine core with ports/adapters; immutable reviewed snapshots; authoritative machine results plus human Markdown; active leases limited to execution and terminal publication; durable terminal run records governing later validation; ReviewCampaignRepository and ReviewRunRepository as the sole revision-checked mutation authorities; human-only allowance grants with atomic reservation/spend accounting; current Beta2 proving code review plus a thin non-code target fixture; production gate/generic artifact support and prioritized lifecycle profiles split into two Beta3 iterations; and the rendered binding constraints and exclusions including at-most-one authoritative result rather than unprovable exactly-once external execution.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/architecture-core.md - confirmed campaign/run decomposition, ports-and-adapters map, authority separation, repository-only mutation flow, allowance model, and phased delivery"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Choose the reviewer threat model and the appropriate isolation depth.",
+        "Define origin integrity, containment, and snapshot-movement semantics.",
+        "Balance environment/secret minimization with stable harness execution.",
+        "Define strict result ingress and the minimal durable audit."
+      ],
+      "decision": "Human confirmed a trusted-but-fallible reviewer model with stability prioritized over aggressive isolation; external disposable workspaces and OS lifecycle containment without a hardened sandbox; pre/post HEAD plus canonical reviewed-state digest for exact currentness; observed reviewer execution under origin as containment violation; `snapshot-moved` results preserved with original severities and per-finding relevance hints but unable to approve the current snapshot; explicit conformance-backed harness environment profiles with required existing authentication/config accepted; strict bounded machine-result schema and identity validation with Markdown non-authoritative; and minimal campaign/run audit excluding credentials, raw environments, prompts, and raw output by default.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/security-compliance.md - trust-boundary map, currentness/relevance flow, stable environment boundary, and result-ingress validation"
+    },
+    "data-storage": {
+      "agenda": [
+        "Choose the smallest durable storage mechanism and record identity scheme.",
+        "Remove unnecessary shared-file locking through unique immutable run facts.",
+        "Define run-owned claim generations and simple atomic allowance accounting.",
+        "Reconcile interrupted workflows while preserving useful partial reviewer findings.",
+        "Set schema evolution and retention rules without introducing a migration or pruning subsystem."
+      ],
+      "decision": "Human confirmed dependency-free JSON; unique immutable run and lifecycle fact files; run-owned claim generations acquired by atomic CreateNew; immutable grants, reservations, invocation spend, and pre-invocation release facts; no generic lock, revision/CAS, database, or event-store framework; deterministic reconciliation of incomplete fact sequences; validated partial findings retained as advisory evidence while a separate complete rerun remains mandatory and consumes another authorized slot; finding lineage across partial and complete results; fixed fact schema versions with fail-closed invalid authority; separate treatment of legacy state; and conservative durable-fact retention with prompt disposable-workspace cleanup and no Beta2 automatic pruning subsystem.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/data-storage.md - JSON layout, claim-generation journal, allowance facts, and interruption-recovery flow"
+    },
+    "integration-api": {
+      "agenda": [
+        "Choose the integration style and authoritative publication boundary.",
+        "Define the common invocation and machine-result contracts.",
+        "Separate reviewer findings from controller-owned runtime classification and cross-run lineage.",
+        "Set synchronous execution, prompt delivery, authentication, retry, and contract-version behavior.",
+        "Define implementation and real-runtime proof completeness across every supported harness."
+      ],
+      "decision": "Human confirmed a local synchronous CLI/process/file integration; candidate-only reviewer writes followed by controller validation and authoritative publication; one versioned ReviewInvocation and bounded ReviewerResult contract; controller-owned runtime outcomes and cross-run finding lineage; harness-native stable prompt delivery and existing conformance-backed authentication; no hidden retries, network API, queue, daemon, streaming, or background scheduler; visible new-run retries consuming authorized allowance; fail-closed schema and identity compatibility; and complete real adapters plus a bounded live review smoke and shared deterministic failure fixture suite for Claude, Codex, Copilot, Cursor Agent, and Antigravity, with overall completeness remaining unproven if any claimed harness cannot pass its real smoke.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/integration-api.md - local invocation sequence, authoritative publication boundary, common contracts, and five-harness proof matrix"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "Choose the minimum useful progress and durable diagnostic signals.",
+        "Separate informational liveness from evidence required for authoritative results.",
+        "Define timeout termination and explicit result-publication ordering.",
+        "Set health, timing-provenance, failure, retry, and safe-logging behavior.",
+        "Make validated findings available as provenance-preserving retrospective evidence."
+      ],
+      "decision": "Human confirmed durable bounded facts rather than a telemetry subsystem; immediate stages plus periodic elapsed-time, liveness, and output-activity updates; semantic finding counts only from valid structured checkpoints; informational progress separated from authority-bearing evidence; directly observed production timing provenance; actionable preflight, status, and failure categories; no hidden retries or secret/raw-environment logging; timeout handling that kills and verifies the process tree before publishing a controller-generated incomplete result and Markdown report with the failure reason and any valid partial findings; one terminal result for every invoked run; and complete or partial validated findings deduplicated by lineage and exposed with full provenance as sources for retrospective problem descriptions.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/observability-resilience.md - request/failure trace, signal authority split, timeout publication sequence, and retrospective evidence flow"
+    },
+    "component-design": {
+      "agenda": [
+        "Retain or revise the state-machine and ports/adapters decomposition method.",
+        "Name every logical component and assign one clear responsibility.",
+        "Confirm inward dependency direction and infrastructure extension seams.",
+        "Review repository, target, harness, runtime, timing, and retrospective consumer ownership.",
+        "Walk successful-review and timeout/rerun flows through the full map."
+      ],
+      "decision": "Human reviewed and accepted the full rendered state-machine plus ports/adapters map as logical responsibility boundaries rather than mandatory files/classes: ReviewCommand and RetroEvidenceReader; ReviewCampaignCoordinator, ReviewRunCoordinator, and ResultIngestor; ReviewCampaignPolicy, ReviewRunStateMachine, ResultAcceptancePolicy, and FindingLineagePolicy; campaign, run, claim, target, harness, runtime, and clock ports; one JSON store, Git worktree target, single host catalog, five real harness adapters, Windows Job Object, Linux cgroup, and macOS process-group runtimes, SystemClock; and non-code-target plus executable test fixtures. The human accepted the rendered successful-review and timeout/rerun flows, then confirmed the macOS runtime addition when the requirements pass exposed declared-platform drift.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/component-design.md - complete layered component map, named responsibilities, three-OS runtime adapters, dependency directions, and agreed successful/timeout flows"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Prioritize the qualities that drive this slice and separate non-driving scale concerns.",
+        "Turn authority, origin, allowance, runtime, harness, platform, recovery, and secret-safety needs into measurable P0 invariants.",
+        "Define P1 diagnostic, retrospective, workshop-UX, performance, and cost behavior.",
+        "Choose an economical five-harness and three-operating-system proof strategy.",
+        "Set timeout grace, phase timing, prompt, hashing, heartbeat, re-review, and usage optimization requirements."
+      ],
+      "decision": "Human confirmed P0 stability, correctness, authority integrity, origin safety, allowance correctness, complete-tree runtime control, five-harness completeness, Windows/macOS/Linux runtime completeness, recoverability, and secret minimization; P1 diagnostic usefulness, retrospective traceability, workshop-native intermediate-stop UX, and explicit performance/cost optimization; no scale, availability, database, daemon, or telemetry-infrastructure driver; a configurable 10-second default termination grace; one bounded live smoke per harness distributed across the three operating systems plus every adapter/runtime fixture on the three-OS CI matrix; a macOS process-group runtime responsibility; and measured optimizations including preflight-before-spend, shared-object worktrees, bounded prompts, delta-assisted full-snapshot re-review, duplicate warnings, low-cost heartbeats, minimal hashing, fixture-first failure proof, phase timing, and safe optional token/usage metrics.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/requirements-nfr.md - quality-priority profile, measurable P0/P1 requirements, performance/cost constraints, and five-harness/three-OS proof strategy"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Confirm the source of coding conventions and resolved implementation stack.",
+        "Retain the baseline craft defaults and identify only rearchitecture-forced changes.",
+        "Resolve immutable write, concurrency, adapter, validation, timeout, retry, recovery, test, performance, and retrospective coding decisions.",
+        "Confirm the no-new-dependency stance and macOS conformance fallback rule.",
+        "List installed reviewer hosts, select an implementation reviewer, and record human-provenance authorization."
+      ],
+      "decision": "Human confirmed the existing Specrew repository and feature manifest as the sole rules source; retained the powershell-markdown-yaml-json stack and baseline craft/custom rules; accepted repository-only atomic CreateNew immutable facts, claim generations without generic locks/CAS/database/event sourcing, pure state policy, explicit target/harness/runtime/store/clock adapters, catalog-only host data, strict result ingress, post-termination timeout publication, structured errors, visible authorized reruns, idempotent recovery, JSON-based retrospective consumption, and the grouped three-OS/fixture/live-harness test posture; enabled evidence-driven P1 performance with the confirmed optimizations; retained use-existing-no-new-dependency with a mandatory reopen if macOS proof requires a package; selected Claude from the canonical installed-host output as the independent reviewer while Codex is code-writer; and successfully authorized it with workshop-198-beta2-hardening without pinning model or effort.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/005/workshop/code-implementation.md - code-rule source flow, grouped retained/revised decisions, dependency stance, and authorized reviewer selection"
+    }
+  }
+}

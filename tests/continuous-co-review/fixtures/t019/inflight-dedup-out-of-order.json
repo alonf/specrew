@@ -1,0 +1,60 @@
+{
+  "fixture_schema_version": "1.2",
+  "scenario": "FR-017 lineage + concurrency: (dedup) <=1 in-flight review per lineage; (out-of-order) an obsolete completion whose digest != current is superseded; (final-corr 1) same-digest authority is an atomically-acquired LINEAGE LEASE / generation — ONLY the lease owner is authoritative, a conflicting non-owner/stale-generation result FAILS CLOSED, and a clean result never erases blocking findings by timestamp; (final-corr 3) the lineage id CANONICALIZES its inputs (resolved anchor commit id + canonical target) so aliases resolving to the same commit are equivalent; (corr 1) the auto-fire baseline is the last-ACCEPTED reviewed TREE.",
+  "requirement_refs": ["FR-016", "FR-017", "FR-045"],
+  "note": "Lineage is keyed by the STABLE resolved anchor commit + target. The lease replaces the earlier max-run-id tie-break so a later clean run cannot erase an earlier blocking run by timestamp. Contract predicates under test are PURE.",
+
+  "lineage_id_canonicalization": {
+    "note": "Get-ContinuousCoReviewLineageId takes the RESOLVED anchor commit id (caller does git rev-parse; never HEAD/branch) + canonical target. Aliases that resolve to the SAME commit id (any case/whitespace) yield the SAME id; a different target yields a different id.",
+    "anchor_commit_id": "029fd862ab12cd34ef56ab78cd90ef12ab34cd56",
+    "anchor_commit_id_alias_upper_padded": "  029FD862AB12CD34EF56AB78CD90EF12AB34CD56  ",
+    "target_identity": "198-beta2-hardening",
+    "different_target_identity": "199-other-feature"
+  },
+
+  "auto_fire_baseline": {
+    "note": "the next auto-fire diffs advance from the LAST ACCEPTED reviewed TREE (a tree-id); git ancestry uses commit refs separately.",
+    "accepted_runs": [
+      { "run_id": "20260713T080000000-acc1", "reviewed_tree_id": "tree-older", "reviewed_ref": "commitA" },
+      { "run_id": "20260713T083000000-acc2", "reviewed_tree_id": "tree-newer", "reviewed_ref": "commitB" }
+    ],
+    "expected_baseline_tree_id": "tree-newer",
+    "expected_from_run_id": "20260713T083000000-acc2"
+  },
+
+  "lineage_id": "lineage-029fd862",
+  "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+  "in_flight_registry": [
+    { "run_id": "20260713T090000000-run1aaaa", "lineage_id": "lineage-029fd862", "reviewed_digest_tree_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1", "started_at": "2026-07-13T09:00:00Z", "status": "running" }
+  ],
+
+  "cases": [
+    { "name": "dedup-second-fire-does-not-launch", "new_fire_lineage_id": "lineage-029fd862", "expected_launch": false, "expected_action": "wait-poll-existing",
+      "why": "run1 is already in flight for this lineage; wait/poll it, never a duplicate." },
+    { "name": "different-lineage-fire-may-launch", "new_fire_lineage_id": "lineage-otherbaseline", "expected_launch": true, "expected_action": "launch",
+      "why": "no in-flight review exists for a DIFFERENT lineage." },
+    { "name": "out-of-order-older-completion-superseded", "completing_digest": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1", "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2", "expected_authoritative": false, "expected_classification": "superseded",
+      "why": "an older-digest completion never matches the current tree; superseded." },
+    { "name": "current-digest-completion-not-stale", "completing_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2", "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2", "expected_authoritative": true, "expected_classification": "current",
+      "why": "digest matches the current tree (a necessary condition; authority is then decided by the LEASE, below)." }
+  ],
+
+  "same_digest_lease": {
+    "note": "TWO terminal runs complete for the SAME current digest (a genuine race). The LEASE was acquired before launch; only its owner is authoritative. A non-owner or stale-generation completion FAILS CLOSED. A clean result never erases the blocking findings already recorded.",
+    "lease": { "lineage_id": "lineage-029fd862", "generation": 7, "authoritative_run_id": "20260713T090100000-ownerA" },
+    "authority_cases": [
+      { "name": "owner-same-generation-authoritative", "completing_run_id": "20260713T090100000-ownerA", "completing_generation": 7, "expected_authoritative": true, "expected_disposition": "authoritative",
+        "why": "the completing run IS the lease owner for the current generation." },
+      { "name": "non-owner-fails-closed", "completing_run_id": "20260713T090230000-concurB", "completing_generation": 7, "expected_authoritative": false, "expected_disposition": "conflicting-fail-closed",
+        "why": "a DIFFERENT run at the same digest is not the lease owner; it never becomes authoritative by timestamp — fail closed, reconcile explicitly." },
+      { "name": "stale-generation-fails-closed", "completing_run_id": "20260713T090100000-ownerA", "completing_generation": 6, "expected_authoritative": false, "expected_disposition": "conflicting-fail-closed",
+        "why": "even the owner run fails closed if it carries a stale generation (a superseded lease)." }
+    ],
+    "blocking_preservation_cases": [
+      { "name": "clean-does-not-erase-existing-blocking", "existing_blocking_count": 2, "incoming_outcome": "clean", "expected_blocking_preserved": true, "expected_erased": false,
+        "why": "a clean incoming result must NEVER erase the 2 existing blocking findings by timestamp; they persist until explicitly resolved." },
+      { "name": "no-existing-blocking-nothing-to-preserve", "existing_blocking_count": 0, "incoming_outcome": "clean", "expected_blocking_preserved": false, "expected_erased": false,
+        "why": "no blocking findings existed; nothing is erased either." }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "specrew-test-result.schema.json",
+  "title": "SpecrewTestResult",
+  "description": "The ONE optional, framework-NEUTRAL result contract a downstream verification command MAY emit DURING a Specrew recorded run (FR-015 amended 2026-07-13, T018) so its test counts gain evidence standing. Specrew validates and records this verbatim WITHOUT knowing the framework (Pester, pytest, Jest, Vitest, dotnet test, Maven, Gradle, Go, Rust, or custom). When a structured result is REQUESTED but is missing, malformed, stale, or schema-invalid, the recorded run FAILS LOUDLY and never degrades to a richer pass claim. Specrew NEVER parses human-readable console output to infer counts, and caller-supplied counts are forbidden.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "result"],
+  "properties": {
+    "schema_version": {
+      "description": "Contract version. Exactly '1.0' for this schema; a future shape bumps this.",
+      "const": "1.0"
+    },
+    "result": {
+      "description": "The framework-neutral overall outcome the downstream reports.",
+      "enum": ["passed", "failed", "errored", "skipped"]
+    },
+    "counts": {
+      "description": "OPTIONAL per-category counts. Absent means the downstream reported an outcome without a count breakdown; present counts are recorded verbatim. AUTHORITATIVE MAXIMUM (2026-07-14, review finding f1 run 20260714T193411985): each count is bounded by Int64.MaxValue (9223372036854775807) so a schema-valid count is always representable and serializable verbatim by the recorder - a count beyond it is a contract violation, not a recordable value.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "passed": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+        "failed": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+        "skipped": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 }
+      }
+    }
+  }
+}

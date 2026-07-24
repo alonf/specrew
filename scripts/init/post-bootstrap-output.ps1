@@ -16,6 +16,147 @@
 
 Set-StrictMode -Version Latest
 
+function Write-SpecrewBootstrapBaselineRecord {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('automatic', 'offered', 'declined')]
+        [string]$Decision
+    )
+
+    $specrewRoot = Join-Path $ProjectPath '.specrew'
+    if (-not (Test-Path -LiteralPath $specrewRoot -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $specrewRoot -Force
+    }
+
+    $recordPath = Join-Path $specrewRoot 'bootstrap-baseline.json'
+    $record = [ordered]@{
+        schema_version = '1.0'
+        mode = if ($Decision -eq 'automatic') { 'greenfield' } else { 'brownfield' }
+        decision = $Decision
+        commit_message = 'chore(specrew): bootstrap scaffold'
+        recorded_at = [DateTime]::UtcNow.ToString('o')
+    }
+    $json = $record | ConvertTo-Json -Depth 4
+    $temporaryPath = '{0}.{1}.tmp' -f $recordPath, [Guid]::NewGuid().ToString('N')
+    [System.IO.File]::WriteAllText($temporaryPath, ($json + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $temporaryPath -Destination $recordPath -Force
+    return $recordPath
+}
+
+function Invoke-SpecrewBootstrapBaseline {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectPath,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('greenfield', 'brownfield')]
+        [string]$BootstrapMode,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('offer', 'decline')]
+        [string]$BrownfieldDecision,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions,
+
+        [Parameter(Mandatory = $true)]
+        [switch]$PreviewOnly
+    )
+
+    $commitMessage = 'chore(specrew): bootstrap scaffold'
+    $recordPath = Join-Path $ProjectPath '.specrew\bootstrap-baseline.json'
+    $existingDecision = $null
+    if (Test-Path -LiteralPath $recordPath -PathType Leaf) {
+        try {
+            $existingRecord = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            $existingDecision = [string]$existingRecord.decision
+        }
+        catch {
+            throw "Bootstrap baseline record is malformed: '$recordPath'."
+        }
+    }
+
+    if ($existingDecision -eq 'automatic') {
+        Add-Action -Actions $Actions -Step 'bootstrap-commit' -Outcome 'preserved recorded greenfield bootstrap baseline'
+        return [pscustomobject]@{ Mode = 'greenfield'; Decision = 'automatic'; Commit = $null; RecordPath = $recordPath }
+    }
+
+    if ($BootstrapMode -eq 'brownfield') {
+        $decision = if ($existingDecision -eq 'declined' -and $BrownfieldDecision -eq 'offer') { 'declined' } elseif ($BrownfieldDecision -eq 'decline') { 'declined' } else { 'offered' }
+        if ($PreviewOnly) {
+            Add-Action -Actions $Actions -Step 'bootstrap-commit' -Outcome ("would record brownfield bootstrap-commit {0}; no commit would be created" -f $decision)
+            return [pscustomobject]@{ Mode = 'brownfield'; Decision = $decision; Commit = $null; RecordPath = $recordPath }
+        }
+
+        $recordPath = Write-SpecrewBootstrapBaselineRecord -ProjectPath $ProjectPath -Decision $decision
+        if ($decision -eq 'declined') {
+            Write-Host ("Brownfield bootstrap commit declined and recorded at {0}; no commit was created." -f $recordPath) -ForegroundColor Yellow
+        }
+        else {
+            Write-Host 'Brownfield repository detected; Specrew did not create a surprise commit.' -ForegroundColor Yellow
+            Write-Host ("Bootstrap commit offer recorded at {0}. Review 'git status', stage the scaffold you accept, then commit it as '{1}'. To record a decline, rerun init with --brownfield-bootstrap-commit decline." -f $recordPath, $commitMessage) -ForegroundColor Yellow
+        }
+        Add-Action -Actions $Actions -Step 'bootstrap-commit' -Outcome ("brownfield {0}; no commit created; record={1}" -f $decision, $recordPath)
+        return [pscustomobject]@{ Mode = 'brownfield'; Decision = $decision; Commit = $null; RecordPath = $recordPath }
+    }
+
+    if ($PreviewOnly) {
+        Add-Action -Actions $Actions -Step 'bootstrap-commit' -Outcome ("would create and announce greenfield commit '{0}'" -f $commitMessage)
+        return [pscustomobject]@{ Mode = 'greenfield'; Decision = 'automatic'; Commit = $null; RecordPath = $recordPath }
+    }
+
+    $insideWorkTree = @(& git -C $ProjectPath rev-parse --is-inside-work-tree 2>$null)
+    if ($LASTEXITCODE -ne 0 -or ($insideWorkTree -join '').Trim() -ne 'true') {
+        $null = & git -C $ProjectPath init --quiet 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Greenfield bootstrap completed, but Git repository initialization failed for '$ProjectPath'."
+        }
+    }
+
+    $createdRecord = $false
+    try {
+        $recordPath = Write-SpecrewBootstrapBaselineRecord -ProjectPath $ProjectPath -Decision 'automatic'
+        $createdRecord = $true
+        $addOutput = @(& git -C $ProjectPath add --all 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            throw ("Greenfield bootstrap staging failed: {0}" -f ($addOutput -join [Environment]::NewLine))
+        }
+
+        $configuredUserName = (@(& git -C $ProjectPath config --get user.name 2>$null) | Select-Object -First 1)
+        $configuredUserEmail = (@(& git -C $ProjectPath config --get user.email 2>$null) | Select-Object -First 1)
+        $identityArguments = @()
+        if ([string]::IsNullOrWhiteSpace($configuredUserName) -or [string]::IsNullOrWhiteSpace($configuredUserEmail)) {
+            # Keep the bootstrap reliable on brand-new machines and CI without mutating global or local Git config.
+            # A configured user identity always wins; this command-scoped identity is only the no-config fallback.
+            $identityArguments = @('-c', 'user.name=Specrew Bootstrap', '-c', 'user.email=specrew-bootstrap@example.invalid')
+        }
+        $commitOutput = @(& git -C $ProjectPath @identityArguments commit --quiet -m $commitMessage 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            throw ("Greenfield bootstrap commit failed: {0}" -f ($commitOutput -join [Environment]::NewLine))
+        }
+
+        $commit = (@(& git -C $ProjectPath rev-parse HEAD 2>&1) | Select-Object -First 1).Trim()
+        if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') {
+            throw 'Greenfield bootstrap commit was created, but its full Git identity could not be resolved.'
+        }
+
+        Write-Host ("Created bootstrap commit {0}: {1}" -f $commit, $commitMessage) -ForegroundColor Green
+        Add-Action -Actions $Actions -Step 'bootstrap-commit' -Outcome ("created and announced {0}: {1}" -f $commit, $commitMessage)
+        return [pscustomobject]@{ Mode = 'greenfield'; Decision = 'automatic'; Commit = $commit; RecordPath = $recordPath }
+    }
+    catch {
+        $null = & git -C $ProjectPath rm --cached -r --ignore-unmatch . 2>$null
+        if ($createdRecord -and (Test-Path -LiteralPath $recordPath -PathType Leaf)) {
+            Remove-Item -LiteralPath $recordPath -Force -ErrorAction SilentlyContinue
+        }
+        throw
+    }
+}
+
 function Write-PostBootstrapGuidance {
     param(
         [Parameter(Mandatory = $true)]

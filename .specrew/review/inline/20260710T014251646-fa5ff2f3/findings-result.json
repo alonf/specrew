@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260710T014251646-fa5ff2f3",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260710T014251646-fa5ff2f3",
+      "location": {
+        "path": "extensions/specrew-speckit/extension.yml",
+        "line_start": 108,
+        "line_end": 110
+      },
+      "severity": "blocking",
+      "kind": "pin-surface-drift",
+      "design_reference": "FR-038 / FR-039 / SC-012 / tasks.md T002-T003",
+      "comment": "The iteration claims all pin surfaces moved to Spec-Kit 0.12.9 and Squad 0.11.0, but extension.yml still advertises config.defaults.versions min_speckit 0.8.4 and min_squad 0.9.1. FR-038 explicitly includes extension.yml requires/min_speckit among the surfaces that must agree, and T003 claims validate/default Squad pin parity. Update these extension defaults (and any mirror/tests that assert them) or record a human-visible deferral; as-is the completed task/progress state is false and downstream consumers can still read the old floor.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f2",
+      "source_run_id": "20260710T014251646-fa5ff2f3",
+      "location": {
+        "path": "scripts/internal/lint-self-leak.ps1",
+        "line_start": 121,
+        "line_end": 128
+      },
+      "severity": "blocking",
+      "kind": "annotation-bypass",
+      "design_reference": "FR-037 / SC-011 / NFR-007 / data-storage lens",
+      "comment": "The annotation checker accepts the token anywhere on the hit line or previous line and only checks for non-empty trailing text. FR-037 requires file-kind comment syntax (HTML comment for .md, # comment for .ps1/.psd1/.yml). A targeted fixture with a bare Markdown prose line `specrew-self-ok: ...` above `FakeGallery` exits 0, so authors can bypass the self-leak firewall without the required auditable comment form and the paired tests do not cover this abuse path. Enforce the per-extension comment syntax before sanctioning hits and add red tests for wrong-form annotations.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f3",
+      "source_run_id": "20260710T014251646-fa5ff2f3",
+      "location": {
+        "path": "extensions/specrew-speckit/scripts/validate-versions.ps1",
+        "line_start": 38,
+        "line_end": 39
+      },
+      "severity": "blocking",
+      "kind": "pin-surface-drift",
+      "design_reference": "FR-039 / SC-012 / tasks.md T003",
+      "comment": "T003 requires the validate-versions defaults to move to Squad 0.11.0 alongside the Spec-Kit 0.12.9 pin, but the shipped validator still defaults MinimumSpecKitVersion to 0.8.4 and MinimumSquadVersion to 0.9.1. The corresponding validate-versions CLI behavior tests also still assert repair/install commands at @v0.8.4, so the recorded suite evidence is not proving the new single-tested-pin behavior for this deployed validator. Update the defaults and tests to the new pins or record an explicit human-visible deferral; as-is consumers can still be told that the retired toolchain floor is acceptable.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260710T014251646-fa5ff2f3",
+      "location": {
+        "path": "scripts/internal/lint-self-leak.ps1",
+        "line_start": 124,
+        "line_end": 128
+      },
+      "severity": "blocking",
+      "kind": "contract-conformance",
+      "design_reference": "specs/198-beta2-hardening/data-model.md SelfLeakDenyList annotation escape; FR-037",
+      "comment": "Test-SelfLeakAnnotated accepts any line containing specrew-self-ok: with non-empty text, regardless of file extension or comment syntax. The formal SelfLeakDenyList model requires HTML comments for .md and # line comments for .ps1/.psd1/.yml, but targeted fixtures with # specrew-self-ok in templates/bad.md and HTML-comment specrew-self-ok in templates/bad.ps1 both exited 0 and sanctioned PowerShell Gallery. Enforce file-kind-specific annotation syntax before treating a deny-list hit as annotated, and add abuse tests for wrong comment forms.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f2",
+      "source_run_id": "20260710T014251646-fa5ff2f3",
+      "location": {
+        "path": "extensions/specrew-speckit/extension.yml",
+        "line_start": 108,
+        "line_end": 110
+      },
+      "severity": "blocking",
+      "kind": "pin-surface-mismatch",
+      "design_reference": "specs/198-beta2-hardening/contracts/198-beta2-hardening.md Toolchain pin surface; FR-038/FR-039",
+      "comment": "The top-level extension requirement is bumped to >=0.12.9, but config.defaults.versions still advertises min_speckit 0.8.4 and min_squad 0.9.1. The formal toolchain pin contract requires extension.yml requires/min_speckit and the other pin surfaces to all agree on Spec-Kit 0.12.9 / Squad 0.11.0, so downstream consumers of this manifest can still see the retired minimums even though the shipped init path now depends on the 0.12 --integration surface.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f3",
+      "source_run_id": "20260710T014251646-fa5ff2f3",
+      "location": {
+        "path": "extensions/specrew-speckit/scripts/validate-versions.ps1",
+        "line_start": 38,
+        "line_end": 39
+      },
+      "severity": "blocking",
+      "kind": "pin-surface-mismatch",
+      "design_reference": "specs/198-beta2-hardening/contracts/198-beta2-hardening.md Toolchain pin surface; FR-038/FR-039",
+      "comment": "validate-versions.ps1 still defaults MinimumSpecKitVersion to 0.8.4 and MinimumSquadVersion to 0.9.1. The formal toolchain pin contract explicitly includes validate-versions defaults in the surfaces that must all agree on 0.12.9 / 0.11.0; running this validator directly without overrides will falsely accept the retired pre-0.10 Spec Kit line even though init now uses the 0.12 --integration contract.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-10T01:50:17Z"
+}

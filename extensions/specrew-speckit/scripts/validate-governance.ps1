@@ -1564,24 +1564,41 @@ function Test-BoundaryStateAdvanceVerdict {
     $humanVerdictBoundaries = @('before-implement', 'review-signoff', 'iteration-closeout', 'feature-closeout')
     if ($boundary -notin $humanVerdictBoundaries) { return }
 
-    $enforcement = $context.PSObject.Properties['boundary_enforcement']
-    $history = @()
-    if ($null -ne $enforcement -and $null -ne $enforcement.Value -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
-        $history = @($enforcement.Value.verdict_history)
+    # FR-003/FR-004: this check must NOT count bare to_boundary name matches across the
+    # ENTIRE unscoped history, or a PRIOR iteration cycle's same-named approval silences it.
+    # It consumes THE shared cycle-aware primitive (fail-closed on an unreadable ledger) so
+    # the validator and the sync ratchet cannot drift - sharing input fields is not
+    # consuming the primitive.
+    $unreconciledCrossing = $null
+    try {
+        $unreconciledCrossing = Get-SpecrewUnreconciledBoundary -ProjectRoot $ProjectRoot
     }
+    catch {
+        Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: {0}" -f $_.Exception.Message)
+        return
+    }
+    if ($null -eq $unreconciledCrossing) { return }
 
-    $authorized = @($history | Where-Object {
-            $null -ne $_ -and
-            $null -ne $_.PSObject.Properties['to_boundary'] -and
-            ([string]$_.PSObject.Properties['to_boundary'].Value -eq $boundary) -and
-            $null -ne $_.PSObject.Properties['authorizing_human'] -and
-            (-not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value))
-        })
+    $iterProp = $sessionState.Value.PSObject.Properties['iteration_number']
+    $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
+    Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching CURRENT-CYCLE boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
 
-    if ($authorized.Count -eq 0) {
-        $iterProp = $sessionState.Value.PSObject.Properties['iteration_number']
-        $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
-        Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
+    # FR-003 (hardening feature): the unauthorized working boundary is the NORMAL between-packet-and-reply
+    # state (WARN above). The FAIL discriminator - was a human-judgment step PASSED, not merely
+    # awaited? - is likewise derived from the shared primitives (run-2594b7b5 round-2 catch: a raw
+    # pending_next_boundary field read here was still a per-site copy). A multi-boundary gap, or an
+    # earliest pending ask that is not the working boundary itself, means the session moved past an
+    # unresolved approval; the work recorded under the skipped step has no human decision behind it.
+    try {
+        $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$unreconciledCrossing.LastAuthorized) -WorkingBoundary ([string]$unreconciledCrossing.Boundary)
+        $earliestAsk = [string]$pendingCrossing.PendingToBoundary
+        $workingCanonical = [string]$unreconciledCrossing.Boundary
+        if ([bool]$pendingCrossing.IsMultiBoundaryGap -or ((-not [string]::IsNullOrWhiteSpace($earliestAsk)) -and $earliestAsk -ne $workingCanonical)) {
+            Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: the session's working boundary is '{0}' but the unresolved approval ask is for '{1}' - a human-judgment step was passed without its verdict. Reconcile before closing anything: approve the waiting step when the assistant asks, or roll back to the last approved commit (the assistant asks for explicit confirmation first)." -f $workingCanonical, $earliestAsk)
+        }
+    }
+    catch {
+        Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: {0}" -f $_.Exception.Message)
     }
 }
 
@@ -1619,7 +1636,12 @@ function Test-ApprovedFeatureStatusVerdictEvidence {
     $hasVerdictHistoryEvidence = $false
     $enforcement = $context.PSObject.Properties['boundary_enforcement']
     if ($null -ne $enforcement -and $null -ne $enforcement.Value -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
-        $hasVerdictHistoryEvidence = @($enforcement.Value.verdict_history | Where-Object {
+        $effectiveVerdictHistory = @()
+        $enforcementRead = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+        if ($null -ne $enforcementRead.EffectiveState -and $enforcementRead.Issues.Count -eq 0) {
+            $effectiveVerdictHistory = @($enforcementRead.EffectiveState['verdict_history'])
+        }
+        $hasVerdictHistoryEvidence = @($effectiveVerdictHistory | Where-Object {
                 $null -ne $_ -and
                 $null -ne $_.PSObject.Properties['authorizing_human'] -and
                 -not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value) -and
@@ -4293,7 +4315,7 @@ Validates that declared task completion in state.md matches observed committed c
 in git diff. Blocks review boundary advancement when form-vs-meaning gap is detected.
 
 .PARAMETER IterationDirectory
-Path to iteration directory (e.g., C:\Dev\Specrew\specs\028-review-evidence-integrity).
+Path to iteration directory (e.g., C:\Projects\my-app\specs\001-user-auth).
 
 .PARAMETER Baseline
 Git baseline reference to compare against HEAD (e.g., 'main', commit SHA).

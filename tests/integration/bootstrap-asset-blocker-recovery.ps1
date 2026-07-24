@@ -148,7 +148,7 @@ exit /b 2
 :version
 echo GitHub Spec Kit - Spec-Driven Development Toolkit
 echo CLI Version    1.0.0
-echo Template Version    0.8.4
+echo Template Version    0.12.9
 exit /b 0
 :extension
 echo unexpected specify args: %*
@@ -173,7 +173,7 @@ exit /b 0
     New-CliShim -DirectoryPath $successShimPath -CommandName 'squad' -Content @'
 @echo off
 if /I "%~1"=="--version" (
-  echo 0.9.1
+  echo 0.11.0
   exit /b 0
 )
 if /I "%~1"=="init" (
@@ -193,11 +193,11 @@ exit /b 9
 
     $successChecks = @(
         @{
-            Pattern = '\[info\] Detected Spec Kit release-asset blocker during preflight; reinstalling official Spec Kit v0\.8\.4 from GitHub\.'
+            Pattern = '\[info\] Detected Spec Kit release-asset blocker during preflight; reinstalling official Spec Kit v0\.12\.9 from GitHub\.'
             Failure = 'Repair-success bootstrap did not report the automatic release-asset repair path.'
         },
         @{
-            Pattern = 'Spec Kit: reinstalled Spec Kit from official GitHub release v0\.8\.4'
+            Pattern = 'Spec Kit: reinstalled Spec Kit from official GitHub release v0\.12\.9'
             Failure = 'Repair-success bootstrap summary did not record the Spec Kit repair outcome.'
         },
         @{
@@ -219,7 +219,7 @@ exit /b 9
     }
 
     $uvLog = Get-Content -LiteralPath $uvLogPath -Raw -Encoding UTF8
-    if ($uvLog -notmatch 'tool install --force specify-cli --from git\+https://github\.com/github/spec-kit\.git@v0\.8\.4') {
+    if ($uvLog -notmatch 'tool install --force specify-cli --from git\+https://github\.com/github/spec-kit\.git@v0\.12\.9') {
         Write-Fail ("Repair-success bootstrap invoked the wrong uv repair command: {0}" -f $uvLog.Trim())
         exit 1
     }
@@ -248,7 +248,7 @@ exit /b 2
 :version
 echo GitHub Spec Kit - Spec-Driven Development Toolkit
 echo CLI Version    1.0.0
-echo Template Version    0.8.4
+echo Template Version    0.12.9
 exit /b 0
 :extension
 echo unexpected specify args: %*
@@ -268,7 +268,7 @@ exit /b 0
     New-CliShim -DirectoryPath $failureShimPath -CommandName 'squad' -Content @'
 @echo off
 if /I "%~1"=="--version" (
-  echo 0.9.1
+  echo 0.11.0
   exit /b 0
 )
 if /I "%~1"=="init" (

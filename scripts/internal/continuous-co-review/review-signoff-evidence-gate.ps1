@@ -194,12 +194,344 @@ function Get-ContinuousCoReviewChainReachesAnchor {
     return [pscustomobject]@{ reached = $false; gap_at = 'chain-too-long' }
 }
 
+function Test-ReviewCampaignFinalizationEnvelope {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)]$Result,
+        [Parameter(Mandatory)]$Fact,
+        [Parameter(Mandatory)][string]$CurrentDigest,
+        [AllowEmptyString()][string]$FeatureId,
+        [AllowEmptyString()][string]$IterationNumber,
+        [string[]]$ExcludedPathPatterns = @()
+    )
+    $fail = {
+        param([string]$Reason)
+        [pscustomobject][ordered]@{
+            valid = $false; reason = $Reason; run_id = $null; reviewed_digest = $null
+            reviewed_commit = $null; finalization_commit = $null; changed_paths = @()
+        }
+    }
+    if (-not (Test-ReviewCampaignScopeIdentity -FeatureId $FeatureId -IterationNumber $IterationNumber)) {
+        return & $fail 'scope-identity-invalid'
+    }
+    $factValidation = Test-ReviewAuthorityContractObject -ContractName ReviewFinalizationFact -InputObject $Fact -ExpectedCampaignId $CampaignId
+    if (-not $factValidation.valid) { return & $fail ('fact-' + $factValidation.category) }
+    $runId = [string]$Fact.run_id
+    $reviewedDigest = [string]$Fact.reviewed_digest
+    $finalizationCommit = [string]$Fact.finalization_commit
+    $resultValidation = Test-ReviewAuthorityContractObject -ContractName ReviewResult -InputObject $Result `
+        -ExpectedCampaignId $CampaignId -ExpectedRunId $runId -ExpectedTargetDigest $reviewedDigest
+    if (-not $resultValidation.valid) { return & $fail ('result-' + $resultValidation.category) }
+    if ([string]$Result.completion -cne 'complete' -or [string]$Result.verdict -cne 'pass' -or
+        [string]$Result.runtime_outcome -cne 'completed' -or -not [bool]$Result.termination_verified -or
+        [string]$Result.containment -cne 'verified' -or [string]$Result.currentness -cne 'current' -or
+        [string]$Result.validation -cne 'valid' -or -not [bool]$Result.can_approve_current) {
+        return & $fail 'result-not-clean-current-pass'
+    }
+
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $head = [string](@(& git -C $root rev-parse --verify 'HEAD^{commit}' 2>$null) | Select-Object -First 1)
+    if ($LASTEXITCODE -ne 0 -or $head.Trim() -cne $finalizationCommit) { return & $fail 'finalization-not-current-head' }
+    $parentLine = [string](@(& git -C $root rev-list --parents -n 1 $finalizationCommit 2>$null) | Select-Object -First 1)
+    if ($LASTEXITCODE -ne 0) { return & $fail 'finalization-commit-unresolvable' }
+    $parentParts = @($parentLine.Trim().Split(' ', [StringSplitOptions]::RemoveEmptyEntries))
+    if ($parentParts.Count -ne 2) { return & $fail 'finalization-parent-not-singular' }
+    $reviewedCommit = [string]$parentParts[1]
+    & git -C $root cat-file -e "$reviewedDigest^{tree}" 2>$null
+    if ($LASTEXITCODE -ne 0) { return & $fail 'reviewed-digest-unresolvable' }
+
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $worktreeReviewerPath = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $worktreeReviewerPath -PathType Leaf) {
+            try { . $worktreeReviewerPath } catch { $null = $_ }
+        }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewDigestRuntimeStripList' -ErrorAction SilentlyContinue) -or
+        -not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue) -or
+        -not (Get-Command -Name 'Test-ContinuousCoReviewDigestPathDenied' -ErrorAction SilentlyContinue)) {
+        return & $fail 'digest-policy-unavailable'
+    }
+    $stripPatterns = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($ExcludedPathPatterns)
+    try {
+        foreach ($machineryPath in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $root)) {
+            if ([string]::IsNullOrWhiteSpace([string]$machineryPath)) { continue }
+            $stripPatterns += [string]$machineryPath
+            $stripPatterns += ('{0}/**' -f [string]$machineryPath)
+        }
+    }
+    catch { return & $fail 'digest-policy-unavailable' }
+
+    foreach ($comparison in @(
+        @{ left = $reviewedDigest; right = $reviewedCommit; reason = 'reviewed-digest-not-parent-state' },
+        @{ left = $CurrentDigest; right = $finalizationCommit; reason = 'current-state-not-finalization-commit' }
+    )) {
+        $differences = @(& git -C $root -c core.quotepath=false diff --name-only --no-renames ([string]$comparison.left) ([string]$comparison.right) 2>$null)
+        if ($LASTEXITCODE -ne 0) { return & $fail ([string]$comparison.reason) }
+        foreach ($path in $differences) {
+            if (-not (Test-ContinuousCoReviewDigestPathDenied -Path ([string]$path).Replace('\', '/') -Denylist $stripPatterns)) {
+                return & $fail ([string]$comparison.reason)
+            }
+        }
+    }
+
+    $iterationRoot = "specs/$FeatureId/iterations/$IterationNumber"
+    $allowed = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($name in @('review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md')) {
+        $null = $allowed.Add("$iterationRoot/$name")
+    }
+    $changedPaths = [Collections.Generic.List[string]]::new()
+    $entries = @(& git -C $root -c core.quotepath=false diff-tree --no-commit-id --name-status --no-renames -r $reviewedCommit $finalizationCommit 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $entries.Count -eq 0) { return & $fail 'finalization-diff-empty-or-unresolvable' }
+    foreach ($entry in $entries) {
+        if ([string]$entry -cnotmatch '^(?<status>[AM])\t(?<path>.+)$') { return & $fail 'finalization-diff-status-denied' }
+        $path = [string]$Matches.path
+        if (-not $allowed.Contains($path)) { return & $fail ('finalization-path-denied:' + $path) }
+        $changedPaths.Add($path) | Out-Null
+    }
+    return [pscustomobject][ordered]@{
+        valid = $true; reason = 'valid'; run_id = $runId; reviewed_digest = $reviewedDigest
+        reviewed_commit = $reviewedCommit; finalization_commit = $finalizationCommit; changed_paths = @($changedPaths)
+    }
+}
+
+function New-ReviewCampaignVerdictPacketDecision {
+    param(
+        [Parameter(Mandatory)][string]$Route,
+        [Parameter(Mandatory)][string]$Reason,
+        [Parameter(Mandatory)][string]$Message,
+        [string]$CampaignId,
+        [string]$RunId,
+        [string]$TargetDigest,
+        [string]$ReviewedDigest,
+        [string]$ReviewedCommit,
+        [string]$FinalizationCommit,
+        [bool]$RenderBoundaryPacket = $false,
+        [bool]$AskNarrowQuestion = $false,
+        [string]$ImplementerAction = 'wait'
+    )
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'; route = $Route; reason = $Reason; message = $Message
+        campaign_id = $CampaignId; run_id = $RunId; target_digest = $TargetDigest
+        reviewed_digest = $ReviewedDigest; reviewed_commit = $ReviewedCommit; finalization_commit = $FinalizationCommit
+        render_boundary_packet = $RenderBoundaryPacket; render_verdict_marker = $RenderBoundaryPacket
+        ask_narrow_question = $AskNarrowQuestion; implementer_action = $ImplementerAction
+    }
+}
+
+function Resolve-ReviewCampaignVerdictPacketDecision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$CurrentDigest,
+        [AllowEmptyCollection()][string[]]$OrderedRunIds = @(),
+        [AllowEmptyCollection()][object[]]$Results = @(),
+        [AllowNull()]$ActiveRun,
+        [AllowEmptyCollection()][object[]]$HumanDispositions = @()
+    )
+    if (-not (Test-ReviewAuthorityIdentifier -Value $CampaignId -Kind campaign) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-or-digest-invalid' -Message 'Campaign identity or current digest is unavailable; no lifecycle verdict may be requested.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+    }
+    $byRun = @{}
+    foreach ($result in @($Results)) {
+        $validation = Test-ReviewAuthorityContractObject -ContractName ReviewResult -InputObject $result -ExpectedCampaignId $CampaignId
+        if (-not $validation.valid) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('campaign-result-invalid:' + $validation.category) -Message 'Campaign result authority is malformed or identity-mismatched; no lifecycle verdict may be requested.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $runId = [string]$result.run_id
+        if ($byRun.ContainsKey($runId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'duplicate-terminal-result-for-run' -Message 'Conflicting terminal results exist for one run; review authority fails closed.' -CampaignId $CampaignId -RunId $runId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $byRun[$runId] = $result
+    }
+    $ordered = [Collections.Generic.List[string]]::new()
+    foreach ($runId in @($OrderedRunIds)) {
+        if (-not (Test-ReviewAuthorityIdentifier -Value $runId -Kind run) -or $ordered.Contains($runId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-run-order-invalid' -Message 'Campaign run order is malformed or ambiguous; review authority fails closed.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $ordered.Add($runId) | Out-Null
+    }
+
+    if ($null -ne $ActiveRun) {
+        $activeValidation = Test-ReviewAuthorityContractObject -ContractName ReviewRun -InputObject $ActiveRun -ExpectedCampaignId $CampaignId
+        if (-not $activeValidation.valid) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'active-run-invalid' -Message 'The active campaign run is malformed; review authority fails closed.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $activeRunId = [string]$ActiveRun.run_id
+        if ($byRun.ContainsKey($activeRunId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'terminal-result-still-has-active-claim' -Message 'A terminal result exists while its run claim is still active; reconciliation must retire the claim before signoff.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'reconcile-run-claim'
+        }
+        if ([string]$ActiveRun.target_digest -ceq $CurrentDigest) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight' -Message 'The single campaign review for the current digest is still running; no human decision is required.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
+        }
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The active review targets an earlier digest and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
+    }
+
+    if ($ordered.Count -eq 0) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No claim-ordered campaign result can authorize the current digest.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
+    }
+
+    # A newer claimed invocation supersedes every older result, including an older clean result.
+    # Otherwise a final timed-out/partial review (for example T061's signoff harness) could silently
+    # fall back to an earlier pass. A claimed run without its terminal result is recovery work, not
+    # permission to select around the gap.
+    $latestRunId = $ordered[$ordered.Count - 1]
+    if (-not $byRun.ContainsKey($latestRunId)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'latest-claimed-run-missing-result' -Message 'The latest claimed campaign run has no terminal result; reconciliation must close the gap before signoff.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'reconcile-run-claim'
+    }
+    $latest = $byRun[$latestRunId]
+    if ([string]$latest.target_digest -cne $CurrentDigest -or [string]$latest.currentness -ceq 'snapshot-moved') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
+    }
+    if ([string]$latest.runtime_outcome -ceq 'timed-out') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-timeout' -Reason 'latest-review-timed-out' -Message ('The review timed out: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+    }
+    if ([string]$latest.completion -cne 'complete') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-partial' -Reason 'latest-review-incomplete' -Message 'Validated partial findings remain advisory, but a complete separately authorized run is required.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'use-partial-findings-and-request-rerun-grant'
+    }
+    if ([string]$latest.validation -cne 'valid' -or [string]$latest.currentness -cne 'current') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+    }
+    if ([bool]$latest.can_approve_current -and [string]$latest.verdict -ceq 'pass') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'The authoritative campaign result is a complete valid pass for the exact current digest.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+    }
+    if ([string]$latest.verdict -ceq 'findings') {
+        $matchingDispositions = @($HumanDispositions | Where-Object {
+            $v = Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ -ExpectedCampaignId $CampaignId -ExpectedRunId $latestRunId -ExpectedTargetDigest $CurrentDigest
+            $v.valid
+        })
+        $requiresCorrection = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'require-correction' }).Count -gt 0
+        $accepted = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'accept-current' }).Count -gt 0
+        if ($accepted -and -not $requiresCorrection) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-human-disposition' -Reason 'complete-current-findings-human-accepted' -Message 'The exact current result has an explicit identity-bound human disposition accepting its findings.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+        }
+        $actionable = @($latest.findings | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
+        if ($actionable -or $requiresCorrection) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-actionable' -Reason 'complete-current-actionable-findings' -Message 'The exact current review has actionable findings; suppress the boundary packet, correct them, and run a separately authorized review.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'fix-and-request-rerun-grant'
+        }
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-human-decision' -Reason 'complete-current-advisory-findings' -Message 'The exact current review has advisory findings that require a narrow human disposition before any boundary packet.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -AskNarrowQuestion $true -ImplementerAction 'ask-narrow-non-boundary-question'
+    }
+    return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+}
+
+function Get-ReviewCampaignVerdictPacketDecision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$CampaignId,
+        [string]$TargetLineage,
+        [string]$StoreRoot,
+        [string]$FeatureId,
+        [string]$IterationNumber,
+        [string[]]$ExcludedPathPatterns = @()
+    )
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $identity = $null
+    if ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($TargetLineage)) {
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId $FeatureId -IterationNumber $IterationNumber -RunId 'run-gate-probe'
+        if ([string]::IsNullOrWhiteSpace($CampaignId)) { $CampaignId = [string]$identity.campaign_id }
+        if ([string]::IsNullOrWhiteSpace($TargetLineage)) { $TargetLineage = [string]$identity.target_lineage }
+        if ([string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId = [string]$identity.feature_id }
+        if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $IterationNumber = [string]$identity.iteration_number }
+    }
+    if ($null -ne $identity -and ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($TargetLineage) -or
+        -not (Test-ReviewCampaignScopeIdentity -FeatureId $FeatureId -IterationNumber $IterationNumber))) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'scope-identity-unresolvable' `
+            -Message 'Campaign, lineage, feature, and iteration identity must resolve before finalization validation or publication.' `
+            -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
+    }
+    if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
+    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns
+    if ($null -eq $digest -or -not $digest.ok -or [string]::IsNullOrWhiteSpace([string]$digest.tree_id)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'digest-unresolvable' -Message 'The current reviewed-state digest could not be computed; no lifecycle verdict may be requested.' -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
+    }
+    $claimFacts = @(Get-ReviewAuthorityClaimFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -TargetLineage $TargetLineage)
+    $orderedRunIds = @($claimFacts | Where-Object { [string]$_.fact_type -ceq 'claim-held' } | Sort-Object { [int]$_.generation } | ForEach-Object { [string]$_.run_id })
+    $activeClaim = Get-ReviewAuthorityActiveClaim -Facts $claimFacts
+    $activeRun = if ($null -ne $activeClaim) { Get-ReviewRunLatestStateFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId ([string]$activeClaim.run_id) } else { $null }
+    if ($null -ne $activeClaim -and $null -eq $activeRun) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'active-claim-run-state-missing' -Message 'An active campaign claim has no readable run state; reconciliation must repair the authority gap before signoff.' -CampaignId $CampaignId -RunId ([string]$activeClaim.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'reconcile-run-claim'
+    }
+    $results = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    $dispositions = @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    $finalizationFact = Get-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $finalizationEnvelope = $null
+    $latestResult = $null
+    if ($orderedRunIds.Count -gt 0) {
+        $latestRunId = [string]$orderedRunIds[$orderedRunIds.Count - 1]
+        $latestResult = @($results | Where-Object { [string]$_.run_id -ceq $latestRunId } | Select-Object -First 1)
+        if ($latestResult.Count -gt 0) { $latestResult = $latestResult[0] } else { $latestResult = $null }
+    }
+    $finalizationCandidateEligible = $null -eq $activeRun -and $null -ne $latestResult -and
+        [string]$latestResult.target_digest -cne [string]$digest.tree_id -and
+        [string]$latestResult.completion -ceq 'complete' -and [string]$latestResult.verdict -ceq 'pass' -and
+        [string]$latestResult.runtime_outcome -ceq 'completed' -and [bool]$latestResult.can_approve_current
+    if (($null -ne $finalizationFact -or $finalizationCandidateEligible) -and
+        -not (Test-ReviewCampaignScopeIdentity -FeatureId $FeatureId -IterationNumber $IterationNumber)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'scope-identity-unresolvable' `
+            -Message 'Feature and iteration identity must resolve before finalization validation or publication.' `
+            -CampaignId $CampaignId -RunId $(if ($null -ne $latestResult) { [string]$latestResult.run_id } else { $null }) `
+            -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+    }
+    if ($null -ne $finalizationFact) {
+        if ($null -eq $latestResult) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-missing' -Message 'The one-time finalization fact has no matching latest campaign result; authority fails closed.' -CampaignId $CampaignId -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+        }
+        $finalizationEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $CampaignId -Result $latestResult `
+            -Fact $finalizationFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
+            -ExcludedPathPatterns $ExcludedPathPatterns
+        if (-not $finalizationEnvelope.valid) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('review-finalization-invalid:' + [string]$finalizationEnvelope.reason) -Message 'The one-time review finalization fact or its commit envelope is invalid; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationFact.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+        }
+    }
+    elseif ($finalizationCandidateEligible) {
+        $candidateFact = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = $CampaignId
+            run_id = [string]$latestResult.run_id; reviewed_digest = [string]$latestResult.target_digest
+            finalization_commit = [string](@(& git -C $root rev-parse --verify 'HEAD^{commit}' 2>$null) | Select-Object -First 1)
+        }
+        $candidateEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $CampaignId -Result $latestResult `
+            -Fact $candidateFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
+            -ExcludedPathPatterns $ExcludedPathPatterns
+        if ($candidateEnvelope.valid) {
+            try {
+                Write-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -Fact $candidateFact | Out-Null
+            }
+            catch {
+                if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw }
+                # Another gate may have won CreateNew after this gate validated its candidate. The
+                # winner is authoritative only if the normal read + envelope validation below proves
+                # it binds this same clean result and current finalization commit.
+            }
+            $finalizationFact = Get-ReviewCampaignFinalizationFact -StoreRoot $StoreRoot -CampaignId $CampaignId
+            if ($null -eq $finalizationFact) { throw 'review-finalization-post-publish-missing' }
+            $finalizationEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $CampaignId -Result $latestResult `
+                -Fact $finalizationFact -CurrentDigest ([string]$digest.tree_id) -FeatureId $FeatureId -IterationNumber $IterationNumber `
+                -ExcludedPathPatterns $ExcludedPathPatterns
+            if (-not $finalizationEnvelope.valid) { throw ('review-finalization-post-publish-invalid:' + [string]$finalizationEnvelope.reason) }
+        }
+    }
+    $decisionDigest = if ($null -ne $finalizationEnvelope) { [string]$finalizationEnvelope.reviewed_digest } else { [string]$digest.tree_id }
+    $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun -HumanDispositions $dispositions
+    if ($null -eq $finalizationEnvelope) { return $packet }
+    if ([string]$packet.route -cne 'boundary-clean') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-not-clean' -Message 'The finalization envelope is valid but its bound result is not an authorizing clean result; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'
+    }
+    $message = 'The authoritative campaign result reviewed commit {0} at digest {1}; the controller finalized its allowlisted review evidence exactly once as commit {2}.' -f `
+        [string]$finalizationEnvelope.reviewed_commit, [string]$finalizationEnvelope.reviewed_digest, [string]$finalizationEnvelope.finalization_commit
+    return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-finalized' -Reason 'complete-clean-finalized-result' -Message $message `
+        -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) `
+        -ReviewedDigest ([string]$finalizationEnvelope.reviewed_digest) -ReviewedCommit ([string]$finalizationEnvelope.reviewed_commit) `
+        -FinalizationCommit ([string]$finalizationEnvelope.finalization_commit) -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+}
+
 function Get-ContinuousCoReviewSignoffGateDecision {
     param(
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [string] $TrunkName = 'main',
+        [AllowEmptyString()][string] $TrunkName = '',
 
         [string[]] $ExcludedPathPatterns = @(),
 
@@ -207,10 +539,38 @@ function Get-ContinuousCoReviewSignoffGateDecision {
 
         # T094/FR-036: an explicit degraded-evidence acknowledgement (authorized_by + rationale).
         # When omitted, the persisted per-run ack (degraded-ack.json) is honoured instead.
-        [AllowNull()] $DegradedAcknowledgement
+        [AllowNull()] $DegradedAcknowledgement,
+
+        [string] $AuthorityConfigPath,
+        [string] $CampaignId,
+        [string] $TargetLineage,
+        [string] $FeatureId,
+        [string] $IterationNumber,
+        [string] $CampaignStoreRoot
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+
+    $authority = if (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue) {
+        Get-ContinuousCoReviewAuthorityDecision -ConfigPath $AuthorityConfigPath
+    }
+    else { [pscustomobject]@{ mode = 'disabled'; valid = $false; legacy_promotion_enabled = $false; campaign_authority_enabled = $false; reason = 'authority-cutover-helper-missing' } }
+    if (-not $authority.valid -or [string]$authority.mode -ceq 'disabled') {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason ('review-authority-disabled:' + [string]$authority.reason) -Message 'Review authority is missing, malformed, or disabled; neither legacy nor campaign evidence may authorize signoff.'
+    }
+    if ([bool]$authority.campaign_authority_enabled) {
+        try {
+            $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolvedRepoRoot -CampaignId $CampaignId -TargetLineage $TargetLineage -StoreRoot $CampaignStoreRoot -FeatureId $FeatureId -IterationNumber $IterationNumber -ExcludedPathPatterns $ExcludedPathPatterns
+        }
+        catch {
+            return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'campaign-review-state-invalid' -Message ('Campaign review authority could not be read safely: ' + $_.Exception.Message)
+        }
+        $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.render_boundary_packet) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
+        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'ask_narrow_question', 'implementer_action', 'reviewed_digest', 'reviewed_commit', 'finalization_commit')) {
+            $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property
+        }
+        return $decision
+    }
 
     # A well-formed human-authorized recorded override short-circuits, with the authorization
     # captured in the decision evidence (auditable, never silent).
@@ -252,8 +612,34 @@ function Get-ContinuousCoReviewSignoffGateDecision {
             break
         }
     }
+    # 4b. F-198 FR-020 (mechanism b): the ANNOUNCED tracker-only bypass. When no run matches
+    # exactly, a passing run whose ONLY delta to the current tree is machine-managed tracker
+    # bookkeeping - with claims verified as a subset of the review record that run already
+    # accepted - keeps its evidence fresh. Fail-closed: any parse ambiguity or claim increase
+    # falls through to the stale block exactly as before. The digest formula is untouched.
+    $honestyBypassNote = $null
+    $dishonestReason = $null
+    if ($null -eq $matched -and (Get-Command -Name 'Get-ContinuousCoReviewTrackerOnlyDelta' -ErrorAction SilentlyContinue)) {
+        foreach ($run in $passingRuns) {
+            $recordedTreeId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $run -Name 'reviewed_tree_id')
+            if ([string]::IsNullOrWhiteSpace($recordedTreeId) -or $recordedTreeId -eq $emptyTreeId) { continue }
+            $delta = Get-ContinuousCoReviewTrackerOnlyDelta -RepoRoot $resolvedRepoRoot -FromTreeId $recordedTreeId -ToTreeId $digest.tree_id
+            if (-not $delta.Ok -or -not $delta.TrackerOnly) { continue }
+            $honesty = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $resolvedRepoRoot -FromTreeId $recordedTreeId -ToTreeId $digest.tree_id -TrackerPaths @($delta.Paths)
+            if ($honesty.Honest) {
+                $matched = $run
+                $honestyBypassNote = ("TRACKER-ONLY RECONCILE ACCEPTED: the only change since the reviewed tree is tracker bookkeeping ({0}) whose claims match the already-accepted review record; that run's evidence is kept fresh. " -f (@($delta.Paths) -join ', '))
+                break
+            }
+            $dishonestReason = $honesty.Reason
+        }
+    }
     if ($null -eq $matched) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'stale-co-review-evidence' -Message 'The current working tree does not match any passing co-review; re-run continuous co-review before signoff.' -CurrentTreeId $digest.tree_id -AnchorRef $anchor
+        $staleMessage = 'The current working tree does not match any passing co-review; re-run continuous co-review before signoff.'
+        if (-not [string]::IsNullOrWhiteSpace($dishonestReason)) {
+            $staleMessage = ("The current working tree does not match any passing co-review, and the tracker-only change could not be accepted ({0}) - a claims-increasing tracker edit needs a fresh review, exactly as any content change." -f $dishonestReason)
+        }
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'stale-co-review-evidence' -Message $staleMessage -CurrentTreeId $digest.tree_id -AnchorRef $anchor
     }
 
     # 5. Coverage: the matched run's chain must reach the anchor with no gap.
@@ -270,7 +656,7 @@ function Get-ContinuousCoReviewSignoffGateDecision {
     $matchedRunId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $matched -Name 'run_id')
     $labels = Get-ContinuousCoReviewRunEvidenceLabels -Run $matched
     if (-not (Test-ContinuousCoReviewEvidenceIsDegraded -Labels $labels)) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-and-covered' -Message 'The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor.' -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-and-covered' -Message ("{0}The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor." -f [string]$honestyBypassNote) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
     }
 
     $ack = $DegradedAcknowledgement
@@ -278,10 +664,15 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         $ack = Get-ContinuousCoReviewDegradedAck -RepoRoot $resolvedRepoRoot -RunId $matchedRunId
     }
     if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $ack) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'degraded-evidence-acknowledged' -Message ("Signoff allowed on DEGRADED review evidence (completeness={0}, independence={1}, budget={2}) under a recorded human acknowledgement." -f $labels.completeness, $labels.independence, $labels.budget) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels -Acknowledgement $ack
+        # FR-020 ANNOUNCED (run-86af61e6 review catch): when the matched run was accepted via the
+        # tracker-only reconcile, the human's ack decision must carry that fact too - the reviewed
+        # tree id was reused across a tracker-only reconcile, not reviewed against the exact
+        # current tree. Withholding it from the degraded-ack paths hid a material fact from the
+        # human decision while the fresh path announced it.
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'degraded-evidence-acknowledged' -Message ("{0}Signoff allowed on DEGRADED review evidence (completeness={1}, independence={2}, budget={3}) under a recorded human acknowledgement." -f [string]$honestyBypassNote, $labels.completeness, $labels.independence, $labels.budget) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels -Acknowledgement $ack
     }
 
-    return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'degraded-evidence-needs-ack' -Message ("The matching co-review evidence is DEGRADED (completeness={0}, independence={1}, budget={2}); signing off on it needs a recorded human acknowledgement: run ``specrew review --ack-degraded {3} --ack-reason `"<why this assurance level is acceptable>`"`` (or re-run a full independent review)." -f $labels.completeness, $labels.independence, $labels.budget, $matchedRunId) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
+    return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'degraded-evidence-needs-ack' -Message ("{0}The matching co-review evidence is DEGRADED (completeness={1}, independence={2}, budget={3}); signing off on it needs a recorded human acknowledgement: run ``specrew review --ack-degraded {4} --ack-reason `"<why this assurance level is acceptable>`"`` (or re-run a full independent review)." -f [string]$honestyBypassNote, $labels.completeness, $labels.independence, $labels.budget, $matchedRunId) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
 }
 
 function Assert-ContinuousCoReviewSignoffGate {
@@ -289,7 +680,7 @@ function Assert-ContinuousCoReviewSignoffGate {
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [string] $TrunkName = 'main',
+        [AllowEmptyString()][string] $TrunkName = '',
 
         [string[]] $ExcludedPathPatterns = @(),
 

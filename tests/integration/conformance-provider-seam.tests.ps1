@@ -54,7 +54,8 @@ if ($body -match 'Add-SpecrewBoundaryAuthorization[\s(;]|Write-SpecrewRollingHan
 # Source/.specify mirror parity (catalog + provider).
 foreach ($pair in @(
         @('extensions/specrew-speckit/refocus-scopes.json', '.specify/extensions/specrew-speckit/refocus-scopes.json'),
-        @('extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1', '.specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'))) {
+        @('extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1', '.specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'),
+        @('extensions/specrew-speckit/scripts/conformance-turn-delta.ps1', '.specify/extensions/specrew-speckit/scripts/conformance-turn-delta.ps1'))) {
     $s = Join-Path $repoRoot $pair[0]; $m = Join-Path $repoRoot $pair[1]
     if ((Test-Path -LiteralPath $m) -and ((Get-FileHash -LiteralPath $s).Hash -ne (Get-FileHash -LiteralPath $m).Hash)) { Write-Fail "source/.specify mirror drift: $($pair[0])" }
 }

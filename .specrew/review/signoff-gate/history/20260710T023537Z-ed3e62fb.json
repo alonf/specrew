@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "boundary_type": "review-signoff",
+  "recorded_at": "2026-07-10T02:35:37Z",
+  "decision": {
+    "schema_version": "1.0",
+    "decision": "block",
+    "reason": "stale-co-review-evidence",
+    "message": "The current working tree does not match any passing co-review; re-run continuous co-review before signoff.",
+    "current_tree_id": "673f4523f62c5c4b5238e3e665bac9eacc9c6481",
+    "matched_run_id": "",
+    "anchor_ref": "5bca4fdf7d6aafe09d65144485c2a2156b6d4ab7",
+    "override": null,
+    "evidence_labels": null,
+    "acknowledgement": null
+  }
+}

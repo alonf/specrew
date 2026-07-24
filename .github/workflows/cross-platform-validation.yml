@@ -236,6 +236,95 @@ jobs:
           Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor White
           Write-Host "✅ macOS validation checks passed" -ForegroundColor Green
 
+  review-runtime-fault-matrix:
+    name: Deterministic fake-provider review runtime (${{ matrix.os }}) — never live support evidence
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Verify PowerShell and install pinned Pester
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSVersionTable | Format-List | Out-Host
+          if ($IsLinux) {
+            & sudo pwsh -NoProfile -NonInteractive -Command "Install-Module Pester -RequiredVersion 5.7.1 -Scope AllUsers -Force -SkipPublisherCheck"
+            if ($LASTEXITCODE -ne 0) { throw 'pester-allusers-install-failed' }
+          }
+          else {
+            Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          Import-Module Pester -RequiredVersion 5.7.1 -Force
+
+      - name: Prepare bounded cgroup v2 root for privileged Linux review-process tests
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -eu
+          sudo mkdir -p /sys/fs/cgroup/specrew-review-ci
+          echo "SPECREW_REVIEW_CGROUP_ROOT=/sys/fs/cgroup/specrew-review-ci" >> "$GITHUB_ENV"
+
+      - name: Run bounded deterministic review fault and conformance suites
+        shell: pwsh
+        env:
+          SPECREW_REQUIRE_POSIX_RUNTIME_PROOF: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runSuites = {
+            $ErrorActionPreference = 'Stop'
+            Import-Module Pester -RequiredVersion 5.7.1 -Force
+            $suites = @(
+              './tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'
+              './tests/continuous-co-review/unit/review-harness-contract.Tests.ps1'
+              './tests/continuous-co-review/unit/review-codex-copilot-harness.Tests.ps1'
+              './tests/continuous-co-review/unit/review-cursor-antigravity-harness.Tests.ps1'
+              './tests/continuous-co-review/unit/review-authority-store.Tests.ps1'
+              './tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1'
+              './tests/continuous-co-review/unit/review-campaign-orchestrator.Tests.ps1'
+              './tests/continuous-co-review/unit/review-result-ingestor.Tests.ps1'
+              './tests/continuous-co-review/unit/review-target-port.Tests.ps1'
+              './tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'
+              './tests/continuous-co-review/unit/worktree-containment.Tests.ps1'
+            )
+            if ($IsWindows) {
+              $suites += './tests/continuous-co-review/unit/review-windows-runtime.Tests.ps1'
+            }
+            else {
+              $suites += './tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1'
+            }
+            foreach ($suite in $suites) {
+              Write-Host "--- deterministic suite: $suite" -ForegroundColor Cyan
+              $result = Invoke-Pester -Path $suite -Output Detailed -PassThru
+              if ($result.FailedCount -gt 0) { throw "review-fault-suite-failed:$suite" }
+            }
+          }
+          if ($IsLinux) {
+            & sudo git config --global --add safe.directory ([IO.Path]::GetFullPath((Get-Location).Path))
+            if ($LASTEXITCODE -ne 0) { throw 'privileged-linux-git-safe-directory-failed' }
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($runSuites.ToString()))
+            & sudo --preserve-env=SPECREW_REVIEW_CGROUP_ROOT,SPECREW_REQUIRE_POSIX_RUNTIME_PROOF pwsh -NoProfile -NonInteractive -EncodedCommand $encoded
+            if ($LASTEXITCODE -ne 0) { throw 'privileged-linux-review-fault-suite-failed' }
+          }
+          else {
+            & $runSuites
+          }
+
+      - name: Clean delegated Linux cgroup root
+        if: always() && runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo rmdir /sys/fs/cgroup/specrew-review-ci 2>/dev/null || true
+
   # ── Feature 140 (Unix-native install) Iteration 2: Ubuntu-first auto-install proof ──
   feature140-install-bootstrap:
     name: install.sh - shellcheck + detection + clean no-pwsh proof

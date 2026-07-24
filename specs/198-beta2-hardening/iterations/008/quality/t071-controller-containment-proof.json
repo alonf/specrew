@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "evidence_kind": "t071-controller-containment-deterministic-proof",
+  "evidence_source": "controller-local-machine",
+  "provider_invoked": false,
+  "hypothesis": "attempt-09 target changes were controller preparation writes, not reviewer writes",
+  "self_tamper_probe": {
+    "candidate_commit": "6667a3739ca487d41ef90df34d235783468d599a",
+    "target_digest": "176540d0459b90f02f37c4310e67afd59d2ecb91",
+    "verification_plan_sha256": "5fe88dcc85cab3c93df1a8e80f03a5f85ffebccc40e5f901f44abf4fbac29d2a",
+    "started_at": "2026-07-20T20:50:44.7020061+03:00",
+    "ended_at": "2026-07-20T21:07:37.7407547+03:00",
+    "duration_seconds": 1013.039,
+    "control_initial_equals_disposable_initial": true,
+    "untouched_frozen_control_changed_path_count": 0,
+    "disposable_verification_copy_changed_path_count": 2212,
+    "disposable_change_classes": {
+      "implementer_evidence_copy": 1,
+      "generated_distribution_scratch": 2210,
+      "verification_plan_removed_by_controller_cleanup": 1
+    },
+    "verification": {
+      "ok": true,
+      "reason": "verification-evidence-ready",
+      "command_count": 2,
+      "evidence_count": 2
+    },
+    "raw_external_artifact_sha256": "9c5e00e1e39b290fa974be86eb17aa806cccc004e00688dc34c6fbbd34c248eb"
+  },
+  "claude_startup_probe": {
+    "cli_version": "2.1.215 (Claude Code)",
+    "working_copy_os_protected_read_only": true,
+    "model_endpoint": "closed-loopback",
+    "malformed_vector": {
+      "mcp_config_json": "{}",
+      "duration_seconds": 0.388,
+      "exit_code": 1,
+      "stderr_sha256": "527402a1802b7997c67036cd7e8e596f497547ae44b649ce8a135201ebc6f59b",
+      "stderr_summary": "Invalid MCP configuration: mcpServers expected a record",
+      "reached_api_transport": false,
+      "raw_external_artifact_sha256": "2fcfe7ee64148789c2a732bdcf128c3d1c4066992bd1b6f8218d9102aefc294f"
+    },
+    "corrected_vector": {
+      "mcp_config_json": "{\"mcpServers\":{}}",
+      "duration_seconds": 30.08,
+      "terminated_by_probe_deadline": true,
+      "candidate_created": false,
+      "specrew_hook_count": 0,
+      "hook_bootstrap_killed_startup": false,
+      "workspace_trust_killed_startup": false,
+      "reached_closed_loopback_api_transport": true,
+      "raw_external_artifact_sha256": "4135bb0678ad496913928d8fadcf343dd434fb307ec3daceca718b636d69f0a4"
+    }
+  },
+  "production_containment_contract": {
+    "verification_executes_in_exact_digest_disposable_copy": true,
+    "implementer_evidence_is_controller_external": true,
+    "frozen_reviewer_target_is_os_read_only_before_harness_preflight": true,
+    "only_external_candidate_parent_is_write_probed": true,
+    "normal_and_lost_lease_cleanup_are_tested": true,
+    "provider_spend_permitted_by_this_artifact": false,
+    "platform_strategy": {
+      "windows": "recursive-current-identity-deny-acl",
+      "linux_uid_0": "read-only-self-bind-mount",
+      "ordinary_posix_and_macos": "recursive-mode-write-removal"
+    }
+  },
+  "portability_correction_proof": {
+    "first_hosted_run": "29771340851",
+    "first_hosted_commit": "11b10dd1592d81fa098fbc8782eb6a2cc59ed82f",
+    "first_hosted_outcome": "pre-spend target-protection failure on Windows, Linux, and macOS deterministic jobs",
+    "windows": {
+      "pester_version": "5.7.1",
+      "exact_deterministic_suite_sequence_passed": true
+    },
+    "linux_uid_0": {
+      "pester_version": "5.7.1",
+      "production_orchestrator_and_target_port_tests_passed": 30,
+      "failed": 0
+    },
+    "full_registry": {
+      "suite_count": 73,
+      "failed": 0,
+      "duration_seconds": 783.5
+    },
+    "scoped_governance": {
+      "passed": true,
+      "duration_seconds": 11.2,
+      "warnings": "historical-only"
+    },
+    "corrected_hosted_run": "29775507402",
+    "corrected_hosted_commit": "b3fb1ab3037342ec7677cad694a0f7567789b7c2",
+    "corrected_hosted_outcome": "success; all eight jobs passed",
+    "non_authoritative_cancelled_run": {
+      "run_id": "29773556546",
+      "reason": "unrelated macOS wrapper-install runner wedge after deterministic containment jobs passed"
+    },
+    "non_convergence_guard_reset": true,
+    "provider_invoked": false
+  }
+}

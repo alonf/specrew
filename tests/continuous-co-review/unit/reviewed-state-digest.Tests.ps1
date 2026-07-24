@@ -8,6 +8,7 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         Import-Module (Join-Path $script:RepoRoot 'Specrew.psd1') -Force
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')   # T017: the ONE machinery source (Get-ContinuousCoReviewMachineryPaths) both strips consume
     
 
         # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
@@ -72,6 +73,60 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         ($names -contains '.env') | Should -Be $false
     }
 
+    It 'T017/FR-012: methodology MACHINERY (from the ONE Get-ContinuousCoReviewMachineryPaths source) is OUT of the digest identity, while .github/workflows + ordinary source stay IN (reviewer-can-still-see-it)' {
+        $repo = New-DigestRepo 't17-machinery'
+        # HOST MACHINERY (host-mirror subdirs) - the worktree strip removes these, so the identity must too (FR-012):
+        New-Item -ItemType Directory -Path (Join-Path $repo '.claude/skills/specrew-foo') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.claude/skills/specrew-foo/skill.md') -Value 'machinery' -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $repo '.github/agents') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.github/agents/agent.md') -Value 'machinery' -Encoding UTF8
+        # NON-machinery that MUST stay reviewable in BOTH strips:
+        New-Item -ItemType Directory -Path (Join-Path $repo '.github/workflows') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.github/workflows/ci.yml') -Value 'on: push' -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $repo 'src') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo 'src/app.ps1') -Value 'Write-Host hi' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', '.claude', '.github', 'src')
+        Invoke-DigestGit $repo @('commit', '-q', '-m', 'machinery + workflows + src')
+
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $d.ok | Should -Be $true
+        $names = @(Get-TreeNames -Root $repo -TreeId $d.tree_id)
+        ($names -join '|') | Should -Not -Match '\.claude/skills/specrew-foo/skill\.md' -Because 'host-mirror machinery is excluded from the identity via the SAME source the worktree strips (FR-012, no drift)'
+        ($names -join '|') | Should -Not -Match '\.github/agents/agent\.md' -Because '.github/agents is host machinery, excluded from both'
+        ($names -contains '.github/workflows/ci.yml') | Should -Be $true -Because '.github/workflows is NOT machinery - it stays in the identity, reviewable (reviewer-can-still-see-it)'
+        ($names -contains 'src/app.ps1') | Should -Be $true -Because 'ordinary source stays in the identity'
+        # BY CONSTRUCTION: the machinery the digest excludes IS the worktree-strip source (they cannot drift).
+        $machinery = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $repo)
+        ($machinery -contains '.claude/skills') | Should -Be $true -Because 'the single source is Get-ContinuousCoReviewMachineryPaths - digest strip == worktree strip'
+        ($machinery -contains '.github/agents') | Should -Be $true
+        ($machinery -contains '.github/workflows') | Should -Be $false -Because 'workflows is NOT in the machinery source, so BOTH strips keep it'
+        # DIGEST-SIGNIFICANT: a change to reviewable content (a workflow) flips the identity.
+        Set-Content -LiteralPath (Join-Path $repo '.github/workflows/ci.yml') -Value 'on: pull_request' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $d.tree_id -Because '.github/workflows is reviewable AND digest-significant - its change flips the identity (FR-012)'
+    }
+
+    It 'T017/FR-012: a MACHINERY-only change does NOT flip the digest (not reviewed), but a SOURCE change DOES (no false-allow of source)' {
+        $repo = New-DigestRepo 't17-invariant'
+        New-Item -ItemType Directory -Path (Join-Path $repo '.claude/skills/specrew-foo') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.claude/skills/specrew-foo/skill.md') -Value 'v0' -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $repo 'src') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo 'src/app.ps1') -Value 'v0' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', '.claude', 'src'); Invoke-DigestGit $repo @('commit', '-q', '-m', 'base')
+        $d0 = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        Set-Content -LiteralPath (Join-Path $repo '.claude/skills/specrew-foo/skill.md') -Value 'v1-machinery-edit' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Be $d0 -Because 'a machinery-only change is not reviewed, so it does NOT flip the identity'
+        Set-Content -LiteralPath (Join-Path $repo 'src/app.ps1') -Value 'v1-source-edit' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $d0 -Because 'a SOURCE edit MUST flip the identity (no false-allow of un-reviewed source)'
+    }
+
+    It 'T017/FR-012: a resolver EXECUTION failure fails the digest LOUDLY (never a silent no-strip - the digest cannot diverge from the worktree)' {
+        $repo = New-DigestRepo 't17-failloud'
+        Mock -CommandName Get-ContinuousCoReviewMachineryPaths -MockWith { throw 'resolver boom' }
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $d.ok | Should -Be $false -Because 'if the ONE machinery resolver cannot execute, the digest MUST fail loudly, not silently skip machinery stripping (maintainer acceptance 2026-07-12)'
+        [string]$d.failure_reason | Should -Match 'machinery-resolver' -Because 'the failure reason names the resolver'
+    }
+
     It 'detects a TRACKED change (tree-id flips)' {
         $repo = New-DigestRepo 'tracked-drift'
         $before = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
@@ -117,6 +172,27 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Test-ContinuousCoReviewDigestPathDenied -Path 'lib/secret-rotation.go' -Denylist $deny) | Should -Be $false
         (Test-ContinuousCoReviewDigestPathDenied -Path 'app/components/CredentialForm.tsx' -Denylist $deny) | Should -Be $false
         (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist $deny) | Should -Be $false
+    }
+
+    It 'T017: the SIX named review-closeout scaffolder artifacts under specs/*/iterations/*/ are excluded, but any OTHER ignored .pending (real source, or an unlisted iteration .pending) STAYS in the digest (path+name specific, no false-allow)' {
+        $deny = Get-ContinuousCoReviewSecretAmbientDenylist
+        # (1) the six known closeout scaffolder artifacts under an iteration dir ARE excluded (must not enter the
+        # digest identity NOR the reviewer worktree materialized from the digest tree).
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/code-map.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/003/coverage-evidence.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/dashboard.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/dependency-report.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/review-diagrams.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/reviewer-index.md.pending' -Denylist $deny) | Should -Be $true
+        # (2) a genuine ignored SOURCE file ending in .pending STILL changes the digest (NOT excluded) - the exact
+        # false-allow the global *.pending rule would have introduced.
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'src/schema.pending' -Denylist $deny) | Should -Be $false
+        # (3) an UNLISTED custom .pending under an iteration dir ALSO stays in the digest (only the six known
+        # closeout names are excluded, not the .pending extension nor the iteration path wholesale).
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/custom.md.pending' -Denylist $deny) | Should -Be $false
+        # (4) other ignored SOURCE (merely mentioning 'pending', or unrelated) remains reviewable in the identity.
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'src/pending-queue.ts' -Denylist $deny) | Should -Be $false
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'lib/pending.go' -Denylist $deny) | Should -Be $false
     }
 
     It 'correctness: tracked source under bin/ or named *.key/*.token stays in the identity and its drift flips it (false-allow fix)' {
@@ -165,5 +241,27 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         $before = $d.tree_id
         Set-Content -LiteralPath (Join-Path $repo 'credentials.ts') -Value 'export const auth = () => evil()' -Encoding UTF8
         (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $before   # drift detected
+    }
+
+    It 'filemode=false regression: tracked 100755 entrypoints keep the executable bit in the digest tree (no fabricated mode diff)' {
+        # The recurring co-review phantom / DRIFT-198-I001-001: on core.filemode=false hosts the digest
+        # staged into a FRESH index, so tracked 100755 entrypoints (bin/*, install.sh) silently became
+        # 100644 and the baseline->digest diff fabricated a mode regression on every shipped wrapper.
+        # (Regression reused from Devin ec90e1b6, T034b partial.)
+        $repo = New-DigestRepo 'filemode-exec'
+        Invoke-DigestGit $repo @('config', 'core.filemode', 'false')
+        Set-Content -LiteralPath (Join-Path $repo 'run.sh') -Value "#!/bin/sh`necho ok" -Encoding UTF8
+        Invoke-DigestGit $repo @('add', 'run.sh')
+        Invoke-DigestGit $repo @('update-index', '--chmod=+x', 'run.sh')
+        Invoke-DigestGit $repo @('commit', '-q', '-m', 'exec entrypoint')
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $d.ok | Should -Be $true
+        Push-Location -LiteralPath $repo
+        try {
+            $mode = ([string](@(& git ls-tree $d.tree_id run.sh 2>$null) | Select-Object -First 1)).Split(' ')[0]
+            $mode | Should -Be '100755'
+            @(& git diff HEAD $d.tree_id 2>$null | Where-Object { $_ -like 'old mode*' }).Count | Should -Be 0
+        }
+        finally { Pop-Location }
     }
 }

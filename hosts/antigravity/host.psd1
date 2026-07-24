@@ -33,6 +33,7 @@
     RefocusHookBindings = @{
         BoundTriggers  = @('b2', 'b3')
         Events         = @('PreInvocation', 'Stop')
+        TurnStartCapability = @{ Mode = 'exact'; NativeEvent = 'PreInvocation'; DispatcherEvent = 'PreInvocation' }
         SettingsFile   = '.agents/hooks.json'
         OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-antigravity'
         DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'

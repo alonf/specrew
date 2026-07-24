@@ -55,6 +55,10 @@
       }
     },
     "result_hash": { "type": "string" },
+    "reviewed_tree_id": {
+      "description": "OPTIONAL reviewed-tree identity stamp (F-198 FR-017, formalized 2026-07-15 per review finding f6 run 20260714T215545754: the navigator stamps the reviewed tree id onto every run-record surface INCLUDING the findings result; the field is sanctioned here so the stamped object validates against the closed schema instead of violating it).",
+      "type": "string"
+    },
     "created_at": { "type": "string", "format": "date-time" }
   }
 }

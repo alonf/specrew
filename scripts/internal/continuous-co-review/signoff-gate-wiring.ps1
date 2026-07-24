@@ -81,29 +81,10 @@ function Write-ContinuousCoReviewSignoffGateDecisionEvidence {
     }
 }
 
-function Get-ContinuousCoReviewTrunkName {
-    <#
-    .SYNOPSIS
-        Return the trunk branch name from .specrew/config.yml (`co_review_trunk`), default 'main'.
-        145 carry (T080): the gate's merge-base anchor resolves `<trunk>`/`origin/<trunk>`, so a
-        non-`main` trunk (master/develop) otherwise fails CLOSED (anchor-unresolvable -> block).
-        Making it configurable lets those repos opt into enforcement. Same value grammar as the
-        enforcement reader (quote-strip + inline-comment tolerant).
-    #>
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
-
-    $configPath = Join-Path $ProjectRoot '.specrew/config.yml'
-    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-        return 'main'
-    }
-    foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
-        if ($line -match '^\s*co_review_trunk:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
-            $value = $Matches['value'].Trim()
-            if (-not [string]::IsNullOrWhiteSpace($value)) { return $value }
-        }
-    }
-    return 'main'
-}
+# Get-ContinuousCoReviewTrunkName retired 2026-07-13: the shared co-review-trunk-resolver.ps1 now owns trunk
+# resolution end-to-end. The config `co_review_trunk` is precedence level 1 there (Get-ContinuousCoReviewConfiguredTrunk),
+# and the gate auto-detects the rest (origin/HEAD, upstream, conventional refs, single pre-feature branch) instead
+# of defaulting to 'main'. The wiring below no longer pre-reads a trunk; it lets the gate resolve.
 
 function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     <#
@@ -142,11 +123,12 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
         throw ("[continuous-co-review-gate] review-signoff cannot be evaluated because the gate infrastructure failed to load: {0}" -f $_.Exception.Message)
     }
 
-    # The throw on a `block` decision propagates verbatim (fail-closed). TrunkName is read from
-    # config so non-`main`-trunk repos do not fail closed (145 carry T080). The decision is
-    # persisted before either throw/allow so a failed signoff leaves inspectable evidence.
-    $trunk = Get-ContinuousCoReviewTrunkName -ProjectRoot $ProjectRoot
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -TrunkName $trunk
+    # The throw on a `block` decision propagates verbatim (fail-closed). The trunk is resolved by the shared
+    # resolver INSIDE the gate (config co_review_trunk -> origin/HEAD -> upstream -> conventional refs -> single
+    # pre-feature branch, else fail-closed with a config instruction), so a non-`main`-trunk repo no longer fails
+    # closed and there is no 'main' default to pre-read here. The decision is persisted before either throw/allow
+    # so a failed signoff leaves inspectable evidence.
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot
     Write-ContinuousCoReviewSignoffGateDecisionEvidence -ProjectRoot $ProjectRoot -BoundaryType $BoundaryType -Decision $decision
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"

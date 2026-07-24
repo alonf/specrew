@@ -35,31 +35,40 @@ You are facilitating a design conversation with a human, **one lens at a time**.
 The per-lens *knowledge* is in the lens md; this skill is the *method* that ties the lenses together. Keep
 both in view.
 
-**Render before you ask — the confirm menu may only reference what is on screen (A6/A7/FR-037).** Before you
-raise ANY structured confirm/approve question (an AskUserQuestion menu, a "does this work? / move on? /
-approve" prompt) about the lens **agenda + depths**, a per-lens diagram, the component map, an options/trade-off
-set, or a design verdict — the thing you are asking about MUST already be **rendered in your assistant message
-in THIS exchange**, in prose / console-ASCII the human can see. The menu may reference ONLY content that is on
-screen. **Never** raise a menu that stands on a count ("8 lenses", "13 components"), a summary ("the agenda",
-"the map"), or a "shown above / as proposed" that was not actually shown. The failure mode this exists to stop
-is **menu-before-render**: render + explain, THEN ask. **Be verbose** — explain the agenda / diagram / map /
-options fully in prose first, and word the menu's own question and option labels so they are self-explanatory
-(not a terse "does this work? — 8 lenses"). The structured **menu is good UX — keep it**: Copilot uses the same
-kind of selection and gets it right *because it renders + explains in prose first*; the fix is the missing
-render and the terse wording, never the menu. (testLenses8/11 on the Claude host raised the menu to confirm "8
-lenses at the depths shown" and to approve "13 named components" with the content never rendered, while Copilot
-and Antigravity rendered + explained in prose first.)
+**Render before you ask — the question may only reference what is on screen (A6/A7/FR-037).** Before you
+raise ANY confirm/approve question (a structured menu on hosts that preserve the preceding message, or a typed
+"does this work? / move on? / approve" prompt) about the lens **agenda + depths**, a per-lens diagram, the
+component map, an options/trade-off set, or a design verdict — the thing you are asking about MUST already be
+**rendered in your assistant message in THIS exchange**, in prose / console-ASCII the human can see. The
+question may reference ONLY content that is on screen. **Never** ask from a count ("8 lenses", "13
+components"), a summary ("the agenda", "the map"), or a "shown above / as proposed" that was not actually
+shown. The failure mode this exists to stop is **menu-before-render**: render + explain, THEN ask. **Be verbose**
+— explain the agenda / diagram / map / options fully in prose first, and make the question and choices
+self-explanatory (not a terse "does this work? — 8 lenses").
 
-**The `file:///` links go in your prose before the menu, too (dogfood finding).** When a confirm/approve menu references or asks the human to review an artifact — the spec, a lens workshop record, the design-analysis, a diagram file — emit the **bare clickable `file:///` links in your assistant message in THIS exchange**, never only inside the menu's question/option labels (the `AskUserQuestion` UI does not linkify `file:///`) and never as a bare "see the file above". On the Claude host the `AskUserQuestion` menu **drops these links**, so the human is asked to confirm a file they cannot open — while Copilot/Codex/Antigravity render them in prose. Rule 14A's clickable-`file:///` guarantee must therefore hold *at* the confirm menu, carried by your prose, not the menu fields.
+**Claude safety rule:** the canonical `claude-disallowed-tools: AskUserQuestion` policy is materialized as
+`disallowed-tools: AskUserQuestion` only in the deployed Claude skill. Claude's picker can replace the preceding
+assistant message, so the workshop MUST use a visible prose question with numbered choices and wait for the
+human's typed answer. Do not try to re-enable, emulate, or call the picker. Other hosts retain their structured
+question UX when it preserves the rendered context. (testLenses8/11 and the Beta2 Article Amplifier manual test
+showed Claude asking the human to confirm an agenda/component map that never appeared, while Copilot and
+Antigravity rendered + explained the content first.)
+
+**The `file:///` links go in your prose before the question, too (dogfood finding).** When a confirm/approve
+question references or asks the human to review an artifact — the spec, a lens workshop record, the
+design-analysis, a diagram file — emit the **bare clickable `file:///` links in your assistant message in THIS
+exchange**, never only inside structured question fields and never as a bare "see the file above". Structured
+question UIs may not linkify `file:///`; Claude's picker is disabled for this skill because it can drop the
+whole preceding message. Rule 14A's clickable-`file:///` guarantee must therefore hold *at* the confirmation,
+carried by visible prose.
 
 **(A8/FR-041) Open each lens with a presentation + an open question, never a menu** (The Method step 3) — this is
-what actually rendered the lens content on Claude in the dogfood (the per-lens open has no competing menu, so the
-content cannot collapse into one). **Governing model (dogfood-proven):** content whose next move is *open
-discussion* renders reliably on Claude; content that must render *right before a structured menu* (a lens catalog
-before the agenda-confirm; a component map before its approve menu) is defeated by the `AskUserQuestion`
-tool-gravity and skims on Claude — its reliable fix is a host-specific `PreToolUse` hook or accepting documented
-host-variance, **never another instruction**. (An earlier catalog-at-open front-load was reverted — it skimmed on
-Claude and was redundant on prose hosts that render the agenda inline.)
+what actually rendered the lens content on Claude in the dogfood (the per-lens open has no competing menu, so
+the content cannot collapse into one). **Governing model (dogfood-proven):** content whose next move is *open
+discussion* renders reliably. On Claude, content immediately before `AskUserQuestion` can be swallowed by the
+picker; the deployed skill therefore removes that tool for the whole workshop. This is a capability-level
+guard, not another conduct instruction or hidden marker. An earlier catalog-at-open front-load was reverted
+because it still skimmed on Claude and was redundant on prose hosts that render the agenda inline.
 
 ## First stage — the product-domain phase (run before everything, Feature 176)
 
@@ -146,12 +155,16 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    it will take a moment* (so a pause does not read as a hang), and hand them the **agenda as an assignment** —
    list the lenses you will work and, for each, the decision it will ask of them — so they can think or research
    while you load. The wait becomes preparation, and a prepared human engages per-lens (which is what keeps the
-   integrity rule in step 6 honest). **Tell the human they can just talk (dogfood finding):** in the same framing, say plainly that at any lens, if a question is unclear, they want to open a file, or they need more detail, they can simply *type* it (for example "explain more") instead of picking a menu option — you will explain, then re-ask. The structured menu is never the only way to answer. (Humans hit dense confirm-menus they could not follow and had to discover the free-text path on their own.)
+   integrity rule in step 6 honest). **Tell the human they can just talk (dogfood finding):** in the same
+   framing, say plainly that at any lens, if a question is unclear, they want to open a file, or they need more
+   detail, they can simply *type* it (for example "explain more") — you will explain, then re-ask. On Claude,
+   typed conversation is the required path because `AskUserQuestion` is disabled for this skill; on other hosts
+   the human may still type instead of picking a menu option.
 2. **Infer applicability, then confirm (A4/FR-025).** Propose which lenses apply WITH your reasoning; ask the
    human only to confirm or adjust. Never make them answer obvious yes/no applicability; never silently
-   auto-resolve a material area. **Render the agenda IN-BAND before the confirm menu — fill this template, do
-   NOT cram the lens list into the menu question** (a prose "render first" gets skimmed on some hosts; the
-   filled template is what the human reads while you prepare):
+   auto-resolve a material area. **Render the agenda IN-BAND before asking for confirmation — fill this
+   template; do NOT cram the lens list into a question UI** (a prose "render first" gets skimmed on some hosts;
+   the filled template is what the human reads while you prepare):
 
    ```text
    Workshop agenda — <N> lenses
@@ -163,7 +176,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    ```
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
-   name); render the whole filled block in your message, THEN raise the confirm/adjust menu that references it.
+   name); render the whole filled block in your message, THEN ask the human to confirm or adjust it. On Claude,
+   render numbered typed choices in prose and wait for the human; on another host, a structured confirm menu may
+   reference the already-visible block.
    **The moment the human confirms the agenda, PERSIST it (F-174 — before opening lens 1):** write the
    feature-level `lens-applicability.json` NOW with `workshop_intake: true`, `confirmation_required: true`, and
    the confirmed `selected` lens-id list (the per-lens `workshop` records are added later, as each lens completes
@@ -180,13 +195,34 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    its diagram / component map — followed by an **open, free-text question** ("how should we approach this?",
    "what are your constraints?"). Do **NOT** open a lens with an `AskUserQuestion` / structured menu: that is the
    move that lets the content collapse into the menu's question field and never get rendered (the A8
-   `AskUserQuestion` tool-gravity failure). The structured menu is good UX and stays — but only **after** the
-   lens's content is on screen, for a crisp discrete choice (e.g. the decomposition vocabulary in step 5). Binary
+   `AskUserQuestion` tool-gravity failure). On Claude the tool is unavailable for the entire skill; use visible
+   prose and typed numbered choices. On other hosts, a structured menu remains useful only **after** the lens's
+   content is on screen, for a crisp discrete choice (e.g. the decomposition vocabulary in step 5). Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
    **One selected lens = one lens turn.** Do NOT bundle several selected lenses into one combined presentation
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
    and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
+   **Keep the controller-owned workshop state durable and complete (FR-055/FR-056).** Before you stop and wait
+   for an answer, ensure the applicability artifact for the CURRENT workshop scope exists and reflects the current
+   confirmed agenda. During specify/intake, authority is the feature-level
+   `specs/<feature>/lens-applicability.json`; during design analysis it is the exact iteration's
+   `specs/<feature>/iterations/<NNN>/lens-applicability.json`. Never invent an iteration during feature intake.
+   Do not rely on a model-authored hidden marker, an environment variable, or a host question-tool transcript:
+   hosts can omit, transform, or swallow those surfaces. The Stop controller derives `active` only from the exact
+   scoped artifact's nonempty, unique selected agenda and its strict ordered completion records. While that state
+   is valid and incomplete, ordinary lens questions remain conversational and the generic five-section
+   non-boundary packet is suppressed; a real lifecycle boundary still has precedence.
+   **Finish each lens durably in this order:** write the nonempty `workshop/<lens-id>.md` decision record first,
+   then persist that lens's full step-6 entry with `moved_on: true`. On the final selected lens, that second write
+   makes the workshop `complete` and ordinary Stop behavior resumes immediately. A loose flag, missing record,
+   duplicate/out-of-order lens, malformed artifact, or mismatched confirmation is invalid and cannot keep the
+   exception active. Never render the generic five-section packet merely to ask or answer an ordinary lens
+   question; use the six-section packet only for a genuine lifecycle boundary.
+   **Carry binding decisions across lenses.** Before opening a new lens, reread the completed records' durable
+   `bindings`. A delegated/default decision may fill an unresolved gap, but it MUST NOT contradict an earlier
+   human-confirmed binding. If the human intentionally changes a binding, reconcile every affected lens record
+   to the same value before moving on; never leave two durable answers for one architectural fact.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
    A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five
@@ -200,7 +236,19 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens. Adapt depth to the user-profile expertise dials
-   (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon. **Match the question FORM to the question**: for a discrete, enumerable choice (e.g. decomposition vocabulary — IDesign / Clean Architecture / modular; one service vs split; fixed vs open taxonomy) ask a **multiple-choice question with the full options spelled out and an explicit "other / let me explain" path** so the human can pick fast; for a genuinely open question, discuss in prose. Both are fine — do not force a discrete pick into long prose, nor an open design question into a rigid one-shot MCQ. **Surface EVERY selected lens to the human and get a real answer before you record it (A7/FR-038):** intake is NOT "specific enough" until each selected lens has either the human's confirmation OR an explicit "you decide / skip" from them. You may NOT decide after a few questions that intake is done and then write up the remaining lenses yourself — that is the exact failure this rule exists to stop. When you move to the next lens (loading it lazily), announce it so the pause is legible: *"preparing lens X of N: &lt;lens&gt; — get ready, this one decides …"* (FR-040).
+   (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon.
+   **Match the question FORM to the question**: for a discrete, enumerable choice (e.g. decomposition
+   vocabulary — IDesign / Clean Architecture / modular; one service vs split; fixed vs open taxonomy), spell
+   out every option and an explicit "other / let me explain" path so the human can pick fast. On Claude this is
+   a numbered prose list answered by typing; elsewhere it may be a structured multiple-choice question after
+   the supporting content is visible. For a genuinely open question, discuss in prose. Both are fine — do not
+   force a discrete pick into long prose, nor an open design question into a rigid one-shot MCQ. **Surface EVERY
+   selected lens to the human and get a real answer before you record it (A7/FR-038):** intake is NOT "specific
+   enough" until each selected lens has either the human's confirmation OR an explicit "you decide / skip" from
+   them. You may NOT decide after a few questions that intake is done and then write up the remaining lenses
+   yourself — that is the exact failure this rule exists to stop. When you move to the next lens (loading it
+   lazily), announce it so the pause is legible: *"preparing lens X of N: &lt;lens&gt; — get ready, this one
+   decides …"* (FR-040).
 4. **Surface visuals IN-BAND so the human can SEE them (A5/A6/FR-030–FR-031/FR-037).** On a terminal/console
    host a fenced ```mermaid``` block is **source text, not a rendered picture** — only **console ASCII**
    actually renders inline. So the diagram you show the human MUST be **console ASCII art rendered directly in
@@ -265,12 +313,16 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
      **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
      SC-026), plus **`confirmation_scope`** — `lens-question` for `human-confirmed`, `explicit-delegation` for
-     `human-delegated`, or `explicit-skip` for `human-skipped`. Exact shape — get it right the first time:
+      `human-delegated`, or `explicit-skip` for `human-skipped`. Exact shape — get it right the first time:
 
-     ```json
-     { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
-       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question" } } }
-     ```
+     Record every load-bearing or cross-lens decision in an optional `bindings` object using stable lowercase
+     keys and token values. Reuse the same key whenever another lens touches that decision. Repeated values must
+     match exactly; the controller stops on a conflict before the workshop can finish.
+
+      ```json
+      { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
+        "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question", "bindings": { "article-initiation": "on-demand" } } } }
+      ```
 
      It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and `decision` is a singular
      string, NOT a `decisions` array — the inverted nesting or a `decisions` array FAILS the SC-021 gate. Extra
@@ -301,10 +353,13 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      that lives only in the chat scrollback is lost.
 7. **Checkpoint this lens durable, THEN re-invoke for the next (F-174 — survive a mid-workshop exit/switch).**
    The workshop is long, and an exit or host-switch mid-workshop is expected, not exceptional — so make each
-   lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens: **(a)** write
-   this lens's `lens-applicability.json` record (step 6) and persist its diagram to
-   `specs/<feature>/workshop/<lens-id>.md` **now**; **(b)** refresh the rolling handover through the core save
-   path by running the handover provider with `--source workshop` (one line; the SAME path the hooks use):
+   lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens:
+   **(a) persist the Markdown decision record FIRST** at the exact current scope's
+   `workshop/<lens-id>.md` — `specs/<feature>/workshop/<lens-id>.md` during specify/intake, or
+   `specs/<feature>/iterations/<NNN>/workshop/<lens-id>.md` during design analysis; **(b) ONLY AFTER that
+   nonempty file exists**, write the lens's complete `lens-applicability.json` entry from step 6 with
+   `moved_on: true`; **(c)** refresh the rolling handover through the core save path by running the handover
+   provider with `--source workshop` (one line; the SAME path the hooks use):
    `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/specrew-handover-provider.ps1 --project-root . --source workshop`
    — this captures the freshly-written `workshop/` files into the handover so a resuming session inherits the
    progress. (On the Claude host the `PostToolUse` hook ALSO refreshes the handover automatically the moment you

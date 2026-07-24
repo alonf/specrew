@@ -64,6 +64,17 @@ if (-not (Get-Command -Name 'Get-ContinuousCoReviewCheckpointDiff' -ErrorAction 
     if (Test-Path -LiteralPath $script:NavigatorEngineLoad -PathType Leaf) { . $script:NavigatorEngineLoad }
 }
 
+# The project config reader shares the campaign authority's one timing ceiling. Load the pure core
+# explicitly when another caller supplied the checkpoint functions without the normal _load.ps1 path.
+if (-not (Get-Command -Name 'Get-ReviewAuthorityTimingLimits' -ErrorAction SilentlyContinue)) {
+    $script:NavigatorReviewAuthorityCore = Join-Path $PSScriptRoot 'review-authority-core.ps1'
+    if (Test-Path -LiteralPath $script:NavigatorReviewAuthorityCore -PathType Leaf) { . $script:NavigatorReviewAuthorityCore }
+}
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue)) {
+    $script:NavigatorReviewerHostCatalog = Join-Path $PSScriptRoot 'reviewer-host-catalog.ps1'
+    if (Test-Path -LiteralPath $script:NavigatorReviewerHostCatalog -PathType Leaf) { . $script:NavigatorReviewerHostCatalog }
+}
+
 function Get-ContinuousCoReviewNavigatorModuleBase {
     # T082 HAZARD A: the detached reviewer pwsh runs with cwd = the materialized read-only WORKTREE,
     # which contains NO Specrew scripts (it is a `git archive` content export of the reviewed project).
@@ -87,29 +98,6 @@ function Get-ContinuousCoReviewNavigatorModuleBase {
         }
     }
     return $null
-}
-
-function Get-ContinuousCoReviewNavigatorTimeoutSeconds {
-    # T082 / condition-c: the co-review timeout config scalar. iteration 002 proved a real codex
-    # full-iteration review needs ~300s (a 120s rerun timed out, so no findings landed). This raises the
-    # navigator default OFF 120 to a value that clears a real codex run, and makes it project-overridable
-    # via .specrew/config.yml `co_review_timeout_seconds` (mirroring Get-ContinuousCoReviewGateEnforcementEnabled's
-    # quote-strip + inline-comment-tolerant grammar). This is the ADAPTER/host-call budget (how long the
-    # reviewer process may run); the launcher's own supervisor TimeoutSec is kept ABOVE it (see
-    # Invoke-ContinuousCoReviewNavigator) so the adapter times out gracefully before the supervisor hard-kills.
-    param([Parameter(Mandatory)][string]$RepoRoot, [int]$Default = 300)
-    $configPath = Join-Path $RepoRoot '.specrew/config.yml'
-    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { return $Default }
-    try {
-        foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
-            if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
-                $parsed = 0
-                if ([int]::TryParse(($Matches['value'].Trim()), [ref]$parsed) -and $parsed -gt 0) { return $parsed }
-            }
-        }
-    }
-    catch { $null = $_ }
-    return $Default
 }
 
 function Get-ContinuousCoReviewNavigatorFeatureRoot {
@@ -388,6 +376,17 @@ function Clear-ContinuousCoReviewNavigatorEntry {
     # record the gate enforces lives separately in .specrew/review/inline/ (written by the promotion above).
     param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$RegistryPath, [AllowNull()]$Registry)
     try {
+        # T019 step 6 piece 2c: releasing the OWNER's per-lineage lease on terminal retirement makes any QUEUED
+        # pending newest tree eligible for the next generation. OWNER-ONLY (token + generation guarded inside);
+        # a no-op for a non-lease entry (older records) or a non-owner.
+        if (($null -ne $Registry) -and (Get-Command -Name 'Complete-ContinuousCoReviewLineageLease' -ErrorAction SilentlyContinue)) {
+            $lgLineage = if ($Registry.PSObject.Properties.Name -contains 'lineage_id') { [string]$Registry.lineage_id } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($lgLineage)) {
+                $lgGen = if ($Registry.PSObject.Properties.Name -contains 'generation') { [string]$Registry.generation } else { '' }
+                $lgTok = if ($Registry.PSObject.Properties.Name -contains 'owner_token') { [string]$Registry.owner_token } else { '' }
+                try { $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $RepoRoot -LineageId $lgLineage -Generation $lgGen -OwnerToken $lgTok } catch { $null = $_ }
+            }
+        }
         $runDir = $null
         if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'run_dir')) { $runDir = [string]$Registry.run_dir }
         if (Test-Path -LiteralPath $RegistryPath -PathType Leaf) { Remove-Item -LiteralPath $RegistryPath -Force -ErrorAction SilentlyContinue }
@@ -409,7 +408,11 @@ function Write-ContinuousCoReviewNavigatorBlackboard {
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)]$Verdict,
-        [datetime]$Now = [datetime]::UtcNow
+        [datetime]$Now = [datetime]::UtcNow,
+        # FR-017 (T019a): the reviewed tree id, stamped into the persisted findings so EVERY
+        # record surface says what was reviewed (the run index alone was not enough - the
+        # findings consumer could not check freshness).
+        [AllowNull()][string]$ReviewedTreeId
     )
     if (($Verdict.PSObject.Properties.Name -contains 'is_stub') -and $Verdict.is_stub) { return $null }
     if ($null -eq $Verdict.raw) { return $null }
@@ -439,7 +442,18 @@ function Write-ContinuousCoReviewNavigatorBlackboard {
         # NORMALIZE run_id to the registry run-id (co-locate with the gate record under inline/<run-id>/).
         if ($findings.PSObject.Properties.Name -contains 'run_id') { $findings.run_id = $RunId }
         else { $findings | Add-Member -NotePropertyName run_id -NotePropertyValue $RunId -Force }
-        Write-ContinuousCoReviewBlackboardThread -RepoRoot $RepoRoot -CheckpointId ("nav-$RunId") -FindingsResult $findings -CreatedAt $Now | Out-Null
+        if (-not [string]::IsNullOrWhiteSpace($ReviewedTreeId)) {
+            if ($findings.PSObject.Properties.Name -contains 'reviewed_tree_id') { $findings.reviewed_tree_id = $ReviewedTreeId }
+            else { $findings | Add-Member -NotePropertyName reviewed_tree_id -NotePropertyValue $ReviewedTreeId -Force }
+        }
+        # VALIDATED write (review finding f6, run 20260714T215545754): the reviewed_tree_id stamp is now a
+        # SANCTIONED optional field of FindingsResult.v1 (the schema was evolved with it), and the write passes
+        # the resolved SchemaRoot so the persisted object is validated against the shipped contract - an
+        # invalid object can no longer be persisted silently. SchemaRoot resolution is deploy-aware; if it
+        # cannot resolve, the writer's own mandatory-parameter failure surfaces in the catch (no silent write).
+        $navSchemaRoot = $null
+        try { if (Get-Command -Name 'Get-ContinuousCoReviewContractRoot' -ErrorAction SilentlyContinue) { $navSchemaRoot = Get-ContinuousCoReviewContractRoot -RepoRoot $RepoRoot } } catch { $navSchemaRoot = $null }
+        Write-ContinuousCoReviewBlackboardThread -RepoRoot $RepoRoot -CheckpointId ("nav-$RunId") -FindingsResult $findings -SchemaRoot $navSchemaRoot -CreatedAt $Now | Out-Null
         return ".specrew/review/inline/$RunId/"
     }
     catch { return $null }
@@ -469,6 +483,40 @@ function Get-ContinuousCoReviewNavigatorFailureReason {
     catch { return $null }
 }
 
+# T019 step 6 (registry-key-drift fix, DRIFT-198-I003-002 root; HARDENED per maintainer 2026-07-13): resolve the
+# reviewed-tree identity from a pending REGISTRY entry CONSISTENTLY, so promotion + the blackboard stamp + the
+# stale-verdict downgrade cannot diverge (FR-017 / T019 A2). The live worktree fire path writes
+# reviewed_digest_tree_id (detached entry) + tree_id (service) but NOT reviewed_tree_id - yet the stamp + downgrade
+# historically read reviewed_tree_id ONLY, so the digest-match-before-blocking was silently skipped and stale
+# blocks recurred. PRECEDENCE: prefer the EXPLICIT reviewed identities - reviewed_digest_tree_id, then
+# reviewed_tree_id; the generic tree_id is a LEGACY fallback used ONLY when NEITHER explicit id exists. CONFLICT:
+# if the two explicit ids are BOTH populated and DISAGREE, FAIL CLOSED with a named reviewed-tree-identity-conflict
+# so no caller blocks, promotes, or stamps findings using either value. Returns @{ tree_id; conflict; reason }.
+function Get-ContinuousCoReviewNavigatorRegistryTreeId {
+    param($Registry)
+    $none = [pscustomobject]@{ tree_id = ''; conflict = $false; reason = $null }
+    if ($null -eq $Registry) { return $none }
+    $read = {
+        param($key)
+        if ($Registry.PSObject.Properties.Name -contains $key) {
+            $v = [string]$Registry.$key
+            if (-not [string]::IsNullOrWhiteSpace($v)) { return $v.Trim() }
+        }
+        return ''
+    }
+    $rdt = & $read 'reviewed_digest_tree_id'   # explicit (status.json + evidence + the live registry)
+    $rt = & $read 'reviewed_tree_id'           # explicit (durable review-run.json)
+    $legacy = & $read 'tree_id'                # generic - legacy fallback ONLY when neither explicit id exists
+
+    if ((-not [string]::IsNullOrWhiteSpace($rdt)) -and (-not [string]::IsNullOrWhiteSpace($rt)) -and ($rdt -cne $rt)) {
+        return [pscustomobject]@{ tree_id = ''; conflict = $true; reason = ("reviewed-tree-identity-conflict: reviewed_digest_tree_id '{0}' != reviewed_tree_id '{1}'" -f $rdt, $rt) }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($rdt)) { return [pscustomobject]@{ tree_id = $rdt; conflict = $false; reason = $null } }
+    if (-not [string]::IsNullOrWhiteSpace($rt)) { return [pscustomobject]@{ tree_id = $rt; conflict = $false; reason = $null } }
+    if (-not [string]::IsNullOrWhiteSpace($legacy)) { return [pscustomobject]@{ tree_id = $legacy; conflict = $false; reason = $null } }
+    return $none
+}
+
 function Invoke-ContinuousCoReviewNavigatorReap {
     # T079 REAP (runs at the top of every navigator Stop, AND - via -CrossSession - as the SessionStart
     # sweep). Walks every pending registry entry and classifies it:
@@ -495,7 +543,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [switch]$CrossSession,
-        [string]$TrunkName = 'main',
+        [AllowEmptyString()][string]$TrunkName = '',   # '' -> shared resolver auto-detects; a value is the explicit override
         # T106/N4: the host transcript path (optional) - the escalation-latch reads REAL user turns
         # from it to decide human closure. Absent -> the latch default-denies (keeps state, no close).
         [AllowNull()][string]$TranscriptPath,
@@ -513,7 +561,11 @@ function Invoke-ContinuousCoReviewNavigatorReap {
         # Promote the reviewed-state DIGEST (the gate's identity, computed off the Stop budget by the orchestrator and
         # propagated to the registry), falling back to the HEAD-tree only for older records. Promoting the HEAD-tree
         # never matched the gate's working-tree digest -> every promoted pass read 'stale' (P-145 identity divergence).
-        $treeId = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewed_digest_tree_id') -and -not [string]::IsNullOrWhiteSpace([string]$reg.reviewed_digest_tree_id)) { [string]$reg.reviewed_digest_tree_id } elseif ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'tree_id')) { [string]$reg.tree_id } else { $null }
+        # T019 step 6 (hardened): resolve the reviewed-tree identity ONCE per entry (shared by the stamp + downgrade
+        # + promotion). On a reviewed-tree-identity-conflict we fail closed downstream (no block, promote, or stamp).
+        $treeIdRes = Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry $reg
+        $identityConflict = [bool]$treeIdRes.conflict
+        $treeId = if ($identityConflict -or [string]::IsNullOrWhiteSpace([string]$treeIdRes.tree_id)) { $null } else { [string]$treeIdRes.tree_id }
 
         $isTerminal = ($status -in $terminalStatuses)
         # TRI-STATE presence (finding 2): 'present' / 'absent' (definite) / 'unknown' (transient error).
@@ -562,10 +614,61 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     if (($null -ne $stObj) -and ($stObj.PSObject.Properties.Name -contains 'budget_bumped')) { try { if ([bool]$stObj.budget_bumped) { $runLabels.budget = 'time-extended' } } catch { $null = $_ } }
                 }
                 catch { $null = $_ }
-                if ($status -eq 'done' -and $verdict.ok) {
+                # T019 step 6 piece 2c: a completion that is NOT the current lease OWNER for its generation must never
+                # promote or block (fail closed to advisory) - the same posture as an identity conflict. The
+                # superseded-by-current + identity-conflict dimensions are handled below/above; this adds the lease
+                # OWNERSHIP + generation dimensions of Test-...LeasePromotionAuthority. Inert for older registries
+                # that carry no lineage_id (no lease was acquired).
+                $leaseNonAuth = $false
+                $leaseNonAuthReason = ''
+                # F-198 / T041: the legacy reaper may keep surfacing historical findings, but it may
+                # promote/block only while the ONE cutover seam explicitly enables legacy authority.
+                # Missing helper/configuration is non-authoritative, never a permit fallback.
+                $legacyAuthorityDecision = if (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue) {
+                    Get-ContinuousCoReviewAuthorityDecision
+                }
+                else {
+                    [pscustomobject]@{ mode = 'disabled'; valid = $false; legacy_promotion_enabled = $false; reason = 'authority-cutover-helper-missing' }
+                }
+                $legacyNonAuth = -not [bool]$legacyAuthorityDecision.legacy_promotion_enabled
+                if ($status -eq 'done' -and $verdict.ok -and -not $identityConflict) {
+                    try {
+                        $lgLineage = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'lineage_id')) { [string]$reg.lineage_id } else { '' }
+                        if (-not [string]::IsNullOrWhiteSpace($lgLineage) -and (Get-Command -Name 'Test-ContinuousCoReviewLeasePromotionAuthority' -ErrorAction SilentlyContinue) -and (Get-Command -Name 'Get-ContinuousCoReviewLineageLease' -ErrorAction SilentlyContinue)) {
+                            $lgLease = Get-ContinuousCoReviewLineageLease -RepoRoot $RepoRoot -LineageId $lgLineage
+                            $lgTok = if ($reg.PSObject.Properties.Name -contains 'owner_token') { [string]$reg.owner_token } else { '' }
+                            # Isolate the OWNER + GENERATION dimensions: pass current==result + identity=true so ONLY a
+                            # not-lease-owner / generation-mismatch trips here (superseded + conflict handled elsewhere).
+                            $lgAuth = Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lgLease -CompletingRunId $runId -CompletingOwnerToken $lgTok -ResultReviewedDigest ([string]$treeId) -CurrentDigest ([string]$treeId) -IdentityJoinsPass $true
+                            if ((-not $lgAuth.authoritative) -and ($lgAuth.reason -in @('not-lease-owner', 'generation-mismatch'))) {
+                                $leaseNonAuth = $true
+                                $leaseNonAuthReason = [string]$lgAuth.reason
+                            }
+                        }
+                    }
+                    catch { $null = $_ }
+                }
+                if ($status -eq 'done' -and $verdict.ok -and ($identityConflict -or $leaseNonAuth -or $legacyNonAuth)) {
+                    if ($identityConflict) {
+                        # T019 step 6 (resolver hardening, maintainer 2026-07-13): the registry's two EXPLICIT reviewed-tree
+                        # identities disagree, so WHICH tree was reviewed is ambiguous. FAIL CLOSED - do NOT block, promote,
+                        # or stamp findings using either value; surface the named conflict for a human to reconcile.
+                        $result.inject_notes.Add(("[co-review] run {0}: {1}. The reviewed-tree identity is ambiguous, so this run's findings are NEITHER blocked, promoted, nor stamped - reconcile the registry's reviewed_digest_tree_id vs reviewed_tree_id." -f $runId, [string]$treeIdRes.reason)) | Out-Null
+                    }
+                    elseif ($leaseNonAuth) {
+                        # T019 step 6 piece 2c: NOT the current lease owner for its generation -> advisory only.
+                        $result.inject_notes.Add(("[co-review] run {0}: lease authority '{1}' - this completion is not the current lease owner for its generation, so its findings are advisory only (NOT promoted or blocked)." -f $runId, $leaseNonAuthReason)) | Out-Null
+                    }
+                    else {
+                        $result.inject_notes.Add(("[co-review] run {0}: legacy authority disabled ({1}, mode={2}); findings remain advisory historical evidence and are NOT promoted or blocked." -f $runId, [string]$legacyAuthorityDecision.reason, [string]$legacyAuthorityDecision.mode)) | Out-Null
+                    }
+                }
+                elseif ($status -eq 'done' -and $verdict.ok) {
                     # T083: route the REAL reviewer's full findings (all severities) to the durable
                     # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
-                    $threadRef = Write-ContinuousCoReviewNavigatorBlackboard -RepoRoot $RepoRoot -RunId $runId -Verdict $verdict -Now $Now
+                    # T019 step 6 FIX: was reviewed_tree_id ONLY (never written by the live path -> $null, so findings-result carried no tree id); now the entry's shared resolved identity (this branch runs only when there is NO conflict).
+                    $regTreeIdForStamp = $treeId
+                    $threadRef = Write-ContinuousCoReviewNavigatorBlackboard -RepoRoot $RepoRoot -RunId $runId -Verdict $verdict -Now $Now -ReviewedTreeId $regTreeIdForStamp
                     $threadSuffix = if ($threadRef) { " Full findings (all severities): $threadRef" } else { '' }
                     $latchPath = Join-Path $RepoRoot '.specrew/runtime/co-review-escalation-latch.json'
                     if (-not $verdict.blocking) {
@@ -636,6 +739,27 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                             }
                         }
                         catch { $null = $_ }
+                        # FR-017 (T019a, Devin-crew field diagnosis): digest-match BEFORE blocking -
+                        # the same freshness check the signoff gate performs. A verdict whose
+                        # recorded snapshot no longer matches the CURRENT tree surfaces as
+                        # ADVISORY (the tree moved while the review ran; the findings may already
+                        # be fixed) - never as a fresh stop-block describing a tree that no longer
+                        # exists. Fail direction: BOTH ids must be known and DIFFER to downgrade;
+                        # an unknown id keeps the block (never suppress a real block on a gap).
+                        if (-not $latchHandled) {
+                            try {
+                                # T019 step 6 FIX (DRIFT-002 root): was reviewed_tree_id ONLY (never written -> $runTreeId empty -> the digest-match-before-blocking was SKIPPED, so stale blocks recurred); now the entry's shared resolved identity (the digest spelling the fire path writes).
+                                $runTreeId = if ([string]::IsNullOrWhiteSpace([string]$treeId)) { '' } else { [string]$treeId }
+                                if (-not [string]::IsNullOrWhiteSpace($runTreeId) -and (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+                                    $currentDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot
+                                    if ($null -ne $currentDigest -and [bool]$currentDigest.ok -and -not [string]::IsNullOrWhiteSpace([string]$currentDigest.tree_id) -and ([string]$currentDigest.tree_id -ne $runTreeId)) {
+                                        $result.inject_notes.Add(("[co-review] run {0} reviewed an OLDER tree than the current one (the tree moved while the review ran). Its {1} blocking finding(s) surface as ADVISORY, not a stop-block: re-check each against the current tree - it may already be fixed; the next fresh round confirms." -f $runId, @($blockingF).Count)) | Out-Null
+                                        $latchHandled = $true
+                                    }
+                                }
+                            }
+                            catch { $null = $_ }
+                        }
                         if (-not $latchHandled) {
                             if ($null -eq $result.stop_block) {
                                 $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)
@@ -900,7 +1024,7 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$RunId,
         [AllowNull()][string]$TreeId,
-        [string]$TrunkName = 'main',
+        [AllowEmptyString()][string]$TrunkName = '',   # '' -> shared resolver auto-detects; a value is the explicit override
         # T094/FR-036: the run's 3-dimension evidence labels (completeness/independence/budget),
         # recorded onto the durable review-run.json so the tiered signoff gate can read assurance.
         [AllowNull()]$EvidenceLabels,
@@ -993,6 +1117,21 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
         [void]$sb.AppendLine(("Full findings (all severities): {0}" -f $BlackboardRef))
     }
     [void]$sb.AppendLine('(Co-review navigator block, not a boundary verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker. Reviewed in an isolated read-only worktree; your tree is unchanged.)')
+    return $sb.ToString().TrimEnd()
+}
+
+function Build-ReviewCampaignNavigatorStopBlock {
+    # T051 / FR-045: campaign outcomes can block lifecycle progress, but only a clean or explicitly
+    # human-dispositioned exact-digest result may release the ordinary boundary packet. This block is
+    # deliberately marker-free so it cannot be captured as lifecycle authorization evidence.
+    param([Parameter(Mandatory)]$PacketDecision)
+    $sb = [Text.StringBuilder]::new()
+    [void]$sb.AppendLine(('Specrew campaign review — {0}.' -f ([string]$PacketDecision.route)))
+    [void]$sb.AppendLine([string]$PacketDecision.message)
+    if (-not [string]::IsNullOrWhiteSpace([string]$PacketDecision.run_id)) { [void]$sb.AppendLine(('Run: {0}' -f [string]$PacketDecision.run_id)) }
+    [void]$sb.AppendLine(('Implementer action: {0}' -f [string]$PacketDecision.implementer_action))
+    if ([bool]$PacketDecision.ask_narrow_question) { [void]$sb.AppendLine('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') }
+    [void]$sb.AppendLine('(Campaign review block, not a lifecycle verdict — do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)')
     return $sb.ToString().TrimEnd()
 }
 

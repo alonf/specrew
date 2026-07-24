@@ -774,6 +774,100 @@ function Write-StopBlockOutput {
 }
 
 # ---------------------------------------------------------------------------
+# Hook-health receipt (FR-053): durable PROOF-OF-FIRE. A deployed hook config is
+# NOT proof the host loaded and fired it; only a receipt written from a GENUINE
+# host-triggered SessionStart/Stop fire is. This records that receipt best-effort.
+# STRICTLY fail-open: a module-absent / resolve / dot-source / write failure must
+# NEVER block or alter the hook's normal dispatch (every path swallows and returns).
+# ---------------------------------------------------------------------------
+function Resolve-DispatcherHookHealthModulePath {
+    # Locate the shipped hook-health-receipt helper (it lives in the Specrew MODULE tree,
+    # not the extension tree), the same fail-open way Find-DispatcherHostManifestPath resolves
+    # a host manifest: walk SPECREW_MODULE_PATH / PSScriptRoot / ProjectRoot up to a dir that
+    # holds it, then fall back to the installed module base. Returns $null if it is not found.
+    param([AllowNull()][string]$ProjectRoot)
+    $rel = 'scripts/internal/continuous-co-review/hook-health-receipt.ps1'
+    foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot)) {
+        if ([string]::IsNullOrWhiteSpace($start) -or -not (Test-Path -LiteralPath $start -PathType Container)) { continue }
+        $candidate = (Resolve-Path -LiteralPath $start).Path
+        while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            $probe = Join-Path $candidate $rel
+            if (Test-Path -LiteralPath $probe -PathType Leaf) { return $probe }
+            $parent = Split-Path -Parent $candidate
+            if ($parent -eq $candidate) { break }
+            $candidate = $parent
+        }
+    }
+    try {
+        $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase $rel) -PathType Leaf } |
+            Select-Object -First 1
+        if ($module) { return (Join-Path $module.ModuleBase $rel) }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Test-DispatcherIsLifecycleReceiptEvent {
+    # The lifecycle proof points FR-053 records: SessionStart and any Stop-class event (the
+    # neutral DispatcherEvent is 'Stop'/'stop' for most hosts, 'agentStop' for copilot). Every
+    # other event (PostToolUse / UserPromptSubmit / PreToolUse / PreInvocation) is skipped.
+    param([AllowNull()][string]$EventName)
+    if ([string]::IsNullOrWhiteSpace($EventName)) { return $false }
+    $n = $EventName.Trim().ToLowerInvariant()
+    return ($n -eq 'sessionstart' -or $n -eq 'stop' -or $n -eq 'agentstop')
+}
+
+function Test-DispatcherIsSessionStartEvent {
+    # The ONE lifecycle event at which the host-version probe runs. Stop/agentStop must NEVER probe (a per-Stop
+    # `--version` subprocess would tax the tight Stop budget, and only SessionStart is the trusted version fact) -
+    # they record proof-of-fire with an 'unknown' version and never overwrite/promote the SessionStart version.
+    param([AllowNull()][string]$EventName)
+    if ([string]::IsNullOrWhiteSpace($EventName)) { return $false }
+    return ($EventName.Trim().ToLowerInvariant() -eq 'sessionstart')
+}
+
+function Get-DispatcherSessionStartHostVersion {
+    # The observed host version for a SessionStart receipt: a BOUNDED, shell-free probe of the resolved host CLI's
+    # own `--version` (Get-SpecrewHostVersionProbe, provided by the hook-health module the caller already loaded).
+    # NEVER reads an ambient env value - SPECREW_OBSERVED_HOST_VERSION is GONE as a version source (co-review
+    # finding 3): no ambient/secret value can be persisted, because the version can ONLY come from running the
+    # resolved executable. Any probe failure (unresolved / timeout / malformed / ambiguous) -> the honest 'unknown'.
+    param([string]$HostKind)
+    try {
+        if (-not (Get-Command -Name 'Get-SpecrewHostVersionProbe' -ErrorAction SilentlyContinue)) { return 'unknown' }
+        $probe = Get-SpecrewHostVersionProbe -HostName $HostKind
+        if ($null -ne $probe -and $probe.ok -and -not [string]::IsNullOrWhiteSpace([string]$probe.version)) { return [string]$probe.version }
+    }
+    catch { $null = $_ }
+    return 'unknown'
+}
+
+function Write-DispatcherHookHealthReceipt {
+    # Record a sanitized hook-health receipt for a genuine host fire (best-effort). Returns nothing and swallows
+    # EVERY failure so the hook's dispatch is never affected (fail-open). The observed host version is a BOUNDED
+    # SessionStart PROBE (Stop/agentStop record 'unknown', NEVER launch a probe, and NEVER overwrite/promote the
+    # SessionStart version fact - which lives in the separate SessionStart receipt file).
+    param([string]$HostKind, [string]$EventName, [AllowNull()][string]$ProjectRoot)
+    try {
+        if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+        if (-not (Test-DispatcherIsLifecycleReceiptEvent -EventName $EventName)) { return }
+        if (-not (Get-Command -Name 'Write-SpecrewHookHealthReceipt' -ErrorAction SilentlyContinue)) {
+            $modulePath = Resolve-DispatcherHookHealthModulePath -ProjectRoot $ProjectRoot
+            if ([string]::IsNullOrWhiteSpace($modulePath)) { return }
+            . $modulePath
+        }
+        if (-not (Get-Command -Name 'Write-SpecrewHookHealthReceipt' -ErrorAction SilentlyContinue)) { return }
+        # SessionStart -> a bounded ambient version DIAGNOSTIC (non-authoritative, non-promoting); Stop/agentStop ->
+        # no probe. version_source is 'ambient-path-binding' when a reading was captured, else 'unavailable'.
+        $observed = if (Test-DispatcherIsSessionStartEvent -EventName $EventName) { Get-DispatcherSessionStartHostVersion -HostKind $HostKind } else { 'unknown' }
+        $vsource = if (-not [string]::IsNullOrWhiteSpace($observed) -and $observed -ne 'unknown') { 'ambient-path-binding' } else { 'unavailable' }
+        $null = Write-SpecrewHookHealthReceipt -ProjectRoot $ProjectRoot -HostName $HostKind -Surface 'cli' -Event $EventName -ObservedHostVersion $observed -ObservedVersionSource $vsource
+    }
+    catch { $null = $_ }
+}
+
+# ---------------------------------------------------------------------------
 # Main — every failure path inside this try lands on exit 0 (P1).
 # ---------------------------------------------------------------------------
 try {
@@ -815,6 +909,20 @@ try {
     }
     $sessionId = Get-SanitizedSessionId -RawSessionId $rawSessionId
     $source = if ($null -ne $hostEvent -and $hostEvent.PSObject.Properties['source']) { [string]$hostEvent.source } else { $null }
+
+    # FR-053 (co-review finding 2): record the sanitized lifecycle receipt as durable proof-of-fire ONLY
+    # AFTER the host envelope validated as a GENUINE, well-formed lifecycle fire - a non-null host-shaped JSON
+    # object carrying a recognized host session id ($rawSessionId is populated ONLY from that host-shaped
+    # payload). A MALFORMED event already exited above via EVENT_PARSE; an EMPTY ($hostEvent = $null) or a
+    # NON-HOST-SHAPED payload (a JSON array/scalar, an empty object, or an object with no host session id) leaves
+    # $rawSessionId blank and therefore records NO receipt - so Resolve-SpecrewHookHealth can never read a
+    # false-green from a broken/incompatible hook payload (the finding-2 defect). Still placed EARLY (before
+    # catalog/state parsing) so a real fire is captured even if later parsing degrades, and STILL strictly
+    # fail-open: Write-DispatcherHookHealthReceipt swallows every failure and never blocks or alters dispatch (a
+    # malformed/empty event still dispatches/quiets exactly as before - it just records no receipt).
+    if (($null -ne $hostEvent) -and ($hostEvent -is [psobject]) -and (-not [string]::IsNullOrWhiteSpace($rawSessionId))) {
+        Write-DispatcherHookHealthReceipt -HostKind $HostKind -EventName $Event -ProjectRoot $projectRoot
+    }
 
     $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
@@ -858,6 +966,7 @@ try {
     $fragments = New-Object System.Collections.Generic.List[object]
     $failedSessionStartProviders = New-Object System.Collections.Generic.List[string]
     # FR-004/FR-015: stop-block reasons requested by Stop-class consumers (the packet-at-stop force-continue).
+    # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
     # F-197 (maintainer-authorized 2026-06-24): ACCUMULATE across ALL providers in one Stop run rather than
     # last-writer-wins. The navigator (order 50) runs after conformance (order 40); if both emit a stop-block in
     # the same run, a single $stopBlockReason variable let the navigator's reason OVERWRITE conformance's,
@@ -956,6 +1065,7 @@ try {
             # capture) silently never runs. Pass only the bounded clean args to handover. The transcript FILE route
             # (--transcript-path, extracted below) is the robust primary; tier-3 (last_assistant_message) stays
             # DEFERRED. Other inject providers (bootstrap needs session_id/source) still get --event-json.
+            # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
             # F-197 (maintainer-authorized 2026-06-24): co-review-navigator joins the clean-args allow-list. It
             # binds Stop-class AND SessionStart, and on Codex Stop the same 10s-of-KB last_assistant_message in
             # --event-json blew the Windows command-line limit, so the navigator silently never launched. It
@@ -973,6 +1083,11 @@ try {
             }
             if (-not [string]::IsNullOrWhiteSpace($HostBinding)) {
                 $commandArgs += @('--host-binding', $HostBinding)
+            }
+            # T069: bind provider-local material state to the genuine host session. Only host-supplied identities
+            # are forwarded; the dispatcher's per-launch fallback is not stable enough to claim session ownership.
+            if (-not [string]::IsNullOrWhiteSpace($rawSessionId)) {
+                $commandArgs += @('--session-id', $sessionId)
             }
             # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event and
             # pass it as its own CLEAN arg, so the handover provider captures the conversation tail without
@@ -1029,6 +1144,7 @@ try {
             if ($stdoutTrim.StartsWith('<<<SPECREW-STOP-BLOCK>>>')) {
                 # FR-004/FR-015: a Stop-class consumer (conformance, navigator) requests a force-continue so the
                 # re-entry packet renders AT the stop. Accumulate the reason (do NOT add it as a normal injection
+                # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
                 # fragment); F-197 merges all providers' reasons below so a later provider can't clobber an
                 # earlier one. Skip blanks and exact duplicates so the merge stays clean.
                 $thisReason = $stdoutTrim.Substring('<<<SPECREW-STOP-BLOCK>>>'.Length).Trim()
@@ -1073,6 +1189,7 @@ try {
     # fail-open: an unknown/none shape or any miss falls through to the normal (allow/inject) path. The provider
     # supplies its OWN consecutive-block cap for hosts lacking stop_hook_active (copilot/antigravity).
     if ($stopBlockReasons.Count -gt 0) {
+        # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
         # F-197: MERGE every blocking provider's reason this run so a co-occurring conformance + navigator
         # stop-block surfaces BOTH directives (the navigator at order 50 used to overwrite conformance at
         # order 40). One blocking provider = a 1-element join = byte-identical to the prior single-reason path.

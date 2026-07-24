@@ -210,6 +210,245 @@ function Get-SpecrewWorkshopProgress {
     }
 }
 
+function Test-SpecrewWorkshopDecisionBindings {
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)]$Applicability)
+
+    $seen = [ordered]@{}
+    $selected = if ($Applicability.PSObject.Properties['selected']) { @($Applicability.selected | ForEach-Object { [string]$_ }) } else { @() }
+    $records = if ($Applicability.PSObject.Properties['workshop']) { $Applicability.workshop } else { $null }
+    if ($null -eq $records) {
+        return [pscustomobject]@{ valid = $true; reason = 'workshop-decision-bindings-absent'; conflict = $null }
+    }
+
+    foreach ($lens in $selected) {
+        $entryProperty = $records.PSObject.Properties[$lens]
+        if (-not $entryProperty -or $null -eq $entryProperty.Value) { continue }
+        $entry = $entryProperty.Value
+        $movedProperty = $entry.PSObject.Properties['moved_on']
+        if (-not $movedProperty -or $movedProperty.Value -isnot [bool] -or -not [bool]$movedProperty.Value) { continue }
+
+        $bindingsProperty = $entry.PSObject.Properties['bindings']
+        if (-not $bindingsProperty) { continue } # Backward-compatible for workshop records created before bindings existed.
+        $bindings = $bindingsProperty.Value
+        if ($null -eq $bindings -or $bindings -is [System.Array] -or $bindings -is [string] -or $bindings -is [ValueType]) {
+            return [pscustomobject]@{
+                valid = $false; reason = 'workshop-decision-bindings-invalid'
+                conflict = [pscustomobject]@{ binding = $null; prior_lens = $null; prior_value = $null; lens = $lens; value = $null }
+            }
+        }
+
+        foreach ($bindingProperty in $bindings.PSObject.Properties) {
+            $name = [string]$bindingProperty.Name
+            $value = if ($bindingProperty.Value -is [string]) { ([string]$bindingProperty.Value).Trim() } else { '' }
+            if ($name -cnotmatch '^[a-z][a-z0-9.-]{0,63}$' -or $value -cnotmatch '^[a-z0-9][a-z0-9._-]{0,127}$') {
+                return [pscustomobject]@{
+                    valid = $false; reason = 'workshop-decision-bindings-invalid'
+                    conflict = [pscustomobject]@{ binding = $name; prior_lens = $null; prior_value = $null; lens = $lens; value = $value }
+                }
+            }
+            if ($seen.Contains($name)) {
+                $prior = $seen[$name]
+                if ([string]$prior.value -cne $value) {
+                    return [pscustomobject]@{
+                        valid = $false; reason = 'workshop-decision-binding-conflict'
+                        conflict = [pscustomobject]@{
+                            binding = $name; prior_lens = [string]$prior.lens; prior_value = [string]$prior.value
+                            lens = $lens; value = $value
+                        }
+                    }
+                }
+            }
+            else { $seen[$name] = [pscustomobject]@{ lens = $lens; value = $value } }
+        }
+    }
+
+    return [pscustomobject]@{ valid = $true; reason = 'workshop-decision-bindings-consistent'; conflict = $null }
+}
+
+function Get-SpecrewWorkshopLifecycleState {
+    # Strict, controller-owned workshop lifecycle truth for Stop classification. Unlike
+    # Get-SpecrewWorkshopProgress (a deliberately lenient bootstrap/resume projection), this accessor treats the
+    # exact scoped lens-applicability.json as authority and requires every completed lens to carry the full skill
+    # contract plus its durable Markdown record. Any ambiguous, stale, malformed, or partially-persisted completion
+    # fails closed to `invalid`, so the Stop provider resumes ordinary enforcement instead of suppressing forever.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $FeatureRef,
+        [AllowNull()][string] $IterationNumber
+    )
+
+    $scope = if ([string]::IsNullOrWhiteSpace($IterationNumber)) { 'feature' } else { 'iteration' }
+    $featureRoot = Join-Path (Join-Path $ProjectRoot 'specs') $FeatureRef
+    $scopeRoot = if ($scope -eq 'iteration') { Join-Path $featureRoot ("iterations/{0}" -f $IterationNumber) } else { $featureRoot }
+    $artifactPath = Join-Path $scopeRoot 'lens-applicability.json'
+    $workshopRoot = Join-Path $scopeRoot 'workshop'
+
+    function New-WorkshopStateResult {
+        param(
+            [string] $Status,
+            [string] $Reason,
+            [string[]] $Selected = @(),
+            [string[]] $Completed = @(),
+            [string[]] $Remaining = @(),
+            [AllowNull()][string] $CurrentLens = $null,
+            [AllowNull()]$BindingConflict = $null
+        )
+        [pscustomobject]@{
+            status           = $Status
+            valid            = ($Status -in @('active', 'complete'))
+            reason           = $Reason
+            scope            = $scope
+            feature_ref      = $FeatureRef
+            iteration_number = if ($scope -eq 'iteration') { $IterationNumber } else { $null }
+            artifact_path    = $artifactPath
+            selected         = @($Selected)
+            completed        = @($Completed)
+            remaining        = @($Remaining)
+            current_lens     = $CurrentLens
+            binding_conflict = $BindingConflict
+        }
+    }
+
+    try {
+        if ($FeatureRef -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$') {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-feature-ref-invalid'
+        }
+        if ($scope -eq 'iteration' -and $IterationNumber -cnotmatch '^[0-9]{3,}$') {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-iteration-number-invalid'
+        }
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            return New-WorkshopStateResult -Status 'absent' -Reason 'workshop-applicability-absent'
+        }
+        $item = Get-Item -LiteralPath $artifactPath -ErrorAction Stop
+        if ($item.Length -le 0 -or $item.Length -gt 262144) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-applicability-size-invalid'
+        }
+        $applicability = Get-Content -LiteralPath $artifactPath -Raw -Encoding UTF8 -ErrorAction Stop |
+            ConvertFrom-Json -Depth 20 -ErrorAction Stop
+        if ($null -eq $applicability -or $applicability -is [System.Array]) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-applicability-root-invalid'
+        }
+
+        foreach ($requiredBoolean in @('workshop_intake', 'confirmation_required')) {
+            $property = $applicability.PSObject.Properties[$requiredBoolean]
+            if (-not $property -or $property.Value -isnot [bool] -or -not [bool]$property.Value) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason ("workshop-{0}-invalid" -f ($requiredBoolean -replace '_', '-'))
+            }
+        }
+
+        $selectedProperty = $applicability.PSObject.Properties['selected']
+        if (-not $selectedProperty -or $selectedProperty.Value -isnot [System.Array]) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-invalid'
+        }
+        $selected = @($selectedProperty.Value | ForEach-Object { [string]$_ })
+        if ($selected.Count -eq 0) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-empty'
+        }
+        $seenSelected = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($lens in $selected) {
+            if ($lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$' -or -not $seenSelected.Add($lens)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-lens-invalid' -Selected $selected
+            }
+        }
+
+        $workshopProperty = $applicability.PSObject.Properties['workshop']
+        if (-not $workshopProperty -or $null -eq $workshopProperty.Value -or
+            $workshopProperty.Value -is [System.Array] -or $workshopProperty.Value -is [string] -or
+            $workshopProperty.Value -is [ValueType]) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-map-invalid' -Selected $selected
+        }
+        $records = $workshopProperty.Value
+        foreach ($recordProperty in $records.PSObject.Properties) {
+            if ([string]$recordProperty.Name -cnotin $selected) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-not-selected' -Selected $selected
+            }
+        }
+
+        $completed = New-Object System.Collections.Generic.List[string]
+        $remaining = New-Object System.Collections.Generic.List[string]
+        $foundIncomplete = $false
+        $confirmationScopes = @{
+            'human-confirmed' = 'lens-question'
+            'human-delegated' = 'explicit-delegation'
+            'human-skipped'   = 'explicit-skip'
+        }
+
+        foreach ($lens in $selected) {
+            $entryProperty = $records.PSObject.Properties[$lens]
+            $entry = if ($entryProperty) { $entryProperty.Value } else { $null }
+            $movedOn = $false
+            if ($null -ne $entry) {
+                if ($entry -is [System.Array] -or $entry -is [string] -or $entry -is [ValueType]) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-lens-record-invalid' -Selected $selected -Completed $completed.ToArray()
+                }
+                $movedProperty = $entry.PSObject.Properties['moved_on']
+                if ($movedProperty) {
+                    if ($movedProperty.Value -isnot [bool]) {
+                        return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-moved-on-invalid' -Selected $selected -Completed $completed.ToArray()
+                    }
+                    $movedOn = [bool]$movedProperty.Value
+                }
+            }
+
+            if (-not $movedOn) {
+                $foundIncomplete = $true
+                $remaining.Add($lens) | Out-Null
+                continue
+            }
+            if ($foundIncomplete) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completion-out-of-order' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray()
+            }
+
+            $agendaProperty = $entry.PSObject.Properties['agenda']
+            if (-not $agendaProperty -or $agendaProperty.Value -isnot [System.Array] -or @($agendaProperty.Value).Count -eq 0 -or
+                @($agendaProperty.Value | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$_) }).Count -gt 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-agenda-invalid' -Selected $selected -Completed $completed.ToArray()
+            }
+            foreach ($requiredString in @('decision', 'depth', 'confirmation', 'confirmation_scope')) {
+                $property = $entry.PSObject.Properties[$requiredString]
+                if (-not $property -or $property.Value -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason ("workshop-completed-{0}-invalid" -f ($requiredString -replace '_', '-')) -Selected $selected -Completed $completed.ToArray()
+                }
+            }
+            $confirmation = [string]$entry.confirmation
+            if (-not $confirmationScopes.ContainsKey($confirmation) -or [string]$entry.confirmation_scope -cne [string]$confirmationScopes[$confirmation]) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-confirmation-invalid' -Selected $selected -Completed $completed.ToArray()
+            }
+
+            $recordPath = Join-Path $workshopRoot ($lens + '.md')
+            if (-not (Test-Path -LiteralPath $recordPath -PathType Leaf)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-record-missing' -Selected $selected -Completed $completed.ToArray()
+            }
+            $recordItem = Get-Item -LiteralPath $recordPath -ErrorAction Stop
+            if ($recordItem.Length -le 0 -or $recordItem.Length -gt 262144) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-record-size-invalid' -Selected $selected -Completed $completed.ToArray()
+            }
+            $recordText = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 -ErrorAction Stop
+            if ([string]::IsNullOrWhiteSpace($recordText)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-record-empty' -Selected $selected -Completed $completed.ToArray()
+            }
+            $completed.Add($lens) | Out-Null
+        }
+
+        $bindingValidation = Test-SpecrewWorkshopDecisionBindings -Applicability $applicability
+        if (-not $bindingValidation.valid) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason ([string]$bindingValidation.reason) -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray() -BindingConflict $bindingValidation.conflict
+        }
+
+        if ($remaining.Count -eq 0) {
+            return New-WorkshopStateResult -Status 'complete' -Reason 'workshop-complete' -Selected $selected -Completed $completed.ToArray()
+        }
+        return New-WorkshopStateResult -Status 'active' -Reason 'workshop-active' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray() -CurrentLens $remaining[0]
+    }
+    catch {
+        return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-state-unreadable'
+    }
+}
+
 function Test-SpecrewIsGitRepoRoot {
     # F-174 iter-10 (Prop-145 round-6, HIGH): is $ProjectRoot the TOP-LEVEL of its own git repo (or a worktree
     # root)? `git rev-parse --show-prefix` answers in O(repo-depth), NOT O(tree): empty output + exit 0 ==

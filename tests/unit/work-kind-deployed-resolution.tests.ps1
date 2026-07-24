@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 #   1. the validator loads its catalog from `.specify/extensions/...` (proven by BEHAVIOR, not file-presence);
 #   2. fail-open stays honest when NO catalog exists anywhere (advisory-warn, never a crash/spurious block,
 #      and the warning NAMES the deployed `.specify` candidate);
-#   3. the workflow's validator-path resolution works without a root `extensions/` and PREFERS `.specify`.
+#   3. the workflow resolves ONLY the shipped `.specify` path and keeps its advisory default.
 
 function Write-Pass { param([string]$m) Write-Host "PASS: $m" -ForegroundColor Green }
 function Write-Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor Red; exit 1 }
@@ -93,16 +93,13 @@ try {
 }
 finally { Remove-Item -Recurse -Force $fxNoCat -ErrorAction SilentlyContinue }
 
-# === 3) the workflow's validator-path resolution: deployed-only works, and .specify is PREFERRED ===
-# Replicate the workflow template's candidate ordering (the YAML run-block can't be executed here) and
-# assert selection across the three shapes, then assert the actual YAML carries that contract.
+# === 3) the workflow's validator-path resolution: deployed-only, never source-tree fallback ===
+# Replicate the workflow template's single path (the YAML run-block cannot be executed here), then assert
+# the actual YAML carries that contract and preserves advisory behavior.
 function Select-WorkflowValidator {
     param([string]$Root)
-    $cands = @(
-        (Join-Path $Root '.specify/extensions/specrew-speckit/scripts/work-kind-validator.ps1'),
-        (Join-Path $Root 'extensions/specrew-speckit/scripts/work-kind-validator.ps1')
-    )
-    return @($cands | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1)
+    $candidate = Join-Path $Root '.specify/extensions/specrew-speckit/scripts/work-kind-validator.ps1'
+    return $(if (Test-Path -LiteralPath $candidate -PathType Leaf) { $candidate } else { $null })
 }
 
 function New-ResolutionFixture {
@@ -130,19 +127,19 @@ try {
 }
 finally { Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue }
 
-# (b) both present -> PREFERS .specify
+# (b) both present -> uses .specify
 $d = New-ResolutionFixture -Deployed -Source
 try {
     $sel = Select-WorkflowValidator -Root $d
-    Assert-True ($sel -and ($sel -replace '\\', '/') -match '\.specify/extensions/specrew-speckit/scripts/work-kind-validator\.ps1') "workflow resolution: both shapes present -> prefers the deployed .specify validator; got '$sel'"
+    Assert-True ($sel -and ($sel -replace '\\', '/') -match '\.specify/extensions/specrew-speckit/scripts/work-kind-validator\.ps1') "workflow resolution: both shapes present -> uses the deployed .specify validator; got '$sel'"
 }
 finally { Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue }
 
-# (c) source-only -> resolves the source-tree validator (Specrew's own repo)
+# (c) source-only -> no validator; consumer workflow never reaches into a source-tree layout
 $d = New-ResolutionFixture -Source
 try {
     $sel = Select-WorkflowValidator -Root $d
-    Assert-True ($sel -and ($sel -replace '\\', '/') -match '(^|/)extensions/specrew-speckit/scripts/work-kind-validator\.ps1') "workflow resolution: source-only resolves the source-tree validator; got '$sel'"
+    Assert-True ([string]::IsNullOrEmpty($sel)) "workflow resolution: source-only does not resolve a source-tree fallback; got '$sel'"
 }
 finally { Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue }
 
@@ -154,7 +151,7 @@ try {
 }
 finally { Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue }
 
-Write-Pass 'workflow resolution: deployed-only works, .specify is preferred, source-only works, neither -> honest skip.'
+Write-Pass 'workflow resolution: deployed-only works; source-only and absent shapes produce an honest advisory skip.'
 
 # (e) the actual workflow YAML carries the resolution contract (guards the artifact against regression)
 $wf = Get-Content -LiteralPath (Join-Path $repoRoot 'templates/github/workflows/specrew-work-kind.yml') -Raw
@@ -162,10 +159,9 @@ $deployedTok = "'./.specify/extensions/specrew-speckit/scripts/work-kind-validat
 $sourceTok = "'./extensions/specrew-speckit/scripts/work-kind-validator.ps1'"
 $iDep = $wf.IndexOf($deployedTok)
 $iSrc = $wf.IndexOf($sourceTok)
-Assert-True ($iDep -ge 0) 'workflow YAML: lists the deployed .specify validator candidate'
-Assert-True ($iSrc -ge 0) 'workflow YAML: lists the source-tree validator candidate'
-Assert-True ($iDep -lt $iSrc) 'workflow YAML: the .specify candidate appears FIRST (prefers deployed)'
-Assert-True ($wf -match 'Select-Object -First 1') 'workflow YAML: first-existing-wins selection'
+Assert-True ($iDep -ge 0) 'workflow YAML: names the deployed .specify validator path'
+Assert-True ($iSrc -lt 0) 'workflow YAML: contains no source-tree validator fallback'
+Assert-True ($wf -match '(?m)^\s+MODE:\s+advisory') 'workflow YAML: advisory mode remains the default'
 Assert-True ($wf -match '(?m)exit 0') 'workflow YAML: honest advisory skip (exit 0) when neither path exists'
 
-Write-Host "`nAll work-kind deployed-shape resolution assertions passed (Codex P1 #1 + #2)." -ForegroundColor Green
+Write-Host "`nAll work-kind deployed-shape and advisory assertions passed (T022)." -ForegroundColor Green

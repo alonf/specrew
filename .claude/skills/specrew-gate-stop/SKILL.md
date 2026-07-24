@@ -3,7 +3,7 @@ name: "specrew-gate-stop"
 description: "Perform a Specrew human-verdict boundary stop on the Claude host. Renders the FULL Rule 46 six-section human re-entry packet AND the verdict options as one Markdown message, with the AskUserQuestion picker disabled so the packet cannot collapse into the picker's short header/option fields. Invoke at EVERY human-judgment boundary stop (specify, clarify, plan, tasks, before-implement, implement, review, retro, feature-closeout, lifecycle-end). Triggers: boundary stop, verdict, approve / redirect / send back, why I stopped, human re-entry packet, gate stop."
 domain: "lifecycle-governance"
 confidence: "high"
-source: "Specrew Feature 165 — on the Claude host the AskUserQuestion picker collapses the Rule 46 six-section packet into its short fields (the human is asked to approve what they cannot read; proven gameable even under a runtime hook-deny that the model satisfied by rewording the menu). disallowed-tools removes the picker for the stop, so the packet has nothing to collapse into and renders as prose. The design workshop is unaffected — its lens questions keep the picker because the workshop skill does NOT disable it."
+source: "Specrew Feature 165 — on the Claude host the AskUserQuestion picker collapses the Rule 46 six-section packet into its short fields (the human is asked to approve what they cannot read; proven gameable even under a runtime hook-deny that the model satisfied by rewording the menu). disallowed-tools removes the picker for the stop, so the packet has nothing to collapse into and renders as prose. The design-workshop skill now applies the same Claude-only capability guard for workshop questions; clarify questions remain unaffected."
 host-scope: claude
 disallowed-tools: AskUserQuestion
 ---
@@ -20,9 +20,9 @@ You have reached a Specrew **human-verdict boundary stop**. On the Claude host t
 picker **collapses** the Rule 46 packet into its short header/option fields, so the human is asked to
 approve something they cannot read. This skill removes that failure mode: while it is active the
 `AskUserQuestion` tool is **disallowed** — you have no picker to collapse into, so you MUST render the
-stop as a Markdown message. (The design workshop is unaffected: its per-lens questions keep the
-picker, because the workshop skill does not disable it. Clarify questions are not boundary stops and
-keep the picker too. Only boundary **verdict** stops route through this skill.)
+stop as a Markdown message. The design workshop is governed by its own skill, which independently
+removes the same unsafe picker on Claude and uses typed prose choices. Clarify questions are not
+boundary stops and keep the picker. Only boundary **verdict** stops route through this skill.
 
 ## What to render — one Markdown message, then STOP
 

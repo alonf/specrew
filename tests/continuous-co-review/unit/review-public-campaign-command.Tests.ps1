@@ -1,0 +1,861 @@
+$ErrorActionPreference = 'Stop'
+
+# Trace: T034b + T051 / FR-012, FR-017, FR-045, FR-057, FR-058, FR-059, FR-060, FR-062, FR-065 / SC-017, SC-018, SC-020.
+Describe 'Public campaign review delegation and campaign-aware packet gate (T051)' {
+    BeforeAll {
+        $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1')
+
+        function script:New-CampaignConfig {
+            param([string]$Root, [string]$Mode = 'campaign')
+            $path = Join-Path $Root 'authority.json'
+            [IO.File]::WriteAllText($path, (([ordered]@{ schema_version = '1.0'; mode = $Mode }) | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
+            return $path
+        }
+
+        function script:New-PublicCampaignRepo {
+            param(
+                [string]$Root,
+                [switch]$WithoutDesignContext,
+                [string]$FeatureId = '001-demo',
+                [string]$IterationNumber = '007'
+            )
+            New-Item -ItemType Directory -Path (Join-Path $Root "specs/$FeatureId/iterations/$IterationNumber") -Force | Out-Null
+            & git -C $Root init -q 2>&1 | Out-Null
+            & git -C $Root branch -m main 2>&1 | Out-Null
+            [IO.File]::WriteAllText((Join-Path $Root 'app.txt'), 'review me', [Text.UTF8Encoding]::new($false))
+            if (-not $WithoutDesignContext) {
+                [IO.File]::WriteAllText((Join-Path $Root "specs/$FeatureId/spec.md"), '# Demo design context', [Text.UTF8Encoding]::new($false))
+            }
+            & git -C $Root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
+            & git -C $Root -c user.name=t -c user.email=t@example.invalid commit -qm initial 2>&1 | Out-Null
+            return $Root
+        }
+
+        function script:New-CampaignFinding {
+            param([string]$Severity = 'major', [string]$Resolution = 'open')
+            return [pscustomobject][ordered]@{
+                finding_id = 'finding-demo'; source_local_id = 'local-demo'; lineage_id = 'lin-demo'
+                severity = $Severity; title = 'Review observation'; description = 'A deterministic finding.'
+                location = 'app.txt:1'; relevance = 'current'; resolution = $Resolution
+            }
+        }
+
+        function script:New-CampaignResult {
+            param(
+                [string]$RunId = 'run-one', [string]$Digest = 'digest-current',
+                [string]$CampaignId = 'cmp-demo-i007',
+                [string]$Completion = 'complete', [string]$Verdict = 'pass',
+                [string]$Runtime = 'completed', [string]$Currentness = 'current',
+                [string]$Validation = 'valid', [bool]$CanApprove = $true,
+                [object[]]$Findings = @(), [string]$FailureReason = $null
+            )
+            $result = [ordered]@{
+                schema_version = '1.0'; campaign_id = $CampaignId; run_id = $RunId; target_digest = $Digest
+                harness_id = 'fixture'; completion = $Completion; verdict = $Verdict; runtime_outcome = $Runtime
+                termination_verified = $true; containment = 'verified'; currentness = $Currentness; validation = $Validation
+                can_approve_current = $CanApprove; summary = 'fixture result'; findings = @($Findings)
+                started_at = '2026-07-16T00:00:00Z'; ended_at = '2026-07-16T00:01:00Z'; duration_ms = 60000
+            }
+            if (-not [string]::IsNullOrWhiteSpace($FailureReason)) { $result.failure_reason = $FailureReason }
+            return [pscustomobject]$result
+        }
+
+        function script:New-CampaignCandidate {
+            param([string]$RunId, [string]$Digest)
+            return [pscustomobject][ordered]@{
+                schema_version = '1.0'; run_id = $RunId; target_digest = $Digest
+                completion = 'complete'; verdict = 'pass'; summary = 'public command fixture'; findings = @()
+            }
+        }
+
+        function script:Add-CleanCampaignResult {
+            param(
+                [string]$Root, [string]$Store, [string]$RunId = 'run-finalization',
+                [string]$CampaignId = 'cmp-demo-i007', [string]$TargetLineage = 'lin-demo'
+            )
+            $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root).tree_id
+            Request-ReviewAuthorityClaim -StoreRoot $Store -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -ObservedAt '2026-07-18T00:00:00Z' | Out-Null
+            Publish-ReviewRunResultFact -StoreRoot $Store -CampaignId $CampaignId -RunId $RunId -Fact (New-CampaignResult -RunId $RunId -Digest $digest -CampaignId $CampaignId) | Out-Null
+            Complete-ReviewAuthorityClaim -StoreRoot $Store -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt '2026-07-18T00:01:00Z' | Out-Null
+            return [pscustomobject]@{ digest = $digest; commit = [string](@(& git -C $Root rev-parse HEAD) | Select-Object -First 1) }
+        }
+
+        function script:Add-PublicCampaignCommit {
+            param([string]$Root, [string]$RelativePath, [string]$Content)
+            $path = Join-Path $Root $RelativePath
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
+            [IO.File]::WriteAllText($path, $Content, [Text.UTF8Encoding]::new($false))
+            & git -C $Root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
+            & git -C $Root -c user.name=t -c user.email=t@example.invalid commit -qm $RelativePath 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "fixture-commit-failed:$RelativePath" }
+            return [string](@(& git -C $Root rev-parse HEAD) | Select-Object -First 1)
+        }
+    }
+
+    It 'fails mixed and all-invalid explicit design-context refs before port selection, grant persistence, or spend' -ForEach @(
+        @{ name = 'mixed'; refs = @('specs/001-demo/spec.md', 'specs/001-demo/missing.md'); unresolved = @('specs/001-demo/missing.md') }
+        @{ name = 'all-invalid'; refs = @('missing-a.md', 'missing-b.md'); unresolved = @('missing-a.md', 'missing-b.md') }
+    ) {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive "design-$name")
+        $config = New-CampaignConfig -Root $root
+        $store = Join-Path $root '.specrew/review/authority'
+        Mock -CommandName New-ReviewCampaignProductionPorts -MockWith { throw 'ports-must-not-be-selected' }
+
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId "run-design-$name" `
+            -GrantAuthorizationRef "human-slot-design-$name" -DesignContextRefs $refs -AuthorityConfigPath $config -StoreRoot $store
+
+        $run.status | Should -Be 'not-started'
+        $run.invoked | Should -BeFalse
+        $run.reason | Should -Match '^design-context-unresolved:'
+        @($run.unresolved_design_context) | Should -Be $unresolved
+        Assert-MockCalled -CommandName New-ReviewCampaignProductionPorts -Times 0 -Exactly
+        Test-Path -LiteralPath $store | Should -BeFalse -Because 'invalid caller input cannot mint a grant or touch campaign authority state'
+    }
+
+    It 'preserves the public pre-store design-context failure instead of masking it with a renderer property error' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-design-invalid-render')
+        $publicScript = Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'
+        $pwsh = (Get-Process -Id $PID).Path
+        $output = @(& $pwsh -NoProfile -File $publicScript -ProjectPath $root -FeatureId '001-demo' -IterationNumber '007' `
+            -Live -ReviewerHost claude -RunId 'run-public-design-invalid' -AuthorizationRef 'human-slot-public-design-invalid' `
+            -DesignContextRef 'specs/001-demo/missing.md' -TimeoutSeconds 30 2>&1)
+        $exitCode = $LASTEXITCODE
+        $text = ($output | Out-String)
+
+        $exitCode | Should -Be 1
+        $text | Should -Match 'design-context-unresolved:'
+        $text | Should -Match 'Authority store: unavailable \(run ended before authority-store creation\)'
+        $text | Should -Not -Match "property 'store_root' cannot be found"
+        Test-Path -LiteralPath (Join-Path $root '.specrew/review/authority') | Should -BeFalse -Because 'invalid explicit context fails before grant or store creation'
+    }
+
+    It 'refuses an explicit unavailable host after design validation and before authority-store work' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-unavailable-host')
+        $config = New-CampaignConfig -Root $root
+        $store = Join-Path $root '.specrew/review/authority'
+
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
+            -RunId 'run-public-unavailable-host' -ReviewerHost 'fixture' -ReviewerHostExplicit `
+            -GrantAuthorizationRef 'human-slot-public-unavailable-host' -DesignContextRefs @('specs/001-demo/spec.md') `
+            -TimeoutSeconds 30 -AuthorityConfigPath $config -StoreRoot $store
+
+        $run.status | Should -Be 'not-started'
+        $run.invoked | Should -BeFalse
+        $run.reason | Should -Match '^requested-host-not-available:'
+        $run.resolved_timeout_seconds | Should -Be 30
+        Test-Path -LiteralPath $store | Should -BeFalse -Because 'unavailable host refusal precedes grant persistence and all campaign authority facts'
+    }
+
+    It 'reloads a recorded one-time reviewer authorization through the public campaign call path' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-recorded-authorization')
+        $configDirectory = Join-Path $root '.specrew'
+        New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
+        $reviewerConfig = Join-Path $configDirectory 'reviewer-hosts.json'
+        $recordedAuthorization = 'human-recorded-public-campaign-slot'
+        [IO.File]::WriteAllText($reviewerConfig, (([ordered]@{
+            schema_version = '1.0'
+            hosts = @([ordered]@{
+                host = 'provider-free-probe'; model = 'provider-free-probe'; adapter_id = 'reviewer-host-adapter-provider-free-probe'
+                allowed = $true; installed = $true; review_class_rank = 100; model_source = 'fixture'; cost_class = 'free-local-fixture'
+                authorization_ref = $recordedAuthorization; fallback_allowed = $false
+            })
+        }) | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+
+        $publicScript = Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'
+        $pwsh = (Get-Process -Id $PID).Path
+        $output = @(& $pwsh -NoProfile -File $publicScript -ProjectPath $root -FeatureId '001-demo' -IterationNumber '007' `
+            -Live -RunId 'run-public-recorded-authorization' -ReviewerConfigPath $reviewerConfig -TimeoutSeconds 30 -Json 2>&1)
+        $exitCode = $LASTEXITCODE
+        $text = ($output | Out-String)
+
+        $exitCode | Should -Be 1
+        $text | Should -Match '"harness_id":\s*"provider-free-probe"' -Because 'the provider-free failure result proves the selected recorded host reached production preflight'
+        $text | Should -Match 'verification-not-configured:' -Because 'the fixture deliberately stops before any provider-capable harness can run'
+        $store = Join-Path $root '.specrew/review/authority'
+        $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId 'cmp-001-demo-i007' -Kind grants)
+        $grants.Count | Should -Be 1
+        $grants[0].authorization_ref | Should -Be $recordedAuthorization
+        $grants[0].slots | Should -Be 1
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId 'cmp-001-demo-i007' -Kind spend).Count | Should -Be 0 -Because 'this regression must never invoke a provider'
+    }
+
+    It 'passes validated repo-relative design context through the frozen campaign invocation without changing target identity' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'design-valid')
+        $config = New-CampaignConfig -Root $root
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-design-valid'
+        $prompt = Join-Path $root 'prompt.md'; [IO.File]::WriteAllText($prompt, 'bounded fixture prompt')
+        $origin = Get-GitReviewTargetOriginEvidence -OriginRepo $root
+        $captured = [pscustomobject]@{ invocation = $null }
+        $candidate = New-CampaignCandidate -RunId $identity.run_id -Digest $origin.reviewed_state_digest
+        $harness = [pscustomobject]@{
+            id = 'fixture-design-context'
+            preflight = { param($invocation) $captured.invocation = $invocation; [pscustomobject]@{ ok = $true; reason = 'fixture-ready' } }.GetNewClosure()
+            invoke = {
+                param($invocation, $environment)
+                [IO.File]::WriteAllText([string]$invocation.candidate_result_path, ($candidate | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
+                [pscustomobject]@{ exit_code = 0; output_activity = $true }
+            }.GetNewClosure()
+        }
+        $ports = [pscustomobject]@{
+            target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'design-valid-external')
+            harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
+        }
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
+            -GrantAuthorizationRef 'human-slot-design-valid' -DesignContextRefs @('specs/001-demo/spec.md') `
+            -AuthorityConfigPath $config -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
+
+        $run.status | Should -Be 'terminal' -Because $run.reason
+        $run.result.completion | Should -Be 'complete'
+        $run.result.target_digest | Should -Be $origin.reviewed_state_digest
+        $run.design_context | Should -Be 'resolved'
+        @($run.resolved_design_context) | Should -Be @('specs/001-demo/spec.md')
+        $captured.invocation.review_scope | Should -Match ([regex]::Escape('specs/001-demo/spec.md'))
+        $captured.invocation.review_scope | Should -Not -Match ([regex]::Escape($root)) -Because 'the prompt gets repo-relative refs, never the mutable origin path'
+    }
+
+    It 'auto-resolves design context from the campaign FeatureId in a clean repo with multiple feature specs' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'design-feature-id')
+        New-Item -ItemType Directory -Path (Join-Path $root 'specs/999-distractor') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root 'specs/999-distractor/spec.md'), '# Wrong feature', [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'add distractor feature' 2>&1 | Out-Null
+
+        $config = New-CampaignConfig -Root $root
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-design-feature-id'
+        $prompt = Join-Path $root 'prompt.md'; [IO.File]::WriteAllText($prompt, 'bounded fixture prompt')
+        $origin = Get-GitReviewTargetOriginEvidence -OriginRepo $root
+        $captured = [pscustomobject]@{ invocation = $null }
+        $candidate = New-CampaignCandidate -RunId $identity.run_id -Digest $origin.reviewed_state_digest
+        $harness = [pscustomobject]@{
+            id = 'fixture-design-feature-id'
+            preflight = { param($invocation) $captured.invocation = $invocation; [pscustomobject]@{ ok = $true; reason = 'fixture-ready' } }.GetNewClosure()
+            invoke = {
+                param($invocation, $environment)
+                [IO.File]::WriteAllText([string]$invocation.candidate_result_path, ($candidate | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
+                [pscustomobject]@{ exit_code = 0; output_activity = $true }
+            }.GetNewClosure()
+        }
+        $ports = [pscustomobject]@{
+            target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'design-feature-id-external')
+            harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
+        }
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
+            -GrantAuthorizationRef 'human-slot-design-feature-id' -AuthorityConfigPath $config `
+            -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
+
+        $run.status | Should -Be 'terminal' -Because $run.reason
+        $run.result.completion | Should -Be 'complete'
+        $run.design_context | Should -Be 'resolved'
+        @($run.resolved_design_context) | Should -Be @('specs/001-demo/spec.md')
+        $captured.invocation.review_scope | Should -Match ([regex]::Escape('specs/001-demo/spec.md'))
+        $captured.invocation.review_scope | Should -Not -Match ([regex]::Escape('specs/999-distractor/spec.md'))
+        $captured.invocation.review_scope | Should -Not -Match 'DESIGN_CONTEXT_EMPTY'
+    }
+
+    It 'turns an omitted unresolved design context into bounded partial evidence even when the reviewer candidate says pass' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'design-empty') -WithoutDesignContext
+        $config = New-CampaignConfig -Root $root
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-design-empty'
+        $prompt = Join-Path $root 'prompt.md'; [IO.File]::WriteAllText($prompt, 'bounded fixture prompt')
+        $origin = Get-GitReviewTargetOriginEvidence -OriginRepo $root
+        $captured = [pscustomobject]@{ invocation = $null }
+        $candidate = New-CampaignCandidate -RunId $identity.run_id -Digest $origin.reviewed_state_digest
+        $harness = [pscustomobject]@{
+            id = 'fixture-design-empty'
+            preflight = { param($invocation) $captured.invocation = $invocation; [pscustomobject]@{ ok = $true; reason = 'fixture-ready' } }.GetNewClosure()
+            invoke = {
+                param($invocation, $environment)
+                [IO.File]::WriteAllText([string]$invocation.candidate_result_path, ($candidate | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
+                [pscustomobject]@{ exit_code = 0; output_activity = $true }
+            }.GetNewClosure()
+        }
+        $ports = [pscustomobject]@{
+            target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'design-empty-external')
+            harness = $harness; runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort; clock = New-ReviewSystemClockPort; prompt_path = $prompt
+        }
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
+            -GrantAuthorizationRef 'human-slot-design-empty' -AuthorityConfigPath $config -StoreRoot (Join-Path $root '.specrew/review/authority') -Ports $ports
+
+        $run.status | Should -Be 'terminal' -Because $run.reason
+        $run.design_context | Should -Be 'empty'
+        $run.result.validation | Should -Be 'valid'
+        $run.result.completion | Should -Be 'partial'
+        $run.result.verdict | Should -Be 'incomplete'
+        $run.result.can_approve_current | Should -BeFalse
+        $run.result.failure_reason | Should -Match '^DESIGN_CONTEXT_EMPTY:'
+        $captured.invocation.review_scope | Should -Match 'DESIGN_CONTEXT_EMPTY:'
+        $captured.invocation.review_scope.Length | Should -BeLessOrEqual 16000
+        (Get-GitReviewTargetOriginEvidence -OriginRepo $root).reviewed_state_digest | Should -Be $origin.reviewed_state_digest
+    }
+
+    It 'delegates one public operation through campaign ports and preserves the exact origin state' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'public-pass')
+        $config = New-CampaignConfig -Root $root
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-public-one'
+        $prompt = Join-Path $root 'prompt.md'; [IO.File]::WriteAllText($prompt, 'bounded fixture prompt')
+        $originBefore = Get-GitReviewTargetOriginEvidence -OriginRepo $root
+        $ports = [pscustomobject]@{
+            target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'external')
+            harness = New-ReviewFixtureHarnessPort -Candidate (New-CampaignCandidate -RunId $identity.run_id -Digest $originBefore.reviewed_state_digest)
+            runtime = New-ReviewFixtureRuntimePort
+            verification = New-ReviewFixtureVerificationPort
+            clock = New-ReviewSystemClockPort
+            prompt_path = $prompt
+        }
+        $store = Join-Path $root '.specrew/review/authority'
+        $progressEvents = [Collections.Generic.List[object]]::new()
+        $progressSink = { param($event) $progressEvents.Add($event) | Out-Null }.GetNewClosure()
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
+            -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports -ProgressSink $progressSink
+
+        $run.status | Should -Be 'terminal' -Because $run.reason
+        $run.invoked | Should -BeTrue
+        $run.campaign_id | Should -Be 'cmp-001-demo-i007'
+        $run.result.target_digest | Should -Be $originBefore.reviewed_state_digest
+        $run.result.can_approve_current | Should -BeTrue
+        $run.diagnostics.authority | Should -BeFalse
+        $run.diagnostics.event_count | Should -Be @($progressEvents).Count
+        $run.diagnostics.heartbeat_count | Should -BeGreaterThan 0
+        $run.diagnostics.usage.status | Should -Be 'unavailable'
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind grants).Count | Should -Be 1
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind spend).Count | Should -Be 1
+        $originAfter = Get-GitReviewTargetOriginEvidence -OriginRepo $root
+        $originAfter.origin_head | Should -Be $originBefore.origin_head
+        $originAfter.reviewed_state_digest | Should -Be $originBefore.reviewed_state_digest
+
+        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -AuthorityConfigPath $config -CampaignId $run.campaign_id `
+            -TargetLineage $run.target_lineage -CampaignStoreRoot $store
+        $gate.decision | Should -Be 'allow' -Because ("reason={0}; message={1}" -f $gate.reason, $gate.message)
+        $gate.route | Should -Be 'boundary-clean'
+        $gate.render_verdict_marker | Should -BeTrue
+
+        $reused = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-public-two' `
+            -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
+        $reused.status | Should -Be 'not-started'
+        $reused.invoked | Should -BeFalse
+        $reused.reason | Should -Be 'allowance-exhausted'
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind grants).Count | Should -Be 1
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind spend).Count | Should -Be 1
+    }
+
+    It 'fails preflight without spend and never falls back to legacy authority' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'preflight')
+        $config = New-CampaignConfig -Root $root
+        $prompt = Join-Path $root 'prompt.md'; [IO.File]::WriteAllText($prompt, 'bounded fixture prompt')
+        $snapshot = Join-Path $root 'snapshot'; New-Item -ItemType Directory -Path $snapshot -Force | Out-Null
+        $ports = [pscustomobject]@{
+            target = New-ReviewFixtureTargetPort -SnapshotPath $snapshot -TargetDigest 'digest-current'
+            harness = New-ReviewUnavailableHarnessPort -Reason 'fixture-harness-missing'
+            runtime = New-ReviewFixtureRuntimePort
+            verification = New-ReviewFixtureVerificationPort
+            clock = New-ReviewSystemClockPort
+            prompt_path = $prompt
+        }
+        $store = Join-Path $root '.specrew/review/authority'
+        $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-preflight-one' `
+            -GrantAuthorizationRef 'human-slot-preflight-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
+        $run.status | Should -Be 'failed'
+        $run.invoked | Should -BeFalse
+        $run.result.runtime_outcome | Should -Be 'preflight-failed'
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind spend).Count | Should -Be 0
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind releases).Count | Should -Be 1
+
+        $legacyDir = Join-Path $root '.specrew/review/inline/legacy-pass'; New-Item -ItemType Directory -Path $legacyDir -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $legacyDir 'review-run.json'), '{"status":"pass"}')
+        $emptyStore = Join-Path $root '.specrew/review/empty-campaign-store'
+        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -AuthorityConfigPath $config -CampaignId 'cmp-001-demo-i007' -TargetLineage 'lin-001-demo' -CampaignStoreRoot $emptyStore
+        $gate.decision | Should -Be 'block'
+        $gate.reason | Should -Be 'no-authoritative-campaign-result'
+    }
+
+    It 'suppresses all execution for missing, malformed, disabled, and legacy authority modes' -ForEach @(
+        @{ name = 'missing'; mode = $null; raw = $null; expected = 'authority-config-missing' }
+        @{ name = 'malformed'; mode = $null; raw = '{'; expected = 'authority-config-invalid-json' }
+        @{ name = 'disabled'; mode = 'disabled'; raw = $null; expected = 'authority-mode-disabled' }
+        @{ name = 'legacy'; mode = 'legacy'; raw = $null; expected = 'authority-mode-legacy' }
+    ) {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive $name)
+        $config = Join-Path $root 'authority.json'
+        if ($null -ne $raw) { [IO.File]::WriteAllText($config, $raw) }
+        elseif ($null -ne $mode) { $config = New-CampaignConfig -Root $root -Mode $mode }
+        $store = Join-Path $root 'store'
+        $result = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId "run-$name" -AuthorityConfigPath $config -StoreRoot $store
+        $result.status | Should -Be 'suppressed'
+        $result.invoked | Should -BeFalse
+        $result.reason | Should -Match ([regex]::Escape($expected))
+        Test-Path -LiteralPath $store | Should -BeFalse
+    }
+
+    It 'passes the requested model through campaign production-port construction' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'production-model')
+        Mock -CommandName New-GitReviewTargetPort -MockWith {
+            [pscustomobject]@{ kind = 'git'; origin_repo = $OriginRepo; external_root = $ExternalRoot }
+        }
+        Mock -CommandName New-ReviewProductionHarnessPort -MockWith {
+            [pscustomobject]@{ id = 'cursor-cli-file-primary'; configured_model = $Model }
+        }
+        Mock -CommandName New-ReviewProductionRuntimePort -MockWith {
+            [pscustomobject]@{ id = 'fixture-runtime' }
+        }
+
+        $ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost cursor -Model auto -TimeoutSeconds 600
+
+        $ports.harness.configured_model | Should -Be 'auto'
+        $ports.target.external_root | Should -Be (Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($root))) '.specrew-targets')
+        (Split-Path -Leaf $ports.target.external_root) | Should -Be '.specrew-targets' -Because 'deep Windows target paths need the short sibling root proven by T060'
+        Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 1 -Exactly -ParameterFilter {
+            $OriginRepo -ceq $root -and $ExternalRoot -ceq (Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($root))) '.specrew-targets')
+        }
+        Assert-MockCalled -CommandName New-ReviewProductionHarnessPort -Times 1 -Exactly -ParameterFilter {
+            $HostName -ceq 'cursor' -and $Model -ceq 'auto' -and $TimeoutSeconds -eq 600
+        }
+    }
+
+    It 'uses one external-root policy for live and reconciliation paths with an explicit override' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'target-root-policy/repo')
+        $override = Join-Path $TestDrive 'explicit-target-root'
+        Mock -CommandName New-GitReviewTargetPort -MockWith {
+            [pscustomobject]@{ kind = 'git'; origin_repo = $OriginRepo; external_root = $ExternalRoot }
+        }
+
+        $default = New-ReviewCampaignTargetPort -RepoRoot $root
+        $explicit = New-ReviewCampaignTargetPort -RepoRoot $root -RequestedRoot $override
+
+        $default.external_root | Should -Be (Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($root))) '.specrew-targets')
+        $explicit.external_root | Should -Be ([IO.Path]::GetFullPath($override))
+        { New-ReviewCampaignTargetPort -RepoRoot $root -RequestedRoot (Join-Path $root 'inside') } | Should -Throw '*review-campaign-target-root-inside-origin*'
+        Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 2 -Exactly
+    }
+
+    It 'falls back to the repo-scoped writable user root when the repository parent is not usable' {
+        $parent = Join-Path $TestDrive 'fallback-parent'
+        $root = New-PublicCampaignRepo -Root (Join-Path $parent 'repo')
+        [IO.File]::WriteAllText((Join-Path $parent '.specrew-targets'), 'blocks sibling directory creation')
+        Mock -CommandName New-GitReviewTargetPort -MockWith {
+            [pscustomobject]@{ kind = 'git'; origin_repo = $OriginRepo; external_root = $ExternalRoot }
+        }
+
+        $port = $null
+        try {
+            $port = New-ReviewCampaignTargetPort -RepoRoot $root
+            $gitRoot = (& git -C $root rev-parse --show-toplevel).Trim()
+            $token = Get-ReviewCampaignRepositoryToken -GitRoot $gitRoot
+            $expected = if ([OperatingSystem]::IsWindows()) {
+                Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)) ('.sr/' + $token)
+            }
+            else { Join-Path ([IO.Path]::GetTempPath()) ('specrew-review-targets/' + $token) }
+
+            $port.external_root | Should -Be ([IO.Path]::GetFullPath($expected))
+            Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 1 -Exactly -ParameterFilter { $ExternalRoot -ceq ([IO.Path]::GetFullPath($expected)) }
+        }
+        finally {
+            # The production root is deliberately retained per repository, but this fixture's
+            # TestDrive-derived token is unique on every run and must not leak into the real home.
+            if ($null -ne $port -and [IO.Directory]::Exists([string]$port.external_root) -and @(Get-ChildItem -LiteralPath ([string]$port.external_root) -Force).Count -eq 0) {
+                [IO.Directory]::Delete([string]$port.external_root, $false)
+            }
+        }
+    }
+
+    It 'normalizes repository token identity and candidate dedup for case-insensitive Windows paths' -Skip:(-not [OperatingSystem]::IsWindows()) {
+        $one = Get-ReviewCampaignRepositoryToken -GitRoot 'C:\Dev\Repo'
+        $two = Get-ReviewCampaignRepositoryToken -GitRoot 'c:\dev\repo'
+        $one | Should -Be $two
+        $one | Should -Match '^[0-9a-f]{16}$'
+
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
+        $source | Should -Match '\[StringComparer\]::OrdinalIgnoreCase'
+        $source | Should -Match 'HashSet\[string\]'
+
+        $repoToken = Get-ReviewCampaignRepositoryToken -GitRoot $script:RepoRoot
+        $boundedUserProfile = 'C:\Users\' + ('u' * 31)
+        $boundedUserProfile.Length | Should -Be 40
+        $fallbackRoot = Join-Path $boundedUserProfile ('.sr/' + $repoToken)
+        $workspaceLeaf = 'rt-' + ('a' * 16)
+        $longestTracked = @(& git -C $script:RepoRoot ls-files) | Sort-Object { $_.Length } -Descending | Select-Object -First 1
+        $trackedPathGrowthAllowance = 16
+        ($fallbackRoot.Length + 1 + $workspaceLeaf.Length + 1 + $longestTracked.Length + $trackedPathGrowthAllowance) | Should -BeLessThan 260 `
+            -Because 'the fallback must budget a fixed 40-character user profile plus tracked-path growth, not merely fit the current runner'
+    }
+
+    It 'keeps a successfully probed shared root and never races to delete another run entry' {
+        $root = Join-Path $TestDrive 'shared-probe-root'
+        $first = Test-ReviewCampaignTargetRootWritable -Path $root
+        $first.ok | Should -BeTrue
+        Test-Path -LiteralPath $root -PathType Container | Should -BeTrue
+
+        $otherRun = Join-Path $root 'other-run-entry'
+        [IO.File]::WriteAllText($otherRun, 'owned by another run')
+        $second = Test-ReviewCampaignTargetRootWritable -Path $root
+        $second.ok | Should -BeTrue
+        Test-Path -LiteralPath $otherRun -PathType Leaf | Should -BeTrue
+        @(Get-ChildItem -LiteralPath $root -Filter '.specrew-write-probe-*' -Force).Count | Should -Be 0
+    }
+
+    It 'documents retained namespace roots and avoids the automatic PROFILE variable name' {
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
+        $api = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'docs/api-reference.md') -Raw
+        $troubleshooting = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'docs/troubleshooting.md') -Raw
+
+        $source | Should -Not -Match '\$profile\s*='
+        $source | Should -Match 'one per resolved repository identity'
+        $source | Should -Match 'both successful and failed file probes'
+        $api | Should -Match '%USERPROFILE%\\\.sr\\<repo-token>'
+        $api | Should -Match 'intentionally retained'
+        $api | Should -Match 'failed file probe'
+        $troubleshooting | Should -Match 'review-campaign-target-root-unavailable'
+        $troubleshooting | Should -Match '--run-root <absolute-path>'
+        $troubleshooting | Should -Match '%TEMP%/specrew-review-targets/<20-hex>/'
+        $troubleshooting | Should -Match '%USERPROFILE%\\\.sr\\<20-hex>'
+    }
+
+    It 'wires the existing public live surface to campaign delegation before the legacy diagnostic path' {
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
+        $campaignBranch = $source.IndexOf('if ([bool]$authorityDecision.campaign_authority_enabled)')
+        $delegate = $source.IndexOf('Invoke-ReviewCampaignCommand', $campaignBranch)
+        $legacy = $source.IndexOf("`$coReviewEngine = 'worktree'", $campaignBranch)
+        $campaignBranch | Should -BeGreaterThan -1
+        $delegate | Should -BeGreaterThan $campaignBranch
+        $legacy | Should -BeGreaterThan $delegate
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Not -Match 'Start-ContinuousCoReviewServiceRun'
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "campaignRun.status -cne 'terminal'"
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match 'DesignContextRefs' -Because 'the public parser output must reach campaign validation'
+        $source | Should -Match '\$boundDesignContextRefs\s*=\s*@\(\$DesignContextRef\s*\|\s*Where-Object' -Because 'an omitted named array must not become one empty explicit design-context ref'
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "PSObject\.Properties\['store_root'\]" -Because 'a pre-store not-started result must render without a second property error'
+        $campaignSource = $source.Substring($campaignBranch, $legacy - $campaignBranch)
+        $campaignSource | Should -Match 'Resolve-ContinuousCoReviewConfiguredReviewerCandidate' -Because 'normal live runs must reload the recorded project-level reviewer grant'
+        $campaignSource | Should -Match '-GrantAuthorizationRef\s+\$campaignGrantAuthorizationRef' -Because 'the recorded authorization must reach campaign authority'
+        $campaignSource | Should -Match '-Model\s+\$campaignModel' -Because 'the resolved public model selection must reach campaign production-port construction'
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-TargetRoot\s+\(\[string\]\$parsedArgs\.RunRoot\)' -Because 'the public workspace-root override must reach the singular target policy'
+        $source | Should -Match '--reconcile-run'
+        $source | Should -Match 'Invoke-ReviewRunReconciliation' -Because 'the public recovery surface must execute the immutable reconciliation plan'
+        $source | Should -Match 'New-ReviewCampaignTargetPort -RepoRoot \$resolvedProjectPath' -Because 'reconciliation must reuse the same short-root/fallback policy as live review'
+
+        $remediationBranch = $source.IndexOf("if (-not [string]::IsNullOrWhiteSpace([string]`$parsedArgs.Remediate))")
+        $legacyRemediation = $source.IndexOf("internal/continuous-co-review/worktree-review-orchestrator.ps1", $remediationBranch)
+        $remediationBranch | Should -BeGreaterThan -1
+        $legacyRemediation | Should -BeGreaterThan $remediationBranch
+        $source.Substring($remediationBranch, $legacyRemediation - $remediationBranch) | Should -Match 'neither legacy nor campaign remediation may mutate review state'
+    }
+
+    It 'routes running, clean, actionable, advisory, partial, stale, timeout, and explicit human disposition without marker leakage' {
+        $active = [pscustomobject][ordered]@{ schema_version = '1.0'; campaign_id = 'cmp-demo-i007'; run_id = 'run-one'; target_digest = 'digest-current'; harness_id = 'fixture'; state = 'invoked' }
+        (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -ActiveRun $active).route | Should -Be 'review-running'
+
+        $clean = New-CampaignResult
+        $cleanRoute = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($clean)
+        $cleanRoute.route | Should -Be 'boundary-clean'
+        $cleanRoute.render_boundary_packet | Should -BeTrue
+        $cleanRoute.render_verdict_marker | Should -BeTrue
+
+        $major = New-CampaignResult -Verdict findings -CanApprove $false -Findings @((New-CampaignFinding -Severity major))
+        $majorRoute = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($major)
+        $majorRoute.route | Should -Be 'review-actionable'
+
+        $note = New-CampaignResult -Verdict findings -CanApprove $false -Findings @((New-CampaignFinding -Severity note))
+        $noteRoute = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($note)
+        $noteRoute.route | Should -Be 'review-human-decision'
+        $noteRoute.ask_narrow_question | Should -BeTrue
+
+        $disposition = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'human-disposition'; disposition_id = 'disposition-human-one'
+            campaign_id = 'cmp-demo-i007'; run_id = 'run-one'; target_digest = 'digest-current'; decision = 'accept-current'
+            authority_kind = 'human'; authorized_by = 'maintainer'; authorization_ref = 'human-message-1'; rationale = 'accepted advisory risk'; observed_at = '2026-07-16T00:02:00Z'
+        }
+        $accepted = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($note) -HumanDispositions @($disposition)
+        $accepted.route | Should -Be 'boundary-human-disposition'
+        $accepted.render_verdict_marker | Should -BeTrue
+
+        $partial = New-CampaignResult -Completion partial -Verdict incomplete -Runtime terminated -CanApprove $false -Findings @((New-CampaignFinding -Severity minor))
+        (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($partial)).route | Should -Be 'review-partial'
+        $laterPartial = New-CampaignResult -RunId 'run-two' -Completion partial -Verdict incomplete -Runtime terminated -CanApprove $false -Findings @((New-CampaignFinding -Severity minor))
+        $supersededClean = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one', 'run-two') -Results @($clean, $laterPartial)
+        $supersededClean.route | Should -Be 'review-partial'
+        $supersededClean.run_id | Should -Be 'run-two'
+        $supersededClean.render_verdict_marker | Should -BeFalse
+        $stale = New-CampaignResult -Digest digest-old -Verdict findings -Currentness snapshot-moved -CanApprove $false -Findings @((New-CampaignFinding -Severity major))
+        (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($stale)).route | Should -Be 'review-stale'
+        $timeout = New-CampaignResult -Completion partial -Verdict incomplete -Runtime timed-out -CanApprove $false -Findings @((New-CampaignFinding -Severity minor)) -FailureReason 'killed after timeout'
+        (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($timeout)).route | Should -Be 'review-timeout'
+
+        foreach ($blocked in @($majorRoute, $noteRoute,
+                (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($partial)),
+                (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($stale)),
+                (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($timeout)))) {
+            $blocked.render_boundary_packet | Should -BeFalse
+            $blocked.render_verdict_marker | Should -BeFalse
+            (Build-ReviewCampaignNavigatorStopBlock -PacketDecision $blocked) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+        }
+    }
+
+    It 'backfills omitted production scope, publishes one direct-parent finalization, and renders both commits through the wired gate' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-valid')
+        & git -C $root branch -m 001-demo 2>&1 | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/`n", [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add .gitignore 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'ignore controller authority store' 2>&1 | Out-Null
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaignId = 'cmp-001-demo-i007'
+        $targetLineage = 'lin-001-demo'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -CampaignId $campaignId -TargetLineage $targetLineage
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+        $beforeGateDigest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+        $candidateFact = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = $campaignId
+            run_id = 'run-finalization'; reviewed_digest = $reviewed.digest; finalization_commit = $finalizationCommit
+        }
+        $candidateEnvelope = Test-ReviewCampaignFinalizationEnvelope -RepoRoot $root -CampaignId $campaignId `
+            -Result (Get-ReviewRunAuthorityFact -StoreRoot $store -CampaignId $campaignId -RunId 'run-finalization' -Stage result) `
+            -Fact $candidateFact -CurrentDigest $beforeGateDigest -FeatureId '001-demo' -IterationNumber '007'
+        $candidateEnvelope.reason | Should -Be 'valid'
+
+        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root
+        $gate.decision | Should -Be 'allow' -Because ("reason={0}; message={1}" -f $gate.reason, $gate.message)
+        $gate.route | Should -Be 'boundary-finalized'
+        $gate.reason | Should -Be 'complete-clean-finalized-result'
+        $gate.render_boundary_packet | Should -BeTrue
+        $gate.reviewed_digest | Should -Be $reviewed.digest
+        $gate.reviewed_commit | Should -Be $reviewed.commit
+        $gate.finalization_commit | Should -Be $finalizationCommit
+        $gate.message | Should -Match ([regex]::Escape($reviewed.commit))
+        $gate.message | Should -Match ([regex]::Escape($finalizationCommit))
+        (Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId $campaignId).finalization_commit | Should -Be $finalizationCommit
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id | Should -Be $beforeGateDigest -Because 'the authority fact is outside the reviewed digest'
+
+        { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $root -BoundaryType review-signoff } | Should -Not -Throw
+        $wired = (Get-Content -LiteralPath (Join-Path $root '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json).decision
+        $wired.decision | Should -Be 'allow'
+        $wired.route | Should -Be 'boundary-finalized'
+        $wired.reviewed_commit | Should -Be $reviewed.commit
+        $wired.finalization_commit | Should -Be $finalizationCommit
+        $wired.message | Should -Match 'reviewed commit.+finalized.+commit'
+    }
+
+    It 'finalizes a reviewed parent with a machine-local Claude settings overlay while ordinary Claude settings still fail closed' -ForEach @(
+        @{ name = 'local-overlay'; path = '.claude/settings.local.json'; expected = 'boundary-finalized' },
+        @{ name = 'ordinary-settings'; path = '.claude/settings.json'; expected = 'review-stale' }
+    ) {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive "finalization-settings-$name")
+        & git -C $root branch -m 001-demo 2>&1 | Out-Null
+        [IO.Directory]::CreateDirectory((Join-Path $root '.claude')) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root $path), '{"baseline":true}', [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/`n", [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add -A 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'tracked settings baseline' 2>&1 | Out-Null
+
+        [IO.File]::WriteAllText((Join-Path $root $path), '{"reviewed_overlay":true}', [Text.UTF8Encoding]::new($false))
+        $store = Join-Path $root '.specrew/review/authority'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId "run-settings-$name" -CampaignId 'cmp-001-demo-i007' -TargetLineage 'lin-001-demo'
+        & git -C $root restore -- $path 2>&1 | Out-Null
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-001-demo-i007' -TargetLineage 'lin-001-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+
+        $decision.route | Should -Be $expected
+        if ($expected -eq 'boundary-finalized') {
+            (Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-001-demo-i007') | Should -Not -BeNullOrEmpty
+        }
+        else {
+            Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-001-demo-i007' | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'fails closed before validation or publication when production scope remains unresolved after backfill' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-scope-unresolved')
+        $store = Join-Path $TestDrive 'finalization-scope-unresolved-store'
+        Mock -CommandName Resolve-ReviewCampaignPublicIdentity -MockWith {
+            [pscustomobject]@{
+                campaign_id = 'cmp-demo-i007'; target_lineage = 'lin-demo'
+                feature_id = ''; iteration_number = ''
+            }
+        }
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -StoreRoot $store
+
+        $decision.route | Should -Be 'review-failure'
+        $decision.reason | Should -Be 'scope-identity-unresolvable'
+        $decision.render_boundary_packet | Should -BeFalse
+        Test-Path -LiteralPath $store | Should -BeFalse -Because 'empty scope cannot reach digest, validation, or fact publication'
+        Assert-MockCalled -CommandName Resolve-ReviewCampaignPublicIdentity -Times 1 -Exactly
+    }
+
+    It 'uses the shared scope definition through resolver and production finalization for a nonnumeric feature and four-digit iteration' {
+        $featureId = 'antigravity-host-followup'
+        $iterationNumber = '1000'
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-long-lived-scope') `
+            -FeatureId $featureId -IterationNumber $iterationNumber
+        & git -C $root branch -m $featureId 2>&1 | Out-Null
+        [IO.File]::WriteAllText((Join-Path $root '.gitignore'), ".specrew/`n", [Text.UTF8Encoding]::new($false))
+        & git -C $root -c user.name=t -c user.email=t@example.invalid add .gitignore 2>&1 | Out-Null
+        & git -C $root -c user.name=t -c user.email=t@example.invalid commit -qm 'ignore controller authority store' 2>&1 | Out-Null
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -RunId 'run-scope-shared'
+        $identity.feature_id | Should -Be $featureId
+        $identity.iteration_number | Should -Be $iterationNumber
+        $store = Join-Path $root '.specrew/review/authority'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -CampaignId $identity.campaign_id -TargetLineage $identity.target_lineage
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root `
+            -RelativePath "specs/$featureId/iterations/$iterationNumber/review.md" -Content '# Final review evidence'
+
+        $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root
+
+        $gate.decision | Should -Be 'allow' -Because ("reason={0}; message={1}" -f $gate.reason, $gate.message)
+        $gate.route | Should -Be 'boundary-finalized'
+        $gate.reviewed_commit | Should -Be $reviewed.commit
+        $gate.finalization_commit | Should -Be $finalizationCommit
+    }
+
+    It 'reports missing explicit-call scope before finalization validation or publication' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-explicit-scope-missing')
+        $store = Join-Path $TestDrive 'finalization-explicit-scope-missing-store'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-explicit-scope-missing'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' `
+            -TargetLineage 'lin-demo' -StoreRoot $store
+
+        $decision.route | Should -Be 'review-failure'
+        $decision.reason | Should -Be 'scope-identity-unresolvable'
+        $decision.render_boundary_packet | Should -BeFalse
+        Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
+    }
+
+    It 're-reads and validates the immutable winner when finalization publication loses a CreateNew race' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-race-converges')
+        $store = Join-Path $TestDrive 'finalization-race-converges-store'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-race-converges'
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+        $winner = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = 'cmp-demo-i007'
+            run_id = 'run-race-converges'; reviewed_digest = $reviewed.digest; finalization_commit = $finalizationCommit
+        }
+        $script:raceRead = 0
+        Mock -CommandName Get-ReviewCampaignFinalizationFact -MockWith {
+            $script:raceRead++
+            if ($script:raceRead -eq 1) { return $null }
+            return $winner
+        }
+        Mock -CommandName Write-ReviewCampaignFinalizationFact -MockWith {
+            throw 'review-store-corruption:conflicting-immutable-fact:campaigns/cmp-demo-i007/finalization.json'
+        }
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+
+        $decision.route | Should -Be 'boundary-finalized'
+        $decision.finalization_commit | Should -Be $finalizationCommit
+        Assert-MockCalled -CommandName Write-ReviewCampaignFinalizationFact -Times 1 -Exactly
+        Assert-MockCalled -CommandName Get-ReviewCampaignFinalizationFact -Times 2 -Exactly
+    }
+
+    It 'fails closed when the CreateNew winner does not bind the validated candidate' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-race-conflict')
+        $store = Join-Path $TestDrive 'finalization-race-conflict-store'
+        $reviewed = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-race-conflict'
+        $finalizationCommit = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final review evidence'
+        $conflictingWinner = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'review-finalization'; campaign_id = 'cmp-demo-i007'
+            run_id = 'run-other'; reviewed_digest = $reviewed.digest; finalization_commit = $finalizationCommit
+        }
+        $script:conflictRead = 0
+        Mock -CommandName Get-ReviewCampaignFinalizationFact -MockWith {
+            $script:conflictRead++
+            if ($script:conflictRead -eq 1) { return $null }
+            return $conflictingWinner
+        }
+        Mock -CommandName Write-ReviewCampaignFinalizationFact -MockWith {
+            throw 'review-store-corruption:conflicting-immutable-fact:campaigns/cmp-demo-i007/finalization.json'
+        }
+
+        $caught = $null
+        try {
+            $null = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+                -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        }
+        catch { $caught = $_ }
+
+        $caught | Should -Not -BeNullOrEmpty
+        $caught.Exception.Message | Should -Match 'review-finalization-post-publish-invalid:result-identity-mismatch'
+        Assert-MockCalled -CommandName Write-ReviewCampaignFinalizationFact -Times 1 -Exactly
+        Assert-MockCalled -CommandName Get-ReviewCampaignFinalizationFact -Times 2 -Exactly
+    }
+
+    It 'denies every non-review-evidence finalization path without publishing a fact' -ForEach @(
+        @{ name = 'script'; path = 'scripts/change.ps1' },
+        @{ name = 'test'; path = 'tests/change.Tests.ps1' },
+        @{ name = 'spec'; path = 'specs/001-demo/spec.md' },
+        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md' },
+        @{ name = 'state'; path = 'specs/001-demo/iterations/007/state.md' }
+    ) {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive "finalization-denied-$name")
+        $store = Join-Path $TestDrive "finalization-denied-$name-store"
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId "run-denied-$name"
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath $path -Content "denied $name"
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $decision.route | Should -Be 'review-stale'
+        $decision.render_boundary_packet | Should -BeFalse
+        Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
+    }
+
+    It 'denies an allowlisted envelope chain whose finalization parent is not the reviewed commit' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-chain')
+        $store = Join-Path $TestDrive 'finalization-chain-store'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-chain'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# First envelope'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/coverage-evidence.md' -Content '# Chained envelope'
+
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $decision.route | Should -Be 'review-stale'
+        $decision.render_boundary_packet | Should -BeFalse
+        Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
+    }
+
+    It 'fails closed when the working state changes after the one-time finalization fact is published' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'finalization-post-drift')
+        $store = Join-Path $TestDrive 'finalization-post-drift-store'
+        $null = Add-CleanCampaignResult -Root $root -Store $store -RunId 'run-post-drift'
+        $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# Final evidence'
+        $first = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $first.route | Should -Be 'boundary-finalized'
+
+        [IO.File]::WriteAllText((Join-Path $root 'specs/001-demo/iterations/007/review.md'), '# Uncommitted drift', [Text.UTF8Encoding]::new($false))
+        $blocked = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
+            -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
+        $blocked.route | Should -Be 'review-failure'
+        $blocked.reason | Should -Be 'review-finalization-invalid:current-state-not-finalization-commit'
+        $blocked.render_boundary_packet | Should -BeFalse
+    }
+
+    It 'fails closed when an active claim has no readable run state' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'missing-active-run')
+        $store = Join-Path $TestDrive 'missing-active-run-store'
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-missing-state' -TargetLineage 'lin-demo' -ObservedAt '2026-07-16T00:00:00Z' | Out-Null
+        $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' -StoreRoot $store
+        $decision.route | Should -Be 'review-failure'
+        $decision.reason | Should -Be 'active-claim-run-state-missing'
+        $decision.render_verdict_marker | Should -BeFalse
+    }
+
+    It 'persists only an exact complete current findings disposition and rejects partial acceptance' {
+        $store = Join-Path $TestDrive 'disposition-store'
+        $findingResult = New-CampaignResult -Verdict findings -CanApprove $false -Findings @((New-CampaignFinding -Severity note))
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-one' -Fact $findingResult | Out-Null
+        $written = Add-ReviewCampaignHumanDisposition -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-one' -Decision accept-current -AuthorizedBy maintainer -AuthorizationRef human-message-1 -Rationale 'accept note'
+        $written.created | Should -BeTrue
+        @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-one').Count | Should -Be 1
+
+        $partial = New-CampaignResult -RunId 'run-two' -Completion partial -Verdict incomplete -Runtime timed-out -CanApprove $false -Findings @((New-CampaignFinding -Severity minor)) -FailureReason timeout
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-two' -Fact $partial | Out-Null
+        { Add-ReviewCampaignHumanDisposition -StoreRoot $store -CampaignId 'cmp-demo-i007' -RunId 'run-two' -Decision accept-current -AuthorizedBy maintainer -AuthorizationRef human-message-2 -Rationale 'do not allow' } | Should -Throw -ExpectedMessage '*requires-complete-current-valid-result*'
+
+        [IO.File]::Copy($written.path, (Join-Path (Split-Path -Parent $written.path) 'disposition-substituted.json'))
+        { Get-ReviewCampaignHumanDispositionFacts -StoreRoot $store -CampaignId 'cmp-demo-i007' } | Should -Throw -ExpectedMessage '*human-disposition-path-identity-mismatch*'
+    }
+}

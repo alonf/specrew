@@ -1,10 +1,10 @@
 #requires -Version 7.0
 # T099 / FR-040 (design N3): the material-turn gate for the Stop-hook conformance parse. The per-line
 # transcript JSON parse (the dominant Stop-hook cost, scales with session size) runs ONLY when the stop
-# actually followed material work (the deterministic rolling-handover signal), a boundary verdict is
-# pending, or a material forced-continue retry is in flight. The old `$anySpec` trigger made EVERY stop
-# in EVERY real project (any specs/*/spec.md on disk) pay the parse - trivial/conversational stops now
-# skip it entirely, keeping the Stop-hook budget honest.
+# actually followed material work (the live owner-scoped turn delta), a boundary verdict is
+# pending, a material forced-continue retry is in flight, or exact active-feature state has a remaining workshop
+# lens whose rendered question must be validated. The old `$anySpec` trigger made EVERY stop in EVERY real project
+# (any specs/*/spec.md on disk) pay the parse - trivial/conversational stops still skip it entirely.
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
@@ -15,15 +15,15 @@ BeforeAll {
 Describe 'T099 conformance material-turn gate (FR-040)' {
 
     It 'the expensive transcript parse is NOT triggered by a mere spec on disk (anySpec dropped)' {
-        # Source-contract: the parse gate names ONLY boundary/material/retry triggers. $anySpec still
-        # exists (it feeds the cheap intake regex WHEN the parse already ran) but must not be a parse
-        # TRIGGER - that is what taxed every conversational stop in every real project.
+        # Source-contract: the parse gate names boundary/material/retry plus the scoped workshop-state candidate.
+        # $anySpec still feeds the cheap intake regex WHEN the parse already ran, but is not itself a trigger.
         $src = Get-Content -LiteralPath $script:Provider -Raw
-        $gateLine = ($src -split "`r?`n" | Where-Object { $_ -match 'if \(\(' -and $_ -match 'materialRetryKey' -and $_ -match 'inWorkshop' } | Select-Object -First 1)
+        $gateLine = ($src -split "`r?`n" | Where-Object { $_ -match '^\s*if \(' -and $_ -match 'materialRetryKey' -and $_ -match 'workshopStateInProgress' } | Select-Object -First 1)
         $gateLine | Should -Not -BeNullOrEmpty -Because 'the expensive-parse gate line must exist'
         $gateLine | Should -Not -Match 'anySpec' -Because 'a spec on disk alone must not trigger the per-line transcript parse (T099/N3)'
         $gateLine | Should -Match 'hasPending' -Because 'a pending boundary verdict still warrants the parse'
         $gateLine | Should -Match 'materialStop' -Because 'a material-turn stop still warrants the parse'
+        $gateLine | Should -Match 'workshopStateInProgress' -Because 'a scoped remaining-lens candidate must be parsed so its exact question marker can be proved'
     }
 
     It 'the deployed mirror carries the same gate (parity)' {

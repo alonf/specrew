@@ -21,27 +21,13 @@ $projectRoot = Join-Path $scratchRoot 'project'
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 New-Item -ItemType Directory -Path $scratchRoot -Force | Out-Null
 
+# The governed-fixture BUILDER is EXTRACTED to a shared helper so the reviewer-hook-suppression paired test can
+# reuse the SAME governed fixture rather than create a second substitute (maintainer 2026-07-12). This file keeps
+# only the thin project-root wrapper; the builder body now lives in refocus-dispatcher-fixture.ps1.
+. (Join-Path $PSScriptRoot 'refocus-dispatcher-fixture.ps1')
+
 function New-ScratchProject {
-    if (Test-Path -LiteralPath $projectRoot) { Remove-Item -LiteralPath $projectRoot -Recurse -Force }
-    $scriptsDir = Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts'
-    $refocusDir = Join-Path $projectRoot '.specify\extensions\specrew-speckit\refocus'
-    New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specrew') -Force | Out-Null
-    New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
-    New-Item -ItemType Directory -Path $refocusDir -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\internal\specrew-hook-dispatcher.ps1') -Destination $scriptsDir -Force
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\internal\refocus.ps1') -Destination $scriptsDir -Force
-    Copy-Item -Path (Join-Path $repoRoot 'extensions\specrew-speckit\refocus\*.md') -Destination $refocusDir -Force
-    $catalogPath = Join-Path $projectRoot '.specify\extensions\specrew-speckit\refocus-scopes.json'
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\refocus-scopes.json') -Destination (Join-Path $projectRoot '.specify\extensions\specrew-speckit') -Force
-    $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
-    # This fixture exercises the refocus dispatcher in isolation. Provider-fallback composition for bootstrap
-    # is covered by DispatcherSessionStartPolicy.Tests.ps1; keeping only refocus here prevents that fallback from
-    # obscuring breaker-suppression assertions.
-    $catalog.providers = @($catalog.providers | Where-Object { [string]$_.id -eq 'refocus' })
-    [System.IO.File]::WriteAllText($catalogPath, ($catalog | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
-    $startContext = @{ session_state = @{ boundary_type = 'implement'; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
-    [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $startContext, [System.Text.UTF8Encoding]::new($false))
-    return (Join-Path $scriptsDir 'specrew-hook-dispatcher.ps1')
+    return (New-RefocusDispatcherFixture -ProjectRoot $projectRoot -RepoRoot $repoRoot).dispatcher
 }
 
 function Invoke-Dispatcher {

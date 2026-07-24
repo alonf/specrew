@@ -1,0 +1,68 @@
+{
+  "fixture_schema_version": "1.0",
+  "scenario": "Correction 3 (finding->run joins FAIL CLOSED: source_run_id must equal run_id AND reviewed tree + baseline_tree_id must be present) and correction 4 (a transient artifact is prunable ONLY after its owning run is terminal/reaped/abandoned).",
+  "requirement_refs": ["FR-017", "DRIFT-198-I003-002"],
+  "note": "Contract predicates under test are PURE. run/finding shapes mirror the on-disk findings-result.json + review-run.json field names.",
+
+  "finding_join_cases": [
+    {
+      "name": "valid-join",
+      "finding": { "finding_id": "f1", "source_run_id": "run-A", "fingerprint": "sha256:deadbeef" },
+      "run": { "run_id": "run-A", "reviewed_tree_id": "tree-A", "baseline_tree_id": "base-A" },
+      "expected_valid": true,
+      "why": "source_run_id equals run_id, and both the reviewed tree and baseline_tree_id are present."
+    },
+    {
+      "name": "mismatched-source-run-id-fails-closed",
+      "finding": { "finding_id": "f1", "source_run_id": "run-OTHER" },
+      "run": { "run_id": "run-A", "reviewed_tree_id": "tree-A", "baseline_tree_id": "base-A" },
+      "expected_valid": false,
+      "expected_reason_contains": "source_run_id",
+      "why": "a finding whose source_run_id does not equal the run's run_id is a cross-run smuggle; the join is rejected."
+    },
+    {
+      "name": "missing-reviewed-tree-fails-closed",
+      "finding": { "finding_id": "f1", "source_run_id": "run-A" },
+      "run": { "run_id": "run-A", "baseline_tree_id": "base-A" },
+      "expected_valid": false,
+      "expected_reason_contains": "reviewed tree",
+      "why": "no reviewed tree identity on the run — the finding cannot be bound to a tree; fail closed."
+    },
+    {
+      "name": "missing-baseline-fails-closed",
+      "finding": { "finding_id": "f1", "source_run_id": "run-A" },
+      "run": { "run_id": "run-A", "reviewed_tree_id": "tree-A" },
+      "expected_valid": false,
+      "expected_reason_contains": "baseline_tree_id",
+      "why": "no baseline_tree_id — the finding cannot be bound to a baseline; fail closed."
+    },
+    {
+      "name": "status-json-spelling-tolerated",
+      "finding": { "finding_id": "f2", "source_run_id": "run-B" },
+      "run": { "run_id": "run-B", "reviewed_digest_tree_id": "tree-B", "baseline_tree_id": "base-B" },
+      "expected_valid": true,
+      "why": "the status.json spelling reviewed_digest_tree_id is accepted for the reviewed tree identity."
+    }
+  ],
+
+  "disposition_cases": [
+    { "name": "transient-running-not-prunable", "base_class": "transient", "owning_run_state": "running", "expected": "transient",
+      "why": "correction 4: a transient artifact is NOT prunable while its owning run is running." },
+    { "name": "transient-unknown-not-prunable", "base_class": "transient", "owning_run_state": "unknown", "expected": "transient",
+      "why": "fail-safe: an unknown owning-run state does not authorize pruning." },
+    { "name": "transient-terminal-prunable", "base_class": "transient", "owning_run_state": "terminal", "expected": "prunable",
+      "why": "prunable only after the owning run is terminal." },
+    { "name": "transient-reaped-prunable", "base_class": "transient", "owning_run_state": "reaped", "expected": "prunable",
+      "why": "reaped counts as terminal for pruning." },
+    { "name": "transient-abandoned-prunable", "base_class": "transient", "owning_run_state": "abandoned", "expected": "prunable",
+      "why": "an explicitly abandoned run's transient artifacts are prunable." },
+    { "name": "durable-latest", "base_class": "durable", "is_latest_for_lineage": true, "expected": "durable",
+      "why": "current evidence for a live lineage." },
+    { "name": "durable-obsolete-retain", "base_class": "durable", "is_latest_for_lineage": false, "obsolete_policy": "retain", "expected": "superseded",
+      "why": "obsolete but retained pending an archive/prune decision." },
+    { "name": "durable-obsolete-archive", "base_class": "durable", "is_latest_for_lineage": false, "obsolete_policy": "archive", "expected": "archived",
+      "why": "policy chose to keep it for forensics." },
+    { "name": "durable-obsolete-prune", "base_class": "durable", "is_latest_for_lineage": false, "obsolete_policy": "prune", "expected": "prunable",
+      "why": "policy chose to prune past the retention window." }
+  ]
+}

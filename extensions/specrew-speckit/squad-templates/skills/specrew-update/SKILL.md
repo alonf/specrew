@@ -50,6 +50,7 @@ Backed by: `specrew update` / `scripts/specrew-update.ps1`
 | `--specrew` | flag | No | Update Specrew-managed assets only |
 | `--squad` | flag | No | Update Squad-managed assets only |
 | `--spec-kit` | flag | No | Update Spec Kit extension only |
+<!-- specrew-self-ok: the specrew-update skill teaches updating Specrew itself - the tool's registry is a true consumer fact -->
 | `--skip-update-check` | flag | No | Skip the PSGallery version-available check |
 | `--upstream-latest` | flag | No | Target upstream-latest versions instead of Specrew-validated max_tested (use with care; see Outputs) |
 
@@ -60,6 +61,7 @@ Backed by: `specrew update` / `scripts/specrew-update.ps1`
 - Advisory line surfaces when upstream-latest exceeds LatestSupported, explaining "Specrew has validated only through X.Y.Z" so the user does not silently adopt untested upstream versions.
 - Default upgrade target is `LatestSupported`. The `--upstream-latest` flag opts into the historical behavior (upgrade to upstream-latest), at the user's own risk.
 - Slash-command surface status after the update.
+<!-- specrew-self-ok: the specrew-update skill teaches updating Specrew itself - the tool's registry is a true consumer fact -->
 - Version availability notice if a newer Specrew version is available on PSGallery.
 
 ## Argument Whitelist

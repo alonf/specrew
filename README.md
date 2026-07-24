@@ -228,7 +228,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 ## Status
 
 - **Latest stable baseline**: 0.37.0 — Feature 174 (hook-driven session bootstrap), promoted after beta-before-stable validation; builds on 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: `0.40.0` (Feature 197 — Continuous Co-Review, feature-complete), merged to `main`; shipping as the `v0.40.0-beta1` PSGallery prerelease pending clean-environment validation; builds on the `0.39.0-beta1` (Features 197-preview + 185) base
+- **Active development line**: `0.40.0` (Features 197 + 198 — Continuous Co-Review and Beta2 hardening); prepared as the `v0.40.0-beta2` PSGallery prerelease. Stable promotion remains blocked until T067 validates the actually published Beta2 package in a fresh consumer.
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.

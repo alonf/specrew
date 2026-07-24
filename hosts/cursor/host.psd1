@@ -28,11 +28,12 @@
 
     # Feature 171 (FR-013, T014): refocus hook bindings. B2 via sessionStart
     # (additional_context verified, snake_case contract). B1 = documented
-    # variance (no post-compaction injection event exists); B3 rides channel 1
-    # (postToolUse latency-rejected; beforeSubmitPrompt injection unverified).
+    # variance (no post-compaction injection event exists); B3 and the T070 turn
+    # baseline use the documented beforeSubmitPrompt event (postToolUse remains latency-rejected).
     RefocusHookBindings = @{
-        BoundTriggers  = @('b2')
-        Events         = @('sessionStart')
+        BoundTriggers  = @('b2', 'b3')
+        Events         = @('sessionStart', 'beforeSubmitPrompt')
+        TurnStartCapability = @{ Mode = 'exact'; NativeEvent = 'beforeSubmitPrompt'; DispatcherEvent = 'UserPromptSubmit' }
         SettingsFile   = '~/.cursor/hooks.json'   # user-level; dispatcher self-gates per project
         OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-cursor'
         DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
@@ -56,6 +57,7 @@
         }
         Registrations  = @(
             @{ Event = 'sessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'command-entry' },
+            @{ Event = 'beforeSubmitPrompt'; DispatcherEvent = 'UserPromptSubmit'; HandlerShape = 'command-entry' },
             @{ Event = 'stop'; DispatcherEvent = 'stop'; HandlerShape = 'command-entry' }
         )
     }

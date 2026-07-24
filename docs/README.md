@@ -11,6 +11,7 @@ This directory contains the main user-facing documentation for Specrew.
 - `api-reference.md` - extension surfaces and integration points for building on Specrew
 - `github-project.md` - Specrew self-development board and project operating model
 - `operations\psgallery-release-credentials.md` - maintainer-facing release-credential runbook (PSGallery API-key rotation now; certificate guidance can co-locate later)
+- `release-notes-v0.40.0-beta2.md` - Beta2 release highlights, proof identity, installation command, and known limitations
 
 ## Recommended Reading Order
 

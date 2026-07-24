@@ -511,9 +511,9 @@ Created execution-ready iteration plan for Iteration 001 at `specs/001-specrew-p
 - Updated Iteration 0 deliverable for optional GitHub board with reference to operational procedures
 - Created decision inbox note (data-board-docs.md) for team record
 
-**Key Insight**: Documentation clarity matters as much as code. Wording like "uses GitHub Projects" can imply requirement when it should be "may optionally use." The difference between operational convenience and normative requirement must be explicit, especially in governance documentation.
+**Key Insight**: Documentation clarity matters as much as code. Wording that names a particular project board can imply a requirement when it should say the board is optional. The difference between operational convenience and normative requirement must be explicit, especially in governance documentation.
 
-**Outcome**: Specrew documentation now clearly establishes local artifacts as authoritative, making it safe for teams to choose whether to use GitHub boards at all. Source-of-truth hierarchy is now explicit and binding for future iterations.
+**Outcome**: Specrew documentation now clearly establishes local artifacts as authoritative, making it safe for teams to decide whether GitHub boards participate at all. Source-of-truth hierarchy is now explicit and binding for future iterations.
 
 📌 **Iteration 1 execution state re-review (2026-04-20)**:
 

@@ -1,0 +1,277 @@
+$ErrorActionPreference = 'Stop'
+
+# Trace: T046 / FR-059, FR-065 / SC-018.
+Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
+    BeforeAll {
+        $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-run-reconciler.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+
+        function script:New-TargetRepo {
+            param([Parameter(Mandatory)][string]$Path)
+            New-Item -ItemType Directory -Path $Path -Force | Out-Null
+            & git -C $Path init -q 2>&1 | Out-Null
+            & git -C $Path branch -m main 2>&1 | Out-Null
+            [IO.File]::WriteAllText((Join-Path $Path 'tracked.txt'), 'committed')
+            New-Item -ItemType Directory -Path (Join-Path $Path '.specrew') -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $Path '.specrew/runtime.json'), '{}')
+            [IO.File]::WriteAllText((Join-Path $Path 'AGENTS.md'), 'Specrew instructions')
+            & git -C $Path -c user.name=target-test -c user.email=target@test.local add -A 2>&1 | Out-Null
+            & git -C $Path -c user.name=target-test -c user.email=target@test.local commit -qm initial 2>&1 | Out-Null
+        }
+    }
+
+    It 'freezes the exact dirty state in an external linked worktree while leaving origin code unchanged' {
+        $origin = Join-Path $TestDrive 'origin'
+        $external = Join-Path $TestDrive 'external'
+        New-TargetRepo -Path $origin
+        [IO.File]::WriteAllText((Join-Path $origin 'tracked.txt'), 'dirty-current')
+        [IO.File]::WriteAllText((Join-Path $origin 'untracked.txt'), 'untracked-current')
+        $before = Get-GitReviewTargetOriginEvidence -OriginRepo $origin
+
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-target -ExternalRoot $external
+        try {
+            (Test-ReviewTargetPathUnderRoot -Path $snapshot.workspace_root -Root $origin) | Should -BeFalse
+            (Split-Path -Leaf $snapshot.workspace_root) | Should -Match '^rt-[A-Za-z0-9_-]{16}$'
+            (Split-Path -Leaf $snapshot.workspace_root) | Should -Not -Match 'run-target'
+            $snapshot.run_id | Should -Be 'run-target' -Because 'the full authority identity stays in metadata, not the bounded filesystem leaf'
+            Test-Path -LiteralPath (Join-Path $snapshot.workspace_root '.git') | Should -BeTrue -Because 'this is a genuine linked git worktree sharing the object database'
+            (Get-Content -LiteralPath (Join-Path $snapshot.snapshot_path 'tracked.txt') -Raw) | Should -Be 'dirty-current'
+            (Get-Content -LiteralPath (Join-Path $snapshot.snapshot_path 'untracked.txt') -Raw) | Should -Be 'untracked-current'
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specrew') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path 'AGENTS.md') | Should -BeFalse
+            $snapshot.target_digest | Should -Be $before.reviewed_state_digest
+
+            $snapshotTree = (& git -C $snapshot.workspace_root write-tree 2>$null).Trim()
+            $snapshotTree | Should -Be $snapshot.target_digest
+            $commonDir = (& git -C $snapshot.workspace_root rev-parse --git-common-dir 2>$null).Trim()
+            $commonFull = if ([IO.Path]::IsPathRooted($commonDir)) { [IO.Path]::GetFullPath($commonDir) } else { [IO.Path]::GetFullPath((Join-Path $snapshot.workspace_root $commonDir)) }
+            $commonFull | Should -Be ([IO.Path]::GetFullPath((Join-Path $origin '.git')))
+
+            # A fallible reviewer can dirty its disposable copy, but the origin remains byte/digest/HEAD identical.
+            [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'tracked.txt'), 'reviewer mutation')
+            (Test-GitReviewTargetSnapshotIntegrity -Snapshot $snapshot).classification | Should -Be 'snapshot-tampered'
+            (Get-Content -LiteralPath (Join-Path $origin 'tracked.txt') -Raw) | Should -Be 'dirty-current'
+            $afterReviewerMutation = Get-GitReviewTargetOriginEvidence -OriginRepo $origin
+            $afterReviewerMutation.origin_head | Should -Be $before.origin_head
+            $afterReviewerMutation.reviewed_state_digest | Should -Be $before.reviewed_state_digest
+            (Test-GitReviewTargetCurrentness -Snapshot $snapshot).classification | Should -Be 'current'
+
+            # Later legitimate origin movement does not erase the review; it labels it snapshot-moved.
+            [IO.File]::WriteAllText((Join-Path $origin 'tracked.txt'), 'implementer-moved')
+            [IO.File]::WriteAllText((Join-Path $origin '.specrew/verification-plan.json'), '{}')
+            $marker = Join-Path $origin '.custom-host/specrew/.specrew-managed'
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $marker)) | Out-Null
+            [IO.File]::WriteAllText($marker, 'managed')
+            $moved = Test-GitReviewTargetCurrentness -Snapshot $snapshot
+            $moved.classification | Should -Be 'snapshot-moved'
+            $moved.exact | Should -BeFalse
+            $moved.reasons | Should -Be @('origin-head-or-reviewed-digest-moved', 'verification-plan-changed', 'machinery-paths-changed')
+            $moved.reason | Should -Be 'origin-head-or-reviewed-digest-moved,verification-plan-changed,machinery-paths-changed'
+        }
+        finally {
+            $removed = Remove-GitReviewTargetSnapshot -Snapshot $snapshot
+            $removed.removed | Should -BeTrue
+        }
+    }
+
+    It 'refuses an external root at or below the origin' {
+        $origin = Join-Path $TestDrive 'origin-contained'
+        New-TargetRepo -Path $origin
+        { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-contained -ExternalRoot (Join-Path $origin 'reviews') } | Should -Throw -ExpectedMessage '*external-root-inside-origin*'
+        Test-Path -LiteralPath (Join-Path $origin 'reviews') | Should -BeFalse
+    }
+
+    It 'round-trips every code-target currentness binding through the immutable recovery fact' {
+        $origin = Join-Path $TestDrive 'origin-recovery-binding'
+        $external = Join-Path $TestDrive 'external-recovery-binding'
+        New-TargetRepo -Path $origin
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-recovery-binding -ExternalRoot $external
+        try {
+            $receipt = [pscustomobject]@{
+                runtime_id = 'windows-job-object-runtime'; platform = 'windows'; containment_kind = 'job-object'
+                containment_id = 'job-object-process-42'; process_id = 42; process_started_at = '2026-07-19T00:00:00Z'
+            }
+            $fact = New-ReviewRunRecoveryFact -CampaignId cmp-recovery-binding -RunId run-recovery-binding `
+                -TargetDigest $snapshot.target_digest -HarnessId fixture-harness -TargetLineage lin-recovery-binding `
+                -RuntimeReceipt $receipt -Snapshot $snapshot -StagingRoot (Join-Path $TestDrive 'staging-recovery-binding') `
+                -InvocationStartedAt '2026-07-19T00:00:01Z' -InvocationStartedMonotonicMs 10
+
+            (Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $fact).valid | Should -BeTrue
+            $store = Join-Path $TestDrive 'authority-recovery-binding'
+            $written = Write-ReviewAuthorityImmutableFact -StoreRoot $store -RelativePath 'recovery.json' -Fact $fact `
+                -ContractName RecoveryFact -ExpectedCampaignId cmp-recovery-binding -ExpectedRunId run-recovery-binding `
+                -ExpectedTargetDigest $snapshot.target_digest
+            $persisted = Read-ReviewAuthorityFactFile -Path $written.path -ContractName RecoveryFact
+            $persisted.machinery_paths | Should -Be $snapshot.machinery_paths
+            $recovered = Get-ReviewRecoverySnapshot -Fact $persisted
+            $recovered.recovery_binding_complete | Should -BeTrue
+            $recovered.verification_plan_present | Should -Be $snapshot.verification_plan_present
+            $recovered.verification_plan_sha256 | Should -Be $snapshot.verification_plan_sha256
+            $recovered.machinery_paths | Should -Be $snapshot.machinery_paths
+            $recovered.machinery_paths_sha256 | Should -Be $snapshot.machinery_paths_sha256
+            (Test-GitReviewTargetCurrentness -Snapshot $recovered).classification | Should -Be 'current'
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
+    }
+
+    It 'runs controller preparation in an independent exact-digest copy and leaves the frozen target byte-identical' {
+        $origin = Join-Path $TestDrive 'origin-verification-copy'
+        $external = Join-Path $TestDrive 'external-verification-copy'
+        New-TargetRepo -Path $origin
+        $planPath = Join-Path $origin '.specrew/verification-plan.json'
+        [IO.File]::WriteAllText($planPath, '{"schema_version":"1.0","plan_id":"copy","commands":[]}')
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-copy-control -ExternalRoot $external
+        $copy = $null
+        try {
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.specrew/verification-plan.json') | Should -BeFalse
+            $before = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshot.snapshot_path
+            $copy = New-GitReviewTargetVerificationCopy -Snapshot $snapshot -RunId run-copy-disposable
+            $copy.target_digest | Should -Be $snapshot.target_digest
+            [IO.File]::ReadAllBytes((Join-Path $copy.snapshot_path '.specrew/verification-plan.json')) | Should -Be $snapshot.verification_plan_bytes
+            [IO.File]::WriteAllText((Join-Path $copy.snapshot_path 'controller-output.tmp'), 'controller-owned')
+            $after = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshot.snapshot_path
+            ($after | ConvertTo-Json -Depth 5 -Compress) | Should -Be ($before | ConvertTo-Json -Depth 5 -Compress)
+            (Test-GitReviewTargetSnapshotIntegrity -Snapshot $snapshot).intact | Should -BeTrue
+        }
+        finally {
+            if ($null -ne $copy) { (Remove-GitReviewTargetSnapshot -Snapshot $copy).removed | Should -BeTrue }
+            (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue
+        }
+    }
+
+    It 'OS-protects the frozen target while leaving external controller staging writable and restores cleanup' {
+        $origin = Join-Path $TestDrive 'origin-readonly'
+        $external = Join-Path $TestDrive 'external-readonly'
+        $staging = Join-Path $TestDrive 'controller-staging'
+        New-TargetRepo -Path $origin
+        [IO.Directory]::CreateDirectory($staging) | Out-Null
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-readonly -ExternalRoot $external
+        $protection = $null
+        try {
+            $candidate = Join-Path $staging 'candidate.json'
+            $protection = Enable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -ExternalWritablePath $candidate
+            $protection.ok | Should -BeTrue -Because $protection.reason
+            $protection.existing_write_blocked | Should -BeTrue
+            $protection.create_blocked | Should -BeTrue
+            $protection.external_writable | Should -BeTrue
+            { [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'blocked.txt'), 'no') } | Should -Throw
+            [IO.File]::WriteAllText($candidate, '{}')
+            Test-Path -LiteralPath $candidate | Should -BeTrue
+            (Disable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -Lease $protection.lease).ok | Should -BeTrue
+            $protection = $null
+            [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'restored.txt'), 'yes')
+        }
+        finally {
+            if ($null -ne $protection) { Disable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -Lease $protection.lease | Out-Null }
+            (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue
+        }
+    }
+
+    It 'recovers a protected frozen target after an in-memory protection lease is lost' {
+        $origin = Join-Path $TestDrive 'origin-readonly-recovery'
+        $external = Join-Path $TestDrive 'external-readonly-recovery'
+        $staging = Join-Path $TestDrive 'controller-staging-recovery'
+        New-TargetRepo -Path $origin
+        [IO.Directory]::CreateDirectory($staging) | Out-Null
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-readonly-recovery -ExternalRoot $external
+        try {
+            $candidate = Join-Path $staging 'candidate.json'
+            $protection = Enable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -ExternalWritablePath $candidate
+            $protection.ok | Should -BeTrue -Because $protection.reason
+            { [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'blocked-before-recovery.txt'), 'no') } | Should -Throw
+
+            # Simulate a controller restart: the durable snapshot fact survives, but the in-memory
+            # ACL/mode lease does not. Recovery must remove only the protection it owns.
+            (Disable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -Lease $null).ok | Should -BeTrue
+            [IO.File]::WriteAllText((Join-Path $snapshot.snapshot_path 'restored-by-recovery.txt'), 'yes')
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path 'restored-by-recovery.txt') | Should -BeTrue
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
+    }
+
+    It 'rejects a writable candidate path inside the frozen target' {
+        $origin = Join-Path $TestDrive 'origin-readonly-false-allow'
+        New-TargetRepo -Path $origin
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-readonly-false-allow -ExternalRoot (Join-Path $TestDrive 'external-readonly-false-allow')
+        try {
+            $result = Enable-ReviewTargetReadOnlyProtection -Snapshot $snapshot -ExternalWritablePath (Join-Path $snapshot.snapshot_path 'candidate.json')
+            $result.ok | Should -BeFalse
+            $result.reason | Should -Be 'review-target-writable-path-inside-snapshot'
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
+    }
+
+    It 'fails closed on a workspace-token collision without deleting the existing directory' {
+        $origin = Join-Path $TestDrive 'origin-collision'
+        $external = Join-Path $TestDrive 'external-collision'
+        New-TargetRepo -Path $origin
+        [IO.Directory]::CreateDirectory($external) | Out-Null
+        $existing = Join-Path $external 'rt-AAAAAAAAAAAAAAAA'
+        [IO.Directory]::CreateDirectory($existing) | Out-Null
+        $sentinel = Join-Path $existing 'owned-by-another-run.txt'
+        [IO.File]::WriteAllText($sentinel, 'preserve')
+        Mock -CommandName New-ReviewTargetWorkspaceToken -MockWith { 'AAAAAAAAAAAAAAAA' }
+
+        { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-collision -ExternalRoot $external } | Should -Throw -ExpectedMessage '*review-target-workspace-collision*'
+        Test-Path -LiteralPath $sentinel -PathType Leaf | Should -BeTrue
+        (Get-Content -LiteralPath $sentinel -Raw) | Should -Be 'preserve'
+    }
+
+    It 'preserves a workspace that appears while git worktree add is failing' {
+        $origin = Join-Path $TestDrive 'origin-add-race'
+        $external = Join-Path $TestDrive 'external-add-race'
+        New-TargetRepo -Path $origin
+        Mock -CommandName New-ReviewTargetWorkspaceToken -MockWith { 'BBBBBBBBBBBBBBBB' }
+        Mock -CommandName Invoke-ReviewTargetGit -ParameterFilter {
+            $Arguments.Count -ge 5 -and $Arguments[0] -ceq 'worktree' -and $Arguments[1] -ceq 'add'
+        } -MockWith {
+            $appeared = [string]$Arguments[4]
+            [IO.Directory]::CreateDirectory($appeared) | Out-Null
+            [IO.File]::WriteAllText((Join-Path $appeared 'owned-by-racing-run.txt'), 'preserve-race')
+            [pscustomobject]@{ exit_code = 1; stdout = ''; stderr = 'synthetic-add-race' }
+        }
+
+        { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-add-race -ExternalRoot $external } | Should -Throw -ExpectedMessage '*review-target-worktree-add-failed:synthetic-add-race*'
+        $appeared = Join-Path $external 'rt-BBBBBBBBBBBBBBBB'
+        $sentinel = Join-Path $appeared 'owned-by-racing-run.txt'
+        Test-Path -LiteralPath $sentinel -PathType Leaf | Should -BeTrue
+        (Get-Content -LiteralPath $sentinel -Raw) | Should -Be 'preserve-race'
+        Assert-MockCalled -CommandName Invoke-ReviewTargetGit -Times 1 -Exactly -ParameterFilter {
+            $Arguments.Count -ge 5 -and $Arguments[0] -ceq 'worktree' -and $Arguments[1] -ceq 'add'
+        }
+    }
+
+    It 'generates compact fixed-length workspace tokens without collapsing invocations' {
+        $one = New-ReviewTargetWorkspaceToken
+        $two = New-ReviewTargetWorkspaceToken
+        $one | Should -Match '^[A-Za-z0-9_-]{16}$'
+        $one | Should -Not -Be $two
+
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-target-port.ps1') -Raw
+        $source | Should -Match 'RandomNumberGenerator\]::GetBytes\(12\)'
+    }
+
+    It 'exposes the same neutral port fields for the thin non-code fixture' {
+        $external = Join-Path $TestDrive 'non-code'
+        $target = New-NonCodeReviewTargetFixture -RunId run-artifact -Content 'artifact body' -ExternalRoot $external
+        try {
+            foreach ($field in @('schema_version', 'target_kind', 'run_id', 'target_digest', 'snapshot_path', 'workspace_root', 'suppression_environment')) {
+                $target.PSObject.Properties.Name | Should -Contain $field
+            }
+            $target.target_kind | Should -Be 'non-code-fixture'
+            $target.target_digest | Should -Match '^[a-f0-9]{64}$'
+            (Get-Content -LiteralPath (Join-Path $target.snapshot_path 'artifact.txt') -Raw) | Should -Be 'artifact body'
+            $target.suppression_environment.SPECREW_REFOCUS_DISABLE | Should -Be '1'
+        }
+        finally { (Remove-NonCodeReviewTargetFixture -Snapshot $target).removed | Should -BeTrue }
+    }
+
+    It 'uses only the established process-local Specrew suppression controls' {
+        $environment = Get-ReviewTargetSuppressionEnvironment
+        @($environment.Keys) | Should -Be @('SPECREW_REFOCUS_DISABLE', 'SPECREW_DISABLE_EVENTS')
+        $environment.SPECREW_REFOCUS_DISABLE | Should -Be '1'
+        $environment.SPECREW_DISABLE_EVENTS | Should -Match 'Stop'
+    }
+}

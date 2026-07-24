@@ -696,19 +696,19 @@ function Get-TemplateRefreshMappings {
 
     return @(
         [pscustomobject]@{
-            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.specify\templates'
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath 'templates\specify\templates'
             TargetRelativeRoot = '.specify\templates'
-            SourceLabelRoot    = '.specify/templates'
+            SourceLabelRoot    = 'templates/specify/templates'
         }
         [pscustomobject]@{
-            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.squad\templates'
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath 'templates\squad'
             TargetRelativeRoot = '.squad'
-            SourceLabelRoot    = '.squad/templates'
+            SourceLabelRoot    = 'templates/squad'
         }
         [pscustomobject]@{
-            SourceRoot         = Join-Path -Path $RootPath -ChildPath '.github\workflows'
+            SourceRoot         = Join-Path -Path $RootPath -ChildPath 'templates\github\workflows'
             TargetRelativeRoot = '.github\workflows'
-            SourceLabelRoot    = '.github/workflows'
+            SourceLabelRoot    = 'templates/github/workflows'
         }
     )
 }
@@ -759,24 +759,17 @@ function Get-NullableFileContent {
     return Get-Content -LiteralPath $Path -Raw -Encoding UTF8
 }
 
-function Get-ContentHash {
+function Get-FileSha256 {
     param(
-        [AllowNull()]
-        [string]$Content
+        [Parameter(Mandatory = $true)]
+        [string]$Path
     )
 
-    if ($null -eq $Content) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         return $null
     }
 
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    try {
-        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($Content)
-        return ([System.BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '')
-    }
-    finally {
-        $sha256.Dispose()
-    }
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
 }
 
 function Resolve-PreviousSpecrewRoot {
@@ -1060,6 +1053,18 @@ function Invoke-TemplateRefresh {
                 continue
             }
 
+            $previousSourceHash = Get-FileSha256 -Path $previousTemplate.SourcePath
+            $projectFileHash = Get-FileSha256 -Path $previousTemplate.TargetPath
+            if ($null -ne $previousSourceHash -and $previousSourceHash -eq $projectFileHash) {
+                Remove-Item -LiteralPath $previousTemplate.TargetPath -Force
+                $null = $actions.Add([pscustomobject]@{
+                        Action   = 'template-retired-removed'
+                        Detail   = $projectRelativePath
+                        Template = $projectRelativePath
+                    })
+                continue
+            }
+
             $preservedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
             $artifactBaseName = Get-TemplateArtifactBaseName -ProjectRelativePath $projectRelativePath
             $artifactPath = Join-Path -Path $artifactRoot -ChildPath ('{0}.deletion' -f $artifactBaseName)
@@ -1071,9 +1076,10 @@ function Invoke-TemplateRefresh {
                 -SourceTemplatePath $previousTemplate.SourceTemplatePath
 
             Write-Utf8FileAtomic -Path $artifactPath -Content $artifactContent
+            Write-Warning ("Retired Specrew template '{0}' was user-modified; preserving it for manual review. Evidence: '{1}'." -f $projectRelativePath, $artifactPath)
             $null = $actions.Add([pscustomobject]@{
-                    Action   = 'template-deleted'
-                    Detail   = ('{0} -> {1}' -f $projectRelativePath, $artifactPath)
+                    Action   = 'template-retired-warning'
+                    Detail   = ('WARN: retired user-modified template preserved: {0} -> {1}' -f $projectRelativePath, $artifactPath)
                     Template = $projectRelativePath
                 })
         }
@@ -1133,9 +1139,9 @@ if ($null -ne $supportedVersions) {
     $minimumSquadVersion = $supportedVersions.Squad.Min
 }
 else {
-    Write-Warning "Could not load module-side scripts/internal/supported-versions.yml. Falling back to historical minimums (Spec Kit 0.8.4 / Squad 0.9.1); --info status will use two-state model."
-    $minimumSpecKitVersion = '0.8.4'
-    $minimumSquadVersion = '0.9.1'
+    Write-Warning "Could not load module-side scripts/internal/supported-versions.yml. Falling back to historical minimums (Spec Kit 0.12.9 / Squad 0.11.0); --info status will use two-state model."
+    $minimumSpecKitVersion = '0.12.9'
+    $minimumSquadVersion = '0.11.0'
 }
 
 foreach ($requiredPath in @($specrewManifestPath, $validateVersionsScript, $deploySpeckitExtensionScript, $deploySquadRuntimeScript)) {
@@ -1443,6 +1449,43 @@ if ($scopes -contains 'Specrew') {
                 Detail   = [string]$action.Detail
             })
     }
+
+    # Managed Specrew-owned templates have now passed through their existing
+    # hash-aware refresh policy. The consumer checker is intentionally advisory:
+    # it flags authored project files but never rewrites them.
+    $consumerAssumptionChecker = Join-Path $resolvedProjectPath '.specify/extensions/specrew-speckit/scripts/test-consumer-assumptions.ps1'
+    if (Test-Path -LiteralPath $consumerAssumptionChecker -PathType Leaf) {
+        $consumerAssumptionResult = & $consumerAssumptionChecker -ProjectPath $resolvedProjectPath -PassThru
+        $consumerAssumptionDetail = if (-not $consumerAssumptionResult.rules_valid) {
+            'rule surface unavailable; advisory warning emitted and user files preserved'
+        }
+        elseif ([int]$consumerAssumptionResult.finding_count -eq 0) {
+            "clean: $([int]$consumerAssumptionResult.scanned_files) consumer files checked after managed refresh"
+        }
+        else {
+            "$([int]$consumerAssumptionResult.finding_count) advisory finding(s); user files preserved"
+        }
+        $null = $summary.Add([pscustomobject]@{
+                Platform = 'Specrew'
+                Action   = 'consumer-assumption-advisory'
+                Detail   = $consumerAssumptionDetail
+            })
+    }
+    else {
+        $null = $summary.Add([pscustomobject]@{
+                Platform = 'Specrew'
+                Action   = 'consumer-assumption-advisory'
+                Detail   = 'checker unavailable after extension refresh; user files preserved'
+            })
+    }
+
+    . (Join-Path $repoRoot 'scripts\internal\continuous-co-review\verification-plan-materializer.ps1')
+    $verificationPlanSetup = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $resolvedProjectPath
+    $null = $summary.Add([pscustomobject]@{
+            Platform = 'Specrew'
+            Action   = 'verification-plan'
+            Detail   = ("{0}: {1}" -f $verificationPlanSetup.Action, $(if ($verificationPlanSetup.Warning) { $verificationPlanSetup.Warning } else { $verificationPlanSetup.State }))
+        })
 }
 
 foreach ($platform in @('Spec Kit', 'Squad')) {

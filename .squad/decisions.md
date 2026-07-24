@@ -450,7 +450,7 @@
   iteration. **The live-wiring floor is the LOAD-BEARING assertion (human-specified 2026-06-09), run in a
   real scratch project, PER INJECTING HOST:** (1) SessionStart writes `boundary_enforcement` ON DISK (in
   start-context.json); (2) a working turn + Stop captures the iteration intent into `last-start-prompt.md`
-  + the agent-authored handover ON DISK; (3) a FRESH resume READS them back. That deployed-tree on-disk
+  - the agent-authored handover ON DISK; (3) a FRESH resume READS them back. That deployed-tree on-disk
   round-trip is what catches every dev-tree-only "works" claim, and it gates the whole iteration.
 - **Process**: iteration 6 = a SUBSTANTIAL design pass first -> the before-implement gate. Apply the
   standing floors (validator EXIT 0 before every boundary); make the deployed live-wiring floor the
@@ -19476,6 +19476,20 @@ User explicitly authorized review-signoff entry for Feature 039 Iteration 001. R
 - **Agent Response Snippet**: (none)
 - **Reason**: Persisted authorization matched the requested boundary.
 
+## 2026-07-18T07:48:40Z — Defer Iteration 007 stop/capture selection repair
+
+- **Decision ID**: defer-198-i007-025
+- **Type**: defer
+- **Affected Requirement**: FR-041
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\007
+- **Approving Human**: Alon
+- **Recorded At**: 2026-07-18T07:48:40Z
+- **Next Action**: Plan a later stop/capture-mechanism repair with paired injected-environment-context and instruction-bearing-verdict fixtures.
+- **Rationale**: The maintainer explicitly directed that the awkward stop mechanism be fixed later, after completing the Mac and review tests. The review-signoff incident is preserved as DRIFT-198-I007-025; it does not alter the independently reviewed implementation tree and must not trigger a quiet point-fix during this boundary.
+
+- **Affected Artifact**: specs\198-beta2-hardening\iterations\007\review.md
+- **Authorization Evidence**: Maintainer instruction: `we need later to fix the stop mechanism to not make it awkward to have a direct and smooth discussion`.
+
 ## 2026-05-22T17:29:22Z — Boundary sync warning: review-signoff
 
 - **Boundary Type**: review-signoff
@@ -24133,6 +24147,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Recorded At**: 2026-06-06T13:57:06Z
 
 ## 2026-06-06T14:04:04Z — Delegated routing plan
+
 ## 2026-06-06T10:41:12Z — Delegated routing plan
 
 - **Enabled Agents**: claude
@@ -24147,6 +24162,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:04Z — Routing evidence: Implementer
 
 - **Decision ID**: routing-evidence-0db45c263c9c
+
 ## 2026-06-06T10:41:12Z — Routing evidence: Implementer
 
 - **Decision ID**: routing-evidence-67701a51bf8a
@@ -24164,6 +24180,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:05Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-973889924c32
+
 ## 2026-06-06T10:41:13Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-c0b9de6afb0f
@@ -24181,6 +24198,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:05Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-cab2ec57532f
+
 ## 2026-06-06T10:41:14Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-232b2ffb208a
@@ -24198,6 +24216,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:06Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-0daa1626219f
+
 ## 2026-06-06T10:41:14Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-f4bdcbbe24c3
@@ -24215,6 +24234,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:06Z — Routing evidence: Retro Facilitator
 
 - **Decision ID**: routing-evidence-2a67a9950994
+
 ## 2026-06-06T10:41:15Z — Routing evidence: Retro Facilitator
 
 - **Decision ID**: routing-evidence-8ca806c05e19
@@ -24255,6 +24275,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 869e1537
 - **Recorded At**: 2026-06-06T15:27:11Z
+
 ## 2026-06-06T10:41:17Z — Boundary enforcement: feature-closeout
 
 - **Feature**: 140-unix-native-install
@@ -24308,6 +24329,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Boundary Type**: before-implement
 - **Current Boundary**: tasks
 - **Requested Boundary**: before-implement
+
 ## 2026-06-06T00:06:59Z — Boundary sync: review-signoff
 
 - **Boundary Type**: review-signoff
@@ -24413,6 +24435,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 1223e7db
 - **Recorded At**: 2026-06-06T13:50:41Z
+
 ## 2026-06-06T10:18:29Z — Boundary sync: iteration-closeout
 
 - **Boundary Type**: iteration-closeout
@@ -25578,6 +25601,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 9bed41a2e6dbdb91fcade1bf6008e92c223748e1
 - **Recorded At**: 2026-06-07T20:05:47Z
+
 ## 2026-06-06T16:01:21Z — Delegated routing plan
 
 - **Enabled Agents**: codex
@@ -26365,6 +26389,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Retroactive note**: recorded 2026-06-11 alongside iteration 008's reconstructed review.md / retro.md /
   drift-log.md (008 closed at boundary commit 7fe04228 on 2026-06-11 without committed closure artifacts;
   this formalizes the documented cross-host-validation outcome + the hollow-handover carry).
+
 ## 2026-06-11 — Defer (canonical, corrective): Feature 177 Iteration 002 D-003 behavioral SC-004 / SC-007 / SC-008 — gate met, line promoted to stable
 
 - **Decision ID**: defer-177-i002-d003-behavioral-sc-gate
@@ -26549,6 +26574,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   calls routinely — spiritually back toward DF-5). **Evidence-source tag** is added to every `verdict_history`
   entry (`hook-captured-from-transcript` | `human-confirmed-at-resume`; never fabricated) so the audit trail is
   honest about each authorization's provenance strength.
+
 ## 2026-06-11T11:50:17Z — Delegated routing plan
 
 - **Enabled Agents**: codex
@@ -26831,6 +26857,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 ## 2026-06-17T20:18:24Z — Boundary enforcement: before-implement
 
 - **Feature**: 197-continuous-co-review
+
 ## 2026-06-15T22:23:09Z — Boundary sync: specify
 
 - **Boundary Type**: specify
@@ -26931,6 +26958,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: b79f73a5d1f9ec6f0ef729cdda5c3543f225d112
 - **Recorded At**: 2026-06-17T20:26:07Z
+
 ## 2026-06-16T00:36:27Z — Boundary enforcement: before-implement
 
 - **Feature**: 183-stability-quality-bundle
@@ -27547,7 +27575,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
      dev-repo paths into consumer projects — deploy consumer-correct lanes, gate on forge presence,
      or defer until a remote exists (matching the DevOps-lens teaching the reviewer itself cited).
   2. (F-197-adjacent) Host-machinery dirs are inconsistently handled between the DIGEST identity
-     (includes .claude/** and .github/** — not in the ambient denylist) and the WORKTREE strip
+     (includes .claude/**and .github/** — not in the ambient denylist) and the WORKTREE strip
      (marker-detected machinery removal): content a reviewer may never see can be certified, and
      un-strippable local config (settings.local.json) gets reviewed as app changes. Align the two
      lists (machinery dirs excluded from BOTH or included in BOTH) — same FR-025 identity family
@@ -27785,3 +27813,460 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Open issues carried**: #2908 (public-readiness suite red on main - NOT superseded; exit 64
   reconfirmed 2026-07-09) and #2909 (broken forge templates -> Proposal 204) roll into the beta-2
   triage.
+
+## 2026-07-09T19:26:23Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 96ee91dc
+- **Recorded At**: 2026-07-09T19:26:23Z
+
+## 2026-07-09T19:43:03Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 62ff9d64
+- **Recorded At**: 2026-07-09T19:43:03Z
+
+## 2026-07-09T22:34:03Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ff67fe8a
+- **Recorded At**: 2026-07-09T22:34:03Z
+
+## 2026-07-09T22:39:40Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3740c570
+- **Recorded At**: 2026-07-09T22:39:39Z
+
+## 2026-07-09T22:48:14Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: c9aa3206
+- **Recorded At**: 2026-07-09T22:48:14Z
+
+## 2026-07-10T18:20:31Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 573ef67a
+- **Recorded At**: 2026-07-10T18:20:31Z
+
+## 2026-07-10T18:36:42Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ebc245bc
+- **Recorded At**: 2026-07-10T18:36:42Z
+
+## 2026-07-10T20:00:55Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: e9454447
+- **Recorded At**: 2026-07-10T20:00:55Z
+
+## 2026-07-10T21:26:14Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-10T21:26:14Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-07-10T21:26:15Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3386dbf1
+- **Recorded At**: 2026-07-10T21:26:15Z
+
+## 2026-07-10T21:32:28Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-07-10T21:32:28Z
+- **Warning**: Expected next boundary 'tasks' but received 'before-implement'.
+
+## 2026-07-10T21:32:29Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3058b9c9
+- **Recorded At**: 2026-07-10T21:32:29Z
+
+## 2026-07-11T10:27:09Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: e9601d7b
+- **Recorded At**: 2026-07-11T10:27:09Z
+
+## 2026-07-11T10:41:48Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 828d2e18
+- **Recorded At**: 2026-07-11T10:41:48Z
+
+## 2026-07-11T10:42:10Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-07-11T10:42:10Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-07-11T10:42:11Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 828d2e18
+- **Recorded At**: 2026-07-11T10:42:10Z
+
+## 2026-07-11T11:02:57Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-07-11T11:02:57Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-07-11T11:02:57Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 96e180b1
+- **Recorded At**: 2026-07-11T11:02:57Z
+
+## 2026-07-11T11:05:00Z — DEC-198-GOV-001: fabricated retro authorization removed (maintainer-approved ledger surgery)
+
+- **What happened**: verdict_history gained `approved for retro` (recorded 2026-07-11T10:45:40Z, evidence `hook-captured-from-transcript-pending-artifact`) that the human never gave — their actual reply to the retro packet was a send-back. The pending-artifact fallback capture read the Stop hook's own blocking feedback (a user-role transcript turn containing approval-shaped machinery text) as a human approval and synthesized the verdict text from the pending artifact's phrase.
+- **Decision (maintainer, 2026-07-11)**: approve surgical removal of that single entry from `.specrew/start-context.json` `boundary_enforcement.verdict_history`; restore `last_authorized_boundary` to `review-signoff` so the retro boundary genuinely awaits a human verdict.
+- **Execution**: JsonNode-based one-off script (no date coercion, full-identity precondition incl. timestamp + evidence source; iteration 001's legitimate retro entry at index 6 verified untouched); pre-surgery backup retained in the session scratchpad; post-surgery state verified via `Get-SpecrewBoundaryEnforcementState` (shape clean) and `Get-SpecrewPendingVerdictState` (pending `review-signoff -> retro`).
+- **Follow-up owed (iteration 003 scope discussion)**: (a) capture must exclude hook-injected/user-role machinery turns from verdict evidence; (b) the approval tokenizer must not match approval-shaped scold text; (c) the ledger has no designed correction door — this surgery had to be a one-off script; (d) audit note: the 001 retro entry (2026-07-10T18:37:39Z) shares the fallback evidence source but its decision was genuinely given by the human that day.
+
+## 2026-07-11T11:45:29Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-07-11T11:45:29Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-07-11T11:45:30Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3bfb28a8
+- **Recorded At**: 2026-07-11T11:45:29Z
+
+## 2026-07-11T12:08:39Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: bcc99ab9
+- **Recorded At**: 2026-07-11T12:08:39Z
+
+## 2026-07-11T12:30:00Z — DEC-198-GOV-002: ratchet cycle-blindness defect (found in field, disclosed at 002 closeout)
+
+- **What happened**: the iteration-closeout boundary sync PASSED the ratchet while the iteration-002 retro crossing was still awaiting verdict capture. Root cause in `Get-SpecrewUnreconciledBoundary` (shared-governance.ps1): the verdict-history scan treats ANY entry whose `to_boundary` matches the working boundary as reconciling it — but boundary names recur every iteration cycle, so iteration 001's retro entry satisfied iteration 002's retro crossing. The ratchet (and the validator FAIL branch and re-confirm surface, which consume the same primitive) is fail-open for every second-and-later iteration of a feature.
+- **Why the artifact stayed right**: `Get-SpecrewPendingVerdictState` computes cursor-vs-working without the name-match scan — correct while the primitive was fooled; the one-primitive design's drift protection was undone by the primitive's own extra clause.
+- **Impact here**: mechanical-only — the closeout sync's mechanical work (dashboard render, index append) ran one capture-cycle early; the retro verdict itself was given by the maintainer in the transcript (approve-with-instructions, 11:55:22Z) and no human decision was bypassed. The closeout boundary verdict is being asked properly.
+- **Disposition**: candidate fix for iteration 003 planning alongside T030-T033 (likely: only entries NEWER than the newest authorization/cycle-reset may reconcile the working crossing — index-ordered, not name-matched); sized at 003 design-analysis per the standing instruction; containment and T020 keep priority. No state altered under this record.
+
+## 2026-07-11T13:05:00Z — DEC-198-GOV-002 disposition UPDATE: fixed at closeout send-back (supersedes the 003-planning disposition)
+
+- **Maintainer ruling (closeout send-back)**: the cycle-blind ratchet could not ride to iteration 003 — it falsifies the iteration''s own FR-001/FR-002 acceptance. Fixed before closeout.
+- **Fix**: `Get-SpecrewUnreconciledBoundary` reconciliation now binds to the CURRENT iteration cycle (newest-to-oldest walk stopping at the newest cycle-reset edge) and ordered occurrence, never the bare boundary name; a malformed/unreadable ledger now HARD-FAILS loud (the Issues path previously read as clean - a second fail-open found while testing the first). Mirror synced.
+- **Proof**: ratchet suite Tests 10-12 (the exact field regression - 001''s retro no longer reconciles 002''s crossing and the closeout advance refuses; same-cycle replay incl. lagging cursor preserved; unreadable identity hard-fails at the primitive AND the gate); Test 5b corrected to the real policy seam (config.yml) after the hard-fail exposed it as green-through-fail-open; budget/tracker/verdict-capture suites green; governance validator PASS on iterations 001+002; fresh independent co-review round on the fixed tree (run id in the closeout packet).
+- **Also**: the premature 002 dashboard snapshot and closed-iteration index entry (written by the fail-open closeout sync) were excised and regenerated after the fix, per the same instruction.
+
+## 2026-07-11T13:55:00Z — DEC-198-GOV-002 second surface (review catch, run 2594b7b5): live gate + validator branch were still cycle-blind
+
+- **Catch (copilot, blocking)**: the first fix corrected only `Get-SpecrewUnreconciledBoundary`; `Test-SpecrewBoundaryAuthorization` - the live gate behind every sync command - still name-matched (from, to) across unscoped history (live repro: a prior-cycle approval authorized a new cycle''s crossing), and the validator''s FR-003 branch reimplemented an inline check instead of consuming the primitive.
+- **Fix**: ONE shared matcher `Find-SpecrewCycleScopedAuthorization` (cursor invariant: cursor==iteration-closeout proves no post-closeout authorization exists, so a closed cycle authorizes nothing further; cycle-reset edge and closeout-terminator stops; fail-closed on unreadable identity) consumed by the primitive AND the live gate; validator state-advance/skipped-boundary checks route through the primitive. Mirrors synced.
+- **Proof**: ratchet suite grown to 23 assertions (Tests 13-15: the reviewer''s exact repro + paired legit path; first-crossing-of-new-cycle; prior-cycle closeout terminator + paired legit own-closeout); all sibling suites green; governance validator PASS on iterations 001+002.
+
+## 2026-07-11T13:08:37Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T13:08:37Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-07-11T13:08:37Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fceb3ee1
+- **Recorded At**: 2026-07-11T13:08:37Z
+
+## 2026-07-11T13:20:00Z — DEC-198-GOV-003: second fabricated authorization removed (same class, same signature)
+
+- **What happened**: the fallback capture fabricated `approved for iteration-closeout` (12:12:30Z, 37s after the genuine retro capture, during the agent''s own stop cycle) while the human''s actual reply to the closeout packet was a send-back. Identical mechanism + timing signature to DEC-198-GOV-001; the capture-side fix is already scoped as FR-041..FR-044 / T030-T033 (iteration 003, maintainer ruling).
+- **Ratchet note**: the closeout sync passed because the fabricated entry moved the CURSOR - the cycle-aware ratchet judged correctly on poisoned data; the poison source is the capture bug, not the DEC-198-GOV-002 fix.
+- **Decision (maintainer)**: approve the same precondition-guarded surgery; entry removed (14 -> 13), cursor restored to retro, iteration 001''s closeout entry untouched, backup retained, state verified (pending correctly `retro -> iteration-closeout`).
+- **Also recorded**: the genuine retro capture (12:11:53Z) was MARKER-BOUND and correctly carried the option-2 instruction-bearing verdict - the option-2 parsing gap is fallback-only; audit addendum written.
+
+## 2026-07-11T14:19:08Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T14:19:08Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-07-11T14:19:09Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fceb3ee1
+- **Recorded At**: 2026-07-11T14:19:08Z
+
+## 2026-07-11T13:45:00Z — Iteration-closeout approved WITH instructions; DEC-198-GOV-003 interim mitigation executed
+
+- **Verdict (maintainer)**: approved for iteration-closeout, with binding instructions.
+- **1. Fallback capture DISABLED (interim)**: `Get-SpecrewPendingVerdictFallbackCapture` returns `fallback-capture-disabled-interim` whenever it would have declined/authorized a live pending crossing; cheap guards keep the honest reason taxonomy; marker-bound capture untouched (proven: C15 green; the option-2 retro verdict captured marker-bound). One re-confirm keystroke is the accepted cost.
+- **2. Regression added**: C17a/C17b - hook-injected user-role machinery text and agent-authored approval text produce NO fallback authorization while the mitigation is active; C10-C16 rewritten to the interim contract with the old expectations preserved as the iteration-003 re-enable acceptance surface.
+- **3. Preparatory records excised**: the 13:08Z dashboard and closed-index entry are removed; both regenerate AFTER this verdict is hook-captured so closed_at cannot predate authorization.
+- **4. Fallback redesign stays T030-T033 (iteration 003)**: re-enable only behind those acceptance criteria.
+
+## 2026-07-11T14:27:47Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T14:27:47Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-07-11T14:27:47Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 284d1a54
+- **Recorded At**: 2026-07-11T14:27:47Z
+
+## 2026-07-11T14:45:00Z — Iteration 003 planning opened (maintainer approve-with-instructions)
+
+- **Verdict**: approved to open iteration 003 planning; one iteration (provisional 10.75 SP within the 26 cap); planning only - implementation needs the before-implement verdict.
+- **Incoming shared-engine dependency (recorded per instruction)**: the Devin crew''s FORTHCOMING design-context validation commit on branch `200-devin-cli-host` (repo C:/Dev/specrew-200-devin-cli-host; crew mid-iteration-004). Landed precursors already on their branch: a697cefe (comma-split --design-context-ref + loud warn on unresolvable refs; touches worktree-reviewer.ps1, specrew-review.ps1) and ec90e1b6 (design-ref plumbing + digest exec-bit restoration; touches co-review-service.ps1, reviewed-state-digest.ps1 + tests - note: the exec-bit restoration addresses our DRIFT-198-I001-001 materialization class).
+- **Integration doctrine (instructed)**: INSPECT and reuse/cherry-pick their fix - never independently reimplement; post-integration compatibility + regression verification is mandatory because both crews touch the shared co-review machinery (new task T034).
+- **Fallback stays disabled** until T030-T033 satisfy the documented re-enable criteria.
+
+## 2026-07-11T15:25:00Z — Iteration 003 design decision: Option B (maintainer-typed) + conflict-escalation doctrine + marker-hygiene send-back
+
+- **Option B chosen** (maintainer: "Option B is the correct technical choice... Keep Option B"): priority order, T034a seam inspection first, T034b cherry-pick/verify at landing, capture-integrity last on disjoint files, fallback re-enable only behind T030-T033 acceptance.
+- **Conflict doctrine (maintainer-typed, binding on T034b)**: mechanical conflicts resolve toward the Devin-owned design-context seam; SEMANTIC conflicts changing containment, authorization, evidence integrity, or fail-closed behavior ESCALATE - never auto-resolved.
+- **Marker hygiene**: the maintainer sent back the combined design+boundary packet because a stale marker risked ambiguous authorization evidence; one clean plan->tasks packet re-rendered; their send-back explicitly authorized no advancement.
+- **Primitive fix en route**: the post-closeout sync-lag shape (cursor at new-cycle plan, working record at iteration-closeout) falsely read as unreconciled because the reset edge walled off the closing cycle''s own closeout authorization; Find-SpecrewCycleScopedAuthorization now continues past the exit edge for the iteration-closeout target only, paired Test 16 (clean lag + unauthorized-closeout abuse) green, mirror synced.
+- **Draft arithmetic correction**: the design-analysis first said 11.5 SP; the task rows sum to 12.0 (containment 5.0 + round economy 3.5 + capture 2.75 + integration 0.75) - corrected before the gate, rows authoritative.
+
+## 2026-07-11T14:54:07Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T14:54:07Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-07-11T14:54:07Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 49082762
+- **Recorded At**: 2026-07-11T14:54:07Z
+
+## 2026-07-11T14:54:37Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 49082762
+- **Recorded At**: 2026-07-11T14:54:37Z
+
+## 2026-07-11T15:55:00Z — DEC-198-I003-001: maintainer ratification of commit 49082762 (recorded per typed instruction)
+
+- **What is ratified**: commit `49082762` - the iteration 003 plan + scaffolds + design-gate packet + the post-closeout sync-lag primitive fix (Test 16). The maintainer''s 2026-07-11 send-back instructed recording this ratification explicitly while withholding the plan->tasks boundary verdict itself.
+- **Sequencing fact recorded honestly**: plan.md was AUTHORED in the same working stretch in which the design gate was first run - the gate initially refused (multi-option recommendation wording; missing durable packet), was satisfied, and PASSED before the commit and before the plan boundary sync; the gate''s letter ("do not author plan.md until design analysis is valid") was met at commit/sync time, not at first keystroke. The ratification covers the committed content as it stands.
+- **Also corrected under the same send-back**: the plan''s Phase Baseline summed 11.5 against the 12.0 task total and double-booked the review allowance as an implementation subtraction; corrected to a coherent partition (Discovery 0.25 + Implementation 11.75 = 12.0) with Review 1.0 / Rework 0.25 stated as wall-clock allowances above the planned SP (forecast floor 13.25).
+- **Boundary state**: the plan->tasks crossing remains PENDING; no approval was given or recorded by the send-back ("Do not record this as approval").
+
+## 2026-07-11T15:15:16Z — Boundary enforcement: before-implement
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Ratchet refusal: 'tasks' is recorded but not human-approved; a second advance to 'before-implement' is refused until it is reconciled.
+
+## 2026-07-11T15:15:34Z — Boundary enforcement: before-implement
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Ratchet refusal: 'tasks' is recorded but not human-approved; a second advance to 'before-implement' is refused until it is reconciled.
+
+## 2026-07-11T16:40:00Z — Second Devin-crew field report banked as T019/T020 acceptance input (no scope change)
+
+- **Evidence (their run 20260711T150802669-da2bc5cc)**: seven stale replays of already-fixed findings ALONGSIDE three genuinely new findings in ONE run (the mixed-run case T019a''s whole-run advisory cannot decompose); ~eleven one-stop-behind replays across their session; a prior round consumed spend after the engine failed to materialize its own changes.diff input.
+- **Recorded into**: spec Clarifications (new entry), T019 (supersede obsolete in-flight results; bind findings to reviewed tree AND baseline; per-finding stale-vs-valid decomposition in mixed runs), T020 (input-never-materialized run = infra failure, never a spend-consuming round - scoped consistently with the "every round counts" ruling, which governs rounds that actually reviewed).
+- **Not done**: no scope expansion, no early implementation (before-implement verdict still pending), nothing launched for their crew. Their forensics (tree-id/baseline/launch-commit deltas, in-flight overlap) arrive as T019 fixture data; a possible second shared-engine commit from their diff-materialization investigation gets the T034 inspect/reuse doctrine.
+
+## 2026-07-11T15:19:09Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: e835f3ad
+- **Recorded At**: 2026-07-11T15:19:09Z
+
+## 2026-07-11T17:15:00Z — Before-implement send-back: three planning defects corrected (no implementation authorized)
+
+- **Defect 1 (condition-a false-green)**: the iteration 003 hardening gate marked condition-a-human-authorization `met` at authoring, before the before-implement verdict exists. Corrected to `open-for-verdict`; the condition flips to met only on the captured verdict, never on gate authoring. Noted as a latent pattern (iterations 001/002 did the same); Overall Verdict `ready` clarified to mean "hardening analysis complete, ready to present for verdict" - not "implementation authorized".
+- **Defect 2 (design-context strictness mischaracterized)**: the gate said unresolved design-context refs "keep the loud-warn precedent". The AUTHORIZED Devin fix (cca79708) is STRICT: explicitly-supplied unresolved refs FAIL before reviewer selection (`design-context-unresolved:`; status `unresolved_design_context`; only omitted/empty keeps the DESIGN_CONTEXT_EMPTY degrade; tests 7f/7g prove the reviewer is never invoked). Corrected in the gate error-handling row, T034, and the design-analysis flow: T034 MUST preserve strict fail-before-execution, never soften to a warn.
+- **Defect 3 (spend accounting conflated round allowance with provider spend)**: T020 now defines BOTH budgets and three cases - (a) preflight missing-input BEFORE invocation → infra failure, consumes neither provider budget nor round allowance; (b) model invoked → record actual provider spend even with no valid review; (c) post-invocation failure → consumes a round-allowance slot with a distinct failed-invocation disposition, never disappears from accounting. Paired tests required: preflight prevents invocation when changes.diff absent; post-invocation failures stay visible in spend telemetry. The prior banked note (17:15 earlier entry) that called it simply "never a spend-consuming round" was the conflation this send-back corrects.
+- **Boundary state**: plan->tasks was approved (option 1); the tasks->before-implement crossing is being re-presented on the SAME boundary after these corrections; no implementation authorized by this send-back.
+
+## 2026-07-11T15:28:56Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-07-11T15:28:56Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'before-implement'.
+
+## 2026-07-11T15:28:56Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 007681e7
+- **Recorded At**: 2026-07-11T15:28:56Z
+
+## 2026-07-11T17:45:00Z — Before-implement APPROVED (option 2, ratifies c96b9bcd); pre-implementation dispositions
+
+- **Verdict**: approved for before-implement with instructions; maintainer ratified commit c96b9bcd (self-leak cleanup: comment-only, mirror-aligned, FR-refs not internal IDs). Execution authorized in the recorded Option B order.
+- **Instruction 1 (done)**: dispositioned untracked review run 20260711T152939716-c894a74b - a later escalation round of the same self-leak finding fixed in c96b9bcd; RESOLVED-AGAINST-DISK (lint exit 0, paired test green, mirror byte-identical, fix is ancestor of HEAD). Disposition record committed in the run dir; the run''s missing reviewed_tree_id is banked as T019 field evidence.
+- **Instruction 2 (deferred to post-capture)**: condition-a-human-authorization flips met with the auth reference AFTER the before-implement verdict is hook-captured (must not claim met before the capture exists - the very false-green condition-a was corrected for).
+- **Instruction 3 (standing)**: pending-artifact fallback stays DISABLED; strict unresolved-design-context failure preserved (T034/T020 as planned).
+
+## 2026-07-11T16:40:00Z — T034a done + Devin runtime constraints (maintainer instruction, Option 3)
+
+- **T034a complete**: Devin shared-engine seam recorded (iterations/003/research/devin-seam-inspection.md). Overlap confirmed: their strict design-context resolution (cca79708) sits in Invoke-ContinuousCoReviewWorktreeReviewRun at the resolution point our T013/T014 also edit; exec-bit restoration (ec90e1b6) in Get-ContinuousCoReviewReviewedStateDigest RESOLVES our DRIFT-198-I001-001 (reuse, don''t reimplement); design-ref plumbing threads -DesignContextFiles through Start-ContinuousCoReviewServiceRun. Compose-not-collide rules + semantic/mechanical conflict doctrine recorded per task.
+- **Devin runtime constraints (maintainer, binding)**: Devin is logged in and AVAILABLE for LATER compatibility validation only. Do NOT wire Devin independently; do NOT run it from the governed worktree. The bounded live Devin compat review is authorized ONLY after T034b integration is verified, and runs from a SCRATCH DIRECTORY under explicit authorization at that time. The reviewer-catalog row (their T024) is inspected/reused at T034b IF part of the agreed incoming change set.
+- **Hands-off**: do NOT alter or overwrite the current .specrew/reviewer-hosts.json changes while handling T034a (respected - untouched).
+- **Order**: continuing in the approved Option B order; T013 (worktree relocation) next. Implementation authorized (before-implement captured, condition-a met).
+
+## 2026-07-11T17:00:00Z — DRIFT-198-I003-001: FR-020 honesty check fail-open fixed (co-review 1446b84c)
+
+- **Catch (blocking, verified valid against disk + data model)**: the shipped tracker honesty check (T010, iteration 002) parsed state.md by EXTRACT-and-ignore and accepted any [a-z-]+ status - contradicting the TrackerClaims data model (canonical enums; parse failure -> fail-closed) and the module''s own I3 fail-direction. A tracker-only edit could inject a foreign/unmapped claim or a non-canonical status and be judged honest, retaining stale review evidence (a false-green door in fail-closed machinery).
+- **Fix (implementation-corrected, in place)**: canonical iteration-status + task-status enums required (non-canonical -> fail-closed); Last Completed Task must be Tnnn or (none) sentinel; injected capacity/test-count claims in a tracker file decline the bypass. Not mirrored (scripts/internal/, no .specify copy).
+- **Proof**: tracker-honesty suite 11/11 (Tests 7-10 abuse decline; Test 11 paired legit still passes - no over-close); degraded-evidence-gate 9/9 (signoff wiring intact).
+- **Governance**: recorded as DRIFT-198-I003-001 (found/fixed in 003); NOT a scope change (realizes FR-020 per its own data model); closed 002 record not reopened.
+
+## 2026-07-11T17:20:00Z — efbbb98d: stale in-flight ceiling escalation of the already-fixed FR-020 finding (T019 field evidence)
+
+- **Determination**: the ceiling escalation (run efbbb98d) replays the FR-020 tracker-honesty critique already fixed in 4f6af63c. Proof: efbbb98d findings 17:03:57Z PREDATE the fix commit 17:10:44Z; it reviewed the pre-fix tree; NO reviewed_tree_id on the run. Committed code enforces canonical enums + declines injected/free-text claims; abuse suite 11/11 on disk. Nothing to fix.
+- **Pattern**: third stale/one-stop-behind escalation this session (self-leak c894a74b, ceiling 970a8d7c, now efbbb98d) - the pre-T019/T020 loop tax. Banked as direct field evidence for T019 (tree-binding + in-flight dedup) and T020 (round accounting: an in-flight run whose findings predate the fix must not consume the round allowance against the current tree).
+- **Pending**: latch-clear is a ceiling-escalation human decision; recommend dispositioning as resolved-against-disk and proceeding (the finding is provably stale, tests green) vs another reset+confirm (risks another in-flight stale escalation until T019 lands).
+
+## 2026-07-11T18:00:00Z — T020 pulled forward (execution-order adjustment, maintainer-directed) - NOT scope drift
+
+- **Directive**: pull T020 forward now (before T014), because the pre-T020 ceiling latch kept re-escalating resolved findings and blocking progress on the very iteration that fixes it. Explicitly recorded as an EXECUTION-ORDER adjustment, not scope drift (the task set is unchanged; only the order moved). NOT raising co_review_max_rounds (would mask the accounting defect + increase spend).
+- **Delivered (FR-018/FR-019/SC-007)**: (1) resolved-against-disk disposition - clears the sticky blocking round-state + resets round + resets lineage so a fixed finding can neither re-escalate nor consume allowance; REQUIRES a fix-evidence commit that is an ancestor of HEAD (bare claim refused - no false-green door). (2) Two-budget accounting: preflight-before-invocation consumes neither provider budget nor round; invoked records provider spend; invoked-failed records spend + counts the round (never disappears). (3) Consumer-legible halt text: N-of-M, the reset command, resolved-vs-open from the disposition trail, ZERO internal identifiers. (4) CLI: --remediate resolved-against-disk --fix-evidence-ref.
+- **Regression fixtures = the four observed stale-latch incidents** (self-leak c894a74b/970a8d7c, FR-020 efbbb98d/e4e88cb0): proven a resolved-against-disk disposition cannot re-escalate or keep consuming allowance. Proof suite 8/8; escalation-latch + degraded-gate 23/23; parse-clean.
+- **Next**: one bounded verification (a live review round on the committed tree), then resume the containment chain at T014.
+
+## 2026-07-11T18:10:00Z — T020 bounded verification PASSED + a real pre-existing gap surfaced (F-198 tests not CI-wired)
+
+- **Bounded verification (per maintainer instruction before resuming T014)**: one live review on the committed T020 tree (run 152d93f2) ran end-to-end - round 1, no ceiling, blocking=False. The engine works with the new round-state model + halt text; the cut-short-review harvest path also exercised correctly (a timed-out review salvaged as a NON-blocking advisory, never read as clean-green).
+- **Real gap surfaced by the (non-blocking, cut-short) advisory**: NEITHER .github/workflows/specrew-ci.yml NOR specrew-confidence-lane.yml runs tests/unit/ or tests/continuous-co-review/. So the F-198 paired honesty tests (tracker-honesty, boundary-ratchet, budget-resolution, self-leak-lint, worktree-containment, review-spend-allowance) - the NFR-007 regression protection - only run when invoked manually, not in CI. PRE-EXISTING (the continuous-co-review tests were never CI-wired); NOT introduced by T020.
+- **Disposition**: recorded as a follow-up - wire tests/unit + tests/continuous-co-review into CI (a Pester glob), best folded into iteration 004 T021 (the methodology-gate / CI lane) OR a quick dedicated fix. Surfaced to the maintainer for priority. Non-blocking; does not gate T020.
+- **Next**: resume the containment chain at T014.
+
+## 2026-07-11T18:25:00Z — NFR-007 CI enforcement gap CLOSED (maintainer-directed; not T021 work)
+
+- **Directive**: wire the F-198 tests into CI now, but NOT an unrestricted tests/unit/**or tests/continuous-co-review/** glob - a bounded, explicit F-198 suite/registry (ratchet, spend allowance, containment, tracker honesty, related co-review regressions) with a timeout + clear failure output. Recorded as closing the iteration''s NFR-007 enforcement gap, NOT T021 distribution work.
+- **Delivered**: tests/f198-regression-suite.ps1 - an EXPLICIT registry (8 suites, never a glob), each run in a child pwsh with a per-test timeout (default 300s) + captured output (a hang fails loud, a failure prints the tail). Added as a blocking step in the self-host CI (.github/workflows/specrew-ci.yml, timeout-minutes 15). NOT mirrored to the consumer template (self-host enforcement of F-198''s own code; T021 later generalizes/deploys). Runner is a dev/CI file - not in the module FileList (tests are not shipped).
+- **Green**: all 8 suites pass locally via the runner (exit 0).
+- **Scope note**: this is iteration-003 engine-hardening self-enforcement - the engine hardening does not merge while its core honesty tests are manual-only. T021 can generalize/deploy the CI mechanism to consumers later.
+
+## 2026-07-11T18:40:00Z — T014 done (bundle origin-path hygiene, FR-009/SC-002)
+
+- **Leak fixed**: the reviewer-visible context (copied state.md/plan.md/spec.md/design-analysis.md snapshots) carried file:/// ORIGIN-ABSOLUTE URLs, handing the confined reviewer the real project location. ConvertTo-ContinuousCoReviewOriginRelativized relativizes origin-absolute paths (file:/// URLs + both separator forms, case-insensitive, multi-root: governance root + git top-level) to <project> in the process-context copies, the generated process-context.md, and the design-context copies. RELATIVIZES, never removes - the path structure stays reviewable; the change-set diff (real content under review) is untouched.
+- **Composes with the Devin seam** (T034a): the supplied design-context ref is relativized in the copy, never dropped - their plumbing + our hygiene coexist in the same reviewer-context path.
+- **Proof**: origin-path-hygiene.Tests.ps1 5/5 (file:/// URLs, both separators + case-insensitive, no over-scrub of relative/foreign paths, multi-root, empty no-op); added to the F-198 CI registry.
+- **Next**: T015 (confinement contract + REQUIRED bounded in-worktree verification).
+
+## 2026-07-11T19:15:00Z — Co-review 8d3f5a6b: T020 wiring (real, fixed), exec-bit (phantom, refuted), + T012 regression surfaced/fixed
+
+- **Finding 1 (T020 two-budget not wired) - REAL, FIXED**: Get-ContinuousCoReviewRoundSpendClass was a standalone classifier with no production caller; the failure path recorded no failed-invocation disposition/spend/round. Now WIRED: preflight (missing .review/changes.diff fails BEFORE model invocation, consumes neither budget); post-invocation (invoked-invalid records provider spend + consumes a round + a failed-invocation disposition, preserving prior blocking). End-to-end fixtures via the mock harness prove both (missing diff -> reviewer never invoked; invoked-invalid -> both budgets + disposition). Suite 10/10.
+- **Finding 2 (exec-bit 100755->100644 strip on bin/specrew*) - REFUTED (phantom)**: git ls-tree HEAD shows 100755 for all bin/specrew* + install.sh, byte-and-mode-identical to origin/main (git diff origin/main HEAD --summary EMPTY; core.filemode=false). Nothing stripped in the committed tree. The reviewer worktree (git-archive extract on Windows core.filemode=false) fabricates the mode diff because the Devin exec-bit-restoration fix (ec90e1b6) is not integrated until T034b. DRIFT-198-I001-001 class, already dispositioned with git evidence in iteration 001. The reviewer''s checkout-mode-assertion ask is a Unix-lane item folded into T034b (where the Devin fix lands).
+- **Pre-existing T012 regression SURFACED + FIXED**: verifying the fix ran the F-197 orchestrator-run suites (never CI-wired) and found the orchestrator crashed under StrictMode on a reviewer-host object missing independence_source (T012 added the field; the F-197 test mocks predate it). Made the orchestrator DEFENSIVE (default to unverified). Added the 4 shared-engine suites (review-context-harvest, remediation-menu, reviewer-independence-fallback, empty-result-retry) to the F-198 CI registry - the exact NFR-007 gap (manual-only tests) that let this slip. All 41 affected assertions green.
+
+## 2026-07-11T19:45:00Z — T034b PARTIAL: Devin ec90e1b6 exec-bit restoration pulled forward (maintainer-directed)
+
+- **Directive**: pull ec90e1b6 forward now as an early, focused portion of T034b - it removes the recurring co-review exec-bit phantom (DRIFT-198-I001-001) at its source before it consumes more review rounds.
+- **Done (reused, not reimplemented)**: cherry-picked the reviewed-state-digest.ps1 exec-bit restoration verbatim from Devin ec90e1b6 (capture the real index 100755 paths before the fresh-index stage; restore via update-index --chmod=+x after; guarded to core.filemode=false; deleted-path chunks filtered). Plus their Pester exec-bit regression test (reviewed-state-digest.Tests.ps1). Added the digest suite to the F-198 CI registry.
+- **Verified**: digest tree now carries 100755 for bin/specrew + install.sh with the SAME blob hashes as HEAD/origin/main; committed tree byte-and-mode-identical to origin/main (git diff origin/main HEAD --summary EMPTY); reviewed-state-digest suite 12/12; F-198 registry 14/14 green. No semantic conflict encountered (clean reuse of a landed precursor).
+- **Still PENDING (controlled T034b, at final Devin landing)**: the strict design-context resolution integration (cca79708) and the bounded live Devin compatibility review (from a scratch dir, under explicit authorization). DRIFT-198-I001-001 is now resolved at source; the co-review exec-bit phantom (finding 2 of run 8d3f5a6b) will no longer recur.
+
+## 2026-07-11T19:05:00Z — T020 resolved-against-disk cleared its FIRST real latch (no reset dance)
+
+- The ceiling escalation (run 98481d9f) surfaced the T020 CONSUMER-LEGIBLE halt text itself (spend-guard explanation, 3-of-2 rounds, the reset command, zero internal identifiers) - the UX working as designed.
+- The held finding was the two 8d3f5a6b findings, BOTH now fixed (finding 1 wired 6fc654cd, finding 2 exec-bit 0b9fd024; both ancestors of HEAD, suites green). Cleared with `--remediate resolved-against-disk --fix-evidence-ref <HEAD>`: the honesty guard verified the fix is committed, the latch cleared (blocking=false, round=0), a resolved-against-disk disposition recorded. NO more-time reset, NO human dance - the exact stale-latch tax T020 was built to end, demonstrated end-to-end on its first real use.
+
+## 2026-07-11T20:20:00Z — T015 done (confinement contract + bounded in-worktree verification, FR-010/FR-013)
+
+- **Confinement contract**: worktree-only rules + what-is-absent teaching written into the reviewer slim prompt; durable source of truth in reviewer-spawn-contract.md (FileList-registered).
+- **Bounded verification (Invoke-ContinuousCoReviewBoundedVerification)**: runs ONLY declared commands, each with a timeout + Kill(entireProcessTree) on expiry, a UTF-8 BYTE output cap, and pre/post mutation evidence.
+- **Two maintainer honesty corrections applied**: (1) ADDED/DELETED/MODIFIED all count as mutations - a new file is exempt ONLY via an explicit AllowedOutputPaths allowlist (so a reviewer cannot plant new source that steers its own verification); (2) MaxOutputBytes now enforces a real UTF-8 BYTE limit, not characters.
+- **Binding fix (maintainer diagnosis, exactly right)**: the "Argument types do not match" at the call boundary was `return @($results)` over List[object] failing to enumerate; changed to `return $results.ToArray()`. No new launch helper needed.
+- **Proof**: paired suite 9/9 (read-only no-mutation, timeout, process-tree kill of a spawned child, byte cap, modified/deleted/added mutation, allowed-output exempt, empty-command); added to the F-198 CI registry - 15 suites all green.

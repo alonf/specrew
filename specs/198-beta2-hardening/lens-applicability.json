@@ -1,0 +1,146 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "security-compliance",
+    "component-design",
+    "integration-api",
+    "devops-operations",
+    "requirements-nfr",
+    "data-storage",
+    "observability-resilience",
+    "code-implementation"
+  ],
+  "skipped": {
+    "ui-ux": "No screens in this bundle. The console-teaching texts (W11/W14/W16 messages, the feature-closeout packet rendering in 204-W7) are requirements owned by their work items, covered under requirements-nfr and the owning lenses."
+  },
+  "depths": {
+    "architecture-core": "full",
+    "security-compliance": "full",
+    "component-design": "medium",
+    "integration-api": "medium",
+    "devops-operations": "medium",
+    "requirements-nfr": "light",
+    "data-storage": "light",
+    "observability-resilience": "light",
+    "code-implementation": "light"
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Which decomposition style governs this bundle (inherit data-driven catalogs behind stable seams + host-neutral governed scripts)?",
+        "Where does the #2906 fix get deterministic teeth on hosts with no Stop hook?",
+        "What is the fail direction and scope of the W13 conditional tracker strip?",
+        "How does the ~15-25 SP bundle slice into iterations and what orders them?"
+      ],
+      "decision": "Inherit Specrew's existing decomposition as binding (every new volatile thing is data - deny-list file, catalog column, machinery list, release model - never host-conditional code). #2906: deterministic ratchet in sync-boundary-state (refuses a second unapproved advance) with Test-SpecrewBoundaryAuthorization resurrected as the shared primitive called from sync, validate-governance, resume/start reconciliation, and the hard gates; host hooks remain surfacing-only, never the teeth; honest limit recorded (one boundary of unapproved work possible, caught at next touchpoint, discarded if not retro-approved). W13: fail-closed conditional tracker strip scoped to iterations/*/state.md + tasks-progress.yml only; reconcile-toward-truth bypasses staling, claims-increasing edits stale as today, parse ambiguity stales (fail-closed); both regression tests mandated. Slicing approved: 001 substrate+firewall-first (Spec-Kit 0.12.9 + Squad 0.11.0 + 205-W1/W6/W2), 002 governance correctness core (#2906 + 203-W13/W14/W15/W16), 003 reviewer containment + round economy (203 W1-W12), 004 distribution + release (204 W1-W7 + 205 W3/W4/W5 + #2903 + v0.40.0-beta2). Human confirmed all four ('Yes for all'; A4 'Looks good').",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md - seam map, #2906 ratchet flow + covering-set table, W13 honesty-check flow, iteration slicing"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Where does the containment enforcement floor land for 203 W1-W4 (is the W4 watchdog worth it)?",
+        "What shape does the W5 ONE machinery list take (.github/workflows in or out of both strips)?",
+        "Do the W11/W16 teaching texts hold the T096 line, and what is the budget resolution order and floor?",
+        "How does the manual --live door resolve the code-writer host when the flag is absent (W15)?"
+      ],
+      "decision": "S1: floor is W1-W3 + W4 as cheap detector (T100 registry cwd/commandline sampling; origin-root path in a reviewer child process marks the run containment-violated, fails LOUD, never a mid-flight kill); OS path-jails out of scope for host-neutrality; discussion established git-revert covers only tracked content and the two origin-discovery leak paths (upward walk from an under-origin tree, Rule 52 absolute paths in committed docs). S2: path-granular ONE list consumed by both strips - .claude/.agents/.cursor/.copilot and .github machinery subpaths (copilot-instructions.md, instructions/, prompts/, agents/) excluded both sides; .github/workflows/** and all other content included both sides; reviewer-can-still-see-it regression test per list change. S3: teaching texts name the exact sanctioned command + config key, never suggest state surgery; T096 enforcement stays at input provenance (human-typed only, no agent self-escalation); resolution order explicit flag -> project config -> catalog per-host default -> 600 floor (maintainer amendment: '300 is too short according to all our tests'; floor is terminal fallback, not a clamp - explicit lower values stay accepted per DEC-197-I010-007 and draw the W14 warning keyed off the RESOLVED value). S4: env cascade (flag -> SPECREW_HOST -> SPECREW_ACTIVE_HOST) + independence_source provenance field (flag|env|unverified) in run evidence; SEC-004 fail-closed for unverified stays.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/security-compliance.md - trust-boundary map with W1-W6 controls, leak paths A/B, ONE-list table"
+    },
+    "component-design": {
+      "agenda": [
+        "Do the four data seams hold (catalog default_timeout_seconds column, SelfLeakDenyList file, ONE MachineryPathList, release model in repository-governance.yml)?",
+        "Are the governance-core placements right (BoundaryAuthorizationCheck as shared primitive with sync/validator call sites, TrackerHonestyCheck in the digest path, ReleaseModelResolver in shared governance)?",
+        "Are the reviewer-runtime and deploy/CI component responsibilities and the inward dependency direction right?"
+      ],
+      "decision": "Component map approved as rendered: 24 named components across five groups (data seams / governance core / reviewer runtime / deploy & heal / CI lanes & templates), dependencies pointing inward to the data seams; catalog stays the ONLY harness-data seam (budget column, no separate file); SelfLeakDenyList and MachineryPathList are single-truth data files consumed by both their producer/consumer sides; key flow agreed: the deny-list single-truth loop (author lint -> ship -> consumer update heal/advisory, same shipped list both sides).",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md - full 24-component map with responsibilities + deny-list single-truth flow"
+    },
+    "integration-api": {
+      "agenda": [
+        "How do we handle Spec-Kit's now-opt-in git and agent-context extensions in our init flow?",
+        "What supported-version posture does the Spec-Kit (and Squad) bump take?",
+        "Which contract-evolution policy do the new data seams get (catalog column, deny-list file, honesty-check parse contract)?"
+      ],
+      "decision": "I1: evidence-first minimalism - probe the 0.12.9 CLI in a scratch dir only (init probes mutate lifecycle state), run existing suites against a no-extensions 0.12.9 fixture, add specify extension add git / agent-context ONLY on demonstrated dependency, record the decision with probe evidence. I2: single tested pin 0.12.9 (and Squad 0.11.0) - no dual-syntax runtime branch, version-check warns non-pinned versions with a clear update instruction. I3: asymmetric contract package - catalog column additive with tolerant reader (absent -> 600 floor), SelfLeakDenyList carries schema_version with consumer-side mismatch = fail-open WARN (advisory-first), TrackerHonestyCheck parse failure = fail-closed (declines the bypass, stales as today). Each decision explained and picked one-at-a-time at the maintainer's request.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/integration-api.md - migration-surface contract diagram (init flags, opt-in shifts, pin surface, Squad side)"
+    },
+    "devops-operations": {
+      "agenda": [
+        "Gateway wiring: validator scope on PRs, who gets the gateway deployed, action-pin policy?",
+        "Deploy-list surgery + bootstrap-commit posture (auto vs offer, hash guards)?",
+        "beta2 release mechanics: tag form, pre-tag bookkeeping check, credentials doc fix?"
+      ],
+      "decision": "D1: full validator run on consumer PRs (scoped optimization deferred to 087); gateway deployed keyed off the RECORDED provider (github or unset -> deploy; explicitly non-GitHub -> skip + name Invoke-SpecrewWorkKindValidation, FR-024); action pins by major, refreshed via the update heal surface; advisory-first posture per F-182 with explicit README teaching. D2: automatic content-hash-guarded retired-template removal (byte-identical removed, user-modified left with WARN); W5b bootstrap commit auto on greenfield, explicit offer on brownfield. D3: tag v0.40.0-beta2 no-dot, ModuleVersion 0.40.0 + Prerelease beta2; the seven-item release bookkeeping checklist becomes a pre-tag deterministic check via validate-versions.ps1 (extended if needed); psgallery-release-credentials.md rewritten to auto-publish reality; stable promotion stays a separate maintainer PASS after fresh consumer E2E. Maintainer: 'Agree with all recommendations'.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md - self-host + consumer promotion topology"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Does the quality-attribute priority order stand (honesty > loud failure > host neutrality > teach > evidence-shape)?",
+        "Is the paired-test rule the binding acceptance shape for every honesty invariant?"
+      ],
+      "decision": "Priority order confirmed with a HUMAN ADDITION: agent-action transparency (UX) added as attribute #2 - any decision or action the agent makes must be legible to the human (what/why/what's next); loud failure is its failure-side instance, teach-don't-trap its recovery-side instance. Final order: honesty/no-false-green > agent-action transparency > loud failure > host neutrality > recoverability/teach > evidence-over-presence. Pinned implication: legitimate paths are visible too (the W13 bypass announces itself; a silent bypass violates transparency even when correct). Paired-test rule confirmed as the binding acceptance shape: every honesty invariant ships one test proving the legitimate path works and one proving the abuse path fails; message-content assertions for transparency ride the same pairs.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md - quality-attribute priority table + paired-test catalog"
+    },
+    "data-storage": {
+      "agenda": [
+        "Deny-list file format, entry shape, and per-file-kind annotation syntax?",
+        "Catalog column shape and MachineryPathList placement?",
+        "How does the W13 bypass touch digest identity - formula exclusion (a) or gate-level acceptance (b)?"
+      ],
+      "decision": "Mechanism (b) confirmed: digest formula unchanged (trackers stay identity); the signoff gate accepts a tracker-only delta as fresh evidence when TrackerHonestyCheck passes and ANNOUNCES the accepted reconcile - certified==reviewed holds unconditionally; option (a) rejected as re-opening the certified-but-unreviewable class. Shapes confirmed: SelfLeakDenyList as JSON with schema_version in extensions/specrew-speckit/data (entry: pattern/class/reason/source/added; annotation escape per file kind - HTML comment for md, # line comment for ps1/psd1/yml, same-line-or-line-above semantics); MachineryPathList in the same data dir consumed by both strips; catalog default_timeout_seconds int with absent->600-floor tolerant reader; release_model in repository-governance.yml; W9/W10 navigator state in the tracked .specrew/review/** durable store.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/data-storage.md - data-at-rest table + identity-mechanism decision"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "Confirm the failure-mode signal shapes (timeout, containment violation, ceiling halt, checkpoint drift, skipped boundary) and the correlation/idempotency notes?"
+      ],
+      "decision": "Failure-mode traces confirmed: budget kill -> durable record + teaching (human-typed increase per T096, W14 warning already fired at resolution time); containment violation -> loud fail with origin-side record naming process/commandline/path/timestamp, nothing origin-flavored reviewer-visible; ceiling halt -> exact remediation command + bare-live-won't-re-review, never state surgery; checkpoint drift -> frozen fire-time tree materialized, stale-vs-current label on record and status; skipped boundary -> refusal/FAIL naming the boundary + both reconciliation doors, pending-verdict-stop.md authoritative. Cross-cutting: run-ID correlation CLI<->record<->gate, idempotent dedup on frozen digest / per-boundary sync / hash-guarded healing, no secrets in records, origin paths only origin-side.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/observability-resilience.md - failure-mode trace table"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Source of code-rules truth: existing guideline/example project or inherit the product baseline?",
+        "Inherit F-197's product-level rules with F-198 custom rules replacing the 197-scoped ones, exceptions unchanged, use-existing-no-new-dependency stance?"
+      ],
+      "decision": "Inherit as presented: the 44-rule F-197 baseline carried for the same powershell-markdown-yaml-json stack (decision texts re-anchored to F-198 surfaces), exceptions unchanged (performance, collection-query, pagination, messaging, cache); six F-198 custom rules bind: provider-mirror-parity, psd1-filelist, born-clean (every touched surface passes SelfLeakLintLane from first commit), scratch-probes-only, remote-main-sync before each iteration implement, paired-honesty-tests as review enforcement. Dependency stance use-existing-no-new-dependency (toolchain bumps are version updates of existing deps per I2). Manifest at implementation-rules.yml.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/code-implementation.md - inheritance record + custom-rule table"
+    }
+  }
+}

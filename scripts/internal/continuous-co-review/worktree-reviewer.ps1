@@ -7,6 +7,40 @@ Set-StrictMode -Version Latest
 # an uncontainable reviewer - the divergent $proc.Kill fallback is deleted per design N1).
 $specrewProcessTreeHelper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
 if (Test-Path -LiteralPath $specrewProcessTreeHelper -PathType Leaf) { . $specrewProcessTreeHelper }
+if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewDesignContextSelection' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-design-context.ps1') }
+
+function Invoke-WorktreeReviewerGitCapture {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string[]]$Arguments
+    )
+
+    # Robust git invocation IMMUNE to the ambient [Console]::OutputEncoding state: PowerShell's
+    # `& git` throws "StandardOutputEncoding is only supported when standard output is redirected"
+    # in hook/supervised contexts (F-197 iter-005 lesson, same pattern as
+    # Invoke-ContinuousCoReviewGit in checkpoint-diff-provider.ps1; this call site was never
+    # migrated - caught blocking the F-198 iteration-001 signoff review, runs 6e5a8dab/cc6e2018/
+    # 1a752eea). Local copy keeps this file self-contained across the detached load orders.
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = 'git'
+    foreach ($a in $Arguments) { [void]$psi.ArgumentList.Add([string]$a) }
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $psi.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
+
+    $proc = [System.Diagnostics.Process]::new()
+    $proc.StartInfo = $psi
+    [void]$proc.Start()
+    $stdout = $proc.StandardOutput.ReadToEnd()
+    [void]$proc.StandardError.ReadToEnd()
+    $proc.WaitForExit()
+    $proc.Dispose()
+    return $stdout
+}
 
 # iter-008 — the worktree-based, agentic, see-all/run-all reviewer (NEW, built alongside the old curated-diff
 # path; the old path keeps working until this is proven + cut over). The reviewer runs in an ephemeral,
@@ -39,12 +73,12 @@ function Get-ContinuousCoReviewMachineryPaths {
     #   (b) SELF-DESCRIBING detection: every dir Specrew DEPLOYS into a host carries a `.specrew-managed` marker
     #       (written by Set-ManagedFile at deploy), so its parent dir is machinery. This catches the host-mirror
     #       skill/rule/agent dirs (.github/skills/specrew-*, .claude/skills/specrew-*, .cursor/rules/specrew-*, ...)
-    #       across every host WITHOUT enumerating them, and keeps user config (.github/workflows,
-    #       .claude/settings — no marker). Returns project-relative paths. -RepoRoot enables (b); omit for the
-    #       core-only list.
+    #       across every host WITHOUT enumerating them. Ordinary user config stays reviewable; the one exception is
+    #       `.claude/settings.local.json`, the canonical machine-local/per-session hook config that init untracks and
+    #       ignores. Returns project-relative paths. -RepoRoot enables (b); omit for the core-only list.
     param([string]$RepoRoot)
     $core = @(
-        '.specrew', '.specify', '.squad', '.agents', '.git',
+        '.specrew', '.specify', '.squad', '.agents', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
     if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {
@@ -78,6 +112,41 @@ function Get-ContinuousCoReviewMachineryPaths {
     return @($core + $marked + $mirrors | Where-Object { $_ -and $_ -ne '.' } | Sort-Object -Unique)
 }
 
+function ConvertTo-ContinuousCoReviewOriginRelativized {
+    # FR-009 (203 W2) origin-path hygiene: strip/relativize ORIGIN-ABSOLUTE paths from the
+    # reviewer-visible context so the confined reviewer never sees the real project location (an
+    # information leak that also hands it an upward path out of the worktree). RELATIVIZES rather
+    # than removes - the path STRUCTURE stays reviewable (e.g. specs/.../state.md), only the origin
+    # PREFIX is neutralized to '<project>'. Case-insensitive (Windows paths); covers file:/// URLs
+    # and both separator forms. Composes with the Devin design-ref plumbing: a supplied design-context
+    # path is relativized, never dropped.
+    param(
+        [AllowNull()][string]$Content,
+        [Parameter(Mandatory)][string[]]$OriginRoots
+    )
+    if ([string]::IsNullOrWhiteSpace($Content)) { return $Content }
+    $out = $Content
+    $ci = [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    foreach ($root in ($OriginRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.Length } -Descending)) {
+        # A review bundle can contain an origin captured on another OS. Do not ask the current platform to
+        # resolve a foreign Windows absolute root: on Linux GetFullPath('C:\Dev\repo') prefixes the current
+        # Unix directory and prevents the real origin from being scrubbed.
+        $foreignWindowsAbsolute = $root -match '^[A-Za-z]:[\\/]' -or $root -match '^\\\\'
+        $full = $(if ($foreignWindowsAbsolute) { $root } else { [System.IO.Path]::GetFullPath($root) }).TrimEnd([char]'\', [char]'/')
+        $fwd = $full.Replace('\', '/')
+        $bwd = $full.Replace('/', '\')
+        # file:/// URL form first (most specific), then the JSON-ESCAPED backslash form (review finding f5,
+        # run 20260714T190233598: a serialized JSON evidence copy carries 'C:\\Dev\\...' - the doubled form
+        # must relativize too or the origin leaks through every JSON artifact), then the bare absolute path
+        # in either separator form.
+        $out = [regex]::Replace($out, ('file:///' + [regex]::Escape($fwd)), 'file:///<project>', $ci)
+        $out = [regex]::Replace($out, [regex]::Escape($bwd.Replace('\', '\\')), '<project>', $ci)
+        $out = [regex]::Replace($out, [regex]::Escape($fwd), '<project>', $ci)
+        $out = [regex]::Replace($out, [regex]::Escape($bwd), '<project>', $ci)
+    }
+    return $out
+}
+
 function Write-ContinuousCoReviewProcessContext {
     # Curated PROCESS / PROGRESS context for the reviewer (under .review/process/) so it can review progress
     # conformance - right task? on-plan? drift recorded? progress honest? - WITHOUT the raw, noisy .specrew
@@ -87,6 +156,10 @@ function Write-ContinuousCoReviewProcessContext {
     param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$ReviewDir)
     $procDir = Join-Path $ReviewDir 'process'
     New-Item -ItemType Directory -Path $procDir -Force | Out-Null
+    # FR-009 origin-path hygiene: the origin roots whose absolute form must never appear in the
+    # reviewer's context - the governance RepoRoot AND the git top-level (nested-project safe).
+    $originRoots = @($RepoRoot)
+    try { $gitTop = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null); if (-not [string]::IsNullOrWhiteSpace($gitTop)) { $originRoots += $gitTop.Trim() } } catch { $null = $_ }
 
     $featureDir = $null; $phase = $null
     $fj = Join-Path $RepoRoot '.specify/feature.json'
@@ -122,7 +195,14 @@ function Write-ContinuousCoReviewProcessContext {
             }
         }
         foreach ($pf in $progressFiles) {
-            if (Test-Path -LiteralPath $pf -PathType Leaf) { Copy-Item -LiteralPath $pf -Destination $procDir -Force; [void]$copied.Add((Split-Path $pf -Leaf)) }
+            if (Test-Path -LiteralPath $pf -PathType Leaf) {
+                # FR-009: relativize origin-absolute paths (file:/// URLs, bare paths) IN THE COPY the
+                # reviewer sees - the snapshot content stays reviewable, the origin location does not leak.
+                $leaf = Split-Path $pf -Leaf
+                $scrubbed = ConvertTo-ContinuousCoReviewOriginRelativized -Content (Get-Content -LiteralPath $pf -Raw -Encoding UTF8) -OriginRoots $originRoots
+                [System.IO.File]::WriteAllText((Join-Path $procDir $leaf), $scrubbed)
+                [void]$copied.Add($leaf)
+            }
         }
     }
 
@@ -151,7 +231,286 @@ function Write-ContinuousCoReviewProcessContext {
     [void]$lines.Add('- Is drift recorded in drift-log.md where the implementation diverged from spec/plan?')
     [void]$lines.Add('- Is tasks-progress / state HONEST (nothing marked done that is not actually done/tested)?')
     [void]$lines.Add('- Does the work stay within planned scope for this lifecycle position (see the lifecycle note)?')
-    [System.IO.File]::WriteAllText((Join-Path $procDir 'process-context.md'), ($lines -join "`n"))
+    [System.IO.File]::WriteAllText((Join-Path $procDir 'process-context.md'), (ConvertTo-ContinuousCoReviewOriginRelativized -Content ($lines -join "`n") -OriginRoots $originRoots))
+}
+
+# ============================ T016 — containment-violation detector (FR-011 / SC-003) ============================
+# MONITORED confinement, NOT OS-enforced isolation: the reviewer is trusted-but-confined; its process tree must
+# stay under the disposable worktree (T013 materialized it OUTSIDE origin) and never reach back to origin. This
+# detector RIDES the T100 process registry (Get-SpecrewProcessTreeDescendants) to SAMPLE the tree's paths and,
+# on observed origin access, records a LOUD, ORIGIN-SIDE `containment-violated` finding. It is strictly
+# READ-ONLY: it samples nothing sensitive into a reviewer-visible artifact and NEVER mutates or kills the
+# reviewer mid-flight (the only kill remains the end-of-run Stop-SpecrewProcessContainment). The record carries
+# ONLY bounded, redacted path/process metadata - never the raw command line, prompt, env, or credentials
+# (maintainer 2026-07-12).
+
+function Select-ContinuousCoReviewAbsolutePathTokens {
+    # Filter an ALREADY-SPLIT argv array to its ABSOLUTE path tokens (drive-rooted, UNC, or POSIX-rooted). argv is
+    # STRUCTURED - one full argument per element - so a quoted path containing spaces is a single element and is
+    # NEVER re-split. Only absolute tokens are returned: a relative token would need the process cwd to resolve
+    # (Windows has no cheap cwd), and an absolute origin path is the natural SC-003 seed. Residual wrapping quotes
+    # are trimmed defensively. The command line is NEVER persisted; the checker re-confirms under-origin before it
+    # records anything.
+    param([AllowNull()][string[]]$Argv)
+    $out = [System.Collections.Generic.List[string]]::new()
+    foreach ($raw in @($Argv)) {
+        if ($null -eq $raw) { continue }
+        $t = ([string]$raw).Trim().Trim('"', "'")
+        if ([string]::IsNullOrWhiteSpace($t)) { continue }
+        if (($t -match '^[A-Za-z]:[\\/]') -or $t.StartsWith('\\') -or $t.StartsWith('/')) { [void]$out.Add($t) }
+    }
+    return $out.ToArray()
+}
+
+function Resolve-ContinuousCoReviewRelativeOriginTokens {
+    # A descendant launched from the disposable worktree (its cwd) can reach an origin sibling via a RELATIVE
+    # traversal arg (e.g. `git show ..\..\<origin>\secret`) - an ABSOLUTE-only token filter drops it, so the
+    # containment run could complete without a violation (codex run 20260712T195149281). Resolve each RELATIVE
+    # path-like argv token against the process cwd (POSIX `/proc/<pid>/cwd`; Windows: the known worktree the reviewer
+    # was launched in) and return the NORMALIZED ABSOLUTE path - the checker then confirms under-origin, so only a
+    # traversal that actually ESCAPES the worktree up to origin flags (a relative path that stays under the worktree
+    # normalizes to a non-origin path and is harmless). A token is "path-like" if it carries a path separator or a
+    # `..`/`.` traversal segment; a bare flag or sub-command has neither and is skipped. Absolute tokens are handled
+    # by Select-ContinuousCoReviewAbsolutePathTokens and skipped here. Fail-closed: no cwd → nothing resolved.
+    param([AllowNull()][string[]]$Argv, [AllowEmptyString()][string]$Cwd)
+    $out = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($Cwd)) { return $out.ToArray() }
+    foreach ($raw in @($Argv)) {
+        if ($null -eq $raw) { continue }
+        $t = ([string]$raw).Trim().Trim('"', "'")
+        if ([string]::IsNullOrWhiteSpace($t)) { continue }
+        if (($t -match '^[A-Za-z]:[\\/]') -or $t.StartsWith('\\') -or $t.StartsWith('/')) { continue }   # absolute: handled elsewhere
+        $looksLikePath = ($t -match '[\\/]') -or ($t -match '(^|[\\/])\.\.($|[\\/])') -or ($t -eq '..')
+        if (-not $looksLikePath) { continue }
+        $resolved = try { [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($Cwd, $t)) } catch { $null }
+        if (-not [string]::IsNullOrWhiteSpace($resolved)) { [void]$out.Add($resolved) }
+    }
+    return $out.ToArray()
+}
+
+function Expand-ContinuousCoReviewArgvPathCandidates {
+    # Best-effort expansion of argv tokens into candidate PATH strings. A path can hide in an OPTION-ATTACHED value
+    # (`--git-dir=C:\origin\.git`, `--git-dir=..\origin\.git`): the option prefix makes the whole token neither
+    # absolute nor a resolvable relative path, so it evades both filters (codex run 20260712T171701083). For each token
+    # we therefore ALSO yield the substring after the FIRST `=`. This is explicitly BEST-EFFORT and NOT complete -
+    # response files (`@argfile`), env-var expansion, and other path-bearing forms remain uncovered - which is exactly
+    # why an argv match is a DIAGNOSTIC WARNING, never a hard review-fail (FR-011 amended, maintainer review 2026-07-12).
+    param([AllowNull()][string[]]$Argv)
+    $out = [System.Collections.Generic.List[string]]::new()
+    foreach ($raw in @($Argv)) {
+        if ($null -eq $raw) { continue }
+        $t = [string]$raw
+        [void]$out.Add($t)
+        $eq = $t.IndexOf('=')
+        if ($eq -ge 0 -and $eq -lt ($t.Length - 1)) { [void]$out.Add($t.Substring($eq + 1)) }
+    }
+    return $out.ToArray()
+}
+
+function Get-ContinuousCoReviewCommandLineArgv {
+    # Parse a raw command-line STRING into argv using PLATFORM-APPROPRIATE quoting (containment-detection-bypass fix,
+    # codex run 20260712T192442732): a QUOTED argument containing spaces (e.g. "C:\Origin Project\secret.md") stays
+    # ONE token instead of being whitespace-split into fragments that resolve nowhere. Windows uses the OS parser
+    # CommandLineToArgvW - it also honours \" escapes, so the reviewer's OWN quoted prompt collapses to a single
+    # non-path arg (which is WHY a prompt that merely NAMES origin is never mistaken for access - no token-subtraction
+    # workaround needed). Elsewhere this string entry point is a FALLBACK only (the POSIX sampler reads STRUCTURED
+    # argv from /proc/<pid>/cmdline directly); a quote-aware scan keeps a quoted-with-spaces token intact there.
+    param([AllowEmptyString()][string]$CommandLine)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+    if ($IsWindows) {
+        if (-not ([System.Management.Automation.PSTypeName]'Specrew.CoReview.NativeArgv').Type) {
+            try {
+                Add-Type -Namespace 'Specrew.CoReview' -Name 'NativeArgv' -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+public static extern System.IntPtr CommandLineToArgvW(string lpCmdLine, out int pNumArgs);
+[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+public static extern System.IntPtr LocalFree(System.IntPtr hMem);
+'@
+            }
+            catch { $null = $_ }
+        }
+        if (([System.Management.Automation.PSTypeName]'Specrew.CoReview.NativeArgv').Type) {
+            $ptr = [System.IntPtr]::Zero
+            try {
+                $count = 0
+                $ptr = [Specrew.CoReview.NativeArgv]::CommandLineToArgvW($CommandLine, [ref]$count)
+                if ($ptr -ne [System.IntPtr]::Zero -and $count -gt 0) {
+                    $argv = [System.Collections.Generic.List[string]]::new()
+                    for ($i = 0; $i -lt $count; $i++) {
+                        $strPtr = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($ptr, $i * [System.IntPtr]::Size)
+                        $s = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($strPtr)
+                        if ($null -ne $s) { [void]$argv.Add($s) }
+                    }
+                    return $argv.ToArray()
+                }
+            }
+            catch { $null = $_ }
+            finally { if ($ptr -ne [System.IntPtr]::Zero) { [void][Specrew.CoReview.NativeArgv]::LocalFree($ptr) } }
+        }
+    }
+    # Portable quote-aware fallback: a run of (double-quoted segment | non-whitespace char) is ONE token.
+    $out = [System.Collections.Generic.List[string]]::new()
+    foreach ($m in [regex]::Matches($CommandLine, '(?:"[^"]*"|\S)+')) { [void]$out.Add(($m.Value -replace '"', '')) }
+    return $out.ToArray()
+}
+
+function Get-ContinuousCoReviewPathLikeTokens {
+    # Extract ABSOLUTE path tokens from a raw command line, QUOTE-AWARE. The line is parsed into STRUCTURED argv first
+    # (Get-ContinuousCoReviewCommandLineArgv) and each argument tested for an absolute path - so a quoted
+    # "C:\Origin Project\x" is ONE token, not two fragments (the whitespace-split BYPASS fix), AND the reviewer's
+    # PROMPT - passed as a SINGLE positional arg - is one non-path token, so a prompt that merely NAMES origin paths
+    # is never mistaken for origin ACCESS (the DRIFT-198-I003-004 false positive; the earlier token-subtraction
+    # workaround is no longer needed). The command line itself is NEVER persisted; only a matched token can become a
+    # record's `path`, and the checker still confirms it resolves under origin before recording anything.
+    param([AllowEmptyString()][string]$CommandLine)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+    return Select-ContinuousCoReviewAbsolutePathTokens -Argv (Get-ContinuousCoReviewCommandLineArgv -CommandLine $CommandLine)
+}
+
+function Get-ContinuousCoReviewContainmentSamples {
+    # Sample the reviewer PROCESS TREE (root + descendants) for the path observations the checker judges. Rides
+    # Get-SpecrewProcessTreeDescendants (the T100 registry) for the pid list, then reads per-pid metadata
+    # BEST-EFFORT + READ-ONLY (never mutates/kills): Windows CIM Win32_Process (executable path + command-line
+    # tokens; Windows exposes no cheap cwd, so detection there is exe/command-line-primary per FR-011's
+    # "cwd/command-line sampling"); Linux /proc (cwd, exe, cmdline); macOS Get-Process + BSD ps (executable +
+    # command line, with the known worktree as the relative-argv cwd fallback). Returns @({pid; image; source; path}).
+    #
+    # PROMPT vs ACCESS (DRIFT-198-I003-004): the reviewer HOST is handed the review PROMPT as a SINGLE positional
+    # command-line arg (`codex exec "<prompt>"`). Because the command line is parsed into STRUCTURED argv with
+    # platform-appropriate quoting (Get-ContinuousCoReviewPathLikeTokens → CommandLineToArgvW on Windows; NUL-split
+    # /proc/<pid>/cmdline on Linux; quote-aware BSD ps fallback on macOS), that whole prompt is ONE non-path token - so a prompt that merely NAMES origin
+    # paths is never mistaken for origin ACCESS, while a REAL origin path passed as its OWN arg (by the host or any
+    # descendant) IS observed. This SUPERSEDED the earlier prompt-token-subtraction workaround, whose whitespace-split
+    # tokenizer both false-positived on prompt mentions AND could be BYPASSED by a quoted origin path with spaces
+    # (codex runs …181010372 / …190522932 / …192442732). RELATIVE traversal args (e.g. `git show ..\..\<origin>\x`)
+    # are ALSO caught: each relative path-like token is resolved against the process cwd
+    # (Resolve-ContinuousCoReviewRelativeOriginTokens; POSIX `/proc/<pid>/cwd`, Windows the -WorktreeCwd the reviewer
+    # was launched in) and the normalized absolute path is checked under-origin (codex run …195149281). AMENDED design
+    # (maintainer review 2026-07-12, FR-011 amended): a cwd/exe-under-origin sample is a STRONG signal (hard
+    # `containment-violated`); a command-line ARGUMENT under origin is a BEST-EFFORT diagnostic warning only (argv
+    # coverage is inherently incomplete — option-attached `--name=value` is expanded, but response files / env expansion
+    # remain uncovered) and NEVER by itself discards a valid review. The STRUCTURAL guarantee is FR-008/T013. Returns the
+    # samples and, via the optional -Health [ref], the monitor's own health (procs seen, sample count, degraded + reason)
+    # so weak visibility is RECORDED, never silent inactivity.
+    param([Parameter(Mandatory)][int]$RootPid, [AllowEmptyString()][string]$WorktreeCwd, [ref]$Health)
+    $samples = [System.Collections.Generic.List[object]]::new()
+    $degraded = $false; $degradedReason = ''; $procsSeen = 0
+    if (-not (Get-Command -Name 'Get-SpecrewProcessTreeDescendants' -ErrorAction SilentlyContinue)) {
+        $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
+        if (Test-Path -LiteralPath $helper -PathType Leaf) { try { . $helper } catch { $null = $_ } }
+    }
+    $procIds = @($RootPid)
+    try { $procIds += @(Get-SpecrewProcessTreeDescendants -RootPid $RootPid) } catch { $degraded = $true; $degradedReason = 'process-tree-enumeration-failed' }
+    $procIds = @($procIds | Where-Object { $_ -gt 0 } | Select-Object -Unique)
+    # STRONG signals (cwd/exe under origin) hard-fail; a command-line ARGUMENT under origin is a best-effort DIAGNOSTIC
+    # WARNING (FR-011 amended). Path candidates are EXPANDED so an option-attached value (`--git-dir=<path>`) is seen
+    # (best-effort, NOT complete). The monitor tracks its own HEALTH (degraded reason + counts) so weak visibility is
+    # RECORDED, never silent. A sampling failure sets degraded rather than silently returning nothing.
+    if ($IsWindows) {
+        $procs = @()
+        try { $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $procIds -contains [int]$_.ProcessId } | Select-Object ProcessId, Name, CommandLine, ExecutablePath) } catch { $degraded = $true; $degradedReason = 'cim-query-failed'; $procs = @() }
+        $procsSeen = @($procs).Count
+        foreach ($p in $procs) {
+            $procId = [int]$p.ProcessId; $image = [string]$p.Name
+            if (-not [string]::IsNullOrWhiteSpace([string]$p.ExecutablePath)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = [string]$p.ExecutablePath }) }
+            $argv = Expand-ContinuousCoReviewArgvPathCandidates -Argv (Get-ContinuousCoReviewCommandLineArgv -CommandLine ([string]$p.CommandLine))
+            foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            # Windows has no cheap per-process cwd: resolve RELATIVE traversal args against the worktree the reviewer was
+            # launched in (descendants inherit that cwd). This assumed-cwd is BEST-EFFORT (a child that chdir'd elsewhere
+            # is not precisely resolved) - acceptable because argv is a diagnostic WARNING, not a hard fail.
+            foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $WorktreeCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+        }
+        if ($procsSeen -eq 0 -and $procIds.Count -gt 0 -and -not $degraded) { $degraded = $true; $degradedReason = 'no-process-metadata-read' }
+    }
+    elseif ($IsMacOS) {
+        foreach ($procId in $procIds) {
+            $process = try { Get-Process -Id $procId -ErrorAction Stop } catch { $null }
+            if ($null -eq $process) { continue }
+            $procsSeen++
+            $image = try { [string]$process.ProcessName } catch { '' }
+            $exe = try { [string]$process.Path } catch { '' }
+            if (-not [string]::IsNullOrWhiteSpace($exe)) {
+                if ([string]::IsNullOrWhiteSpace($image)) { $image = [System.IO.Path]::GetFileName($exe) }
+                [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe })
+            }
+            $commandLine = try { (& ps -p $procId -o command= 2>$null | Out-String).Trim() } catch { '' }
+            $argv = Expand-ContinuousCoReviewArgvPathCandidates -Argv (Get-ContinuousCoReviewCommandLineArgv -CommandLine $commandLine)
+            foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            # macOS exposes no /proc cwd. Descendants inherit the reviewer worktree unless they chdir; argv remains
+            # a best-effort diagnostic signal, so use the known launch cwd without upgrading it to a strong signal.
+            foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $WorktreeCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+        }
+        if ($procsSeen -eq 0 -and $procIds.Count -gt 0 -and -not $degraded) { $degraded = $true; $degradedReason = 'no-process-metadata-read' }
+    }
+    else {
+        foreach ($procId in $procIds) {
+            $image = ''
+            $exe = try { $it = Get-Item -LiteralPath "/proc/$procId/exe" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
+            if ($exe) { $procsSeen++; $image = [System.IO.Path]::GetFileName($exe); [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe }) }
+            $cwd = try { $it = Get-Item -LiteralPath "/proc/$procId/cwd" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
+            if ($cwd) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'cwd'; path = $cwd }) }   # STRONG signal - always sampled
+            # STRUCTURED argv: /proc/<pid>/cmdline is NUL-delimited, so split on NUL (do NOT join to a string - that
+            # would re-introduce the whitespace-split bypass for a path arg containing spaces).
+            $argv = try { @(((Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop) -split "`0") | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) } catch { @() }
+            $argv = Expand-ContinuousCoReviewArgvPathCandidates -Argv $argv
+            foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            # RELATIVE traversal args resolved against the process cwd (EXACT on POSIX; worktree fallback) -> under-origin.
+            $effectiveCwd = if (-not [string]::IsNullOrWhiteSpace($cwd)) { $cwd } else { $WorktreeCwd }
+            foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $effectiveCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+        }
+        if ($procsSeen -eq 0 -and $procIds.Count -gt 0 -and -not $degraded) { $degraded = $true; $degradedReason = 'no-process-metadata-read' }
+    }
+    if ($null -ne $Health) { $Health.Value = @{ procs_expected = $procIds.Count; procs_seen = $procsSeen; sample_count = $samples.Count; degraded = $degraded; reason = $degradedReason } }
+    return , ($samples.ToArray())
+}
+
+function Test-ContinuousCoReviewContainmentViolations {
+    # THE pure containment-violation checker (FR-011 / SC-003). A SAMPLE {pid; image; source(cwd|exe|arg); path}
+    # is a VIOLATION when its path physically resolves UNDER an origin root (observed origin access), via the
+    # SAME shared canonicalizer + predicate T013 uses (semantics cannot drift). Returns a BOUNDED, REDACTED
+    # ContainmentRecord per distinct (pid, source, origin-path): run_id, process (pid + image BASENAME only),
+    # command_line (a REDACTED marker - NEVER the raw command line/prompt/env/creds), the origin `path`
+    # (canonicalized, length-capped), the source signal, and observed_at. PURE + read-only: samples nothing,
+    # kills nothing - the loud fail is applied by the caller at the run's natural end, never mid-flight.
+    param(
+        [Parameter(Mandatory)][AllowNull()][object[]]$Samples,
+        [Parameter(Mandatory)][string[]]$OriginRoots,
+        [Parameter(Mandatory)][string]$RunId,
+        [string]$ObservedAt
+    )
+    if ([string]::IsNullOrWhiteSpace($ObservedAt)) { $ObservedAt = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp }
+    $roots = @($OriginRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $violations = [System.Collections.Generic.List[object]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($s in @($Samples)) {
+        if ($null -eq $s) { continue }
+        $path = try { [string]$s.path } catch { '' }
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $under = $false
+        foreach ($root in $roots) { if (Test-ContinuousCoReviewPathUnderRoot -Path $path -Root $root) { $under = $true; break } }
+        if (-not $under) { continue }
+        $resolved = Get-ContinuousCoReviewPhysicalPath -Path $path
+        if ([string]::IsNullOrWhiteSpace($resolved)) { $resolved = $path }
+        $procId = try { [int]$s.pid } catch { 0 }
+        $image = try { [string]$s.image } catch { '' }
+        # A fixture or cross-host observation may carry either separator style. Path.GetFileName only
+        # recognizes the current platform's separator, so split both styles to preserve the basename-
+        # only redaction contract on every CI OS.
+        $imageLeaf = if (-not [string]::IsNullOrWhiteSpace($image)) { @($image -split '[\\/]' | Where-Object { $_ -ne '' })[-1] } else { 'unknown' }
+        $source = try { [string]$s.source } catch { '' }; if ([string]::IsNullOrWhiteSpace($source)) { $source = 'unknown' }
+        $boundedPath = if ($resolved.Length -gt 256) { $resolved.Substring(0, 256) + '...[truncated]' } else { $resolved }
+        $key = "$procId|$source|$boundedPath"
+        if (-not $seen.Add($key)) { continue }
+        [void]$violations.Add([pscustomobject][ordered]@{
+                run_id       = $RunId
+                process      = ("pid={0} image={1}" -f $procId, $imageLeaf)
+                command_line = ("[redacted - raw command line withheld; origin access observed via {0}]" -f $source)
+                path         = $boundedPath
+                source       = $source
+                observed_at  = $ObservedAt
+            })
+    }
+    return , ($violations.ToArray())
 }
 
 function New-ContinuousCoReviewStrippedWorktree {
@@ -186,9 +545,38 @@ function New-ContinuousCoReviewStrippedWorktree {
     }
 
     if ([string]::IsNullOrWhiteSpace($EphemeralRoot)) { $EphemeralRoot = [System.IO.Path]::GetTempPath() }
+    # FR-008 (203 W1) / SC-002 containment: the reviewer worktree MUST materialize OUTSIDE the origin so
+    # no upward directory/git walk from inside the confined worktree can resolve the real project. Reject
+    # an EphemeralRoot that resolves AT or UNDER the origin git root (or the governance RepoRoot).
+    # SYMLINK/JUNCTION SAFE (findings 3b5ae645, 44760c20): compare COMPONENT-WISE PHYSICAL paths via the
+    # SHARED Get-ContinuousCoReviewPhysicalPath (the SAME helper the strict design-context validation
+    # uses, so containment semantics cannot drift) - not lexical strings, and not final-component-only. An
+    # EphemeralRoot, or an INTERMEDIATE directory component, that is a junction/symlink whose target is
+    # inside origin would otherwise pass and materialize physically under origin. FAIL-CLOSED: an
+    # unresolvable candidate is refused.
+    $assertOutsideOrigin = {
+        param([string]$candidatePath, [string]$context)
+        # FAIL-CLOSED: an unresolvable candidate is refused. Containment (under-origin) uses the SHARED
+        # Test-ContinuousCoReviewPathUnderRoot - same physical resolution AND platform-appropriate case
+        # semantics as the strict design-context gate, so a case-distinct path can't slip on POSIX.
+        if ([string]::IsNullOrEmpty((Get-ContinuousCoReviewPhysicalPath -Path $candidatePath))) {
+            throw "[co-review] refusing to materialize the reviewer worktree $context - its physical path could not be resolved reliably (fail-closed, FR-008 containment)."
+        }
+        foreach ($originPath in @($gitRoot, $resolved)) {
+            if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
+            if (Test-ContinuousCoReviewPathUnderRoot -Path $candidatePath -Root $originPath) {
+                $originFull = Get-ContinuousCoReviewPhysicalPath -Path $originPath
+                throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
+            }
+        }
+    }
+    & $assertOutsideOrigin $EphemeralRoot "root ('$EphemeralRoot')"
     $worktree = Join-Path $EphemeralRoot ('ccr-worktree-' + [guid]::NewGuid().ToString('N'))
     $tarPath = "$worktree.tar"
     New-Item -ItemType Directory -Path $worktree -Force | Out-Null
+    # Verify the FINAL created worktree's physical path is outside origin too (defense in depth: a link at
+    # the leaf, or the root swapped for a junction between the check and the create, would otherwise slip).
+    & $assertOutsideOrigin $worktree "path ('$worktree')"
 
     # Archive the subtree tree to a FILE then extract (no native->native pipe; byte-exact, cross-platform).
     & git -C $gitRoot archive --format=tar --output $tarPath $treeId 2>&1 | Out-Null
@@ -224,26 +612,66 @@ function New-ContinuousCoReviewStrippedWorktree {
     # strip — a known list, NOT a heuristic). So the reviewer's entry point is the user's changes, consistent
     # with the stripped worktree. Paths made subtree-relative so they match the worktree root.
     $scope = if ([string]::IsNullOrWhiteSpace($prefix)) { @() } else { @("$prefix/") }
-    $machineryExcludes = foreach ($m in $machinery) {
+    # Collapse same-parent `specrew-*` mirror dirs into ONE glob exclude per parent: the marker
+    # scan yields hundreds of sibling dirs (398 in the self-host repo) and the literal exclude
+    # list crossed the Windows 32K command-line limit mid-F-198 ("The filename or extension is
+    # too long", run fe3a695a). Semantics preserved: every collapsed sibling matches its parent
+    # glob; an unmarked `specrew-*` dir under the same parent is machinery by naming anyway.
+    $literalMachinery = [System.Collections.Generic.List[string]]::new()
+    $globParents = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($m in $machinery) {
         if ($m -eq '.git') { continue }
-        $mp = if ([string]::IsNullOrWhiteSpace($prefix)) { $m } else { "$prefix/$m" }
-        ":(exclude)$mp"
+        if ($m -match '^(?<parent>.+)/(?<leaf>specrew-[^/]+)$') {
+            [void]$globParents.Add($Matches['parent'])
+        }
+        else {
+            [void]$literalMachinery.Add($m)
+        }
     }
+    $machineryExcludes = @(
+        foreach ($m in $literalMachinery) {
+            $mp = if ([string]::IsNullOrWhiteSpace($prefix)) { $m } else { "$prefix/$m" }
+            ":(exclude)$mp"
+        }
+        foreach ($p in $globParents) {
+            $pp = if ([string]::IsNullOrWhiteSpace($prefix)) { $p } else { "$prefix/$p" }
+            ":(exclude)$pp/specrew-*"
+        }
+    )
     # The change-set diff runs baseline -> the SAME review source as the materialized tree (git diff accepts
     # tree objects), so .review/changes.diff shows exactly what the reviewer's worktree contains - including
     # uncommitted changes when the digest tree is the source.
     $diffPathspec = @($scope) + @($machineryExcludes)
-    $diff = (& git -C $gitRoot diff --no-ext-diff --src-prefix=a/ --dst-prefix=b/ $BaselineRef $reviewSource -- @diffPathspec 2>$null) -join "`n"
+    # Console-state-immune invocations (see Invoke-WorktreeReviewerGitCapture above); the glob
+    # collapse above keeps the pathspec far below the Windows command-line limit (git diff has
+    # no --pathspec-from-file, so the command line is the only channel).
+    $diffArgs = @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
+    $diff = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $diffArgs
     if (-not [string]::IsNullOrWhiteSpace($prefix)) { $diff = $diff -replace ([regex]::Escape("$prefix/")), '' }
+    # FR-009 / SC-002 (finding 9e3a44f1): the change-set diff CONTENT can carry ORIGIN-ABSOLUTE paths - a
+    # committed doc that references file:///<origin>, or committed review-evidence echoing an earlier run -
+    # and that is a real leak in the reviewer bundle (and hands the reviewer a route toward the origin).
+    # Relativize the diff to <project> against BOTH the governance root and the git root, exactly as the
+    # context copies are (T014). Structure is preserved; only the origin PREFIX is neutralized, so a genuine
+    # hardcoded-absolute-path change still shows as <project>/... and stays reviewable.
+    $diffOriginRoots = @($resolved); if (-not [string]::IsNullOrWhiteSpace($gitRoot)) { $diffOriginRoots += $gitRoot }
+    $diff = ConvertTo-ContinuousCoReviewOriginRelativized -Content $diff -OriginRoots $diffOriginRoots
     [System.IO.File]::WriteAllText((Join-Path $reviewDir 'changes.diff'), $diff)
-    $changed = @((& git -C $gitRoot diff --name-only $BaselineRef $reviewSource -- @diffPathspec 2>$null) | Where-Object { $_ })
+    $namesArgs = @('diff', '--name-only', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
+    $namesRaw = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $namesArgs
+    $changed = @((($namesRaw -replace "`r`n", "`n") -split "`n") | Where-Object { $_ })
+    $designOriginRoots = @($resolved); if (-not [string]::IsNullOrWhiteSpace($gitRoot)) { $designOriginRoots += $gitRoot }
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
         # Formal contracts go under design/contracts/ (grouped + obviously the AUTHORITY); prose goes flat in design/.
         $destDir = if ($d -match '(^|/)contracts/') { Join-Path $reviewDir 'design/contracts' } else { Join-Path $reviewDir 'design' }
         if (-not (Test-Path -LiteralPath $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
-        Copy-Item -LiteralPath $full -Destination $destDir -Force
+        # FR-009: relativize origin-absolute paths (e.g. file:/// spec/design URLs) in the design
+        # snapshot the reviewer sees - the design content stays authoritative, the origin does not leak.
+        # Composes with the Devin design-ref plumbing: the supplied ref is relativized, never dropped.
+        $scrubbed = ConvertTo-ContinuousCoReviewOriginRelativized -Content (Get-Content -LiteralPath $full -Raw -Encoding UTF8) -OriginRoots $designOriginRoots
+        [System.IO.File]::WriteAllText((Join-Path $destDir (Split-Path $full -Leaf)), $scrubbed)
     }
 
     # Curated process/progress context (distilled from the real project; the raw .specrew is stripped).
@@ -279,6 +707,204 @@ function Get-ContinuousCoReviewGenerousBudget {
     if ($DiffBytes -ge 500000 -or $ChangedCount -ge 100) { $factor = 2.0 }
     if ($DiffBytes -ge 1000000 -or $ChangedCount -ge 200) { $factor = 3.0 }
     return [math]::Min([int]($DefaultSeconds * $factor), $CapSeconds)
+}
+
+# Volatile reviewer-HOST runtime directories: an agentic reviewer host writes ephemeral session state
+# into its cwd. A NEW file it creates under one of these during a review is churn, not tampering. But a
+# PRE-EXISTING file there (e.g. project-tracked config the archive extracted) that is MODIFIED or DELETED
+# IS tampering (finding 3b5ae645) - so these dirs are HASHED, not skipped; only NEW files under them are
+# exempted, and ONLY by the integrity check's new-file branch, never wholesale.
+$script:ContinuousCoReviewVolatileHostDirs = @('.antigravitycli', '.codex', '.claude', '.cursor', '.gemini', '.copilot')
+# CHARACTERIZED EPHEMERAL allowlist (DRIFT-198-I003-006, maintainer ruling 2026-07-12): only KNOWN transient
+# reviewer-host outputs are exempt churn. A recognized ephemeral SUBDIR segment OR ephemeral FILE pattern under a
+# host dir passes; an UNKNOWN file, a CONFIG file, or persistent state FAILS integrity - a reviewer must NOT add
+# .codex/config.toml or .claude/settings.json and still get a valid result (only .review/findings.jsonl is writable).
+$script:ContinuousCoReviewEphemeralHostSegments = @('sessions', 'history', 'logs', 'log', 'cache', 'tmp', 'temp', 'todos', 'shell-snapshots', 'statsig', 'projects', 'ide', 'versions', 'updates')
+$script:ContinuousCoReviewEphemeralHostFilePatterns = @('*.log', '*.lock', '*.pid', '*.tmp', '*.jsonl', '*.sock', 'session*.json', 'history*.json', '*.session')
+$script:ContinuousCoReviewPersistentHostFilePatterns = @('config.*', 'settings.*', '*.toml', '*.yaml', '*.yml', '*.ini', '*.config', 'credentials*', 'auth*')
+
+function Test-ContinuousCoReviewIsHostChurnPath {
+    # Is a NEW file legitimate, transient reviewer-host session state (exempt churn) - or unknown/persistent content
+    # that must FAIL the integrity check? (DRIFT-198-I003-006: the old exemption passed ANY new file under a host dir,
+    # so a reviewer could add .codex/config.toml / .claude/settings.json and still get a valid result.) Now the
+    # top-level dir MUST be a volatile host dir AND the path must match the CHARACTERIZED EPHEMERAL allowlist - a
+    # recognized ephemeral SUBDIR segment or ephemeral FILE pattern - and must NOT match a persistent/config pattern.
+    # Anything else under a host dir (unknown file, config, persistent state) is NOT churn. Used ONLY for new files;
+    # a modified/deleted PRE-EXISTING file under a host dir is always tampering (finding 3b5ae645).
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$RelativePath)
+    $segments = @(($RelativePath -split '[\\/]') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($segments.Count -eq 0) { return $false }
+    if ($script:ContinuousCoReviewVolatileHostDirs -notcontains $segments[0]) { return $false }   # not under a host dir
+    $leaf = [string]$segments[-1]
+    # EXPLICIT DENY: a config/persistent-looking file under a host dir is NEVER exempt churn (adding it is tampering).
+    foreach ($pat in $script:ContinuousCoReviewPersistentHostFilePatterns) { if ($leaf -like $pat) { return $false } }
+    # ALLOW: a recognized ephemeral SUBDIR segment...
+    for ($i = 1; $i -lt $segments.Count; $i++) { if ($script:ContinuousCoReviewEphemeralHostSegments -contains ([string]$segments[$i]).ToLowerInvariant()) { return $true } }
+    # ...OR a recognized ephemeral FILE pattern.
+    foreach ($pat in $script:ContinuousCoReviewEphemeralHostFilePatterns) { if ($leaf -like $pat) { return $true } }
+    return $false   # under a host dir but NOT a characterized ephemeral output -> tampering
+}
+
+function Get-ContinuousCoReviewWorktreeSourceHashes {
+    # Integrity-evidence helper: a map { relative-path -> sha256 } of the worktree's existing files.
+    # Comparing this before vs after execution makes any MUTATION of an existing file visible; a caller
+    # applies its own allowlist for legitimately-created NEW files (verification output, reviewer findings,
+    # host session churn). SCOPE: source AND the REVIEWER-AUTHORITY inputs under .review/ (changes.diff,
+    # design/, contracts, process context, implementer-evidence) AND any host-runtime dir contents are
+    # hashed - rewriting the authority the review depends on, or a tracked config under a host dir, is
+    # exactly the tampering this must catch. Only .git/ is skipped (git-archive extract has no .git anyway;
+    # kept for the opt-in helper).
+    param([Parameter(Mandatory)][string]$WorktreePath)
+    $map = @{}
+    $rootFull = (Resolve-Path -LiteralPath $WorktreePath).Path.TrimEnd([char]'\', [char]'/')
+    foreach ($f in @(Get-ChildItem -LiteralPath $WorktreePath -Recurse -File -Force -ErrorAction SilentlyContinue)) {
+        $rel = [System.IO.Path]::GetRelativePath($rootFull, $f.FullName).Replace('\', '/')
+        if (($rel -replace '/.*$', '') -eq '.git') { continue }
+        try { $map[$rel] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256 -ErrorAction Stop).Hash } catch { $map[$rel] = 'unreadable' }
+    }
+    return $map
+}
+
+function Invoke-ContinuousCoReviewBoundedVerification {
+    # OPT-IN API ONLY (maintainer's option-1 simplification 2026-07-11): a focused bounded runner for
+    # EXPLICIT caller-supplied commands. It is NOT wired into the automatic review flow and MUST NEVER
+    # run automatically - the orchestrator does not call it (automatic per-review reruns were removed
+    # because they could not be confined in-process; see reviewer-spawn-contract.md). Runner-observed
+    # verification for a review is T018's job (commands run ONCE through the recorded-run wrapper; the
+    # digest-bound evidence is injected for the reviewer to read).
+    #
+    # Runs the DECLARED commands in the given directory, each with (1) a TIMEOUT and process CONTAINMENT
+    # (the whole child process tree is killed on timeout), (2) a byte-bounded, zero-disk CAPPED output
+    # capture, and (3) PRE/POST MUTATION EVIDENCE (existing-file hashes before vs after). Returns one
+    # record per command. The caller owns confinement of the directory it points this at.
+    param(
+        [Parameter(Mandatory)][string]$WorktreePath,
+        [string[]]$DeclaredCommands = @(),
+        # Glob patterns for LEGITIMATE output paths (e.g. '*.log', 'coverage/*'). A NEW file is exempt
+        # from the mutation record ONLY if it matches one of these; every other add/delete/modify of
+        # the read-only source is a mutation.
+        [string[]]$AllowedOutputPaths = @(),
+        [int]$TimeoutSeconds = 120,
+        [int]$MaxOutputBytes = 65536
+    )
+    $results = New-Object System.Collections.Generic.List[object]
+    foreach ($cmd in @($DeclaredCommands)) {
+        if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
+        $preHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
+        # Process containment via ProcessStartInfo (ArgumentList passes each arg ATOMICALLY - Start-Process
+        # would re-quote and split a command containing spaces/quotes). Both pipes are PUMPED on this
+        # thread into FIXED byte buffers capped at MaxOutputBytes each (findings bfc7b5c5-2 + 06cb3c64-1):
+        # overflow past the cap is READ AND DISCARDED - the child is always drained so it can never block
+        # on a full pipe, reviewer memory stays bounded at ~2x cap + the read buffers, and NOTHING is
+        # written to disk (no temp-storage exhaustion vector). Kill($true) reaps the ENTIRE tree on
+        # deadline; after a kill a short grace window collects the EOFs the kill releases.
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName = (Get-Process -Id $PID).Path
+        foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', $cmd)) { [void]$psi.ArgumentList.Add($a) }
+        $psi.WorkingDirectory = $WorktreePath
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.UseShellExecute = $false
+        # STRICT BOUNDED CONTRACT (codex finding f1 verification-environment-contamination, 2026-07-12; completed
+        # for the event-scoped suppression by Antigravity finding 934e5314, 2026-07-17): the reviewer process runs
+        # with both broad and event-scoped hook suppression so the reviewer host's OWN lifecycle hooks no-op (a
+        # reviewer must not govern itself). Those vars are inherited by ANY child. This helper is the ONLY SUPPORTED
+        # path for governance-sensitive verification launched under a reviewer session, so it EXPLICITLY REMOVES
+        # both suppressions from every verification child's environment - a governance/hook the child invokes then
+        # executes NORMALLY (no false-green). ProcessStartInfo.Environment is pre-seeded from this process; dropping
+        # the keys means the child never inherits the reviewer's suppression. (This does NOT claim complete
+        # isolation: an arbitrary reviewer-spawned child that is NOT launched through this helper still inherits
+        # suppression - intentional, to prevent recursive governance; see reviewer-spawn-contract.md.)
+        [void]$psi.Environment.Remove('SPECREW_REFOCUS_DISABLE')
+        [void]$psi.Environment.Remove('SPECREW_DISABLE_EVENTS')
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+        $timedOut = $false
+        $killIssued = $false
+        $pumps = @(
+            [pscustomobject]@{ reader = $proc.StandardOutput.BaseStream; buf = (New-Object byte[] 81920); cap = (New-Object byte[] $MaxOutputBytes); task = $null; done = $false; written = 0; overflow = $false },
+            [pscustomobject]@{ reader = $proc.StandardError.BaseStream; buf = (New-Object byte[] 81920); cap = (New-Object byte[] $MaxOutputBytes); task = $null; done = $false; written = 0; overflow = $false }
+        )
+        foreach ($p in $pumps) { $p.task = $p.reader.ReadAsync($p.buf, 0, $p.buf.Length) }
+        while ($true) {
+            $active = @($pumps | Where-Object { -not $_.done })
+            if ($active.Count -eq 0) { break }
+            $now = [DateTime]::UtcNow
+            if ($now -ge $deadline) {
+                if ($killIssued) { break }   # post-kill grace expired; abandon the remaining reads
+                $timedOut = $true
+                $killIssued = $true
+                try { $proc.Kill($true) } catch { $null = $_ }
+                $deadline = $now.AddSeconds(3)
+                continue
+            }
+            $taskArr = [System.Threading.Tasks.Task[]]@($active | ForEach-Object { $_.task })
+            $idx = [System.Threading.Tasks.Task]::WaitAny($taskArr, [int][Math]::Max(50, [Math]::Min(500, ($deadline - $now).TotalMilliseconds)))
+            if ($idx -lt 0) { continue }
+            $p = $active[$idx]
+            $n = 0
+            try { $n = [int]$p.task.Result } catch { $p.done = $true; continue }   # faulted read (pipe closed by the kill) = EOF
+            if ($n -le 0) { $p.done = $true; continue }
+            $room = $MaxOutputBytes - $p.written
+            if ($room -gt 0) {
+                $take = [int][Math]::Min($n, $room)
+                [Array]::Copy($p.buf, 0, $p.cap, $p.written, $take)
+                $p.written += $take
+                if ($take -lt $n) { $p.overflow = $true }
+            }
+            else { $p.overflow = $true }
+            $p.task = $p.reader.ReadAsync($p.buf, 0, $p.buf.Length)
+        }
+        if (-not $timedOut) {
+            # Streams hit EOF; the child should be exiting - a bounded wait, else it is a hang after EOF.
+            if (-not $proc.WaitForExit(5000)) { $timedOut = $true; try { $proc.Kill($true) } catch { $null = $_ }; [void]$proc.WaitForExit() }
+        }
+        else { try { $null = $proc.WaitForExit(2000) } catch { $null = $_ } }
+        $exit = if ($timedOut) { $null } else { [int]$proc.ExitCode }
+        # Byte-bounded record assembly: stdout first, then stderr into the remaining TOTAL room. The pump
+        # already bounded each stream at MaxOutputBytes, so the record can never exceed the cap; a
+        # truncated trailing multibyte char degrades to U+FFFD - acceptable for a bounded capture.
+        $truncated = ([bool]$pumps[0].overflow -or [bool]$pumps[1].overflow)
+        $outBuilder = New-Object System.Text.StringBuilder
+        $roomTotal = $MaxOutputBytes
+        foreach ($p in $pumps) {
+            if ($p.written -le 0) { continue }
+            if ($roomTotal -le 0) { $truncated = $true; continue }
+            $take = [int][Math]::Min($p.written, $roomTotal)
+            if ($take -lt $p.written) { $truncated = $true }
+            [void]$outBuilder.Append([System.Text.Encoding]::UTF8.GetString($p.cap, 0, $take))
+            $roomTotal -= $take
+        }
+        $out = $outBuilder.ToString()
+        $postHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
+        # Mutation evidence: the reviewer is READ-ONLY, so ADDED, DELETED, and MODIFIED files ALL count
+        # as mutations. A NEW file is exempt ONLY when it matches the explicit output-path allowlist -
+        # otherwise a reviewer could plant new source that steers the very verification it then runs.
+        $mutatedPaths = New-Object System.Collections.Generic.List[string]
+        foreach ($k in $preHashes.Keys) {
+            if (-not $postHashes.ContainsKey($k) -or $postHashes[$k] -ne $preHashes[$k]) { [void]$mutatedPaths.Add($k) }   # deleted or modified
+        }
+        foreach ($k in $postHashes.Keys) {
+            if ($preHashes.ContainsKey($k)) { continue }
+            $allowed = $false
+            foreach ($pat in @($AllowedOutputPaths)) { if (-not [string]::IsNullOrWhiteSpace($pat) -and ($k -like $pat)) { $allowed = $true; break } }
+            if (-not $allowed) { [void]$mutatedPaths.Add($k) }   # unexplained new file
+        }
+        $results.Add([pscustomobject]@{
+                command               = $cmd
+                exit_code             = $exit
+                timed_out             = $timedOut
+                output                = [string]$out
+                output_truncated      = $truncated
+                # Bytes actually RETAINED per stream (each pump-bounded at MaxOutputBytes): the
+                # observable proof that a sustained flood never lands in memory or on disk beyond the cap.
+                captured_stdout_bytes = [int]$pumps[0].written
+                captured_stderr_bytes = [int]$pumps[1].written
+                source_mutated        = ($mutatedPaths.Count -gt 0)
+                mutated_paths         = $mutatedPaths.ToArray()
+            }) | Out-Null
+    }
+    return $results.ToArray()
 }
 
 function Get-ContinuousCoReviewSlimPrompt {
@@ -332,9 +958,33 @@ function Get-ContinuousCoReviewSlimPrompt {
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
 $scopeBlock$designContextBlock$evidenceBlock
-Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN any
-command (tests, build, lint, search) you need to verify the change — but you are READ-ONLY on the source: do
-NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
+Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN
+verification you need — but you are READ-ONLY on the source: do NOT modify, fix, or patch any file. Your job is
+to find issues, not fix them.
+
+WORKTREE CONFINEMENT: this working directory is a DISPOSABLE, ISOLATED SNAPSHOT — NOT the real project. It is
+materialized OUTSIDE the origin repository (an upward walk does not resolve the origin), the governance machinery
+(.squad/, .specrew/, .specify/) is stripped, and origin-absolute paths are relativized to <project>. This isolation
+is a snapshot with origin references REMOVED — not an OS-enforced sandbox — so confinement is a BINDING RULE of your
+engagement, and a violation is treated as a blocking finding when detected. Stay INSIDE it: do not try to locate,
+read, or reach the origin project, and do not depend on absolute paths. Anything intentionally absent here — the
+stripped machinery, a relativized path — is EXPECTED; treat a reference to it as unverifiable-here, never as a defect.
+
+VERIFICATION — STRICTLY READ-ONLY (your tree is under integrity check): this working directory is hashed
+immediately BEFORE and AFTER your review, and the ONLY file you may create or modify is .review/findings.jsonl
+(your output). ANY other change to the tree — editing/adding/deleting source, rewriting a .review/ input, or
+leaving build/test artifacts behind — FAILS the whole review. So do NOT run builds or tests that write into this
+directory. Use the implementer's digest-matched test evidence (above, when present) as your runtime evidence and
+SPOT-CHECK it by READING — the diff, the code, the recorded commands and exit codes — not by re-running. A
+read-only inspection command that writes nothing here (reading files, git log, grep) is fine; anything that writes
+into the tree is not. A claim you cannot confirm without mutating the tree is reported as a finding, never acted on.
+
+GOVERNANCE-SENSITIVE CHECKS — REPORT AS UNVERIFIABLE, DO NOT SELF-TEST: you run under a reviewer session whose
+environment suppresses Specrew's own hooks (so a reviewer never governs itself). Do NOT run a governance/hook-behavior
+test directly, and do NOT alter your own environment to try to change that — a governance check you launch from here
+is environment-contaminated and could FALSE-GREEN. If some governance or hook behavior is not already covered by the
+digest-matched implementer evidence, report it as UNVERIFIABLE-HERE (a finding, never a pass) rather than running it
+yourself.
 
 1. Read .review/changes.diff — this is the change-set under review (what changed).
 2. Read .review/design/ — the spec + design-analysis (PROSE intent) the change must conform to, AND
@@ -517,6 +1167,74 @@ function Get-ContinuousCoReviewHarvestedPartialResult {
     return ($result | ConvertTo-Json -Depth 100 -Compress)
 }
 
+function Get-ContinuousCoReviewFilePrimaryResult {
+    # FILE-PRIMARY acceptance (maintainer option-1 with strict qualification, 2026-07-12). Some reviewer hosts
+    # (codex exec) DELIVER their review by APPENDING to .review/findings.jsonl and exit 0 with EMPTY stdout - the
+    # engine's stdout-primary assumption then misfires on every such review: a wasteful T108 retry (a second full
+    # provider run), a 'partial' completeness mislabel, and a failure-looking EMPTY_EXIT0 WARN - even though the
+    # reviewer produced a COMPLETE review on disk. This returns a FULLY contract-validated FindingsResult JSON
+    # built from that file ONLY when EVERY strict condition holds; otherwise $null (FAIL-CLOSED - the caller then
+    # keeps the retry / lenient-harvest / partial path unchanged).
+    #
+    # STRICT, unlike the LENIENT Get-ContinuousCoReviewHarvestedPartialResult (which salvages a cut-short/timeout
+    # run and SKIPS malformed lines): here a single malformed/truncated line, a foreign/absent source_run_id, an
+    # empty file, or ANY schema miss => $null. The CALLER enforces the two conditions not checkable here: a CLEAN
+    # reviewer exit (0, not timed out) BEFORE calling, and the reviewer-tree INTEGRITY check (the orchestrator's
+    # pre/post-hash) before trusting the result.
+    #
+    # A ZERO-finding review is DELIBERATELY not acceptable via this path: file-only delivery cannot PROVE
+    # 'no_findings' (an empty/absent file is indistinguishable from a lost result), so a clean no-findings verdict
+    # must arrive as the stdout FindingsResult - never a bare empty file (maintainer rule; matches the prompt's
+    # NEVER-FALSE-GREEN: empty output is never a clean pass).
+    param(
+        [Parameter(Mandatory)][string]$WorktreePath,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][datetime]$RunStartUtc,
+        [bool]$ExistedBefore,
+        [string]$SchemaRoot
+    )
+    $jsonlPath = Join-Path $WorktreePath '.review/findings.jsonl'
+    if (-not (Test-Path -LiteralPath $jsonlPath -PathType Leaf)) { return $null }
+    # (2) CREATED / WRITTEN during THIS run. A file that did not exist at run start and exists now was created by
+    # this run; a PRE-EXISTING file counts only if its write time advanced past run start (a stale leftover with
+    # an older mtime is refused). Doubly-guarded by the per-finding source_run_id check (5) below.
+    $fi = Get-Item -LiteralPath $jsonlPath -ErrorAction SilentlyContinue
+    if ($null -eq $fi) { return $null }
+    $createdThisRun = (-not $ExistedBefore) -or ($fi.LastWriteTimeUtc -ge $RunStartUtc)
+    if (-not $createdThisRun) { return $null }
+    # (3)/(4)/(5) EVERY nonblank line must parse (no truncated/malformed tail tolerated) AND carry THIS run's
+    # source_run_id. A single failure fails the WHOLE file closed - there is no partial accept on this path.
+    $findings = [System.Collections.Generic.List[object]]::new()
+    foreach ($line in @(Get-Content -LiteralPath $jsonlPath -ErrorAction Stop)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $obj = $null
+        try { $obj = ([string]$line).Trim() | ConvertFrom-Json -Depth 100 -ErrorAction Stop }
+        catch { return $null }   # (4) malformed / truncated line -> fail closed
+        if ($null -eq $obj) { return $null }
+        if (($null -eq $obj.PSObject.Properties['source_run_id']) -or ([string]$obj.source_run_id -ne $RunId)) { return $null }   # (5) current run only
+        $findings.Add($obj)
+    }
+    if ($findings.Count -eq 0) { return $null }   # (3) empty file -> cannot prove a zero-finding review -> fail closed
+    # (6) assemble the FindingsResult envelope and run FULL contract validation against findings-result.schema.json.
+    $result = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        run_id         = $RunId
+        status         = 'findings'
+        findings       = $findings.ToArray()
+        created_at     = (ConvertTo-ContinuousCoReviewReviewerIsoTimestamp)
+    }
+    if (-not (Get-Command -Name 'Test-ReviewerContractObject' -ErrorAction SilentlyContinue)) {
+        $contractsHelper = Join-Path $PSScriptRoot 'reviewer-contracts.ps1'
+        if (Test-Path -LiteralPath $contractsHelper -PathType Leaf) { try { . $contractsHelper } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'Test-ReviewerContractObject' -ErrorAction SilentlyContinue)) { return $null }   # cannot validate -> fail closed
+    $root = try { Get-ContinuousCoReviewContractRoot -SchemaRoot $SchemaRoot } catch { $null }
+    if ([string]::IsNullOrWhiteSpace($root)) { return $null }
+    $validation = try { Test-ReviewerContractObject -ContractName 'FindingsResult' -InputObject $result -SchemaRoot $root } catch { $null }
+    if (($null -eq $validation) -or (-not $validation.Valid)) { return $null }   # (6) any schema miss -> fail closed
+    return ($result | ConvertTo-Json -Depth 100 -Compress)
+}
+
 function New-ContinuousCoReviewCeilingEscalationResult {
     # D-197-I009-010 (false-green hardening): the round CEILING halts the auto-loop to stop the spin (the round-9
     # fix) — but a halt is NOT a clean pass. The old ceiling wrote an EMPTY result, so the run read as
@@ -528,13 +1246,26 @@ function New-ContinuousCoReviewCeilingEscalationResult {
     param(
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][int]$Round,
-        [Parameter(Mandatory)][int]$MaxRounds
+        [Parameter(Mandatory)][int]$MaxRounds,
+        [int]$ResolvedAgainstDiskCount = 0
     )
+    # T020 (FR-018/FR-019): the halt message is CONSUMER-LEGIBLE - plain words, the review-spend
+    # guard explained, N-of-M rounds, the resolved-vs-open state from the disposition trail, and the
+    # exact command that grants more review budget. It carries ZERO internal identifiers (no rule,
+    # feature, proposal, or task codenames; no engine field names) so a downstream human who never
+    # saw this project's internals can act on it. The maintainer amendment keeps every round counting
+    # (the guard is a spend allowance), and the naming of the command is transparency - a person may
+    # run it, or approve the agent running it.
+    $resolvedNote = if ($ResolvedAgainstDiskCount -gt 0) {
+        (" (Along the way {0} earlier blocking item(s) were confirmed fixed and cleared, so those are not what stopped it.) " -f $ResolvedAgainstDiskCount)
+    }
+    else { ' ' }
     $comment = (
-        ("CO-REVIEW CEILING REACHED (round {0} > max_rounds {1}) with an unresolved blocking finding still open from a " -f $Round, $MaxRounds) +
-        'prior round. This increment was NOT REVIEWED -- the auto-loop stopped here to avoid spinning. This is an ' +
-        'ESCALATION, not a clean pass: resolve the open blocking finding, or raise co_review_max_rounds / reset the ' +
-        "co-review round state, so review resumes. Reading this run as '0 findings / clean' is a FALSE-GREEN."
+        ("This automated code review reached its spending limit for this change: it has run {0} review rounds (the limit is {1}) and a blocking item is still open." -f $Round, $MaxRounds) +
+        ' The limit is a budget guard - it caps how much AI-usage a single review can spend before a person decides whether to keep going - so the review PAUSED here instead of continuing to spend.' +
+        $resolvedNote +
+        'This is not a clean pass: the latest change was not reviewed, and treating it as "no findings" would be wrong.' +
+        ' To continue, a person can approve more review budget for this change (run `specrew review --remediate more-time`, or approve the assistant doing it), or fix the open blocking item so the next review passes on its own.'
     )
     $result = [pscustomobject]@{
         schema_version = '1.0'
@@ -542,12 +1273,12 @@ function New-ContinuousCoReviewCeilingEscalationResult {
         status         = 'findings'
         findings       = @(
             [pscustomobject]@{
-                finding_id       = 'co-review-ceiling-escalation'
+                finding_id       = 'review-spending-limit-reached'
                 source_run_id    = $RunId
                 location         = [pscustomobject]@{ path = '.review/changes.diff' }
                 severity         = 'blocking'
                 kind             = 'escalation'
-                design_reference = 'co-review round ceiling (co_review_max_rounds)'
+                design_reference = 'review spending limit reached'
                 comment          = $comment
                 disposition      = 'escalated_to_human'
                 resolution       = [pscustomobject]@{ state = 'escalated'; fix_evidence_ref = $null; rationale = $null }
@@ -576,6 +1307,11 @@ function Get-ContinuousCoReviewAgentCommand {
     if (Get-Command -Name 'Get-ContinuousCoReviewHostAgenticCommand' -ErrorAction SilentlyContinue) {
         $cmd = Get-ContinuousCoReviewHostAgenticCommand -HostName $HostName
         if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.file)) { return $cmd }
+        # The catalog ANSWERED - this host simply has no agentic vector defined (or no row). Say
+        # THAT: the old text blamed an "unreachable catalog" and sent the human debugging the module
+        # deploy instead of the row (wrong-diagnosis message, F-198 FR-018 class - cost a real
+        # debugging detour on 2026-07-10, run c0a4479b).
+        throw "co-review: reviewer host '$HostName' has no agentic invocation defined in its reviewer-host-catalog.ps1 row (the host may be probe-validated only). Complete the row's agentic_args, or choose a host whose row defines one."
     }
     # D-197-I010-002 (host-neutral core): NO hardcoded harness fallback. An unreachable catalog is a
     # deploy gap - fail LOUD (the orchestrator surfaces the failed run) rather than silently invoking
@@ -674,6 +1410,14 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
     $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
     $psi.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false)
+    # ROOT-CAUSE FIX (empty-exit0 diagnosis 2026-07-12): the reviewer host inherits the environment, so its
+    # OWN global Specrew hooks (e.g. ~/.codex/hooks.json -> specrew-hook-launch.ps1) fire while it reviews.
+    # The codex Stop hook is a DECISION-BLOCK that runs the Specrew dispatcher against the extracted specs/
+    # in the reviewer worktree and can block/derail the reviewer into producing NOTHING (the intermittent
+    # empty-exit0 / no-parseable-findings-json class). Set the launcher's documented kill switch so the
+    # reviewer subprocess AND its hook children no-op every Specrew hook: a reviewer must never trigger the
+    # governance machinery on itself. (The kill switch is inherited by codex's hook child processes.)
+    $psi.Environment['SPECREW_REFOCUS_DISABLE'] = '1'
     $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
     [void]$proc.Start()
     # Contain BEFORE handing the reviewer its prompt: a stdin-prompted host is still blocked reading stdin
@@ -700,6 +1444,13 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
                 }
                 catch { $null = $_ }
             }
+        }
+        # FINAL best-effort sample after the run loop (FR-011 amended, maintainer review 2026-07-12): a short-lived
+        # descendant may briefly linger, and on a TIMED-OUT reviewer this fires BEFORE the kill so a last origin access
+        # is still observed. running=false marks it FINAL so the monitor records it as taken without treating the
+        # (expected) vanished tree as a sampling failure. Never silent inactivity.
+        if ($Heartbeat) {
+            try { & $Heartbeat (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Running $false -Containment $containment) } catch { $null = $_ }
         }
         if (-not $exited) {
             # THE one kill (T091/N1): graceful TERM (flush window for the in-flight finding, R1) ->
@@ -751,6 +1502,11 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [switch]$ImplementerEvidencePresent
     )
     $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty -ImplementerEvidencePresent:$ImplementerEvidencePresent
+    # FILE-PRIMARY (2026-07-12): capture whether the reviewer's output file pre-exists + a run-start instant BEFORE
+    # the reviewer runs, so Get-ContinuousCoReviewFilePrimaryResult can prove the file was written by THIS run.
+    $findingsJsonlPath = Join-Path $WorktreePath '.review/findings.jsonl'
+    $runStartUtc = [datetime]::UtcNow
+    $existedBefore = Test-Path -LiteralPath $findingsJsonlPath -PathType Leaf
     $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
 
     # T108/FR-033 (D-197-I009-015): retry ONCE on an EMPTY exit-0 result before the run can be declared
@@ -760,9 +1516,21 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
     # final stdout was lost (finalization/capture gap); ABSENT = the run produced nothing at all.
     # NEVER-FALSE-GREEN is preserved: a still-empty retry returns empty and the orchestrator fails the
     # run loudly (no-parseable-findings-json) - the retry can only ADD a real result, never fake one.
+    #
+    # FILE-PRIMARY (2026-07-12): an EMPTY exit-0 result is EITHER a host that DELIVERED its review by writing
+    # .review/findings.jsonl and exited 0 with empty stdout (codex exec - a COMPLETE review on disk), OR a
+    # genuinely empty run. Distinguish them BEFORE retrying: if the reviewer produced a fully-contract-validated,
+    # current-run findings.jsonl, ACCEPT it as file-primary - NO retry, NO WARN (retrying would only burn a second
+    # provider run for the same review, the codex empty-stdout misfire). Only a genuinely empty result (no valid
+    # file) retries once, and only THEN is the WARN emitted. A NON-empty stdout is the stdout-primary path, left
+    # ENTIRELY unchanged (claude): $emptyExit0 is false, so neither the file-primary check nor the retry runs.
+    $filePrimary = $null
     $emptyExit0 = ($null -ne $r) -and ($r.exit_code -eq 0) -and [string]::IsNullOrWhiteSpace([string]$r.stdout)
     if ($emptyExit0) {
-        $jsonlPresent = Test-Path -LiteralPath (Join-Path $WorktreePath '.review/findings.jsonl') -PathType Leaf
+        $filePrimary = Get-ContinuousCoReviewFilePrimaryResult -WorktreePath $WorktreePath -RunId $RunId -RunStartUtc $runStartUtc -ExistedBefore $existedBefore
+    }
+    if ($emptyExit0 -and (-not $filePrimary)) {
+        $jsonlPresent = Test-Path -LiteralPath $findingsJsonlPath -PathType Leaf
         $firstAttempt = [pscustomobject][ordered]@{
             exit_code                    = $r.exit_code
             stdout_length                = ([string]$r.stdout).Length
@@ -781,6 +1549,20 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
                     retry_still_empty    = [string]::IsNullOrWhiteSpace([string]$r.stdout)
                 }) -Force
         }
+        # the retry is a fresh reviewer run in the SAME worktree - if IT too delivered via the file with empty
+        # stdout, accept that; a NON-empty retry stdout is the stdout-primary path (left unchanged).
+        $emptyExit0Retry = ($null -ne $r) -and ($r.exit_code -eq 0) -and [string]::IsNullOrWhiteSpace([string]$r.stdout)
+        if ($emptyExit0Retry) {
+            $filePrimary = Get-ContinuousCoReviewFilePrimaryResult -WorktreePath $WorktreePath -RunId $RunId -RunStartUtc $runStartUtc -ExistedBefore $existedBefore
+        }
+    }
+
+    # Tag a COMPLETE file-delivered review so the orchestrator records completeness='full' + source=file-primary
+    # (instead of the empty-stdout -> lenient-harvest -> 'partial' path). The orchestrator's tamper check still runs
+    # AFTER this and can still fail the run; this only carries the validated result forward.
+    if ($filePrimary) {
+        $r | Add-Member -NotePropertyName 'file_primary_result' -NotePropertyValue $filePrimary -Force
+        if ($null -ne $r.telemetry) { $r.telemetry | Add-Member -NotePropertyName 'result_source' -NotePropertyValue 'file-primary' -Force }
     }
     return $r
 }

@@ -42,6 +42,8 @@ $out = Invoke-Deploy
 Assert-True (Test-Path -LiteralPath $settingsPath -PathType Leaf) 'settings.local.json created when absent'
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $settings.hooks.SessionStart) 'SessionStart registered'
+Assert-True ($null -ne $settings.hooks.UserPromptSubmit) 'Claude UserPromptSubmit registered as the genuine per-turn baseline event'
+Assert-True (([string]$settings.hooks.UserPromptSubmit[0].hooks[0].command).Contains('-Event UserPromptSubmit')) 'Claude UserPromptSubmit reaches the real dispatcher path'
 Assert-True ($null -ne $settings.hooks.Stop) 'Stop registered (F-174 iter-4: rolling handover)'
 Assert-True (([string]$settings.hooks.Stop[0].hooks[0].command).Contains('-Event Stop')) 'Stop command dispatches -Event Stop'
 Assert-True (-not $settings.hooks.PSObject.Properties['SessionEnd']) 'SessionEnd NOT registered (iter-4 replaced it with the universal Stop)'
@@ -179,19 +181,21 @@ $healBefore = Get-Content -LiteralPath $dupCodexPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $dupHome)
 Assert-True ((Get-Content -LiteralPath $dupCodexPath -Raw) -eq $healBefore) 'self-heal: re-deploy onto the healed file is byte-idempotent (stays one registration)'
 
-# --- 9. T014: copilot binding (hooks-dir model; wholly-owned file; B2 only) ------------------
+# --- 9. T014/T070: copilot binding (hooks-dir model; wholly-owned file; per-prompt baseline) --
 $out = Invoke-Deploy -DeployArgs @('-HostKind', 'copilot', '-UserHomeOverride', $fakeHome)
 $copilotPath = Join-Path $fakeHome '.copilot\hooks\specrew-refocus.json'
 Assert-True (Test-Path -LiteralPath $copilotPath -PathType Leaf) 'copilot: owned hooks-dir file created'
 $copilot = Get-Content -LiteralPath $copilotPath -Raw | ConvertFrom-Json
 Assert-True ([int]$copilot.version -eq 1) 'copilot: version 1 declared'
-Assert-True ($null -ne $copilot.hooks.sessionStart -and -not $copilot.hooks.PSObject.Properties['userPromptSubmitted']) 'copilot: sessionStart only (B2; B3 via channel 1)'
+Assert-True ($null -ne $copilot.hooks.sessionStart -and $null -ne $copilot.hooks.userPromptSubmitted) 'copilot: sessionStart + documented userPromptSubmitted registered'
 $entry = $copilot.hooks.sessionStart[0]
 Assert-True (([string]$entry.bash).Contains('-HostKind copilot') -and ([string]$entry.powershell).Contains('-HostKind copilot')) 'copilot: bash + powershell pair both present'
+$copilotPrompt = $copilot.hooks.userPromptSubmitted[0]
+Assert-True (([string]$copilotPrompt.bash).Contains('-Event UserPromptSubmit') -and ([string]$copilotPrompt.powershell).Contains('-Event UserPromptSubmit')) 'copilot: native prompt event maps to host-neutral UserPromptSubmit through both real shell paths'
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'copilot', '-UserHomeOverride', $fakeHome, '-Remove')
 Assert-True (-not (Test-Path -LiteralPath $copilotPath)) 'copilot: -Remove deletes the owned file'
 
-# --- 10. T014: cursor binding (~/.cursor/hooks.json; bare command entries; B2 only) ----------
+# --- 10. T014/T070: cursor binding (~/.cursor/hooks.json; bare per-prompt command) ------------
 New-Item -ItemType Directory -Path (Join-Path $fakeHome '.cursor') -Force | Out-Null
 $cursorPath = Join-Path $fakeHome '.cursor\hooks.json'
 $userCursor = '{"version":1,"hooks":{"afterFileEdit":[{"command":"hooks/audit.sh"}]}}'
@@ -199,6 +203,7 @@ $userCursor = '{"version":1,"hooks":{"afterFileEdit":[{"command":"hooks/audit.sh
 $out = Invoke-Deploy -DeployArgs @('-HostKind', 'cursor', '-UserHomeOverride', $fakeHome)
 $cursor = Get-Content -LiteralPath $cursorPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $cursor.hooks.sessionStart -and (([string]$cursor.hooks.sessionStart[0].command).Contains('-HostKind cursor'))) 'cursor: sessionStart command entry registered'
+Assert-True ($null -ne $cursor.hooks.beforeSubmitPrompt -and (([string]$cursor.hooks.beforeSubmitPrompt[0].command).Contains('-Event UserPromptSubmit'))) 'cursor: documented beforeSubmitPrompt maps to host-neutral UserPromptSubmit'
 Assert-True (([string]$cursor.hooks.afterFileEdit[0].command) -eq 'hooks/audit.sh') 'cursor: user afterFileEdit entry untouched'
 Assert-True (-not $cursor.hooks.PSObject.Properties['postToolUse']) 'cursor: no postToolUse (latency-rejected; B3 via channel 1)'
 $before = Get-Content -LiteralPath $cursorPath -Raw

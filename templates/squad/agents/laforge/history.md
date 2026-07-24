@@ -64,7 +64,8 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 **1. Enhanced Terminal Handoff** (`scripts/specrew-init.ps1`):
 
 - Rewrote `Write-PostBootstrapGuidance` with clear 3-step workflow:
-  1. Open GitHub Copilot
+  <!-- specrew-applicability: example-only; historical Specrew implementation example, not downstream setup guidance -->
+  1. Historical example: open GitHub Copilot
   2. Choose agent (Squad, Spec Steward, Planner, Implementer, Reviewer)
   3. Create/update specs with docs link
 - Prioritized workflow actions over team management
@@ -248,7 +249,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - ✅ Set repository secret `SPECREW_PROJECT_TOKEN` using `gh secret set`
 - ✅ Verified secret creation via `gh secret list`
 - ✅ Manually tested sync script against live board
-- ✅ Confirmed 23 issues synced to `alonf/projects/10`
+- ✅ Confirmed 23 issues synced to the configured `<owner>/projects/<n>` board
 - ✅ Updated `docs/github-project.md` with "Blocker Cleared" status
 - ✅ Committed workflow and script files to git
 

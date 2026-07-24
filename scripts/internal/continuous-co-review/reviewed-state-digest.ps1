@@ -29,7 +29,23 @@ function Get-ContinuousCoReviewSecretAmbientDenylist {
         'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*', '.netrc', '.npmrc', '.pypirc',
         'node_modules/**', 'dist/**', 'build/**', 'out/**', 'target/**', 'bin/**', 'obj/**',
         '.venv/**', 'venv/**', '__pycache__/**', '.tox/**', '.gradle/**', '.next/**',
-        '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**'
+        '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**',
+        # T017 INTERIM (2026-07-12, co-review f1 digest-false-allow): the SIX known review-closeout scaffolder
+        # STAGING byproducts, PATH-AND-NAME specific under specs/*/iterations/*/. A GLOBAL `*.pending` rule was
+        # WRONG - it would drop a genuine ignored SOURCE file (e.g. src/schema.pending) from the digest identity,
+        # the exact FALSE-ALLOW that force-adding ignored source exists to prevent. These path+name patterns match
+        # ONLY the closeout generator's own artifacts, so any OTHER ignored `.pending` (a real source file, or an
+        # unlisted custom.md.pending under an iteration) stays IN the identity and its drift still flips the digest.
+        # T017 REALIZED the ONE machinery source (Get-ContinuousCoReviewMachineryPaths, consumed by BOTH the digest
+        # AND the worktree strip - see the $machineryPatterns wiring below). These .pending patterns are
+        # digest-specific scaffolder-BYPRODUCT hygiene (NOT host machinery), so they correctly stay here, not in the
+        # shared machinery list.
+        'specs/*/iterations/*/code-map.md.pending',
+        'specs/*/iterations/*/coverage-evidence.md.pending',
+        'specs/*/iterations/*/dashboard.md.pending',
+        'specs/*/iterations/*/dependency-report.md.pending',
+        'specs/*/iterations/*/review-diagrams.md.pending',
+        'specs/*/iterations/*/reviewer-index.md.pending'
     )
 }
 
@@ -104,7 +120,9 @@ function New-ContinuousCoReviewDigestResult {
         [AllowNull()]
         [string] $FailureReason,
 
-        [int] $IncludedIgnoredCount = 0
+        [int] $IncludedIgnoredCount = 0,
+
+        [string[]] $MachineryPaths = @()
     )
 
     return [pscustomobject][ordered]@{
@@ -113,6 +131,7 @@ function New-ContinuousCoReviewDigestResult {
         tree_id                = $TreeId
         is_empty               = ($Ok -and $TreeId -eq (Get-ContinuousCoReviewEmptyTreeId))
         included_ignored_count = $IncludedIgnoredCount
+        machinery_paths        = @($MachineryPaths)
         failure_reason         = $FailureReason
     }
 }
@@ -164,8 +183,43 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     # add (keeps ambient/secret junk out of the tree), while the MINIMAL strip list decides
     # what to remove from the FINAL index (only genuinely-non-source, so no tracked source is
     # ever stripped - the false-allow fix).
-    $inclusionDenylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($ExcludedPathPatterns)
-    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($ExcludedPathPatterns)
+    #
+    # T017 (FR-012): the METHODOLOGY MACHINERY excluded from the digest identity is the SAME single source the
+    # WORKTREE strip uses - Get-ContinuousCoReviewMachineryPaths (core tool dirs + marker-detected + host-mirror
+    # subdirs, context-aware). By construction the digest and worktree strip the SAME machinery, so they cannot
+    # drift, and the identity covers EXACTLY the reviewable content the reviewer sees (machinery stripped from the
+    # worktree is also out of the identity - NOT a false-allow: the reviewer never sees machinery, so it is not
+    # reviewed source; .github/workflows and all non-machinery source stay IN both). Converted to strip patterns
+    # (<path> for a file, <path>/** for a subtree). Applied to BOTH digest lists.
+    # The ONE machinery source (Get-ContinuousCoReviewMachineryPaths) lives in worktree-reviewer.ps1, which _load.ps1
+    # does NOT dot-source (it loads only shared leaf-modules). BOOTSTRAP it if absent (same pattern as the T100
+    # process-tree helper). FAIL LOUDLY if it cannot be LOADED or EXECUTED - a silent no-strip would let the digest
+    # identity DIVERGE from the worktree strip (both must derive machinery from the SAME resolver; maintainer
+    # acceptance 2026-07-12). The worktree strip likewise throws if the resolver fails.
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $wrPath = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $wrPath -PathType Leaf) { try { . $wrPath } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'machinery-resolver-unavailable (the ONE FR-012 machinery resolver could not be loaded - refusing a digest that would diverge from the worktree strip)'
+    }
+    $machineryPatterns = @()
+    $machineryPaths = @()
+    try {
+        foreach ($m in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRepoRoot)) {
+            if ([string]::IsNullOrWhiteSpace($m)) { continue }
+            $normalized = ([string]$m -replace '\\', '/').Trim('/')
+            if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
+            $machineryPaths += $normalized
+            $machineryPatterns += $normalized; $machineryPatterns += ("{0}/**" -f $normalized)
+        }
+        $machineryPaths = @($machineryPaths | Sort-Object -Unique)
+    }
+    catch {
+        return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason ('machinery-resolver-failed: ' + [string]$_.Exception.Message)
+    }
+    $inclusionDenylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($machineryPatterns) + @($ExcludedPathPatterns)
+    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($machineryPatterns) + @($ExcludedPathPatterns)
     $tempIndex = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-idx-' + [System.Guid]::NewGuid().ToString('N'))
 
     $hadPreviousIndex = Test-Path env:GIT_INDEX_FILE
@@ -173,6 +227,26 @@ function Get-ContinuousCoReviewReviewedStateDigest {
 
     Push-Location -LiteralPath $resolvedRepoRoot
     try {
+        # core.filemode=false hosts (the Windows default): the filesystem carries NO executable bit,
+        # so git preserves modes from the PRIOR index entry — but this digest stages into a FRESH
+        # EMPTY index, where no prior entry exists. `git add -A` then stages every file as 100644,
+        # silently stripping the bit from tracked 100755 entrypoints (bin/*, install.sh), and the
+        # reviewer's baseline->digest diff fabricates a mode regression on every shipped Unix
+        # wrapper (the recurring co-review phantom / DRIFT-198-I001-001). Capture the REAL index's
+        # 100755 paths BEFORE switching indexes, and restore them after staging. Applied only when
+        # filemode is off: on Unix the filesystem bit is authoritative and a deliberate working-tree
+        # chmod must keep flowing into the digest. (Reused verbatim from Devin ec90e1b6, T034b partial.)
+        $execBitPaths = @()
+        $coreFilemode = ([string](& git config --get core.filemode 2>$null)).Trim()
+        if ($coreFilemode -ieq 'false') {
+            $rawIndexEntries = & git ls-files -z -s 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                foreach ($indexEntry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawIndexEntries)) {
+                    if ($indexEntry -match '^100755 [0-9a-f]{40,64} \d\t(.+)$') { $execBitPaths += $Matches[1] }
+                }
+            }
+        }
+
         # A fresh (non-existent) GIT_INDEX_FILE is an EMPTY index, so `git add -A` stages
         # the full current working tree (every non-ignored file as an addition) WITHOUT
         # reading or writing the real .git/index. No HEAD dependency (works pre-commit).
@@ -181,6 +255,13 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         & git add -A 2>$null | Out-Null
         if ($LASTEXITCODE -ne 0) {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-add-all-failed'
+        }
+        if ($execBitPaths.Count -gt 0) {
+            # Only restore paths still present in the working tree: update-index aborts a whole
+            # chunk on the first missing path (deleted-in-worktree file), and the batch helper
+            # swallows that failure — which would leave later paths in the chunk unrestored.
+            $execBitPaths = @($execBitPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+            Invoke-ContinuousCoReviewGitPathBatch -GitArgs @('update-index', '--chmod=+x') -Paths $execBitPaths
         }
 
         $rawIgnored = & git ls-files -z --others --ignored --exclude-standard --directory 2>$null
@@ -225,7 +306,7 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-malformed'
         }
 
-        return New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included
+        return New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included -MachineryPaths $machineryPaths
     }
     catch {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'digest-exception'

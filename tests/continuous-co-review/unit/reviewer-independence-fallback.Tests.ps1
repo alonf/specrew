@@ -107,6 +107,17 @@ Describe 'T093 orchestrator surfaces the selection outcome' {
 
 Describe 'T093 navigator surfaces the same-host label + upgrade ask' {
 
+    BeforeEach {
+        # The surfaced-note behavior belongs to the retained legacy evidence reader. Keep the
+        # fixture explicit now that production HEAD has completed the campaign cutover.
+        Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+            [pscustomobject]@{
+                mode = 'legacy'; valid = $true; legacy_promotion_enabled = $true
+                campaign_authority_enabled = $false; reason = 'authority-mode-legacy'
+            }
+        }
+    }
+
     It 'appends the same-host note and the authorize-once upgrade ask to a surfaced verdict' {
         $repo = script:New-TempGitRepo
         try {

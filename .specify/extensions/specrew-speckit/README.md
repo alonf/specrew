@@ -31,7 +31,7 @@ The `specrew init` command handles this deployment. All Specrew skills use the `
 
 ## Integration
 
-This extension integrates with Spec Kit >= 0.8.4 using documented extension surfaces:
+This extension integrates with Spec Kit >= 0.12.9 using documented extension surfaces:
 
 - **Commands**: Hook-targeted command prompts registered through the extension manifest
 - **Hooks**: Lifecycle hooks that fire during specification workflows

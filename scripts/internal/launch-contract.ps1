@@ -218,6 +218,7 @@ function Get-StartPrompt {
     $projectStateBlock = Get-ProjectStatePromptBlock -ProjectState $ProjectState
     $brownfieldDiscoveryBlock = Get-BrownfieldDiscoveryPromptBlock -BrownfieldDiscovery $BrownfieldDiscovery
     $deliveryGuidanceBlock = Get-DeliveryGuidancePromptBlock -DeliveryGuidance $DeliveryGuidance
+    $releaseModelPromptBlock = Format-SpecrewFeatureCloseoutReleaseGuidance -ProjectRoot $ResolvedProjectPath
     $boundaryPolicyClasses = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $ResolvedProjectPath
     $humanJudgmentBoundaries = @($boundaryPolicyClasses.GetEnumerator() | Where-Object { [string]$_.Value -eq 'human-judgment-required' } | ForEach-Object { [string]$_.Key })
     $boundaryPolicyPromptBlock = if ($humanJudgmentBoundaries.Count -gt 0) {
@@ -226,6 +227,14 @@ function Get-StartPrompt {
     else {
         '- Resolved from ``.specrew/config.yml`` into ``boundary_enforcement.policy_classes`` in ``start-context.json``: no human-judgment boundaries are configured for this run.'
     }
+
+    $hostShellGuidance = if ($IsWindows) {
+        @'
+<!-- specrew-applicability: project-detected; the active launch host was detected as Windows before this guidance was rendered -->
+- **Windows shell rule:** on Windows/PowerShell, do not use Bash syntax, Unix-only path assumptions, or cross-shell deletion/move pipelines. Use PowerShell-native commands with quoted `-LiteralPath` values for file operations.
+'@
+    }
+    else { '' }
 
     # Forward-slash form of the project path for use in `file:///` URLs in the
     # orientation block + Rule 52 (visible file:/// artifact references in user output).
@@ -253,6 +262,13 @@ $brownfieldDiscoveryBlock
 $deliveryGuidanceBlock
 
 $routingPlanBlock
+
+## Resolved Feature-Closeout Delivery
+
+$releaseModelPromptBlock
+
+This resolved block is authoritative for feature-closeout. Generic lifecycle examples below never add a step
+that this model marks N/A, and staged prerelease-to-stable validation applies only to ``beta-stable``.
 
 ## Lifecycle Quick Reference
 
@@ -311,7 +327,7 @@ The ``crew_runtime_status`` field tells you whether the downstream sync-* agents
 - ``Status: approved`` / ``in_progress`` are INVALID iteration / task statuses. Canonical iteration statuses: ``planning | executing | reviewing | retro | complete | abandoned``. Canonical task statuses: ``planned | in-progress | done | needs-rework | deferred | blocked`` (hyphens, not underscores).
 - Hardening-gate concern ``Status: tbd`` is rejected. Use ``addressed | not-applicable | deferred-with-approval``.
 - ``Capacity: <consumed>/<cap> <effort_unit>`` with NO trailing prose. Notes go in the Notes section.
-- **Windows shell rule:** on Windows/PowerShell, do not use Bash syntax, Unix-only path assumptions, or cross-shell deletion/move pipelines. Use PowerShell-native commands with quoted ``-LiteralPath`` values for file operations.
+$hostShellGuidance
 - **Web-form feature pitfall:** for any feature whose deliverable is an HTML form (calculator, registration, search box, etc.), browsers submit the form on **Enter key inside any ``<input>``** — which triggers a full page reload to the form's ``action`` URL and wipes computed output. If the form is rendered by your app and you want Enter to compute-without-reload, either (a) bind a ``submit`` handler that calls ``event.preventDefault()`` or (b) use ``<input type="button">`` (not ``submit``) for the action and avoid the form's default submission. Cover this in the test plan: a Cypress / Playwright test that types into the field and presses Enter must verify the computed value appears AND the URL does not change. This pitfall was the dominant bug class in F-040 tip-calc-v2 + calc-v2 dogfooding.
 - **Web-feature acceptance evidence:** for browser features, the review-time evidence must include a screenshot or recorded interaction showing the golden-path AND Enter-key behavior — running ``Invoke-WebRequest`` against the static HTML proves the file deployed, NOT that the feature works. Lighthouse / DOM-inspection MCPs (or manual browser steps documented in quickstart.md) are the canonical evidence layer.
 
@@ -423,7 +439,7 @@ Give the exact resume point and the next safe step for the same agent or a diffe
 State the single immediate human action, verdict, or resume instruction. If no human action is needed, say that explicitly and name the next agent-owned action.
 ``````
 
-At ``feature-closeout``, the ``## What I Need From You`` section MUST split release SDLC ownership into ``AGENT NEXT ACTION:`` and ``HUMAN ACTION NEEDED:`` rows so the human is never asked to do agent-owned push/PR/merge work. Instantiate each step from the project's ``.specrew/repository-governance.yml`` (provider, ``branch_model``, ``review_gate``) and the project's own release/publish mechanism — never assume a specific forge or package registry. ``AGENT NEXT ACTION:`` executes Step 5 push the feature branch to the project's forge, Step 6 open the PR/MR via that forge (the provider adapter describes how), Step 7 self-review and address the project's ``review_gate`` (human approvals + comment resolution always-available; automated review opt-in), Step 8 merge per the ``branch_model`` after approvals/checks, Step 9 if the work produces a release, tag the merge commit (or the PASS-candidate fix commit if looping) and publish a prerelease per the project's release mechanism, Step 10 verify the prerelease published via the project's package/registry tooling, Step 11 PAUSE for the human manual-test PASS/FAIL verdict on the installed prerelease in a clean environment, Step 12 if FAIL fix on the release-truth branch then tag the next prerelease and repeat from Step 9, Step 13 if PASS tag the PASS-validated commit and publish the stable release per the project's release mechanism then verify, and Step 14 stop before any new feature work. ``HUMAN ACTION NEEDED:`` asks the human only to approve each agent action when prompted and, at Step 11, install + exercise the prerelease via the project's package mechanism and report PASS or FAIL with evidence. Specrew's own instantiation (a Specrew-specific example, NOT a downstream mandate): provider ``github`` + PowerShell Gallery — Step 6 ``gh pr create``; Step 10 ``Find-Module Specrew -AllowPrerelease``; Step 11 ``Install-Module Specrew -AllowPrerelease``; push ``v<next-version>-beta.1`` then promote ``v<next-version>`` stable.
+At ``feature-closeout``, copy the ``AGENT NEXT ACTION:`` and ``HUMAN ACTION NEEDED:`` rows from ``## Resolved Feature-Closeout Delivery``. That block is resolved from the recorded release model and is authoritative: execute only non-N/A steps, never invent a forge, review, or publication step, and require prerelease validation before stable only for ``beta-stable``.
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
 48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in the host-rendered shape below (8-15 lines, conversational tone, no bullet-list of phases). The visible Specrew version, selected host, runtime class, and lifecycle position in this block are generated from the installed runtime and saved start context; do not substitute, infer, omit, or claim any other host/runtime behavior. **All artifact and directory references in this block MUST use visible bare ``file:///`` URLs** built from the Project root URL above (see Rule 52):
 

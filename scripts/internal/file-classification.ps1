@@ -26,12 +26,16 @@ $script:SpecrewPerSessionPatterns = @(
     '.specrew/start-context.json'
     '.specrew/host-history.json'
     '.specrew/.cache/'
+    '.specrew/version-check-cache.json'
+    '.specrew/handover/'
+    '.specrew/runtime/'
     '.squad/sessions/'
     '.squad/decisions/inbox/'
     '.specrew/last-validator-summary.json'
     '.specrew/active-sessions.yml'
     '.specrew/workshop-visuals/'
     '.agents/hooks.json'
+    '.claude/settings.local.json'
 )
 
 $script:SpecrewGitignoreSectionHeader = '# Specrew per-session files (F-051 multi-session foundation) - do not commit'

@@ -19,6 +19,194 @@ function Resolve-ProjectPath {
     return [System.IO.Path]::GetFullPath((Join-Path -Path $cwd -ChildPath $Path))
 }
 
+function Get-SpecrewReleaseModelScalar {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Content,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    $match = [regex]::Match($Content, ('(?m)^{0}:\s*(?<value>[^#\r\n]*)' -f [regex]::Escape($Name)))
+    if (-not $match.Success) { return $null }
+    $value = $match.Groups['value'].Value.Trim()
+    if ($value.Length -ge 2 -and $value.StartsWith('"') -and $value.EndsWith('"')) {
+        $value = $value.Substring(1, $value.Length - 2).Replace('\"', '"').Replace('\\', '\')
+    }
+    elseif ($value.Length -ge 2 -and $value.StartsWith("'") -and $value.EndsWith("'")) {
+        $value = $value.Substring(1, $value.Length - 2).Replace("''", "'")
+    }
+    if ([string]::IsNullOrWhiteSpace($value) -or $value -in @('null', '~')) { return $null }
+    return $value
+}
+
+function Resolve-SpecrewReleaseModel {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [ValidateSet('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')]
+        [string]$RequestedModel = 'auto',
+        [AllowNull()][string]$PublishTarget
+    )
+
+    $resolvedRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $governancePath = Join-Path $resolvedRoot '.specrew\repository-governance.yml'
+    $content = if (Test-Path -LiteralPath $governancePath -PathType Leaf) {
+        Get-Content -LiteralPath $governancePath -Raw -Encoding UTF8
+    }
+    else { '' }
+
+    $recordedModel = Get-SpecrewReleaseModelScalar -Content $content -Name 'release_model'
+    $recordedProvenance = Get-SpecrewReleaseModelScalar -Content $content -Name 'release_model_provenance'
+    $recordedPublishTarget = Get-SpecrewReleaseModelScalar -Content $content -Name 'publish_target'
+    if (-not [string]::IsNullOrWhiteSpace($recordedModel)) {
+        if ($recordedModel -notin @('local-only', 'push-only', 'pr-flow', 'beta-stable')) {
+            throw "Unsupported release_model '$recordedModel' in '$governancePath'."
+        }
+        if (-not [string]::IsNullOrWhiteSpace($recordedProvenance) -and $recordedProvenance -notin @('recorded', 'inferred')) {
+            throw "Unsupported release_model_provenance '$recordedProvenance' in '$governancePath'."
+        }
+        if ($recordedModel -eq 'beta-stable' -and [string]::IsNullOrWhiteSpace($recordedPublishTarget)) {
+            throw "release_model 'beta-stable' requires publish_target in '$governancePath'."
+        }
+        return [pscustomobject]@{
+            Model = $recordedModel
+            Provenance = if ($recordedProvenance) { $recordedProvenance } else { 'recorded' }
+            PublishTarget = $recordedPublishTarget
+            Source = 'repository-governance'
+            GovernancePath = $governancePath
+        }
+    }
+
+    $effectivePublishTarget = if (-not [string]::IsNullOrWhiteSpace($PublishTarget)) {
+        $PublishTarget.Trim()
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($recordedPublishTarget)) {
+        $recordedPublishTarget
+    }
+    else { $null }
+
+    if ($RequestedModel -ne 'auto') {
+        if ($RequestedModel -eq 'beta-stable' -and [string]::IsNullOrWhiteSpace($effectivePublishTarget)) {
+            throw "Requested release model 'beta-stable' requires -PublishTarget."
+        }
+        if ($RequestedModel -ne 'beta-stable' -and -not [string]::IsNullOrWhiteSpace($effectivePublishTarget)) {
+            throw "PublishTarget is only valid with release model 'beta-stable'."
+        }
+        return [pscustomobject]@{
+            Model = $RequestedModel
+            Provenance = 'recorded'
+            PublishTarget = $effectivePublishTarget
+            Source = 'init-selection'
+            GovernancePath = $governancePath
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($effectivePublishTarget)) {
+        return [pscustomobject]@{
+            Model = 'beta-stable'
+            Provenance = $(if (-not [string]::IsNullOrWhiteSpace($PublishTarget)) { 'recorded' } else { 'inferred' })
+            PublishTarget = $effectivePublishTarget
+            Source = 'publish-target'
+            GovernancePath = $governancePath
+        }
+    }
+
+    $providerMatch = [regex]::Match($content, '(?m)^(?:\s{2})?provider:\s*(?<value>[^#\r\n]+)')
+    $provider = if ($providerMatch.Success) { $providerMatch.Groups['value'].Value.Trim().Trim([char[]]@('"', "'")).ToLowerInvariant() } else { '' }
+    $remoteNames = @(& git -C $resolvedRoot remote 2>$null)
+    if ($LASTEXITCODE -ne 0) { $remoteNames = @() }
+    $remoteUrls = @()
+    foreach ($remoteName in $remoteNames) {
+        $url = @(& git -C $resolvedRoot remote get-url ([string]$remoteName) 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $url.Count -gt 0) { $remoteUrls += [string]$url[0] }
+    }
+
+    $hasForge = $provider -notin @('', 'none', 'local', 'manual') -or
+        @($remoteUrls | Where-Object { $_ -match '(?i)(github\.com|gitlab\.com|bitbucket\.org|dev\.azure\.com|visualstudio\.com)' }).Count -gt 0
+    $model = if ($hasForge) { 'pr-flow' } elseif ($remoteUrls.Count -gt 0) { 'push-only' } else { 'local-only' }
+    return [pscustomobject]@{
+        Model = $model
+        Provenance = 'inferred'
+        PublishTarget = $null
+        Source = if ($hasForge) { 'forge' } elseif ($remoteUrls.Count -gt 0) { 'remote' } else { 'no-remote' }
+        GovernancePath = $governancePath
+    }
+}
+
+function Initialize-SpecrewReleaseModelRecord {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [ValidateSet('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')]
+        [string]$RequestedModel = 'auto',
+        [AllowNull()][string]$PublishTarget,
+        [switch]$PreviewOnly
+    )
+
+    $resolved = Resolve-SpecrewReleaseModel -ProjectRoot $ProjectRoot -RequestedModel $RequestedModel -PublishTarget $PublishTarget
+    $path = $resolved.GovernancePath
+    $existingContent = if (Test-Path -LiteralPath $path -PathType Leaf) { Get-Content -LiteralPath $path -Raw -Encoding UTF8 } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace((Get-SpecrewReleaseModelScalar -Content $existingContent -Name 'release_model'))) {
+        return [pscustomobject]@{ Action = 'preserved'; Path = $path; Record = $resolved }
+    }
+
+    if ($PreviewOnly) {
+        return [pscustomobject]@{ Action = 'would-record'; Path = $path; Record = $resolved }
+    }
+
+    $lines = @(
+        '# >>> specrew-managed release-model >>>'
+        ('release_model: {0}' -f $resolved.Model)
+        ('release_model_provenance: {0}' -f $resolved.Provenance)
+        ('publish_target: {0}' -f $(if ($resolved.PublishTarget) { '"' + $resolved.PublishTarget.Replace('\', '\\').Replace('"', '\"') + '"' } else { 'null' }))
+        '# <<< specrew-managed release-model <<<'
+    )
+    $prefix = if ([string]::IsNullOrWhiteSpace($existingContent)) { '' } else { $existingContent.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine }
+    Write-Utf8FileAtomic -Path $path -Content ($prefix + ($lines -join [Environment]::NewLine) + [Environment]::NewLine)
+    return [pscustomobject]@{ Action = 'recorded'; Path = $path; Record = $resolved }
+}
+
+function Format-SpecrewFeatureCloseoutReleaseGuidance {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot
+    )
+
+    $record = Resolve-SpecrewReleaseModel -ProjectRoot $ProjectRoot
+    $header = 'Resolved feature-closeout release model: {0} (provenance: {1}).' -f $record.Model, $record.Provenance
+    switch ($record.Model) {
+        'local-only' {
+            return @(
+                $header
+                'AGENT NEXT ACTION: finalize the local commit and closeout evidence only.'
+                'N/A: remote delivery and release publication do not apply because no remote or publish target is recorded.'
+                'HUMAN ACTION NEEDED: approve the local closeout; no external delivery validation is requested.'
+            ) -join [Environment]::NewLine
+        }
+        'push-only' {
+            return @(
+                $header
+                'AGENT NEXT ACTION: push the reviewed commit to the recorded remote after human approval.'
+                'N/A: PR/MR review and release publication do not apply because no forge configuration or publish target is recorded.'
+                'HUMAN ACTION NEEDED: approve the push and validate the delivered remote commit.'
+            ) -join [Environment]::NewLine
+        }
+        'pr-flow' {
+            return @(
+                $header
+                'AGENT NEXT ACTION: push, open the forge review, address the recorded review gate, and merge per the branch model after human approval.'
+                'N/A: release publication and staged package validation do not apply because no publish target is recorded.'
+                'HUMAN ACTION NEEDED: approve each external mutation and provide any required human review.'
+            ) -join [Environment]::NewLine
+        }
+        'beta-stable' {
+            return @(
+                $header
+                ('Publish target: {0}.' -f $record.PublishTarget)
+                # specrew-applicability: project-detected; emitted only after repository governance resolves beta-stable with a publish target
+                'AGENT NEXT ACTION: complete push/review/merge as configured, publish a prerelease, verify it, pause for human runtime validation, then publish stable only after PASS.'
+                'HUMAN ACTION NEEDED: approve each external mutation and report PASS or FAIL from the installed prerelease before stable promotion.'
+            ) -join [Environment]::NewLine
+        }
+    }
+}
+
 function Get-SpecrewSupportedStateSchemas {
     return @('v1', 'v2')
 }
@@ -963,7 +1151,31 @@ function Get-SpecrewPendingBoundaryCrossing {
 
         $workingIdx = [Array]::IndexOf($order, $workingCanonical)
         $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuthCanonical)) { -1 } else { [Array]::IndexOf($order, $lastAuthCanonical) }
-        if ($workingIdx -lt 0 -or $workingIdx -le $authIdx) { return $result }
+        if ($workingIdx -lt 0) { return $result }
+
+        # ITERATION CYCLE RESET (FR-004 of the hardening feature, field-found 2026-07-11): the canonical order is
+        # linear but iterations LOOP - after an authorized `iteration-closeout`, the next
+        # iteration re-enters at an earlier-phase boundary (plan/tasks/...). The old
+        # `workingIdx -le authIdx` guard read that as "backward", so NO pending artifact was
+        # written for any new-cycle crossing and the verdict capture refused with
+        # MARKER_CURSOR_MISMATCH (two live instances: this feature's own iteration-002 plan and
+        # before-implement). When the cursor sits at iteration-closeout and the working
+        # boundary is an earlier-phase crossing, the pending ask is the new cycle's earliest
+        # un-authorized boundary, from-side iteration-closeout.
+        $planIdx = [Array]::IndexOf($order, 'plan')
+        $isCycleReset = ($lastAuthCanonical -eq 'iteration-closeout' -and $workingIdx -le $authIdx -and $workingIdx -ge $planIdx)
+        if ($workingIdx -le $authIdx -and -not $isCycleReset) { return $result }
+
+        if ($isCycleReset) {
+            $result.HasPendingVerdict = $true
+            $result.PendingFromBoundary = 'iteration-closeout'
+            $result.PendingToBoundary = $order[$planIdx]
+            $result.PendingFromMarkerBoundary = 'iteration-closeout'
+            $result.PendingToMarkerBoundary = $order[$planIdx]
+            $result.IsFirstBoundary = $false
+            $result.IsMultiBoundaryGap = ($workingIdx -gt $planIdx)
+            return $result
+        }
 
         $toIdx = $authIdx + 1
         if ($toIdx -lt 0 -or $toIdx -ge $order.Count) { return $result }
@@ -1167,9 +1379,135 @@ function New-SpecrewBoundaryEnforcementState {
         enabled                  = $true
         last_authorized_boundary = $normalizedCurrentBoundary
         pending_next_boundary    = $null
+        pending_crossing         = $null
         policy_classes           = Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $ProjectRoot
         verdict_history          = @()
+        correction_history       = @()
         bypass_history           = @()
+    }
+}
+
+function ConvertTo-SpecrewBoundaryMap {
+    param([AllowNull()]$Value)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [System.Collections.IDictionary]) { return $Value }
+    return ($Value | ConvertTo-Json -Depth 24 | ConvertFrom-Json -AsHashtable -Depth 24)
+}
+
+function Get-SpecrewBoundarySha256 {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Text)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($Text)
+        return ([System.BitConverter]::ToString($sha.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+    }
+    finally { $sha.Dispose() }
+}
+
+function Get-SpecrewBoundaryAuthorizationEntryId {
+    # Legacy authorization entries predate stable IDs. Their full immutable evidence tuple is hashed so a
+    # correction can name the exact historical fact without editing it. New writers persist the same ID.
+    param(
+        [Parameter(Mandatory = $true)]$Entry,
+        [switch]$Derive
+    )
+    $map = ConvertTo-SpecrewBoundaryMap -Value $Entry
+    if ($null -eq $map) { return $null }
+    if (-not $Derive -and $map.Contains('authorization_id') -and [string]$map['authorization_id'] -match '^auth-[0-9a-f]{64}$') {
+        return [string]$map['authorization_id']
+    }
+    $parts = foreach ($field in @('from_boundary', 'to_boundary', 'verdict_text', 'authorizing_human', 'recorded_at', 'auth_commit_hash', 'evidence_source', 'kind')) {
+        if (-not $map.Contains($field) -or $null -eq $map[$field]) { ''; continue }
+        $value = $map[$field]
+        if ($field -eq 'recorded_at') {
+            try { ([datetimeoffset]$value).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffffffZ', [System.Globalization.CultureInfo]::InvariantCulture) }
+            catch { ([string]$value).Trim() }
+        }
+        elseif ($field -eq 'auth_commit_hash') { ([string]$value).Trim().ToLowerInvariant() }
+        elseif ($field -in @('from_boundary', 'to_boundary')) { Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$value) }
+        else { [string]$value }
+    }
+    return ('auth-{0}' -f (Get-SpecrewBoundarySha256 -Text ($parts -join "`u{001f}")))
+}
+
+function New-SpecrewBoundaryCrossingIdentity {
+    param(
+        [Parameter(Mandatory = $true)][string]$FromBoundary,
+        [Parameter(Mandatory = $true)][string]$ToBoundary,
+        [Parameter(Mandatory = $true)][string]$BoundaryCommitHash,
+        [Parameter(Mandatory = $true)][string]$ArtifactStateId,
+        [AllowNull()][string]$WorkingBoundary,
+        [AllowNull()][string]$RecordedAt
+    )
+    $normalizedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary $FromBoundary
+    $from = if ($normalizedFrom -eq 'intake') { 'intake' } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $FromBoundary -ParameterName 'FromBoundary' }
+    $to = Resolve-SpecrewCanonicalBoundaryType -Boundary $ToBoundary -ParameterName 'ToBoundary'
+    $working = if ([string]::IsNullOrWhiteSpace($WorkingBoundary)) { $to } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $WorkingBoundary -ParameterName 'WorkingBoundary' }
+    $commit = $BoundaryCommitHash.Trim().ToLowerInvariant()
+    $artifact = $ArtifactStateId.Trim().ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($commit) -or [string]::IsNullOrWhiteSpace($artifact)) { throw 'Boundary commit hash and artifact-state ID are required for a scoped crossing.' }
+    $crossingId = 'crossing-{0}' -f (Get-SpecrewBoundarySha256 -Text (@($from, $to, $working, $commit, $artifact) -join "`u{001f}"))
+    return [ordered]@{
+        crossing_id          = $crossingId
+        from_boundary        = $from
+        to_boundary          = $to
+        working_boundary     = $working
+        boundary_commit_hash = $commit
+        artifact_state_kind  = 'git-tree'
+        artifact_state_id    = $artifact
+        recorded_at          = if ([string]::IsNullOrWhiteSpace($RecordedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $RecordedAt.Trim() }
+    }
+}
+
+function Get-SpecrewGitArtifactStateId {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$BoundaryCommitHash
+    )
+    $commit = $BoundaryCommitHash.Trim()
+    $tree = @(& git -C (Resolve-ProjectPath -Path $ProjectRoot) rev-parse --verify ("{0}^{{tree}}" -f $commit) 2>$null)
+    if ($LASTEXITCODE -ne 0 -or $tree.Count -ne 1 -or [string]$tree[0] -notmatch '^[0-9a-fA-F]{40,64}$') {
+        throw "Boundary commit '$BoundaryCommitHash' does not resolve to one Git tree; scoped verdict state was not written."
+    }
+    return ([string]$tree[0]).Trim().ToLowerInvariant()
+}
+
+function Get-SpecrewEffectiveBoundaryEnforcementState {
+    # Corrections invalidate an authorization only for the crossing identity they name. The historical verdict
+    # remains in raw verdict_history; readers consume this filtered projection for the active scoped crossing.
+    param([Parameter(Mandatory = $true)]$BoundaryEnforcement)
+    $raw = ConvertTo-SpecrewBoundaryMap -Value $BoundaryEnforcement
+    if ($null -eq $raw) { return $null }
+    $pendingCrossing = if ($raw.Contains('pending_crossing')) { ConvertTo-SpecrewBoundaryMap -Value $raw['pending_crossing'] } else { $null }
+    $scopeId = if ($null -ne $pendingCrossing -and $pendingCrossing.Contains('crossing_id')) { [string]$pendingCrossing['crossing_id'] } else { $null }
+    $invalidated = New-Object 'System.Collections.Generic.HashSet[string]'
+    $lastAuthorized = $raw['last_authorized_boundary']
+    $pendingNext = $raw['pending_next_boundary']
+    $corrections = if ($raw.Contains('correction_history')) { @($raw['correction_history']) } else { @() }
+    foreach ($correction in $corrections) {
+        $map = ConvertTo-SpecrewBoundaryMap -Value $correction
+        if ($null -eq $map -or [string]$map['event_kind'] -ne 'invalidation' -or [string]$map['scope_crossing_id'] -ne $scopeId) { continue }
+        [void]$invalidated.Add([string]$map['original_entry_id'])
+        $resultState = ConvertTo-SpecrewBoundaryMap -Value $map['resulting_boundary_state']
+        if ($null -ne $resultState) {
+            if ($resultState.Contains('last_authorized_boundary')) { $lastAuthorized = $resultState['last_authorized_boundary'] }
+            if ($resultState.Contains('pending_next_boundary')) { $pendingNext = $resultState['pending_next_boundary'] }
+        }
+    }
+    $effectiveVerdicts = New-Object System.Collections.Generic.List[object]
+    foreach ($entry in @($raw['verdict_history'])) {
+        $entryId = Get-SpecrewBoundaryAuthorizationEntryId -Entry $entry
+        if (-not $invalidated.Contains($entryId)) { $effectiveVerdicts.Add($entry) | Out-Null }
+    }
+    return [ordered]@{
+        enabled                  = [bool]$raw['enabled']
+        last_authorized_boundary = $lastAuthorized
+        pending_next_boundary    = $pendingNext
+        pending_crossing         = $pendingCrossing
+        policy_classes           = if ($raw.Contains('policy_classes')) { $raw['policy_classes'] } else { $null }
+        verdict_history          = @($effectiveVerdicts.ToArray())
+        correction_history       = @($corrections)
+        bypass_history           = @($raw['bypass_history'])
     }
 }
 
@@ -1274,6 +1612,7 @@ function Test-SpecrewBoundaryEnforcementStateShape {
         }
     }
 
+    $verdictEntryIds = New-Object 'System.Collections.Generic.HashSet[string]'
     foreach ($verdict in @($state['verdict_history'])) {
         $verdictMap = if ($verdict -is [System.Collections.IDictionary]) {
             $verdict
@@ -1293,6 +1632,112 @@ function Test-SpecrewBoundaryEnforcementStateShape {
                 $normalized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap[$field])
                 if ($normalized -notin (Get-SpecrewCanonicalBoundaryTypes)) {
                     $issues.Add("boundary_enforcement.verdict_history.$field value '$($verdictMap[$field])' is not canonical.") | Out-Null
+                }
+            }
+        }
+
+        if ($verdictMap.Contains('authorization_id') -and [string]$verdictMap['authorization_id'] -notmatch '^auth-[0-9a-f]{64}$') {
+            $issues.Add("boundary_enforcement.verdict_history.authorization_id '$($verdictMap['authorization_id'])' is malformed.") | Out-Null
+        }
+        $derivedVerdictId = Get-SpecrewBoundaryAuthorizationEntryId -Entry $verdictMap -Derive
+        [void]$verdictEntryIds.Add($derivedVerdictId)
+        if ($verdictMap.Contains('authorization_id') -and [string]$verdictMap['authorization_id'] -match '^auth-[0-9a-f]{64}$' -and [string]$verdictMap['authorization_id'] -ne $derivedVerdictId) {
+            $issues.Add('boundary_enforcement.verdict_history.authorization_id does not match its immutable evidence tuple.') | Out-Null
+        }
+    }
+
+    if ($state.Contains('pending_crossing') -and $null -ne $state['pending_crossing']) {
+        $crossingMap = ConvertTo-SpecrewBoundaryMap -Value $state['pending_crossing']
+        foreach ($field in @('crossing_id', 'from_boundary', 'to_boundary', 'working_boundary', 'boundary_commit_hash', 'artifact_state_kind', 'artifact_state_id', 'recorded_at')) {
+            if (-not $crossingMap.Contains($field) -or [string]::IsNullOrWhiteSpace([string]$crossingMap[$field])) {
+                $issues.Add("boundary_enforcement.pending_crossing.$field is missing or blank.") | Out-Null
+            }
+        }
+        if ($crossingMap.Contains('crossing_id') -and [string]$crossingMap['crossing_id'] -notmatch '^crossing-[0-9a-f]{64}$') {
+            $issues.Add('boundary_enforcement.pending_crossing.crossing_id is malformed.') | Out-Null
+        }
+        if ($crossingMap.Contains('artifact_state_kind') -and [string]$crossingMap['artifact_state_kind'] -ne 'git-tree') {
+            $issues.Add('boundary_enforcement.pending_crossing.artifact_state_kind must be git-tree.') | Out-Null
+        }
+        foreach ($field in @('from_boundary', 'to_boundary', 'working_boundary')) {
+            $allowedBoundaries = if ($field -eq 'from_boundary') { @('intake') + @(Get-SpecrewCanonicalBoundaryTypes) } else { @(Get-SpecrewCanonicalBoundaryTypes) }
+            if ($crossingMap.Contains($field) -and (Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$crossingMap[$field])) -notin $allowedBoundaries) {
+                $issues.Add("boundary_enforcement.pending_crossing.$field is not canonical.") | Out-Null
+            }
+        }
+        if (@('crossing_id', 'from_boundary', 'to_boundary', 'working_boundary', 'boundary_commit_hash', 'artifact_state_id') | Where-Object { -not $crossingMap.Contains($_) -or [string]::IsNullOrWhiteSpace([string]$crossingMap[$_]) } | Measure-Object | Select-Object -ExpandProperty Count) {
+            # Missing-field issues are already recorded above; do not invoke the identity constructor on them.
+        }
+        else {
+            try {
+                $derivedCrossing = New-SpecrewBoundaryCrossingIdentity -FromBoundary ([string]$crossingMap['from_boundary']) -ToBoundary ([string]$crossingMap['to_boundary']) -WorkingBoundary ([string]$crossingMap['working_boundary']) -BoundaryCommitHash ([string]$crossingMap['boundary_commit_hash']) -ArtifactStateId ([string]$crossingMap['artifact_state_id']) -RecordedAt ([string]$crossingMap['recorded_at'])
+                if ([string]$derivedCrossing['crossing_id'] -ne [string]$crossingMap['crossing_id']) {
+                    $issues.Add('boundary_enforcement.pending_crossing.crossing_id does not match its immutable evidence tuple.') | Out-Null
+                }
+            }
+            catch { $issues.Add("boundary_enforcement.pending_crossing identity is invalid: $($_.Exception.Message)") | Out-Null }
+        }
+    }
+
+    if ($state.Contains('correction_history')) {
+        if ($null -eq $state['correction_history'] -or $state['correction_history'] -is [string]) {
+            $issues.Add('boundary_enforcement.correction_history must be an array.') | Out-Null
+        }
+        else {
+            foreach ($correction in @($state['correction_history'])) {
+                $correctionMap = ConvertTo-SpecrewBoundaryMap -Value $correction
+                if ($null -eq $correctionMap) {
+                    $issues.Add('boundary_enforcement.correction_history contains a null entry.') | Out-Null
+                    continue
+                }
+                foreach ($field in @('correction_id', 'event_kind', 'original_entry_id', 'original_entry_identity', 'scope_crossing_id', 'correcting_authority', 'authority_verdict_text', 'authority_auth_commit_hash', 'reason', 'recorded_at', 'scope_identity', 'resulting_boundary_state')) {
+                    if (-not $correctionMap.Contains($field) -or $null -eq $correctionMap[$field] -or ($correctionMap[$field] -is [string] -and [string]::IsNullOrWhiteSpace([string]$correctionMap[$field]))) {
+                        $issues.Add("boundary_enforcement.correction_history.$field is missing or blank.") | Out-Null
+                    }
+                }
+                if ([string]$correctionMap['correction_id'] -notmatch '^correction-[0-9a-f]{64}$' -or [string]$correctionMap['event_kind'] -ne 'invalidation') {
+                    $issues.Add('boundary_enforcement.correction_history identity or event_kind is malformed.') | Out-Null
+                }
+                if ([string]$correctionMap['original_entry_id'] -notmatch '^auth-[0-9a-f]{64}$' -or [string]$correctionMap['scope_crossing_id'] -notmatch '^crossing-[0-9a-f]{64}$') {
+                    $issues.Add('boundary_enforcement.correction_history target identity is malformed.') | Out-Null
+                }
+                $scopeMap = ConvertTo-SpecrewBoundaryMap -Value $correctionMap['scope_identity']
+                $originalMap = ConvertTo-SpecrewBoundaryMap -Value $correctionMap['original_entry_identity']
+                $resultMap = ConvertTo-SpecrewBoundaryMap -Value $correctionMap['resulting_boundary_state']
+                if ($null -eq $scopeMap -or [string]$scopeMap['crossing_id'] -ne [string]$correctionMap['scope_crossing_id']) {
+                    $issues.Add('boundary_enforcement.correction_history.scope_identity does not match scope_crossing_id.') | Out-Null
+                }
+                if ($null -eq $resultMap -or -not $resultMap.Contains('last_authorized_boundary') -or -not $resultMap.Contains('pending_next_boundary')) {
+                    $issues.Add('boundary_enforcement.correction_history.resulting_boundary_state is incomplete.') | Out-Null
+                }
+                if ($null -eq $originalMap -or [string]$originalMap['authorization_id'] -ne [string]$correctionMap['original_entry_id']) {
+                    $issues.Add('boundary_enforcement.correction_history.original_entry_identity does not match original_entry_id.') | Out-Null
+                }
+                if (-not $verdictEntryIds.Contains([string]$correctionMap['original_entry_id'])) {
+                    $issues.Add('boundary_enforcement.correction_history targets an authorization entry that is not present in verdict_history.') | Out-Null
+                }
+                $expectedCorrectionId = 'correction-{0}' -f (Get-SpecrewBoundarySha256 -Text (@([string]$correctionMap['original_entry_id'], [string]$correctionMap['scope_crossing_id'], 'invalidation') -join "`u{001f}"))
+                if ([string]$correctionMap['correction_id'] -ne $expectedCorrectionId) {
+                    $issues.Add('boundary_enforcement.correction_history.correction_id does not match its immutable evidence tuple.') | Out-Null
+                }
+                if ([string]$correctionMap['authority_auth_commit_hash'] -notmatch '^[0-9a-fA-F]{40,64}$') {
+                    $issues.Add('boundary_enforcement.correction_history.authority_auth_commit_hash is malformed.') | Out-Null
+                }
+                if ($null -ne $scopeMap) {
+                    try {
+                        $derivedScope = New-SpecrewBoundaryCrossingIdentity -FromBoundary ([string]$scopeMap['from_boundary']) -ToBoundary ([string]$scopeMap['to_boundary']) -WorkingBoundary ([string]$scopeMap['working_boundary']) -BoundaryCommitHash ([string]$scopeMap['boundary_commit_hash']) -ArtifactStateId ([string]$scopeMap['artifact_state_id']) -RecordedAt ([string]$scopeMap['recorded_at'])
+                        if ([string]$derivedScope['crossing_id'] -ne [string]$scopeMap['crossing_id']) {
+                            $issues.Add('boundary_enforcement.correction_history.scope_identity crossing ID is not derived from its immutable evidence tuple.') | Out-Null
+                        }
+                    }
+                    catch { $issues.Add("boundary_enforcement.correction_history.scope_identity is invalid: $($_.Exception.Message)") | Out-Null }
+                }
+                if ($null -ne $resultMap -and $resultMap.Contains('last_authorized_boundary')) {
+                    $resultBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$resultMap['last_authorized_boundary'])
+                    $authorityVerdict = Parse-SpecrewBoundaryVerdict -VerdictText ([string]$correctionMap['authority_verdict_text'])
+                    if ($resultBoundary -notin (Get-SpecrewCanonicalBoundaryTypes) -or -not $authorityVerdict.Authorized -or @($authorityVerdict.Boundaries).Count -ne 1 -or [string]$authorityVerdict.Boundaries[0] -ne $resultBoundary) {
+                        $issues.Add('boundary_enforcement.correction_history authority verdict does not explicitly authorize the resulting boundary.') | Out-Null
+                    }
                 }
             }
         }
@@ -1348,6 +1793,7 @@ function Get-SpecrewBoundaryEnforcementState {
         Schema         = $contextState.Schema
         Context        = $context
         State          = $boundaryEnforcement
+        EffectiveState = if ($null -eq $boundaryEnforcement) { $null } else { Get-SpecrewEffectiveBoundaryEnforcementState -BoundaryEnforcement $boundaryEnforcement }
         NeedsMigration = ($contextState.Exists -and $contextState.Schema -in @('v0', 'v1') -and $null -eq $boundaryEnforcement)
         Issues         = $shapeIssues
     }
@@ -1374,13 +1820,84 @@ function Get-SpecrewPendingVerdictState {
         PendingToMarkerBoundary   = $null
         IsFirstBoundary        = $false
         IsMultiBoundaryGap     = $false
+        CrossingId             = $null
+        BoundaryCommitHash     = $null
+        ArtifactStateKind      = $null
+        ArtifactStateId        = $null
+        IntegrityStatus        = 'unreadable'
         Message                = $null
     }
     try {
         $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
         if ($null -eq $enforcement -or $null -eq $enforcement.State -or -not [bool]$enforcement.State['enabled']) { return $result }
+        if ($enforcement.Issues.Count -gt 0) {
+            $result.IntegrityStatus = 'state-invalid'
+            return $result
+        }
 
-        $lastAuth = [string]$enforcement.State['last_authorized_boundary']
+        $effective = $enforcement.EffectiveState
+        $lastAuth = [string]$effective['last_authorized_boundary']
+        $result.LastAuthorizedBoundary = $lastAuth
+
+        # New state is crossing-scoped. Once the field exists, session_state is never authority for a pending
+        # verdict: null means clean, and a populated scope must verify against its immutable Git tree.
+        if ($enforcement.State.Contains('pending_crossing')) {
+            $scope = ConvertTo-SpecrewBoundaryMap -Value $enforcement.State['pending_crossing']
+            if ($null -eq $scope) {
+                $result.IntegrityStatus = 'scoped-clean'
+                return $result
+            }
+
+            $result.CrossingId = [string]$scope['crossing_id']
+            $result.BoundaryCommitHash = [string]$scope['boundary_commit_hash']
+            $result.ArtifactStateKind = [string]$scope['artifact_state_kind']
+            $result.ArtifactStateId = [string]$scope['artifact_state_id']
+            $result.WorkingBoundary = [string]$scope['working_boundary']
+            if ($result.ArtifactStateKind -ne 'git-tree') {
+                $result.IntegrityStatus = 'scope-invalid'
+                return $result
+            }
+
+            $resolvedArtifactState = Get-SpecrewGitArtifactStateId -ProjectRoot $ProjectRoot -BoundaryCommitHash $result.BoundaryCommitHash
+            if ($resolvedArtifactState -ne $result.ArtifactStateId) {
+                $result.IntegrityStatus = 'artifact-state-mismatch'
+                return $result
+            }
+            $expectedScope = New-SpecrewBoundaryCrossingIdentity `
+                -FromBoundary ([string]$scope['from_boundary']) `
+                -ToBoundary ([string]$scope['to_boundary']) `
+                -WorkingBoundary ([string]$scope['working_boundary']) `
+                -BoundaryCommitHash $result.BoundaryCommitHash `
+                -ArtifactStateId $resolvedArtifactState `
+                -RecordedAt ([string]$scope['recorded_at'])
+            if ([string]$expectedScope['crossing_id'] -ne $result.CrossingId) {
+                $result.IntegrityStatus = 'crossing-id-mismatch'
+                return $result
+            }
+
+            $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $lastAuth -WorkingBoundary ([string]$scope['working_boundary'])
+            if (-not [bool]$crossing.HasPendingVerdict -or
+                [string]$crossing.PendingFromMarkerBoundary -ne [string]$scope['from_boundary'] -or
+                [string]$crossing.PendingToMarkerBoundary -ne [string]$scope['to_boundary']) {
+                $result.IntegrityStatus = 'scope-state-mismatch'
+                return $result
+            }
+            $result.PendingFromBoundary = $crossing.PendingFromBoundary
+            $result.PendingToBoundary = $crossing.PendingToBoundary
+            $result.PendingFromMarkerBoundary = $crossing.PendingFromMarkerBoundary
+            $result.PendingToMarkerBoundary = $crossing.PendingToMarkerBoundary
+            $result.IsFirstBoundary = [bool]$crossing.IsFirstBoundary
+            $result.IsMultiBoundaryGap = [bool]$crossing.IsMultiBoundaryGap
+            $result.HasPendingVerdict = $true
+            $result.IntegrityStatus = 'scoped-verified'
+            $authLabel = if ([string]::IsNullOrWhiteSpace([string]$crossing.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$crossing.LastAuthorizedBoundary }
+            $result.Message = ("AWAITING YOUR VERDICT: crossing '{0}' ({1} -> {2}) at commit {3}, Git tree {4}, is NOT human-authorized (last authorized: {5}). Give the explicit verdict 'approved for {2}' to authorize this exact crossing; numeric replies are not authority." -f $result.CrossingId, $crossing.PendingFromMarkerBoundary, $crossing.PendingToMarkerBoundary, $result.BoundaryCommitHash, $result.ArtifactStateId, $authLabel)
+            return $result
+        }
+
+        # Backward-compatible read for pre-scope ledgers and fixtures. A subsequent sync writes pending_crossing
+        # and permanently leaves this legacy path.
+        $result.IntegrityStatus = 'legacy-unscoped'
         $working = $null
         $ctx = $enforcement.Context
         if ($null -ne $ctx -and $ctx.Contains('session_state') -and $null -ne $ctx['session_state']) {
@@ -1404,7 +1921,11 @@ function Get-SpecrewPendingVerdictState {
             $result.Message = ("AWAITING YOUR VERDICT: '{0}' is committed / in-progress but NOT human-authorized (last authorized: {1}). A committed boundary is not an approved one — the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm." -f $crossing.WorkingBoundary, $authLabel)
         }
     }
-    catch { $null = $_ }
+    catch {
+        $result.HasPendingVerdict = $false
+        $result.IntegrityStatus = 'unreadable'
+        $result.Message = $null
+    }
     return $result
 }
 
@@ -1457,12 +1978,18 @@ function Set-SpecrewBoundaryEnforcementState {
         Get-SpecrewBoundaryPolicyClassMap -ProjectRoot $ProjectRoot
     }
 
+    $existingBoundaryEnforcement = if ($effectiveContext.Contains('boundary_enforcement')) { ConvertTo-SpecrewBoundaryMap -Value $effectiveContext['boundary_enforcement'] } else { $null }
+    $pendingCrossing = if ($BoundaryEnforcement.Contains('pending_crossing')) { $BoundaryEnforcement['pending_crossing'] } elseif ($null -ne $existingBoundaryEnforcement -and $existingBoundaryEnforcement.Contains('pending_crossing')) { $existingBoundaryEnforcement['pending_crossing'] } else { $null }
+    $correctionHistory = if ($BoundaryEnforcement.Contains('correction_history')) { @($BoundaryEnforcement['correction_history']) } elseif ($null -ne $existingBoundaryEnforcement -and $existingBoundaryEnforcement.Contains('correction_history')) { @($existingBoundaryEnforcement['correction_history']) } else { @() }
+
     $effectiveContext['boundary_enforcement'] = [ordered]@{
         enabled                  = [bool]$BoundaryEnforcement['enabled']
         last_authorized_boundary = if ([string]::IsNullOrWhiteSpace([string]$BoundaryEnforcement['last_authorized_boundary'])) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary ([string]$BoundaryEnforcement['last_authorized_boundary']) -ParameterName 'last_authorized_boundary' }
         pending_next_boundary    = if ([string]::IsNullOrWhiteSpace([string]$BoundaryEnforcement['pending_next_boundary'])) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary ([string]$BoundaryEnforcement['pending_next_boundary']) -ParameterName 'pending_next_boundary' }
+        pending_crossing         = $pendingCrossing
         policy_classes           = $policyClasses
         verdict_history          = @($BoundaryEnforcement['verdict_history'])
+        correction_history       = @($correctionHistory)
         bypass_history           = @($BoundaryEnforcement['bypass_history'])
     }
 
@@ -1472,6 +1999,203 @@ function Set-SpecrewBoundaryEnforcementState {
 
     Write-Utf8FileAtomic -Path $contextState.Path -Content (([pscustomobject]$effectiveContext | ConvertTo-Json -Depth 24) + [Environment]::NewLine)
     return $contextState.Path
+}
+
+function New-SpecrewPendingCrossingScope {
+    param(
+        [AllowNull()][string]$LastAuthorizedBoundary,
+        [AllowNull()][string]$WorkingBoundary,
+        [Parameter(Mandatory = $true)][string]$BoundaryCommitHash,
+        [Parameter(Mandatory = $true)][string]$ArtifactStateId,
+        [AllowNull()][string]$RecordedAt,
+        [AllowNull()]$ExistingScope,
+        [switch]$OpenNextCrossingWhenBoundaryAuthorized
+    )
+    $effectiveWorkingBoundary = $WorkingBoundary
+    if ($OpenNextCrossingWhenBoundaryAuthorized) {
+        $lastAuthorizedCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $LastAuthorizedBoundary
+        $workingCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $WorkingBoundary
+        if (-not [string]::IsNullOrWhiteSpace($lastAuthorizedCanonical) -and $lastAuthorizedCanonical -eq $workingCanonical) {
+            $order = @(Get-SpecrewBoundaryOrder)
+            if ($lastAuthorizedCanonical -eq 'iteration-closeout') {
+                $effectiveWorkingBoundary = 'plan'
+            }
+            else {
+                $completedIndex = [Array]::IndexOf($order, $lastAuthorizedCanonical)
+                if ($completedIndex -lt 0 -or $completedIndex -ge ($order.Count - 1)) { return $null }
+                $effectiveWorkingBoundary = $order[$completedIndex + 1]
+            }
+        }
+    }
+    $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $effectiveWorkingBoundary
+    if (-not [bool]$crossing.HasPendingVerdict) { return $null }
+    $scope = New-SpecrewBoundaryCrossingIdentity `
+        -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) `
+        -ToBoundary ([string]$crossing.PendingToMarkerBoundary) `
+        -WorkingBoundary ([string]$crossing.WorkingBoundary) `
+        -BoundaryCommitHash $BoundaryCommitHash `
+        -ArtifactStateId $ArtifactStateId `
+        -RecordedAt $RecordedAt
+    $existing = ConvertTo-SpecrewBoundaryMap -Value $ExistingScope
+    if ($null -ne $existing -and [string]$existing['crossing_id'] -eq [string]$scope['crossing_id'] -and -not [string]::IsNullOrWhiteSpace([string]$existing['recorded_at'])) {
+        $scope['recorded_at'] = [string]$existing['recorded_at']
+    }
+    return $scope
+}
+
+function Set-SpecrewPendingBoundaryCrossingScope {
+    # Called by boundary sync after it writes the mechanical session cursor. The pending ask is now one immutable
+    # crossing identity over (from, to, working boundary, boundary commit, Git tree), never a stale session label.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$WorkingBoundary,
+        [Parameter(Mandatory = $true)][string]$BoundaryCommitHash,
+        [AllowNull()][string]$RecordedAt,
+        [switch]$OpenNextCrossingWhenBoundaryAuthorized
+    )
+    $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($state.NeedsMigration -or $state.Issues.Count -gt 0 -or $null -eq $state.State) {
+        throw "Boundary enforcement state cannot accept a scoped crossing: $(@($state.Issues) -join '; ')"
+    }
+    $artifactStateId = Get-SpecrewGitArtifactStateId -ProjectRoot $ProjectRoot -BoundaryCommitHash $BoundaryCommitHash
+    $effective = $state.EffectiveState
+    $existingScope = if ($state.State.Contains('pending_crossing')) { $state.State['pending_crossing'] } else { $null }
+    $scope = New-SpecrewPendingCrossingScope `
+        -LastAuthorizedBoundary ([string]$effective['last_authorized_boundary']) `
+        -WorkingBoundary $WorkingBoundary `
+        -BoundaryCommitHash $BoundaryCommitHash `
+        -ArtifactStateId $artifactStateId `
+        -RecordedAt $RecordedAt `
+        -ExistingScope $existingScope `
+        -OpenNextCrossingWhenBoundaryAuthorized:$OpenNextCrossingWhenBoundaryAuthorized
+    $updated = [ordered]@{
+        enabled                  = [bool]$state.State['enabled']
+        last_authorized_boundary = $state.State['last_authorized_boundary']
+        pending_next_boundary    = if ($null -eq $scope) { $null } else { [string]$scope['to_boundary'] }
+        pending_crossing         = $scope
+        verdict_history          = @($state.State['verdict_history'])
+        correction_history       = if ($state.State.Contains('correction_history')) { @($state.State['correction_history']) } else { @() }
+        bypass_history           = @($state.State['bypass_history'])
+    }
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updated -Context $state.Context | Out-Null
+    return $scope
+}
+
+function Add-SpecrewBoundaryAuthorizationCorrection {
+    # Append-only, human-bound correction of one historical authorization USE for one exact crossing. The
+    # original verdict remains immutable and valid in its original lifecycle cycle.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$OriginalEntryId,
+        [Parameter(Mandatory = $true)][string]$ScopeFromBoundary,
+        [Parameter(Mandatory = $true)][string]$ScopeToBoundary,
+        [Parameter(Mandatory = $true)][string]$WorkingBoundary,
+        [Parameter(Mandatory = $true)][string]$ScopeBoundaryCommitHash,
+        [Parameter(Mandatory = $true)][string]$ScopeArtifactStateId,
+        [Parameter(Mandatory = $true)][string]$ResultingLastAuthorizedBoundary,
+        [Parameter(Mandatory = $true)][string]$CorrectingAuthority,
+        [Parameter(Mandatory = $true)][string]$AuthorityVerdictText,
+        [Parameter(Mandatory = $true)][string]$AuthorityAuthCommitHash,
+        [Parameter(Mandatory = $true)][string]$Reason,
+        [AllowNull()][string]$RecordedAt
+    )
+    if ($OriginalEntryId -notmatch '^auth-[0-9a-f]{64}$') { throw 'OriginalEntryId must be a stable auth-<sha256> identity.' }
+    if ([string]::IsNullOrWhiteSpace($CorrectingAuthority) -or [string]::IsNullOrWhiteSpace($Reason) -or [string]::IsNullOrWhiteSpace($AuthorityAuthCommitHash)) {
+        throw 'Correcting authority, authority commit, and reason are required.'
+    }
+    $resultingBoundary = Resolve-SpecrewCanonicalBoundaryType -Boundary $ResultingLastAuthorizedBoundary -ParameterName 'ResultingLastAuthorizedBoundary'
+    $verdict = Parse-SpecrewBoundaryVerdict -VerdictText $AuthorityVerdictText
+    if (-not $verdict.Authorized -or @($verdict.Boundaries).Count -ne 1 -or [string]$verdict.Boundaries[0] -ne $resultingBoundary) {
+        throw "Correction authority must be an explicit 'approved for $resultingBoundary' verdict; numeric aliases and other phrases are not authority."
+    }
+    $resolvedArtifactState = Get-SpecrewGitArtifactStateId -ProjectRoot $ProjectRoot -BoundaryCommitHash $ScopeBoundaryCommitHash
+    if ($resolvedArtifactState -ne $ScopeArtifactStateId.Trim().ToLowerInvariant()) {
+        throw "Scope artifact state '$ScopeArtifactStateId' does not match boundary commit '$ScopeBoundaryCommitHash' tree '$resolvedArtifactState'."
+    }
+    $null = Get-SpecrewGitArtifactStateId -ProjectRoot $ProjectRoot -BoundaryCommitHash $AuthorityAuthCommitHash
+    $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($state.NeedsMigration -or $state.Issues.Count -gt 0 -or $null -eq $state.State) { throw "Boundary enforcement state is not correctable: $(@($state.Issues) -join '; ')" }
+
+    $target = $null
+    foreach ($entry in @($state.State['verdict_history'])) {
+        if ((Get-SpecrewBoundaryAuthorizationEntryId -Entry $entry) -eq $OriginalEntryId) { $target = $entry; break }
+    }
+    if ($null -eq $target) { throw "Authorization entry '$OriginalEntryId' was not found; no correction was appended." }
+    $targetMap = ConvertTo-SpecrewBoundaryMap -Value $target
+    $targetFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$targetMap['from_boundary'])
+    $targetTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$targetMap['to_boundary'])
+    $scopeFrom = Resolve-SpecrewCanonicalBoundaryType -Boundary $ScopeFromBoundary -ParameterName 'ScopeFromBoundary'
+    $scopeTo = Resolve-SpecrewCanonicalBoundaryType -Boundary $ScopeToBoundary -ParameterName 'ScopeToBoundary'
+    if ($targetFrom -ne $scopeFrom -or $targetTo -ne $scopeTo) {
+        throw "Authorization entry '$OriginalEntryId' records '$targetFrom -> $targetTo', not the requested correction crossing '$scopeFrom -> $scopeTo'."
+    }
+    $scope = New-SpecrewBoundaryCrossingIdentity `
+        -FromBoundary $scopeFrom `
+        -ToBoundary $scopeTo `
+        -WorkingBoundary $WorkingBoundary `
+        -BoundaryCommitHash $ScopeBoundaryCommitHash `
+        -ArtifactStateId $resolvedArtifactState `
+        -RecordedAt $RecordedAt
+    $scopeId = [string]$scope['crossing_id']
+    $existingCorrections = if ($state.State.Contains('correction_history')) { @($state.State['correction_history']) } else { @() }
+    foreach ($existing in $existingCorrections) {
+        $map = ConvertTo-SpecrewBoundaryMap -Value $existing
+        if ([string]$map['original_entry_id'] -ne $OriginalEntryId -or [string]$map['scope_crossing_id'] -ne $scopeId) { continue }
+        $existingResult = ConvertTo-SpecrewBoundaryMap -Value $map['resulting_boundary_state']
+        if ([string]$existingResult['last_authorized_boundary'] -eq $resultingBoundary -and [string]$map['correcting_authority'] -eq $CorrectingAuthority.Trim() -and [string]$map['authority_verdict_text'] -eq $AuthorityVerdictText.Trim() -and [string]$map['reason'] -eq $Reason.Trim()) {
+            return [pscustomobject]@{ Appended = $false; Correction = $map; EffectiveState = $state.EffectiveState }
+        }
+        throw "A conflicting correction already exists for '$OriginalEntryId' in crossing '$scopeId'."
+    }
+
+    $nextScope = New-SpecrewPendingCrossingScope `
+        -LastAuthorizedBoundary $resultingBoundary `
+        -WorkingBoundary $WorkingBoundary `
+        -BoundaryCommitHash $ScopeBoundaryCommitHash `
+        -ArtifactStateId $resolvedArtifactState `
+        -RecordedAt $RecordedAt `
+        -ExistingScope $scope
+    $pendingNext = if ($null -eq $nextScope) { $null } else { [string]$nextScope['to_boundary'] }
+    $correctionId = 'correction-{0}' -f (Get-SpecrewBoundarySha256 -Text (@($OriginalEntryId, $scopeId, 'invalidation') -join "`u{001f}"))
+    $correction = [ordered]@{
+        correction_id             = $correctionId
+        event_kind                = 'invalidation'
+        original_entry_id         = $OriginalEntryId
+        original_entry_identity   = [ordered]@{
+            authorization_id = $OriginalEntryId
+            from_boundary    = $targetMap['from_boundary']
+            to_boundary      = $targetMap['to_boundary']
+            recorded_at      = $targetMap['recorded_at']
+            auth_commit_hash = $targetMap['auth_commit_hash']
+        }
+        scope_crossing_id          = $scopeId
+        scope_identity             = $scope
+        correcting_authority       = $CorrectingAuthority.Trim()
+        authority_verdict_text     = $AuthorityVerdictText.Trim()
+        authority_auth_commit_hash = $AuthorityAuthCommitHash.Trim().ToLowerInvariant()
+        reason                     = $Reason.Trim()
+        recorded_at                = if ([string]::IsNullOrWhiteSpace($RecordedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $RecordedAt.Trim() }
+        resulting_boundary_state   = [ordered]@{
+            last_authorized_boundary = $resultingBoundary
+            pending_next_boundary    = $pendingNext
+            pending_crossing_id      = if ($null -eq $nextScope) { $null } else { [string]$nextScope['crossing_id'] }
+        }
+    }
+    $correctionHistory = New-Object System.Collections.Generic.List[object]
+    foreach ($entry in $existingCorrections) { $correctionHistory.Add($entry) | Out-Null }
+    $correctionHistory.Add($correction) | Out-Null
+    $updated = [ordered]@{
+        enabled                  = [bool]$state.State['enabled']
+        last_authorized_boundary = $resultingBoundary
+        pending_next_boundary    = $pendingNext
+        pending_crossing         = $nextScope
+        verdict_history          = @($state.State['verdict_history'])
+        correction_history       = @($correctionHistory.ToArray())
+        bypass_history           = @($state.State['bypass_history'])
+    }
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updated -Context $state.Context | Out-Null
+    $after = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    return [pscustomobject]@{ Appended = $true; Correction = $correction; EffectiveState = $after.EffectiveState }
 }
 
 function Initialize-SpecrewBoundaryEnforcementState {
@@ -1656,6 +2380,27 @@ function Parse-SpecrewBoundaryVerdict {
         }
     }
 
+    # A hook-captured verdict may carry binding instructions after the canonical boundary. Accept only a leading
+    # exact canonical boundary followed by an explicit instruction delimiter; arbitrary trailing prose still fails
+    # closed. The original VerdictText is stored by Add-SpecrewBoundaryAuthorization for the audit trail.
+    $instructionVerdict = [regex]::Match(
+        $lowerVerdict,
+        '^approved\s+for\s+(?<boundary>before-implement|review-signoff|iteration-closeout|feature-closeout|specify|clarify|plan|tasks|retro)(?<instruction>(?:\s+with\s+instructions?\b[\s\S]*|\s*[,;:]\s*\S[\s\S]*|\s*[-\u2013\u2014]\s*\S[\s\S]*))$'
+    )
+    if ($instructionVerdict.Success) {
+        $boundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$instructionVerdict.Groups['boundary'].Value)
+        if ($boundary -in $CanonicalBoundaries) {
+            return [pscustomobject]@{
+                Authorized        = $true
+                Action            = 'approved'
+                Boundaries        = @($boundary)
+                NormalizedVerdict = "approved for $boundary-boundary entry"
+                DirectiveSentinel = 'SPECREW_BOUNDARY_AUTHORIZED'
+                FailureReason     = $null
+            }
+        }
+    }
+
     if ($lowerVerdict -match '^approved\s+for\s+(.+)$') {
         $payload = $Matches[1].Trim()
         if ($payload -match '\band\b') {
@@ -1764,15 +2509,12 @@ function Test-SpecrewBoundaryAuthorization {
         }
     }
 
-    $matchedVerdict = $null
-    foreach ($verdict in @($enforcementState.State['verdict_history'])) {
-        $verdictMap = if ($verdict -is [System.Collections.IDictionary]) { $verdict } else { $verdict | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
-        $fromBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['from_boundary'])
-        $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['to_boundary'])
-        if ($fromBoundary -eq $currentCanonical -and $toBoundary -eq $requestedCanonical) {
-            $matchedVerdict = $verdictMap
-        }
-    }
+    # FR-001/FR-002/FR-004: this live gate must NOT match (from, to) by NAME across the
+    # ENTIRE unscoped history - because lifecycles loop, a prior iteration cycle's approval
+    # would otherwise authorize the current cycle's same-named crossing with zero human
+    # involvement. It consumes THE shared cycle-scoped matcher the unreconciled primitive
+    # uses - one read, no per-site copy to drift.
+    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.EffectiveState['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $currentCanonical -LastAuthorizedBoundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
 
     if ($null -ne $matchedVerdict) {
         Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
@@ -1793,7 +2535,9 @@ function Test-SpecrewBoundaryAuthorization {
         enabled                  = [bool]$enforcementState.State['enabled']
         last_authorized_boundary = $enforcementState.State['last_authorized_boundary']
         pending_next_boundary    = $requestedCanonical
+        pending_crossing         = if ($enforcementState.State.Contains('pending_crossing')) { $enforcementState.State['pending_crossing'] } else { $null }
         verdict_history          = @($enforcementState.State['verdict_history'])
+        correction_history       = if ($enforcementState.State.Contains('correction_history')) { @($enforcementState.State['correction_history']) } else { @() }
         bypass_history           = @($enforcementState.State['bypass_history'])
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $mutableState -Context $enforcementState.Context | Out-Null
@@ -1809,6 +2553,183 @@ function Test-SpecrewBoundaryAuthorization {
         Reason                = "No persisted authorization matched $currentCanonical -> $requestedCanonical."
         PolicyClass           = $policyClass
     }
+}
+
+function Find-SpecrewCycleScopedAuthorization {
+    # FR-001/FR-004: THE cycle-scoped reconciliation read, shared by every consumer that asks
+    # "does a recorded human authorization cover this crossing IN THE CURRENT iteration
+    # cycle?" (the unreconciled primitive, the live Test-SpecrewBoundaryAuthorization gate).
+    # Lifecycles loop, so boundary names recur every
+    # iteration: a bare name match across unscoped history re-uses a PRIOR cycle's approval.
+    # Rules, walking the append-ordered history newest-to-oldest:
+    #   - The cursor invariant first: every authorization write moves last_authorized_boundary,
+    #     so cursor == 'iteration-closeout' proves NO post-closeout authorization exists - a
+    #     closed cycle authorizes nothing further; only its own closeout crossing may match.
+    #   - An entry whose to_boundary cannot be read canonically ends the walk: unreadable
+    #     identity fails CLOSED (no match), never open.
+    #   - An entry with to == 'iteration-closeout' terminates a cycle: it may itself match
+    #     (the current cycle's own closeout, only when nothing mid-cycle is newer), and
+    #     everything older belongs to a closed cycle - stop.
+    #   - A cycle-reset edge (from == 'iteration-closeout' into plan-or-later-before-closeout)
+    #     starts the current cycle: the edge itself may match, and everything older stops.
+    param(
+        [AllowNull()]
+        [object[]]$History,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ToBoundary,
+
+        [AllowNull()]
+        [string]$FromBoundary,
+
+        [switch]$RequireAuthorizingHuman,
+
+        [AllowNull()]
+        [string]$LastAuthorizedBoundary
+    )
+
+    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+    $planIdx = [Array]::IndexOf($boundaryOrder, 'plan')
+    $closeoutIdx = [Array]::IndexOf($boundaryOrder, 'iteration-closeout')
+    $targetTo = Normalize-SpecrewCanonicalBoundaryType -Boundary $ToBoundary
+    $targetFrom = if ([string]::IsNullOrWhiteSpace($FromBoundary)) { $null } else { Normalize-SpecrewCanonicalBoundaryType -Boundary $FromBoundary }
+    $cursor = if ([string]::IsNullOrWhiteSpace($LastAuthorizedBoundary)) { $null } else { Normalize-SpecrewCanonicalBoundaryType -Boundary $LastAuthorizedBoundary }
+    if ($cursor -eq 'iteration-closeout' -and $targetTo -ne 'iteration-closeout') { return $null }
+
+    $items = @($History)
+    $walkedMidCycle = $false
+    for ($i = $items.Count - 1; $i -ge 0; $i--) {
+        $entryMap = if ($items[$i] -is [System.Collections.IDictionary]) { $items[$i] } else { $items[$i] | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        $to = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['to_boundary'])
+        if ([string]::IsNullOrWhiteSpace($to) -or $to -notin $boundaryOrder) { return $null }
+        $from = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['from_boundary'])
+        $human = [string]$entryMap['authorizing_human']
+        $entryMatches = ($to -eq $targetTo) -and
+        ($null -eq $targetFrom -or $from -eq $targetFrom) -and
+        ((-not $RequireAuthorizingHuman) -or (-not [string]::IsNullOrWhiteSpace($human)))
+        if ($to -eq 'iteration-closeout') {
+            if (-not $walkedMidCycle -and $entryMatches) { return $entryMap }
+            return $null
+        }
+        if ($entryMatches) { return $entryMap }
+        $toIdx = [Array]::IndexOf($boundaryOrder, $to)
+        if ($from -eq 'iteration-closeout' -and $toIdx -ge $planIdx -and $toIdx -lt $closeoutIdx) {
+            # A reset edge normally walls off the prior cycle - EXCEPT when the target IS
+            # 'iteration-closeout': the closing cycle's own closeout authorization legitimately
+            # sits just below its exit edge (post-closeout sync-lag shape: cursor already at the
+            # new cycle's plan while the working record still says iteration-closeout). Continue
+            # past exactly this edge; the closeout-terminator rule above still guards the walk -
+            # if the closing cycle's closeout entry is absent, walkedMidCycle is true by the time
+            # an OLDER cycle's closeout entry is reached, and the walk stops without matching.
+            if ($targetTo -eq 'iteration-closeout') { continue }
+            return $null
+        }
+        if ($toIdx -lt $closeoutIdx) { $walkedMidCycle = $true }
+    }
+    return $null
+}
+
+function Get-SpecrewUnreconciledBoundary {
+    # FR-001/FR-002: the ONE shared read answering "is there a human-judgment boundary
+    # crossing that was mechanically recorded but never human-authorized?" Consumed by the sync
+    # ratchet, the governance validator, the resume/start re-confirm surface, and the hard gates
+    # (the A2 covering set) so the answer cannot drift between call sites. Pure read - never
+    # mutates state. Returns $null when clean, else a pscustomobject:
+    #   Boundary        - the unauthorized crossing (canonical name)
+    #   LastAuthorized  - the cursor (canonical name or $null)
+    #   RevertAnchor    - the auth_commit_hash of the newest authorization (the rollback target)
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($enforcementState.NeedsMigration) { return $null }
+    # FR-002/NFR-001 (fail-closed): malformed enforcement state must fail CLOSED at every
+    # consumer of this read, not read as "nothing unreconciled". A corrupt ledger passing the
+    # ratchet is the same fail-open class as cycle-name blindness.
+    if ($enforcementState.Issues.Count -gt 0) {
+        throw ("The boundary approval ledger cannot be read ({0}). Fix the recorded state before advancing; no boundary step can be verified while the ledger is unreadable." -f (@($enforcementState.Issues) -join '; '))
+    }
+
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $working = $null
+    if ($enforcementState.State.Contains('pending_crossing')) {
+        $scope = ConvertTo-SpecrewBoundaryMap -Value $enforcementState.State['pending_crossing']
+        if ($null -eq $scope) { return $null }
+        $working = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$scope['working_boundary'])
+    }
+    elseif ($contextState.Context.Contains('session_state')) {
+        $session = $contextState.Context['session_state']
+        if ($session -is [System.Collections.IDictionary] -and $session.Contains('boundary_type')) {
+            $working = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$session['boundary_type'])
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($working)) { return $null }
+    # A session boundary that does not normalize to a canonical human-judgment boundary
+    # (e.g. a legacy 'implement' alias) cannot be a skipped APPROVAL - the ratchet only
+    # guards the policy-classed gates. Malformed enforcement STATE still hard-fails
+    # upstream (the enforcement-state Issues path).
+    if ($working -notin @(Get-SpecrewCanonicalBoundaryTypes)) { return $null }
+
+    $policyClass = Get-SpecrewBoundaryPolicyClass -ProjectRoot $ProjectRoot -Boundary $working
+    if ($policyClass -ne 'human-judgment-required') { return $null }
+
+    $lastAuthorized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
+    if ($lastAuthorized -eq $working) { return $null }
+
+    $history = @($enforcementState.EffectiveState['verdict_history'])
+    $revertAnchor = $null
+    foreach ($entry in $history) {
+        $entryMap = if ($entry -is [System.Collections.IDictionary]) { $entry } else { $entry | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        if (-not [string]::IsNullOrWhiteSpace([string]$entryMap['auth_commit_hash'])) {
+            $revertAnchor = [string]$entryMap['auth_commit_hash']   # newest wins (history is append-ordered)
+        }
+    }
+
+    # FR-004: reconciliation binds to the CURRENT iteration cycle and ordered occurrence,
+    # never the bare boundary name - lifecycles loop, so every boundary name recurs each
+    # iteration and a prior iteration's same-named approval must not satisfy the current
+    # iteration's crossing. The cycle scoping lives in Find-SpecrewCycleScopedAuthorization,
+    # THE shared matcher this primitive and the live authorization gate both consume - a
+    # per-site copy of the scan is exactly how a live gate can stay cycle-blind.
+    $reconciledEntry = Find-SpecrewCycleScopedAuthorization -History $history -ToBoundary $working -RequireAuthorizingHuman -LastAuthorizedBoundary $lastAuthorized
+    if ($null -ne $reconciledEntry) { return $null }
+
+    return [pscustomobject]@{
+        Boundary       = $working
+        LastAuthorized = $lastAuthorized
+        RevertAnchor   = $revertAnchor
+    }
+}
+
+function Invoke-SpecrewBoundaryRatchetGate {
+    # FR-002: the ratchet. On a host whose agent never stops, the FIRST unapproved
+    # crossing still records mechanically (F-174 preserved - a human was not present to ask),
+    # but a SECOND advance while that crossing is unapproved is refused here, loudly. The
+    # refusal message is consumer-legible by contract (FR-018 as amended): it names the waiting
+    # step and both ways forward, tells the assistant to ask an approve/decline question, and
+    # carries no internal rule identifiers. Re-recording the SAME boundary is not an advance
+    # (idempotent re-sync stays allowed).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RequestedBoundary
+    )
+
+    $requestedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
+    $unreconciled = Get-SpecrewUnreconciledBoundary -ProjectRoot $ProjectRoot
+    if ($null -eq $unreconciled) { return $true }
+    if ($unreconciled.Boundary -eq $requestedCanonical) { return $true }
+
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $launchMode = if ($contextState.Context.Contains('launch_mode')) { [string]$contextState.Context['launch_mode'] } else { $null }
+    Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'blocked' -CurrentBoundary $unreconciled.Boundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $null -Reason ("Ratchet refusal: '{0}' is recorded but not human-approved; a second advance to '{1}' is refused until it is reconciled." -f $unreconciled.Boundary, $requestedCanonical)
+
+    $anchorText = if ([string]::IsNullOrWhiteSpace([string]$unreconciled.RevertAnchor)) { 'the last approved commit' } else { ("commit {0}" -f ([string]$unreconciled.RevertAnchor).Substring(0, [Math]::Min(8, ([string]$unreconciled.RevertAnchor).Length))) }
+    throw ("Cannot continue to '{0}': the earlier '{1}' step is still waiting for your approval. One approval advances one step, so the assistant must not move past an unapproved step. Two ways forward: (1) approve the waiting '{1}' step - the assistant will ask you to approve or decline it; or (2) roll back to the last approved point ({2}) - the assistant will ask for your explicit confirmation first, because rolling back discards the unapproved work. Re-running the same command will not bypass this stop." -f $requestedCanonical, $unreconciled.Boundary, $anchorText)
 }
 
 function Add-SpecrewBoundaryAuthorization {
@@ -1842,7 +2763,14 @@ function Add-SpecrewBoundaryAuthorization {
         # 'unspecified'. Recorded on the verdict_history entry so the audit trail is honest about each
         # authorization's provenance strength. It is NEVER 'fabricated' — sync no longer writes authorizations.
         [AllowNull()]
-        [string]$EvidenceSource
+        [string]$EvidenceSource,
+
+        # FR-005: 'standard' (the verdict answered the live pending ask) | 'retroactive'
+        # (the human reconciled an already-crossed boundary after the fact - the resume/re-confirm
+        # surface, or a capture that missed its original stop). Recorded on the entry so
+        # retroactive approvals are auditably distinct.
+        [AllowNull()]
+        [string]$Kind
     )
 
     $currentCanonical = if ([string]::IsNullOrWhiteSpace($CurrentBoundary)) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary' }
@@ -1850,7 +2778,10 @@ function Add-SpecrewBoundaryAuthorization {
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $currentIndex = if ([string]::IsNullOrWhiteSpace($currentCanonical)) { -1 } else { [Array]::IndexOf($boundaryOrder, $currentCanonical) }
     $authorizedIndex = [Array]::IndexOf($boundaryOrder, $authorizedCanonical)
-    if ($authorizedIndex -lt $currentIndex) {
+    # Iteration cycle reset (FR-004): authorizing an earlier-phase boundary FROM
+    # iteration-closeout is the next iteration beginning, not a backward move.
+    $isCycleReset = ($currentCanonical -eq 'iteration-closeout' -and $authorizedIndex -ge [Array]::IndexOf($boundaryOrder, 'plan') -and $authorizedIndex -lt $currentIndex)
+    if ($authorizedIndex -lt $currentIndex -and -not $isCycleReset) {
         throw "Cannot authorize '$authorizedCanonical' from '$currentCanonical' because it moves backward in the canonical order."
     }
 
@@ -1878,12 +2809,36 @@ function Add-SpecrewBoundaryAuthorization {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
     }
 
+    # Idempotence (FR-005): a re-fired authorization for the boundary the cursor ALREADY sits on
+    # (same to_boundary as the newest entry) is a duplicate capture of the same verdict - a
+    # no-op, never a duplicate history entry. Narrow by design: in a new iteration cycle the
+    # cursor is 'iteration-closeout', so re-authorizing 'plan' for the NEXT iteration still
+    # appends (the cursor differs).
+    $existingHistory = @($enforcementState.EffectiveState['verdict_history'])
+    $cursorBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
+    if ($cursorBoundary -eq $authorizedCanonical -and $existingHistory.Count -gt 0) {
+        $newestEntry = $existingHistory[-1]
+        $newestMap = if ($newestEntry -is [System.Collections.IDictionary]) { $newestEntry } else { $newestEntry | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$newestMap['to_boundary'])) -eq $authorizedCanonical) {
+            return [pscustomobject]@{
+                AuthorizedBoundary = $authorizedCanonical
+                StoredVerdict      = [string]$newestMap['verdict_text']
+                RecordedAt         = [string]$newestMap['recorded_at']
+                DirectiveSentinel  = 'SPECREW_BOUNDARY_AUTHORIZED'
+            }
+        }
+    }
+
     $verdictHistory = New-Object System.Collections.Generic.List[object]
     foreach ($entry in @($enforcementState.State['verdict_history'])) {
         $verdictHistory.Add($entry) | Out-Null
     }
     $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
-    $verdictHistory.Add([ordered]@{
+    $effectiveKind = if ([string]::IsNullOrWhiteSpace($Kind)) { 'standard' } else { $Kind.Trim().ToLowerInvariant() }
+    if ($effectiveKind -notin @('standard', 'retroactive')) {
+        throw "Authorization kind '$Kind' is not recognized (standard | retroactive)."
+    }
+    $newAuthorization = [ordered]@{
         from_boundary     = $currentCanonical
         to_boundary       = $authorizedCanonical
         verdict_text      = $VerdictText
@@ -1891,13 +2846,44 @@ function Add-SpecrewBoundaryAuthorization {
         recorded_at       = $effectiveRecordedAt
         auth_commit_hash  = $effectiveAuthCommitHash
         evidence_source   = $effectiveEvidenceSource
-    }) | Out-Null
+        kind              = $effectiveKind
+    }
+    $newAuthorization['authorization_id'] = Get-SpecrewBoundaryAuthorizationEntryId -Entry $newAuthorization
+    $verdictHistory.Add($newAuthorization) | Out-Null
+
+    $nextScope = $null
+    $scope = if ($enforcementState.State.Contains('pending_crossing')) { ConvertTo-SpecrewBoundaryMap -Value $enforcementState.State['pending_crossing'] } else { $null }
+    if ($null -ne $scope) {
+        $nextScope = New-SpecrewPendingCrossingScope `
+            -LastAuthorizedBoundary $authorizedCanonical `
+            -WorkingBoundary ([string]$scope['working_boundary']) `
+            -BoundaryCommitHash ([string]$scope['boundary_commit_hash']) `
+            -ArtifactStateId ([string]$scope['artifact_state_id']) `
+            -RecordedAt $effectiveRecordedAt `
+            -ExistingScope $null
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($effectiveAuthCommitHash)) {
+        $legacyWorking = $null
+        if ($enforcementState.Context.Contains('session_state') -and $null -ne $enforcementState.Context['session_state']) {
+            $legacySession = ConvertTo-SpecrewBoundaryMap -Value $enforcementState.Context['session_state']
+            if ($legacySession.Contains('boundary_type')) { $legacyWorking = [string]$legacySession['boundary_type'] }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($legacyWorking)) {
+            try {
+                $authTree = Get-SpecrewGitArtifactStateId -ProjectRoot $ProjectRoot -BoundaryCommitHash $effectiveAuthCommitHash
+                $nextScope = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary $authorizedCanonical -WorkingBoundary $legacyWorking -BoundaryCommitHash $effectiveAuthCommitHash -ArtifactStateId $authTree -RecordedAt $effectiveRecordedAt -ExistingScope $null
+            }
+            catch { $nextScope = $null }
+        }
+    }
 
     $updatedState = [ordered]@{
         enabled                  = [bool]$enforcementState.State['enabled']
         last_authorized_boundary = $authorizedCanonical
-        pending_next_boundary    = if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.State['pending_next_boundary'])) -eq $authorizedCanonical) { $null } else { $enforcementState.State['pending_next_boundary'] }
+        pending_next_boundary    = if ($null -eq $nextScope) { $null } else { [string]$nextScope['to_boundary'] }
+        pending_crossing         = $nextScope
         verdict_history          = @($verdictHistory.ToArray())
+        correction_history       = if ($enforcementState.State.Contains('correction_history')) { @($enforcementState.State['correction_history']) } else { @() }
         bypass_history           = @($enforcementState.State['bypass_history'])
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
@@ -2020,7 +3006,9 @@ function Add-SpecrewBoundaryBypassRecord {
         enabled                  = [bool]$enforcementState.State['enabled']
         last_authorized_boundary = $enforcementState.State['last_authorized_boundary']
         pending_next_boundary    = $enforcementState.State['pending_next_boundary']
+        pending_crossing         = if ($enforcementState.State.Contains('pending_crossing')) { $enforcementState.State['pending_crossing'] } else { $null }
         verdict_history          = @($enforcementState.State['verdict_history'])
+        correction_history       = if ($enforcementState.State.Contains('correction_history')) { @($enforcementState.State['correction_history']) } else { @() }
         bypass_history           = @($bypassHistory.ToArray())
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
@@ -2042,10 +3030,13 @@ function Get-SpecrewBoundaryEnforcementSummary {
             LastEnforcementAt      = $null
             EnforcementEventCount  = 0
             BypassEventCount       = 0
+            CorrectionEventCount   = 0
         }
     }
 
-    $verdictHistory = @($state.State['verdict_history'])
+    $verdictHistory = @($state.EffectiveState['verdict_history'])
+    $correctionHistory = @()
+    if ($state.State.Contains('correction_history')) { $correctionHistory = @($state.State['correction_history']) }
     $bypassHistory = @($state.State['bypass_history'])
     $latestTimestamp = @(
         $verdictHistory | ForEach-Object { [string]($_.recorded_at) }
@@ -2053,12 +3044,13 @@ function Get-SpecrewBoundaryEnforcementSummary {
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object | Select-Object -Last 1
 
     return [pscustomobject]@{
-        Enabled                = [bool]$state.State['enabled']
-        LastAuthorizedBoundary = $state.State['last_authorized_boundary']
-        PendingNextBoundary    = $state.State['pending_next_boundary']
+        Enabled                = [bool]$state.EffectiveState['enabled']
+        LastAuthorizedBoundary = $state.EffectiveState['last_authorized_boundary']
+        PendingNextBoundary    = $state.EffectiveState['pending_next_boundary']
         LastEnforcementAt      = $latestTimestamp
         EnforcementEventCount  = ($verdictHistory.Count + $bypassHistory.Count)
         BypassEventCount       = $bypassHistory.Count
+        CorrectionEventCount   = $correctionHistory.Count
     }
 }
 

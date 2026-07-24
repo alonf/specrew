@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "thread_id": "thread-20260710T014251646-fa5ff2f3",
+  "run_id": "20260710T014251646-fa5ff2f3",
+  "checkpoint_id": "nav-20260710T014251646-fa5ff2f3",
+  "findings": [
+    "f1",
+    "f2",
+    "f3",
+    "f1",
+    "f2",
+    "f3"
+  ],
+  "dispositions": [
+    {
+      "disposition_id": "disposition-f1-open",
+      "finding_id": "f1",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T16:27:22Z"
+    },
+    {
+      "disposition_id": "disposition-f2-open",
+      "finding_id": "f2",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T16:27:22Z"
+    },
+    {
+      "disposition_id": "disposition-f3-open",
+      "finding_id": "f3",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T16:27:22Z"
+    },
+    {
+      "disposition_id": "disposition-f1-open",
+      "finding_id": "f1",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T16:27:22Z"
+    },
+    {
+      "disposition_id": "disposition-f2-open",
+      "finding_id": "f2",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T16:27:22Z"
+    },
+    {
+      "disposition_id": "disposition-f3-open",
+      "finding_id": "f3",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T16:27:22Z"
+    },
+    {
+      "disposition_id": "disposition-stale-run-all-resolved",
+      "finding_id": "all",
+      "state": "resolved",
+      "rationale": "Stale queued round (fired 01:42, surfaced after the fixes landed): all six findings were independently re-found and fixed by later rounds - extension.yml config.defaults + validate-versions defaults + CLI-behavior test pins fixed in b1615b79/f01a4dcf (re-confirmed at HEAD: 0.12.9/0.11.0); annotation form-validation fixed in 716e6555 with abuse-path Test 4b; the bare-prose-in-md nuance re-verified red at HEAD and added as a durable test case.",
+      "fix_evidence_ref": "commits b1615b79, f01a4dcf, 716e6555; tests/unit/self-leak-lint.tests.ps1 Test 4b",
+      "review_round": 12,
+      "actor_role": "editor",
+      "recorded_at": "2026-07-10T16:29:10Z"
+    }
+  ],
+  "resolution_summary": "Inline reviewer returned 6 finding(s); disposition trail persisted by orchestrator.",
+  "escalation_ref": "",
+  "created_at": "2026-07-10T16:27:22Z",
+  "updated_at": "2026-07-10T16:29:10Z"
+}

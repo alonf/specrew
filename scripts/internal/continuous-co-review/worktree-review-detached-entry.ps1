@@ -38,6 +38,27 @@ function Update-WorktreeRunRegistryStatus {
     catch { $null = $_ }
 }
 
+# LEASE SELF-ADOPTION GATE (lease-lifecycle hardening 2026-07-15): adopt the lineage lease BEFORE any review
+# work. Closes the parent-crash-before-handoff window: if the acquiring parent died before re-stamping the
+# lease to this supervisor, this adoption (token+generation-matched) claims it; if the lease was meanwhile
+# reclaimed/replaced (a different owner is authoritative), this supervisor EXITS without reviewing rather
+# than run unprotected - never two authoritative reviewers for one lineage.
+try {
+    if (-not (Get-Command -Name 'Invoke-ContinuousCoReviewSupervisorLeaseGate' -ErrorAction SilentlyContinue)) {
+        $leaseModule = Join-Path $PSScriptRoot 'co-review-lineage-lease.ps1'
+        if (Test-Path -LiteralPath $leaseModule -PathType Leaf) { . $leaseModule }
+    }
+    if (Get-Command -Name 'Invoke-ContinuousCoReviewSupervisorLeaseGate' -ErrorAction SilentlyContinue) {
+        $leaseGate = Invoke-ContinuousCoReviewSupervisorLeaseGate -RepoRoot $RepoRoot -RegistryPath $RegistryPath -SupervisorPid $PID
+        if (-not [bool]$leaseGate.proceed) {
+            Update-WorktreeRunRegistryStatus -Path $RegistryPath -Status 'failed' -Extra @{ failure_reason = ('supervisor-lease-gate: ' + [string]$leaseGate.reason) }
+            try { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null } catch { $null = $_ }
+            exit 1
+        }
+    }
+}
+catch { $null = $_ }   # the gate itself failing open is handled inside; never abort the entry on gate plumbing
+
 try {
     $params = @{ RepoRoot = $RepoRoot; RunDir = $RunDir; RunId = $RunId; TimeoutSeconds = $TimeoutSeconds }
     if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $params.BaselineRef = $BaselineRef }

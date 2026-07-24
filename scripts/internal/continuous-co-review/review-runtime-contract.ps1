@@ -1,0 +1,96 @@
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+function Test-ReviewRuntimeProcessSpec {
+    param([Parameter(Mandatory)]$Spec, [Parameter(Mandatory)]$Invocation)
+    $errors = [Collections.Generic.List[string]]::new()
+    foreach ($name in @('schema_version', 'harness_id', 'command', 'argument_list', 'prompt_transport', 'working_directory', 'environment_delta', 'candidate_result_path', 'timeout_seconds', 'result_transport', 'stdout_authority')) {
+        if (-not $Spec.PSObject.Properties[$name]) { $errors.Add("missing:$name") | Out-Null }
+    }
+    if ($errors.Count -eq 0) {
+        if ([string]$Spec.schema_version -cne '1.0') { $errors.Add('unsupported-version') | Out-Null }
+        if ([string]::IsNullOrWhiteSpace([string]$Spec.command)) { $errors.Add('command-empty') | Out-Null }
+        if ([string]$Spec.prompt_transport -cnotin @('stdin', 'argument')) { $errors.Add('prompt-transport-invalid') | Out-Null }
+        if ([string]$Spec.result_transport -cne 'file-primary' -or [bool]$Spec.stdout_authority) { $errors.Add('result-transport-invalid') | Out-Null }
+        if (-not [IO.Directory]::Exists([string]$Spec.working_directory)) { $errors.Add('working-directory-missing') | Out-Null }
+        elseif ([IO.Path]::GetFullPath([string]$Spec.working_directory) -cne [IO.Path]::GetFullPath([string]$Invocation.snapshot_path)) { $errors.Add('working-directory-mismatch') | Out-Null }
+        if ([IO.Path]::GetFullPath([string]$Spec.candidate_result_path) -cne [IO.Path]::GetFullPath([string]$Invocation.candidate_result_path)) { $errors.Add('candidate-path-mismatch') | Out-Null }
+        $timeout = 0
+        if (-not [int]::TryParse([string]$Spec.timeout_seconds, [ref]$timeout) -or $timeout -lt 1 -or $timeout -gt 7200) { $errors.Add('timeout-invalid') | Out-Null }
+        if ($Spec.argument_list -is [string] -or $Spec.argument_list -isnot [Collections.IEnumerable]) { $errors.Add('arguments-invalid') | Out-Null }
+        if ($Spec.environment_delta -isnot [Collections.IDictionary]) { $errors.Add('environment-invalid') | Out-Null }
+        else {
+            foreach ($key in @($Spec.environment_delta.Keys)) {
+                if ([string]$key -cnotin @('SPECREW_REFOCUS_DISABLE', 'SPECREW_DISABLE_EVENTS')) { $errors.Add("environment-key-invalid:$key") | Out-Null }
+            }
+        }
+    }
+    return [pscustomobject]@{ valid = ($errors.Count -eq 0); errors = @($errors) }
+}
+
+function Test-ReviewRuntimeOutputActivity {
+    param([AllowNull()][string]$CandidateResultPath)
+    if ([string]::IsNullOrWhiteSpace($CandidateResultPath)) { return $false }
+    try {
+        return [IO.File]::Exists($CandidateResultPath) -and ([IO.FileInfo]$CandidateResultPath).Length -gt 0
+    }
+    catch { return $false }
+}
+
+function Wait-ReviewRuntimeOutputDrains {
+    [CmdletBinding()]
+    param(
+        [AllowNull()][Threading.Tasks.Task]$StdoutDrain,
+        [AllowNull()][Threading.Tasks.Task]$StderrDrain,
+        [ValidateRange(1, 30000)][int]$TimeoutMilliseconds = 5000
+    )
+
+    # Both redirected streams must receive the same bounded wall-clock opportunity to finish.
+    # Waiting them sequentially can spend the complete budget on stdout and give stderr no wait;
+    # short-circuit boolean expressions can skip stderr altogether.
+    if ($null -eq $StdoutDrain -or $null -eq $StderrDrain) {
+        return [pscustomobject]@{ stdout_closed = $false; stderr_closed = $false; all_closed = $false }
+    }
+
+    try {
+        $null = [Threading.Tasks.Task]::WaitAll(
+            [Threading.Tasks.Task[]]@($StdoutDrain, $StderrDrain),
+            $TimeoutMilliseconds
+        )
+    }
+    catch {
+        # Faulted/cancelled drains are represented by their terminal status below. Drain
+        # verification is evidence, so it fails closed instead of changing process control.
+        $null = $_
+    }
+
+    $stdoutClosed = $StdoutDrain.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion
+    $stderrClosed = $StderrDrain.Status -eq [Threading.Tasks.TaskStatus]::RanToCompletion
+    return [pscustomobject]@{
+        stdout_closed = $stdoutClosed
+        stderr_closed = $stderrClosed
+        all_closed = ($stdoutClosed -and $stderrClosed)
+    }
+}
+
+function Write-ReviewRuntimeProgressSample {
+    param(
+        [AllowNull()][scriptblock]$Progress,
+        [AllowNull()][string]$CandidateResultPath,
+        [bool]$ProcessTreeLive = $true
+    )
+    if ($null -eq $Progress) { return }
+    try {
+        # Runtime progress is informational. Discard at this boundary as well as at the
+        # orchestration and renderer boundaries so a caller cannot turn the runtime's
+        # authoritative return value into an array by emitting display output.
+        $null = & $Progress ([pscustomobject][ordered]@{
+            process_tree_live = $ProcessTreeLive
+            output_activity = Test-ReviewRuntimeOutputActivity -CandidateResultPath $CandidateResultPath
+        })
+    }
+    catch {
+        # Progress is advisory. A sampler or sink failure cannot affect process control or authority.
+        $null = $_
+    }
+}
