@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 58
-**Resolution rate**: 72.4% (42/58 resolved; DRIFT-198-I008-040 awaits completed-workshop reconciliation, and DRIFT-198-I008-044–058 await their named exact-head, full-registry, manual, or fresh-review proof)
+**Total drift events**: 60
+**Resolution rate**: 70.0% (42/60 resolved; DRIFT-198-I008-040 awaits completed-workshop reconciliation, and DRIFT-198-I008-044–060 await their named exact-head, full-registry, manual, or fresh-review proof)
 **Specification drift**: None detected
 
 The review-signoff reconciliation compared the delivered T066 output with its FR-024–FR-032, FR-035,
@@ -47,7 +47,9 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   validation remain deliberately pending behind their named boundaries. Exact-head CI then exposed 054. The next
   completed-workshop and regression pass exposed 055–058: a feature-level campaign false error, a primary-worktree
   branch-contamination path, a local-Git-identity baseline error, and one more live-console stdin inheritance hang.
-  Each is bounded to the active bug bash.
+  Exact-head CI exposed 059's concurrent bootstrap-journal append race. The next fresh Claude workshop exposed
+  060: the product-domain/pre-agenda phase had no durable controller state, so its first ordinary question was
+  misclassified as a generic material-work stop. Each is bounded to the active bug bash.
 
 ## Events
 
@@ -1171,6 +1173,32 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 - **Paired evidence**: the provider race now requires two present, parseable, distinct fallback-token rows. A
   16-writer direct stress fixture proves no row is lost or duplicated, and an intentionally held journal proves
   bounded fail-open exhaustion followed by successful recovery.
+
+### DRIFT-198-I008-060 — product-domain questions had no pre-agenda controller state
+
+- **Status**: corrected locally; strict accessor, initializer, multi-host skill, and full Stop-provider regressions
+  pass; exact-head CI and fresh manual proof pending
+- **Severity**: manual-test blocker
+- **Type**: workshop controller durability gap
+- **Requirements**: FR-055, FR-056, SC-016, NFR-002, NFR-007; Beta2 manual-test acceptance
+- **Observed evidence**: a fresh Article Amplifier Claude run scaffolded `spec.md`, rendered the first
+  product-domain questions, then the Stop hook forced the generic five-part material-work packet. Its journal
+  recorded `material=true`, `workshop_scope=null`, and `intake=false`. The strict controller could not prove an
+  active workshop because the technical `lens-applicability.json` agenda was intentionally written only after
+  product-domain capture and human agenda confirmation.
+- **Tracking**: GitHub issue #3104.
+- **Correction**: a new exact-feature initializer atomically writes a strict
+  `agenda_status: pending-confirmation` artifact with empty `selected` and `workshop` collections immediately
+  after the nonempty feature scaffold and before the first product-domain question. It refuses non-Specrew or
+  incomplete scaffolds and never overwrites existing state. Human agenda confirmation transitions the same
+  artifact to `agenda_status: confirmed` with the existing nonempty selected-lens contract. The strict lifecycle
+  accessor accepts the pending shape only at feature scope with a valid spec; malformed selections/records,
+  iteration scope, lifecycle activation, and lifecycle boundaries remain fail-closed.
+- **Paired evidence**: direct initializer tests prove atomic exact-shape creation, strict-accessor acceptance,
+  overwrite preservation, and refusal without governance or a complete scaffold. The real Stop-provider matrix
+  proves the first product-domain question remains visible, boundary precedence is unchanged, a malformed
+  transition blocks, and an on-disk iteration invalidates stale feature pre-agenda state. All existing Stop cases
+  remain green.
 
 ### Resolution Strategies
 

@@ -137,12 +137,22 @@ evidence.
 
 Timing matters as much as content (Feature 174). A workshop is long, and a
 mid-workshop exit, crash, or host switch is expected, not exceptional. Two
-checkpoint rules make the workshop resumable:
+checkpoint rules plus one pre-agenda controller record make the workshop
+resumable and keep ordinary questions conversational:
+
+- **Establish pre-agenda controller state immediately after feature
+  scaffolding** — before the first product-domain question, the exact
+  feature-level `lens-applicability.json` is atomically initialized with
+  `agenda_status: pending-confirmation`, empty `selected`, and empty
+  `workshop` collections. This strict feature-only state exists because the
+  product-domain phase runs before an informed technical agenda can be
+  proposed. It prevents the Stop controller from mistaking an ordinary
+  product-domain question for a generic material-work stop.
 
 - **Persist the agenda the moment the human confirms it** — the feature-level
-  `lens-applicability.json` with the `selected` list is written before lens 1
-  opens. A resuming session can only compute the remaining agenda if the agenda
-  itself is on disk.
+  `lens-applicability.json` transitions to `agenda_status: confirmed` with the
+  nonempty `selected` list before lens 1 opens. A resuming session can only
+  compute the remaining agenda if the agenda itself is on disk.
 - **Persist each lens before advancing to the next** — the lens record and its
   workshop file are written when the lens completes, never batched at the end.
   A mid-workshop exit then loses at most the lens in progress; the resume
@@ -257,12 +267,17 @@ devops-operations — no deployment, CI/CD, or hosting change.
 
 The agent then asks the human to confirm or adjust the agenda.
 
-The moment the human confirms, the agent persists the agenda: the feature-level
-`lens-applicability.json` is written with `workshop_intake: true`,
-`confirmation_required: true`, and the confirmed `selected` lens-id list —
-before lens 1 opens. The per-lens `workshop` records are appended later as each
-lens completes (Phase 7). This is the checkpoint that makes a mid-workshop
-resume computable (Core Principle 7).
+The feature scaffold is followed immediately by the strict pre-agenda
+controller initializer, before the first product-domain question. It writes the
+feature-level `lens-applicability.json` with `workshop_intake: true`,
+`confirmation_required: true`, `agenda_status: pending-confirmation`, and empty
+`selected` / `workshop` collections. It refuses to overwrite existing state.
+
+The moment the human confirms the agenda, the agent transitions that artifact
+to `agenda_status: confirmed` and writes the confirmed nonempty `selected`
+lens-id list — before lens 1 opens. The per-lens `workshop` records are appended
+later as each lens completes (Phase 7). This is the checkpoint that makes a
+mid-workshop resume computable (Core Principle 7).
 
 ### Phase 3 — Run one lens at a time
 
@@ -385,6 +400,7 @@ At minimum, the per-lens record should include:
 
 - `workshop_intake: true`
 - `confirmation_required: true`
+- `agenda_status: confirmed`
 - `selected`: list of selected lens ids
 - `workshop`: object keyed by lens id
 - per-lens `agenda`
@@ -419,6 +435,7 @@ Example shape:
 {
   "workshop_intake": true,
   "confirmation_required": true,
+  "agenda_status": "confirmed",
   "selected": [
     "architecture-core"
   ],
@@ -458,7 +475,7 @@ durability surfaces:
 
 | Artifact | Purpose |
 |---|---|
-| `specs/<feature>/lens-applicability.json` or iteration-local equivalent | Records selected lenses, applicability, and per-lens decision provenance. |
+| `specs/<feature>/lens-applicability.json` or iteration-local equivalent | Records strict pre-agenda state, then the confirmed selected lenses, applicability, and per-lens decision provenance. |
 | `specs/<feature>/workshop/<lens-id>.md` | Persists keeper diagrams and lens-specific workshop notes. |
 | `specs/<feature>/iterations/<NNN>/design-analysis.md` | Records problem framing, decision points, alternatives, recommendation, human decision, and co-design record. |
 | `specs/<feature>/plan.md` | Consumes the human-selected design option and workshop decisions as authoritative plan input. |

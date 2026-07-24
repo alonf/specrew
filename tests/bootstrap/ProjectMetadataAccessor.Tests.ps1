@@ -89,6 +89,40 @@ try {
     $strictDir = Join-Path $tmp 'specs/003-strict-workshop'
     $strictWorkshopDir = Join-Path $strictDir 'workshop'
     New-Item -ItemType Directory -Path $strictWorkshopDir -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $strictDir 'spec.md') -Value '# Strict Workshop' -Encoding UTF8
+    $strictPath = Join-Path $strictDir 'lens-applicability.json'
+
+    $preAgenda = [ordered]@{
+        schema_version = '1.0'
+        workshop_intake = $true
+        confirmation_required = $true
+        agenda_status = 'pending-confirmation'
+        selected = @()
+        workshop = [ordered]@{}
+    }
+    $preAgenda | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $preAgendaState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($preAgendaState.status -eq 'active' -and $preAgendaState.reason -eq 'workshop-pre-agenda-active' -and
+        $preAgendaState.current_lens -eq 'product-domain' -and $preAgendaState.agenda_status -eq 'pending-confirmation' -and
+        @($preAgendaState.selected).Count -eq 0) 'strict workshop: exact feature-level pre-agenda state yields active product-domain authority'
+
+    $strictIterationDir = Join-Path $strictDir 'iterations/001'
+    New-Item -ItemType Directory -Path $strictIterationDir -Force | Out-Null
+    $preAgenda | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $strictIterationDir 'lens-applicability.json') -Encoding UTF8
+    $preAgendaIteration = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop' -IterationNumber '001'
+    Assert-True ($preAgendaIteration.status -eq 'invalid' -and $preAgendaIteration.reason -eq 'workshop-pre-agenda-iteration-invalid') 'strict workshop: pre-agenda authority is never valid at iteration scope'
+
+    $preAgenda.selected = @('architecture-core')
+    $preAgenda | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $preAgendaSelected = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($preAgendaSelected.status -eq 'invalid' -and $preAgendaSelected.reason -eq 'workshop-pre-agenda-selected-invalid') 'strict workshop: a pending pre-agenda artifact cannot smuggle a selected lens'
+
+    $preAgenda.selected = @()
+    $preAgenda.workshop = [ordered]@{ 'architecture-core' = [ordered]@{} }
+    $preAgenda | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
+    $preAgendaRecords = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'
+    Assert-True ($preAgendaRecords.status -eq 'invalid' -and $preAgendaRecords.reason -eq 'workshop-pre-agenda-records-invalid') 'strict workshop: a pending pre-agenda artifact cannot carry lens completion records'
+
     $completedArchitecture = [ordered]@{
         agenda = @('Choose the responsibility boundary')
         decision = 'Use a modular boundary around channel integrations.'
@@ -100,10 +134,10 @@ try {
     $strictActive = [ordered]@{
         workshop_intake = $true
         confirmation_required = $true
+        agenda_status = 'confirmed'
         selected = @('architecture-core', 'data-storage')
         workshop = [ordered]@{ 'architecture-core' = $completedArchitecture }
     }
-    $strictPath = Join-Path $strictDir 'lens-applicability.json'
     $strictActive | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $strictPath -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $strictWorkshopDir 'architecture-core.md') -Value '# Architecture Core' -Encoding UTF8
     $strictState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $tmp -FeatureRef '003-strict-workshop'

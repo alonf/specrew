@@ -105,6 +105,27 @@ function New-LensApplicability {
     Save-FixtureStructure -Proj $Proj -Message 'fixture lens state'
 }
 
+function New-PreAgendaLensApplicability {
+    param(
+        [string]$Proj,
+        [string]$FeatureRef = '050-host-neutral-gate',
+        [string[]]$Selected = @(),
+        [hashtable]$Workshop = ([ordered]@{})
+    )
+    $dir = Join-Path $Proj (Join-Path 'specs' $FeatureRef)
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $obj = [ordered]@{
+        schema_version = '1.0'
+        workshop_intake = $true
+        confirmation_required = $true
+        agenda_status = 'pending-confirmation'
+        selected = $Selected
+        workshop = $Workshop
+    }
+    Set-Content -LiteralPath (Join-Path $dir 'lens-applicability.json') -Value ($obj | ConvertTo-Json -Depth 8) -Encoding UTF8
+    Save-FixtureStructure -Proj $Proj -Message 'fixture pre-agenda lens state'
+}
+
 function New-Transcript {
     param([string]$Proj, [object[]]$Turns)
     $dir = Join-Path $Proj '.specrew\runtime'
@@ -902,6 +923,50 @@ try {
         Fail "Case 16e: feature-level re-entry context must retain scope/feature/lens with no invented iteration: $($featureHandover | ConvertTo-Json -Compress)"
     }
 Write-Pass "Case 16e: feature-level intake question stops once without a generic packet or invented iteration"
+
+# ---- Cases 16pa-16pd / issue #3104: product-domain runs before an informed technical agenda exists. The exact
+# feature-level pending-confirmation artifact is valid only in its narrow empty shape and only before lifecycle
+# activation. It must keep the first question conversational without weakening boundary or stale-scope checks.
+$p16pa = New-Fixture -Working '' -LastAuth ''
+New-Spec -Proj $p16pa
+New-PreAgendaLensApplicability -Proj $p16pa
+New-HandoverSnapshot -Proj $p16pa -ChangedUserFiles 2
+$t16pa = New-Transcript -Proj $p16pa -Turns @(@{ role = 'assistant'; text = 'Who uses this product day to day, and what does the current workflow look like?' })
+$r16pa = Invoke-Conformance -Proj $p16pa -TranscriptPath $t16pa
+if ($r16pa.Blocked -or $r16pa.Out -match 'five-part context packet') { Fail "Case 16pa: strict pre-agenda product-domain state MUST leave the ordinary question visible. Out: $($r16pa.Out)" }
+$preAgendaHandoverPath = Join-Path $p16pa '.specrew\handover\workshop-question.json'
+if (-not (Test-Path -LiteralPath $preAgendaHandoverPath -PathType Leaf)) { Fail 'Case 16pa: pre-agenda question must persist bounded re-entry context' }
+$preAgendaHandover = Get-Content -LiteralPath $preAgendaHandoverPath -Raw | ConvertFrom-Json
+if ([string]$preAgendaHandover.scope -ne 'feature' -or [string]$preAgendaHandover.lens -ne 'product-domain' -or
+    @($preAgendaHandover.PSObject.Properties.Name) -notcontains 'artifact_path') {
+    Fail "Case 16pa: pre-agenda handover must retain exact feature/product-domain authority: $($preAgendaHandover | ConvertTo-Json -Compress)"
+}
+Write-Pass "Case 16pa: strict pre-agenda product-domain state suppresses the generic packet and retains exact re-entry context"
+
+$p16pb = New-Fixture -Working 'plan' -LastAuth 'clarify'
+New-Spec -Proj $p16pb
+New-PreAgendaLensApplicability -Proj $p16pb
+New-HandoverSnapshot -Proj $p16pb -ChangedUserFiles 2
+$r16pb = Invoke-Conformance -Proj $p16pb -TranscriptPath (New-Transcript -Proj $p16pb -Turns @(@{ role = 'assistant'; text = 'Who uses this product?' }))
+if (-not $r16pb.Blocked -or $r16pb.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 16pb: a lifecycle boundary MUST override pre-agenda state. Out: $($r16pb.Out)" }
+Write-Pass "Case 16pb: lifecycle boundary precedence is unchanged for pre-agenda state"
+
+$p16pc = New-Fixture -Working '' -LastAuth ''
+New-Spec -Proj $p16pc
+New-PreAgendaLensApplicability -Proj $p16pc -Selected @('architecture-core')
+New-HandoverSnapshot -Proj $p16pc -ChangedUserFiles 2
+$r16pc = Invoke-Conformance -Proj $p16pc -TranscriptPath (New-Transcript -Proj $p16pc -Turns @(@{ role = 'assistant'; text = 'Who uses this product?' }))
+if (-not $r16pc.Blocked -or $r16pc.Out -notmatch 'five-part context packet') { Fail "Case 16pc: malformed pending state with a selected lens MUST fail closed. Out: $($r16pc.Out)" }
+Write-Pass "Case 16pc: malformed pre-agenda transition cannot suppress ordinary material Stop enforcement"
+
+$p16pd = New-Fixture -Working '' -LastAuth ''
+New-Spec -Proj $p16pd
+New-PreAgendaLensApplicability -Proj $p16pd
+New-Item -ItemType Directory -Path (Join-Path $p16pd 'specs\050-host-neutral-gate\iterations\001') -Force | Out-Null
+New-HandoverSnapshot -Proj $p16pd -ChangedUserFiles 2
+$r16pd = Invoke-Conformance -Proj $p16pd -TranscriptPath (New-Transcript -Proj $p16pd -Turns @(@{ role = 'assistant'; text = 'Who uses this product?' }))
+if (-not $r16pd.Blocked -or $r16pd.Out -notmatch 'five-part context packet') { Fail "Case 16pd: on-disk lifecycle activation MUST invalidate feature pre-agenda suppression. Out: $($r16pd.Out)" }
+Write-Pass "Case 16pd: stale feature-level pre-agenda state fails closed after iteration activation"
 
 # ---- Case 16e2 / live Copilot regression: the rolling handover can legitimately carry the pre-intake
 # placeholder `(no active feature)`. It is context, not an identity. With exactly one durable feature workshop,

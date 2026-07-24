@@ -28,6 +28,10 @@ Assert-True ($canonical -eq $mirror) 'canonical and project-side design-workshop
 Assert-True ($canonical -match '(?m)^claude-disallowed-tools:\s*AskUserQuestion\s*$') 'canonical skill declares Claude-only AskUserQuestion removal'
 Assert-True ($canonical -notmatch '(?m)^disallowed-tools:\s*AskUserQuestion\s*$') 'canonical skill does not disable another host before materialization'
 Assert-True ($canonical -match '(?i)numbered prose list answered by typing') 'workshop conduct tells Claude to use visible typed choices'
+Assert-True ($canonical -match 'initialize-workshop-controller-state\.ps1') 'workshop conduct initializes durable controller state before the first product-domain question'
+Assert-True ($canonical -match 'agenda_status:\s*pending-confirmation') 'workshop conduct names the strict pre-agenda state'
+Assert-True ($canonical -match 'agenda_status:\s*confirmed') 'workshop conduct requires an explicit confirmed-agenda transition'
+Assert-True ($canonical -match '(?i)refuses to overwrite an existing artifact') 'workshop conduct preserves existing controller state on resume'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force

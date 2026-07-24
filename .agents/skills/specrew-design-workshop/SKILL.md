@@ -77,6 +77,15 @@ phase — the pre-technical product/problem grounding. It is **always applicable
 before any technical lens or the applicability questionnaire. It is NOT a row in
 `applicability-map.json`; it is the first-stage phase ahead of the deterministic selector.
 
+0. **Establish durable pre-agenda controller state before the first product-domain question.** Immediately
+   after the feature scaffold creates its nonempty `spec.md`, and only when the feature-level
+   `lens-applicability.json` is absent, run:
+   `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/initialize-workshop-controller-state.ps1 -ProjectRoot . -FeatureRef <exact-feature-ref>`.
+   The helper atomically writes the strict feature-only `agenda_status: pending-confirmation` shape with empty
+   `selected` and `workshop` collections. It refuses to overwrite an existing artifact. On resume, read and
+   honor the existing exact-scoped artifact instead of rerunning the helper. This is controller truth for the
+   product-domain and agenda-confirmation questions; it is not a hidden model marker, environment variable, or
+   transcript heuristic.
 1. **Load the lens** `design-lenses/product-domain.md` for its decision areas, depth model,
    evidence vocabulary, run cadence, and conduct.
 2. **Select the depth** (Light / Standard / Deep) by **risk and novelty**, and say why. A tiny
@@ -180,11 +189,12 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    render numbered typed choices in prose and wait for the human; on another host, a structured confirm menu may
    reference the already-visible block.
    **The moment the human confirms the agenda, PERSIST it (F-174 — before opening lens 1):** write the
-   feature-level `lens-applicability.json` NOW with `workshop_intake: true`, `confirmation_required: true`, and
-   the confirmed `selected` lens-id list (the per-lens `workshop` records are added later, as each lens completes
-   per step 6). A resume can only compute the remaining agenda if the agenda itself is on disk; an agenda that
-   lives only in the scrollback is lost on exit (observed: an unpersisted agenda made a resuming host re-run
-   specify instead of continuing the workshop).
+   feature-level `lens-applicability.json` NOW by replacing the pre-agenda shape with
+   `workshop_intake: true`, `confirmation_required: true`, `agenda_status: confirmed`, and the confirmed
+   nonempty `selected` lens-id list (the per-lens `workshop` records are added later, as each lens completes per
+   step 6). A resume can only compute the remaining agenda if the agenda itself is on disk; an agenda that lives
+   only in the scrollback is lost on exit (observed: an unpersisted agenda made a resuming host re-run specify
+   instead of continuing the workshop).
    **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
    lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
    all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as
@@ -204,15 +214,17 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
    and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
    **Keep the controller-owned workshop state durable and complete (FR-055/FR-056).** Before you stop and wait
-   for an answer, ensure the applicability artifact for the CURRENT workshop scope exists and reflects the current
-   confirmed agenda. During specify/intake, authority is the feature-level
+   for an answer, ensure the applicability artifact for the CURRENT workshop scope exists and reflects either
+   the strict feature-level pre-agenda state or the current confirmed agenda. During specify/intake, authority is
+   the feature-level
    `specs/<feature>/lens-applicability.json`; during design analysis it is the exact iteration's
    `specs/<feature>/iterations/<NNN>/lens-applicability.json`. Never invent an iteration during feature intake.
    Do not rely on a model-authored hidden marker, an environment variable, or a host question-tool transcript:
    hosts can omit, transform, or swallow those surfaces. The Stop controller derives `active` only from the exact
-   scoped artifact's nonempty, unique selected agenda and its strict ordered completion records. While that state
-   is valid and incomplete, ordinary lens questions remain conversational and the generic five-section
-   non-boundary packet is suppressed; a real lifecycle boundary still has precedence.
+   scoped artifact: either its strict feature-only `pending-confirmation` shape with a valid scaffolded spec, or
+   its confirmed nonempty, unique selected agenda and strict ordered completion records. While that state is
+   valid and incomplete, ordinary product-domain, agenda, and lens questions remain conversational and the
+   generic five-section non-boundary packet is suppressed; a real lifecycle boundary still has precedence.
    **Finish each lens durably in this order:** write the nonempty `workshop/<lens-id>.md` decision record first,
    then persist that lens's full step-6 entry with `moved_on: true`. On the final selected lens, that second write
    makes the workshop `complete` and ordinary Stop behavior resumes immediately. A loose flag, missing record,
@@ -308,7 +320,8 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      MUST still confirm the responsibilities and flows with them, not author them silently.
 6. **Capture the agreements (A4/A6/SC-021/SC-025).**
    - Per-lens workshop record in the feature-level `lens-applicability.json` — set `workshop_intake: true`,
-     `confirmation_required: true`, the `selected` lens-id list, and a SINGLE top-level `workshop` object
+     `confirmation_required: true`, `agenda_status: confirmed`, the `selected` lens-id list, and a SINGLE
+     top-level `workshop` object
      **keyed by lens id**, each value carrying the EXACT fields the gate checks: `agenda` (array of questions
      raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
      **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
@@ -320,7 +333,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      match exactly; the controller stops on a conflict before the workshop can finish.
 
       ```json
-      { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
+      { "workshop_intake": true, "confirmation_required": true, "agenda_status": "confirmed", "selected": ["architecture-core"],
         "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question", "bindings": { "article-initiation": "on-demand" } } } }
       ```
 

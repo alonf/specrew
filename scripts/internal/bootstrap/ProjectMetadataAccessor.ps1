@@ -295,6 +295,7 @@ function Get-SpecrewWorkshopLifecycleState {
             [string[]] $Completed = @(),
             [string[]] $Remaining = @(),
             [AllowNull()][string] $CurrentLens = $null,
+            [AllowNull()][string] $AgendaStatus = $null,
             [AllowNull()]$BindingConflict = $null
         )
         [pscustomobject]@{
@@ -309,6 +310,7 @@ function Get-SpecrewWorkshopLifecycleState {
             completed        = @($Completed)
             remaining        = @($Remaining)
             current_lens     = $CurrentLens
+            agenda_status    = $AgendaStatus
             binding_conflict = $BindingConflict
         }
     }
@@ -340,31 +342,73 @@ function Get-SpecrewWorkshopLifecycleState {
             }
         }
 
+        # A new feature enters the workshop before a technical-lens agenda exists: product-domain questions run
+        # first, and only their answers make the agenda informed. That phase still needs durable controller truth
+        # so an ordinary question is not mistaken for a generic material-work stop. `pending-confirmation` is a
+        # deliberately narrow feature-only shape. Once the human confirms the agenda, the writer changes it to
+        # `confirmed` and supplies the ordinary nonempty selected list. Artifacts that predate this field remain
+        # compatible and are treated as confirmed.
+        $agendaStatus = 'confirmed'
+        $agendaStatusProperty = $applicability.PSObject.Properties['agenda_status']
+        if ($agendaStatusProperty) {
+            if ($agendaStatusProperty.Value -isnot [string] -or
+                [string]$agendaStatusProperty.Value -cnotin @('pending-confirmation', 'confirmed')) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-status-invalid'
+            }
+            $agendaStatus = [string]$agendaStatusProperty.Value
+        }
+
         $selectedProperty = $applicability.PSObject.Properties['selected']
         if (-not $selectedProperty -or $selectedProperty.Value -isnot [System.Array]) {
-            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-invalid'
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-invalid' -AgendaStatus $agendaStatus
         }
         $selected = @($selectedProperty.Value | ForEach-Object { [string]$_ })
-        if ($selected.Count -eq 0) {
-            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-empty'
-        }
-        $seenSelected = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-        foreach ($lens in $selected) {
-            if ($lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$' -or -not $seenSelected.Add($lens)) {
-                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-lens-invalid' -Selected $selected
-            }
-        }
 
         $workshopProperty = $applicability.PSObject.Properties['workshop']
         if (-not $workshopProperty -or $null -eq $workshopProperty.Value -or
             $workshopProperty.Value -is [System.Array] -or $workshopProperty.Value -is [string] -or
             $workshopProperty.Value -is [ValueType]) {
-            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-map-invalid' -Selected $selected
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-map-invalid' -Selected $selected -AgendaStatus $agendaStatus
         }
         $records = $workshopProperty.Value
+
+        if ($agendaStatus -eq 'pending-confirmation') {
+            if ($scope -ne 'feature') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-iteration-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            if ($selected.Count -ne 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-selected-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            if (@($records.PSObject.Properties).Count -ne 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-records-invalid' -AgendaStatus $agendaStatus
+            }
+
+            $specPath = Join-Path $featureRoot 'spec.md'
+            if (-not (Test-Path -LiteralPath $specPath -PathType Leaf)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-spec-missing' -AgendaStatus $agendaStatus
+            }
+            $specItem = Get-Item -LiteralPath $specPath -ErrorAction Stop
+            if ($specItem.Length -le 0 -or $specItem.Length -gt 1048576) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-spec-size-invalid' -AgendaStatus $agendaStatus
+            }
+
+            return New-WorkshopStateResult -Status 'active' -Reason 'workshop-pre-agenda-active' `
+                -Remaining @('product-domain') -CurrentLens 'product-domain' -AgendaStatus $agendaStatus
+        }
+
+        if ($selected.Count -eq 0) {
+            return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-empty' -AgendaStatus $agendaStatus
+        }
+        $seenSelected = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($lens in $selected) {
+            if ($lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$' -or -not $seenSelected.Add($lens)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-lens-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+        }
+
         foreach ($recordProperty in $records.PSObject.Properties) {
             if ([string]$recordProperty.Name -cnotin $selected) {
-                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-not-selected' -Selected $selected
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-not-selected' -Selected $selected -AgendaStatus $agendaStatus
             }
         }
 
@@ -440,9 +484,9 @@ function Get-SpecrewWorkshopLifecycleState {
         }
 
         if ($remaining.Count -eq 0) {
-            return New-WorkshopStateResult -Status 'complete' -Reason 'workshop-complete' -Selected $selected -Completed $completed.ToArray()
+            return New-WorkshopStateResult -Status 'complete' -Reason 'workshop-complete' -Selected $selected -Completed $completed.ToArray() -AgendaStatus $agendaStatus
         }
-        return New-WorkshopStateResult -Status 'active' -Reason 'workshop-active' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray() -CurrentLens $remaining[0]
+        return New-WorkshopStateResult -Status 'active' -Reason 'workshop-active' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray() -CurrentLens $remaining[0] -AgendaStatus $agendaStatus
     }
     catch {
         return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-state-unreadable'
