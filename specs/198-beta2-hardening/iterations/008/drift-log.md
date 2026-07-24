@@ -1152,6 +1152,26 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   `& pwsh` call. The focused distribution-update suite completed through its final `specrew start` assertion, and
   the same suite passed inside the complete 78-suite live-console registry.
 
+### DRIFT-198-I008-059 — concurrent bootstrap journal appends could lose forensic rows
+
+- **Status**: corrected locally; focused Windows/WSL contention proofs and all 78 registry suites pass; exact-head
+  CI pending
+- **Severity**: release-blocking exact-head CI regression
+- **Type**: cross-process observability write race
+- **Requirements**: NFR-002, NFR-007; Beta2 manual-test acceptance
+- **Observed evidence**: exact-head Specrew CI run `30053402988` passed the complete 78-suite Feature 198 registry,
+  then failed `HookRenderDedupe.Tests.ps1` at I3b. Both concurrent missing-session providers rendered, but their
+  shared JSONL journal did not retain two valid per-launch rows. `Invoke-SpecrewSessionBootstrap` used
+  unsynchronized `Add-Content`, so simultaneous hook processes could race while appending forensic evidence.
+- **Tracking**: GitHub issue #3103.
+- **Correction**: the bootstrap journal accessor now takes an atomic `CreateNew` sidecar claim, seeks to EOF, and
+  writes one UTF-8 JSONL record. Contention retries within a named one-second maximum; exhaustion remains
+  advisory/fail-open. Claims older than the crash threshold are reclaimed by atomic rename, and normal or recovered
+  writes leave no lock, quarantine, or temporary artifact.
+- **Paired evidence**: the provider race now requires two present, parseable, distinct fallback-token rows. A
+  16-writer direct stress fixture proves no row is lost or duplicated, and an intentionally held journal proves
+  bounded fail-open exhaustion followed by successful recovery.
+
 ### Resolution Strategies
 
 The following resolution strategies remain available if drift is detected later in execution:

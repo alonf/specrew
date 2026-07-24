@@ -8,6 +8,7 @@ $base = "$PSScriptRoot/../../scripts/internal/bootstrap"
 . "$base/ClassificationEngine.ps1"
 . "$base/ValidationEngine.ps1"
 . "$base/DirectiveEngine.ps1"
+. "$base/HookJournalAccessor.ps1"
 . "$base/SessionBootstrapManager.ps1"
 
 function Assert-Equal {

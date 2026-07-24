@@ -8,8 +8,10 @@
 $ErrorActionPreference = 'Stop'
 
 . "$PSScriptRoot/../../scripts/internal/bootstrap/LauncherIntegration.ps1"
+. "$PSScriptRoot/../../scripts/internal/bootstrap/HookJournalAccessor.ps1"
 $provider = (Resolve-Path "$PSScriptRoot/../../scripts/internal/specrew-bootstrap-provider.ps1").Path
 $accessor = (Resolve-Path "$PSScriptRoot/../../scripts/internal/bootstrap/LauncherIntegration.ps1").Path
+$journalAccessor = (Resolve-Path "$PSScriptRoot/../../scripts/internal/bootstrap/HookJournalAccessor.ps1").Path
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -91,8 +93,70 @@ try {
     Assert-Equal $nsRenders 2 'I3a: two concurrent missing-id fires BOTH render (per-launch fallback keys, never shared suppression)'
     $nsRows = @(Get-Content -LiteralPath (Join-Path $tmp2 '.specrew/runtime/bootstrap-journal.jsonl') | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
     $nsKeys = @($nsRows | ForEach-Object { [string]$_.dedupe_key })
-    Assert-True (($nsKeys | Where-Object { $_ -match '^launch-[a-f0-9]{32}$' }).Count -eq 2) 'I3b: missing-id journal rows use per-launch fallback tokens'
-    Assert-True (-not ($nsKeys -contains 'no-session') -and -not ($nsKeys -contains 'unknown')) 'I3c: missing-id journal rows avoid no-session/unknown buckets'
+    Assert-Equal $nsRows.Count 2 'I3b: both concurrent missing-id fires retain one forensic journal row'
+    Assert-True ((@($nsKeys | Where-Object { $_ -notmatch '^launch-[a-f0-9]{32}$' })).Count -eq 0) 'I3c: missing-id journal rows use per-launch fallback tokens'
+    Assert-Equal (@($nsKeys | Sort-Object -Unique).Count) 2 'I3d: concurrent missing-id journal rows retain distinct per-launch tokens'
+    Assert-True (-not ($nsKeys -contains 'no-session') -and -not ($nsKeys -contains 'unknown')) 'I3e: missing-id journal rows avoid no-session/unknown buckets'
+
+    # I4: exercise the accessor directly with more simultaneous writers. Every unique row must remain parseable
+    # and present; this is the production defect that an unsynchronized Add-Content append made intermittent.
+    $stressJournal = Join-Path $tmp2 '.specrew/runtime/bootstrap-journal-stress.jsonl'
+    $journalJob = {
+        param($AccessorPath, $JournalPath, $Index)
+        . $AccessorPath
+        Add-SpecrewBootstrapJournalRecord -JournalPath $JournalPath -Record ([pscustomobject]@{
+            dedupe_key = "stress-$Index"
+            source = 'startup'
+        })
+    }
+    $journalJobs = 1..16 | ForEach-Object {
+        Start-Job -ScriptBlock $journalJob -ArgumentList $journalAccessor, $stressJournal, $_
+    }
+    $null = $journalJobs | Wait-Job
+    $journalResults = @($journalJobs | Receive-Job)
+    $journalJobs | Remove-Job -Force
+    Assert-Equal (@($journalResults | Where-Object { $_ -eq $true }).Count) 16 'I4a: all concurrent bounded journal appends succeed'
+    $stressRows = @(Get-Content -LiteralPath $stressJournal | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    Assert-Equal $stressRows.Count 16 'I4b: all concurrent journal rows remain present and parseable'
+    Assert-Equal (@($stressRows.dedupe_key | Sort-Object -Unique).Count) 16 'I4c: concurrent journal rows are not overwritten or duplicated'
+
+    # I5: a genuinely unavailable journal claim is bounded and fail-open, then recovers once contention ends.
+    $boundedJournal = Join-Path $tmp2 '.specrew/runtime/bootstrap-journal-bounded.jsonl'
+    $boundedClaim = "$boundedJournal.append.lock"
+    $heldClaim = [System.IO.File]::Open(
+        $boundedClaim,
+        [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::None
+    )
+    try {
+        Assert-True (Test-Path -LiteralPath $boundedClaim -PathType Leaf) 'I5a: the competing process owns the journal claim'
+        $watch = [System.Diagnostics.Stopwatch]::StartNew()
+        $boundedResult = Add-SpecrewBootstrapJournalRecord -JournalPath $boundedJournal -Record ([pscustomobject]@{ dedupe_key = 'blocked' }) -RetryCount 3 -RetryDelayMilliseconds 10
+        $watch.Stop()
+        Assert-True (-not $boundedResult) 'I5b: exhausted journal contention fails open'
+        Assert-True ($watch.ElapsedMilliseconds -lt 1000) 'I5c: exhausted journal contention returns within its bounded allowance'
+    }
+    finally {
+        $heldClaim.Dispose()
+        Remove-Item -LiteralPath $boundedClaim -Force -ErrorAction SilentlyContinue
+    }
+    Assert-True (Add-SpecrewBootstrapJournalRecord -JournalPath $boundedJournal -Record ([pscustomobject]@{ dedupe_key = 'recovered' })) 'I5d: journal append recovers after contention ends'
+    $boundedRows = @(Get-Content -LiteralPath $boundedJournal | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    Assert-Equal $boundedRows.Count 1 'I5e: only the recovered record is persisted'
+    Assert-Equal $boundedRows[0].dedupe_key 'recovered' 'I5f: the recovered record remains parseable and exact'
+    Assert-True (-not (Test-Path -LiteralPath $boundedClaim) -and @(Get-ChildItem -LiteralPath (Split-Path -Parent $boundedJournal) -Filter '*.tmp' -File -ErrorAction SilentlyContinue).Count -eq 0) 'I5g: bounded append leaves no lock or temp residue'
+
+    # I6: a dead provider's old claim is reclaimed without human cleanup.
+    $staleJournal = Join-Path $tmp2 '.specrew/runtime/bootstrap-journal-stale.jsonl'
+    $staleClaim = "$staleJournal.append.lock"
+    Set-Content -LiteralPath $staleClaim -Value 'dead-owner'
+    (Get-Item -LiteralPath $staleClaim).LastWriteTimeUtc = [DateTime]::UtcNow.AddSeconds(-10)
+    Assert-True (Add-SpecrewBootstrapJournalRecord -JournalPath $staleJournal -Record ([pscustomobject]@{ dedupe_key = 'after-crash' }) -StaleClaimSeconds 1) 'I6a: a stale crashed-writer claim is reclaimed'
+    $staleRows = @(Get-Content -LiteralPath $staleJournal | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    Assert-Equal $staleRows.Count 1 'I6b: stale-claim recovery persists one valid record'
+    Assert-Equal $staleRows[0].dedupe_key 'after-crash' 'I6c: stale-claim recovery preserves the exact record'
+    Assert-True (-not (Test-Path -LiteralPath $staleClaim) -and @(Get-ChildItem -LiteralPath (Split-Path -Parent $staleJournal) -Filter '*.stale.*' -File -ErrorAction SilentlyContinue).Count -eq 0) 'I6d: stale-claim recovery leaves no claim or quarantine residue'
 }
 finally {
     Get-Job -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue
