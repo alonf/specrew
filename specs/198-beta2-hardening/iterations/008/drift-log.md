@@ -1156,8 +1156,8 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
 
 ### DRIFT-198-I008-059 — concurrent bootstrap journal appends could lose forensic rows
 
-- **Status**: corrected locally; focused Windows/WSL contention proofs and all 78 registry suites pass; exact-head
-  CI pending
+- **Status**: correction strengthened locally after exact-head Linux starvation; focused contention proof and
+  exact-head CI pending
 - **Severity**: release-blocking exact-head CI regression
 - **Type**: cross-process observability write race
 - **Requirements**: NFR-002, NFR-007; Beta2 manual-test acceptance
@@ -1165,14 +1165,19 @@ run 11 approved reviewed commit `9a6b88540088be2ff82fec145079b3f8765e863e` / dig
   then failed `HookRenderDedupe.Tests.ps1` at I3b. Both concurrent missing-session providers rendered, but their
   shared JSONL journal did not retain two valid per-launch rows. `Invoke-SpecrewSessionBootstrap` used
   unsynchronized `Add-Content`, so simultaneous hook processes could race while appending forensic evidence.
-- **Tracking**: GitHub issue #3103.
-- **Correction**: the bootstrap journal accessor now takes an atomic `CreateNew` sidecar claim, seeks to EOF, and
-  writes one UTF-8 JSONL record. Contention retries within a named one-second maximum; exhaustion remains
-  advisory/fail-open. Claims older than the crash threshold are reclaimed by atomic rename, and normal or recovered
-  writes leave no lock, quarantine, or temporary artifact.
-- **Paired evidence**: the provider race now requires two present, parseable, distinct fallback-token rows. A
-  16-writer direct stress fixture proves no row is lost or duplicated, and an intentionally held journal proves
-  bounded fail-open exhaustion followed by successful recovery.
+- **Tracking**: GitHub issue #3103; exact-head residual reproduced in run `30132871347` and was temporarily
+  captured as #3105 before reconciliation back to the original defect.
+- **Correction**: the bootstrap journal accessor takes an atomic `CreateNew` sidecar claim, seeks to EOF, and
+  writes one UTF-8 JSONL record. The first correction used a one-second fixed-interval retry allowance; exact-head
+  Linux CI later proved that 16 synchronized processes could starve one writer through that ceiling (15/16
+  succeeded). The strengthened policy retains a finite allowance but extends it to 120 attempts and adds
+  deterministic per-process/attempt jitter so contenders do not remain phase-aligned. Explicit small allowances
+  still fail open promptly. Claims older than the crash threshold are reclaimed by atomic rename, and normal or
+  recovered writes leave no lock, quarantine, or temporary artifact.
+- **Paired evidence**: the provider race requires two present, parseable, distinct fallback-token rows. A
+  16-writer direct stress fixture proves no row is lost or duplicated; a ready-signaled child now waits behind a
+  live owner for 1.25 seconds (beyond the former ceiling) and must persist after release; and an intentionally held
+  journal with an explicit three-attempt allowance proves prompt fail-open exhaustion followed by recovery.
 
 ### DRIFT-198-I008-060 — product-domain questions had no pre-agenda controller state
 

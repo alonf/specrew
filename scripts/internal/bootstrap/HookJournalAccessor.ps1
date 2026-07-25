@@ -29,8 +29,9 @@ function Add-SpecrewBootstrapJournalRecord {
     .DESCRIPTION
       Atomically creates a short-lived sidecar claim, seeks the journal to EOF, and writes one UTF-8
       JSONL record. CreateNew is the same cross-platform single-winner primitive used by the render
-      claim. A competing writer retries within one short bounded allowance, and a claim older than the
-      stale threshold is reclaimed by atomic rename. The journal is advisory, so exhaustion or an
+      claim. A competing writer retries within one short bounded allowance with per-process jitter so
+      simultaneous providers do not remain phase-aligned and starve one contender. A claim older than
+      the stale threshold is reclaimed by atomic rename. The journal is advisory, so exhaustion or an
       unexpected I/O failure returns false instead of blocking or failing the host bootstrap.
     #>
     [CmdletBinding()]
@@ -38,7 +39,7 @@ function Add-SpecrewBootstrapJournalRecord {
     param(
         [Parameter(Mandatory)][string] $JournalPath,
         [Parameter(Mandatory)][psobject] $Record,
-        [Parameter()][ValidateRange(1, 1000)][int] $RetryCount = 40,
+        [Parameter()][ValidateRange(1, 1000)][int] $RetryCount = 120,
         [Parameter()][ValidateRange(0, 1000)][int] $RetryDelayMilliseconds = 25,
         [Parameter()][ValidateRange(1, 3600)][int] $StaleClaimSeconds = 30
     )
@@ -91,7 +92,12 @@ function Add-SpecrewBootstrapJournalRecord {
 
                 if ($attempt -ge ($RetryCount - 1)) { return $false }
                 if ($RetryDelayMilliseconds -gt 0) {
-                    Start-Sleep -Milliseconds $RetryDelayMilliseconds
+                    # A fixed interval keeps simultaneous processes phase-aligned: the same unlucky writer
+                    # can lose every CreateNew race until its allowance expires. PID + attempt yields a
+                    # deterministic cross-process jitter without creating another shared resource.
+                    $jitterWindow = [Math]::Min(25, $RetryDelayMilliseconds)
+                    $jitter = [Math]::Abs(($PID + (17 * $attempt)) % ($jitterWindow + 1))
+                    Start-Sleep -Milliseconds ($RetryDelayMilliseconds + $jitter)
                 }
             }
             catch { return $false }

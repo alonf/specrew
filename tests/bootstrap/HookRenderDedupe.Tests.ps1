@@ -120,6 +120,46 @@ try {
     Assert-Equal $stressRows.Count 16 'I4b: all concurrent journal rows remain present and parseable'
     Assert-Equal (@($stressRows.dedupe_key | Sort-Object -Unique).Count) 16 'I4c: concurrent journal rows are not overwritten or duplicated'
 
+    # The original one-second fixed-interval allowance could starve one Linux writer under a 16-process
+    # burst. Prove the production default survives a live owner beyond that old ceiling, then succeeds
+    # after release. The ready marker starts the hold only after the child is actually contending.
+    $delayedJournal = Join-Path $tmp2 '.specrew/runtime/bootstrap-journal-delayed.jsonl'
+    $delayedClaim = "$delayedJournal.append.lock"
+    $delayedReady = Join-Path $tmp2 '.specrew/runtime/bootstrap-journal-delayed.ready'
+    $delayedClaimStream = [System.IO.File]::Open(
+        $delayedClaim,
+        [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::None
+    )
+    $delayedJob = Start-Job -ScriptBlock {
+        param($AccessorPath, $JournalPath, $ReadyPath)
+        . $AccessorPath
+        [System.IO.File]::WriteAllText($ReadyPath, 'ready')
+        Add-SpecrewBootstrapJournalRecord -JournalPath $JournalPath -Record ([pscustomobject]@{
+            dedupe_key = 'delayed-writer'
+            source = 'startup'
+        })
+    } -ArgumentList $journalAccessor, $delayedJournal, $delayedReady
+    try {
+        $readyWatch = [System.Diagnostics.Stopwatch]::StartNew()
+        while (-not [System.IO.File]::Exists($delayedReady) -and $readyWatch.ElapsedMilliseconds -lt 10000) {
+            Start-Sleep -Milliseconds 10
+        }
+        Assert-True ([System.IO.File]::Exists($delayedReady)) 'I4d: delayed writer reaches the held claim'
+        Start-Sleep -Milliseconds 1250
+    }
+    finally {
+        $delayedClaimStream.Dispose()
+        Remove-Item -LiteralPath $delayedClaim -Force -ErrorAction SilentlyContinue
+    }
+    $null = $delayedJob | Wait-Job
+    $delayedResult = @($delayedJob | Receive-Job)
+    $delayedJob | Remove-Job -Force
+    Assert-Equal (@($delayedResult | Where-Object { $_ -eq $true }).Count) 1 'I4e: default bounded retry survives contention beyond the old one-second ceiling'
+    $delayedRows = @(Get-Content -LiteralPath $delayedJournal | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    Assert-Equal $delayedRows.Count 1 'I4f: delayed retry persists one parseable row after release'
+
     # I5: a genuinely unavailable journal claim is bounded and fail-open, then recovers once contention ends.
     $boundedJournal = Join-Path $tmp2 '.specrew/runtime/bootstrap-journal-bounded.jsonl'
     $boundedClaim = "$boundedJournal.append.lock"
