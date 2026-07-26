@@ -1,27 +1,106 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Get-SpecrewReviewRuntimeBundleSha256 {
+function Test-SpecrewReviewRuntimePathUnderRoot {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Root)
+    $pathFull = [IO.Path]::GetFullPath($Path).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $comparison = if ([OperatingSystem]::IsWindows()) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    return $pathFull.Equals($rootFull, $comparison) -or $pathFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, $comparison)
+}
+
+function Get-SpecrewReviewRuntimeManagedTextSha256 {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "review-runtime-managed-file-link-unsupported:$Path"
+    }
+    $content = [IO.File]::ReadAllText($item.FullName, [Text.Encoding]::UTF8)
+    $normalized = $content.Replace("`r`n", "`n").Replace("`r", "`n")
+    return [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($normalized))
+    ).ToLowerInvariant()
+}
+
+function ConvertTo-SpecrewReviewRuntimeManagedFileManifest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RuntimeRoot,
+        [AllowNull()]$ManagedFiles
+    )
+
+    $root = [IO.Path]::GetFullPath($RuntimeRoot)
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $normalized = [Collections.Generic.List[object]]::new()
+    foreach ($entry in @($ManagedFiles)) {
+        if ($null -eq $entry -or -not $entry.PSObject.Properties['path'] -or -not $entry.PSObject.Properties['sha256']) {
+            throw 'review-runtime-managed-manifest-entry-invalid'
+        }
+        $relative = ([string]$entry.path -replace '\\', '/').Trim()
+        if ([string]::IsNullOrWhiteSpace($relative) -or $relative.StartsWith('/') -or
+            $relative -match '^[A-Za-z]:' -or @($relative -split '/' | Where-Object { $_ -ceq '..' }).Count -gt 0) {
+            throw "review-runtime-managed-path-unsafe:$relative"
+        }
+        $full = [IO.Path]::GetFullPath((Join-Path $root $relative))
+        if (-not (Test-SpecrewReviewRuntimePathUnderRoot -Path $full -Root $root) -or $full -ceq $root) {
+            throw "review-runtime-managed-path-unsafe:$relative"
+        }
+        if (-not $seen.Add($relative)) { throw "review-runtime-managed-path-duplicate:$relative" }
+        $sha256 = [string]$entry.sha256
+        if ($sha256 -cnotmatch '^[a-f0-9]{64}$') { throw "review-runtime-managed-hash-invalid:$relative" }
+        $normalized.Add([pscustomobject][ordered]@{ path = $relative; sha256 = $sha256 }) | Out-Null
+    }
+    return @($normalized | Sort-Object path)
+}
+
+function Get-SpecrewReviewRuntimeManagedFileManifest {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$RuntimeRoot)
 
     $root = (Resolve-Path -LiteralPath $RuntimeRoot -ErrorAction Stop).Path
-    $files = @(Get-ChildItem -LiteralPath $root -File -Recurse | Where-Object {
-        $_.Name -cne '.specrew-runtime.json'
-    } | Sort-Object {
-        ([IO.Path]::GetRelativePath($root, $_.FullName) -replace '\\', '/')
-    })
+    $manifest = foreach ($file in @(Get-ChildItem -LiteralPath $root -File -Recurse -Force | Where-Object {
+                $_.Name -cne '.specrew-runtime.json'
+            } | Sort-Object {
+                ([IO.Path]::GetRelativePath($root, $_.FullName) -replace '\\', '/')
+            })) {
+        $relative = ([IO.Path]::GetRelativePath($root, $file.FullName) -replace '\\', '/')
+        [pscustomobject][ordered]@{
+            path = $relative
+            sha256 = Get-SpecrewReviewRuntimeManagedTextSha256 -Path $file.FullName
+        }
+    }
+    return @(ConvertTo-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $root -ManagedFiles @($manifest))
+}
+
+function Get-SpecrewReviewRuntimeBundleSha256 {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RuntimeRoot,
+        [AllowNull()]$ManagedFiles
+    )
+
+    $root = (Resolve-Path -LiteralPath $RuntimeRoot -ErrorAction Stop).Path
+    $manifest = if ($PSBoundParameters.ContainsKey('ManagedFiles')) {
+        @(ConvertTo-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $root -ManagedFiles $ManagedFiles)
+    }
+    else {
+        @(Get-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $root)
+    }
     $hash = [Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA256)
     try {
-        foreach ($file in $files) {
-            $relative = ([IO.Path]::GetRelativePath($root, $file.FullName) -replace '\\', '/')
+        foreach ($entry in $manifest) {
+            $relative = [string]$entry.path
+            $full = [IO.Path]::GetFullPath((Join-Path $root $relative))
+            if (-not [IO.File]::Exists($full)) { throw "review-runtime-managed-file-missing:$relative" }
             $hash.AppendData([Text.Encoding]::UTF8.GetBytes($relative))
             $hash.AppendData([byte[]]@(0))
             # Managed deployment reads and rewrites runtime files as UTF-8 text.
             # Normalize line endings so an otherwise identical deployed engine does
             # not fail the handshake solely because of host checkout conventions or
             # a stripped UTF-8 BOM.
-            $content = [IO.File]::ReadAllText($file.FullName, [Text.Encoding]::UTF8)
+            $content = [IO.File]::ReadAllText($full, [Text.Encoding]::UTF8)
             $normalized = $content.Replace("`r`n", "`n").Replace("`r", "`n")
             $hash.AppendData([Text.Encoding]::UTF8.GetBytes($normalized))
             $hash.AppendData([byte[]]@(0))
@@ -53,15 +132,28 @@ function Resolve-SpecrewReviewEngineRoot {
     }
 
     $installedHash = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $installed
-    $projectHash = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $projectRuntime
     $markerPath = Join-Path $projectRuntime '.specrew-runtime.json'
     $marker = $null
+    $projectManagedFiles = $null
     if ([IO.File]::Exists($markerPath)) {
         try { $marker = [IO.File]::ReadAllText($markerPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -Depth 8 }
         catch { throw "review-engine-marker-invalid:${markerPath}:$($_.Exception.Message)" }
         if ([string]$marker.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$marker.runtime_bundle_sha256)) {
             throw "review-engine-marker-invalid:$markerPath"
         }
+        if ($marker.PSObject.Properties['managed_files']) {
+            $projectManagedFiles = @(
+                ConvertTo-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $projectRuntime -ManagedFiles $marker.managed_files
+            )
+        }
+    }
+    $projectHash = if ($null -ne $projectManagedFiles) {
+        Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $projectRuntime -ManagedFiles $projectManagedFiles
+    }
+    else {
+        Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $projectRuntime
+    }
+    if ($null -ne $marker) {
         if ([string]$marker.runtime_bundle_sha256 -cne $projectHash) {
             throw "review-engine-project-runtime-drifted: marker=$($marker.runtime_bundle_sha256); actual=$projectHash; run 'specrew update --project-path `"$project`"'"
         }

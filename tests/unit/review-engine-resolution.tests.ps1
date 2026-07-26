@@ -41,16 +41,23 @@ try {
     $matched = Resolve-SpecrewReviewEngineRoot -ProjectRoot $project -InstalledRuntimeRoot $installed
     Assert-True ($matched.source -ceq 'project-deployed') 'a hash-identical project runtime is the selected engine'
     Assert-True ($matched.bundle_sha256 -ceq $hash) 'selection reports the exact compared bundle hash'
+    Assert-True (-not $marker.Contains('managed_files')) 'legacy schema 1.0 markers remain supported during upgrade'
 
     $installedEngine = Join-Path $installed 'engine.ps1'
     $projectEngine = Join-Path $projectRuntime 'engine.ps1'
     [IO.File]::WriteAllText($installedEngine, "line-one`nline-two`n", [Text.UTF8Encoding]::new($false))
     [IO.File]::WriteAllText($projectEngine, "line-one`r`nline-two`r`n", [Text.UTF8Encoding]::new($true))
     $normalizedInstalledHash = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $installed
-    $normalizedProjectHash = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $projectRuntime
+    $managedFiles = @(Get-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $projectRuntime)
+    $normalizedProjectHash = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $projectRuntime -ManagedFiles $managedFiles
     Assert-True ($normalizedInstalledHash -ceq $normalizedProjectHash) 'runtime identity ignores managed-text BOM and line-ending normalization'
     $marker['runtime_bundle_sha256'] = $normalizedProjectHash
-    [IO.File]::WriteAllText((Join-Path $projectRuntime '.specrew-runtime.json'), ($marker | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+    $marker['managed_files'] = @($managedFiles)
+    [IO.File]::WriteAllText((Join-Path $projectRuntime '.specrew-runtime.json'), ($marker | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+
+    [IO.File]::WriteAllText((Join-Path $projectRuntime 'retired-stale.ps1'), 'old managed file', [Text.UTF8Encoding]::new($false))
+    $staleTolerant = Resolve-SpecrewReviewEngineRoot -ProjectRoot $project -InstalledRuntimeRoot $installed
+    Assert-True ($staleTolerant.source -ceq 'project-deployed') 'a manifest-bound runtime ignores preserved obsolete files outside the current managed set'
 
     [IO.File]::WriteAllText((Join-Path $projectRuntime 'engine.ps1'), 'project-newer-or-older', [Text.UTF8Encoding]::new($false))
     $driftMessage = ''
@@ -58,6 +65,20 @@ try {
     catch { $driftMessage = $_.Exception.Message }
     Assert-True ($driftMessage -like 'review-engine-project-runtime-drifted:*specrew update*') 'marker/content drift fails loudly with update guidance'
 
+    [IO.File]::WriteAllText($projectEngine, [IO.File]::ReadAllText($installedEngine), [Text.UTF8Encoding]::new($false))
+    $managedFiles = @(Get-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $projectRuntime |
+        Where-Object path -CNE 'retired-stale.ps1')
+    $marker['managed_files'] = @(
+        [pscustomobject]@{ path = '../outside.ps1'; sha256 = ('a' * 64) }
+    )
+    $marker['runtime_bundle_sha256'] = $normalizedInstalledHash
+    [IO.File]::WriteAllText((Join-Path $projectRuntime '.specrew-runtime.json'), ($marker | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+    $unsafeMessage = ''
+    try { Resolve-SpecrewReviewEngineRoot -ProjectRoot $project -InstalledRuntimeRoot $installed | Out-Null }
+    catch { $unsafeMessage = $_.Exception.Message }
+    Assert-True ($unsafeMessage -like 'review-runtime-managed-path-unsafe:*') 'an unsafe managed-file manifest fails closed'
+
+    [IO.File]::WriteAllText($projectEngine, 'project-newer-or-older', [Text.UTF8Encoding]::new($false))
     Remove-Item -LiteralPath (Join-Path $projectRuntime '.specrew-runtime.json') -Force
     $mismatchMessage = ''
     try { Resolve-SpecrewReviewEngineRoot -ProjectRoot $project -InstalledRuntimeRoot $installed | Out-Null }
@@ -67,6 +88,7 @@ try {
     $deploySource = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1') -Raw
     Assert-True ($deploySource -match '\.specrew-runtime\.json') 'init/update writes the review runtime marker'
     Assert-True ($deploySource -match 'Get-SpecrewReviewRuntimeBundleSha256') 'the marker binds the deployed runtime bundle'
+    Assert-True ($deploySource -match 'managed_files') 'init/update records explicit managed-file retirement provenance'
     Assert-True ($deploySource -match "\`$sourceVersion = 'unknown'") 'legacy update layouts can deploy without a colocated module manifest'
 }
 finally {
