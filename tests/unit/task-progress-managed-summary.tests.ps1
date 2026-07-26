@@ -129,6 +129,43 @@ try {
     }
     Write-Pass 'Case 4: a missing Execution Summary section is appended cleanly'
 
+    # ---- Case 5: task reconciliation is not lifecycle authority. Preserve an
+    #      already-authorized canonical phase even when blocked tasks remain.
+    $tasks['T003'].status = 'blocked'
+    $tasks['T003'].blocked_reason = 'waiting for release authority'
+    @(
+        '# Iteration State: 001'
+        ''
+        '**Schema**: v1'
+        '**Current Phase**: review-signoff'
+        '**Iteration Status**: executing'
+        '**Baseline Ref**: abc1234'
+        '**Updated**: 2026-07-14T09:00:00Z'
+        ''
+        '## Execution Summary'
+    ) -join [Environment]::NewLine | Set-Content -LiteralPath $statePath -Encoding UTF8
+    Invoke-Update
+    $after5 = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+    if ($after5 -notmatch '\*\*Current Phase\*\*:\s*review-signoff' -or
+        $after5 -match '\*\*Current Phase\*\*:\s*implement') {
+        Fail 'Case 5: task reconciliation regressed an authorized canonical lifecycle phase.'
+    }
+    Write-Pass 'Case 5: blocked task reconciliation preserves the authorized review-signoff phase'
+
+    # ---- Case 6: heal legacy/non-canonical task-progress state without
+    #      manufacturing a later human-authorized boundary.
+    $tasks['T003'].status = 'in-progress'
+    $tasks['T003'].blocked_reason = ''
+    $legacy = $after5 -replace '\*\*Current Phase\*\*:\s*review-signoff', '**Current Phase**: implement'
+    Set-Content -LiteralPath $statePath -Value $legacy -Encoding UTF8
+    Invoke-Update
+    $after6 = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+    if ($after6 -notmatch '\*\*Current Phase\*\*:\s*before-implement' -or
+        $after6 -match '\*\*Current Phase\*\*:\s*implement') {
+        Fail 'Case 6: non-canonical task-progress state was not healed safely.'
+    }
+    Write-Pass 'Case 6: legacy implement phase heals to canonical before-implement'
+
     Write-Host ''
     Write-Host '=== task-progress-managed-summary.tests.ps1: all assertions passed ===' -ForegroundColor Green
     exit 0

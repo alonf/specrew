@@ -36,19 +36,36 @@ persisted human path exclusions in both digest and materialization, and expose
 one exact composition manifest. Ensure the matching project engine performs
 the review and that Codex file delivery does not cause a duplicate invocation.
 
-## Scope
+## Scope Summary
 
-| Task | Finding/Proposal | Effort |
-| --- | --- | ---: |
-| T072 | Proposal 209 W1 timing | 0.5 |
-| T073 | Proposal 209 W2 bounded dispatch | 1.5 |
-| T074 | F13/F16 candidate inclusion/exclusion identity | 5.0 |
-| T075 | F12 Codex file-primary delivery | 1.5 |
-| T076 | F6 review-engine version handshake | 2.5 |
-| T077 | F15 consumer review-runtime classification | 0.5 |
-| T078 | Focused and frozen-evidence regression | 4.0 |
-| T079 | Full verification, independent review, expected rework | 4.5 |
-| **Total** | | **20.0** |
+Iteration 009 addresses the candidate-fidelity dependency first: F13/F16,
+F12, F6, and F15, plus Proposal 209 W1/W2. Review-finality and lifecycle
+semantics remain assigned to Iterations 010–012.
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
+| T072 | Proposal 209 W1 per-suite timing | P209-W1 | Verification cost | 0.5 | Implementer | tests/f198-regression-suite.ps1, tests/unit/regression-harness-isolation.tests.ps1 | done | Implementer | 0.5 | passed |
+| T073 | Proposal 209 W2 bounded parallel registry | P209-W2 | Verification cost | 1.5 | Implementer | tests/f198-regression-suite.ps1, tests/unit/regression-harness-isolation.tests.ps1 | done | Implementer | 1.5 | passed |
+| T074 | Canonical candidate inclusion and exclusion identity | F13, F16 | Candidate fidelity | 5.0 | Implementer | scripts/internal/continuous-co-review/reviewed-state-digest.ps1, scripts/internal/continuous-co-review/review-target-port.ps1, scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1, scripts/specrew-review.ps1, tests/continuous-co-review/** | done | Implementer | 5.0 | passed |
+| T075 | Codex file-primary delivery without duplicate invocation | F12 | Provider delivery | 1.5 | Implementer | scripts/internal/continuous-co-review/review-codex-harness-port.ps1, tests/continuous-co-review/** | done | Implementer | 1.5 | passed |
+| T076 | Review-engine version handshake | F6 | Runtime identity | 2.5 | Implementer | scripts/internal/review-engine-resolution.ps1, scripts/specrew-review.ps1, scripts/internal/distribution-module-init.ps1, tests/** | done | Implementer | 2.5 | passed |
+| T077 | Consumer review-runtime ignore classification | F15 | Consumer hygiene | 0.5 | Implementer | scripts/internal/file-classification.ps1, tests/** | done | Implementer | 0.5 | passed |
+| T078 | Candidate fidelity frozen-evidence regression | F13, F16 | Frozen replay | 4.0 | Implementer | specs/198-beta2-hardening/iterations/009/evidence/**, tests/continuous-co-review/** | done | Implementer | 4.0 | passed |
+| T079 | Integrated verification and independent review | F6, F12, F13, F15, F16, P209-W1, P209-W2 | Release confidence | 4.5 | Reviewer | tests/**, specs/198-beta2-hardening/iterations/009/** | in-progress | Reviewer | 4.0 | repeated registry and serial parity green; governance and independent review pending |
+
+## Effort Model
+
+| Setting | Value | Notes |
+| --- | --- | --- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Restored project baseline; the historical F197 override is discharged at this closeout. |
+| Iteration Bounding | scope | The approved finding cluster is fixed. |
+| Time Limit (hours) | n/a | Scope-bounded iteration. |
+| Overcommit Threshold | 1.0 | No overcommit allowed. |
+| Defer Strategy | manual | No approved finding is silently dropped. |
+| Calibration Enabled | true | Retro records engineering and verification variance. |
 
 ## Design Decisions
 

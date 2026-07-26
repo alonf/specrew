@@ -570,9 +570,33 @@ function Update-IterationStateFromTaskProgress {
     else {
         'not-started'
     }
-    $currentPhaseValue = if ($iterationStatus -eq 'not-started') { 'before-implement' } else { 'implement' }
-
     $lines = @(Get-Content -LiteralPath $statePath -Encoding UTF8)
+    $existingPhase = ''
+    foreach ($line in $lines) {
+        if ($line -match '^\*\*Current Phase\*\*:\s*(.+?)\s*$') {
+            $existingPhase = ([string]$Matches[1]).Trim().ToLowerInvariant()
+            break
+        }
+    }
+    # Task progress is evidence, not lifecycle authority. Never regress an
+    # already-authorized canonical phase (the dogfood release iteration was
+    # incorrectly rewritten from review-signoff to the non-canonical
+    # "implement"). When old/missing state has no canonical phase, heal it to
+    # the nearest valid working position without inventing a boundary verdict.
+    $canonicalPhases = @(
+        'specify', 'clarify', 'plan', 'tasks', 'before-implement',
+        'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout'
+    )
+    $currentPhaseValue = if ($existingPhase -in $canonicalPhases) {
+        $existingPhase
+    }
+    elseif ($iterationStatus -eq 'ready-for-review') {
+        'review-signoff'
+    }
+    else {
+        'before-implement'
+    }
+
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Current Phase' -Value $currentPhaseValue -AfterLabel 'Schema'
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Iteration Status' -Value $iterationStatus -AfterLabel 'Current Phase'
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Last Completed Task' -Value $lastCompletedValue -AfterLabel 'Iteration Status'
