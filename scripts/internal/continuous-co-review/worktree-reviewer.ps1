@@ -92,13 +92,20 @@ function Get-ContinuousCoReviewMachineryPaths {
         # path differs only by case - under-stripping real deployed machinery into the candidate.
         $ignored = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         try {
-            $stdin = ($candidates -join "`n") + "`n"
-            $output = $stdin | & git -C $RepoRoot check-ignore --stdin 2>$null
-            # exit 0 = some ignored, 1 = none ignored; anything else is a real failure.
-            if ($LASTEXITCODE -gt 1) { return @($candidates) }
-            foreach ($line in @($output)) {
-                $trimmed = ([string]$line).Trim().Replace('\', '/')
-                if (-not [string]::IsNullOrWhiteSpace($trimmed)) { $null = $ignored.Add($trimmed) }
+            # Pass paths as ARGUMENTS in chunks; never pipe them to git's stdin. Writing hundreds of
+            # paths in while git writes matches back deadlocks the moment its stdout buffer fills -
+            # the same pipe-deadlock class as DRIFT-198-I009-001, and it hung the Linux CI review
+            # suite silently with the process killed and no failing assertion.
+            for ($offset = 0; $offset -lt $candidates.Count; $offset += 100) {
+                $end = [Math]::Min($offset + 100, $candidates.Count) - 1
+                $chunk = @($candidates[$offset..$end])
+                $output = & git -C $RepoRoot check-ignore -- @chunk 2>$null
+                # exit 0 = some ignored, 1 = none ignored; anything else is a real failure.
+                if ($LASTEXITCODE -gt 1) { return @($candidates) }
+                foreach ($line in @($output)) {
+                    $trimmed = ([string]$line).Trim().Replace('\', '/')
+                    if (-not [string]::IsNullOrWhiteSpace($trimmed)) { $null = $ignored.Add($trimmed) }
+                }
             }
         }
         catch { return @($candidates) }

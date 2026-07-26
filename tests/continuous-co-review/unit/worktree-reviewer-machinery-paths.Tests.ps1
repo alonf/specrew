@@ -54,6 +54,40 @@ Describe 'worktree reviewer machinery path policy' {
         finally { Pop-Location }
     }
 
+    It 'never pipes paths into a git subprocess stdin' {
+        # Writing many paths to git's stdin while it writes matches back deadlocks once its stdout
+        # buffer fills - the same class as DRIFT-198-I009-001. It hung the Linux CI review suite
+        # silently: process killed, no failing assertion. Paths go as chunked ARGUMENTS instead.
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
+        $source | Should -Not -Match 'check-ignore --stdin'
+        $source | Should -Not -Match '\$stdin\s*\|\s*&\s*git'
+        $source | Should -Match 'check-ignore -- @chunk'
+    }
+
+    It 'still filters ignored trees when the candidate list exceeds one chunk' {
+        $repo = Join-Path $TestDrive 'chunked-ignore-project'
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        Push-Location $repo
+        try {
+            git init --quiet 2>&1 | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo '.gitignore') -Value ".scratch/`n" -Encoding UTF8
+            # Comfortably more than the 100-path chunk so the batching path is exercised.
+            foreach ($i in 1..130) {
+                $rel = ".scratch/copy-$i/skills/specrew-a"
+                New-Item -ItemType Directory -Path (Join-Path $repo $rel) -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $repo "$rel/.specrew-managed") -Value 'x' -Encoding UTF8
+            }
+            New-Item -ItemType Directory -Path (Join-Path $repo '.github/skills/specrew-real') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo '.github/skills/specrew-real/.specrew-managed') -Value 'x' -Encoding UTF8
+
+            $paths = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $repo)
+
+            @($paths | Where-Object { $_ -like '.scratch/*' }).Count | Should -Be 0 -Because 'every ignored path must be filtered across all chunks'
+            $paths | Should -Contain '.github/skills/specrew-real'
+        }
+        finally { Pop-Location }
+    }
+
     It 'compares ignored paths by exact identity, never case-insensitively' {
         # Independent-review finding (run-f198-i009-178a3772-codex, major): an OrdinalIgnoreCase
         # match lets an ignored path drop a DISTINCT non-ignored path differing only by case on a
