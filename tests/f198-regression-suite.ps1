@@ -133,7 +133,10 @@ $registry = @(
     @{ area = 'T059 all-adapter deterministic fake-provider matrix - native containment, strict ingress, no hidden retry, timeout-after-tree-death; NEVER live-support evidence'; path = 'tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'; kind = 'pester' }
     @{ area = 'T060 local macOS execution package - pinned clean clone, explicit one-slot invocation, local-machine provenance, digest/hash/authority validation'; path = 'tests/continuous-co-review/unit/t060-local-macos-evidence.Tests.ps1'; kind = 'pester' }
     @{ area = 'T060 local Windows/Linux execution package - fixed allocations, no-spend preflight, one explicit invocation, fail-closed evidence'; path = 'tests/continuous-co-review/unit/t060-local-platform-smoke.Tests.ps1'; kind = 'pester' }
-    @{ area = 'T051 public campaign delegation + one-way cutover + exact-digest verdict-packet route matrix'; path = 'tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'; kind = 'pester' }
+    # These two integration-heavy suites measured 278–300 seconds in clean
+    # detached review worktrees. Preserve the 300-second default for all other
+    # suites, but give the known slow paths a bounded 40% environment margin.
+    @{ area = 'T051 public campaign delegation + one-way cutover + exact-digest verdict-packet route matrix'; path = 'tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'; kind = 'pester'; timeout_seconds = 420 }
     @{ area = 'beta2 release blocker - packaged-artifact Squad-runtime deploy (FileList completeness + contracts deployed)'; path = 'tests/integration/packaged-artifact-deploy.Tests.ps1'; kind = 'pester' }
     @{ area = 'shared trunk resolver - 6-level precedence, no branch mutation (CLI/navigator/gate/baseline/lineage)'; path = 'tests/continuous-co-review/unit/trunk-resolver.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-048 verification-plan seam contract - plan/command validation, path safety, auditable provenance, bounded timeout, evidence-join'; path = 'tests/continuous-co-review/unit/verification-plan-contract.Tests.ps1'; kind = 'pester' }
@@ -144,7 +147,7 @@ $registry = @(
     @{ area = 'T065 SC-015 supplier-to-campaign deterministic project matrix - source precedence, ordered evidence, safe paths, zero-spend failures'; path = 'tests/continuous-co-review/integration/verification-plan-end-to-end.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-045a stop-intent classifier - continue|intermediate|real precedence, marker corrections, packet consistency'; path = 'tests/continuous-co-review/unit/stop-intent-contract.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-045a stop-intent WIRING into the conformance Stop-provider - continue directive / intermediate suppress / real fail-safe / boundary-never-downgraded / bounded runaway'; path = 'tests/integration/conformance-stop-intent-wiring.tests.ps1'; kind = 'script' }
-    @{ area = 'FR-055 Stop-packet classification honesty - session-baseline turn-delta, long-turn lane, PostToolUse pre-arrangement nudge, boundary contract untouched, maintainer fixtures (a)-(f)'; path = 'tests/integration/conformance-detection.tests.ps1'; kind = 'script' }
+    @{ area = 'FR-055 Stop-packet classification honesty - session-baseline turn-delta, long-turn lane, PostToolUse pre-arrangement nudge, boundary contract untouched, maintainer fixtures (a)-(f)'; path = 'tests/integration/conformance-detection.tests.ps1'; kind = 'script'; timeout_seconds = 420 }
     @{ area = 'FR-056/SC-016 workshop question delivery - shared conduct with deterministic host-specific capability materialization'; path = 'tests/integration/code-rules-skill-multihost.tests.ps1'; kind = 'script' }
     @{ area = 'Beta2 manual-test blocker - Claude workshop cannot call AskUserQuestion and swallow the rendered agenda; other hosts retain structured questions'; path = 'tests/integration/design-workshop-claude-tool-safety.tests.ps1'; kind = 'script' }
     @{ area = 'DRIFT-198-I008-060 pre-agenda controller initialization - exact feature scope, atomic shape, no overwrite, governed complete scaffold only'; path = 'tests/integration/workshop-controller-initialization.tests.ps1'; kind = 'script' }
@@ -172,6 +175,12 @@ function Start-F198RegisteredSuite {
     )
 
     $full = Join-Path $repoRoot $Suite.path
+    $effectiveTimeoutSeconds = if ($Suite.ContainsKey('timeout_seconds')) {
+        [Math]::Max($PerTestTimeoutSeconds, [int]$Suite.timeout_seconds)
+    }
+    else {
+        $PerTestTimeoutSeconds
+    }
     if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
         return [pscustomobject][ordered]@{
             completed = $true
@@ -179,6 +188,7 @@ function Start-F198RegisteredSuite {
                 index = $Index; area = [string]$Suite.area; path = [string]$Suite.path
                 kind = [string]$Suite.kind; serial = [bool]($Suite.serial -eq $true)
                 status = 'missing'; exit_code = $null; duration_ms = 0; output = ''
+                timeout_seconds = $effectiveTimeoutSeconds
             }
         }
     }
@@ -208,6 +218,7 @@ function Start-F198RegisteredSuite {
         stopwatch = $stopwatch
         stdout_path = $outFile
         stderr_path = $errFile
+        timeout_seconds = $effectiveTimeoutSeconds
     }
 }
 
@@ -255,6 +266,7 @@ function Complete-F198RegisteredSuite {
         exit_code   = $exitCode
         duration_ms = [long]$Running.stopwatch.ElapsedMilliseconds
         output      = [string]$output
+        timeout_seconds = [int]$Running.timeout_seconds
     }
 }
 
@@ -274,8 +286,8 @@ function Write-F198SuiteResult {
             $Failed.Add("$($Result.path) — MISSING") | Out-Null
         }
         'timeout' {
-            Write-Host ("FAIL (TIMEOUT > {0}s, elapsed {1:N3}s): {2} -> {3}" -f $PerTestTimeoutSeconds, $seconds, $Result.area, $Result.path) -ForegroundColor Red
-            $Failed.Add("$($Result.path) — TIMEOUT (>$PerTestTimeoutSeconds s)") | Out-Null
+            Write-Host ("FAIL (TIMEOUT > {0}s, elapsed {1:N3}s): {2} -> {3}" -f $Result.timeout_seconds, $seconds, $Result.area, $Result.path) -ForegroundColor Red
+            $Failed.Add("$($Result.path) — TIMEOUT (>$($Result.timeout_seconds) s)") | Out-Null
         }
         default {
             Write-Host ("FAIL (exit {0}, {1:N3}s): {2} -> {3}" -f $Result.exit_code, $seconds, $Result.area, $Result.path) -ForegroundColor Red
@@ -328,7 +340,7 @@ while (($nextParallel -lt $parallelSuites.Count) -or ($active.Count -gt 0)) {
 
     $madeProgress = $false
     foreach ($running in @($active.ToArray())) {
-        $timedOut = $running.stopwatch.Elapsed.TotalSeconds -ge $PerTestTimeoutSeconds
+        $timedOut = $running.stopwatch.Elapsed.TotalSeconds -ge $running.timeout_seconds
         if ($running.process.HasExited -or $timedOut) {
             $result = Complete-F198RegisteredSuite -Running $running -ForceTimeout:$timedOut
             $results.Add($result) | Out-Null
@@ -363,7 +375,7 @@ if (-not $abortForContamination) {
             $result = $started.result
         }
         else {
-            $timedOut = -not $started.process.WaitForExit($PerTestTimeoutSeconds * 1000)
+            $timedOut = -not $started.process.WaitForExit($started.timeout_seconds * 1000)
             $result = Complete-F198RegisteredSuite -Running $started -ForceTimeout:$timedOut
         }
         $results.Add($result) | Out-Null
@@ -413,6 +425,7 @@ if (-not [string]::IsNullOrWhiteSpace($TimingOutputPath)) {
                     status = $_.status
                     exit_code = $_.exit_code
                     duration_ms = $_.duration_ms
+                    timeout_seconds = $_.timeout_seconds
                 }
             })
     }

@@ -50,6 +50,11 @@ if ($runner -notmatch '\[switch\]\$Serial' -or
     $runner -notmatch 'PerTestTimeoutSeconds') {
     Fail 'Bounded parallel dispatch must retain an explicit serial lane and per-suite timeout enforcement.'
 }
+if ($runner -notmatch '\$running\.timeout_seconds' -or
+    $runner -notmatch '\$started\.timeout_seconds' -or
+    @([regex]::Matches($runner, 'timeout_seconds\s*=\s*420')).Count -ne 2) {
+    Fail 'Measured slow suites must retain explicit bounded timeout overrides in both parallel and serial lanes.'
+}
 
 if ($fixture -notmatch '\[System\.IO\.Path\]::GetTempPath\(\)' -or
     $fixture -match 'Join-Path\s+\$repoRoot\s+''\.scratch\\pending-verdict-stop-artifact''') {

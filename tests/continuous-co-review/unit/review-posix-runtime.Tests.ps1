@@ -172,7 +172,10 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $refusedObservations = [Collections.Generic.List[bool]]::new()
         $refusedProbe = { param($Descriptor, $Ready, $ProcessId) $refusedObservations.Add($false) | Out-Null; return $false }.GetNewClosure()
         Wait-ReviewMacProcessGroupMembership -Descriptor $descriptor -Ready $ready -ProcessId 42 -TimeoutMilliseconds 25 -PollMilliseconds 1 -MembershipProbe $refusedProbe | Should -BeFalse
-        $refusedObservations.Count | Should -BeGreaterThan 1
+        # Under scheduler pressure the first probe itself may consume the
+        # complete 25 ms budget. The contract is one-or-more observations,
+        # bounded refusal, not an artificial minimum retry count.
+        $refusedObservations.Count | Should -BeGreaterOrEqual 1
 
         $identityMismatchObservations = [Collections.Generic.List[bool]]::new()
         $identityMismatchProbe = { param($Descriptor, $Ready, $ProcessId) $identityMismatchObservations.Add($true) | Out-Null; return $true }.GetNewClosure()

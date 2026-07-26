@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved)
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -42,3 +42,22 @@ formatting are corrected and recorded without creating human stops.
   200 KB on each stream without hanging and proves a sleeping native child is reaped within
   the bounded timeout. A real linked worktree containing a path beyond MAX_PATH is removed
   successfully; all 15 ReviewTargetPort tests pass.
+
+### DRIFT-198-I009-002 — measured slow-suite ceiling and retry-count assertion caused false red
+
+- **Status**: resolved in T079; focused proof green
+- **Severity**: blocking verification-integrity defect
+- **Type**: deterministic test-harness drift, not product requirement drift
+- **Observed evidence**: the first clean exact-commit registry after cleanup repair failed
+  before provider spend. Direct command-scoped reproduction showed the public-campaign and
+  conformance suites timing out at 300 seconds, although Iteration 009 W1 had already measured
+  them at 278–294 seconds. The same loaded run exposed a POSIX test that demanded at least two
+  membership probes inside a 25 ms wall-clock budget even though the first probe can consume
+  that budget legitimately.
+- **Correction**: retain the 300-second default for 80 suites and give only the two measured
+  slow suites an explicit 420-second bounded ceiling in both parallel and serial lanes. Record
+  each effective ceiling in timing evidence. The POSIX test now requires one-or-more probes
+  plus bounded false return, matching the production contract without inventing a retry count.
+- **Resolution evidence**: runner parse and W1/W2 source-contract tests pass; the POSIX suite
+  passes 7/7 applicable tests with 4 platform skips. The next exact-commit complete registry
+  remains the integrated proof.

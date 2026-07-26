@@ -31,5 +31,6 @@ the explicitly excluded `.claude/settings.local.json` or review-runtime
 evidence, while preserving consumer HEAD and status. T079 is running the
 serial/parallel parity, repeated-green registry, governance, and independent
 review gates. DRIFT-198-I009-001 captured and corrected the blocking native
-cleanup deadlock found by the first exact-commit review attempt; no provider
-retry occurred.
+cleanup deadlock and long-path disposal failures. DRIFT-198-I009-002 corrected
+two measured near-zero-margin suite ceilings and one load-sensitive POSIX
+assertion exposed by exact-commit preflight. No provider retry occurred.
