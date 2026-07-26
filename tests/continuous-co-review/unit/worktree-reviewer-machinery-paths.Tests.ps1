@@ -54,6 +54,43 @@ Describe 'worktree reviewer machinery path policy' {
         finally { Pop-Location }
     }
 
+    It 'compares ignored paths by exact identity, never case-insensitively' {
+        # Independent-review finding (run-f198-i009-178a3772-codex, major): an OrdinalIgnoreCase
+        # match lets an ignored path drop a DISTINCT non-ignored path differing only by case on a
+        # case-sensitive worktree, under-stripping deployed machinery into the reviewed candidate.
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
+        $source | Should -Not -Match 'HashSet\[string\]\]::new\(\[StringComparer\]::OrdinalIgnoreCase\)'
+        $source | Should -Match 'HashSet\[string\]\]::new\(\[StringComparer\]::Ordinal\)'
+    }
+
+    It 'keeps a non-ignored path whose case differs from an ignored one' {
+        $repo = Join-Path $TestDrive 'case-collision-project'
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        $probe = Join-Path $repo 'CaseProbe'
+        New-Item -ItemType Directory -Path $probe -Force | Out-Null
+        if (Test-Path -LiteralPath (Join-Path $repo 'caseprobe')) {
+            Set-ItResult -Skipped -Because 'this filesystem is case-insensitive; the collision cannot be materialized here'
+            return
+        }
+        Remove-Item -LiteralPath $probe -Recurse -Force
+        Push-Location $repo
+        try {
+            git init --quiet 2>&1 | Out-Null
+            # Only the lowercase tree is ignored; the capitalized one is real reviewable machinery.
+            Set-Content -LiteralPath (Join-Path $repo '.gitignore') -Value "scratch/`n" -Encoding UTF8
+            foreach ($rel in @('scratch/host/skills/specrew-a', 'Scratch/host/skills/specrew-a')) {
+                New-Item -ItemType Directory -Path (Join-Path $repo $rel) -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $repo "$rel/.specrew-managed") -Value 'x' -Encoding UTF8
+            }
+
+            $paths = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $repo)
+
+            $paths | Should -Contain 'Scratch/host/skills/specrew-a' -Because 'a non-ignored path must survive an ignored path differing only by case'
+            $paths | Should -Not -Contain 'scratch/host/skills/specrew-a'
+        }
+        finally { Pop-Location }
+    }
+
     It 'requires the Specrew module manifest and co-review loader before treating a repo as Specrew source' {
         $repo = Join-Path $TestDrive 'lookalike-project'
         New-Item -ItemType Directory -Path (Join-Path $repo 'scripts/internal/continuous-co-review') -Force | Out-Null

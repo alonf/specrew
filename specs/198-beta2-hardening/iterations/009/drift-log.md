@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 9
-**Resolution rate**: 89% (8/9 resolved)
+**Total drift events**: 10
+**Resolution rate**: 90% (9/10 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -236,3 +236,29 @@ formatting are corrected and recorded without creating human stops.
   28/28, including a new fixture proving a marked directory inside an ignored tree is excluded while
   a tracked deployed mirror is still stripped. The live list drops from 612 to 73 paths with
   `.specrew` and `.antigravitycli` retained and zero `.scratch` entries remaining.
+
+### DRIFT-198-I009-010 — case-insensitive ignored-path matching could under-strip machinery
+
+- **Status**: resolved in T079; focused regression green
+- **Severity**: major candidate-membership defect
+- **Type**: cross-platform path identity
+- **Authority evidence**: `evidence/independent-review-178a3772-result.json`,
+  finding `finding-58755c38340abc2f`, reported by the complete, current, valid independent review of
+  commit `178a3772` (target digest `b6ef0626a86323dce8598966d8434c0fec85243d`).
+- **Confirmed source evidence**: the DRIFT-198-I009-009 filter stored Git's ignored-path output in a
+  `HashSet` using `OrdinalIgnoreCase` on every platform. On a supported case-sensitive Linux or
+  macOS worktree, an ignored directory and a **distinct** non-ignored directory whose paths differ
+  only by case collapse to one key, so the non-ignored deployed machinery is dropped from the
+  machinery list. Git still includes its files in the reviewed digest, so it survives into the
+  materialized reviewer candidate and machinery-only changes can perturb the certified source
+  identity. The defect was introduced by the immediately preceding correction in this same task.
+- **Correction**: compare by exact ordinal identity. Git echoes each ignored path back verbatim, so
+  ordinal matching always matches the filter's own input on every platform while never collapsing
+  two genuinely distinct paths.
+- **Resolution evidence**: a source-contract assertion pins `Ordinal` on every platform, and a
+  case-collision fixture proves a non-ignored path survives an ignored path differing only by case.
+  That fixture is skipped on case-insensitive filesystems and executes on the Linux and macOS CI
+  runners. The machinery-path and containment suites pass 23 with that one platform skip, and the
+  live machinery list stays at 73 paths.
+- **Convention**: this matches the existing platform-appropriate case-sensitivity contract already
+  proven for `Test-ContinuousCoReviewPathUnderRoot` by an earlier co-review finding.

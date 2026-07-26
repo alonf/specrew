@@ -86,7 +86,11 @@ function Get-ContinuousCoReviewMachineryPaths {
         param([Parameter(Mandatory)][string]$RepoRoot, [AllowEmptyCollection()][string[]]$RelativePath)
         $candidates = @($RelativePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         if ($candidates.Count -eq 0) { return @() }
-        $ignored = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        # ORDINAL, never OrdinalIgnoreCase: git echoes each ignored path back verbatim, so exact
+        # identity always matches its own input. Case-insensitive matching would, on a case-sensitive
+        # Linux/macOS worktree, let an ignored directory drop a DISTINCT non-ignored directory whose
+        # path differs only by case - under-stripping real deployed machinery into the candidate.
+        $ignored = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         try {
             $stdin = ($candidates -join "`n") + "`n"
             $output = $stdin | & git -C $RepoRoot check-ignore --stdin 2>$null

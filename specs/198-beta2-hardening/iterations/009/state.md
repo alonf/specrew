@@ -7,7 +7,7 @@
 **Tasks Remaining**: T079
 **In Progress**: T079
 **Baseline Ref**: afb3eda731d35ae922e92d9acf200f80e32e9580
-**Updated**: 2026-07-26T15:10:00Z
+**Updated**: 2026-07-26T16:20:00Z
 
 ## Objective
 
@@ -47,6 +47,27 @@ materialization, `.antigravitycli` machinery classification), `0b5d0199`
 (explicit historical-v1/current-v1 recovery binding shapes with fail-closed
 currentness), and `78908cd9` (manifest-bound managed-runtime deployment with
 safe retirement and post-copy identity verification); the six-suite focused
-correction set passes 78/78. T079 signoff still requires the exact-commit
-repeated-green registry, governance, and another provider-backed independent
-review at the corrected commit.
+correction set passes 78/78. The exact-commit registry passed all 82 suites in
+383.1 seconds and scoped governance passed in 27.9 seconds with historical
+warnings only.
+
+The maintainer pinned reviewer independence on 2026-07-26: while the
+implementation host is Claude, codex is the reviewer of record and every review
+invocation declares `code_writer_host=claude`. Copilot is not selectable because
+its single catalog row carries an ambiguous claude-4.8 arm that no per-run
+mechanism can narrow.
+
+Three exact-commit review attempts followed. The first two failed closed with
+zero provider spend and exposed two blocking review-infrastructure defects,
+DRIFT-198-I009-008 and DRIFT-198-I009-009, both corrected. The third,
+`run-f198-i009-178a3772-codex`, completed: one immutable slot spent, containment
+verified, validation valid, currentness current, completion complete, and both
+controller verification commands green on target digest
+`b6ef0626a86323dce8598966d8434c0fec85243d`. It reported one major
+candidate-membership defect, DRIFT-198-I009-010, in the immediately preceding
+correction; that is now fixed with exact ordinal path identity and paired
+regressions. The immutable result is preserved under `evidence/`.
+
+T079 remains open. The campaign grant carried exactly one slot and it is spent,
+so the confirming review of the corrected commit needs a new human authorization
+reference. The serial-lane registry parity gate is also still outstanding.
