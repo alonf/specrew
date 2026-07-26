@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 8
-**Resolution rate**: 88% (7/8 resolved)
+**Total drift events**: 9
+**Resolution rate**: 89% (8/9 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -213,3 +213,26 @@ formatting are corrected and recorded without creating human stops.
   plus a source-contract assertion that the promotion cannot return.
 - **Relation**: DRIFT-198-I009-007 records the remaining, separate gap that the pinned model is
   declarative rather than enforced at invocation. This correction does not close that one.
+
+### DRIFT-198-I009-009 — ignored-tree machinery enumeration overflowed the recovery-fact cap
+
+- **Status**: resolved in T079; focused regression green
+- **Severity**: blocking review-infrastructure defect
+- **Type**: containment contract bound, not specification drift
+- **Observed evidence**: exact-commit run `run-f198-i009-fbe93ad1-codex` passed all seven preflight
+  checks - target, verification, store, contract, containment, harness, and runtime - after 942.4
+  seconds, then failed at runtime start with
+  `review-recovery-fact-invalid:too-many:machinery_paths:512`. `Invoked: False` and
+  `Usage: unavailable`: the machinery again failed closed with zero provider spend.
+- **Confirmed source evidence**: `Get-ContinuousCoReviewMachineryPaths` recurses the whole project
+  for `.specrew-managed` markers. This repository's `.scratch` area holds whole project copies left
+  by earlier diagnostics, contributing 539 of 612 machinery paths. Git ignores `.scratch/`
+  (`.gitignore:37`) and tracks zero files beneath it, so every one of those entries was already
+  outside the reviewed candidate and bought no additional exclusion.
+- **Correction**: marker-detected paths that Git already ignores are dropped from the machinery
+  list. The core roots and the bounded host-mirror vocabulary are always listed, and any Git failure
+  keeps the unfiltered list rather than silently under-stripping.
+- **Resolution evidence**: the machinery-path, containment, and origin-path-hygiene suites pass
+  28/28, including a new fixture proving a marked directory inside an ignored tree is excluded while
+  a tracked deployed mirror is still stripped. The live list drops from 612 to 73 paths with
+  `.specrew` and `.antigravitycli` retained and zero `.scratch` entries remaining.

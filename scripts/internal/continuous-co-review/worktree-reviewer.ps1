@@ -81,6 +81,25 @@ function Get-ContinuousCoReviewMachineryPaths {
         '.specrew', '.specify', '.squad', '.agents', '.antigravitycli', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
+    # Declared here so the machinery-path policy stays one readable unit.
+    function Remove-ContinuousCoReviewGitIgnoredPath {
+        param([Parameter(Mandatory)][string]$RepoRoot, [AllowEmptyCollection()][string[]]$RelativePath)
+        $candidates = @($RelativePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($candidates.Count -eq 0) { return @() }
+        $ignored = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        try {
+            $stdin = ($candidates -join "`n") + "`n"
+            $output = $stdin | & git -C $RepoRoot check-ignore --stdin 2>$null
+            # exit 0 = some ignored, 1 = none ignored; anything else is a real failure.
+            if ($LASTEXITCODE -gt 1) { return @($candidates) }
+            foreach ($line in @($output)) {
+                $trimmed = ([string]$line).Trim().Replace('\', '/')
+                if (-not [string]::IsNullOrWhiteSpace($trimmed)) { $null = $ignored.Add($trimmed) }
+            }
+        }
+        catch { return @($candidates) }
+        return @($candidates | Where-Object { -not $ignored.Contains(([string]$_).Replace('\', '/')) })
+    }
     if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {
         # In a DEPLOYED project these are inert deployed machinery to strip. In the Specrew SOURCE repo they ARE
         # the feature under review: continuous-co-review/** AND the iter-009 tree-kill/supervisor that live under
@@ -95,6 +114,13 @@ function Get-ContinuousCoReviewMachineryPaths {
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $marked = @(Get-ChildItem -LiteralPath $resolved -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |
         ForEach-Object { [System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $_.FullName)).Replace('\', '/') })
+    # A Git-IGNORED tree is already outside the reviewed candidate by the T074 inclusion/exclusion
+    # identity, so listing the deployed dirs inside it adds no exclusion and can overflow the
+    # RecoveryFact contract cap (too-many:machinery_paths:512). Scratch areas holding whole project
+    # copies produced hundreds of such entries and killed the run before any provider invocation.
+    # Drop ONLY marker-detected paths that Git already ignores; $core and the bounded host mirrors
+    # are always listed, and any Git failure keeps the unfiltered list rather than under-stripping.
+    $marked = @(Remove-ContinuousCoReviewGitIgnoredPath -RepoRoot $resolved -RelativePath $marked)
     # (c) Agent-framework MIRROR subdirs under the AI-host dirs. Specrew/Spec-Kit/host frameworks deploy
     # agent/skill/command/chatmode/prompt/rule mirrors here, and they are marked INCONSISTENTLY (skills/rules
     # carry .specrew-managed; agents/prompts do not; some are symlinks, some plain files) - so (b) alone misses
