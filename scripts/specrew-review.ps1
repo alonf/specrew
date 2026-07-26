@@ -815,7 +815,13 @@ if ($Live) {
                     -RequestedModel $campaignModel -CodeWriterHost ([string]$parsedArgs.CodeWriterHost)
                 if ($null -ne $configuredReviewer) {
                     if ([string]::IsNullOrWhiteSpace($campaignHost)) { $campaignHost = [string]$configuredReviewer.host }
-                    if ([string]::IsNullOrWhiteSpace($campaignModel)) { $campaignModel = [string]$configuredReviewer.model }
+                    # The catalog/config `model` is a DECLARATION of what the selected host runs
+                    # (rows legitimately read 'configured-by-user' or 'gpt-5.5-or-claude-4.8'), never a
+                    # per-run CLI override. Promoting it into the harness override made every host whose
+                    # file-primary constructor takes no -Model fail at preflight with
+                    # production-harness-model-override-unsupported, so a project that recorded a
+                    # reviewer model - the state `--host X --authorization-ref Y` itself writes - could
+                    # not run a campaign review at all. Only an explicit --model request is an override.
                     $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
                 }
             }

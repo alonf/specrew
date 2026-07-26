@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution rate**: 86% (6/7 resolved)
+**Total drift events**: 8
+**Resolution rate**: 88% (7/8 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -183,3 +183,33 @@ formatting are corrected and recorded without creating human stops.
   distinct from the human-entered declaration. This is the first real consumer for the
   deferred `model_probe` seam (DEFER-197-I010-002). It is a product change beyond the
   approved Iteration 009 finding set and is not made here.
+
+### DRIFT-198-I009-008 — a declared reviewer model disabled the review harness
+
+- **Status**: resolved in T079; focused regression green
+- **Severity**: blocking review-infrastructure defect, consumer-reachable
+- **Type**: host-capability contract mismatch, not specification drift
+- **Observed evidence**: exact-commit run `run-f198-i009-9f15cb49-codex` reserved its slot, ran
+  both controller verification commands green over 989.2 seconds, then ended
+  `preflight-failed:harness` with `Invoked: False` and `Usage: unavailable`. The reservation was
+  released, so no provider slot was spent.
+- **Confirmed source evidence**: `New-ReviewProductionHarnessPort` returns an unavailable port with
+  `production-harness-model-override-unsupported:<host>` whenever a model is supplied and the
+  selected host's file-primary constructor declares no `Model` parameter. Only
+  `New-ReviewCursorAgentFilePrimaryHarnessPort` declares one; the codex, claude, copilot, and
+  antigravity constructors do not. The public command promoted the **declared**
+  `.specrew/reviewer-hosts.json` model into that per-run override, and catalog rows legitimately
+  carry descriptive values such as `configured-by-user` and `gpt-5.5-or-claude-4.8` that were never
+  CLI tags. Any project that recorded a reviewer model - the exact state
+  `specrew review --host X --authorization-ref Y` itself writes - therefore could not run a campaign
+  review. Passing an explicit `--authorization-ref` on every run skips the configuration lookup
+  entirely, which is why earlier runs masked the defect.
+- **Correction**: the declared model is selection and provenance data only. Only an explicit
+  `--model` request is attempted as a per-run harness override, and an unsupported explicit request
+  still fails loudly with its named reason rather than silently reviewing on an unrequested model.
+- **Resolution evidence**: the public campaign command suite passes 40/40, including a new paired
+  regression proving a declared model builds the real `codex-cli-file-primary` harness while an
+  explicit unsupported override still returns `production-harness-model-override-unsupported:codex`,
+  plus a source-contract assertion that the promotion cannot return.
+- **Relation**: DRIFT-198-I009-007 records the remaining, separate gap that the pinned model is
+  declarative rather than enforced at invocation. This correction does not close that one.

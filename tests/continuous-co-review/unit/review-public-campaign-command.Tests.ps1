@@ -414,6 +414,23 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
     }
 
+    It 'builds a usable harness for a host whose constructor takes no model override' {
+        # DRIFT-198-I009-008: the public command promoted the DECLARED reviewer model into the
+        # harness override, so every host whose file-primary constructor takes no -Model returned an
+        # unavailable harness and the campaign died at preflight-failed:harness without invoking a
+        # provider. A declaration must never do that; an EXPLICIT unsupported request must still fail
+        # loudly rather than silently reviewing on an unrequested model.
+        $declared = New-ReviewProductionHarnessPort -HostName 'codex' -TimeoutSeconds 600
+        $declared.id | Should -Be 'codex-cli-file-primary'
+        (& $declared.preflight ([pscustomobject]@{})).reason |
+            Should -Not -Match 'model-override-unsupported' -Because 'a declared model must not disable the harness'
+
+        $explicit = New-ReviewProductionHarnessPort -HostName 'codex' -Model 'gpt-5.6-sol' -TimeoutSeconds 600
+        $explicitPreflight = & $explicit.preflight ([pscustomobject]@{})
+        $explicitPreflight.ok | Should -BeFalse
+        $explicitPreflight.reason | Should -Be 'production-harness-model-override-unsupported:codex'
+    }
+
     It 'uses one external-root policy for live and reconciliation paths with an explicit override' {
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'target-root-policy/repo')
         $override = Join-Path $TestDrive 'explicit-target-root'
@@ -530,6 +547,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $campaignSource | Should -Match 'Resolve-ContinuousCoReviewConfiguredReviewerCandidate' -Because 'normal live runs must reload the recorded project-level reviewer grant'
         $campaignSource | Should -Match '-GrantAuthorizationRef\s+\$campaignGrantAuthorizationRef' -Because 'the recorded authorization must reach campaign authority'
         $campaignSource | Should -Match '-Model\s+\$campaignModel' -Because 'the resolved public model selection must reach campaign production-port construction'
+        $campaignSource | Should -Not -Match '\$campaignModel\s*=\s*\[string\]\$configuredReviewer\.model' -Because 'a DECLARED reviewer model must never become a per-run harness override; hosts whose file-primary constructor takes no -Model would fail preflight with production-harness-model-override-unsupported'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-TargetRoot\s+\(\[string\]\$parsedArgs\.RunRoot\)' -Because 'the public workspace-root override must reach the singular target policy'
         $source | Should -Match '--reconcile-run'
         $source | Should -Match 'Invoke-ReviewRunReconciliation' -Because 'the public recovery surface must execute the immutable reconciliation plan'
