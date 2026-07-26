@@ -67,6 +67,7 @@ try {
     $deploySource = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1') -Raw
     Assert-True ($deploySource -match '\.specrew-runtime\.json') 'init/update writes the review runtime marker'
     Assert-True ($deploySource -match 'Get-SpecrewReviewRuntimeBundleSha256') 'the marker binds the deployed runtime bundle'
+    Assert-True ($deploySource -match "\`$sourceVersion = 'unknown'") 'legacy update layouts can deploy without a colocated module manifest'
 }
 finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue

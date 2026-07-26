@@ -775,10 +775,18 @@ if (-not (Test-Path -LiteralPath $reviewEngineResolutionPath -PathType Leaf)) {
     throw "Missing review-engine resolution helper: $reviewEngineResolutionPath"
 }
 . $reviewEngineResolutionPath
-$sourceManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $repositoryRoot 'Specrew.psd1')
+$sourceManifestPath = Join-Path $repositoryRoot 'Specrew.psd1'
+$sourceVersion = 'unknown'
+if (Test-Path -LiteralPath $sourceManifestPath -PathType Leaf) {
+    $sourceManifest = Import-PowerShellDataFile -LiteralPath $sourceManifestPath
+    $sourceVersion = [string]$sourceManifest.ModuleVersion
+}
 $reviewRuntimeMarker = [ordered]@{
     schema_version = '1.0'
-    specrew_version = [string]$sourceManifest.ModuleVersion
+    # Content identity is authoritative. Version is diagnostic and may be
+    # unavailable in legacy/update fixture layouts that deploy supported
+    # surfaces without copying the package manifest.
+    specrew_version = $sourceVersion
     # Bind the marker to the files that were actually deployed. The logical hash
     # normalizes managed-text encoding and line endings, while still detecting any
     # executable content drift.
