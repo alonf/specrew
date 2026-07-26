@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 17
-**Resolution rate**: 76% (13/17 resolved)
+**Total drift events**: 18
+**Resolution rate**: 72% (13/18 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -378,6 +378,27 @@ volume or Git worktree rather than the OS family, (b) keeps literal machinery id
 from user exclusion globs, and (c) passes literal Git pathspecs - with every call site routed
 through it. That is a design change beyond a point correction and is left for the human's decision
 rather than attempted as a fifth consecutive in-flight fix.
+
+### DRIFT-198-I009-018 — Linux review suite hangs since this iteration's corrections
+
+- **Status**: open; UNRESOLVED regression introduced by this iteration. Blocks the tag.
+- **Severity**: blocking verification-integrity defect
+- **Type**: process/pipe containment, platform-specific
+- **Observed evidence**: `Cross-Platform Validation` was green at `afb3eda7` (2026-07-25) and has
+  failed on every push since: `183f6efd`, `45853c7f`, `193c7331`, `0059834e`. macOS and Windows pass
+  on the later commits; **ubuntu-latest** alone fails. Every failure is identical and silent - the
+  job stops mid-`review-spend-allowance.Tests.ps1` in its orchestrator end-to-end context, emits no
+  failing assertion and no `Failed: N`, goes quiet for roughly 85 seconds, and the process is killed.
+  That signature is a hang, not an assertion failure.
+- **Excluded so far**: two subprocess hypotheses were tested and both were wrong. Removing the
+  `git config core.ignorecase` probe from the path-identity primitive did not fix it, and replacing
+  the `git check-ignore --stdin` pipe with chunked arguments did not fix it either. Both changes are
+  independently correct and are retained.
+- **Scope note**: the first push bundled every commit of this session, so the culprit is anywhere in
+  `afb3eda7..183f6efd`, not only in the path-identity work that the two hypotheses targeted.
+- **Required correction**: bisect `afb3eda7..183f6efd` on CI - the failure reproduces only on Linux,
+  so a scratch branch pushing intermediate commits is the mechanical next step - then fix the
+  identified hang and re-prove all three platforms.
 
 ### DRIFT-198-I009-015 — case semantics taken from the OS family, not the volume
 
