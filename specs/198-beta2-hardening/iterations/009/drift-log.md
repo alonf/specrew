@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 10
-**Resolution rate**: 90% (9/10 resolved)
+**Total drift events**: 14
+**Resolution rate**: 64% (9/14 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -262,3 +262,69 @@ formatting are corrected and recorded without creating human stops.
   live machinery list stays at 73 paths.
 - **Convention**: this matches the existing platform-appropriate case-sensitivity contract already
   proven for `Test-ContinuousCoReviewPathUnderRoot` by an earlier co-review finding.
+
+### DRIFT-198-I009-011 — retired-runtime cleanup can delete a file outside the project
+
+- **Status**: open; gate-reported product defect awaiting human replan
+- **Severity**: blocking security defect
+- **Type**: path containment
+- **Authority evidence**: `evidence/independent-review-d2b786e6-result.json`,
+  finding `finding-3dc22598568c5103`.
+- **Confirmed source evidence**: `Remove-RetiredManagedRuntimeFiles` resolves each managed-file
+  entry with `[IO.Path]::GetFullPath` and accepts it via the purely lexical
+  `Test-SpecrewReviewRuntimePathUnderRoot`, then tests `ReparsePoint` only on the **final** item. If
+  any ancestor beneath the runtime root is a symlink or junction to an external directory, the path
+  still compares as under the root while `Get-Item`, hashing, and `[IO.File]::Delete` follow that
+  ancestor to the external file. The previous marker is an editable file in the target project that
+  supplies both `managed_files.path` and its expected hash, so a validly shaped marker can authorize
+  deleting a matching file outside the project. The empty-parent cleanup loop is lexical for the same
+  reason. Introduced by the DRIFT-198-I009-006 correction in commit `78908cd9`.
+- **Required correction**: resolve and contain every existing path component, or reject any
+  reparse-point ancestor, before hashing or deleting, with paired escape regressions.
+
+### DRIFT-198-I009-012 — digest stripping still collapses distinct paths on case-sensitive hosts
+
+- **Status**: open; gate-reported product defect awaiting human replan
+- **Severity**: major review-integrity defect
+- **Type**: cross-platform path identity
+- **Authority evidence**: `evidence/independent-review-d2b786e6-result.json`,
+  finding `finding-32208ddd3f920dec`.
+- **Confirmed source evidence**: `Test-ContinuousCoReviewDigestPathDenied` applies
+  `OrdinalIgnoreCase` to every subtree prefix and `IgnoreCase` to every wildcard. On Linux or macOS,
+  canonical machinery such as `.github/agents` existing alongside a distinct reviewable
+  `.GitHub/agents` removes the latter from the temporary index even though Git treats them as
+  separate source, so edits to omitted source can leave the reviewed tree identity unchanged.
+- **Relation**: this is the same defect class as DRIFT-198-I009-010 one layer downstream. That
+  correction repaired the ignored-path set only and did not reach this case-folding, which is the
+  primary evidence that the path-identity class needs one systematic pass rather than point fixes.
+
+### DRIFT-198-I009-013 — generated Codex agent mirrors remain in the reviewed candidate
+
+- **Status**: open; gate-reported product defect awaiting human replan
+- **Severity**: major machinery-boundary defect
+- **Type**: candidate membership
+- **Authority evidence**: `evidence/independent-review-d2b786e6-result.json`,
+  finding `finding-2d1a04c6f2e879c2`.
+- **Confirmed source evidence**: the host-mirror vocabulary omits `.codex` from `$hostDirs`, and the
+  generated `.codex/agents` files carry no `.specrew-managed` marker for the scan to find. Disk
+  confirms five generated mirrors - `implementer`, `planner`, `retro-facilitator`, `reviewer`, and
+  `spec-steward` `.toml` - and no marker file, so all five enter the frozen target while analogous
+  host mirrors are stripped. Regenerated reviewer instructions can therefore perturb the certified
+  source identity.
+- **Required correction**: add the Codex host mirror to the single machinery policy with a paired
+  reviewer-visibility regression.
+
+### DRIFT-198-I009-014 — machine-local test report enters the frozen candidate
+
+- **Status**: open; gate-reported product defect awaiting human replan
+- **Severity**: major origin-disclosure defect
+- **Type**: candidate membership and reviewer-bundle hygiene
+- **Authority evidence**: `evidence/independent-review-d2b786e6-result.json`,
+  finding `finding-40389710f858ef55`.
+- **Confirmed source evidence**: `testResults.xml` sits in the repository root, untracked and
+  matched by no ignore rule, so the untracked-product-file inclusion rule pulls it into the target
+  digest. Its NUnit environment and suite attributes disclose the origin working directory, machine
+  and user identity, and absolute test paths, violating the zero-origin-address reviewer-bundle
+  requirement and making candidate identity depend on stale machine-local output.
+- **Required correction**: ignore or runtime-classify this artifact, or project sanitized evidence
+  outside the reviewed source tree.

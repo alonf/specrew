@@ -68,6 +68,26 @@ candidate-membership defect, DRIFT-198-I009-010, in the immediately preceding
 correction; that is now fixed with exact ordinal path identity and paired
 regressions. The immutable result is preserved under `evidence/`.
 
-T079 remains open. The campaign grant carried exactly one slot and it is spent,
-so the confirming review of the corrected commit needs a new human authorization
-reference. The serial-lane registry parity gate is also still outstanding.
+The serial-lane parity gate then passed all 82 suites in 861.3 seconds against
+the parallel lane's 383.1 seconds, so registry parity and repeated-green are
+satisfied at the corrected tree.
+
+The maintainer authorized one further slot, and the confirming review
+`run-f198-i009-d2b786e6-codex` completed against digest
+`cf2d67b679a5c56045af43fefa92be9438559af0` with containment verified, validation
+valid, currentness current, and completion complete. It accepted the
+DRIFT-198-I009-010 correction and reported four new defects:
+DRIFT-198-I009-011 (blocking path-containment escape in the retired-runtime
+cleanup introduced by this iteration's own DRIFT-198-I009-006 correction),
+DRIFT-198-I009-012 (the same case-folding class one layer downstream in digest
+stripping), DRIFT-198-I009-013 (generated Codex agent mirrors inside the
+candidate), and DRIFT-198-I009-014 (a machine-local test report disclosing
+origin details inside the candidate).
+
+T079 remains open and both authorized slots are spent. Three consecutive review
+rounds have each reported new defects in this task's own corrections, including
+one repeat of the path-identity class, so execution is paused for human replan
+rather than continuing to point-fix. The recommendation on the table is one
+systematic pass over path identity and machinery classification instead of four
+further point corrections, each of which would otherwise need its own review
+round.
