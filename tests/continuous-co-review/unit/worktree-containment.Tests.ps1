@@ -157,8 +157,14 @@ Describe 'shared physical-path canonicalizer (Get-ContinuousCoReviewPhysicalPath
             New-Item -ItemType Directory -Path $siblingLower -Force | Out-Null
             Set-Content -LiteralPath (Join-Path $siblingLower 'f.txt') -Value 'x' -Encoding UTF8
             $underRoot = Test-ContinuousCoReviewPathUnderRoot -Path (Join-Path $siblingLower 'f.txt') -Root $root
-            if ($IsWindows) { $underRoot | Should -Be $true -Because 'NTFS is case-insensitive: parent/repo and parent/Repo are the SAME dir' }
-            else { $underRoot | Should -Be $false -Because 'POSIX is case-sensitive: parent/repo is a DIFFERENT dir from parent/Repo, not under it' }
+            # DRIFT-198-I009-015: case sensitivity is a property of the VOLUME, not the OS family.
+            # The old `$IsWindows` branch demanded case-sensitive behavior on every POSIX host, which
+            # is wrong on a case-insensitive macOS volume - there `parent/repo` IS `parent/Repo`, so
+            # New-Item above reused the same directory. Ask the filesystem what it actually did: if
+            # the sibling's file is visible through the root, the two names are one directory.
+            $sameDirectory = Test-Path -LiteralPath (Join-Path $root 'f.txt')
+            if ($sameDirectory) { $underRoot | Should -Be $true -Because 'this VOLUME folds case: parent/repo and parent/Repo are the SAME directory' }
+            else { $underRoot | Should -Be $false -Because 'this VOLUME is case-sensitive: parent/repo is a DIFFERENT directory from parent/Repo, not under it' }
         }
         finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
     }
