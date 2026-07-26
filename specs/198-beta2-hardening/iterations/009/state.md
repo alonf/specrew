@@ -7,7 +7,7 @@
 **Tasks Remaining**: T079
 **In Progress**: T079
 **Baseline Ref**: afb3eda731d35ae922e92d9acf200f80e32e9580
-**Updated**: 2026-07-26T10:16:00Z
+**Updated**: 2026-07-26T15:10:00Z
 
 ## Objective
 
@@ -41,5 +41,12 @@ both controller verification commands green and reported three current product
 defects: DRIFT-198-I009-004 (blocking symlink snapshot escape),
 DRIFT-198-I009-005 (major recovery-fact compatibility), and
 DRIFT-198-I009-006 (major non-convergent managed-runtime update). The immutable
-result is preserved under `evidence/`; T079 and iteration signoff remain blocked
-pending correction and another exact-commit review.
+result is preserved under `evidence/`. All three are now corrected in commits
+`4641bea8` (tree-wide symlink containment before snapshot and verification-copy
+materialization, `.antigravitycli` machinery classification), `0b5d0199`
+(explicit historical-v1/current-v1 recovery binding shapes with fail-closed
+currentness), and `78908cd9` (manifest-bound managed-runtime deployment with
+safe retirement and post-copy identity verification); the six-suite focused
+correction set passes 78/78. T079 signoff still requires the exact-commit
+repeated-green registry, governance, and another provider-backed independent
+review at the corrected commit.

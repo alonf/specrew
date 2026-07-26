@@ -5,7 +5,7 @@
 ## Summary
 
 **Total drift events**: 6
-**Resolution rate**: 50% (3/6 resolved)
+**Resolution rate**: 100% (6/6 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -88,7 +88,7 @@ formatting are corrected and recorded without creating human stops.
 
 ### DRIFT-198-I009-004 — tracked symlink escapes the frozen review tree
 
-- **Status**: open; gate-reported product defect
+- **Status**: resolved in T079 (commit `4641bea8`); focused regression green
 - **Severity**: blocking review-integrity defect
 - **Type**: snapshot containment and currentness
 - **Authority evidence**: `evidence/independent-review-29e9f6fa-result.json`,
@@ -102,10 +102,19 @@ formatting are corrected and recorded without creating human stops.
   escapes the frozen workspace, with positive/negative containment tests. Classify the
   volatile `.antigravitycli` runtime path consistently so it cannot enter product source by
   accident.
+- **Correction**: `Assert-GitReviewTargetTreeSymlinksContained` walks every `120000` tree
+  entry and rejects empty, NUL/undecodable, rooted (POSIX and Windows rules on every host),
+  or parent-escaping link targets before both snapshot and verification-copy
+  materialization, without echoing the target. Verification-support staging skips symlink
+  entries, and `.antigravitycli` is classified as machinery in the core exclusion list.
+- **Resolution evidence**: focused ReviewTargetPort, campaign-orchestrator, and
+  machinery-path suites pass (78/78 across the six-suite correction set) with paired
+  contained/escaping fixtures. The next exact-commit registry and provider-backed review
+  remain the integrated proof.
 
 ### DRIFT-198-I009-005 — binding expansion rejects historical recovery facts
 
-- **Status**: open; gate-reported product defect
+- **Status**: resolved in T079 (commit `0b5d0199`); focused regression green
 - **Severity**: major recovery-compatibility defect
 - **Type**: tolerant-reader/backward-compatibility
 - **Authority evidence**: `evidence/independent-review-29e9f6fa-result.json`,
@@ -117,10 +126,17 @@ formatting are corrected and recorded without creating human stops.
 - **Required correction**: accept the historical complete four-field shape explicitly,
   preserve fail-closed currentness for missing exclusion identity, and add immutable-fact
   reader/reconciliation regressions for both historical and current shapes.
+- **Correction**: the authority contract and reconciler now recognize two explicit complete
+  shapes — `historical-v1` (four fields) and `current-v1` (six fields). Historical facts
+  recover their process, claim, snapshot, plan, and machinery bindings;
+  `recovery_binding_complete` remains true only for the current shape, so missing exclusion
+  identity stays fail-closed for currentness.
+- **Resolution evidence**: authority-core and reconciler regressions cover both shapes plus
+  the still-rejected partial groups; the focused correction set passes 78/78.
 
 ### DRIFT-198-I009-006 — managed runtime update cannot retire obsolete files
 
-- **Status**: open; gate-reported product defect
+- **Status**: resolved in T079 (commit `78908cd9`); focused regression green
 - **Severity**: major update/engine-identity defect
 - **Type**: managed deployment convergence
 - **Authority evidence**: `evidence/independent-review-29e9f6fa-result.json`,
@@ -133,3 +149,12 @@ formatting are corrected and recorded without creating human stops.
 - **Required correction**: deploy from an explicit managed manifest, remove only previously
   managed files absent from the new source, preserve user-owned/modified files safely, and
   prove update convergence plus modification protection.
+- **Correction**: deployment computes an explicit per-file managed manifest, binds it into
+  `.specrew-runtime.json`, retires only previously managed, hash-unmodified files absent
+  from the new source (directories, reparse points, modified files, and unsafe paths are
+  preserved with named actions), and verifies deployed-vs-source bundle identity after
+  copy. Engine selection hashes manifest-bound files, so preserved obsolete files no longer
+  poison the handshake; an old or damaged marker is never deletion authority.
+- **Resolution evidence**: review-engine resolution and deploy-completeness regressions
+  cover retirement provenance, modified-file preservation, unsafe-manifest fail-closed
+  behavior, and manifest-bound selection; the focused correction set passes 78/78.
