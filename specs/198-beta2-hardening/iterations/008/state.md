@@ -2,12 +2,12 @@
 
 **Schema**: v1
 **Current Phase**: review-signoff
-**Iteration Status**: executing
+**Iteration Status**: blocked
 **Last Completed Task**: T066
 **Tasks Remaining**: T029, T067
-**In Progress**: none; T029 is authorized through a green release PR and then waits for maintainer merge authority; T067 awaits actual beta publication
+**In Progress**: (none)
 **Baseline Ref**: 364fbe88ef29cce5ac74d8086c1d78d8b8363197
-**Updated**: 2026-07-21T01:34:45Z
+**Updated**: 2026-07-26T14:28:19.5135108Z
 
 ## Planning Authorization
 
@@ -138,7 +138,7 @@
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Execution is at authorized review signoff.
+- Execution is blocked on one or more tasks.
 - Task progress: 17 complete, 0 in-progress, 0 pending, 2 blocked.
 - Latest completed task: T066
 <!-- specrew:task-progress-summary:end -->
