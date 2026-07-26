@@ -85,6 +85,12 @@ function Test-ContinuousCoReviewDigestPathDenied {
     }
 
     $leaf = $normalized.Split('/')[-1]
+    # Path identity follows the FILESYSTEM/Git rule of THIS host: Windows folds case, POSIX does not.
+    # Folding case on a case-sensitive host let canonical machinery such as `.github/agents` strip a
+    # DISTINCT reviewable path such as `.GitHub/agents` out of the identity, so an edit to the omitted
+    # source left the tree-id unchanged - precisely the false-allow this denylist exists to prevent.
+    $comparison = if ([OperatingSystem]::IsWindows()) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    $wildcardOptions = if ([OperatingSystem]::IsWindows()) { [System.Management.Automation.WildcardOptions]::IgnoreCase } else { [System.Management.Automation.WildcardOptions]::None }
     foreach ($pattern in @($Denylist)) {
         if ([string]::IsNullOrWhiteSpace($pattern)) {
             continue
@@ -93,13 +99,13 @@ function Test-ContinuousCoReviewDigestPathDenied {
         $normalizedPattern = ($pattern -replace '\\', '/')
         if ($normalizedPattern.EndsWith('/**')) {
             $prefix = $normalizedPattern.Substring(0, $normalizedPattern.Length - 3)
-            if (($normalized -eq $prefix) -or $normalized.StartsWith("$prefix/", [System.StringComparison]::OrdinalIgnoreCase)) {
+            if ($normalized.Equals($prefix, $comparison) -or $normalized.StartsWith("$prefix/", $comparison)) {
                 return $true
             }
             continue
         }
 
-        $wildcard = [System.Management.Automation.WildcardPattern]::new($normalizedPattern, [System.Management.Automation.WildcardOptions]::IgnoreCase)
+        $wildcard = [System.Management.Automation.WildcardPattern]::new($normalizedPattern, $wildcardOptions)
         if ($wildcard.IsMatch($normalized) -or $wildcard.IsMatch($leaf)) {
             return $true
         }

@@ -131,7 +131,11 @@ function Get-ContinuousCoReviewMachineryPaths {
     # them. These subdir NAMES are a stable agent-tooling vocabulary, NOT a per-project path guess; user config
     # in these host dirs (workflows, settings, ISSUE_TEMPLATE) is NEVER one of them and is kept. (The durable
     # single-source is the deploy marking ALL deployed content; this vocabulary bridges already-deployed projects.)
-    $hostDirs = @('.github', '.claude', '.cursor', '.copilot', '.gemini', '.antigravity')
+    # `.codex` belongs here for the same reason as every other host: Specrew GENERATES its
+    # agent mirrors. They carry no `.specrew-managed` marker, so (b) cannot find them and all five
+    # generated `.codex/agents/*.toml` stayed in the frozen candidate while analogous host mirrors
+    # were stripped - letting regenerated reviewer instructions perturb the certified source identity.
+    $hostDirs = @('.github', '.claude', '.codex', '.cursor', '.copilot', '.gemini', '.antigravity')
     $frameworkSubdirs = @('agents', 'skills', 'commands', 'chatmodes', 'prompts', 'rules', 'instructions')
     $mirrors = foreach ($h in $hostDirs) {
         foreach ($s in $frameworkSubdirs) {

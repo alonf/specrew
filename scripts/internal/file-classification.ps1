@@ -42,6 +42,11 @@ $script:SpecrewPerSessionPatterns = @(
     '.specrew/workshop-visuals/'
     '.agents/hooks.json'
     '.claude/settings.local.json'
+    # Machine-local test report. Untracked and matched by no ignore rule, it was pulled into the
+    # frozen review candidate by the untracked-product-file rule, where its NUnit environment and
+    # suite attributes disclose the origin working directory, machine/user identity, and absolute
+    # test paths, and stale output made candidate identity depend on machine-local state.
+    'testResults.xml'
 )
 
 $script:SpecrewGitignoreSectionHeader = '# Specrew per-session files (F-051 multi-session foundation) - do not commit'

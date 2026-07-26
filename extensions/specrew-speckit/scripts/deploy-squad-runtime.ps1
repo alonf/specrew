@@ -169,6 +169,15 @@ function Remove-RetiredManagedRuntimeFiles {
             throw "managed-runtime-retirement-path-unsafe:$relative"
         }
         if (-not (Test-Path -LiteralPath $full)) { continue }
+        # Contain EVERY existing component before touching the file. A reparse-point ancestor passes
+        # the lexical under-root test above while Get-Item/hash/Delete follow it outside the project,
+        # and the marker supplying this path and hash is editable in the target project. Preserve
+        # rather than delete when any component is a link.
+        try { $full = Assert-SpecrewReviewRuntimePathContained -Path $full -Root $root }
+        catch {
+            Add-DeploymentAction -Actions $Actions -Action 'preserved-uncontained-retired-runtime-file' -Path $full
+            continue
+        }
         $item = Get-Item -LiteralPath $full -Force
         if ($item.PSIsContainer -or (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
             Add-DeploymentAction -Actions $Actions -Action 'preserved-modified-retired-runtime-file' -Path $full

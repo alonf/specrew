@@ -23,7 +23,7 @@
       "review_class_rank": 85,
       "model_source": "human-entered",
       "cost_class": "non-default",
-      "authorization_ref": "maintainer-approved-2026-07-26-confirming-review: one codex gpt-5.6-sol slot for the corrected candidate a2c2838b, reviewer of record while the implementation host is claude",
+      "authorization_ref": "maintainer-authorized-2026-07-26-systematic-slice: one codex gpt-5.6-sol slot verifying the path-identity and machinery-classification corrections, reviewer of record while the implementation host is claude",
       "fallback_allowed": false,
       "timeout_seconds": 0
     },

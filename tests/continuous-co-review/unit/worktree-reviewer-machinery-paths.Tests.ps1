@@ -91,6 +91,23 @@ Describe 'worktree reviewer machinery path policy' {
         finally { Pop-Location }
     }
 
+    It 'strips generated Codex agent mirrors like every other host mirror' {
+        # DRIFT-198-I009-013: .codex was absent from the host-mirror vocabulary and the generated
+        # .codex/agents files carry no .specrew-managed marker, so all five entered the frozen
+        # candidate and regenerated reviewer instructions could perturb the certified identity.
+        $repo = Join-Path $TestDrive 'codex-mirror-project'
+        New-Item -ItemType Directory -Path (Join-Path $repo '.codex/agents') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $repo '.codex/skills') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.codex/agents/reviewer.toml') -Value 'generated' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $repo '.codex/config.toml') -Value 'user' -Encoding UTF8
+
+        $paths = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $repo)
+
+        $paths | Should -Contain '.codex/agents' -Because 'generated Codex agent mirrors are machinery, marker or not'
+        $paths | Should -Contain '.codex/skills'
+        $paths | Should -Not -Contain '.codex/config.toml' -Because 'ordinary user host config stays reviewable'
+    }
+
     It 'requires the Specrew module manifest and co-review loader before treating a repo as Specrew source' {
         $repo = Join-Path $TestDrive 'lookalike-project'
         New-Item -ItemType Directory -Path (Join-Path $repo 'scripts/internal/continuous-co-review') -Force | Out-Null

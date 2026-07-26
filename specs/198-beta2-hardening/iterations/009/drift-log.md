@@ -5,7 +5,7 @@
 ## Summary
 
 **Total drift events**: 14
-**Resolution rate**: 64% (9/14 resolved)
+**Resolution rate**: 93% (13/14 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -281,6 +281,15 @@ formatting are corrected and recorded without creating human stops.
   reason. Introduced by the DRIFT-198-I009-006 correction in commit `78908cd9`.
 - **Required correction**: resolve and contain every existing path component, or reject any
   reparse-point ancestor, before hashing or deleting, with paired escape regressions.
+- **Correction**: `Assert-SpecrewReviewRuntimePathContained` walks every existing component from the
+  runtime root down, rejects a reparse point at any component and at the root itself, and re-verifies
+  containment before returning the resolved path. Retirement calls it before `Get-Item`, hashing, or
+  deletion, and records `preserved-uncontained-retired-runtime-file` instead of deleting when it
+  refuses. The empty-parent cleanup is safe by construction because no ancestor can be a link.
+- **Resolution evidence**: the engine-resolution suite proves an ordinary contained path is accepted,
+  a lexical parent escape is refused, and - with a real symlink materialized during the run - a
+  reparse-point **ancestor** is refused before hashing or deleting while the external file is left
+  untouched. Source-contract assertions pin both the containment call and the preserve action.
 
 ### DRIFT-198-I009-012 — digest stripping still collapses distinct paths on case-sensitive hosts
 
@@ -297,6 +306,14 @@ formatting are corrected and recorded without creating human stops.
 - **Relation**: this is the same defect class as DRIFT-198-I009-010 one layer downstream. That
   correction repaired the ignored-path set only and did not reach this case-folding, which is the
   primary evidence that the path-identity class needs one systematic pass rather than point fixes.
+- **Correction**: both the subtree-prefix comparison and the wildcard matcher now take their case
+  rule from the host - `OrdinalIgnoreCase` on Windows, `Ordinal` on POSIX - matching the
+  platform-appropriate contract already proven for `Test-ContinuousCoReviewPathUnderRoot`.
+- **Resolution evidence**: a digest-level case-collision regression asserts exact-case machinery and
+  secrets stay denied on every platform while a case-distinct path is denied on Windows and kept as
+  reviewable source on a case-sensitive host. The digest suite passes.
+- **Correction note**: a suspected separator bug in the same branch was investigated and **not**
+  found; the subtree probe already used `/`, matching the normalized path.
 
 ### DRIFT-198-I009-013 — generated Codex agent mirrors remain in the reviewed candidate
 
@@ -313,6 +330,10 @@ formatting are corrected and recorded without creating human stops.
   source identity.
 - **Required correction**: add the Codex host mirror to the single machinery policy with a paired
   reviewer-visibility regression.
+- **Correction**: `.codex` joins the host-mirror vocabulary in the one machinery policy, so its
+  generated agent/skill mirrors are stripped with marker or without.
+- **Resolution evidence**: a paired fixture proves `.codex/agents` and `.codex/skills` are classified
+  as machinery while ordinary user host configuration such as `.codex/config.toml` stays reviewable.
 
 ### DRIFT-198-I009-014 — machine-local test report enters the frozen candidate
 
@@ -328,3 +349,8 @@ formatting are corrected and recorded without creating human stops.
   requirement and making candidate identity depend on stale machine-local output.
 - **Required correction**: ignore or runtime-classify this artifact, or project sanitized evidence
   outside the reviewed source tree.
+- **Correction**: `testResults.xml` joins the canonical per-session classification set, so init and
+  update write the ignore rule into consumer projects, and this repository's own `.gitignore`
+  now carries it. Git therefore excludes it from the candidate by normal repository policy.
+- **Resolution evidence**: `git check-ignore` resolves `testResults.xml` to `.gitignore:72`, and the
+  Feature-051 classification and gitignore-write suites remain green.

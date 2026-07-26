@@ -90,6 +90,41 @@ try {
     Assert-True ($deploySource -match 'Get-SpecrewReviewRuntimeBundleSha256') 'the marker binds the deployed runtime bundle'
     Assert-True ($deploySource -match 'managed_files') 'init/update records explicit managed-file retirement provenance'
     Assert-True ($deploySource -match "\`$sourceVersion = 'unknown'") 'legacy update layouts can deploy without a colocated module manifest'
+    Assert-True ($deploySource -match 'Assert-SpecrewReviewRuntimePathContained') 'retirement contains every path component before hashing or deleting'
+    Assert-True ($deploySource -match 'preserved-uncontained-retired-runtime-file') 'an uncontained retirement target is preserved, never deleted'
+
+    # DRIFT-198-I009-011 (blocking): lexical containment is not containment. A reparse-point
+    # ANCESTOR passes the under-root test while Get-Item/hash/Delete follow it outside the project,
+    # and the marker supplying the path AND its hash is editable in the target project.
+    $containRoot = Join-Path $scratch 'contain/root'
+    $outside = Join-Path $scratch 'contain/outside'
+    New-Item -ItemType Directory -Path $containRoot -Force | Out-Null
+    New-Item -ItemType Directory -Path $outside -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $outside 'victim.txt'), 'external', [Text.UTF8Encoding]::new($false))
+
+    $plain = Join-Path $containRoot 'real.txt'
+    [IO.File]::WriteAllText($plain, 'inside', [Text.UTF8Encoding]::new($false))
+    Assert-True ((Assert-SpecrewReviewRuntimePathContained -Path $plain -Root $containRoot) -ceq ([IO.Path]::GetFullPath($plain))) 'an ordinary contained path is accepted'
+
+    $escapeMessage = ''
+    try { Assert-SpecrewReviewRuntimePathContained -Path (Join-Path $containRoot '../outside/victim.txt') -Root $containRoot | Out-Null }
+    catch { $escapeMessage = $_.Exception.Message }
+    Assert-True ($escapeMessage -like 'review-runtime-managed-path-escapes-root:*') 'a lexical parent escape is refused'
+
+    $linkCreated = $false
+    try {
+        New-Item -ItemType SymbolicLink -Path (Join-Path $containRoot 'sub') -Target $outside -ErrorAction Stop | Out-Null
+        $linkCreated = $true
+    }
+    catch { Write-Host 'SKIP: symlink creation unavailable (needs privilege); ancestor-escape case not exercised here' -ForegroundColor Yellow }
+    if ($linkCreated) {
+        $viaAncestor = Join-Path $containRoot 'sub/victim.txt'
+        $ancestorMessage = ''
+        try { Assert-SpecrewReviewRuntimePathContained -Path $viaAncestor -Root $containRoot | Out-Null }
+        catch { $ancestorMessage = $_.Exception.Message }
+        Assert-True ($ancestorMessage -like 'review-runtime-managed-path-link-unsupported:*') 'a reparse-point ANCESTOR is refused before hashing or deleting'
+        Assert-True ([IO.File]::Exists((Join-Path $outside 'victim.txt'))) 'the external file is untouched'
+    }
 }
 finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue

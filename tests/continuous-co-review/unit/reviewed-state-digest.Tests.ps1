@@ -189,6 +189,30 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist $deny) | Should -Be $false
     }
 
+    It 'uses platform-appropriate case identity so a case-distinct source path is not stripped' {
+        # DRIFT-198-I009-012: OrdinalIgnoreCase prefixes and IgnoreCase wildcards let canonical
+        # machinery strip a DISTINCT reviewable path differing only by case on a case-sensitive host,
+        # so an edit to the omitted source left the tree-id unchanged - a false-allow.
+        $deny = @('.specrew/**', 'node_modules/**', '.env')
+
+        # Exact-case matches are denied on every platform.
+        (Test-ContinuousCoReviewDigestPathDenied -Path '.specrew/review/run.json' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path '.specrew' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path '.env' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'src/app.ts' -Denylist $deny) | Should -Be $false
+
+        $caseDistinct = Test-ContinuousCoReviewDigestPathDenied -Path '.Specrew/review/run.json' -Denylist $deny
+        $caseDistinctSecret = Test-ContinuousCoReviewDigestPathDenied -Path '.ENV' -Denylist $deny
+        if ([OperatingSystem]::IsWindows()) {
+            $caseDistinct | Should -Be $true -Because 'Windows folds case, so it is the same path'
+            $caseDistinctSecret | Should -Be $true
+        }
+        else {
+            $caseDistinct | Should -Be $false -Because 'on a case-sensitive host this is DISTINCT reviewable source, not machinery'
+            $caseDistinctSecret | Should -Be $false
+        }
+    }
+
     It 'keeps the legacy secret and scaffolder denylist path-specific without broad source-name matches' {
         $deny = Get-ContinuousCoReviewSecretAmbientDenylist
         # (1) the six known closeout scaffolder artifacts under an iteration dir ARE excluded (must not enter the

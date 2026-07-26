@@ -84,10 +84,15 @@ stripping), DRIFT-198-I009-013 (generated Codex agent mirrors inside the
 candidate), and DRIFT-198-I009-014 (a machine-local test report disclosing
 origin details inside the candidate).
 
-T079 remains open and both authorized slots are spent. Three consecutive review
-rounds have each reported new defects in this task's own corrections, including
-one repeat of the path-identity class, so execution is paused for human replan
-rather than continuing to point-fix. The recommendation on the table is one
-systematic pass over path identity and machinery classification instead of four
-further point corrections, each of which would otherwise need its own review
-round.
+The maintainer then authorized the recommended systematic slice. Both classes
+are corrected in one pass rather than four point fixes. Path identity: every
+existing component of a retirement target is contained and any reparse-point
+ancestor is refused before hashing or deletion, and digest denial takes its case
+rule from the host instead of folding case everywhere. Machinery classification:
+`.codex` joins the host-mirror vocabulary so generated Codex agent mirrors are
+stripped, and the machine-local `testResults.xml` report is classified and
+ignored so it cannot enter the candidate or disclose origin details.
+
+All four corrections are green, including a real-symlink regression proving a
+reparse-point ancestor is refused while the external file is left untouched.
+T079 now awaits the verifying independent review under the authorized slot.

@@ -9,6 +9,39 @@ function Test-SpecrewReviewRuntimePathUnderRoot {
     return $pathFull.Equals($rootFull, $comparison) -or $pathFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, $comparison)
 }
 
+function Assert-SpecrewReviewRuntimePathContained {
+    # Lexical containment is NOT containment: GetFullPath only folds '..' and separators, so a path
+    # whose ANCESTOR is a symlink/junction to an external directory still compares as under the root
+    # while Get-Item, hashing, and Delete follow that ancestor outside the project. The managed-file
+    # marker is an editable file in the target project supplying both the path AND its expected hash,
+    # so a validly shaped marker could otherwise authorize deleting a matching external file. Reject
+    # a reparse point at EVERY existing component from the root down, then re-verify containment.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Root)
+
+    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $pathFull = [IO.Path]::GetFullPath($Path)
+    if (-not (Test-SpecrewReviewRuntimePathUnderRoot -Path $pathFull -Root $rootFull)) {
+        throw "review-runtime-managed-path-escapes-root:$Path"
+    }
+    $rootItem = Get-Item -LiteralPath $rootFull -Force -ErrorAction Stop
+    if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "review-runtime-managed-root-link-unsupported:$Root"
+    }
+
+    $relative = $pathFull.Substring($rootFull.Length).Trim([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $current = $rootFull
+    foreach ($segment in @($relative -split '[\\/]' | Where-Object { -not [string]::IsNullOrEmpty($_) })) {
+        $current = Join-Path $current $segment
+        if (-not (Test-Path -LiteralPath $current)) { continue }
+        $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "review-runtime-managed-path-link-unsupported:$Path"
+        }
+    }
+    return $pathFull
+}
+
 function Get-SpecrewReviewRuntimeManagedTextSha256 {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
