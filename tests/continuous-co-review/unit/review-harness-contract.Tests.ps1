@@ -112,7 +112,7 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $template = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md') -Raw
         $weakened = [regex]::Replace(
             $template,
-            '(?is)The approved review contract permits only Read.+?outside the approved review contract\.',
+            '(?is)Use the inspection tools that this host actually exposes\..+?Never\s+create or change any other file\.',
             'Your available tools are deliberately limited to Read, Glob, Grep, and Write.'
         )
         $validation = Test-ReviewFilePrimaryPromptTemplate -Template $weakened
@@ -200,9 +200,11 @@ Describe 'Shared production review harness contract and strict candidate matrix 
         $spec.stdin_text | Should -Match 'run-one'
         $spec.stdin_text | Should -Match 'digest-one'
         $spec.stdin_text | Should -Match '__RUN_ID__ as literal scope text' -Because 'replacement must not recursively expand reviewer-supplied scope text'
-        $spec.stdin_text | Should -Match 'Use Write only for the exact candidate result path'
-        $spec.stdin_text | Should -Match 'Even if\s+the host exposes additional tools, they are outside the approved review contract'
-        $spec.stdin_text | Should -Match 'Do not run tests, shell commands, installers, update commands, or repository automation'
+        $spec.stdin_text | Should -Match 'inspection tools that this host actually exposes'
+        $spec.stdin_text | Should -Match 'other hosts expose general tools'
+        $spec.stdin_text | Should -Match '(?s)shell tool is available.+read-only inspection'
+        $spec.stdin_text | Should -Match '(?s)sole permitted mutation.+exact candidate result path'
+        $spec.stdin_text | Should -Match 'Do not\s+run tests, builds, installers, update commands'
         $spec.stdin_text | Should -Not -Match 'must-not-copy'
     }
 

@@ -59,7 +59,7 @@ function Test-ReviewFilePrimaryPromptTemplate {
         @{ name = 'no-fences'; pattern = '(?is)no\s+Markdown\s+fences' },
         @{ name = 'stdout-non-authority'; pattern = '(?is)stdout.+never\s+parsed\s+for\s+authority' },
         @{ name = 'source-read-only'; pattern = '(?is)do\s+not\s+modify\s+the\s+source' },
-        @{ name = 'host-tool-posture'; pattern = '(?is)approved\s+review\s+contract\s+permits\s+only\s+Read.+Glob.+Grep.+exact\s+candidate-file\s+Write.+host\s+exposes\s+additional\s+tools.+outside\s+the\s+approved\s+review\s+contract' },
+        @{ name = 'host-tool-posture'; pattern = '(?is)inspection\s+tools\s+that\s+this\s+host\s+actually\s+exposes.+some\s+hosts\s+mechanically\s+expose\s+only\s+Read.+Glob.+Grep.+Write.+other\s+hosts\s+expose\s+general\s+tools.+shell\s+tool.+read-only\s+inspection.+sole\s+permitted\s+mutation.+exact\s+candidate\s+result\s+path' },
         @{ name = 'single-reviewer-session'; pattern = '(?is)do\s+not\s+delegate\s+to\s+subagents\s+or\s+start\s+other\s+model-backed\s+reviewers' },
         @{ name = 'risk-based-completion'; pattern = '(?is)risk-based\s+inspection.+not\s+required\s+to\s+open\s+every\s+file.+complete\s+candidate.+requested\s+review\s+scope.+high-risk\s+check' },
         @{ name = 'location-string-type'; pattern = '(?is)`?location`?.+when\s+present.+plain\s+JSON\s+string.+never\s+an\s+object.+array.+number.+boolean' },

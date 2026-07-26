@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
+**Total drift events**: 3
+**Resolution rate**: 100% (3/3 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -61,3 +61,27 @@ formatting are corrected and recorded without creating human stops.
 - **Resolution evidence**: runner parse and W1/W2 source-contract tests pass; the POSIX suite
   passes 7/7 applicable tests with 4 platform skips. The next exact-commit complete registry
   remains the integrated proof.
+
+### DRIFT-198-I009-003 — shared reviewer prompt disabled Codex inspection
+
+- **Status**: resolved in T079; focused contract proof green
+- **Severity**: blocking cross-harness review defect
+- **Type**: host-capability contract mismatch, not specification drift
+- **Observed evidence**: the first provider-backed review of exact commit `a21df0b7`
+  completed with a valid file-primary result after one invocation but reported
+  `completion=partial`, `verdict=incomplete`, and no findings. Its summary stated that the
+  permitted `Read`, `Glob`, and `Grep` tools were unavailable. The shared prompt prohibited
+  every other inspection tool and all shell commands even though only Claude's catalog row
+  mechanically exposes that named tool set; Codex exposes `shell_command` instead.
+- **Containment**: the incomplete result cannot approve the candidate
+  (`can_approve_current=false`). It is retained as immutable evidence and is not interpreted
+  as a clean review.
+- **Correction**: the canonical prompt now states the truthful cross-host contract: use the
+  inspection tools the selected host actually exposes; general-tool hosts may use shell
+  commands only for read-only listing/searching/reading and read-only Git inspection; the
+  sole permitted mutation remains writing raw JSON to the exact candidate path. Claude's
+  launch vector remains mechanically restricted to `Read,Glob,Grep,Write`.
+- **Resolution evidence**: the shared harness and Codex/Copilot adapter suites pass 38/38.
+  They reject a false universal tool restriction, assert the truthful general-tool posture
+  in rendered prompts, preserve the Claude allowlist, and retain file-primary single-write
+  authority. A complete exact-commit registry and provider-backed retry remain required.

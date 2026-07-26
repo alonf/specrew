@@ -7,11 +7,13 @@ line-by-line inventory. Do not mark the review complete when a planned high-risk
 Do not modify the source, the workspace, Git state, or controller files. Work directly in this reviewer
 session; do not delegate to subagents or start other model-backed reviewers. Follow this review scope:
 
-The approved review contract permits only Read, Glob, Grep, and the exact candidate-file Write. Even if
-the host exposes additional tools, they are outside the approved review contract. Use Read/Glob/Grep only
-for inspection. Do not run tests, shell commands, installers, update commands, or repository automation;
-the controller already verified the frozen candidate. Use Write only for the exact candidate result path
-below and never create or change any other file.
+Use the inspection tools that this host actually exposes. Some hosts mechanically expose only Read, Glob,
+Grep, and Write; other hosts expose general tools. When a shell tool is available, use it only for
+read-only inspection such as listing, searching, reading, `git status`, `git diff`, or `git show`. Do not
+run tests, builds, installers, update commands, or repository automation that changes the workspace; the
+controller already verified the frozen candidate. The sole permitted mutation is writing the raw candidate
+JSON to the exact candidate result path below using whichever file-writing tool the host provides. Never
+create or change any other file.
 
 __REVIEW_SCOPE__
 

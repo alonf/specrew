@@ -7,7 +7,7 @@
 **Tasks Remaining**: T079
 **In Progress**: T079
 **Baseline Ref**: afb3eda731d35ae922e92d9acf200f80e32e9580
-**Updated**: 2026-07-26T07:38:00Z
+**Updated**: 2026-07-26T09:21:06Z
 
 ## Objective
 
@@ -33,4 +33,7 @@ serial/parallel parity, repeated-green registry, governance, and independent
 review gates. DRIFT-198-I009-001 captured and corrected the blocking native
 cleanup deadlock and long-path disposal failures. DRIFT-198-I009-002 corrected
 two measured near-zero-margin suite ceilings and one load-sensitive POSIX
-assertion exposed by exact-commit preflight. No provider retry occurred.
+assertion exposed by exact-commit preflight. DRIFT-198-I009-003 captured and
+corrected the shared-prompt mismatch that left Codex without a permitted
+inspection tool; its single valid result remained honestly incomplete and
+cannot approve the candidate. A corrected exact-commit review remains pending.

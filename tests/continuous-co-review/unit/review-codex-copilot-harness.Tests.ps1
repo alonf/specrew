@@ -68,6 +68,12 @@ Describe 'Codex and Copilot production file-primary harness adapters (T054)' {
         $prompt | Should -Match ([regex]::Escape([IO.Path]::GetFullPath($invocation.candidate_result_path)))
         $prompt | Should -Match 'run-one'
         $prompt | Should -Match 'digest-one'
+        $prompt | Should -Match 'inspection tools that this host actually exposes'
+        $prompt | Should -Match 'other hosts expose general tools'
+        $prompt | Should -Match '(?s)shell tool is available.+read-only inspection'
+        $prompt | Should -Match '(?s)sole permitted mutation.+exact candidate result path'
+        $prompt | Should -Not -Match '(?s)permits only Read.+Glob.+Grep.+exact candidate-file Write'
+        $prompt | Should -Not -Match 'Do not run tests, shell commands'
         @($spec.environment_delta.Keys) | Should -Be @('SPECREW_REFOCUS_DISABLE', 'SPECREW_DISABLE_EVENTS')
         $spec.environment_delta.Contains('SECRET') | Should -BeFalse
     }
