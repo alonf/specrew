@@ -78,7 +78,7 @@ function Get-ContinuousCoReviewMachineryPaths {
     #       ignores. Returns project-relative paths. -RepoRoot enables (b); omit for the core-only list.
     param([string]$RepoRoot)
     $core = @(
-        '.specrew', '.specify', '.squad', '.agents', '.git', '.claude/settings.local.json',
+        '.specrew', '.specify', '.squad', '.agents', '.antigravitycli', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
     if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {

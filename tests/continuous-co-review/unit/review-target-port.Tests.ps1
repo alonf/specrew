@@ -20,6 +20,27 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
             & git -C $Path -c user.name=target-test -c user.email=target@test.local add -A 2>&1 | Out-Null
             & git -C $Path -c user.name=target-test -c user.email=target@test.local commit -qm initial 2>&1 | Out-Null
         }
+
+        function script:Add-TargetRepoSymlink {
+            param(
+                [Parameter(Mandatory)][string]$Path,
+                [Parameter(Mandatory)][string]$LinkPath,
+                [Parameter(Mandatory)][string]$Target
+            )
+            $blobSource = Join-Path $Path ('.symlink-target-' + [guid]::NewGuid().ToString('N'))
+            [IO.File]::WriteAllText($blobSource, $Target, [Text.UTF8Encoding]::new($false))
+            try {
+                $objectId = (& git -C $Path hash-object -w $blobSource 2>&1).Trim()
+                if ($LASTEXITCODE -ne 0) { throw "fixture-hash-object-failed:$objectId" }
+            }
+            finally { [IO.File]::Delete($blobSource) }
+            & git -C $Path update-index --add --cacheinfo "120000,$objectId,$LinkPath" 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'fixture-update-index-failed' }
+            & git -C $Path -c user.name=target-test -c user.email=target@test.local commit -qm "add $LinkPath" 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'fixture-commit-symlink-failed' }
+            & git -C $Path reset --hard -q HEAD 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw 'fixture-checkout-symlink-failed' }
+        }
     }
 
     It 'drains native stdout and stderr concurrently and reaps a timed-out process tree' {
@@ -137,6 +158,45 @@ $chunk = 'x' * 4096
         finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
     }
 
+    It 'rejects an absolute tracked symlink before materializing a review worktree' {
+        $origin = Join-Path $TestDrive 'origin-absolute-symlink'
+        $external = Join-Path $TestDrive 'external-absolute-symlink'
+        New-TargetRepo -Path $origin
+        Add-TargetRepoSymlink -Path $origin -LinkPath 'unsafe-link' -Target '/outside/reviewer-target'
+
+        { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-absolute-symlink -ExternalRoot $external } |
+            Should -Throw -ExpectedMessage '*review-target-symlink-escape:unsafe-link*'
+        @(Get-ChildItem -LiteralPath $external -Filter 'rt-*' -ErrorAction SilentlyContinue).Count | Should -Be 0
+        (& git -C $origin worktree list --porcelain 2>&1) -join "`n" | Should -Not -Match ([regex]::Escape($external))
+    }
+
+    It 'rejects a relative tracked symlink that lexically escapes the review root' {
+        $origin = Join-Path $TestDrive 'origin-relative-symlink'
+        $external = Join-Path $TestDrive 'external-relative-symlink'
+        New-TargetRepo -Path $origin
+        Add-TargetRepoSymlink -Path $origin -LinkPath 'nested/unsafe-link' -Target '../../outside/reviewer-target'
+
+        { New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-relative-symlink -ExternalRoot $external } |
+            Should -Throw -ExpectedMessage '*review-target-symlink-escape:nested/unsafe-link*'
+        @(Get-ChildItem -LiteralPath $external -Filter 'rt-*' -ErrorAction SilentlyContinue).Count | Should -Be 0
+    }
+
+    It 'allows a tracked symlink whose lexical target remains inside the review root' {
+        $origin = Join-Path $TestDrive 'origin-contained-symlink'
+        $external = Join-Path $TestDrive 'external-contained-symlink'
+        New-TargetRepo -Path $origin
+        Add-TargetRepoSymlink -Path $origin -LinkPath 'nested/safe-link' -Target '../tracked.txt'
+
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-contained-symlink -ExternalRoot $external
+        try {
+            $entry = @(Get-GitReviewTargetTreeEntries -WorkingDirectory $origin -TreeId $snapshot.target_digest |
+                    Where-Object path -CEQ 'nested/safe-link')
+            $entry.Count | Should -Be 1
+            $entry[0].mode | Should -Be '120000'
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
+    }
+
     It 'refuses an external root at or below the origin' {
         $origin = Join-Path $TestDrive 'origin-contained'
         New-TargetRepo -Path $origin
@@ -176,6 +236,19 @@ $chunk = 'x' * 4096
             $recovered.excluded_path_patterns | Should -Be $snapshot.excluded_path_patterns
             $recovered.excluded_path_patterns_sha256 | Should -Be $snapshot.excluded_path_patterns_sha256
             (Test-GitReviewTargetCurrentness -Snapshot $recovered).classification | Should -Be 'current'
+
+            $historical = $persisted.PSObject.Copy()
+            $historical.PSObject.Properties.Remove('excluded_path_patterns')
+            $historical.PSObject.Properties.Remove('excluded_path_patterns_sha256')
+            (Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $historical).valid |
+                Should -BeTrue -Because 'the schema 1.0 four-field recovery binding predates scope exclusions'
+            $historicalSnapshot = Get-ReviewRecoverySnapshot -Fact $historical
+            $historicalSnapshot.recovery_binding_shape | Should -Be 'historical-v1'
+            $historicalSnapshot.recovery_binding_complete | Should -BeFalse -Because 'historical facts cannot prove the newer exclusion binding'
+            $historicalSnapshot.verification_plan_present | Should -Be $snapshot.verification_plan_present
+            $historicalSnapshot.machinery_paths | Should -Be $snapshot.machinery_paths
+            $historicalSnapshot.excluded_path_patterns | Should -BeNullOrEmpty
+            $historicalSnapshot.excluded_path_patterns_sha256 | Should -BeNullOrEmpty
         }
         finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
     }

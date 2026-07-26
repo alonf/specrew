@@ -342,6 +342,42 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('complete')
     }
 
+    It 'terminates and abandons a historical four-binding code recovery fact without asserting currentness' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'crash-historical-binding')
+        $fixtureTarget = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
+        $currentnessCalls = [Collections.Generic.List[string]]::new()
+        $disposeLog = [Collections.Generic.List[string]]::new()
+        $target = [pscustomobject]@{
+            kind = $fixtureTarget.kind
+            prepare = $fixtureTarget.prepare
+            currentness = { param($snapshot) $currentnessCalls.Add([string]$snapshot.run_id) | Out-Null; throw 'historical currentness must not run' }.GetNewClosure()
+            integrity = $fixtureTarget.integrity
+            dispose = { param($snapshot) $disposeLog.Add([string]$snapshot.recovery_binding_shape) | Out-Null; [pscustomobject]@{ removed = $true; failure_reason = $null } }.GetNewClosure()
+        }
+        $run = Invoke-OrchestratorFixture -Context $context -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) `
+            -Runtime (New-ReviewFixtureRuntimePort -Outcome abandoned -TerminationVerified $false -Containment unknown -FailureReason 'fixture historical crash')
+        $run.status | Should -Be 'awaiting-termination-verification'
+        $currentnessCalls.Clear() # The interrupted original run performed its own pre-publication check.
+
+        $recoveryPath = Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/recovery.json'
+        $historical = Get-Content -LiteralPath $recoveryPath -Raw | ConvertFrom-Json -Depth 30
+        $historical.target_kind = 'code'
+        $historical.PSObject.Properties.Remove('excluded_path_patterns')
+        $historical.PSObject.Properties.Remove('excluded_path_patterns_sha256')
+        [IO.File]::WriteAllText($recoveryPath, ($historical | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))
+
+        $recovered = Invoke-ReviewRunReconciliation -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code `
+            -TargetPort $target -RuntimePort (New-ReviewFixtureRuntimePort) -ClockPort (New-OrchestratorClock)
+        $recovered.status | Should -Be 'terminal'
+        $recovered.result.runtime_outcome | Should -Be 'abandoned'
+        $recovered.result.currentness | Should -Be 'unknown'
+        $recovered.result.can_approve_current | Should -BeFalse
+        $currentnessCalls.Count | Should -Be 0
+        $disposeLog | Should -Be @('historical-v1')
+        (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions |
+            Should -Be @('complete')
+    }
+
     It 'fails restart reconciliation closed when the immutable recovery receipt is unavailable' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'crash-no-receipt')
         $fixtureTarget = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one

@@ -15,6 +15,7 @@ Describe 'worktree reviewer machinery path policy' {
         $paths | Should -Not -Contain 'scripts/internal/continuous-co-review'
         $paths | Should -Contain '.specrew'
         $paths | Should -Contain '.specify'
+        $paths | Should -Contain '.antigravitycli' -Because 'Antigravity host runtime pointers are controller machinery, not product source'
         $paths | Should -Contain '.claude/settings.local.json' -Because 'canonical machine-local hook config is per-session machinery'
         $paths | Should -Not -Contain '.claude/settings.json' -Because 'ordinary Claude project settings remain reviewable source'
     }

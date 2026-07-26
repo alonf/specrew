@@ -34,9 +34,110 @@ function Invoke-ReviewTargetGit {
     $start.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
     $process = [System.Diagnostics.Process]::new(); $process.StartInfo = $start
     [void]$process.Start()
-    $stdout = $process.StandardOutput.ReadToEnd(); $stderr = $process.StandardError.ReadToEnd()
-    $process.WaitForExit(); $exitCode = $process.ExitCode; $process.Dispose()
-    return [pscustomobject]@{ exit_code = $exitCode; stdout = $stdout.Trim(); stderr = $stderr.Trim() }
+    # Drain both redirected pipes concurrently. Large trees can fill either pipe; sequential
+    # ReadToEnd calls can deadlock while Git waits for the other pipe to drain.
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $stdout = $stdoutTask.GetAwaiter().GetResult()
+    $stderr = $stderrTask.GetAwaiter().GetResult()
+    $exitCode = $process.ExitCode
+    $process.Dispose()
+    return [pscustomobject]@{
+        exit_code = $exitCode
+        stdout = $stdout.Trim()
+        stderr = $stderr.Trim()
+        stdout_raw = $stdout
+        stderr_raw = $stderr
+    }
+}
+
+function Get-GitReviewTargetTreeEntries {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$WorkingDirectory,
+        [Parameter(Mandatory)][string]$TreeId,
+        [AllowEmptyCollection()][string[]]$Pathspec = @()
+    )
+
+    $arguments = @('ls-tree', '-r', '-z', $TreeId)
+    if (@($Pathspec).Count -gt 0) { $arguments += @('--') + @($Pathspec) }
+    $listed = Invoke-ReviewTargetGit -WorkingDirectory $WorkingDirectory -Arguments $arguments
+    if ($listed.exit_code -ne 0) { throw ('review-target-tree-list-failed:' + $listed.stderr) }
+    if (-not $listed.PSObject.Properties['stdout_raw']) { throw 'review-target-tree-list-raw-output-missing' }
+    $raw = [string]$listed.stdout_raw
+    if ($raw.Contains([char]0xFFFD)) { throw 'review-target-tree-path-undecodable' }
+
+    $entries = [Collections.Generic.List[object]]::new()
+    foreach ($record in @($raw -split ([string][char]0))) {
+        if ([string]::IsNullOrEmpty($record)) { continue }
+        $match = [regex]::Match(
+            $record,
+            '^(?<mode>[0-9]{6}) (?<type>[^ ]+) (?<oid>[0-9a-fA-F]{40,64})\t(?<path>[\s\S]+)$',
+            [Text.RegularExpressions.RegexOptions]::CultureInvariant
+        )
+        if (-not $match.Success) { throw 'review-target-tree-entry-invalid' }
+        $entries.Add([pscustomobject]@{
+                mode = $match.Groups['mode'].Value
+                type = $match.Groups['type'].Value
+                object_id = $match.Groups['oid'].Value.ToLowerInvariant()
+                path = $match.Groups['path'].Value
+            }) | Out-Null
+    }
+    return @($entries)
+}
+
+function Test-GitReviewTargetSymlinkContained {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$LinkPath,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Target
+    )
+
+    if ([string]::IsNullOrEmpty($Target) -or $Target.Contains([char]0) -or $Target.Contains([char]0xFFFD)) {
+        return $false
+    }
+    # Apply both POSIX and Windows rooted-path rules regardless of the controller OS: a tree
+    # accepted on one host must remain safe when reviewed on another.
+    if ($Target -match '^[\\/]' -or $Target -match '^[A-Za-z]:') { return $false }
+
+    $segments = [Collections.Generic.List[string]]::new()
+    $parent = ([string]$LinkPath -replace '\\', '/') -replace '/[^/]+$', ''
+    if ($parent -cne $LinkPath) {
+        foreach ($part in @($parent -split '/')) {
+            if (-not [string]::IsNullOrEmpty($part)) { $segments.Add($part) | Out-Null }
+        }
+    }
+    foreach ($part in @(($Target -replace '\\', '/') -split '/')) {
+        if ([string]::IsNullOrEmpty($part) -or $part -ceq '.') { continue }
+        if ($part -ceq '..') {
+            if ($segments.Count -eq 0) { return $false }
+            $segments.RemoveAt($segments.Count - 1)
+            continue
+        }
+        $segments.Add($part) | Out-Null
+    }
+    return $true
+}
+
+function Assert-GitReviewTargetTreeSymlinksContained {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$WorkingDirectory,
+        [Parameter(Mandatory)][string]$TreeId
+    )
+
+    foreach ($entry in @(Get-GitReviewTargetTreeEntries -WorkingDirectory $WorkingDirectory -TreeId $TreeId)) {
+        if ([string]$entry.mode -cne '120000') { continue }
+        $blob = Invoke-ReviewTargetGit -WorkingDirectory $WorkingDirectory -Arguments @('cat-file', 'blob', [string]$entry.object_id)
+        if ($blob.exit_code -ne 0 -or -not $blob.PSObject.Properties['stdout_raw']) {
+            throw ('review-target-symlink-unreadable:' + [string]$entry.path)
+        }
+        if (-not (Test-GitReviewTargetSymlinkContained -LinkPath ([string]$entry.path) -Target ([string]$blob.stdout_raw))) {
+            # Never echo the target: an external absolute target may itself disclose host paths.
+            throw ('review-target-symlink-escape:' + [string]$entry.path)
+        }
+    }
 }
 
 function Get-ReviewTargetSuppressionEnvironment {
@@ -140,6 +241,7 @@ function New-GitReviewTargetSnapshot {
     if ([IO.Directory]::Exists($workspaceRoot) -or [IO.File]::Exists($workspaceRoot)) {
         throw 'review-target-workspace-collision'
     }
+    Assert-GitReviewTargetTreeSymlinksContained -WorkingDirectory $gitRoot -TreeId $before.reviewed_state_digest
     $added = $false
     try {
         # Create a genuine linked worktree (shared objects), then checkout the canonical current-state
@@ -197,6 +299,7 @@ function New-GitReviewTargetVerificationCopy {
     $externalRoot = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath([string]$Snapshot.workspace_root))
     $workspaceRoot = Join-Path $externalRoot ('rt-' + (New-ReviewTargetWorkspaceToken))
     if ([IO.Directory]::Exists($workspaceRoot) -or [IO.File]::Exists($workspaceRoot)) { throw 'review-target-workspace-collision' }
+    Assert-GitReviewTargetTreeSymlinksContained -WorkingDirectory $gitRoot -TreeId ([string]$Snapshot.target_digest)
 
     $relativeSnapshot = [IO.Path]::GetRelativePath([IO.Path]::GetFullPath([string]$Snapshot.workspace_root), [IO.Path]::GetFullPath([string]$Snapshot.snapshot_path))
     if ($relativeSnapshot.StartsWith('..')) { throw 'review-target-verification-copy-subtree-invalid' }

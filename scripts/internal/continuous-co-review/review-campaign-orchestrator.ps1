@@ -225,10 +225,12 @@ function Get-ReviewCampaignVerificationSupportManifest {
     for ($offset = 0; $offset -lt $paths.Count; $offset += 80) {
         $end = [Math]::Min($offset + 80, $paths.Count) - 1
         $chunk = @($paths[$offset..$end])
-        $listed = Invoke-ReviewTargetGit -WorkingDirectory $snapshotPath -Arguments (@('ls-tree', '-r', '--name-only', $commit, '--') + $chunk)
-        if ($listed.exit_code -ne 0) { throw ('verification-support-list-failed:' + $listed.stderr) }
-        foreach ($file in @([string]$listed.stdout -split "`r?`n")) {
-            $normalized = ([string]$file -replace '\\', '/').Trim()
+        $listed = @(Get-GitReviewTargetTreeEntries -WorkingDirectory $snapshotPath -TreeId $commit -Pathspec $chunk)
+        foreach ($entry in $listed) {
+            # Verification support is controller scaffolding, not product source. Never
+            # materialize a symlink from it into the otherwise-contained verification copy.
+            if ([string]$entry.mode -ceq '120000') { continue }
+            $normalized = ([string]$entry.path -replace '\\', '/').Trim()
             if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
             # The selected plan is captured independently from current origin bytes,
             # hash-bound by the target port, and already materialized in the snapshot.
