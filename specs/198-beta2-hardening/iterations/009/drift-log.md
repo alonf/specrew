@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution rate**: 100% (6/6 resolved)
+**Total drift events**: 7
+**Resolution rate**: 86% (6/7 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -158,3 +158,28 @@ formatting are corrected and recorded without creating human stops.
 - **Resolution evidence**: review-engine resolution and deploy-completeness regressions
   cover retirement provenance, modified-file preservation, unsafe-manifest fail-closed
   behavior, and manifest-bound selection; the focused correction set passes 78/78.
+
+### DRIFT-198-I009-007 — reviewer model identity is declared but never enforced
+
+- **Status**: open; deferred outside the approved Iteration 009 finding set
+- **Severity**: minor evidence-honesty defect
+- **Type**: reviewer identity/provenance
+- **Observed evidence**: the maintainer pinned the codex reviewer of record to the exact
+  codex CLI model tag on 2026-07-26. `.specrew/reviewer-hosts.json` carries that `model`
+  value into selection, authorization, and the persisted review result, but the invocation
+  core builds the command line solely from the shipped catalog row's `agentic_args`
+  (`codex exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check`). No host
+  row passes a model flag, and `Get-ContinuousCoReviewHostAgenticCommand` reads the shipped
+  rows rather than the project config, so a project cannot pin the invoked model at all.
+- **Actual behavior on this machine**: the codex CLI resolves its own default from
+  `~/.codex/config.toml`, which currently reads `model = "gpt-5.6-sol"`. The recorded
+  reviewer model therefore matches the invoked model by ambient configuration, not by
+  enforcement, and `model_source: human-entered` correctly labels it a human assertion.
+- **Risk**: if the ambient host configuration changes, review evidence would continue to
+  name the pinned model while a different model performed the review, with no mechanism to
+  detect the divergence.
+- **Required correction (deferred)**: pass the project-configured model through the host
+  invocation seam, or record the host-reported model as machine-observed provenance
+  distinct from the human-entered declaration. This is the first real consumer for the
+  deferred `model_probe` seam (DEFER-197-I010-002). It is a product change beyond the
+  approved Iteration 009 finding set and is not made here.
