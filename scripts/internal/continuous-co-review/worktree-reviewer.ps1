@@ -143,7 +143,17 @@ function Get-ContinuousCoReviewMachineryPaths {
             if (Test-Path -LiteralPath (Join-Path $resolved $rel) -PathType Container) { $rel }
         }
     }
-    return @($core + $marked + $mirrors | Where-Object { $_ -and $_ -ne '.' } | Sort-Object -Unique)
+    # Sort-Object -Unique folds case by DEFAULT, so on a case-sensitive worktree two case-distinct
+    # machinery directories collapsed to one and the discarded directory's files stayed in the
+    # frozen candidate. Dedup on the worktree's real case rule, biased to keep both when unknown.
+    $candidates = @($core + $marked + $mirrors | Where-Object { $_ -and $_ -ne '.' })
+    $comparer = if ((Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue) -and -not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        Get-ContinuousCoReviewPathComparer -Path $resolved -WhenUndetermined 'distinct'
+    }
+    else { [StringComparer]::Ordinal }
+    $unique = [Collections.Generic.HashSet[string]]::new($comparer)
+    foreach ($candidate in $candidates) { $null = $unique.Add([string]$candidate) }
+    return @($unique | Sort-Object)
 }
 
 function ConvertTo-ContinuousCoReviewOriginRelativized {

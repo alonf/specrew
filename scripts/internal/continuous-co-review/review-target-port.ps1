@@ -170,7 +170,12 @@ function Test-ReviewTargetPathUnderRoot {
     }
     $pathFull = [IO.Path]::GetFullPath($Path).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
     $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
-    $comparison = if ([OperatingSystem]::IsWindows()) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    # Containment fallback: answer "inside" more readily when the volume cannot be determined, so a
+    # case-aliased path is refused rather than admitted.
+    $comparison = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
+        Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'same'
+    }
+    else { [StringComparison]::OrdinalIgnoreCase }
     return $pathFull.Equals($rootFull, $comparison) -or $pathFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, $comparison)
 }
 

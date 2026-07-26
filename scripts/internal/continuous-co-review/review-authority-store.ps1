@@ -57,7 +57,11 @@ function Get-ReviewAuthorityStorePath {
     $root = [System.IO.Path]::GetFullPath($StoreRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
     $full = [System.IO.Path]::GetFullPath((Join-Path $root $RelativePath))
     $prefix = $root + [System.IO.Path]::DirectorySeparatorChar
-    $comparison = if ([System.OperatingSystem]::IsWindows()) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    # Store containment: refuse an aliased path rather than admit it when the volume is unknown.
+    $comparison = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
+        Get-ContinuousCoReviewPathComparison -Path $root -WhenUndetermined 'same'
+    }
+    else { [System.StringComparison]::OrdinalIgnoreCase }
     if (-not $full.StartsWith($prefix, $comparison)) { throw "review-store-path-escape:$RelativePath" }
     return $full
 }

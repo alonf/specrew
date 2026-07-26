@@ -295,6 +295,7 @@
         'scripts/internal/continuous-co-review/review-identity-contracts.ps1',
         'scripts/internal/continuous-co-review/review-run-index-writer.ps1',
         'scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1',
+        'scripts/internal/continuous-co-review/path-identity.ps1',
         'scripts/internal/continuous-co-review/reviewed-state-digest.ps1',
         'scripts/internal/continuous-co-review/reviewer-authorization-gate.ps1',
         'scripts/internal/continuous-co-review/reviewer-contracts.ps1',

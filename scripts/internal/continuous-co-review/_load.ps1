@@ -6,6 +6,10 @@ Set-StrictMode -Version Latest
 # contract helpers, and the diff-provider's Invoke-...Git wrapper used by the dedup). Verified by AST call-graph
 # from the live entry points (worktree navigator + service + detached + signoff gate + host-auth).
 $proposal197ReviewerModules = @(
+    # The ONE path-identity primitive (volume-derived case semantics + literal pathspecs). Loaded
+    # FIRST so containment, the digest, and the machinery list all consume it instead of each
+    # re-deciding case rules from the OS family.
+    'path-identity.ps1'
     # F-198 iter-006 / T041: ONE fail-closed terminal-authority cutover seam. It is loaded first so
     # every legacy/new consumer gets the same mutually-exclusive decision.
     'review-authority-cutover.ps1'

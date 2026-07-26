@@ -213,6 +213,26 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         }
     }
 
+    It 'treats machinery identities as literal, never as wildcards' {
+        # DRIFT-198-I009-017: machinery paths were appended to the glob denylist, so a legal
+        # directory name holding metacharacters matched unrelated source and dropped real reviewable
+        # code out of the tree identity - the false-allow this list exists to prevent.
+        $literals = @('generated[1]', '.github/agents')
+
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'generated[1]/tool.ps1' -Denylist @() -LiteralPath $literals) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'generated[1]' -Denylist @() -LiteralPath $literals) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path '.github/agents/reviewer.md' -Denylist @() -LiteralPath $literals) | Should -Be $true
+
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'generated1' -Denylist @() -LiteralPath $literals) | Should -Be $false -Because 'a wildcard reading of generated[1] would wrongly strip this real source file'
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'generated1/app.ts' -Denylist @() -LiteralPath $literals) | Should -Be $false
+        (Test-ContinuousCoReviewDigestPathDenied -Path '.github/agents-notes.md' -Denylist @() -LiteralPath $literals) | Should -Be $false -Because 'subtree matching must be path-segment anchored'
+    }
+
+    It 'passes literal pathspecs to git so metacharacter paths cannot select other source' {
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1') -Raw
+        $source | Should -Match ':\(literal\)' -Because 'git pathspec-taking calls must not reinterpret literal identities as globs'
+    }
+
     It 'keeps the legacy secret and scaffolder denylist path-specific without broad source-name matches' {
         $deny = Get-ContinuousCoReviewSecretAmbientDenylist
         # (1) the six known closeout scaffolder artifacts under an iteration dir ARE excluded (must not enter the

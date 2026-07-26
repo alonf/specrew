@@ -76,7 +76,18 @@ function Test-ContinuousCoReviewDigestPathDenied {
         [Parameter(Mandatory)]
         [string] $Path,
 
-        [string[]] $Denylist = @()
+        [string[]] $Denylist = @(),
+
+        # LITERAL repository identities (machinery paths). Matched by exact identity and subtree
+        # only - never as globs, because a legal directory name holding wildcard metacharacters
+        # (`generated[1]`) would otherwise match unrelated source (`generated1`) and drop real
+        # reviewable code out of the tree identity, which is the false-allow this list prevents.
+        [string[]] $LiteralPath = @(),
+
+        # Root whose VOLUME decides case semantics. Case sensitivity is a volume property, not an
+        # OS-family one; undetermined resolves to 'distinct' so this predicate strips LESS and can
+        # never remove a case-distinct reviewable path from the identity.
+        [string] $CaseRoot = '.'
     )
 
     $normalized = ($Path -replace '\\', '/').TrimEnd('/')
@@ -85,12 +96,21 @@ function Test-ContinuousCoReviewDigestPathDenied {
     }
 
     $leaf = $normalized.Split('/')[-1]
-    # Path identity follows the FILESYSTEM/Git rule of THIS host: Windows folds case, POSIX does not.
-    # Folding case on a case-sensitive host let canonical machinery such as `.github/agents` strip a
-    # DISTINCT reviewable path such as `.GitHub/agents` out of the identity, so an edit to the omitted
-    # source left the tree-id unchanged - precisely the false-allow this denylist exists to prevent.
-    $comparison = if ([OperatingSystem]::IsWindows()) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
-    $wildcardOptions = if ([OperatingSystem]::IsWindows()) { [System.Management.Automation.WildcardOptions]::IgnoreCase } else { [System.Management.Automation.WildcardOptions]::None }
+    $comparison = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
+        Get-ContinuousCoReviewPathComparison -Path $CaseRoot -WhenUndetermined 'distinct'
+    }
+    else { [System.StringComparison]::Ordinal }
+    $wildcardOptions = if ($comparison -eq [System.StringComparison]::OrdinalIgnoreCase) { [System.Management.Automation.WildcardOptions]::IgnoreCase } else { [System.Management.Automation.WildcardOptions]::None }
+
+    foreach ($literal in @($LiteralPath)) {
+        if ([string]::IsNullOrWhiteSpace($literal)) { continue }
+        $normalizedLiteral = ([string]$literal -replace '\\', '/').Trim('/')
+        if ([string]::IsNullOrWhiteSpace($normalizedLiteral)) { continue }
+        if ($normalized.Equals($normalizedLiteral, $comparison) -or $normalized.StartsWith("$normalizedLiteral/", $comparison)) {
+            return $true
+        }
+    }
+
     foreach ($pattern in @($Denylist)) {
         if ([string]::IsNullOrWhiteSpace($pattern)) {
             continue
@@ -179,9 +199,18 @@ function Invoke-ContinuousCoReviewGitPathBatch {
     )
 
     if ($null -eq $Paths -or $Paths.Count -eq 0) { return }
-    for ($i = 0; $i -lt $Paths.Count; $i += $ChunkSize) {
-        $end = [Math]::Min($i + $ChunkSize, $Paths.Count) - 1
-        $chunk = @($Paths[$i..$end])
+    # These are LITERAL repository identities from `git ls-files`, not user globs. Without literal
+    # pathspec magic a legal name holding metacharacters (`generated[1]`) would select unrelated
+    # source and strip it from - or stage it into - the reviewed identity.
+    $literalPaths = @($Paths | ForEach-Object {
+            if (Get-Command -Name 'ConvertTo-ContinuousCoReviewLiteralPathspec' -ErrorAction SilentlyContinue) {
+                ConvertTo-ContinuousCoReviewLiteralPathspec -Path $_
+            }
+            else { ':(literal)' + (([string]$_) -replace '\\', '/') }
+        })
+    for ($i = 0; $i -lt $literalPaths.Count; $i += $ChunkSize) {
+        $end = [Math]::Min($i + $ChunkSize, $literalPaths.Count) - 1
+        $chunk = @($literalPaths[$i..$end])
         & git @GitArgs -- @chunk 2>$null | Out-Null
     }
 }
@@ -214,7 +243,6 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'machinery-resolver-unavailable (the ONE FR-012 machinery resolver could not be loaded - refusing a digest that would diverge from the worktree strip)'
     }
-    $machineryPatterns = @()
     $machineryPaths = @()
     try {
         foreach ($m in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRepoRoot)) {
@@ -222,9 +250,17 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             $normalized = ([string]$m -replace '\\', '/').Trim('/')
             if ([string]::IsNullOrWhiteSpace($normalized)) { continue }
             $machineryPaths += $normalized
-            $machineryPatterns += $normalized; $machineryPatterns += ("{0}/**" -f $normalized)
         }
-        $machineryPaths = @($machineryPaths | Sort-Object -Unique)
+        # Dedup on the worktree's real case rule. Sort-Object -Unique folds case by default, which
+        # discarded one of two case-distinct machinery directories on a case-sensitive worktree and
+        # left its files in the frozen candidate.
+        $machineryComparer = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue) {
+            Get-ContinuousCoReviewPathComparer -Path $resolvedRepoRoot -WhenUndetermined 'distinct'
+        }
+        else { [StringComparer]::Ordinal }
+        $machinerySet = [Collections.Generic.HashSet[string]]::new($machineryComparer)
+        foreach ($candidate in $machineryPaths) { $null = $machinerySet.Add($candidate) }
+        $machineryPaths = @($machinerySet | Sort-Object)
     }
     catch {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason ('machinery-resolver-failed: ' + [string]$_.Exception.Message)
@@ -234,7 +270,9 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         while ($normalized.StartsWith('./', [StringComparison]::Ordinal)) { $normalized = $normalized.Substring(2) }
         $normalized
     } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
-    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($machineryPatterns) + @($canonicalExclusions)
+    # Machinery identities stay LITERAL and are passed separately; only the shipped strip globs and
+    # the human's exclusion patterns are glob-evaluated.
+    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($canonicalExclusions)
     $tempIndex = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-idx-' + [System.Guid]::NewGuid().ToString('N'))
 
     $hadPreviousIndex = Test-Path env:GIT_INDEX_FILE
@@ -308,7 +346,7 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             # git calls (NOT one `git rm --cached` per path - the ~24s O(files) fan-out on .specify).
             $toStrip = @()
             foreach ($staged in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStaged)) {
-                if (Test-ContinuousCoReviewDigestPathDenied -Path $staged -Denylist $stripList) {
+                if (Test-ContinuousCoReviewDigestPathDenied -Path $staged -Denylist $stripList -LiteralPath $machineryPaths -CaseRoot $resolvedRepoRoot) {
                     $toStrip += $staged
                 }
             }

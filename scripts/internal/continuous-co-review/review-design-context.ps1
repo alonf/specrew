@@ -34,13 +34,20 @@ function Get-ContinuousCoReviewPhysicalPath {
 }
 
 function Test-ContinuousCoReviewPathUnderRoot {
-    # Physical equality/descendance uses platform-appropriate case comparison: Windows is
-    # case-insensitive; POSIX is case-sensitive. Unresolvable paths fail closed.
+    # Physical equality/descendance. Case semantics come from the ACTUAL volume, never the OS
+    # family: macOS is POSIX but its default volume folds case, so the old `$IsWindows` shortcut
+    # reported a case-aliased path as OUTSIDE the root there - letting an explicitly supplied
+    # aliased external root sit physically inside the origin. Undetermined resolves to 'same' so
+    # this predicate answers "inside" more readily, which is the refusing direction for the
+    # containment guards that consume it. Unresolvable paths still fail closed.
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Path, [Parameter(Mandatory)][AllowEmptyString()][string]$Root)
     $pReal = Get-ContinuousCoReviewPhysicalPath -Path $Path
     $rReal = Get-ContinuousCoReviewPhysicalPath -Path $Root
     if ([string]::IsNullOrEmpty($pReal) -or [string]::IsNullOrEmpty($rReal)) { return $false }
-    $cmp = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    $cmp = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
+        Get-ContinuousCoReviewPathComparison -Path $rReal -WhenUndetermined 'same'
+    }
+    else { [System.StringComparison]::OrdinalIgnoreCase }
     return ($pReal.Equals($rReal, $cmp) -or $pReal.StartsWith($rReal + [System.IO.Path]::DirectorySeparatorChar, $cmp))
 }
 
