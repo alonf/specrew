@@ -22,6 +22,35 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         }
     }
 
+    It 'drains native stdout and stderr concurrently and reaps a timed-out process tree' {
+        $payload = @'
+$chunk = 'x' * 4096
+1..64 | ForEach-Object {
+    [Console]::Out.WriteLine($chunk)
+    [Console]::Error.WriteLine($chunk)
+}
+'@
+        $completed = Invoke-ReviewTargetNativeCommand `
+            -FileName (Get-Command pwsh).Source `
+            -Arguments @('-NoProfile', '-Command', $payload) `
+            -TimeoutSeconds 15
+        $completed.exit_code | Should -Be 0
+        $completed.timed_out | Should -BeFalse
+        $completed.stdout.Length | Should -BeGreaterThan 200000
+        $completed.stderr.Length | Should -BeGreaterThan 200000
+
+        $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+        $timedOut = Invoke-ReviewTargetNativeCommand `
+            -FileName (Get-Command pwsh).Source `
+            -Arguments @('-NoProfile', '-Command', 'Start-Sleep -Seconds 30') `
+            -TimeoutSeconds 1
+        $stopwatch.Stop()
+        $timedOut.exit_code | Should -Be 124
+        $timedOut.timed_out | Should -BeTrue
+        $timedOut.stderr | Should -Match 'native-command-timeout:1s'
+        $stopwatch.Elapsed.TotalSeconds | Should -BeLessThan 8
+    }
+
     It 'freezes the exact dirty state in an external linked worktree while leaving origin code unchanged' {
         $origin = Join-Path $TestDrive 'origin'
         $external = Join-Path $TestDrive 'external'

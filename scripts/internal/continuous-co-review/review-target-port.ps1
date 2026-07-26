@@ -237,7 +237,8 @@ function New-GitReviewTargetVerificationCopy {
 function Invoke-ReviewTargetNativeCommand {
     param(
         [Parameter(Mandatory)][string]$FileName,
-        [Parameter(Mandatory)][string[]]$Arguments
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [ValidateRange(1, 3600)][int]$TimeoutSeconds = 120
     )
     $start = [Diagnostics.ProcessStartInfo]::new()
     $start.FileName = $FileName
@@ -245,9 +246,38 @@ function Invoke-ReviewTargetNativeCommand {
     $start.UseShellExecute = $false; $start.CreateNoWindow = $true
     $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
     $process = [Diagnostics.Process]::new(); $process.StartInfo = $start
-    [void]$process.Start(); $stdout = $process.StandardOutput.ReadToEnd(); $stderr = $process.StandardError.ReadToEnd()
-    $process.WaitForExit(); $exitCode = $process.ExitCode; $process.Dispose()
-    return [pscustomobject]@{ exit_code = $exitCode; stdout = $stdout.Trim(); stderr = $stderr.Trim() }
+    try {
+        [void]$process.Start()
+        # Drain both redirected pipes concurrently. Reading stdout to EOF before
+        # stderr can deadlock when a recursive native command fills stderr (the
+        # real 5,500-file icacls cleanup did exactly that during dogfood review).
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            try { $process.Kill($true) } catch { }
+            try { $process.WaitForExit() } catch { }
+            $stdout = try { $stdoutTask.GetAwaiter().GetResult() } catch { '' }
+            $stderr = try { $stderrTask.GetAwaiter().GetResult() } catch { '' }
+            $timeoutReason = "native-command-timeout:${TimeoutSeconds}s"
+            $stderr = if ([string]::IsNullOrWhiteSpace($stderr)) { $timeoutReason } else { $stderr.Trim() + [Environment]::NewLine + $timeoutReason }
+            return [pscustomobject]@{
+                exit_code = 124; stdout = $stdout.Trim(); stderr = $stderr.Trim()
+                timed_out = $true; timeout_seconds = $TimeoutSeconds
+            }
+        }
+        # WaitForExit(int) can return before asynchronous redirected reads have
+        # observed EOF; the parameterless call completes that drain.
+        $process.WaitForExit()
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        return [pscustomobject]@{
+            exit_code = $process.ExitCode; stdout = $stdout.Trim(); stderr = $stderr.Trim()
+            timed_out = $false; timeout_seconds = $TimeoutSeconds
+        }
+    }
+    finally {
+        $process.Dispose()
+    }
 }
 
 function Get-ReviewTargetEffectiveUserId {

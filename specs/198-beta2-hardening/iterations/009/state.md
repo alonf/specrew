@@ -7,7 +7,7 @@
 **Tasks Remaining**: T079
 **In Progress**: T079
 **Baseline Ref**: afb3eda731d35ae922e92d9acf200f80e32e9580
-**Updated**: 2026-07-26T04:55:25Z
+**Updated**: 2026-07-26T07:38:00Z
 
 ## Objective
 
@@ -30,4 +30,6 @@ round-15 replay proves that the historical 164-path candidate no longer admits
 the explicitly excluded `.claude/settings.local.json` or review-runtime
 evidence, while preserving consumer HEAD and status. T079 is running the
 serial/parallel parity, repeated-green registry, governance, and independent
-review gates.
+review gates. DRIFT-198-I009-001 captured and corrected the blocking native
+cleanup deadlock found by the first exact-commit review attempt; no provider
+retry occurred.
