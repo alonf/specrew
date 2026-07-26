@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 14
-**Resolution rate**: 93% (13/14 resolved)
+**Total drift events**: 17
+**Resolution rate**: 76% (13/17 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -354,3 +354,81 @@ formatting are corrected and recorded without creating human stops.
   now carries it. Git therefore excludes it from the candidate by normal repository policy.
 - **Resolution evidence**: `git check-ignore` resolves `testResults.xml` to `.gitignore:72`, and the
   Feature-051 classification and gitignore-write suites remain green.
+
+## Convergence assessment (path identity)
+
+Four consecutive independent review rounds have each reported new defects in the same
+path-identity class, every round one level deeper than the correction before it:
+
+| Round | Commit | Path-identity finding |
+| --- | --- | --- |
+| 1 | `178a3772` | ignored-path set folded case (DRIFT-198-I009-010) |
+| 2 | `d2b786e6` | digest denial folded case (DRIFT-198-I009-012) |
+| 3 | `5117c807` | case rule taken from OS family, not the volume (DRIFT-198-I009-015) |
+
+The corrections were each locally right and each too shallow, because the defect is structural
+rather than local. Direct measurement of the current tree: **four** `IsWindows()`-keyed case
+shortcuts and **twelve or more** files carrying their own path comparison, wildcard, or dedup
+logic. There is no single path-identity primitive, so every call site re-decides case semantics,
+literal-versus-glob semantics, and Git pathspec quoting independently, and a point fix can only
+ever repair the one site the reviewer happened to reach.
+
+The durable correction is one shared primitive that (a) determines case sensitivity from the actual
+volume or Git worktree rather than the OS family, (b) keeps literal machinery identities distinct
+from user exclusion globs, and (c) passes literal Git pathspecs - with every call site routed
+through it. That is a design change beyond a point correction and is left for the human's decision
+rather than attempted as a fifth consecutive in-flight fix.
+
+### DRIFT-198-I009-015 — case semantics taken from the OS family, not the volume
+
+- **Status**: open; gate-reported product defect awaiting human decision
+- **Severity**: blocking containment defect
+- **Type**: cross-platform path identity
+- **Authority evidence**: `evidence/independent-review-5117c807-result.json`,
+  finding `finding-7fa12721aff475fa`.
+- **Confirmed source evidence**: `Test-ContinuousCoReviewPathUnderRoot` applies
+  `OrdinalIgnoreCase` only on Windows and `Ordinal` on every POSIX host, and
+  `Get-ContinuousCoReviewPhysicalPath` preserves caller spelling for ordinary components. macOS
+  volumes are commonly case-insensitive, so `/Users/.../repo` and `/users/.../repo` can name the
+  same directory yet compare as different, letting `New-GitReviewTargetSnapshot` accept an
+  explicitly supplied case-aliased `ExternalRoot` that is physically inside the origin and so
+  violate the external disposable-worktree containment guarantee. The same OS-family shortcut in
+  `reviewed-state-digest.ps1` - added by the DRIFT-198-I009-012 correction - fails to strip
+  case-variant machinery on such a volume. Four such shortcuts exist in the current tree.
+- **Exploitability note**: normal operation derives the external root itself rather than taking it
+  from the caller, so this needs a deliberately case-aliased explicit root on a case-insensitive
+  volume. It is a genuine containment weakness, not a default-path failure.
+- **Required correction**: determine case semantics from the actual volume or Git worktree and cover
+  both case-insensitive and case-sensitive macOS volumes.
+
+### DRIFT-198-I009-016 — case-insensitive dedup drops distinct machinery paths
+
+- **Status**: open; gate-reported product defect awaiting human decision
+- **Severity**: major candidate-membership defect
+- **Type**: cross-platform path identity
+- **Authority evidence**: `evidence/independent-review-5117c807-result.json`,
+  finding `finding-aa7a64741420cc36`.
+- **Confirmed source evidence**: `Get-ContinuousCoReviewMachineryPaths` ends with
+  `Sort-Object -Unique`, whose default comparison is case-insensitive. On a case-sensitive worktree
+  holding two non-ignored marker-detected machinery directories differing only by case, one is
+  discarded before the digest builds its strip patterns, so files under the discarded directory stay
+  in the frozen candidate despite both being machinery.
+- **Required correction**: use a comparer following the worktree's real case semantics, with a
+  fixture where both case-distinct marker directories are non-ignored.
+
+### DRIFT-198-I009-017 — literal machinery paths are interpreted as wildcards
+
+- **Status**: open; gate-reported product defect awaiting human decision
+- **Severity**: major review-integrity defect
+- **Type**: literal-versus-glob path identity
+- **Authority evidence**: `evidence/independent-review-5117c807-result.json`,
+  finding `finding-eccd3156d99cea58`.
+- **Confirmed source evidence**: marker-detected machinery paths are literal repository identities,
+  but the digest appends them straight onto the denylist where `Test-ContinuousCoReviewDigestPathDenied`
+  evaluates non-subtree entries as `WildcardPattern` values. A legal directory name containing glob
+  metacharacters therefore matches unrelated source - machinery `generated[1]` also matches a root
+  file named `generated1` - removing real reviewable source from the tree identity, which is the
+  false-allow this denylist exists to prevent. The same frozen paths later reach Git pathspec-taking
+  commands without literal escaping.
+- **Required correction**: keep literal machinery identities separate from user exclusion globs and
+  pass them to Git with literal pathspec semantics.

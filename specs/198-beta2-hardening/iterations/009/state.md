@@ -95,4 +95,20 @@ ignored so it cannot enter the candidate or disclose origin details.
 
 All four corrections are green, including a real-symlink regression proving a
 reparse-point ancestor is refused while the external file is left untouched.
-T079 now awaits the verifying independent review under the authorized slot.
+
+The verifying review `run-f198-i009-5117c807-codex` then completed against digest
+`9d21b1dbc02058471369555e0ffd5333d672b41b` with containment verified, validation
+valid, currentness current, and completion complete. It accepted the machinery
+classification and containment corrections and reported three further defects,
+all in the path-identity class and each one level deeper than the fix before it:
+DRIFT-198-I009-015 (blocking; case semantics read from the OS family rather than
+the volume, which the DRIFT-198-I009-012 correction itself introduced),
+DRIFT-198-I009-016, and DRIFT-198-I009-017.
+
+Execution is paused. Four consecutive rounds have found path-identity defects,
+and direct measurement shows four OS-family case shortcuts and twelve or more
+files carrying independent path comparison, wildcard, or dedup logic. There is
+no single path-identity primitive, so point corrections can only ever repair the
+site the reviewer happened to reach. The convergence assessment and the durable
+correction are recorded in drift-log.md and await the human's decision; the
+authorized slot is spent.
