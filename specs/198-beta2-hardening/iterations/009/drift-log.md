@@ -390,10 +390,16 @@ rather than attempted as a fifth consecutive in-flight fix.
   job stops mid-`review-spend-allowance.Tests.ps1` in its orchestrator end-to-end context, emits no
   failing assertion and no `Failed: N`, goes quiet for roughly 85 seconds, and the process is killed.
   That signature is a hang, not an assertion failure.
-- **Excluded so far**: two subprocess hypotheses were tested and both were wrong. Removing the
-  `git config core.ignorecase` probe from the path-identity primitive did not fix it, and replacing
-  the `git check-ignore --stdin` pipe with chunked arguments did not fix it either. Both changes are
-  independently correct and are retained.
+- **Excluded so far**: THREE subprocess hypotheses were tested against CI and all three were wrong.
+  Removing the `git config core.ignorecase` probe from the path-identity primitive did not fix it;
+  replacing the `git check-ignore --stdin` pipe with chunked arguments did not fix it; and deleting
+  the git call from the machinery scan entirely, pruning volatile roots by name instead, did not fix
+  it either. All three changes are independently correct and are retained. **The hang is therefore
+  not a git subprocess.** Do not spend a fourth cycle on that theory.
+- **Execution context that matters**: `cross-platform-validation.yml` runs these suites on Linux as
+  ROOT, via `sudo pwsh -NonInteractive -EncodedCommand`, and `review-spend-allowance` is the sixth of
+  twelve suites - so the job genuinely stops there rather than finishing. Any hypothesis must explain
+  a root-only, Linux-only hang with no failing assertion.
 - **Scope note**: the first push bundled every commit of this session, so the culprit is anywhere in
   `afb3eda7..183f6efd`, not only in the path-identity work that the two hypotheses targeted.
 - **Required correction**: bisect `afb3eda7..183f6efd` on CI - the failure reproduces only on Linux,
