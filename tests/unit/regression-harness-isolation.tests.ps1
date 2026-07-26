@@ -34,6 +34,22 @@ if ($runner -notmatch "FAIL \(CALLER REPOSITORY CONTAMINATED\)" -or
 if ($runner -match 'exit \(\[int\]\$r\.FailedCount\)') {
     Fail 'Feature 198 runner regressed to FailedCount-only Pester evaluation.'
 }
+foreach ($proposal209Token in @(
+        '[int]$MaxParallel = 4',
+        '[string]$TimingOutputPath',
+        'duration_ms',
+        '$active.Count -lt $MaxParallel',
+        'bounded-parallel',
+        'Sort-Object index')) {
+    if (-not $runner.Contains($proposal209Token)) {
+        Fail "Proposal 209 W1/W2 contract is missing '$proposal209Token'."
+    }
+}
+if ($runner -notmatch '\[switch\]\$Serial' -or
+    $runner -notmatch '\$Suite\.serial\s+-eq\s+\$true' -or
+    $runner -notmatch 'PerTestTimeoutSeconds') {
+    Fail 'Bounded parallel dispatch must retain an explicit serial lane and per-suite timeout enforcement.'
+}
 
 if ($fixture -notmatch '\[System\.IO\.Path\]::GetTempPath\(\)' -or
     $fixture -match 'Join-Path\s+\$repoRoot\s+''\.scratch\\pending-verdict-stop-artifact''') {

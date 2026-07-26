@@ -74,11 +74,14 @@ function New-ReviewTargetWorkspaceToken {
 
 function Get-GitReviewTargetOriginEvidence {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$OriginRepo)
+    param(
+        [Parameter(Mandatory)][string]$OriginRepo,
+        [AllowEmptyCollection()][string[]]$ExcludedPathPatterns = @()
+    )
     $origin = (Resolve-Path -LiteralPath $OriginRepo).Path
     $head = Invoke-ReviewTargetGit -WorkingDirectory $origin -Arguments @('rev-parse', 'HEAD')
     if ($head.exit_code -ne 0 -or [string]::IsNullOrWhiteSpace($head.stdout)) { throw ('review-target-head-unavailable:' + $head.stderr) }
-    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $origin
+    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $origin -ExcludedPathPatterns $ExcludedPathPatterns
     if ($null -eq $digest -or -not $digest.ok -or [string]::IsNullOrWhiteSpace([string]$digest.tree_id)) {
         $reason = if ($null -ne $digest) { [string]$digest.failure_reason } else { 'null-digest' }
         throw "review-target-digest-unavailable:$reason"
@@ -89,6 +92,8 @@ function Get-GitReviewTargetOriginEvidence {
     return [pscustomobject]@{
         origin_head = $head.stdout; reviewed_state_digest = [string]$digest.tree_id
         machinery_paths = @($machineryPaths); machinery_paths_sha256 = $machineryPathsSha256
+        excluded_path_patterns = @($digest.excluded_path_patterns)
+        excluded_path_patterns_sha256 = [string]$digest.excluded_path_patterns_sha256
     }
 }
 
@@ -97,7 +102,8 @@ function New-GitReviewTargetSnapshot {
     param(
         [Parameter(Mandatory)][string]$OriginRepo,
         [Parameter(Mandatory)][string]$RunId,
-        [string]$ExternalRoot
+        [string]$ExternalRoot,
+        [AllowEmptyCollection()][string[]]$ExcludedPathPatterns = @()
     )
     if (-not (Test-ReviewAuthorityIdentifier -Value $RunId -Kind run)) { throw "review-target-invalid-run-id:$RunId" }
     $origin = (Resolve-Path -LiteralPath $OriginRepo).Path
@@ -107,7 +113,7 @@ function New-GitReviewTargetSnapshot {
     $prefixResult = Invoke-ReviewTargetGit -WorkingDirectory $origin -Arguments @('rev-parse', '--show-prefix')
     if ($prefixResult.exit_code -ne 0) { throw ('review-target-prefix-unavailable:' + $prefixResult.stderr) }
     $prefix = $prefixResult.stdout.Trim().TrimEnd('/')
-    $before = Get-GitReviewTargetOriginEvidence -OriginRepo $origin
+    $before = Get-GitReviewTargetOriginEvidence -OriginRepo $origin -ExcludedPathPatterns $ExcludedPathPatterns
     # The canonical code digest deliberately excludes .specrew/**. The selected verification plan is
     # nevertheless a project-owned campaign input, so freeze its exact bytes alongside the code tree and
     # bind its hash into the target's currentness check. It is never read live after this capture.
@@ -146,6 +152,8 @@ function New-GitReviewTargetSnapshot {
             snapshot_path = $snapshotPath; workspace_root = $workspaceRoot; origin_repo = $origin; git_root = $gitRoot
             origin_head_before = $before.origin_head; origin_digest_before = $before.reviewed_state_digest
             machinery_paths = @($before.machinery_paths); machinery_paths_sha256 = $before.machinery_paths_sha256
+            excluded_path_patterns = @($before.excluded_path_patterns)
+            excluded_path_patterns_sha256 = $before.excluded_path_patterns_sha256
             verification_plan_present = [bool]$verificationPlan.present; verification_plan_sha256 = $verificationPlan.sha256
             verification_plan_bytes = $(if ($verificationPlan.present) { [byte[]]$verificationPlan.bytes } else { $null })
             source_hashes_before = $sourceHashes; suppression_environment = Get-ReviewTargetSuppressionEnvironment
@@ -213,6 +221,8 @@ function New-GitReviewTargetVerificationCopy {
             origin_repo = [string]$Snapshot.origin_repo; git_root = $gitRoot
             origin_head_before = [string]$Snapshot.origin_head_before; origin_digest_before = [string]$Snapshot.origin_digest_before
             machinery_paths = @($Snapshot.machinery_paths); machinery_paths_sha256 = [string]$Snapshot.machinery_paths_sha256
+            excluded_path_patterns = @($Snapshot.excluded_path_patterns)
+            excluded_path_patterns_sha256 = [string]$Snapshot.excluded_path_patterns_sha256
             verification_plan_present = [bool]$Snapshot.verification_plan_present; verification_plan_sha256 = [string]$Snapshot.verification_plan_sha256
             source_hashes_before = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $snapshotPath
             suppression_environment = Get-ReviewTargetSuppressionEnvironment
@@ -388,7 +398,8 @@ function Enable-ReviewTargetReadOnlyProtection {
 function Test-GitReviewTargetCurrentness {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Snapshot)
-    $after = Get-GitReviewTargetOriginEvidence -OriginRepo ([string]$Snapshot.origin_repo)
+    $snapshotExclusions = if ($Snapshot.PSObject.Properties['excluded_path_patterns']) { @($Snapshot.excluded_path_patterns) } else { @() }
+    $after = Get-GitReviewTargetOriginEvidence -OriginRepo ([string]$Snapshot.origin_repo) -ExcludedPathPatterns $snapshotExclusions
     $decision = Resolve-ReviewCurrentness -ReviewedDigest ([string]$Snapshot.target_digest) -CurrentDigest $after.reviewed_state_digest -OriginHeadBefore ([string]$Snapshot.origin_head_before) -OriginHeadAfter $after.origin_head
     $reasons = [Collections.Generic.List[string]]::new()
     if ([string]$decision.reason -cne 'exact-head-and-digest-match') { $reasons.Add([string]$decision.reason) | Out-Null }
@@ -406,6 +417,12 @@ function Test-GitReviewTargetCurrentness {
         $reasons.Add('machinery-paths-changed') | Out-Null
         if ([string]$decision.classification -cne 'unknown') { $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = $decision.reason } }
     }
+    $exclusionsCurrent = $Snapshot.PSObject.Properties['excluded_path_patterns_sha256'] -and
+        [string]$Snapshot.excluded_path_patterns_sha256 -ceq [string]$after.excluded_path_patterns_sha256
+    if (-not $exclusionsCurrent) {
+        $reasons.Add('excluded-path-patterns-changed') | Out-Null
+        if ([string]$decision.classification -cne 'unknown') { $decision = [pscustomobject]@{ classification = 'snapshot-moved'; exact = $false; reason = $decision.reason } }
+    }
     if ($reasons.Count -eq 0) { $reasons.Add('exact-head-and-digest-match') | Out-Null }
     return [pscustomobject]@{
         classification = $decision.classification; exact = $decision.exact; reason = ($reasons -join ','); reasons = @($reasons)
@@ -413,6 +430,9 @@ function Test-GitReviewTargetCurrentness {
         reviewed_digest = [string]$Snapshot.target_digest; current_digest = $after.reviewed_state_digest
         verification_plan_current = $planCurrent; verification_plan_sha256 = $Snapshot.verification_plan_sha256
         machinery_paths_current = $machineryPathsCurrent; machinery_paths_sha256 = $Snapshot.machinery_paths_sha256
+        excluded_path_patterns_current = $exclusionsCurrent
+        excluded_path_patterns = @($snapshotExclusions)
+        excluded_path_patterns_sha256 = $Snapshot.excluded_path_patterns_sha256
     }
 }
 

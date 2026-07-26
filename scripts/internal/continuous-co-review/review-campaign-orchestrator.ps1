@@ -79,7 +79,11 @@ function New-ReviewRunStateFact {
 
 function New-GitReviewTargetPort {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$OriginRepo, [string]$ExternalRoot)
+    param(
+        [Parameter(Mandatory)][string]$OriginRepo,
+        [string]$ExternalRoot,
+        [AllowEmptyCollection()][string[]]$ExcludedPathPatterns = @()
+    )
     # Capture CommandInfo objects as well as values. A PowerShell closure is backed by a dynamic
     # module and cannot otherwise resolve private functions from the module that constructed it.
     $prepareCommand = Get-Command -Name 'New-GitReviewTargetSnapshot' -CommandType Function
@@ -88,7 +92,10 @@ function New-GitReviewTargetPort {
     $protectCommand = Get-Command -Name 'Enable-ReviewTargetReadOnlyProtection' -CommandType Function
     $unprotectCommand = Get-Command -Name 'Disable-ReviewTargetReadOnlyProtection' -CommandType Function
     $disposeCommand = Get-Command -Name 'Remove-GitReviewTargetSnapshot' -CommandType Function
-    $prepare = { param($runId) & $prepareCommand -OriginRepo $OriginRepo -RunId $runId -ExternalRoot $ExternalRoot }.GetNewClosure()
+    $prepare = {
+        param($runId)
+        & $prepareCommand -OriginRepo $OriginRepo -RunId $runId -ExternalRoot $ExternalRoot -ExcludedPathPatterns $ExcludedPathPatterns
+    }.GetNewClosure()
     $currentness = { param($snapshot) & $currentnessCommand -Snapshot $snapshot }.GetNewClosure()
     $integrity = { param($snapshot) & $integrityCommand -Snapshot $snapshot }.GetNewClosure()
     $protect = { param($snapshot, $externalWritablePath) & $protectCommand -Snapshot $snapshot -ExternalWritablePath $externalWritablePath }.GetNewClosure()
@@ -665,10 +672,11 @@ function New-ReviewCampaignTargetPort {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [string]$RequestedRoot
+        [string]$RequestedRoot,
+        [AllowEmptyCollection()][string[]]$ExcludedPathPatterns = @()
     )
     $targetRoot = Resolve-ReviewCampaignTargetExternalRoot -RepoRoot $RepoRoot -RequestedRoot $RequestedRoot
-    return New-GitReviewTargetPort -OriginRepo ((Resolve-Path -LiteralPath $RepoRoot).Path) -ExternalRoot $targetRoot
+    return New-GitReviewTargetPort -OriginRepo ((Resolve-Path -LiteralPath $RepoRoot).Path) -ExternalRoot $targetRoot -ExcludedPathPatterns $ExcludedPathPatterns
 }
 
 function Resolve-ReviewCampaignPublicIdentity {
@@ -745,12 +753,13 @@ function New-ReviewCampaignProductionPorts {
         [string]$ReviewerHost,
         [string]$Model,
         [string]$TargetRoot,
+        [AllowEmptyCollection()][string[]]$ExcludedPathPatterns = @(),
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900
     )
     # The one target-root policy is reused by live execution and reconciliation. It prefers the
     # short sibling root proven by T060, falls back to a writable platform root when the parent is
     # unavailable, supports an explicit external override, and fails with a domain-named reason.
-    $target = New-ReviewCampaignTargetPort -RepoRoot $RepoRoot -RequestedRoot $TargetRoot
+    $target = New-ReviewCampaignTargetPort -RepoRoot $RepoRoot -RequestedRoot $TargetRoot -ExcludedPathPatterns $ExcludedPathPatterns
     $harness = if (Get-Command -Name 'New-ReviewProductionHarnessPort' -ErrorAction SilentlyContinue) {
         New-ReviewProductionHarnessPort -HostName $ReviewerHost -Model $Model -TimeoutSeconds $TimeoutSeconds
     }
@@ -777,6 +786,7 @@ function Invoke-ReviewCampaignCommand {
         [string]$Model,
         [string]$GrantAuthorizationRef,
         [AllowEmptyCollection()][string[]]$DesignContextRefs = @(),
+        [AllowEmptyCollection()][string[]]$ExcludedPathPatterns = @(),
         [string]$ReviewScope = 'Review the complete frozen target and return the versioned candidate JSON contract.',
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900,
         [string]$AuthorityConfigPath,
@@ -869,7 +879,10 @@ function Invoke-ReviewCampaignCommand {
             throw "review-store-corruption:grant-identity-mismatch:$grantId"
         }
     }
-    if ($null -eq $Ports) { $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -Model $Model -TargetRoot $TargetRoot -TimeoutSeconds $TimeoutSeconds }
+    if ($null -eq $Ports) {
+        $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -Model $Model -TargetRoot $TargetRoot `
+            -ExcludedPathPatterns $ExcludedPathPatterns -TimeoutSeconds $TimeoutSeconds
+    }
     $run = Invoke-ReviewCampaignRun -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $identity.campaign_id -RunId $identity.run_id `
         -ReservationId $identity.reservation_id -TargetLineage $identity.target_lineage -TargetPort $Ports.target -HarnessPort $Ports.harness `
         -RuntimePort $Ports.runtime -VerificationPort $Ports.verification -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `

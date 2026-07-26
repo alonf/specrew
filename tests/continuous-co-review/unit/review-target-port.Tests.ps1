@@ -76,6 +76,38 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
         }
     }
 
+    It 'respects gitignore and explicit scope exclusions in the frozen target and currentness check' {
+        $origin = Join-Path $TestDrive 'origin-scope'
+        $external = Join-Path $TestDrive 'external-scope'
+        New-TargetRepo -Path $origin
+        [IO.File]::WriteAllText((Join-Path $origin '.gitignore'), "bin/`n.claude/settings.local.json`n")
+        [IO.Directory]::CreateDirectory((Join-Path $origin 'bin/Debug')) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $origin 'bin/Debug/app.dll'), 'ignored-build-output')
+        [IO.Directory]::CreateDirectory((Join-Path $origin '.claude')) | Out-Null
+        [IO.File]::WriteAllText((Join-Path $origin '.claude/settings.local.json'), '{"local":true}')
+        [IO.File]::WriteAllText((Join-Path $origin 'review-excluded.txt'), 'human-excluded')
+        [IO.File]::WriteAllText((Join-Path $origin 'ordinary-untracked.txt'), 'review-me')
+        & git -C $origin add .gitignore review-excluded.txt 2>&1 | Out-Null
+        & git -C $origin -c user.name=target-test -c user.email=target@test.local commit -qm 'ignore local artifacts' 2>&1 | Out-Null
+
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-scope -ExternalRoot $external `
+            -ExcludedPathPatterns @('review-excluded.txt')
+        try {
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path 'ordinary-untracked.txt') | Should -BeTrue
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path 'bin/Debug/app.dll') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path '.claude/settings.local.json') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $snapshot.snapshot_path 'review-excluded.txt') | Should -BeFalse
+            $snapshot.excluded_path_patterns | Should -Be @('review-excluded.txt')
+            $snapshot.excluded_path_patterns_sha256 | Should -Match '^[a-f0-9]{64}$'
+
+            [IO.File]::WriteAllText((Join-Path $origin 'review-excluded.txt'), 'human-excluded-changed')
+            (Test-GitReviewTargetCurrentness -Snapshot $snapshot).classification | Should -Be 'current'
+            [IO.File]::WriteAllText((Join-Path $origin 'ordinary-untracked.txt'), 'changed-reviewable')
+            (Test-GitReviewTargetCurrentness -Snapshot $snapshot).classification | Should -Be 'snapshot-moved'
+        }
+        finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }
+    }
+
     It 'refuses an external root at or below the origin' {
         $origin = Join-Path $TestDrive 'origin-contained'
         New-TargetRepo -Path $origin
@@ -105,12 +137,15 @@ Describe 'ReviewTargetPort production Git target and non-code fixture (T046)' {
                 -ExpectedTargetDigest $snapshot.target_digest
             $persisted = Read-ReviewAuthorityFactFile -Path $written.path -ContractName RecoveryFact
             $persisted.machinery_paths | Should -Be $snapshot.machinery_paths
+            $persisted.excluded_path_patterns | Should -Be $snapshot.excluded_path_patterns
             $recovered = Get-ReviewRecoverySnapshot -Fact $persisted
             $recovered.recovery_binding_complete | Should -BeTrue
             $recovered.verification_plan_present | Should -Be $snapshot.verification_plan_present
             $recovered.verification_plan_sha256 | Should -Be $snapshot.verification_plan_sha256
             $recovered.machinery_paths | Should -Be $snapshot.machinery_paths
             $recovered.machinery_paths_sha256 | Should -Be $snapshot.machinery_paths_sha256
+            $recovered.excluded_path_patterns | Should -Be $snapshot.excluded_path_patterns
+            $recovered.excluded_path_patterns_sha256 | Should -Be $snapshot.excluded_path_patterns_sha256
             (Test-GitReviewTargetCurrentness -Snapshot $recovered).classification | Should -Be 'current'
         }
         finally { (Remove-GitReviewTargetSnapshot -Snapshot $snapshot).removed | Should -BeTrue }

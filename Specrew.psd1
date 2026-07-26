@@ -255,6 +255,7 @@
         'scripts/internal/bootstrap/SessionStateAccessor.ps1',
         'scripts/internal/bootstrap/ValidationEngine.ps1',
         'scripts/internal/code-implementation-lens.ps1',
+        'scripts/internal/review-engine-resolution.ps1',
         'scripts/internal/continuous-co-review/_load.ps1',
         'scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1',
         'scripts/internal/continuous-co-review/co-review-lineage-lease.ps1',

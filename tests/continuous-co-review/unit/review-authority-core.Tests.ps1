@@ -93,6 +93,7 @@ Describe 'Review authority closed contracts (T042)' {
                 target_kind = 'fixture'; snapshot_path = 'C:\review\snapshot'; workspace_root = 'C:\review\snapshot'; origin_repo = 'not-applicable'
                 git_root = 'not-applicable'; origin_head_before = 'not-applicable'; verification_plan_present = $false
                 verification_plan_sha256 = 'not-applicable'; machinery_paths = @('.specrew'); machinery_paths_sha256 = ('a' * 64)
+                excluded_path_patterns = @(); excluded_path_patterns_sha256 = ('b' * 64)
                 staging_root = 'C:\review\staging'
             } }
         )

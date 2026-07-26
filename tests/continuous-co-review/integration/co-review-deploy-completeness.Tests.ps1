@@ -26,7 +26,22 @@ Describe 'F-197 co-review deploy is complete (deployed runtime loads + can fire)
         (Test-Path (Join-Path $proj 'scripts/internal/agent-tasks/isolated-task-supervisor.ps1')) | Should -Be $true
         (Test-Path (Join-Path $proj 'scripts/internal/atomic-write.ps1')) | Should -Be $true
         (Test-Path (Join-Path $proj 'scripts/internal/continuous-co-review/_load.ps1')) | Should -Be $true
+        $runtimeMarkerPath = Join-Path $proj 'scripts/internal/continuous-co-review/.specrew-runtime.json'
+        (Test-Path $runtimeMarkerPath) | Should -Be $true
         (Test-Path (Join-Path $proj '.specrew/review/contracts/findings-result.schema.json')) | Should -Be $true
+
+        # F6: init/update must leave enough stable identity for the installed CLI to
+        # select the exact project-deployed engine, rather than silently mixing copies.
+        . (Join-Path $script:RepoRoot 'scripts/internal/review-engine-resolution.ps1')
+        $marker = Get-Content -LiteralPath $runtimeMarkerPath -Raw | ConvertFrom-Json
+        $deployedRuntime = Join-Path $proj 'scripts/internal/continuous-co-review'
+        $actualHash = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $deployedRuntime
+        [string]$marker.runtime_bundle_sha256 | Should -Be $actualHash
+        $selection = Resolve-SpecrewReviewEngineRoot `
+            -ProjectRoot $proj `
+            -InstalledRuntimeRoot (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
+        [string]$selection.source | Should -Be 'project-deployed'
+        [string]$selection.runtime_root | Should -Be (Resolve-Path $deployedRuntime).Path
 
         # CLASS guard: dot-source the DEPLOYED runtime in an ISOLATED child process (no worktree functions
         # in scope) and confirm it LOADS + can fire - this trips on ANY missing deployed dependency.

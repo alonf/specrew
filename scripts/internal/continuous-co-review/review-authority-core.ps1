@@ -304,7 +304,8 @@ function Test-ReviewAuthorityContractObject {
             'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',
             'invocation_started_at', 'invocation_started_monotonic_ms', 'target_kind', 'snapshot_path',
             'workspace_root', 'origin_repo', 'git_root', 'origin_head_before', 'staging_root',
-            'verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256'
+            'verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256',
+            'excluded_path_patterns', 'excluded_path_patterns_sha256'
         ) }
     }
     if (-not (Test-ReviewAuthorityClosedShape -Object $InputObject -Allowed $fields -Errors $errors)) {
@@ -428,7 +429,11 @@ function Test-ReviewAuthorityContractObject {
             }
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'origin_head_before' -Errors $errors -MaxLength 128
             $names = Get-ReviewAuthorityPropertyNames -Object $InputObject
-            $bindingNames = @('verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256')
+            $bindingNames = @(
+                'verification_plan_present', 'verification_plan_sha256',
+                'machinery_paths', 'machinery_paths_sha256',
+                'excluded_path_patterns', 'excluded_path_patterns_sha256'
+            )
             $bindingCount = @($bindingNames | Where-Object { $names -contains $_ }).Count
             if ($bindingCount -ne 0 -and $bindingCount -ne $bindingNames.Count) {
                 Add-ReviewAuthorityError -Errors $errors -Message 'incomplete-group:recovery-target-bindings'
@@ -436,8 +441,24 @@ function Test-ReviewAuthorityContractObject {
             if ($names -contains 'verification_plan_present') {
                 Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'verification_plan_present' -Errors $errors
             }
-            foreach ($name in @('verification_plan_sha256', 'machinery_paths_sha256')) {
+            foreach ($name in @('verification_plan_sha256', 'machinery_paths_sha256', 'excluded_path_patterns_sha256')) {
                 if ($names -contains $name) { Test-ReviewAuthorityStringField -Object $InputObject -Name $name -Errors $errors -MaxLength 128 }
+            }
+            if ($names -contains 'excluded_path_patterns') {
+                $patterns = Get-ReviewAuthorityProperty -Object $InputObject -Name 'excluded_path_patterns'
+                if (($patterns -is [string]) -or ($patterns -isnot [System.Collections.IEnumerable])) {
+                    Add-ReviewAuthorityError -Errors $errors -Message 'wrong-type:excluded_path_patterns:array'
+                }
+                else {
+                    $patternArray = @($patterns)
+                    if ($patternArray.Count -gt 256) { Add-ReviewAuthorityError -Errors $errors -Message 'too-many:excluded_path_patterns:256' }
+                    foreach ($pattern in $patternArray) {
+                        if ($pattern -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$pattern) -or ([string]$pattern).Length -gt 1024) {
+                            Add-ReviewAuthorityError -Errors $errors -Message 'invalid-value:excluded_path_patterns:item'
+                            break
+                        }
+                    }
+                }
             }
             if ($names -contains 'machinery_paths') {
                 $paths = Get-ReviewAuthorityProperty -Object $InputObject -Name 'machinery_paths'

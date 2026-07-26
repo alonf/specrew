@@ -28,7 +28,11 @@ function New-ReviewRunRecoveryFact {
     }
     $notApplicable = 'not-applicable'
     $targetKind = [string]$Snapshot.target_kind
-    $bindingNames = @('verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256')
+    $bindingNames = @(
+        'verification_plan_present', 'verification_plan_sha256',
+        'machinery_paths', 'machinery_paths_sha256',
+        'excluded_path_patterns', 'excluded_path_patterns_sha256'
+    )
     if ($targetKind -ceq 'code') {
         foreach ($name in $bindingNames) {
             if ($null -eq $Snapshot.PSObject.Properties[$name]) { throw "review-recovery-snapshot-binding-missing:$name" }
@@ -38,6 +42,8 @@ function New-ReviewRunRecoveryFact {
     $verificationPlanSha256 = if ($Snapshot.PSObject.Properties['verification_plan_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.verification_plan_sha256)) { [string]$Snapshot.verification_plan_sha256 } else { $notApplicable }
     $machineryPaths = if ($Snapshot.PSObject.Properties['machinery_paths']) { @($Snapshot.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique) } else { @() }
     $machineryPathsSha256 = if ($Snapshot.PSObject.Properties['machinery_paths_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.machinery_paths_sha256)) { [string]$Snapshot.machinery_paths_sha256 } else { $notApplicable }
+    $excludedPathPatterns = if ($Snapshot.PSObject.Properties['excluded_path_patterns']) { @($Snapshot.excluded_path_patterns | ForEach-Object { ([string]$_ -replace '\\', '/').Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique) } else { @() }
+    $excludedPathPatternsSha256 = if ($Snapshot.PSObject.Properties['excluded_path_patterns_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.excluded_path_patterns_sha256)) { [string]$Snapshot.excluded_path_patterns_sha256 } else { $notApplicable }
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'recovery'; campaign_id = $CampaignId; run_id = $RunId
         target_digest = $TargetDigest; harness_id = $HarnessId; target_lineage = $TargetLineage
@@ -52,6 +58,7 @@ function New-ReviewRunRecoveryFact {
         origin_head_before = $(if ($Snapshot.PSObject.Properties['origin_head_before'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.origin_head_before)) { [string]$Snapshot.origin_head_before } else { $notApplicable })
         verification_plan_present = [bool]$verificationPlanPresent; verification_plan_sha256 = $verificationPlanSha256
         machinery_paths = @($machineryPaths); machinery_paths_sha256 = $machineryPathsSha256
+        excluded_path_patterns = @($excludedPathPatterns); excluded_path_patterns_sha256 = $excludedPathPatternsSha256
         staging_root = [IO.Path]::GetFullPath($StagingRoot)
     }
     $validation = Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $fact -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId -ExpectedTargetDigest $TargetDigest
@@ -62,12 +69,19 @@ function New-ReviewRunRecoveryFact {
 function Get-ReviewRecoverySnapshot {
     param([Parameter(Mandatory)]$Fact)
     $names = @($Fact.PSObject.Properties.Name)
-    $requiredBindings = @('verification_plan_present', 'verification_plan_sha256', 'machinery_paths', 'machinery_paths_sha256')
+    $requiredBindings = @(
+        'verification_plan_present', 'verification_plan_sha256',
+        'machinery_paths', 'machinery_paths_sha256',
+        'excluded_path_patterns', 'excluded_path_patterns_sha256'
+    )
     $bindingComplete = @($requiredBindings | Where-Object { $names -notcontains $_ }).Count -eq 0
     $verificationPlanSha256 = if ($bindingComplete -and [string]$Fact.verification_plan_sha256 -cne 'not-applicable') { [string]$Fact.verification_plan_sha256 } else { $null }
     $machineryPathsSha256 = if ($bindingComplete -and [string]$Fact.machinery_paths_sha256 -cne 'not-applicable') { [string]$Fact.machinery_paths_sha256 } else { $null }
     $machineryPaths = @()
     if ($bindingComplete) { $machineryPaths = @($Fact.machinery_paths) }
+    $excludedPathPatterns = @()
+    if ($bindingComplete) { $excludedPathPatterns = @($Fact.excluded_path_patterns) }
+    $excludedPathPatternsSha256 = if ($bindingComplete -and [string]$Fact.excluded_path_patterns_sha256 -cne 'not-applicable') { [string]$Fact.excluded_path_patterns_sha256 } else { $null }
     return [pscustomobject]@{
         schema_version = '1.0'; target_kind = [string]$Fact.target_kind; run_id = [string]$Fact.run_id
         target_digest = [string]$Fact.target_digest; snapshot_path = [string]$Fact.snapshot_path
@@ -79,6 +93,8 @@ function Get-ReviewRecoverySnapshot {
         verification_plan_sha256 = $verificationPlanSha256
         machinery_paths = $machineryPaths
         machinery_paths_sha256 = $machineryPathsSha256
+        excluded_path_patterns = $excludedPathPatterns
+        excluded_path_patterns_sha256 = $excludedPathPatternsSha256
         recovery_binding_complete = $bindingComplete
     }
 }

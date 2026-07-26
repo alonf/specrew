@@ -1,0 +1,53 @@
+schema: "v1"
+feature: "198-beta2-hardening"
+iteration: "009"
+updated_at: "2026-07-26T04:55:25Z"
+tasks:
+  T072:
+    title: "Proposal 209 W1 per-suite timing"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T073:
+    title: "Proposal 209 W2 bounded parallel registry"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T074:
+    title: "Canonical candidate inclusion and exclusion identity"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T075:
+    title: "Codex file-primary delivery without duplicate invocation"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T076:
+    title: "Review-engine version handshake"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T077:
+    title: "Consumer review-runtime ignore classification"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T078:
+    title: "Candidate fidelity frozen-evidence regression"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T079:
+    title: "Integrated verification and independent review"
+    status: "in_progress"
+    started_at: "2026-07-26T04:55:25Z"
+    completed_at: ""
+    blocked_reason: ""

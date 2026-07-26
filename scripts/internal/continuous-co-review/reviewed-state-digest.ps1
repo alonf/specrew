@@ -5,12 +5,14 @@ Set-StrictMode -Version Latest
 #
 # A co-review run records a digest of the EXACT worktree content it reviewed, computed via
 # a TEMPORARY git index (GIT_INDEX_FILE) so the real index/HEAD are never touched. The
-# digest is a git tree-id over: tracked + untracked-non-ignored content (git add -A) PLUS
-# gitignored SOURCE (git add -f), minus a secret/ambient denylist. The gate's freshness
+# digest is a git tree-id over tracked + untracked-non-ignored content (`git add -A`),
+# minus methodology/runtime machinery and explicit human scope exclusions. Gitignored
+# untracked files are excluded by Git's own repository policy; tracked files remain reviewable
+# even when a later ignore rule matches them. The gate's freshness
 # check is "current worktree tree-id == a passing run's recorded tree-id". This structurally
-# closes HOLE A (gitignored source is IN the tree-id and its drift flips it), the untracked
-# blind spot, the empty-diff trust (the empty tree has the well-known id below), and the
-# diff path-parsing nits. Validated empirically 2026-06-20.
+# closes the non-ignored untracked blind spot, the empty-diff trust (the empty tree has the
+# well-known id below), and the diff path-parsing nits without pulling build/runtime artifacts
+# into the review candidate.
 
 function Get-ContinuousCoReviewSecretAmbientDenylist {
     # The DIGEST-IDENTITY denylist: paths kept OUT of the content-addressed tree-id.
@@ -30,12 +32,10 @@ function Get-ContinuousCoReviewSecretAmbientDenylist {
         'node_modules/**', 'dist/**', 'build/**', 'out/**', 'target/**', 'bin/**', 'obj/**',
         '.venv/**', 'venv/**', '__pycache__/**', '.tox/**', '.gradle/**', '.next/**',
         '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**',
-        # T017 INTERIM (2026-07-12, co-review f1 digest-false-allow): the SIX known review-closeout scaffolder
-        # STAGING byproducts, PATH-AND-NAME specific under specs/*/iterations/*/. A GLOBAL `*.pending` rule was
-        # WRONG - it would drop a genuine ignored SOURCE file (e.g. src/schema.pending) from the digest identity,
-        # the exact FALSE-ALLOW that force-adding ignored source exists to prevent. These path+name patterns match
-        # ONLY the closeout generator's own artifacts, so any OTHER ignored `.pending` (a real source file, or an
-        # unlisted custom.md.pending under an iteration) stays IN the identity and its drift still flips the digest.
+        # T017 INTERIM (2026-07-12): the SIX known review-closeout scaffolder staging
+        # byproducts, path-and-name specific under specs/*/iterations/*. This classifier
+        # remains narrow for reviewer-bundle compatibility; the digest now respects
+        # `.gitignore` for every untracked path and never force-adds ignored content.
         # T017 REALIZED the ONE machinery source (Get-ContinuousCoReviewMachineryPaths, consumed by BOTH the digest
         # AND the worktree strip - see the $machineryPatterns wiring below). These .pending patterns are
         # digest-specific scaffolder-BYPRODUCT hygiene (NOT host machinery), so they correctly stay here, not in the
@@ -59,8 +59,7 @@ function Get-ContinuousCoReviewDigestRuntimeStripList {
     # contain secret-FILE/extension globs (`*.key`/`*.token`/`*.pem` strip real source like
     # `src/keymap.key`) or ambiguous build-output dirs (`bin/`/`obj/`/`dist/` are committed
     # source in polyglot repos). Secret CONFIDENTIALITY is the reviewer-bundle path's concern,
-    # not the gate identity. (Gitignored ambient/secret junk is kept out of the tree by the
-    # broader inclusion denylist below, applied only to the `git add -f` step.)
+    # not the gate identity. Gitignored ambient/secret junk is kept out by normal Git semantics.
     return @(
         '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**',
         'node_modules/**', '.venv/**', 'venv/**', '__pycache__/**', '.tox/**', '.gradle/**', '.next/**'
@@ -122,9 +121,18 @@ function New-ContinuousCoReviewDigestResult {
 
         [int] $IncludedIgnoredCount = 0,
 
-        [string[]] $MachineryPaths = @()
+        [string[]] $MachineryPaths = @(),
+
+        [string[]] $ExcludedPathPatterns = @()
     )
 
+    $canonicalExclusions = @($ExcludedPathPatterns | ForEach-Object {
+        $normalized = ([string]$_ -replace '\\', '/').Trim()
+        while ($normalized.StartsWith('./', [StringComparison]::Ordinal)) { $normalized = $normalized.Substring(2) }
+        $normalized
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+    $exclusionBytes = [Text.Encoding]::UTF8.GetBytes(($canonicalExclusions -join "`n"))
+    $exclusionSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($exclusionBytes)).ToLowerInvariant()
     return [pscustomobject][ordered]@{
         schema_version         = '1.0'
         ok                     = $Ok
@@ -132,6 +140,8 @@ function New-ContinuousCoReviewDigestResult {
         is_empty               = ($Ok -and $TreeId -eq (Get-ContinuousCoReviewEmptyTreeId))
         included_ignored_count = $IncludedIgnoredCount
         machinery_paths        = @($MachineryPaths)
+        excluded_path_patterns = @($canonicalExclusions)
+        excluded_path_patterns_sha256 = $exclusionSha256
         failure_reason         = $FailureReason
     }
 }
@@ -179,11 +189,6 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
-    # Two distinct lists: the BROAD inclusion denylist decides which GITIGNORED paths to
-    # add (keeps ambient/secret junk out of the tree), while the MINIMAL strip list decides
-    # what to remove from the FINAL index (only genuinely-non-source, so no tracked source is
-    # ever stripped - the false-allow fix).
-    #
     # T017 (FR-012): the METHODOLOGY MACHINERY excluded from the digest identity is the SAME single source the
     # WORKTREE strip uses - Get-ContinuousCoReviewMachineryPaths (core tool dirs + marker-detected + host-mirror
     # subdirs, context-aware). By construction the digest and worktree strip the SAME machinery, so they cannot
@@ -218,8 +223,12 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     catch {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason ('machinery-resolver-failed: ' + [string]$_.Exception.Message)
     }
-    $inclusionDenylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($machineryPatterns) + @($ExcludedPathPatterns)
-    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($machineryPatterns) + @($ExcludedPathPatterns)
+    $canonicalExclusions = @($ExcludedPathPatterns | ForEach-Object {
+        $normalized = ([string]$_ -replace '\\', '/').Trim()
+        while ($normalized.StartsWith('./', [StringComparison]::Ordinal)) { $normalized = $normalized.Substring(2) }
+        $normalized
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($machineryPatterns) + @($canonicalExclusions)
     $tempIndex = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-idx-' + [System.Guid]::NewGuid().ToString('N'))
 
     $hadPreviousIndex = Test-Path env:GIT_INDEX_FILE
@@ -247,14 +256,27 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             }
         }
 
-        # A fresh (non-existent) GIT_INDEX_FILE is an EMPTY index, so `git add -A` stages
-        # the full current working tree (every non-ignored file as an addition) WITHOUT
-        # reading or writing the real .git/index. No HEAD dependency (works pre-commit).
+        # Seed the temporary index from the repository's real index. This preserves every
+        # tracked path (including a tracked file later matched by .gitignore), staged additions,
+        # and executable modes without mutating the caller's index. `git add -A` then overlays
+        # the current working tree and adds only untracked NON-IGNORED files. Starting from an
+        # empty temporary index would incorrectly drop tracked-but-ignored paths.
+        $realIndexOutput = & git rev-parse --git-path index 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-index-path-unavailable' -ExcludedPathPatterns $canonicalExclusions
+        }
+        $realIndexPath = ([string](@($realIndexOutput) | Select-Object -First 1)).Trim()
+        if (-not [IO.Path]::IsPathRooted($realIndexPath)) {
+            $realIndexPath = [IO.Path]::GetFullPath((Join-Path $resolvedRepoRoot $realIndexPath))
+        }
+        if ([IO.File]::Exists($realIndexPath)) {
+            Copy-Item -LiteralPath $realIndexPath -Destination $tempIndex -Force
+        }
         $env:GIT_INDEX_FILE = $tempIndex
 
         & git add -A 2>$null | Out-Null
         if ($LASTEXITCODE -ne 0) {
-            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-add-all-failed'
+            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-add-all-failed' -ExcludedPathPatterns $canonicalExclusions
         }
         if ($execBitPaths.Count -gt 0) {
             # Only restore paths still present in the working tree: update-index aborts a whole
@@ -264,20 +286,10 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             Invoke-ContinuousCoReviewGitPathBatch -GitArgs @('update-index', '--chmod=+x') -Paths $execBitPaths
         }
 
-        $rawIgnored = & git ls-files -z --others --ignored --exclude-standard --directory 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-ls-ignored-failed'
-        }
-        # Collect the non-denied gitignored SOURCE, then force-add it in BATCHED git calls (NOT one
-        # subprocess per entry - see Invoke-ContinuousCoReviewGitPathBatch).
-        $toInclude = @()
-        foreach ($entry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawIgnored)) {
-            if (-not (Test-ContinuousCoReviewDigestPathDenied -Path $entry -Denylist $inclusionDenylist)) {
-                $toInclude += $entry
-            }
-        }
-        $included = $toInclude.Count
-        Invoke-ContinuousCoReviewGitPathBatch -GitArgs @('add', '-f') -Paths $toInclude
+        # Deliberately do not force-add ignored files. `.gitignore` is the repository's product
+        # source boundary for untracked content; build outputs, local settings, and runtime
+        # databases must never inflate or destabilize a review candidate.
+        $included = 0
 
         # Strip only the genuinely-non-source runtime/dep paths from the final index (e.g. the
         # gate's own .specrew/review evidence, which must NEVER perturb the digest it checks).
@@ -299,14 +311,14 @@ function Get-ContinuousCoReviewReviewedStateDigest {
 
         $treeOutput = & git write-tree 2>$null
         if ($LASTEXITCODE -ne 0) {
-            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-failed'
+            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-failed' -ExcludedPathPatterns $canonicalExclusions
         }
         $treeId = ([string] (@($treeOutput) | Select-Object -First 1)).Trim()
         if ($treeId -notmatch '^[0-9a-f]{40}$') {
-            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-malformed'
+            return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-malformed' -ExcludedPathPatterns $canonicalExclusions
         }
 
-        return New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included -MachineryPaths $machineryPaths
+        return New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included -MachineryPaths $machineryPaths -ExcludedPathPatterns $canonicalExclusions
     }
     catch {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'digest-exception'

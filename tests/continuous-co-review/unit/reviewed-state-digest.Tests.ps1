@@ -57,13 +57,13 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         $d1.tree_id | Should -Match '^[0-9a-f]{40}$'
     }
 
-    It 'includes gitignored SOURCE in the digest tree' {
+    It 'excludes gitignored untracked content from the digest tree' {
         $repo = New-DigestRepo 'gitignored'
         $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
         $d.ok | Should -Be $true
-        $d.included_ignored_count | Should -BeGreaterThan 0
+        $d.included_ignored_count | Should -Be 0
         $names = Get-TreeNames -Root $repo -TreeId $d.tree_id
-        ($names -contains 'gen/logic.py') | Should -Be $true
+        ($names -contains 'gen/logic.py') | Should -Be $false
     }
 
     It 'keeps the .env secret OUT of the digest tree' {
@@ -135,12 +135,27 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         $after | Should -Not -Be $before
     }
 
-    It 'detects a GITIGNORED-SOURCE change (closes HOLE A)' {
+    It 'does not let gitignored runtime content perturb review identity' {
         $repo = New-DigestRepo 'gitignored-drift'
         $before = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
         Set-Content -LiteralPath (Join-Path $repo 'gen/logic.py') -Value 'def src(): evil()' -Encoding UTF8
         $after = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
-        $after | Should -Not -Be $before
+        $after | Should -Be $before
+    }
+
+    It 'keeps a tracked file reviewable after a later ignore rule matches it' {
+        $repo = New-DigestRepo 'tracked-then-ignored'
+        Set-Content -LiteralPath (Join-Path $repo 'tracked-local.db') -Value 'tracked-v0' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', '-f', 'tracked-local.db')
+        Invoke-DigestGit $repo @('commit', '-q', '-m', 'track before ignore')
+        Add-Content -LiteralPath (Join-Path $repo '.gitignore') -Value 'tracked-local.db'
+        Invoke-DigestGit $repo @('add', '.gitignore')
+        Invoke-DigestGit $repo @('commit', '-q', '-m', 'ignore future untracked db files')
+
+        $before = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        (Get-TreeNames -Root $repo -TreeId $before.tree_id) | Should -Contain 'tracked-local.db'
+        Set-Content -LiteralPath (Join-Path $repo 'tracked-local.db') -Value 'tracked-v1' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $before.tree_id
     }
 
     It 'ignores a change to an excluded secret (no noise, no leak)' {
@@ -174,7 +189,7 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist $deny) | Should -Be $false
     }
 
-    It 'T017: the SIX named review-closeout scaffolder artifacts under specs/*/iterations/*/ are excluded, but any OTHER ignored .pending (real source, or an unlisted iteration .pending) STAYS in the digest (path+name specific, no false-allow)' {
+    It 'keeps the legacy secret and scaffolder denylist path-specific without broad source-name matches' {
         $deny = Get-ContinuousCoReviewSecretAmbientDenylist
         # (1) the six known closeout scaffolder artifacts under an iteration dir ARE excluded (must not enter the
         # digest identity NOR the reviewer worktree materialized from the digest tree).
@@ -184,15 +199,29 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/dependency-report.md.pending' -Denylist $deny) | Should -Be $true
         (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/review-diagrams.md.pending' -Denylist $deny) | Should -Be $true
         (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/reviewer-index.md.pending' -Denylist $deny) | Should -Be $true
-        # (2) a genuine ignored SOURCE file ending in .pending STILL changes the digest (NOT excluded) - the exact
-        # false-allow the global *.pending rule would have introduced.
+        # The classification helper itself remains path-specific. Git's ignore policy now decides
+        # whether untracked content enters the candidate; tracked content is never removed merely
+        # because its name resembles a secret or pending artifact.
         (Test-ContinuousCoReviewDigestPathDenied -Path 'src/schema.pending' -Denylist $deny) | Should -Be $false
         # (3) an UNLISTED custom .pending under an iteration dir ALSO stays in the digest (only the six known
         # closeout names are excluded, not the .pending extension nor the iteration path wholesale).
         (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/custom.md.pending' -Denylist $deny) | Should -Be $false
-        # (4) other ignored SOURCE (merely mentioning 'pending', or unrelated) remains reviewable in the identity.
+        # (4) other source names are not overmatched by this classifier.
         (Test-ContinuousCoReviewDigestPathDenied -Path 'src/pending-queue.ts' -Denylist $deny) | Should -Be $false
         (Test-ContinuousCoReviewDigestPathDenied -Path 'lib/pending.go' -Denylist $deny) | Should -Be $false
+    }
+
+    It 'honors explicit scope exclusions and records their canonical binding' {
+        $repo = New-DigestRepo 'explicit-exclusion'
+        Set-Content -LiteralPath (Join-Path $repo 'local.settings.json') -Value '{"local":true}' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', 'local.settings.json')
+        Invoke-DigestGit $repo @('commit', '-q', '-m', 'tracked local settings')
+
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo -ExcludedPathPatterns @('.\local.settings.json', 'local.settings.json')
+        $d.ok | Should -BeTrue
+        $d.excluded_path_patterns | Should -Be @('local.settings.json')
+        $d.excluded_path_patterns_sha256 | Should -Match '^[a-f0-9]{64}$'
+        (Get-TreeNames -Root $repo -TreeId $d.tree_id) | Should -Not -Contain 'local.settings.json'
     }
 
     It 'correctness: tracked source under bin/ or named *.key/*.token stays in the identity and its drift flips it (false-allow fix)' {

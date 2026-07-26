@@ -523,6 +523,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Not -Match 'Start-ContinuousCoReviewServiceRun'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "campaignRun.status -cne 'terminal'"
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match 'DesignContextRefs' -Because 'the public parser output must reach campaign validation'
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-ExcludedPathPatterns\s+@\(\$parsedArgs\.ExcludedPathPatterns\)' -Because 'the human-selected review exclusion must reach campaign target construction'
         $source | Should -Match '\$boundDesignContextRefs\s*=\s*@\(\$DesignContextRef\s*\|\s*Where-Object' -Because 'an omitted named array must not become one empty explicit design-context ref'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "PSObject\.Properties\['store_root'\]" -Because 'a pre-store not-started result must render without a second property error'
         $campaignSource = $source.Substring($campaignBranch, $legacy - $campaignBranch)
@@ -535,7 +536,7 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source | Should -Match 'New-ReviewCampaignTargetPort -RepoRoot \$resolvedProjectPath' -Because 'reconciliation must reuse the same short-root/fallback policy as live review'
 
         $remediationBranch = $source.IndexOf("if (-not [string]::IsNullOrWhiteSpace([string]`$parsedArgs.Remediate))")
-        $legacyRemediation = $source.IndexOf("internal/continuous-co-review/worktree-review-orchestrator.ps1", $remediationBranch)
+        $legacyRemediation = $source.IndexOf("(Join-Path `$reviewEngineRoot 'worktree-review-orchestrator.ps1')", $remediationBranch)
         $remediationBranch | Should -BeGreaterThan -1
         $legacyRemediation | Should -BeGreaterThan $remediationBranch
         $source.Substring($remediationBranch, $legacyRemediation - $remediationBranch) | Should -Match 'neither legacy nor campaign remediation may mutate review state'

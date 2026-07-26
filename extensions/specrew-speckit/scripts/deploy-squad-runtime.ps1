@@ -770,6 +770,22 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
 $continuousReviewRuntimeSource = Join-Path $repositoryRoot 'scripts\internal\continuous-co-review'
 $continuousReviewRuntimeTarget = Join-Path $resolvedProjectPath 'scripts\internal\continuous-co-review'
 Copy-ManagedDirectory -SourcePath $continuousReviewRuntimeSource -TargetPath $continuousReviewRuntimeTarget -Actions $actions
+$reviewEngineResolutionPath = Join-Path $repositoryRoot 'scripts\internal\review-engine-resolution.ps1'
+if (-not (Test-Path -LiteralPath $reviewEngineResolutionPath -PathType Leaf)) {
+    throw "Missing review-engine resolution helper: $reviewEngineResolutionPath"
+}
+. $reviewEngineResolutionPath
+$sourceManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $repositoryRoot 'Specrew.psd1')
+$reviewRuntimeMarker = [ordered]@{
+    schema_version = '1.0'
+    specrew_version = [string]$sourceManifest.ModuleVersion
+    # Bind the marker to the files that were actually deployed. The logical hash
+    # normalizes managed-text encoding and line endings, while still detecting any
+    # executable content drift.
+    runtime_bundle_sha256 = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $continuousReviewRuntimeTarget
+    source = 'specrew-init-or-update'
+} | ConvertTo-Json -Depth 5
+Set-ManagedFile -TargetPath (Join-Path $continuousReviewRuntimeTarget '.specrew-runtime.json') -Content ($reviewRuntimeMarker + [Environment]::NewLine) -Actions $actions
 
 $continuousReviewContractsSource = Join-Path $repositoryRoot 'specs\197-continuous-co-review\contracts'
 $continuousReviewContractsTarget = Join-Path $resolvedProjectPath '.specrew\review\contracts'

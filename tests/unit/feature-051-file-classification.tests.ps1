@@ -32,7 +32,10 @@ function New-TempDir {
 $canonicalPerSession = @(
     '.specrew/last-*', '.specify/feature.json', '.specrew/start-context.json',
     '.specrew/host-history.json', '.specrew/.cache/', '.specrew/version-check-cache.json',
-    '.specrew/handover/', '.specrew/runtime/', '.squad/sessions/',
+    '.specrew/handover/', '.specrew/runtime/',
+    '.specrew/review/authority/', '.specrew/review/inline/', '.specrew/review/pending/',
+    '.specrew/review/runs/', '.specrew/review/signoff-gate/', '.specrew/review/test-evidence/',
+    '.squad/sessions/',
     '.squad/decisions/inbox/', '.specrew/last-validator-summary.json',
     '.specrew/active-sessions.yml',  # added in Iteration 2a (T020c, FR-005 gap fix)
     '.agents/hooks.json',            # Antigravity hook config carries per-developer launcher paths.
@@ -88,11 +91,17 @@ try {
     $tracked = Join-Path $projB '.specrew/last-start-prompt.md'
     Set-Content -LiteralPath $tracked -Value 'session prompt' -Encoding UTF8
     $runtime = Join-Path $projB '.specrew/runtime/navigator.jsonl'
+    $reviewPending = Join-Path $projB '.specrew/review/pending/run.json'
+    $reviewContract = Join-Path $projB '.specrew/review/contracts/review-request.schema.json'
     $handover = Join-Path $projB '.specrew/handover/session-handover.md'
     New-Item -ItemType Directory -Path (Split-Path -Parent $runtime) -Force | Out-Null
     New-Item -ItemType Directory -Path (Split-Path -Parent $handover) -Force | Out-Null
+    New-Item -ItemType Directory -Path (Split-Path -Parent $reviewPending) -Force | Out-Null
+    New-Item -ItemType Directory -Path (Split-Path -Parent $reviewContract) -Force | Out-Null
     Set-Content -LiteralPath $runtime -Value '{}' -Encoding UTF8
     Set-Content -LiteralPath $handover -Value '# handover' -Encoding UTF8
+    Set-Content -LiteralPath $reviewPending -Value '{}' -Encoding UTF8
+    Set-Content -LiteralPath $reviewContract -Value '{}' -Encoding UTF8
     $keep = Join-Path $projB 'README.md'
     Set-Content -LiteralPath $keep -Value '# project' -Encoding UTF8
     git add -A 2>$null
@@ -107,10 +116,13 @@ try {
     Assert-True ($afterTracked -notcontains '.specrew/last-start-prompt.md') "T015: per-session file removed from git index"
     Assert-True ($afterTracked -notcontains '.specrew/runtime/navigator.jsonl') "T015: runtime evidence removed from git index"
     Assert-True ($afterTracked -notcontains '.specrew/handover/session-handover.md') "T015: handover evidence removed from git index"
+    Assert-True ($afterTracked -notcontains '.specrew/review/pending/run.json') "T015: review runtime evidence removed from git index"
+    Assert-True ($afterTracked -contains '.specrew/review/contracts/review-request.schema.json') "T015: shipped review contracts remain tracked"
     Assert-True ($afterTracked -contains 'README.md') "T015: unrelated tracked file (README.md) untouched"
     Assert-True (Test-Path -LiteralPath $tracked) "T015: working-tree copy of per-session file still present (not deleted)"
     Assert-True (Test-Path -LiteralPath $runtime) "T015: working-tree runtime evidence remains present"
     Assert-True (Test-Path -LiteralPath $handover) "T015: working-tree handover evidence remains present"
+    Assert-True (Test-Path -LiteralPath $reviewPending) "T015: working-tree review evidence remains present"
     Assert-True ($removed -contains '.specrew/last-start-prompt.md') "T015: function reports the removed path"
 }
 finally {

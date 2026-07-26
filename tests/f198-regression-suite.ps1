@@ -10,7 +10,17 @@
 # 'script' suites use the repo's Write-Pass/Write-Fail convention (exit 0 green / 1 red).
 # 'pester' suites run via Invoke-Pester and fail on any FailedCount.
 [CmdletBinding()]
-param([int]$PerTestTimeoutSeconds = 300)
+param(
+    [ValidateRange(1, 3600)]
+    [int]$PerTestTimeoutSeconds = 300,
+
+    [ValidateRange(1, 32)]
+    [int]$MaxParallel = 4,
+
+    [switch]$Serial,
+
+    [string]$TimingOutputPath
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -67,12 +77,15 @@ $registry = @(
     @{ area = 'append-only scoped authorization correction ledger (FR-004/SC-014)'; path = 'tests/unit/boundary-correction-ledger.tests.ps1'; kind = 'script' }
     @{ area = 'current commit/tree pending-crossing binding (FR-041/FR-042/FR-044/FR-045)'; path = 'tests/integration/pending-verdict-stop-artifact.tests.ps1'; kind = 'script' }
     @{ area = 'DRIFT-198-I008-056–058 caller isolation, Pester container honesty, and closed automation stdin'; path = 'tests/unit/regression-harness-isolation.tests.ps1'; kind = 'script' }
+    @{ area = 'F6 review-engine version handshake - project/runtime identity, drift refusal, deployed marker'; path = 'tests/unit/review-engine-resolution.tests.ps1'; kind = 'script' }
+    @{ area = 'F6/F197 deployed review-engine identity and complete fire path'; path = 'tests/continuous-co-review/integration/co-review-deploy-completeness.Tests.ps1'; kind = 'pester' }
+    @{ area = 'F15 consumer runtime file classification - ignore evidence, preserve contracts'; path = 'tests/unit/feature-051-file-classification.tests.ps1'; kind = 'script' }
     @{ area = 'budget resolution + provenance (FR-021..FR-023)'; path = 'tests/unit/budget-resolution.tests.ps1'; kind = 'script' }
     @{ area = 'tracker honesty check (FR-020)'; path = 'tests/unit/tracker-honesty-check.tests.ps1'; kind = 'script' }
     @{ area = 'self-leak firewall (FR-033/FR-037)'; path = 'tests/unit/self-leak-lint.tests.ps1'; kind = 'script' }
     @{ area = 'verdict-capture integrity (FR-041..FR-044)'; path = 'tests/integration/verdict-capture-blocks.tests.ps1'; kind = 'script' }
-    @{ area = 'T069 production hook/writer capture - injected-context exclusion, complete instructions, contiguous crossing, idempotence'; path = 'tests/bootstrap/HookVerdictCapture.Tests.ps1'; kind = 'script' }
-    @{ area = 'T069 dispatcher session-ownership delivery - sanitized genuine host identity as a clean provider argument'; path = 'tests/bootstrap/DispatcherTranscriptDelivery.Tests.ps1'; kind = 'script' }
+    @{ area = 'T069 production hook/writer capture - injected-context exclusion, complete instructions, contiguous crossing, idempotence'; path = 'tests/bootstrap/HookVerdictCapture.Tests.ps1'; kind = 'script'; serial = $true }
+    @{ area = 'T069 dispatcher session-ownership delivery - sanitized genuine host identity as a clean provider argument'; path = 'tests/bootstrap/DispatcherTranscriptDelivery.Tests.ps1'; kind = 'script'; serial = $true }
     @{ area = 'reviewer containment (FR-008/SC-002)'; path = 'tests/continuous-co-review/unit/worktree-containment.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewer origin-path hygiene (FR-009/SC-002)'; path = 'tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1'; kind = 'pester' }
     @{ area = 'bounded verification opt-in helper + regression evidence (FR-010)'; path = 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1'; kind = 'pester' }
@@ -92,12 +105,12 @@ $registry = @(
     @{ area = 'universal recorded-run runner - language/framework-neutral evidence (T018/FR-015)'; path = 'tests/continuous-co-review/unit/recorded-run.Tests.ps1'; kind = 'pester' }
     @{ area = 'recorded-run PURE CORE (harness/core split 2026-07-15) - output-meta + record assembly over synthetic facts, NO spawn'; path = 'tests/continuous-co-review/unit/recorded-run-core.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 review-identity + artifact-lifecycle contracts (characterization, UNWIRED)'; path = 'tests/continuous-co-review/unit/t019-identity-contracts.Tests.ps1'; kind = 'pester' }
-    @{ area = 'T019 step 6 per-lineage review lease (atomic acquire, owner-only release, crash recovery)'; path = 'tests/continuous-co-review/unit/lineage-lease.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T019 step 6 per-lineage review lease (atomic acquire, owner-only release, crash recovery)'; path = 'tests/continuous-co-review/unit/lineage-lease.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'T019 step 6 lease-gated reviewer spawn - suppress on failed acquire (co-review-service)'; path = 'tests/continuous-co-review/unit/co-review-service.Tests.ps1'; kind = 'pester' }
-    @{ area = 'T019 step 6 navigator reap - registry-key-drift fix, resolver hardening, lease authority + release'; path = 'tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T019 step 6 navigator reap - registry-key-drift fix, resolver hardening, lease authority + release'; path = 'tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'T041 singular review-authority cutover - legacy/disabled/campaign matrix, no dual authority, fail-closed invalid or missing configuration'; path = 'tests/continuous-co-review/unit/review-authority-cutover.Tests.ps1'; kind = 'pester' }
     @{ area = 'T042-T044 closed authority contracts + pure campaign/run/currentness/finding-lineage policies'; path = 'tests/continuous-co-review/unit/review-authority-core.Tests.ps1'; kind = 'pester' }
-    @{ area = 'T045 immutable JSON review store - CreateNew idempotency/conflict, multi-process reservation+claim winners, append-only generations, deterministic reconciliation'; path = 'tests/continuous-co-review/unit/review-authority-store.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T045 immutable JSON review store - CreateNew idempotency/conflict, multi-process reservation+claim winners, append-only generations, deterministic reconciliation'; path = 'tests/continuous-co-review/unit/review-authority-store.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'T046 ReviewTargetPort - external linked Git worktree, exact dirty-state digest/currentness, origin immutability, non-code neutrality'; path = 'tests/continuous-co-review/unit/review-target-port.Tests.ps1'; kind = 'pester' }
     @{ area = 'T047 strict candidate ingress - bounded identity validation, timeout-after-kill ordering, immutable controller JSON + Markdown, partial/moved lineage'; path = 'tests/continuous-co-review/unit/review-result-ingestor.Tests.ps1'; kind = 'pester' }
     @{ area = 'T048 synchronous campaign orchestration - production Git + fixture ports, preflight-before-spend, timeout/crash/recovery/moved/visible-rerun flows, live clock'; path = 'tests/continuous-co-review/unit/review-campaign-orchestrator.Tests.ps1'; kind = 'pester' }
@@ -115,7 +128,7 @@ $registry = @(
     @{ area = 'T055 Cursor and Antigravity production harness adapters - verified headless vectors, order-sensitive prompts, shared file-primary authority, one invocation'; path = 'tests/continuous-co-review/unit/review-cursor-antigravity-harness.Tests.ps1'; kind = 'pester' }
     @{ area = 'FR-016/SC-022 host-neutral CCR core - closed auditable host-bound seam, generic policy and orchestration contain no host literals'; path = 'tests/continuous-co-review/governance/host-neutral-core.Tests.ps1'; kind = 'pester' }
     @{ area = 'T056 Windows Job Object production runtime - preflight-before-spend, descendant reap, stream closure, timeout terminal ordering'; path = 'tests/continuous-co-review/unit/review-windows-runtime.Tests.ps1'; kind = 'pester' }
-    @{ area = 'T057 Linux cgroup v2 and macOS process-group production runtimes - fail-closed capability, OS dispatch, tree reap, timeout terminal ordering'; path = 'tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T057 Linux cgroup v2 and macOS process-group production runtimes - fail-closed capability, OS dispatch, tree reap, timeout terminal ordering'; path = 'tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'T058 non-authoritative progress, heartbeat/timing/usage diagnostics, duplicate warning, and validated-JSON retro provenance'; path = 'tests/continuous-co-review/unit/review-progress-retro.Tests.ps1'; kind = 'pester' }
     @{ area = 'T059 all-adapter deterministic fake-provider matrix - native containment, strict ingress, no hidden retry, timeout-after-tree-death; NEVER live-support evidence'; path = 'tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'; kind = 'pester' }
     @{ area = 'T060 local macOS execution package - pinned clean clone, explicit one-slot invocation, local-machine provenance, digest/hash/authority validation'; path = 'tests/continuous-co-review/unit/t060-local-macos-evidence.Tests.ps1'; kind = 'pester' }
@@ -152,68 +165,268 @@ $registry = @(
     @{ area = 'Prop-145 production-path honesty - receipt-after-validation, SessionStart ambient version DIAGNOSTIC (env removed, byte-capped, System32 cmd.exe), Stop launches no probe, hook-liveness INDEPENDENT of the non-promoting version, a substituted PATH shim stays diagnostic-only, doctor never claims authentication, `specrew hooks doctor` surfacing'; path = 'tests/integration/f198-iter005-hook-health-production-path.tests.ps1'; kind = 'script' }
 )
 
-$failed = New-Object System.Collections.Generic.List[string]
-$callerBaseline = Get-CallerRepositorySnapshot
-foreach ($t in $registry) {
-    $full = Join-Path $repoRoot $t.path
+function Start-F198RegisteredSuite {
+    param(
+        [Parameter(Mandatory)]$Suite,
+        [Parameter(Mandatory)][int]$Index
+    )
+
+    $full = Join-Path $repoRoot $Suite.path
     if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
-        Write-Host ("FAIL (missing): {0} -> {1}" -f $t.area, $t.path) -ForegroundColor Red
-        $failed.Add("$($t.path) — MISSING") | Out-Null
-        continue
+        return [pscustomobject][ordered]@{
+            completed = $true
+            result    = [pscustomobject][ordered]@{
+                index = $Index; area = [string]$Suite.area; path = [string]$Suite.path
+                kind = [string]$Suite.kind; serial = [bool]($Suite.serial -eq $true)
+                status = 'missing'; exit_code = $null; duration_ms = 0; output = ''
+            }
+        }
     }
+
     $outFile = [System.IO.Path]::GetTempFileName()
     $errFile = [System.IO.Path]::GetTempFileName()
-    if ($t.kind -eq 'pester') {
-        # FailedCount covers failed It blocks but can remain zero for a failed BeforeAll/AfterAll container.
-        # The aggregate must honor Pester's terminal Result or suite-level hygiene failures become false-green.
+    if ($Suite.kind -eq 'pester') {
+        # FailedCount can remain zero for a failed BeforeAll/AfterAll container.
+        # Honor Pester's terminal Result so suite-level failures never become green.
         $cmd = ("`$env:SPECREW_MODULE_PATH='{0}'; `$r = Invoke-Pester -Path '{1}' -Output Detailed -PassThru; if (`$r.Result -ne 'Passed') {{ exit 1 }}; exit 0" -f $repoRoot, $full)
         $procArgs = @('-NoProfile', '-Command', $cmd)
     }
     else {
         $procArgs = @('-NoProfile', '-File', $full)
     }
-    $proc = Start-Process pwsh -ArgumentList $procArgs -PassThru -NoNewWindow -RedirectStandardOutput $outFile -RedirectStandardError $errFile -WorkingDirectory $repoRoot
-    $exited = $proc.WaitForExit($PerTestTimeoutSeconds * 1000)
-    if (-not $exited) {
-        try { $proc.Kill($true) } catch { $null = $_ }
-        Write-Host ("FAIL (TIMEOUT > {0}s): {1} -> {2}" -f $PerTestTimeoutSeconds, $t.area, $t.path) -ForegroundColor Red
-        $failed.Add("$($t.path) — TIMEOUT (>$PerTestTimeoutSeconds s)") | Out-Null
-        Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
-        $contamination = @(Get-CallerRepositoryContamination -Baseline $callerBaseline)
-        if ($contamination.Count -gt 0) {
-            Write-Host ("FAIL (CALLER REPOSITORY CONTAMINATED): {0} -> {1}" -f $t.area, ($contamination -join '; ')) -ForegroundColor Red
-            $failed.Add("$($t.path) — caller repository contamination") | Out-Null
-            break
-        }
-        continue
-    }
-    $proc.WaitForExit()
-    $exit = $proc.ExitCode
-    $out = ((Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) + "`n" + (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue))
-    Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
-    $contamination = @(Get-CallerRepositoryContamination -Baseline $callerBaseline)
-    if ($contamination.Count -gt 0) {
-        Write-Host ("FAIL (CALLER REPOSITORY CONTAMINATED): {0} -> {1}" -f $t.area, ($contamination -join '; ')) -ForegroundColor Red
-        $failed.Add("$($t.path) — caller repository contamination") | Out-Null
-        break
-    }
-    if ($exit -ne 0) {
-        Write-Host ("FAIL (exit {0}): {1} -> {2}" -f $exit, $t.area, $t.path) -ForegroundColor Red
-        Write-Host "----- last 40 lines -----"
-        @($out -split "`r?`n") | Select-Object -Last 40 | ForEach-Object { Write-Host "  $_" }
-        Write-Host "-------------------------"
-        $failed.Add("$($t.path) — exit $exit") | Out-Null
-    }
-    else {
-        Write-Host ("PASS: {0} -> {1}" -f $t.area, $t.path) -ForegroundColor Green
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $proc = Start-Process pwsh -ArgumentList $procArgs -PassThru -NoNewWindow `
+        -RedirectStandardOutput $outFile -RedirectStandardError $errFile `
+        -WorkingDirectory $repoRoot
+
+    return [pscustomobject][ordered]@{
+        completed = $false
+        index = $Index
+        suite = $Suite
+        process = $proc
+        stopwatch = $stopwatch
+        stdout_path = $outFile
+        stderr_path = $errFile
     }
 }
 
-Write-Host ""
+function Complete-F198RegisteredSuite {
+    param(
+        [Parameter(Mandatory)]$Running,
+        [switch]$ForceTimeout
+    )
+
+    $proc = $Running.process
+    $timedOut = [bool]$ForceTimeout
+    if ($timedOut) {
+        try { $proc.Kill($true) } catch { $null = $_ }
+        try { $null = $proc.WaitForExit(5000) } catch { $null = $_ }
+    }
+    else {
+        # Flush redirected stdout/stderr after the process has reported exit.
+        $proc.WaitForExit()
+    }
+    $Running.stopwatch.Stop()
+
+    $exitCode = if ($timedOut) { $null } else { [int]$proc.ExitCode }
+    $output = ((Get-Content -LiteralPath $Running.stdout_path -Raw -ErrorAction SilentlyContinue) +
+        "`n" +
+        (Get-Content -LiteralPath $Running.stderr_path -Raw -ErrorAction SilentlyContinue))
+    Remove-Item -LiteralPath $Running.stdout_path, $Running.stderr_path -Force -ErrorAction SilentlyContinue
+
+    $status = if ($timedOut) {
+        'timeout'
+    }
+    elseif ($exitCode -eq 0) {
+        'passed'
+    }
+    else {
+        'failed'
+    }
+
+    return [pscustomobject][ordered]@{
+        index       = [int]$Running.index
+        area        = [string]$Running.suite.area
+        path        = [string]$Running.suite.path
+        kind        = [string]$Running.suite.kind
+        serial      = [bool]($Running.suite.serial -eq $true)
+        status      = $status
+        exit_code   = $exitCode
+        duration_ms = [long]$Running.stopwatch.ElapsedMilliseconds
+        output      = [string]$output
+    }
+}
+
+function Write-F198SuiteResult {
+    param(
+        [Parameter(Mandatory)]$Result,
+        [Parameter(Mandatory)]$Failed
+    )
+
+    $seconds = [Math]::Round(([double]$Result.duration_ms / 1000.0), 3)
+    switch ([string]$Result.status) {
+        'passed' {
+            Write-Host ("PASS ({0:N3}s): {1} -> {2}" -f $seconds, $Result.area, $Result.path) -ForegroundColor Green
+        }
+        'missing' {
+            Write-Host ("FAIL (missing, {0:N3}s): {1} -> {2}" -f $seconds, $Result.area, $Result.path) -ForegroundColor Red
+            $Failed.Add("$($Result.path) — MISSING") | Out-Null
+        }
+        'timeout' {
+            Write-Host ("FAIL (TIMEOUT > {0}s, elapsed {1:N3}s): {2} -> {3}" -f $PerTestTimeoutSeconds, $seconds, $Result.area, $Result.path) -ForegroundColor Red
+            $Failed.Add("$($Result.path) — TIMEOUT (>$PerTestTimeoutSeconds s)") | Out-Null
+        }
+        default {
+            Write-Host ("FAIL (exit {0}, {1:N3}s): {2} -> {3}" -f $Result.exit_code, $seconds, $Result.area, $Result.path) -ForegroundColor Red
+            Write-Host '----- last 40 lines -----'
+            @($Result.output -split "`r?`n") | Select-Object -Last 40 | ForEach-Object { Write-Host "  $_" }
+            Write-Host '-------------------------'
+            $Failed.Add("$($Result.path) — exit $($Result.exit_code)") | Out-Null
+        }
+    }
+}
+
+$failed = [System.Collections.Generic.List[string]]::new()
+$results = [System.Collections.Generic.List[object]]::new()
+$callerBaseline = Get-CallerRepositorySnapshot
+$registryStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+$registryStartedAt = [DateTimeOffset]::UtcNow
+
+for ($index = 0; $index -lt $registry.Count; $index++) {
+    $registry[$index]['index'] = $index
+    if (-not $registry[$index].ContainsKey('serial')) {
+        $registry[$index]['serial'] = $false
+    }
+}
+
+$parallelSuites = @($registry | Where-Object { -not [bool]$_.serial })
+$serialSuites = @($registry | Where-Object { [bool]$_.serial })
+if ($Serial) {
+    $serialSuites = @($registry)
+    $parallelSuites = @()
+}
+
+$active = [System.Collections.Generic.List[object]]::new()
+$nextParallel = 0
+$abortForContamination = $false
+while (($nextParallel -lt $parallelSuites.Count) -or ($active.Count -gt 0)) {
+    while ((-not $abortForContamination) -and
+        ($nextParallel -lt $parallelSuites.Count) -and
+        ($active.Count -lt $MaxParallel)) {
+        $suite = $parallelSuites[$nextParallel]
+        $started = Start-F198RegisteredSuite -Suite $suite -Index ([int]$suite.index)
+        $nextParallel++
+        if ($started.completed) {
+            $results.Add($started.result) | Out-Null
+            Write-F198SuiteResult -Result $started.result -Failed $failed
+        }
+        else {
+            $active.Add($started) | Out-Null
+        }
+    }
+
+    $madeProgress = $false
+    foreach ($running in @($active.ToArray())) {
+        $timedOut = $running.stopwatch.Elapsed.TotalSeconds -ge $PerTestTimeoutSeconds
+        if ($running.process.HasExited -or $timedOut) {
+            $result = Complete-F198RegisteredSuite -Running $running -ForceTimeout:$timedOut
+            $results.Add($result) | Out-Null
+            Write-F198SuiteResult -Result $result -Failed $failed
+            $active.Remove($running) | Out-Null
+            $madeProgress = $true
+
+            $contamination = @(Get-CallerRepositoryContamination -Baseline $callerBaseline)
+            if ($contamination.Count -gt 0) {
+                Write-Host ("FAIL (CALLER REPOSITORY CONTAMINATED): {0} -> {1}" -f $result.area, ($contamination -join '; ')) -ForegroundColor Red
+                $failed.Add("$($result.path) — caller repository contamination") | Out-Null
+                $abortForContamination = $true
+                foreach ($remaining in @($active.ToArray())) {
+                    $aborted = Complete-F198RegisteredSuite -Running $remaining -ForceTimeout
+                    $active.Remove($remaining) | Out-Null
+                }
+                break
+            }
+        }
+    }
+
+    if ($abortForContamination) { break }
+    if (-not $madeProgress -and $active.Count -gt 0) {
+        Start-Sleep -Milliseconds 100
+    }
+}
+
+if (-not $abortForContamination) {
+    foreach ($suite in $serialSuites) {
+        $started = Start-F198RegisteredSuite -Suite $suite -Index ([int]$suite.index)
+        if ($started.completed) {
+            $result = $started.result
+        }
+        else {
+            $timedOut = -not $started.process.WaitForExit($PerTestTimeoutSeconds * 1000)
+            $result = Complete-F198RegisteredSuite -Running $started -ForceTimeout:$timedOut
+        }
+        $results.Add($result) | Out-Null
+        Write-F198SuiteResult -Result $result -Failed $failed
+
+        $contamination = @(Get-CallerRepositoryContamination -Baseline $callerBaseline)
+        if ($contamination.Count -gt 0) {
+            Write-Host ("FAIL (CALLER REPOSITORY CONTAMINATED): {0} -> {1}" -f $result.area, ($contamination -join '; ')) -ForegroundColor Red
+            $failed.Add("$($result.path) — caller repository contamination") | Out-Null
+            break
+        }
+    }
+}
+
+$registryStopwatch.Stop()
+$registryEndedAt = [DateTimeOffset]::UtcNow
+$orderedResults = @($results | Sort-Object index)
+
+if (-not [string]::IsNullOrWhiteSpace($TimingOutputPath)) {
+    $resolvedTimingPath = if ([System.IO.Path]::IsPathRooted($TimingOutputPath)) {
+        $TimingOutputPath
+    }
+    else {
+        Join-Path $repoRoot $TimingOutputPath
+    }
+    $timingDirectory = Split-Path -Parent $resolvedTimingPath
+    if (-not [string]::IsNullOrWhiteSpace($timingDirectory) -and
+        -not (Test-Path -LiteralPath $timingDirectory -PathType Container)) {
+        New-Item -ItemType Directory -Path $timingDirectory -Force | Out-Null
+    }
+    $timingDocument = [ordered]@{
+        schema_version = '1.0'
+        mode = if ($Serial) { 'serial' } else { 'bounded-parallel' }
+        max_parallel = if ($Serial) { 1 } else { $MaxParallel }
+        per_test_timeout_seconds = $PerTestTimeoutSeconds
+        started_at = $registryStartedAt.ToString('o')
+        ended_at = $registryEndedAt.ToString('o')
+        duration_ms = [long]$registryStopwatch.ElapsedMilliseconds
+        suite_count = $registry.Count
+        failed_count = $failed.Count
+        suites = @($orderedResults | ForEach-Object {
+                [ordered]@{
+                    area = $_.area
+                    path = $_.path
+                    kind = $_.kind
+                    serial = $_.serial
+                    status = $_.status
+                    exit_code = $_.exit_code
+                    duration_ms = $_.duration_ms
+                }
+            })
+    }
+    [System.IO.File]::WriteAllText(
+        $resolvedTimingPath,
+        ($timingDocument | ConvertTo-Json -Depth 8),
+        [System.Text.UTF8Encoding]::new($false))
+}
+
+Write-Host ''
 if ($failed.Count -gt 0) {
-    Write-Host ("F-198 honesty regression suite: {0} of {1} FAILED" -f $failed.Count, $registry.Count) -ForegroundColor Red
+    Write-Host ("F-198 honesty regression suite: {0} of {1} FAILED in {2:N3}s" -f $failed.Count, $registry.Count, $registryStopwatch.Elapsed.TotalSeconds) -ForegroundColor Red
     $failed | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
     exit 1
 }
-Write-Host ("F-198 honesty regression suite: all {0} suites green." -f $registry.Count) -ForegroundColor Green
+Write-Host ("F-198 honesty regression suite: all {0} suites green in {1:N3}s." -f $registry.Count, $registryStopwatch.Elapsed.TotalSeconds) -ForegroundColor Green
 exit 0

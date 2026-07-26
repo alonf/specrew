@@ -670,12 +670,34 @@ if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     Write-Error ("Project path does not exist: {0}" -f $resolvedProjectPath)
     exit 1
 }
+$installedReviewEngineRoot = Join-Path $PSScriptRoot 'internal/continuous-co-review'
+$reviewEngineRoot = $installedReviewEngineRoot
+$requiresReviewEngine = $Live -or
+    (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) -or
+    (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) -or
+    (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate))
+if ($requiresReviewEngine) {
+    $engineResolverPath = Join-Path $PSScriptRoot 'internal/review-engine-resolution.ps1'
+    if (-not (Test-Path -LiteralPath $engineResolverPath -PathType Leaf)) {
+        Write-Error "Review engine resolver is missing: $engineResolverPath"
+        exit 1
+    }
+    . $engineResolverPath
+    try {
+        $reviewEngineSelection = Resolve-SpecrewReviewEngineRoot -ProjectRoot $resolvedProjectPath -InstalledRuntimeRoot $installedReviewEngineRoot
+        $reviewEngineRoot = [string]$reviewEngineSelection.runtime_root
+    }
+    catch {
+        Write-Error $_.Exception.Message
+        exit 1
+    }
+}
 
 # FR-062: restart reconciliation is a first-class public operation. It never grants or
 # invokes a provider; it only executes the immutable plan for one already-recorded run.
 if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) {
     try {
-        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        . (Join-Path $reviewEngineRoot '_load.ps1')
         $authority = Get-ContinuousCoReviewAuthorityDecision
         if (-not $authority.valid -or -not [bool]$authority.campaign_authority_enabled) { throw ('review-reconciliation-requires-campaign-authority:' + $authority.reason) }
         $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.ReconcileRunId)
@@ -701,7 +723,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) {
 # reader relies on - the recorded verdict lets a partial/same-host review satisfy signoff consciously.
 if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) {
     try {
-        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        . (Join-Path $reviewEngineRoot '_load.ps1')
         if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
             throw '--ack-degraded needs --ack-reason "<why this assurance level is acceptable>" (an ack is never implicit).'
         }
@@ -721,7 +743,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) {
 # accept-partial/override-block act immediately. This human-typed command is the trust boundary.
 if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
     try {
-        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        . (Join-Path $reviewEngineRoot '_load.ps1')
         $remediationAuthority = Get-ContinuousCoReviewAuthorityDecision
         if (-not $remediationAuthority.valid -or [string]$remediationAuthority.mode -eq 'disabled') {
             throw ("Review authority is unavailable ({0}); neither legacy nor campaign remediation may mutate review state." -f $remediationAuthority.reason)
@@ -742,7 +764,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
             exit 0
         }
         if (-not [bool]$remediationAuthority.legacy_promotion_enabled) { throw 'Review authority is not available for legacy remediation.' }
-        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/worktree-review-orchestrator.ps1')
+        . (Join-Path $reviewEngineRoot 'worktree-review-orchestrator.ps1')
         $remParams = @{ RepoRoot = $resolvedProjectPath; Choice = [string]$parsedArgs.Remediate }
         if ($parsedArgs.TimeoutSecondsExplicit) { $remParams.TimeoutSeconds = [int]$parsedArgs.TimeoutSeconds }
         if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) { $remParams.HostName = [string]$parsedArgs.Host }
@@ -764,7 +786,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
 if ($Live) {
     # Resolve the singular authority seam without loading campaign/runtime modules into the
     # legacy command scope. The legacy timeout resolver depends on its historical load order.
-    . (Join-Path $PSScriptRoot 'internal/continuous-co-review/review-authority-cutover.ps1')
+    . (Join-Path $reviewEngineRoot 'review-authority-cutover.ps1')
     $authorityDecision = Get-ContinuousCoReviewAuthorityDecision
     if (-not $authorityDecision.valid -or [string]$authorityDecision.mode -eq 'disabled') {
         Write-Error ("Review authority is unavailable ({0}); neither legacy nor campaign review may run." -f $authorityDecision.reason)
@@ -777,7 +799,7 @@ if ($Live) {
     # checked-in campaign mode; the legacy branch below remains only for historical configurations.
     if ([bool]$authorityDecision.campaign_authority_enabled) {
         try {
-            . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+            . (Join-Path $reviewEngineRoot '_load.ps1')
             # A project-level `specrew review --host ... --authorization-ref ...` records the
             # human grant in reviewer-hosts.json. Normal campaign runs must reload that exact
             # selected entry; otherwise the public command drops the reference and reaches the
@@ -811,7 +833,8 @@ if ($Live) {
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
                 -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
-                -DesignContextRefs @($parsedArgs.DesignContextRefs) -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
+                -DesignContextRefs @($parsedArgs.DesignContextRefs) -ExcludedPathPatterns @($parsedArgs.ExcludedPathPatterns) `
+                -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
             if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
             elseif ($Quiet) {
                 $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }
@@ -857,7 +880,7 @@ if ($Live) {
 
     if ($coReviewEngine -eq 'worktree') {
         try {
-            . (Join-Path $PSScriptRoot 'internal/continuous-co-review/co-review-service.ps1')
+            . (Join-Path $reviewEngineRoot 'co-review-service.ps1')
             # Budget resolution (F-198 FR-021/FR-022, supersedes the D-197-I010-006 flat default):
             # explicit --timeout-seconds wins (explicit-beats-config) -> project config -> catalog
             # per-host default -> the 600-second floor. When an explicit value UNDERCUTS what the
