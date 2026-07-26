@@ -7,7 +7,7 @@
 **Tasks Remaining**: T079
 **In Progress**: T079
 **Baseline Ref**: afb3eda731d35ae922e92d9acf200f80e32e9580
-**Updated**: 2026-07-26T09:21:06Z
+**Updated**: 2026-07-26T10:16:00Z
 
 ## Objective
 
@@ -36,4 +36,10 @@ two measured near-zero-margin suite ceilings and one load-sensitive POSIX
 assertion exposed by exact-commit preflight. DRIFT-198-I009-003 captured and
 corrected the shared-prompt mismatch that left Codex without a permitted
 inspection tool; its single valid result remained honestly incomplete and
-cannot approve the candidate. A corrected exact-commit review remains pending.
+cannot approve the candidate. The corrected exact-commit review completed with
+both controller verification commands green and reported three current product
+defects: DRIFT-198-I009-004 (blocking symlink snapshot escape),
+DRIFT-198-I009-005 (major recovery-fact compatibility), and
+DRIFT-198-I009-006 (major non-convergent managed-runtime update). The immutable
+result is preserved under `evidence/`; T079 and iteration signoff remain blocked
+pending correction and another exact-commit review.
