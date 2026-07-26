@@ -23,7 +23,7 @@
       "review_class_rank": 85,
       "model_source": "human-entered",
       "cost_class": "non-default",
-      "authorization_ref": "maintainer-reviewer-independence-2026-07-26: codex gpt-5.6-sol is the reviewer of record while the implementation host is claude",
+      "authorization_ref": "maintainer-approved-2026-07-26-confirming-review: one codex gpt-5.6-sol slot for the corrected candidate a2c2838b, reviewer of record while the implementation host is claude",
       "fallback_allowed": false,
       "timeout_seconds": 0
     },
