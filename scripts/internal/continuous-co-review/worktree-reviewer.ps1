@@ -81,36 +81,6 @@ function Get-ContinuousCoReviewMachineryPaths {
         '.specrew', '.specify', '.squad', '.agents', '.antigravitycli', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
-    # Declared here so the machinery-path policy stays one readable unit.
-    function Remove-ContinuousCoReviewGitIgnoredPath {
-        param([Parameter(Mandatory)][string]$RepoRoot, [AllowEmptyCollection()][string[]]$RelativePath)
-        $candidates = @($RelativePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-        if ($candidates.Count -eq 0) { return @() }
-        # ORDINAL, never OrdinalIgnoreCase: git echoes each ignored path back verbatim, so exact
-        # identity always matches its own input. Case-insensitive matching would, on a case-sensitive
-        # Linux/macOS worktree, let an ignored directory drop a DISTINCT non-ignored directory whose
-        # path differs only by case - under-stripping real deployed machinery into the candidate.
-        $ignored = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-        try {
-            # Pass paths as ARGUMENTS in chunks; never pipe them to git's stdin. Writing hundreds of
-            # paths in while git writes matches back deadlocks the moment its stdout buffer fills -
-            # the same pipe-deadlock class as DRIFT-198-I009-001, and it hung the Linux CI review
-            # suite silently with the process killed and no failing assertion.
-            for ($offset = 0; $offset -lt $candidates.Count; $offset += 100) {
-                $end = [Math]::Min($offset + 100, $candidates.Count) - 1
-                $chunk = @($candidates[$offset..$end])
-                $output = & git -C $RepoRoot check-ignore -- @chunk 2>$null
-                # exit 0 = some ignored, 1 = none ignored; anything else is a real failure.
-                if ($LASTEXITCODE -gt 1) { return @($candidates) }
-                foreach ($line in @($output)) {
-                    $trimmed = ([string]$line).Trim().Replace('\', '/')
-                    if (-not [string]::IsNullOrWhiteSpace($trimmed)) { $null = $ignored.Add($trimmed) }
-                }
-            }
-        }
-        catch { return @($candidates) }
-        return @($candidates | Where-Object { -not $ignored.Contains(([string]$_).Replace('\', '/')) })
-    }
     if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {
         # In a DEPLOYED project these are inert deployed machinery to strip. In the Specrew SOURCE repo they ARE
         # the feature under review: continuous-co-review/** AND the iter-009 tree-kill/supervisor that live under
@@ -125,13 +95,18 @@ function Get-ContinuousCoReviewMachineryPaths {
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $marked = @(Get-ChildItem -LiteralPath $resolved -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |
         ForEach-Object { [System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $_.FullName)).Replace('\', '/') })
-    # A Git-IGNORED tree is already outside the reviewed candidate by the T074 inclusion/exclusion
-    # identity, so listing the deployed dirs inside it adds no exclusion and can overflow the
-    # RecoveryFact contract cap (too-many:machinery_paths:512). Scratch areas holding whole project
-    # copies produced hundreds of such entries and killed the run before any provider invocation.
-    # Drop ONLY marker-detected paths that Git already ignores; $core and the bounded host mirrors
-    # are always listed, and any Git failure keeps the unfiltered list rather than under-stripping.
-    $marked = @(Remove-ContinuousCoReviewGitIgnoredPath -RepoRoot $resolved -RelativePath $marked)
+    # Volatile build/scratch roots hold whole project COPIES, so the marker scan found hundreds of
+    # deployed dirs inside them and overflowed the RecoveryFact cap (too-many:machinery_paths:512),
+    # killing the run before any provider invocation. Their contents are already outside the
+    # reviewed candidate, so enumerating them buys no exclusion. Pruned by NAME, deterministically:
+    # an earlier revision asked `git check-ignore` instead, and that subprocess hung the Linux CI
+    # review suite, which runs these suites as root under sudo where git treats a runner-owned
+    # repository differently. This scan must stay subprocess-free.
+    $prunedRoots = @(
+        '.scratch', 'node_modules', '.venv', 'venv', '__pycache__', '.tox', '.gradle', '.next',
+        'dist', 'build', 'out', 'target', 'bin', 'obj'
+    )
+    $marked = @($marked | Where-Object { $prunedRoots -notcontains (([string]$_ -split '/')[0]) })
     # (c) Agent-framework MIRROR subdirs under the AI-host dirs. Specrew/Spec-Kit/host frameworks deploy
     # agent/skill/command/chatmode/prompt/rule mirrors here, and they are marked INCONSISTENTLY (skills/rules
     # carry .specrew-managed; agents/prompts do not; some are symlinks, some plain files) - so (b) alone misses

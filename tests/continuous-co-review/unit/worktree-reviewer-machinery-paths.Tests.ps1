@@ -29,7 +29,7 @@ Describe 'worktree reviewer machinery path policy' {
         $paths | Should -Contain 'scripts/internal/continuous-co-review'
     }
 
-    It 'does not enumerate marker-detected machinery inside a Git-ignored tree' {
+    It 'does not enumerate marker-detected machinery inside a volatile scratch tree' {
         # DRIFT-198-I009-009: a scratch area holding whole project copies contributed 539 marker
         # paths, pushing the list past the RecoveryFact cap (too-many:machinery_paths:512) and
         # killing the review at runtime start with zero provider invocation. Ignored content is
@@ -54,47 +54,26 @@ Describe 'worktree reviewer machinery path policy' {
         finally { Pop-Location }
     }
 
-    It 'never pipes paths into a git subprocess stdin' {
-        # Writing many paths to git's stdin while it writes matches back deadlocks once its stdout
-        # buffer fills - the same class as DRIFT-198-I009-001. It hung the Linux CI review suite
-        # silently: process killed, no failing assertion. Paths go as chunked ARGUMENTS instead.
+    It 'resolves machinery paths without spawning any subprocess' {
+        # The Linux CI review suites run as ROOT under sudo, where git treats a runner-owned
+        # repository differently; a `git check-ignore` probe here hung that job silently with the
+        # process killed and no failing assertion. This scan must stay subprocess-free.
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
-        $source | Should -Not -Match 'check-ignore --stdin'
-        $source | Should -Not -Match '\$stdin\s*\|\s*&\s*git'
-        $source | Should -Match 'check-ignore -- @chunk'
-    }
-
-    It 'still filters ignored trees when the candidate list exceeds one chunk' {
-        $repo = Join-Path $TestDrive 'chunked-ignore-project'
-        New-Item -ItemType Directory -Path $repo -Force | Out-Null
-        Push-Location $repo
-        try {
-            git init --quiet 2>&1 | Out-Null
-            Set-Content -LiteralPath (Join-Path $repo '.gitignore') -Value ".scratch/`n" -Encoding UTF8
-            # Comfortably more than the 100-path chunk so the batching path is exercised.
-            foreach ($i in 1..130) {
-                $rel = ".scratch/copy-$i/skills/specrew-a"
-                New-Item -ItemType Directory -Path (Join-Path $repo $rel) -Force | Out-Null
-                Set-Content -LiteralPath (Join-Path $repo "$rel/.specrew-managed") -Value 'x' -Encoding UTF8
-            }
-            New-Item -ItemType Directory -Path (Join-Path $repo '.github/skills/specrew-real') -Force | Out-Null
-            Set-Content -LiteralPath (Join-Path $repo '.github/skills/specrew-real/.specrew-managed') -Value 'x' -Encoding UTF8
-
-            $paths = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $repo)
-
-            @($paths | Where-Object { $_ -like '.scratch/*' }).Count | Should -Be 0 -Because 'every ignored path must be filtered across all chunks'
-            $paths | Should -Contain '.github/skills/specrew-real'
-        }
-        finally { Pop-Location }
+        $machineryBlock = $source.Substring($source.IndexOf('function Get-ContinuousCoReviewMachineryPaths'), 6000)
+        $machineryBlock | Should -Not -Match '&\s*git'
+        $machineryBlock | Should -Match '\$prunedRoots' -Because 'volatile roots are pruned by name, deterministically'
     }
 
     It 'compares ignored paths by exact identity, never case-insensitively' {
         # Independent-review finding (run-f198-i009-178a3772-codex, major): an OrdinalIgnoreCase
         # match lets an ignored path drop a DISTINCT non-ignored path differing only by case on a
         # case-sensitive worktree, under-stripping deployed machinery into the reviewed candidate.
+        # The git-ignored filter that motivated this assertion is gone; volatile roots are now pruned
+        # by name. What must NOT come back is a case-FOLDING comparer anywhere in this policy, which
+        # would collapse two genuinely distinct machinery directories on a case-sensitive worktree.
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
         $source | Should -Not -Match 'HashSet\[string\]\]::new\(\[StringComparer\]::OrdinalIgnoreCase\)'
-        $source | Should -Match 'HashSet\[string\]\]::new\(\[StringComparer\]::Ordinal\)'
+        $source | Should -Match 'Get-ContinuousCoReviewPathComparer' -Because 'dedup follows the volume, not a hard-coded rule'
     }
 
     It 'keeps a non-ignored path whose case differs from an ignored one' {
