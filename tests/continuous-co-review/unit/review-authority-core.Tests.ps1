@@ -143,7 +143,7 @@ Describe 'Review authority closed contracts (T042)' {
         $findingValidation.errors | Should -Contain "findings[0].too-long:local_id:$($limits.max_local_id_characters)"
     }
 
-    It 'accepts historical recovery facts without target bindings but rejects a partial binding group' {
+    It 'accepts historical recovery facts with zero or four target bindings and rejects incomplete shapes' {
         $historical = [pscustomobject][ordered]@{
             schema_version = '1.0'; fact_type = 'recovery'; campaign_id = 'cmp-demo'; run_id = 'run-one'; target_digest = 'digest-one'; harness_id = 'fixture'
             target_lineage = 'lin-code'; runtime_id = 'fixture-runtime'; platform = 'fixture'; containment_kind = 'fixture'; containment_id = 'fixture-contained-process'
@@ -153,10 +153,34 @@ Describe 'Review authority closed contracts (T042)' {
         }
         (Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $historical).valid | Should -BeTrue
 
-        $historical | Add-Member -NotePropertyName verification_plan_present -NotePropertyValue $false
-        $partial = Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $historical
-        $partial.valid | Should -BeFalse
-        ($partial.errors -join ';') | Should -Match 'incomplete-group:recovery-target-bindings'
+        $historicalFour = $historical.PSObject.Copy()
+        $historicalFour | Add-Member -NotePropertyName verification_plan_present -NotePropertyValue $false
+        $historicalFour | Add-Member -NotePropertyName verification_plan_sha256 -NotePropertyValue 'not-applicable'
+        $historicalFour | Add-Member -NotePropertyName machinery_paths -NotePropertyValue @('.specrew')
+        $historicalFour | Add-Member -NotePropertyName machinery_paths_sha256 -NotePropertyValue ('a' * 64)
+        (Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $historicalFour).valid |
+            Should -BeTrue -Because 'schema 1.0 recovery facts written before exclusion binding remain readable'
+
+        $partial = $historicalFour.PSObject.Copy()
+        $partial | Add-Member -NotePropertyName excluded_path_patterns -NotePropertyValue @()
+        $partialResult = Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $partial
+        $partialResult.valid | Should -BeFalse
+        ($partialResult.errors -join ';') | Should -Match 'incomplete-group:recovery-target-bindings'
+
+        $wrongFour = $historical.PSObject.Copy()
+        $wrongFour | Add-Member -NotePropertyName verification_plan_present -NotePropertyValue $false
+        $wrongFour | Add-Member -NotePropertyName verification_plan_sha256 -NotePropertyValue 'not-applicable'
+        $wrongFour | Add-Member -NotePropertyName excluded_path_patterns -NotePropertyValue @()
+        $wrongFour | Add-Member -NotePropertyName excluded_path_patterns_sha256 -NotePropertyValue ('b' * 64)
+        $wrongFourResult = Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $wrongFour
+        $wrongFourResult.valid | Should -BeFalse
+        ($wrongFourResult.errors -join ';') | Should -Match 'incomplete-group:recovery-target-bindings'
+
+        $one = $historical.PSObject.Copy()
+        $one | Add-Member -NotePropertyName verification_plan_present -NotePropertyValue $false
+        $oneResult = Test-ReviewAuthorityContractObject -ContractName RecoveryFact -InputObject $one
+        $oneResult.valid | Should -BeFalse
+        ($oneResult.errors -join ';') | Should -Match 'incomplete-group:recovery-target-bindings'
     }
 
     It 'rejects unknown fields, unsupported versions, illegal states, and identity substitution' {

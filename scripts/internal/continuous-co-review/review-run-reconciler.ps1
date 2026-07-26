@@ -69,19 +69,25 @@ function New-ReviewRunRecoveryFact {
 function Get-ReviewRecoverySnapshot {
     param([Parameter(Mandatory)]$Fact)
     $names = @($Fact.PSObject.Properties.Name)
-    $requiredBindings = @(
+    $historicalBindings = @(
+        'verification_plan_present', 'verification_plan_sha256',
+        'machinery_paths', 'machinery_paths_sha256'
+    )
+    $currentBindings = @(
         'verification_plan_present', 'verification_plan_sha256',
         'machinery_paths', 'machinery_paths_sha256',
         'excluded_path_patterns', 'excluded_path_patterns_sha256'
     )
-    $bindingComplete = @($requiredBindings | Where-Object { $names -notcontains $_ }).Count -eq 0
-    $verificationPlanSha256 = if ($bindingComplete -and [string]$Fact.verification_plan_sha256 -cne 'not-applicable') { [string]$Fact.verification_plan_sha256 } else { $null }
-    $machineryPathsSha256 = if ($bindingComplete -and [string]$Fact.machinery_paths_sha256 -cne 'not-applicable') { [string]$Fact.machinery_paths_sha256 } else { $null }
+    $historicalBindingComplete = @($historicalBindings | Where-Object { $names -notcontains $_ }).Count -eq 0
+    $currentBindingComplete = @($currentBindings | Where-Object { $names -notcontains $_ }).Count -eq 0
+    $bindingShape = if ($currentBindingComplete) { 'current-v1' } elseif ($historicalBindingComplete) { 'historical-v1' } else { 'unbound' }
+    $verificationPlanSha256 = if ($historicalBindingComplete -and [string]$Fact.verification_plan_sha256 -cne 'not-applicable') { [string]$Fact.verification_plan_sha256 } else { $null }
+    $machineryPathsSha256 = if ($historicalBindingComplete -and [string]$Fact.machinery_paths_sha256 -cne 'not-applicable') { [string]$Fact.machinery_paths_sha256 } else { $null }
     $machineryPaths = @()
-    if ($bindingComplete) { $machineryPaths = @($Fact.machinery_paths) }
+    if ($historicalBindingComplete) { $machineryPaths = @($Fact.machinery_paths) }
     $excludedPathPatterns = @()
-    if ($bindingComplete) { $excludedPathPatterns = @($Fact.excluded_path_patterns) }
-    $excludedPathPatternsSha256 = if ($bindingComplete -and [string]$Fact.excluded_path_patterns_sha256 -cne 'not-applicable') { [string]$Fact.excluded_path_patterns_sha256 } else { $null }
+    if ($currentBindingComplete) { $excludedPathPatterns = @($Fact.excluded_path_patterns) }
+    $excludedPathPatternsSha256 = if ($currentBindingComplete -and [string]$Fact.excluded_path_patterns_sha256 -cne 'not-applicable') { [string]$Fact.excluded_path_patterns_sha256 } else { $null }
     return [pscustomobject]@{
         schema_version = '1.0'; target_kind = [string]$Fact.target_kind; run_id = [string]$Fact.run_id
         target_digest = [string]$Fact.target_digest; snapshot_path = [string]$Fact.snapshot_path
@@ -89,13 +95,14 @@ function Get-ReviewRecoverySnapshot {
         origin_repo = $(if ([string]$Fact.origin_repo -ceq 'not-applicable') { $null } else { [string]$Fact.origin_repo })
         git_root = $(if ([string]$Fact.git_root -ceq 'not-applicable') { $null } else { [string]$Fact.git_root })
         origin_head_before = $(if ([string]$Fact.origin_head_before -ceq 'not-applicable') { $null } else { [string]$Fact.origin_head_before })
-        verification_plan_present = $(if ($bindingComplete) { [bool]$Fact.verification_plan_present } else { $false })
+        verification_plan_present = $(if ($historicalBindingComplete) { [bool]$Fact.verification_plan_present } else { $false })
         verification_plan_sha256 = $verificationPlanSha256
         machinery_paths = $machineryPaths
         machinery_paths_sha256 = $machineryPathsSha256
         excluded_path_patterns = $excludedPathPatterns
         excluded_path_patterns_sha256 = $excludedPathPatternsSha256
-        recovery_binding_complete = $bindingComplete
+        recovery_binding_complete = $currentBindingComplete
+        recovery_binding_shape = $bindingShape
     }
 }
 

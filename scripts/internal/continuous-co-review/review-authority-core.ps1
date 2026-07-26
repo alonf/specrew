@@ -434,8 +434,16 @@ function Test-ReviewAuthorityContractObject {
                 'machinery_paths', 'machinery_paths_sha256',
                 'excluded_path_patterns', 'excluded_path_patterns_sha256'
             )
+            $historicalBindingNames = @(
+                'verification_plan_present', 'verification_plan_sha256',
+                'machinery_paths', 'machinery_paths_sha256'
+            )
             $bindingCount = @($bindingNames | Where-Object { $names -contains $_ }).Count
-            if ($bindingCount -ne 0 -and $bindingCount -ne $bindingNames.Count) {
+            $historicalBindingComplete =
+                @($historicalBindingNames | Where-Object { $names -notcontains $_ }).Count -eq 0 -and
+                @(@('excluded_path_patterns', 'excluded_path_patterns_sha256') | Where-Object { $names -contains $_ }).Count -eq 0
+            $currentBindingComplete = @($bindingNames | Where-Object { $names -notcontains $_ }).Count -eq 0
+            if ($bindingCount -ne 0 -and -not $historicalBindingComplete -and -not $currentBindingComplete) {
                 Add-ReviewAuthorityError -Errors $errors -Message 'incomplete-group:recovery-target-bindings'
             }
             if ($names -contains 'verification_plan_present') {
