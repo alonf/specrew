@@ -9,23 +9,26 @@ Describe 'path identity primitive' {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/path-identity.ps1')
     }
 
-    It 'derives case sensitivity from the volume and agrees with git core.ignorecase' {
+    It 'derives case sensitivity from the volume and matches what the filesystem actually does' {
         $sensitive = Get-ContinuousCoReviewPathCaseSensitive -Path $script:RepoRoot
-        $sensitive | Should -Not -BeNullOrEmpty -Because 'a Git worktree always yields a determination'
+        $sensitive | Should -Not -BeNullOrEmpty -Because 'an existing directory always yields a determination'
 
-        $ignoreCase = (& git -C $script:RepoRoot config --get core.ignorecase 2>$null | Select-Object -First 1)
-        if (-not [string]::IsNullOrWhiteSpace([string]$ignoreCase)) {
-            $expected = -not ([string]$ignoreCase).Trim().Equals('true', [StringComparison]::OrdinalIgnoreCase)
-            $sensitive | Should -Be $expected -Because 'git already probed this volume at init'
-        }
+        # Ground the answer against observed behaviour rather than a platform assumption.
+        $probe = Join-Path $TestDrive 'volume-truth'
+        New-Item -ItemType Directory -Path (Join-Path $probe 'Alpha') -Force | Out-Null
+        $foldsCase = Test-Path -LiteralPath (Join-Path $probe 'alpha')
+        (Get-ContinuousCoReviewPathCaseSensitive -Path (Join-Path $probe 'Alpha')) | Should -Be (-not $foldsCase)
     }
 
-    It 'does NOT decide case semantics from the OS family' {
+    It 'does NOT decide case semantics from the OS family, and spawns no subprocess' {
         # The defect: `IsWindows ? IgnoreCase : Ordinal` mis-answers on a case-insensitive macOS
-        # volume in both directions. The primitive must consult the volume instead.
+        # volume in both directions. The primitive must measure the volume instead - and must do it
+        # WITHOUT a subprocess: a `git config` probe reached from the digest's per-path loop hung the
+        # Linux CI review suite silently, killing the process with no failing assertion.
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/path-identity.ps1') -Raw
         $source | Should -Not -Match 'IsWindows\(\)\) \{ \[StringComparison\]::OrdinalIgnoreCase \}'
-        $source | Should -Match 'core\.ignorecase'
+        $source | Should -Not -Match '&\s*git' -Because 'the probe must never fork a process on a hot path'
+        $source | Should -Not -Match 'Start-Process|Invoke-Expression'
     }
 
     It 'walks up to the nearest existing directory so a not-yet-created path still resolves' {

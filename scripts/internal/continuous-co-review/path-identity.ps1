@@ -8,6 +8,16 @@ Set-StrictMode -Version Latest
 
 $script:ContinuousCoReviewCaseSensitivityCache = @{}
 
+function Get-ContinuousCoReviewCaseFlippedName {
+    # The opposite-case spelling of a name, or $null when the name carries no cased letter and so
+    # cannot answer the question.
+    param([Parameter(Mandatory)][AllowEmptyString()][AllowNull()][string]$Name)
+    if ([string]::IsNullOrEmpty($Name)) { return $null }
+    if ($Name -cne $Name.ToUpperInvariant()) { return $Name.ToUpperInvariant() }
+    if ($Name -cne $Name.ToLowerInvariant()) { return $Name.ToLowerInvariant() }
+    return $null
+}
+
 function Get-ContinuousCoReviewPathCaseSensitive {
     # $true = case-SENSITIVE volume, $false = case-INSENSITIVE, $null = undetermined.
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
@@ -28,38 +38,33 @@ function Get-ContinuousCoReviewPathCaseSensitive {
         return $script:ContinuousCoReviewCaseSensitivityCache[$probeDir]
     }
 
+    # Determined by ASKING THE FILESYSTEM, with no subprocess. An earlier revision consulted
+    # `git config core.ignorecase` first; that call is reached from the digest's per-path loop and
+    # hung the Linux CI review suite silently, with the process killed and no failing assertion.
+    # A direct probe measures the volume itself rather than git's cached init-time answer, works for
+    # directories outside any repository (the external target root), and cannot block. It only
+    # reads, so it stays safe against an OS-protected read-only reviewer target.
     $result = $null
-    # 1. Git already probed the working tree at init and recorded the answer. core.ignorecase=true
-    #    means the filesystem folds case, so case-sensitive is its negation.
     try {
-        $raw = & git -C $probeDir config --get core.ignorecase 2>$null
-        $code = $LASTEXITCODE
-        if ($code -eq 0) {
-            $text = ([string](@($raw) | Select-Object -First 1)).Trim()
-            if ($text -ieq 'true') { $result = $false }
-            elseif ($text -ieq 'false') { $result = $true }
+        # Prefer the directory's OWN name: it needs no children and cannot be perturbed by them.
+        $leaf = [IO.Path]::GetFileName($probeDir.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar))
+        $parent = [IO.Path]::GetDirectoryName($probeDir)
+        $flipped = Get-ContinuousCoReviewCaseFlippedName -Name $leaf
+        if (-not [string]::IsNullOrEmpty($flipped) -and -not [string]::IsNullOrWhiteSpace($parent)) {
+            $result = -not [IO.Directory]::Exists((Join-Path $parent $flipped))
         }
-    }
-    catch { $result = $null }
-
-    # 2. Side-effect-free fallback: flip the case of an existing entry and ask whether it still
-    #    resolves. Never writes, so it is safe against an OS-protected read-only reviewer target.
-    if ($null -eq $result) {
-        try {
+        if ($null -eq $result) {
             foreach ($entry in @([IO.Directory]::GetFileSystemEntries($probeDir) | Select-Object -First 8)) {
-                $leaf = [IO.Path]::GetFileName($entry)
-                if ([string]::IsNullOrEmpty($leaf)) { continue }
-                $flipped = if ($leaf -cne $leaf.ToUpperInvariant()) { $leaf.ToUpperInvariant() }
-                elseif ($leaf -cne $leaf.ToLowerInvariant()) { $leaf.ToLowerInvariant() }
-                else { $null }
-                if ($null -eq $flipped) { continue }
-                $candidate = Join-Path $probeDir $flipped
+                $childLeaf = [IO.Path]::GetFileName($entry)
+                $childFlipped = Get-ContinuousCoReviewCaseFlippedName -Name $childLeaf
+                if ([string]::IsNullOrEmpty($childFlipped)) { continue }
+                $candidate = Join-Path $probeDir $childFlipped
                 $result = -not ([IO.File]::Exists($candidate) -or [IO.Directory]::Exists($candidate))
                 break
             }
         }
-        catch { $result = $null }
     }
+    catch { $result = $null }
 
     $script:ContinuousCoReviewCaseSensitivityCache[$probeDir] = $result
     return $result
