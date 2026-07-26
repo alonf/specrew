@@ -15,6 +15,15 @@ function Invoke-ReviewTargetGit {
     )
     $start = [System.Diagnostics.ProcessStartInfo]::new()
     $start.FileName = 'git'
+    # Git for Windows keeps Win32's legacy MAX_PATH behavior unless
+    # core.longpaths is enabled. Review snapshots routinely contain deeply
+    # nested package/test paths; cleanup must not strand an unregistered
+    # disposable worktree after verification. Apply this process-locally so
+    # Specrew does not mutate the user's Git configuration.
+    if ([OperatingSystem]::IsWindows()) {
+        [void]$start.ArgumentList.Add('-c')
+        [void]$start.ArgumentList.Add('core.longpaths=true')
+    }
     foreach ($argument in $Arguments) { [void]$start.ArgumentList.Add([string]$argument) }
     $start.WorkingDirectory = $WorkingDirectory
     $start.UseShellExecute = $false

@@ -205,6 +205,25 @@ $chunk = 'x' * 4096
         }
     }
 
+    It 'removes a disposable Windows worktree containing paths beyond MAX_PATH' -Skip:(-not [OperatingSystem]::IsWindows()) {
+        $origin = Join-Path $TestDrive 'origin-longpath-cleanup'
+        $external = Join-Path $TestDrive 'external-longpath-cleanup'
+        New-TargetRepo -Path $origin
+        $snapshot = New-GitReviewTargetSnapshot -OriginRepo $origin -RunId run-longpath-cleanup -ExternalRoot $external
+        $segment = 'nested-' + ('x' * 80)
+        $deep = Join-Path $snapshot.snapshot_path $segment
+        $deep = Join-Path $deep $segment
+        $deep = Join-Path $deep $segment
+        [IO.Directory]::CreateDirectory($deep) | Out-Null
+        $deepFile = Join-Path $deep 'verification-output.json'
+        [IO.File]::WriteAllText($deepFile, '{}')
+        $deepFile.Length | Should -BeGreaterThan 260
+
+        $removed = Remove-GitReviewTargetSnapshot -Snapshot $snapshot
+        $removed.removed | Should -BeTrue -Because $removed.failure_reason
+        Test-Path -LiteralPath $snapshot.workspace_root | Should -BeFalse
+    }
+
     It 'OS-protects the frozen target while leaving external controller staging writable and restores cleanup' {
         $origin = Join-Path $TestDrive 'origin-readonly'
         $external = Join-Path $TestDrive 'external-readonly'
