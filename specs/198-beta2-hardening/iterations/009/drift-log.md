@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 18
-**Resolution rate**: 72% (13/18 resolved)
+**Total drift events**: 21
+**Resolution rate**: 71% (15/21 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -505,3 +505,48 @@ rather than attempted as a fifth consecutive in-flight fix.
   commands without literal escaping.
 - **Required correction**: keep literal machinery identities separate from user exclusion globs and
   pass them to Git with literal pathspec semantics.
+
+### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
+
+- **Status**: open; backlog — product gap in Specrew itself, recorded at the maintainer's instruction
+- **Severity**: minor governance-mechanism gap
+- **Type**: boundary-authorization model
+- **Observed evidence**: closing Iteration 003 on 2026-07-27 is a genuine `iteration-closeout`
+  decision, but the active lifecycle cursor sat at `tasks` for Iteration 008/009. The Rule 46 stop
+  contract requires a trailing `<!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> -->` marker so the Stop
+  hook can capture the human's typed verdict as the authorization. Emitting the canonical
+  `retro -> iteration-closeout` would have recorded that crossing against the **active** iteration —
+  asserting that Iteration 008/009 entered closeout, which is false.
+- **Containment**: the marker was deliberately suppressed for that stop and the suppression was
+  stated in the packet, so the human could overrule it. The maintainer confirmed the refusal was
+  correct and directed that the gap be recorded here rather than left in conversation.
+- **The gap**: the boundary model assumes one moving cursor per feature, so every verdict is a
+  crossing of the CURRENT position. It has no way to express "a human authorized a boundary decision
+  about a HISTORICAL iteration" — retroactive closure, a correction to a closed iteration, or any
+  out-of-band governance repair. The only options today are to mis-record the crossing or to record
+  no authorization at all; both are wrong, and the second is what a careful agent will choose.
+- **Required correction (deferred)**: give the verdict record an explicit subject — the
+  (feature, iteration) the decision is ABOUT — distinct from the cursor position it advances, so a
+  retroactive closeout can be captured as real authorization without moving the active cursor. Until
+  then, retroactive closures rely on the packet text plus the commit as their authorization trail.
+
+### DRIFT-198-I009-021 — hardening gate cannot express evidence recorded by a successor iteration
+
+- **Status**: open; backlog — product gap in Specrew itself
+- **Severity**: minor evidence-honesty gap
+- **Type**: hardening-gate schema
+- **Observed evidence**: closing Iteration 003 required each blocking concern to leave
+  `Runtime Evidence Status: pending-post-implementation`. The schema offers exactly three
+  destinations: `recorded` (paired with `Evidence Basis: runtime-evidence`), `not-needed`, or staying
+  pending and blocking closure. Iteration 003's residual scope was delivered and proven in Iteration
+  007, so the runtime evidence genuinely exists — just not in 003.
+- **Why each available value is wrong**: `recorded` + `runtime-evidence` asserts 003 recorded proof
+  it never recorded, which is precisely the false-green pattern the gate exists to prevent.
+  `not-needed` understates it — evidence WAS needed and does exist. Staying pending blocks a closure
+  the maintainer authorized.
+- **Disposition taken**: `not-needed` plus an explicit `## Closure Follow-Through` section naming,
+  per concern, which controls landed in 003, which landed in 007, and where each one's runtime
+  evidence lives. Point, do not claim.
+- **Required correction (deferred)**: add a concern-level disposition meaning "runtime evidence
+  recorded by a named successor iteration", carrying that iteration reference so the pointer is
+  machine-checkable instead of prose the validator cannot read.

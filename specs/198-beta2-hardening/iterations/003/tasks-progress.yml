@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "003"
-updated_at: "2026-07-14T16:58:21.4418637Z"
+updated_at: "2026-07-27T03:05:38Z"
 tasks:
   T034a:
     title: "Devin-seam inspection (runs FIRST per Option B)"
@@ -47,10 +47,10 @@ tasks:
     blocked_reason: ""
   T019:
     title: "Checkpoint baselines + frozen digest threading + in-flight dedup"
-    status: "in-progress"
+    status: "deferred"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "deferred at the 2026-07-27 retroactive closeout. Reconciled at the Iteration 007 plan/tasks boundaries (iterations/007/iteration-003-reconciliation.md): pieces 1-3 and 6 superseded by Iteration 006 campaign/run identity and immutable claim generations; piece 4 re-expressed by Iteration 007 T051; piece 5 remains the separate FR-048/FR-049/SC-015 release dependency; piece 7 deferred because FR-058 forbids a Beta2 pruning subsystem. T019a (stale-verdict surfacing) was pulled forward and completed."
   T020:
     title: "Spend-allowance halt UX + two-budget accounting + resolved-against-disk disposition (pulled forward, maintainer-directed)"
     status: "done"
@@ -59,31 +59,31 @@ tasks:
     blocked_reason: ""
   T030:
     title: "Machinery-turn exclusion from verdict evidence"
-    status: "pending"
+    status: "deferred"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "deferred at the 2026-07-27 retroactive closeout; ownership moved to Iteration 007 T030 (0.75 SP, done). Machinery/hook-injected turns cannot become human verdict evidence; carried at approved size and delivered with evidence in 007."
   T031:
     title: "Approval-tokenizer tightening + temporal-ordering + cursor-invariant guards"
-    status: "pending"
+    status: "deferred"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "deferred at the 2026-07-27 retroactive closeout; ownership moved to Iteration 007 T031 (0.5 SP, done). Tokenizer, temporal-ordering, and cursor-invariant guards carried intact and delivered in 007."
   T032:
     title: "Fabrication-sequence regression fixtures (re-enable acceptance surface)"
-    status: "pending"
+    status: "deferred"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "deferred at the 2026-07-27 retroactive closeout; ownership moved to Iteration 007 T032 (0.5 SP, done). The exact 2026-07-11 fabrication sequences remained the deterministic acceptance fixture and were delivered in 007."
   T033:
     title: "Ledger correction door (append-only invalidation records)"
-    status: "pending"
+    status: "deferred"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "deferred at the 2026-07-27 retroactive closeout; ownership moved to Iteration 007 T033 (1.0 SP, done). Delivered as the IA-006-04 vehicle for DRIFT-198-I006-001 and independently verified by the clean T061 run 10."
   T034b:
     title: "Devin cherry-pick + regression set + live-round compat (AT LANDING)"
-    status: "pending"
+    status: "deferred"
     started_at: ""
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "deferred at the 2026-07-27 retroactive closeout; ownership moved to Iteration 007 T034b (0.5 SP, done). Only the 0.5 SP residual carried - no second cherry-pick; the landed strict-resolution behaviour was proven through the production campaign adapters in 007."

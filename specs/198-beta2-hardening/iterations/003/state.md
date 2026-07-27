@@ -1,13 +1,13 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: T020
-**Tasks Remaining**: T030, T031, T032, T033, T034b
-**In Progress**: T019
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: T020 (last task DELIVERED in 003; the remaining six are deferred with ownership moved to Iteration 007 — see `## Closure Record`)
+**Tasks Remaining**: (none)
+**In Progress**: (none)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-14T16:58:21.5028509Z
+**Updated**: 2026-07-27T03:05:38Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -19,8 +19,8 @@
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Execution is in progress.
-- Task progress: 8 complete, 1 in-progress, 5 pending, 0 blocked.
+- Execution is complete.
+- Task progress: 8 complete, 0 in-progress, 0 pending, 6 deferred, 0 blocked.
 - Latest completed task: T020
 <!-- specrew:task-progress-summary:end -->
 
@@ -664,6 +664,40 @@
   now 16 tests (12 resolver incl. the origin/feature regression + tracking-remote-head; 4 consumer: non-empty
   baseline, greenfield empty-tree, ambiguous throws, no-commit throws) = F-198 registry suite #25; registry
   25/25 green.
+
+## Closure Record
+
+Closed 2026-07-27 at a retroactive iteration-closeout, on explicit maintainer
+authorization. Iteration 003 stopped executing on 2026-07-14 and the feature
+moved on through iterations 005–009; it was never formally closed behind
+itself. Closing it now is bookkeeping catching up with reality, not a claim
+that anything additional was built.
+
+**Delivered in 003** (8 tasks, evidence in the Execution Summary above and in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/003/coverage-evidence.md):
+T034a, T013, T014, T015, T016, T017, T018, T020.
+
+**Deferred with ownership moved** (6 tasks): T019, T030, T031, T032, T033,
+T034b. The dispositions were authorized at the Iteration 007 plan/tasks
+boundaries and are recorded in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/iteration-003-reconciliation.md,
+with the carry-forward also recorded in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/tasks.md.
+Per-task rationale is in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/003/tasks-progress.yml.
+T030–T033 and T034b were delivered in Iteration 007 and are `done` there; T019
+was reconciled piece-by-piece across Iteration 006, T051, and a separate
+FR-048/FR-049/SC-015 release dependency, with piece 7 deferred because FR-058
+forbids a Beta2 pruning subsystem.
+
+The historical plan body is unchanged: capacity `12/26`, the task table, and
+the design remain exactly as planned on 2026-07-11. Only the plan's `Status`
+and `Completed` header fields moved, which is what closure means.
+
+`review.md` and `retro.md` for this iteration are closure-scoped: they record
+what 003 actually delivered and point at Iteration 007's evidence for the
+residual. They are deliberately not a retrofitted full review of work that
+happened in another iteration.
 
 ## Notes
 
