@@ -1,6 +1,12 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# HARD dependency (DRIFT-198-I009-018): absent, declared-executable containment silently compared
+# with a DIFFERENT case rule instead of the volume's own.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'path-identity.ps1')
+}
+
 # T019 / FR-048 — the EXECUTION side of the framework-NEUTRAL verification plan (amended 2026-07-13).
 # The thin, order-preserving wrapper that drives the universal T018 recorded-run runner
 # (Invoke-ContinuousCoReviewRecordedRun) over the ORDERED commands a downstream command-plan SUPPLIER
@@ -86,10 +92,13 @@ function Resolve-ContinuousCoReviewVerificationExecutable {
         $rootFull = ([System.IO.Path]::GetFullPath($RepoRoot)).TrimEnd([char]'\', [char]'/')
         $full = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($rootFull, $Executable))
         $rootPrefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
-        # PLATFORM-APPROPRIATE containment (review finding f1, run 20260714T172315119): case-insensitive
-        # only on Windows - on a case-sensitive filesystem '../Repo/tool' is OUTSIDE '/tmp/repo'.
-        $cmp = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) { Get-ContinuousCoReviewPathComparison }
-        elseif ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+        # VOLUME-APPROPRIATE containment (review finding f1, run 20260714T172315119): on a
+        # case-sensitive filesystem '../Repo/tool' is OUTSIDE '/tmp/repo'. 'same' is the refusing
+        # direction here - when the volume cannot be determined, treat variants as one path so an
+        # aliased executable is refused rather than admitted. (The previous call passed NO arguments
+        # to a function whose parameters are both Mandatory, so it could only ever have thrown under
+        # -NonInteractive; the OS-family branch beside it was the only code that ever ran.)
+        $cmp = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'same'
         if (-not $full.StartsWith($rootPrefix, $cmp)) {
             return [pscustomobject]@{ resolved = $false; path = $null; method = 'repo-relative'; reason = "declared executable '$Executable' resolves outside the repository root" }
         }

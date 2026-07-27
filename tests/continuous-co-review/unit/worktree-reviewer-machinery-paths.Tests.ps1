@@ -54,24 +54,28 @@ Describe 'worktree reviewer machinery path policy' {
         finally { Pop-Location }
     }
 
-    It 'resolves machinery paths without spawning any subprocess' {
-        # The Linux CI review suites run as ROOT under sudo, where git treats a runner-owned
-        # repository differently; a `git check-ignore` probe here hung that job silently with the
-        # process killed and no failing assertion. This scan must stay subprocess-free.
+    It 'asks Git about ignored paths by ARGUMENT, never through its stdin' {
+        # This scan was briefly made subprocess-free on the theory that `git check-ignore` hung the
+        # Linux CI review job. There was never a hang: `gh run view --log` truncates per-job output,
+        # and that truncated tail was read as silence while the job in fact ran to completion and
+        # failed on a real assertion (DRIFT-198-I009-018). What IS real is the pipe-deadlock class of
+        # DRIFT-198-I009-001 - writing hundreds of paths to git's stdin while it writes matches back
+        # blocks both ends once a buffer fills. So the probe stays, and stays argument-shaped.
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
         $machineryBlock = $source.Substring($source.IndexOf('function Get-ContinuousCoReviewMachineryPaths'), 6000)
-        $machineryBlock | Should -Not -Match '&\s*git'
-        $machineryBlock | Should -Match '\$prunedRoots' -Because 'volatile roots are pruned by name, deterministically'
+        $machineryBlock | Should -Match 'git -C \$RepoRoot check-ignore -- @chunk' -Because 'ignored paths are asked for by argument'
+        $machineryBlock | Should -Not -Match 'check-ignore --stdin' -Because 'piping the list to git deadlocks once its stdout buffer fills'
+        $machineryBlock | Should -Match '\$prunedRoots' -Because 'the cheap name prune runs first so the subprocess sees a bounded list'
     }
 
     It 'compares ignored paths by exact identity, never case-insensitively' {
         # Independent-review finding (run-f198-i009-178a3772-codex, major): an OrdinalIgnoreCase
         # match lets an ignored path drop a DISTINCT non-ignored path differing only by case on a
         # case-sensitive worktree, under-stripping deployed machinery into the reviewed candidate.
-        # The git-ignored filter that motivated this assertion is gone; volatile roots are now pruned
-        # by name. What must NOT come back is a case-FOLDING comparer anywhere in this policy, which
-        # would collapse two genuinely distinct machinery directories on a case-sensitive worktree.
+        # No case-FOLDING comparer may appear anywhere in this policy - not in the ignored-path set
+        # and not in the dedup, which would collapse two genuinely distinct machinery directories.
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1') -Raw
+        $source | Should -Match 'HashSet\[string\]\]::new\(\[StringComparer\]::Ordinal\)' -Because 'the ignored-path set matches git output by exact identity'
         $source | Should -Not -Match 'HashSet\[string\]\]::new\(\[StringComparer\]::OrdinalIgnoreCase\)'
         $source | Should -Match 'Get-ContinuousCoReviewPathComparer' -Because 'dedup follows the volume, not a hard-coded rule'
     }
@@ -98,8 +102,12 @@ Describe 'worktree reviewer machinery path policy' {
 
             $paths = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $repo)
 
-            $paths | Should -Contain 'Scratch/host/skills/specrew-a' -Because 'a non-ignored path must survive an ignored path differing only by case'
-            $paths | Should -Not -Contain 'scratch/host/skills/specrew-a'
+            # `-ccontains`, never `Should -Contain`: the latter is backed by PowerShell's `-contains`,
+            # which FOLDS CASE - so it cannot tell these two paths apart and reports the surviving
+            # 'Scratch/...' as a match for the stripped 'scratch/...'. The whole point of this fixture
+            # is that the two are distinct, so the assertion has to be case-sensitive to mean anything.
+            ($paths -ccontains 'Scratch/host/skills/specrew-a') | Should -BeTrue -Because 'a non-ignored path must survive an ignored path differing only by case'
+            ($paths -ccontains 'scratch/host/skills/specrew-a') | Should -BeFalse -Because 'the git-ignored path adds no exclusion and must be stripped'
         }
         finally { Pop-Location }
     }

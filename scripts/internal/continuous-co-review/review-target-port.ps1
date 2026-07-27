@@ -7,6 +7,9 @@ Set-StrictMode -Version Latest
 
 if (-not (Get-Command -Name 'Resolve-ReviewCurrentness' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-authority-core.ps1') }
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'reviewed-state-digest.ps1') }
+# HARD dependency (DRIFT-198-I009-018): absent, target containment silently compared with a
+# DIFFERENT case rule instead of the volume's own.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function Invoke-ReviewTargetGit {
     param(
@@ -172,10 +175,7 @@ function Test-ReviewTargetPathUnderRoot {
     $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
     # Containment fallback: answer "inside" more readily when the volume cannot be determined, so a
     # case-aliased path is refused rather than admitted.
-    $comparison = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
-        Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'same'
-    }
-    else { [StringComparison]::OrdinalIgnoreCase }
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'same'
     return $pathFull.Equals($rootFull, $comparison) -or $pathFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, $comparison)
 }
 

@@ -67,6 +67,53 @@ Describe 'path identity primitive' {
         (ConvertTo-ContinuousCoReviewLiteralPathspec -Path 'a\b') | Should -Be ':(literal)a/b'
     }
 
+    It 'is reachable from a consumer loaded WITHOUT the shared loader (DRIFT-198-I009-018)' {
+        # The regression: `_load.ps1` loads this primitive first, but consumers are also dot-sourced
+        # DIRECTLY - worktree-reviewer.ps1, the campaign orchestrator, and several suites all take
+        # that door. Through it the primitive was absent, every call site took its silent fallback,
+        # and containment compared with a case rule the volume never chose. It answered wrongly on
+        # Linux only (Windows and macOS volumes fold case, so the wrong rule matched the right one),
+        # which is why one CI runner failed and the other two stayed green.
+        $pwshPath = (Get-Process -Id $PID).Path
+        $consumers = @(
+            'review-design-context.ps1'
+            'worktree-reviewer.ps1'
+            'reviewed-state-digest.ps1'
+            'review-authority-store.ps1'
+            'review-target-port.ps1'
+            'verification-plan-runner.ps1'
+        )
+        foreach ($consumer in $consumers) {
+            $consumerPath = Join-Path $script:RepoRoot "scripts/internal/continuous-co-review/$consumer"
+            # A CHILD process: only the consumer is loaded, so nothing another suite already
+            # dot-sourced into this session can mask an absent dependency.
+            $probe = ". '$consumerPath'; if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) { 'REACHABLE' } else { 'MISSING' }"
+            $observed = (& $pwshPath -NoProfile -NonInteractive -Command $probe 2>&1 | Select-Object -Last 1)
+            "$observed" | Should -Be 'REACHABLE' -Because "$consumer compares paths and must load the primitive into its OWN scope"
+        }
+    }
+
+    It 'lets no consumer fall back to a case rule the volume did not choose (DRIFT-198-I009-018)' {
+        # The durable guard. A `Get-Command`-guarded call that silently substitutes a DIFFERENT
+        # comparison when the primitive is missing is the same defect as an `$IsWindows` shortcut:
+        # it answers, it answers wrongly, and nothing reports it. Consumers must call the primitive
+        # unconditionally and load it at file scope instead.
+        $sourceRoot = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        $consumers = @(Get-ChildItem -LiteralPath $sourceRoot -Filter '*.ps1' -File |
+                Where-Object { $_.Name -ne 'path-identity.ps1' } |
+                Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match 'Get-ContinuousCoReviewPathCompar(ison|er)\s+-Path' })
+        @($consumers).Count | Should -BeGreaterThan 0 -Because 'the primitive must have real consumers for this guard to mean anything'
+
+        foreach ($consumer in $consumers) {
+            $source = Get-Content -LiteralPath $consumer.FullName -Raw
+            # The load guard wraps a DOT-SOURCE; the banned fallback wraps a CALL.
+            $source | Should -Not -Match "(?s)Get-Command -Name 'Get-ContinuousCoReviewPathCompar(ison|er)'.{0,120}?\{\s*[\r\n]*\s*Get-ContinuousCoReviewPathCompar" `
+                -Because "$($consumer.Name) must call the primitive directly, never guard it with a substitute comparison"
+            $source | Should -Match "\.\s*\(Join-Path \`$PSScriptRoot 'path-identity\.ps1'\)" `
+                -Because "$($consumer.Name) must load the primitive into its own scope"
+        }
+    }
+
     It 'never writes while probing, so an OS-protected reviewer target stays byte-identical' {
         $probe = Join-Path $TestDrive 'readonly-probe'
         New-Item -ItemType Directory -Path $probe -Force | Out-Null

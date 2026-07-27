@@ -230,6 +230,9 @@ exit 0
         }
         foreach ($suite in @(
             'review-cross-platform-fault-matrix.Tests.ps1',
+            # Case sensitivity is a VOLUME property, so the primitive must be proven on all three
+            # runners: the macOS volume folds case where Linux does not (DRIFT-198-I009-015/018).
+            'path-identity.Tests.ps1',
             'review-harness-contract.Tests.ps1',
             'review-authority-store.Tests.ps1',
             'review-spend-allowance.Tests.ps1',

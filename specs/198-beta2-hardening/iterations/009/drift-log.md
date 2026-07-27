@@ -379,32 +379,78 @@ from user exclusion globs, and (c) passes literal Git pathspecs - with every cal
 through it. That is a design change beyond a point correction and is left for the human's decision
 rather than attempted as a fifth consecutive in-flight fix.
 
-### DRIFT-198-I009-018 — Linux review suite hangs since this iteration's corrections
+### DRIFT-198-I009-018 — the path-identity primitive was never loaded on the consumer's own door
 
-- **Status**: open; UNRESOLVED regression introduced by this iteration. Blocks the tag.
-- **Severity**: blocking verification-integrity defect
-- **Type**: process/pipe containment, platform-specific
-- **Observed evidence**: `Cross-Platform Validation` was green at `afb3eda7` (2026-07-25) and has
-  failed on every push since: `183f6efd`, `45853c7f`, `193c7331`, `0059834e`. macOS and Windows pass
-  on the later commits; **ubuntu-latest** alone fails. Every failure is identical and silent - the
-  job stops mid-`review-spend-allowance.Tests.ps1` in its orchestrator end-to-end context, emits no
-  failing assertion and no `Failed: N`, goes quiet for roughly 85 seconds, and the process is killed.
-  That signature is a hang, not an assertion failure.
-- **Excluded so far**: THREE subprocess hypotheses were tested against CI and all three were wrong.
-  Removing the `git config core.ignorecase` probe from the path-identity primitive did not fix it;
-  replacing the `git check-ignore --stdin` pipe with chunked arguments did not fix it; and deleting
-  the git call from the machinery scan entirely, pruning volatile roots by name instead, did not fix
-  it either. All three changes are independently correct and are retained. **The hang is therefore
-  not a git subprocess.** Do not spend a fourth cycle on that theory.
-- **Execution context that matters**: `cross-platform-validation.yml` runs these suites on Linux as
-  ROOT, via `sudo pwsh -NonInteractive -EncodedCommand`, and `review-spend-allowance` is the sixth of
-  twelve suites - so the job genuinely stops there rather than finishing. Any hypothesis must explain
-  a root-only, Linux-only hang with no failing assertion.
-- **Scope note**: the first push bundled every commit of this session, so the culprit is anywhere in
-  `afb3eda7..183f6efd`, not only in the path-identity work that the two hypotheses targeted.
-- **Required correction**: bisect `afb3eda7..183f6efd` on CI - the failure reproduces only on Linux,
-  so a scratch branch pushing intermediate commits is the mechanical next step - then fix the
-  identified hang and re-prove all three platforms.
+- **Status**: resolved; focused regression green on Linux (WSL Ubuntu 24.04, as root) and Windows
+- **Severity**: blocking review-integrity defect
+- **Type**: cross-platform path identity — dependency load scope
+- **There was never a hang.** The earlier record of this entry described a silent root-only Linux
+  hang and excluded three subprocess theories against it. Every observation behind that reading was
+  an artifact of the diagnostic tool: `gh run view --log` **truncates per-job output**, and the
+  truncated tail was read as silence. Proof: the **green** run at `afb3eda7` truncates at the byte-identical
+  line — `Context two-budget accounting wired into the orchestrator (end-to-end)` — and that job
+  succeeded. The untruncated log (`gh api repos/<owner>/<repo>/actions/jobs/<id>/logs`) shows all
+  twelve suites running to completion and one ordinary failing assertion.
+- **Confirmed source evidence**: the real failure is
+  `worktree-containment.Tests.ps1:167` — *"Expected $false, because this VOLUME is case-sensitive:
+  parent/repo is a DIFFERENT directory from parent/Repo, not under it, but got $true."* Its `Describe`
+  loads only `worktree-reviewer.ps1`, never `_load.ps1`, so `path-identity.ps1` was absent from the
+  scope in which `Test-ContinuousCoReviewPathUnderRoot` was defined. Every consumer of the primitive
+  guarded its call with `Get-Command ... -ErrorAction SilentlyContinue` and, when the lookup missed,
+  silently substituted a DIFFERENT comparison — `OrdinalIgnoreCase` for the containment predicates,
+  `Ordinal` for the stripping ones. Traced live: `gcFound=False`, `cmp=OrdinalIgnoreCase`. The
+  case-distinct sibling therefore compared as *under* the root.
+- **Why only Linux failed**: Windows and macOS volumes fold case, so the substituted rule happened to
+  match the right answer there and both stayed green. Only a case-sensitive volume exposes it. This is
+  the same defect class as DRIFT-198-I009-015 (an OS-family shortcut deciding case semantics), but
+  re-entering through the **loader** rather than the comparison — which is why fixing every comparison
+  site did not remove it.
+- **Reach**: seven call sites across six files carried the silent fallback — `review-design-context.ps1`,
+  `review-authority-store.ps1`, `review-target-port.ps1`, `reviewed-state-digest.ps1` (x2),
+  `worktree-reviewer.ps1`, and `verification-plan-runner.ps1`. In practice the volume-derived
+  correction was dead code on every door that did not go through `_load.ps1`.
+- **Latent second defect found in the same pass**: `verification-plan-runner.ps1` invoked
+  `Get-ContinuousCoReviewPathComparison` with **no arguments** although both parameters are
+  `Mandatory`, so that branch could only ever have thrown under `-NonInteractive`. The OS-family
+  branch beside it was the only code that ever ran.
+- **Correction**: every consumer now dot-sources `path-identity.ps1` into its own scope at file load
+  (the existing `review-linux-runtime-port.ps1` convention), and the per-call-site fallbacks are
+  deleted — the primitive is called unconditionally. A fallback that silently answers with a
+  different case rule is the defect, not the mitigation.
+- **Resolution evidence**: on Linux as root, `worktree-containment` passes 11/0 (was 10 passed, 1
+  failed) and path-identity, digest, authority-store, target-port, machinery-paths, origin-path-hygiene,
+  fault-matrix, and verification-plan-runner are all green; the same eight suites are green on Windows.
+  Two new regressions in `path-identity.Tests.ps1` pin it: one loads each consumer in a CHILD process
+  with no shared loader and requires the primitive to be reachable, the other forbids any consumer
+  from guarding the primitive with a substitute comparison. `path-identity.Tests.ps1` is now wired
+  into `cross-platform-validation.yml` so the primitive is proven on all three volumes.
+- **Method note for the next session**: `gh run view --log` and `--log-failed` truncate. For any CI
+  diagnosis, read the untruncated job log via `gh api repos/<owner>/<repo>/actions/jobs/<id>/logs`,
+  and confirm a suspicious tail against a known-GREEN run before theorising about it. Three CI cycles
+  were spent on subprocess theories for a hang that never existed.
+
+### DRIFT-198-I009-019 — git-ignore filter deleted on the disproven hang theory
+
+- **Status**: resolved; focused regression green on Linux
+- **Severity**: major candidate-membership defect
+- **Type**: regression introduced while chasing DRIFT-198-I009-018
+- **Confirmed source evidence**: commit `af5696fc` removed `Remove-ContinuousCoReviewGitIgnoredPath`
+  from the machinery scan and replaced it with a hard-coded volatile-root NAME list, on the theory
+  that its `git check-ignore` subprocess caused the Linux hang. That theory is now disproven, and the
+  removal silently reverted both DRIFT-198-I009-009 (ignored trees add no exclusion and overflow the
+  512-path cap) and DRIFT-198-I009-010 (Ordinal identity matching). A name list cannot know that a
+  project ignores `scratch/` or `vendor-copies/`; only the repository can.
+- **Correction**: two passes, cheapest first — the NAME prune still removes the conventional volatile
+  roots without a subprocess, then Git's own ignore policy handles the rest, argument-chunked (never
+  through git's stdin, which is the real DRIFT-198-I009-001 pipe-deadlock class).
+- **Third defect, in the test itself**: the fixture asserted with `Should -Contain` / `Should -Not -Contain`,
+  which are backed by PowerShell's **case-insensitive** `-contains`. It therefore could not tell
+  `Scratch/...` from `scratch/...` — the exact distinction it exists to prove — and reported the
+  surviving path as a match for the stripped one. It has never passed on a case-sensitive volume; it
+  only ever SKIPPED on Windows and macOS, and no CI job on this branch ran it on Linux. Now asserted
+  with `-ccontains`.
+- **Resolution evidence**: `worktree-reviewer-machinery-paths` passes 8/0 on Linux as root (was 7
+  passed, 1 failed) and 7/0 with 1 platform skip on Windows.
 
 ### DRIFT-198-I009-015 — case semantics taken from the OS family, not the volume
 

@@ -285,6 +285,7 @@ jobs:
             Import-Module Pester -RequiredVersion 5.7.1 -Force
             $suites = @(
               './tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'
+              './tests/continuous-co-review/unit/path-identity.Tests.ps1'
               './tests/continuous-co-review/unit/review-harness-contract.Tests.ps1'
               './tests/continuous-co-review/unit/review-codex-copilot-harness.Tests.ps1'
               './tests/continuous-co-review/unit/review-cursor-antigravity-harness.Tests.ps1'

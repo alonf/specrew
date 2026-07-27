@@ -8,6 +8,9 @@ Set-StrictMode -Version Latest
 $specrewProcessTreeHelper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
 if (Test-Path -LiteralPath $specrewProcessTreeHelper -PathType Leaf) { . $specrewProcessTreeHelper }
 if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewDesignContextSelection' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-design-context.ps1') }
+# HARD dependency (DRIFT-198-I009-018): absent, the machinery dedup silently compared with a
+# DIFFERENT case rule instead of the worktree's own.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function Invoke-WorktreeReviewerGitCapture {
     param(
@@ -81,6 +84,35 @@ function Get-ContinuousCoReviewMachineryPaths {
         '.specrew', '.specify', '.squad', '.agents', '.antigravitycli', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
+    # Declared here so the machinery-path policy stays one readable unit.
+    function Remove-ContinuousCoReviewGitIgnoredPath {
+        param([Parameter(Mandatory)][string]$RepoRoot, [AllowEmptyCollection()][string[]]$RelativePath)
+        $candidates = @($RelativePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($candidates.Count -eq 0) { return @() }
+        # ORDINAL, never OrdinalIgnoreCase: git echoes each ignored path back verbatim, so exact
+        # identity always matches its own input. Case-insensitive matching would, on a case-sensitive
+        # Linux/macOS worktree, let an ignored directory drop a DISTINCT non-ignored directory whose
+        # path differs only by case - under-stripping real deployed machinery into the candidate.
+        $ignored = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        try {
+            # Pass paths as ARGUMENTS in chunks; never pipe them to git's stdin. Writing hundreds of
+            # paths in while git writes matches back deadlocks the moment its stdout buffer fills -
+            # the same pipe-deadlock class as DRIFT-198-I009-001.
+            for ($offset = 0; $offset -lt $candidates.Count; $offset += 100) {
+                $end = [Math]::Min($offset + 100, $candidates.Count) - 1
+                $chunk = @($candidates[$offset..$end])
+                $output = & git -C $RepoRoot check-ignore -- @chunk 2>$null
+                # exit 0 = some ignored, 1 = none ignored; anything else is a real failure.
+                if ($LASTEXITCODE -gt 1) { return @($candidates) }
+                foreach ($line in @($output)) {
+                    $trimmed = ([string]$line).Trim().Replace('\', '/')
+                    if (-not [string]::IsNullOrWhiteSpace($trimmed)) { $null = $ignored.Add($trimmed) }
+                }
+            }
+        }
+        catch { return @($candidates) }
+        return @($candidates | Where-Object { -not $ignored.Contains(([string]$_).Replace('\', '/')) })
+    }
     if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {
         # In a DEPLOYED project these are inert deployed machinery to strip. In the Specrew SOURCE repo they ARE
         # the feature under review: continuous-co-review/** AND the iter-009 tree-kill/supervisor that live under
@@ -98,15 +130,22 @@ function Get-ContinuousCoReviewMachineryPaths {
     # Volatile build/scratch roots hold whole project COPIES, so the marker scan found hundreds of
     # deployed dirs inside them and overflowed the RecoveryFact cap (too-many:machinery_paths:512),
     # killing the run before any provider invocation. Their contents are already outside the
-    # reviewed candidate, so enumerating them buys no exclusion. Pruned by NAME, deterministically:
-    # an earlier revision asked `git check-ignore` instead, and that subprocess hung the Linux CI
-    # review suite, which runs these suites as root under sudo where git treats a runner-owned
-    # repository differently. This scan must stay subprocess-free.
+    # reviewed candidate, so enumerating them buys no exclusion. Two passes, cheapest first:
+    # (1) a NAME prune for the conventional volatile roots, which needs no subprocess and removes
+    # the bulk, then (2) Git's own ignore policy for everything else, because only the repository
+    # can say that a project-specific tree such as `scratch/` or `vendor-copies/` is ignored.
+    #
+    # Pass (2) was briefly deleted (commit af5696fc) on the theory that its subprocess hung the
+    # Linux CI review suite. That theory was wrong: there was never a hang. `gh run view --log`
+    # truncates per-job output, and the truncated tail was mistaken for silence - the job actually
+    # ran to completion and failed on a real assertion (DRIFT-198-I009-018). Deleting this pass
+    # silently reverted DRIFT-198-I009-009 and -010, so it is restored here.
     $prunedRoots = @(
         '.scratch', 'node_modules', '.venv', 'venv', '__pycache__', '.tox', '.gradle', '.next',
         'dist', 'build', 'out', 'target', 'bin', 'obj'
     )
     $marked = @($marked | Where-Object { $prunedRoots -notcontains (([string]$_ -split '/')[0]) })
+    $marked = @(Remove-ContinuousCoReviewGitIgnoredPath -RepoRoot $resolved -RelativePath $marked)
     # (c) Agent-framework MIRROR subdirs under the AI-host dirs. Specrew/Spec-Kit/host frameworks deploy
     # agent/skill/command/chatmode/prompt/rule mirrors here, and they are marked INCONSISTENTLY (skills/rules
     # carry .specrew-managed; agents/prompts do not; some are symlinks, some plain files) - so (b) alone misses
@@ -129,10 +168,7 @@ function Get-ContinuousCoReviewMachineryPaths {
     # machinery directories collapsed to one and the discarded directory's files stayed in the
     # frozen candidate. Dedup on the worktree's real case rule, biased to keep both when unknown.
     $candidates = @($core + $marked + $mirrors | Where-Object { $_ -and $_ -ne '.' })
-    $comparer = if ((Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue) -and -not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        Get-ContinuousCoReviewPathComparer -Path $resolved -WhenUndetermined 'distinct'
-    }
-    else { [StringComparer]::Ordinal }
+    $comparer = Get-ContinuousCoReviewPathComparer -Path $resolved -WhenUndetermined 'distinct'
     $unique = [Collections.Generic.HashSet[string]]::new($comparer)
     foreach ($candidate in $candidates) { $null = $unique.Add([string]$candidate) }
     return @($unique | Sort-Object)

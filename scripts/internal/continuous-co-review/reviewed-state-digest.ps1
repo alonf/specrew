@@ -1,6 +1,12 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# HARD dependency (DRIFT-198-I009-018): absent, digest denial and machinery dedup silently
+# compared with a DIFFERENT case rule instead of the volume's own.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'path-identity.ps1')
+}
+
 # T065 / FR-025 / SEC-002: content-addressed reviewed-state identity.
 #
 # A co-review run records a digest of the EXACT worktree content it reviewed, computed via
@@ -96,10 +102,7 @@ function Test-ContinuousCoReviewDigestPathDenied {
     }
 
     $leaf = $normalized.Split('/')[-1]
-    $comparison = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
-        Get-ContinuousCoReviewPathComparison -Path $CaseRoot -WhenUndetermined 'distinct'
-    }
-    else { [System.StringComparison]::Ordinal }
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $CaseRoot -WhenUndetermined 'distinct'
     $wildcardOptions = if ($comparison -eq [System.StringComparison]::OrdinalIgnoreCase) { [System.Management.Automation.WildcardOptions]::IgnoreCase } else { [System.Management.Automation.WildcardOptions]::None }
 
     foreach ($literal in @($LiteralPath)) {
@@ -202,12 +205,10 @@ function Invoke-ContinuousCoReviewGitPathBatch {
     # These are LITERAL repository identities from `git ls-files`, not user globs. Without literal
     # pathspec magic a legal name holding metacharacters (`generated[1]`) would select unrelated
     # source and strip it from - or stage it into - the reviewed identity.
-    $literalPaths = @($Paths | ForEach-Object {
-            if (Get-Command -Name 'ConvertTo-ContinuousCoReviewLiteralPathspec' -ErrorAction SilentlyContinue) {
-                ConvertTo-ContinuousCoReviewLiteralPathspec -Path $_
-            }
-            else { ':(literal)' + (([string]$_) -replace '\\', '/') }
-        })
+    # Called directly: the file-scope load above guarantees the primitive. The former per-path
+    # `Get-Command` guard carried a hand-copied second implementation of it, which is the
+    # duplicate-rule problem the primitive exists to remove (DRIFT-198-I009-018).
+    $literalPaths = @($Paths | ForEach-Object { ConvertTo-ContinuousCoReviewLiteralPathspec -Path $_ })
     for ($i = 0; $i -lt $literalPaths.Count; $i += $ChunkSize) {
         $end = [Math]::Min($i + $ChunkSize, $literalPaths.Count) - 1
         $chunk = @($literalPaths[$i..$end])
@@ -254,10 +255,7 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         # Dedup on the worktree's real case rule. Sort-Object -Unique folds case by default, which
         # discarded one of two case-distinct machinery directories on a case-sensitive worktree and
         # left its files in the frozen candidate.
-        $machineryComparer = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue) {
-            Get-ContinuousCoReviewPathComparer -Path $resolvedRepoRoot -WhenUndetermined 'distinct'
-        }
-        else { [StringComparer]::Ordinal }
+        $machineryComparer = Get-ContinuousCoReviewPathComparer -Path $resolvedRepoRoot -WhenUndetermined 'distinct'
         $machinerySet = [Collections.Generic.HashSet[string]]::new($machineryComparer)
         foreach ($candidate in $machineryPaths) { $null = $machinerySet.Add($candidate) }
         $machineryPaths = @($machinerySet | Sort-Object)

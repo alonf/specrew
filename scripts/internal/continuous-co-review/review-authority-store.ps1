@@ -8,6 +8,11 @@ Set-StrictMode -Version Latest
 if (-not (Get-Command -Name 'Test-ReviewAuthorityContractObject' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'review-authority-core.ps1')
 }
+# HARD dependency (DRIFT-198-I009-018): absent, store containment silently compared with a
+# DIFFERENT case rule instead of the volume's own.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'path-identity.ps1')
+}
 
 function ConvertTo-ReviewAuthorityCanonicalValue {
     param([AllowNull()]$Value)
@@ -58,10 +63,7 @@ function Get-ReviewAuthorityStorePath {
     $full = [System.IO.Path]::GetFullPath((Join-Path $root $RelativePath))
     $prefix = $root + [System.IO.Path]::DirectorySeparatorChar
     # Store containment: refuse an aliased path rather than admit it when the volume is unknown.
-    $comparison = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
-        Get-ContinuousCoReviewPathComparison -Path $root -WhenUndetermined 'same'
-    }
-    else { [System.StringComparison]::OrdinalIgnoreCase }
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $root -WhenUndetermined 'same'
     if (-not $full.StartsWith($prefix, $comparison)) { throw "review-store-path-escape:$RelativePath" }
     return $full
 }

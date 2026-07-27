@@ -4,6 +4,16 @@ Set-StrictMode -Version Latest
 # T034b / FR-012 / FR-017: one shared design-context resolution and physical-containment
 # implementation for both the historical worktree path and the production campaign path.
 
+# The path-identity primitive is a HARD dependency, loaded into THIS scope. `_load.ps1` loads it
+# first, but this file is also dot-sourced directly (worktree-reviewer.ps1, the campaign
+# orchestrator, and tests all take that door). Without this, the primitive was absent at call time
+# and every containment comparison silently fell back to a DIFFERENT case rule - which is the exact
+# defect class DRIFT-198-I009-015 exists to remove, re-entering through the loader instead of the
+# comparison. See DRIFT-198-I009-018.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'path-identity.ps1')
+}
+
 function Get-ContinuousCoReviewPhysicalPath {
     # THE shared physical-path canonicalizer (FR-008 + FR-010 containment). Resolves a path to its REAL
     # physical location by walking EVERY component and following each existing symlink/junction to its
@@ -44,10 +54,7 @@ function Test-ContinuousCoReviewPathUnderRoot {
     $pReal = Get-ContinuousCoReviewPhysicalPath -Path $Path
     $rReal = Get-ContinuousCoReviewPhysicalPath -Path $Root
     if ([string]::IsNullOrEmpty($pReal) -or [string]::IsNullOrEmpty($rReal)) { return $false }
-    $cmp = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) {
-        Get-ContinuousCoReviewPathComparison -Path $rReal -WhenUndetermined 'same'
-    }
-    else { [System.StringComparison]::OrdinalIgnoreCase }
+    $cmp = Get-ContinuousCoReviewPathComparison -Path $rReal -WhenUndetermined 'same'
     return ($pReal.Equals($rReal, $cmp) -or $pReal.StartsWith($rReal + [System.IO.Path]::DirectorySeparatorChar, $cmp))
 }
 

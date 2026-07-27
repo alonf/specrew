@@ -230,7 +230,12 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
 
     It 'passes literal pathspecs to git so metacharacter paths cannot select other source' {
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1') -Raw
-        $source | Should -Match ':\(literal\)' -Because 'git pathspec-taking calls must not reinterpret literal identities as globs'
+        $source | Should -Match 'ConvertTo-ContinuousCoReviewLiteralPathspec -Path' -Because 'git pathspec-taking calls must not reinterpret literal identities as globs'
+        # The escaping rule belongs to the ONE primitive. It used to be hand-copied here as the
+        # fallback arm of a `Get-Command` guard - a second implementation free to drift from the
+        # first, which is what the primitive exists to prevent (DRIFT-198-I009-018).
+        $source | Should -Not -Match "':\(literal\)'\s*\+" -Because 'the escaping rule is never re-implemented at the call site'
+        (ConvertTo-ContinuousCoReviewLiteralPathspec -Path 'generated[1]/tool.ps1') | Should -Be ':(literal)generated[1]/tool.ps1'
     }
 
     It 'keeps the legacy secret and scaffolder denylist path-specific without broad source-name matches' {
