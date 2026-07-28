@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 21
-**Resolution rate**: 71% (15/21 resolved)
+**Total drift events**: 26
+**Resolution rate**: 77% (20/26 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -505,6 +505,90 @@ rather than attempted as a fifth consecutive in-flight fix.
   commands without literal escaping.
 - **Required correction**: keep literal machinery identities separate from user exclusion globs and
   pass them to Git with literal pathspec semantics.
+
+### DRIFT-198-I009-022 — verification support passed literal machinery identities to Git as pathspecs
+
+- **Status**: resolved; focused regression green on Windows and Linux
+- **Severity**: blocking review-integrity defect (false-green verification evidence)
+- **Type**: literal-versus-glob path identity
+- **Authority evidence**: `run-f198-i009-aab37c3b-codex-2`, blocking finding.
+- **Confirmed source evidence**: `Get-ReviewCampaignVerificationSupportManifest` passed frozen
+  machinery identities straight to `git ls-tree`, and `Add-ReviewCampaignVerificationSupport` passed
+  the resulting names straight to `git restore`. Git reads both batches as PATHSPECS, so a legal
+  marker-detected machinery name containing `*`, `?`, or `[]` selects a different tracked path. If
+  that product path was explicitly excluded it is absent from the snapshot, so the collision check
+  does not stop it: the file is restored into the verification copy, can change the command result,
+  is removed afterwards, and the post-run digest still matches `target_digest`. That certifies GREEN
+  verification evidence for a composition other than the authorized candidate.
+- **Relation**: this is DRIFT-198-I009-017 one layer downstream. `ConvertTo-ContinuousCoReviewLiteralPathspec`
+  already existed and was already used by the digest; these two call sites simply never routed
+  through it - the same "every call site re-decides" pattern the convergence assessment names.
+- **Correction**: both batches now convert every path through the literal-pathspec primitive.
+
+### DRIFT-198-I009-023 — case-distinct explicit exclusions were silently collapsed
+
+- **Status**: resolved; focused regression green
+- **Severity**: major candidate-membership defect
+- **Type**: cross-platform path identity
+- **Authority evidence**: `run-f198-i009-aab37c3b-codex-2`, major finding.
+- **Confirmed source evidence**: `ExcludedPathPatterns` were normalized with `Sort-Object -Unique`,
+  whose default comparison folds case. On a case-sensitive worktree `Foo/**` and `foo/**` are two
+  DIFFERENT operator authorities, but one was discarded, so the discarded subtree stayed in the
+  reviewed digest and the materialized target despite being explicitly excluded.
+- **Correction**: both normalization sites dedupe with `-CaseSensitive`. Keeping both spellings is
+  safe on every volume - where the volume folds case they select the same files, and where it does
+  not they are genuinely distinct - so this never needs a volume probe. Folding could only ever
+  under-exclude.
+
+### DRIFT-198-I009-024 — the source integrity manifest could not represent case-distinct files
+
+- **Status**: resolved; focused regression green
+- **Severity**: major review-integrity defect
+- **Type**: cross-platform path identity
+- **Authority evidence**: `run-f198-i009-aab37c3b-codex-2`, major finding.
+- **Confirmed source evidence**: `Get-ContinuousCoReviewWorktreeSourceHashes` stored relative paths
+  in a plain PowerShell hashtable, whose string keys are case-insensitive. On a case-sensitive
+  filesystem `Foo` and `foo` overwrote the same entry, so the before/after integrity comparison could
+  miss a change or deletion of the shadowed file and `source_hashes_before` was not an exact
+  manifest of the candidate.
+- **Correction**: a `Dictionary[string,string]` keyed with the volume-derived comparer, biased to
+  `distinct` when the volume cannot be determined - an extra entry is visible, a swallowed one is not.
+
+### DRIFT-198-I009-025 — managed runtime deployment wrote through untrusted links
+
+- **Status**: resolved; focused regression green
+- **Severity**: major security defect (write path)
+- **Type**: path containment
+- **Authority evidence**: `run-f198-i009-aab37c3b-codex-2`, major finding.
+- **Confirmed source evidence**: `Set-ManagedFile` read and overwrote `TargetPath` without rejecting
+  reparse points or verifying that the resolved destination stayed inside the project. Every managed
+  file the deployment writes goes through it, so a project-controlled junction, directory symlink, or
+  managed-file symlink - for example at `scripts/internal/continuous-co-review` - could redirect
+  `specrew update` writes onto arbitrary external files.
+- **Relation**: the same containment class DRIFT-198-I009-011 closed for the RETIREMENT path. That
+  correction guarded deletion and left the WRITE path uncovered, which is why the reviewer found the
+  mirror image of an already-fixed defect.
+- **Correction**: `Assert-ManagedTargetContained` rejects a reparse point at the project root and at
+  every existing component beneath it, and re-verifies containment, BEFORE any read or write.
+
+### DRIFT-198-I009-026 — the volume probe read a case-distinct sibling as proof of aliasing
+
+- **Status**: resolved; focused regression green and EXECUTING (not skipping) on Linux
+- **Severity**: major cross-platform path identity defect
+- **Type**: defect in the path-identity primitive itself
+- **Authority evidence**: `run-f198-i009-aab37c3b-codex-2`, major finding.
+- **Confirmed source evidence**: `Get-ContinuousCoReviewPathCaseSensitive` declared a volume
+  case-INSENSITIVE whenever a path with the directory's case-flipped name existed. A case-sensitive
+  volume may legitimately hold BOTH `Repo` and `REPO` as distinct directories, so the probe returned
+  exactly the wrong comparer and every downstream identity then folded genuinely distinct paths. The
+  same flaw sat in the child-entry fallback.
+- **Honest note**: this defect was introduced by the DRIFT-198-I009-018 correction earlier the same
+  day, and the scenario was explicitly considered and wrongly dismissed while writing it. Existence
+  of the flipped spelling proves nothing on its own; only the directory LISTING distinguishes a
+  folded lookup from two real siblings.
+- **Correction**: both probe branches now compare against the parent's enumerated entries - a folded
+  lookup resolves a name the parent does not list, whereas two real siblings are both listed.
+  Enumeration returns true on-disk names, so the probe stays a pure read and still writes nothing.
 
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 

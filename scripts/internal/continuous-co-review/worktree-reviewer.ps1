@@ -817,8 +817,15 @@ function Get-ContinuousCoReviewWorktreeSourceHashes {
     # exactly the tampering this must catch. Only .git/ is skipped (git-archive extract has no .git anyway;
     # kept for the opt-in helper).
     param([Parameter(Mandatory)][string]$WorktreePath)
-    $map = @{}
     $rootFull = (Resolve-Path -LiteralPath $WorktreePath).Path.TrimEnd([char]'\', [char]'/')
+    # A plain PowerShell hashtable has CASE-INSENSITIVE string keys, so on a case-sensitive volume
+    # `Foo` and `foo` overwrote each other here. The before/after comparison then could not see a
+    # change or deletion of the shadowed file, and source_hashes_before was not an exact manifest of
+    # the candidate (co-review finding, run run-f198-i009-aab37c3b-codex-2). Key on the volume's own
+    # rule, biased to keep both entries when it cannot be determined - an extra entry is visible,
+    # a swallowed one is not.
+    $map = [Collections.Generic.Dictionary[string, string]]::new(
+        (Get-ContinuousCoReviewPathComparer -Path $rootFull -WhenUndetermined 'distinct'))
     foreach ($f in @(Get-ChildItem -LiteralPath $WorktreePath -Recurse -File -Force -ErrorAction SilentlyContinue)) {
         $rel = [System.IO.Path]::GetRelativePath($rootFull, $f.FullName).Replace('\', '/')
         if (($rel -replace '/.*$', '') -eq '.git') { continue }

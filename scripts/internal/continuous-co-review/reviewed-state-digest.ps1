@@ -159,7 +159,14 @@ function New-ContinuousCoReviewDigestResult {
         $normalized = ([string]$_ -replace '\\', '/').Trim()
         while ($normalized.StartsWith('./', [StringComparison]::Ordinal)) { $normalized = $normalized.Substring(2) }
         $normalized
-    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique -CaseSensitive)
+    # -CaseSensitive is load-bearing. Sort-Object -Unique folds case by default, so on a
+    # case-sensitive worktree `Foo/**` and `foo/**` - two DIFFERENT operator authorities - collapsed
+    # to one, and the discarded subtree stayed in the reviewed digest and the materialized target
+    # even though the operator explicitly excluded it (co-review finding, run
+    # run-f198-i009-aab37c3b-codex-2). Keeping both spellings is safe on every volume: where the
+    # volume folds case they select the same files, and where it does not they are genuinely
+    # distinct authorities. Never fold here - that direction can only ever under-exclude.
     $exclusionBytes = [Text.Encoding]::UTF8.GetBytes(($canonicalExclusions -join "`n"))
     $exclusionSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($exclusionBytes)).ToLowerInvariant()
     return [pscustomobject][ordered]@{
@@ -267,7 +274,14 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         $normalized = ([string]$_ -replace '\\', '/').Trim()
         while ($normalized.StartsWith('./', [StringComparison]::Ordinal)) { $normalized = $normalized.Substring(2) }
         $normalized
-    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique -CaseSensitive)
+    # -CaseSensitive is load-bearing. Sort-Object -Unique folds case by default, so on a
+    # case-sensitive worktree `Foo/**` and `foo/**` - two DIFFERENT operator authorities - collapsed
+    # to one, and the discarded subtree stayed in the reviewed digest and the materialized target
+    # even though the operator explicitly excluded it (co-review finding, run
+    # run-f198-i009-aab37c3b-codex-2). Keeping both spellings is safe on every volume: where the
+    # volume folds case they select the same files, and where it does not they are genuinely
+    # distinct authorities. Never fold here - that direction can only ever under-exclude.
     # Machinery identities stay LITERAL and are passed separately; only the shipped strip globs and
     # the human's exclusion patterns are glob-evaluated.
     $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($canonicalExclusions)

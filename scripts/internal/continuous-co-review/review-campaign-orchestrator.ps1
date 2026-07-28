@@ -224,7 +224,9 @@ function Get-ReviewCampaignVerificationSupportManifest {
     $files = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     for ($offset = 0; $offset -lt $paths.Count; $offset += 80) {
         $end = [Math]::Min($offset + 80, $paths.Count) - 1
-        $chunk = @($paths[$offset..$end])
+        # LITERAL pathspecs for the same reason as the restore below: a machinery identity holding
+        # glob metacharacters must not select unrelated tracked source into the support manifest.
+        $chunk = @($paths[$offset..$end] | ForEach-Object { ConvertTo-ContinuousCoReviewLiteralPathspec -Path $_ })
         $listed = @(Get-GitReviewTargetTreeEntries -WorkingDirectory $snapshotPath -TreeId $commit -Pathspec $chunk)
         foreach ($entry in $listed) {
             # Verification support is controller scaffolding, not product source. Never
@@ -300,7 +302,13 @@ function Add-ReviewCampaignVerificationSupport {
     try {
         for ($offset = 0; $offset -lt @($manifest.files).Count; $offset += 80) {
             $end = [Math]::Min($offset + 80, @($manifest.files).Count) - 1
-            $chunk = @($manifest.files[$offset..$end])
+            # LITERAL pathspecs, never raw names: these are frozen repository identities, and Git
+            # would read a legal name holding `*`, `?`, or `[]` as a glob. That let a machinery
+            # identity select a DIFFERENT tracked path, restore it into the verification copy where
+            # it could change the command result, then remove it again - leaving the post-run digest
+            # matching target_digest and certifying green evidence for a composition that is not the
+            # authorized candidate (co-review finding, run run-f198-i009-aab37c3b-codex-2).
+            $chunk = @($manifest.files[$offset..$end] | ForEach-Object { ConvertTo-ContinuousCoReviewLiteralPathspec -Path $_ })
             $restored = Invoke-ReviewTargetGit -WorkingDirectory $snapshotPath -Arguments (@('restore', "--source=$($manifest.commit)", '--worktree', '--') + $chunk)
             if ($restored.exit_code -ne 0) { throw ('verification-support-restore-failed:' + $restored.stderr) }
         }

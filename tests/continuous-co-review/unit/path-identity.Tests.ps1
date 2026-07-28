@@ -67,6 +67,26 @@ Describe 'path identity primitive' {
         (ConvertTo-ContinuousCoReviewLiteralPathspec -Path 'a\b') | Should -Be ':(literal)a/b'
     }
 
+    It 'reads two case-distinct siblings as a case-SENSITIVE volume, not an aliased one' {
+        # The defect: the probe declared a volume case-INSENSITIVE whenever the case-flipped name
+        # resolved. A case-sensitive volume may legitimately hold BOTH `Repo` and `REPO` as distinct
+        # directories, so that test returned exactly the wrong comparer and every downstream identity
+        # then folded genuinely distinct paths (co-review finding, run run-f198-i009-aab37c3b-codex-2).
+        # Existence alone cannot answer it; the directory LISTING can.
+        $parent = Join-Path $TestDrive 'case-distinct-siblings'
+        New-Item -ItemType Directory -Path (Join-Path $parent 'Repo') -Force | Out-Null
+        if (Test-Path -LiteralPath (Join-Path $parent 'REPO')) {
+            Set-ItResult -Skipped -Because 'this volume folds case; the two-sibling collision cannot be materialized here'
+            return
+        }
+        New-Item -ItemType Directory -Path (Join-Path $parent 'REPO') -Force | Out-Null
+
+        (Get-ContinuousCoReviewPathCaseSensitive -Path (Join-Path $parent 'Repo')) |
+            Should -BeTrue -Because 'two distinct directories differing only by case PROVE the volume preserves case'
+        (Get-ContinuousCoReviewPathComparison -Path (Join-Path $parent 'Repo') -WhenUndetermined 'same') |
+            Should -Be ([StringComparison]::Ordinal)
+    }
+
     It 'is reachable from a consumer loaded WITHOUT the shared loader (DRIFT-198-I009-018)' {
         # The regression: `_load.ps1` loads this primitive first, but consumers are also dot-sourced
         # DIRECTLY - worktree-reviewer.ps1, the campaign orchestrator, and several suites all take

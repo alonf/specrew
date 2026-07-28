@@ -51,15 +51,43 @@ function Get-ContinuousCoReviewPathCaseSensitive {
         $parent = [IO.Path]::GetDirectoryName($probeDir)
         $flipped = Get-ContinuousCoReviewCaseFlippedName -Name $leaf
         if (-not [string]::IsNullOrEmpty($flipped) -and -not [string]::IsNullOrWhiteSpace($parent)) {
-            $result = -not [IO.Directory]::Exists((Join-Path $parent $flipped))
+            # Existence of the flipped spelling ALONE proves nothing. A case-sensitive volume may
+            # legitimately hold BOTH `Repo` and `REPO` as distinct directories, and an earlier
+            # revision read that as proof of case-INSENSITIVITY - exactly backwards, and it handed
+            # the wrong comparer to every downstream identity (co-review finding, run
+            # run-f198-i009-aab37c3b-codex-2). Distinguish the two cases by asking what the
+            # directory listing actually CONTAINS: a folded lookup resolves a name the parent does
+            # not list, whereas two real siblings are both listed. Enumeration returns true on-disk
+            # names, so this stays a pure read and needs no probe file.
+            $flippedPath = Join-Path $parent $flipped
+            if ([IO.Directory]::Exists($flippedPath)) {
+                $listed = $false
+                foreach ($entry in [IO.Directory]::EnumerateDirectories($parent)) {
+                    if ([IO.Path]::GetFileName($entry) -ceq $flipped) { $listed = $true; break }
+                }
+                # Listed => two distinct directories => the volume preserves case.
+                # Not listed => the lookup folded case to reach this directory.
+                $result = $listed
+            }
+            else {
+                $result = $true
+            }
         }
         if ($null -eq $result) {
-            foreach ($entry in @([IO.Directory]::GetFileSystemEntries($probeDir) | Select-Object -First 8)) {
+            # Same rule as above, applied to a child: a listed flipped name means two real entries
+            # on a case-preserving volume; an unlisted one that still resolves means a folded lookup.
+            $entries = @([IO.Directory]::GetFileSystemEntries($probeDir))
+            $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($entry in $entries) { $null = $names.Add([IO.Path]::GetFileName($entry)) }
+            foreach ($entry in @($entries | Select-Object -First 8)) {
                 $childLeaf = [IO.Path]::GetFileName($entry)
                 $childFlipped = Get-ContinuousCoReviewCaseFlippedName -Name $childLeaf
                 if ([string]::IsNullOrEmpty($childFlipped)) { continue }
                 $candidate = Join-Path $probeDir $childFlipped
-                $result = -not ([IO.File]::Exists($candidate) -or [IO.Directory]::Exists($candidate))
+                if ([IO.File]::Exists($candidate) -or [IO.Directory]::Exists($candidate)) {
+                    $result = $names.Contains($childFlipped)
+                }
+                else { $result = $true }
                 break
             }
         }
