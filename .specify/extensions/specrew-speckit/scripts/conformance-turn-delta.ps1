@@ -205,7 +205,7 @@ function Compare-SpecrewTurnSnapshot {
         foreach ($entry in @($Current.entries)) {
             $currentMap[[string]$entry.path] = ('{0}|{1}' -f [string]$entry.status, [string]$entry.fingerprint)
         }
-        $paths = @(@($baselineMap.Keys) + @($currentMap.Keys) | Sort-Object -Unique)
+        $paths = @(@($baselineMap.Keys) + @($currentMap.Keys) | Sort-Object -Unique -CaseSensitive)
         $changed = @($paths | Where-Object {
                 -not $baselineMap.ContainsKey($_) -or -not $currentMap.ContainsKey($_) -or
                 [string]$baselineMap[$_] -ne [string]$currentMap[$_]

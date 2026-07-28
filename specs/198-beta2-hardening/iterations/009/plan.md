@@ -136,6 +136,20 @@ maintainer explicitly requires the `f197-i010-cap-revert-obligation` to execute
 at the next closeout; Iteration 009 closeout restores the configured capacity
 to 20 after historical iterations have been grandfathered.
 
+## Triaged to the Next Replan
+
+Recorded here because a drift-ledger entry alone is not a disposition
+(maintainer instruction 2026-07-28). These carry a named owner and a required
+action into the next replan; they are not closed by this iteration.
+
+| Item | Severity | Required action at replan |
+| --- | --- | --- |
+| DRIFT-198-I009-028 — recording a reviewer grant clobbers unrelated host policy | **major, consumer-reachable** | Size and schedule a corrective task: update only the addressed row's `authorization_ref`, preserving every other field and row verbatim, plus a regression asserting that recording a grant for one host leaves all other rows byte-identical. The defect silently nulled a deliberate reviewer-INDEPENDENCE suspension, so it is a governance-integrity item, not cosmetic. |
+| DRIFT-198-I009-029 — a verification command inherits the operator's ambient PATH | minor | Decide whether to distinguish an execution-environment failure from a command that ran and returned non-zero in the stable reason. The fail-closed behaviour and output privacy are correct and must not be traded away for diagnosability. |
+| DRIFT-198-I009-020 — retroactive closeout has no first-class boundary crossing | minor | Specrew product backlog: give the verdict record an explicit subject distinct from the cursor it advances. |
+| DRIFT-198-I009-021 — closure artifacts cannot express successor-iteration evidence | minor | Specrew product backlog: a concern-level disposition meaning "runtime evidence recorded by a named successor iteration". |
+| Structural path-identity tests are grep-based, not AST-based | accepted residual | No hardening now (maintainer decision 2026-07-28). Revisit with an AST-based check only if the path-identity class recurs. |
+
 ## Verification
 
 - Focused unit/integration tests for T072–T078.

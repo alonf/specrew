@@ -628,7 +628,9 @@ rather than attempted as a fifth consecutive in-flight fix.
 
 ### DRIFT-198-I009-028 — recording a reviewer grant clobbers unrelated host policy
 
-- **Status**: open; RECORDED not fixed, per maintainer instruction 2026-07-28
+- **Status**: open; recorded not fixed, and TRIAGED into the next replan (maintainer instruction
+  2026-07-28: a ledger entry alone is not a disposition). See the `## Triaged to the Next Replan`
+  table in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/009/plan.md
 - **Severity**: major governance-integrity defect, consumer-reachable
 - **Type**: configuration write scope
 - **Observed evidence**: `specrew review --host codex --authorization-ref <ref>` records the grant and

@@ -143,6 +143,13 @@ Describe 'path identity primitive' {
         # -WhenUndetermined arguments its callers passed rather than failing. Every call site that
         # had been "routed through the primitive" was still getting the OS-family answer. A shadow is
         # invisible at every individual call site, which is exactly why point fixes never converged.
+        # NOTE ON METHOD (accepted residual, maintainer decision 2026-07-28): these three structural
+        # tests are GREP-based, not AST-based. They catch the exact spellings that produced the nine
+        # path-identity defects in this iteration, and they would have caught the shadowing duplicate
+        # that five review rounds missed. They would NOT catch a sufficiently different spelling -
+        # a definition built via `Set-Item function:`, a comparer selected through a variable, or a
+        # dedup written with Group-Object. Accepted as a residual rather than hardened further; an
+        # AST-based check is the durable form if this class ever recurs.
         $sourceRoot = Join-Path $script:RepoRoot 'scripts'
         $names = @(
             'Get-ContinuousCoReviewPathCaseSensitive'
@@ -151,7 +158,8 @@ Describe 'path identity primitive' {
             'ConvertTo-ContinuousCoReviewLiteralPathspec'
             'Get-ContinuousCoReviewCaseFlippedName'
         )
-        $files = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Filter '*.ps1')
+        $files = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Filter '*.ps1') +
+            @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot '.specify/extensions') -Recurse -File -Filter '*.ps1' -ErrorAction SilentlyContinue)
         foreach ($name in $names) {
             $definers = @($files | Where-Object {
                     (Get-Content -LiteralPath $_.FullName -Raw) -match ('(?m)^\s*function\s+' + [regex]::Escape($name) + '\s*\{')
@@ -165,9 +173,15 @@ Describe 'path identity primitive' {
         # case-insensitive macOS volume in BOTH directions, and every one of these that survives is a
         # site the primitive does not actually govern. path-identity.ps1 is the ONLY file permitted to
         # decide case semantics, and it decides them from the volume.
-        $sourceRoot = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        # BOTH trees. `.specify/extensions` is deployed into consumer projects and cannot reach the
+        # primitive, so a guard there must pick the FAIL-CLOSED direction unconditionally and state
+        # why - never branch on the OS family, which is the same defect wearing a different coat.
+        $sourceRoots = @(
+            (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
+            (Join-Path $script:RepoRoot '.specify/extensions')
+        )
         $offenders = [Collections.Generic.List[string]]::new()
-        foreach ($file in @(Get-ChildItem -LiteralPath $sourceRoot -File -Filter '*.ps1')) {
+        foreach ($file in @($sourceRoots | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-ChildItem -LiteralPath $_ -Recurse -File -Filter '*.ps1' })) {
             if ($file.Name -ceq 'path-identity.ps1') { continue }
             $lineNumber = 0
             foreach ($line in @(Get-Content -LiteralPath $file.FullName)) {
@@ -187,9 +201,12 @@ Describe 'path identity primitive' {
         # case by default, which silently discarded one of two case-distinct machinery directories
         # (DRIFT-198-I009-016) and one of two case-distinct operator exclusions (DRIFT-198-I009-023).
         # Every such call over paths must state its case rule explicitly.
-        $sourceRoot = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        $sourceRoots = @(
+            (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
+            (Join-Path $script:RepoRoot '.specify/extensions')
+        )
         $offenders = [Collections.Generic.List[string]]::new()
-        foreach ($file in @(Get-ChildItem -LiteralPath $sourceRoot -File -Filter '*.ps1')) {
+        foreach ($file in @($sourceRoots | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-ChildItem -LiteralPath $_ -Recurse -File -Filter '*.ps1' })) {
             $lineNumber = 0
             foreach ($line in @(Get-Content -LiteralPath $file.FullName)) {
                 $lineNumber++

@@ -106,7 +106,15 @@ function Assert-ManagedTargetContained {
     $rootFull = [System.IO.Path]::GetFullPath($Root).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
     $pathFull = [System.IO.Path]::GetFullPath($TargetPath)
     $prefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
-    $comparison = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    # ORDINAL, unconditionally - and deliberately NOT an `$IsWindows` branch. This tree is deployed
+    # into consumer projects where the continuous-co-review path-identity primitive is not present,
+    # so the rule cannot be derived from the volume here. Ordinal is the FAIL-CLOSED direction for
+    # THIS guard: its polarity is "must be INSIDE, else refuse", so folding case would accept a
+    # case-aliased path as contained and let the write escape. Refusing a genuine case-variant instead
+    # fails loudly and visibly. In practice both sides derive from the same resolved project path, so
+    # their prefixes match exactly. (An OS-family branch here would be the DRIFT-198-I009-027 defect
+    # class re-entering a tree the primitive cannot reach.)
+    $comparison = [System.StringComparison]::Ordinal
     if (-not $pathFull.StartsWith($prefix, $comparison)) {
         throw "managed-deploy-path-escapes-project:$TargetPath"
     }
