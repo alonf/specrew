@@ -11,6 +11,9 @@ if (-not (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorActi
 if (-not (Get-Command -Name 'New-ReviewProgressEvent' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-progress-projection.ps1') }
 if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewDesignContextSelection' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-design-context.ps1') }
 if (-not (Get-Command -Name 'New-ReviewRunRecoveryFact' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-run-reconciler.ps1') }
+# HARD dependency: the ONE path-identity primitive. Guarded on a name unique to it, never on a name
+# a same-named duplicate could satisfy (DRIFT-198-I009-027).
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function New-ReviewSystemClockPort {
     return [pscustomobject]@{
@@ -212,7 +215,7 @@ function Get-ReviewCampaignVerificationSupportManifest {
     # read from the pinned commit.
     $frozenPaths = @($Snapshot.machinery_paths |
             ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } |
-            Sort-Object -Unique)
+            Sort-Object -Unique -CaseSensitive)
     $pathBytes = [Text.Encoding]::UTF8.GetBytes(($frozenPaths -join "`n"))
     $pathHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($pathBytes)).ToLowerInvariant()
     if ($pathHash -cne [string]$Snapshot.machinery_paths_sha256) {
@@ -251,7 +254,9 @@ function Remove-ReviewCampaignVerificationSupport {
     param([Parameter(Mandatory)][string]$SnapshotPath, [Parameter(Mandatory)]$Manifest)
 
     $root = [IO.Path]::GetFullPath($SnapshotPath)
-    $pathComparer = if ([OperatingSystem]::IsWindows()) { [StringComparer]::OrdinalIgnoreCase } else { [StringComparer]::Ordinal }
+    # Volume-derived, never OS-family: this dedupes parent directories for cleanup, so folding two
+    # case-distinct parents would leave one uncleaned. 'distinct' keeps both when undetermined.
+    $pathComparer = Get-ContinuousCoReviewPathComparer -Path $root -WhenUndetermined 'distinct'
     $parents = [Collections.Generic.HashSet[string]]::new($pathComparer)
     foreach ($relative in @($Manifest.files)) {
         $full = [IO.Path]::GetFullPath((Join-Path $root ([string]$relative)))
@@ -545,7 +550,7 @@ function New-ReviewProductionVerificationPort {
         }
         $originalAfter = & $hashCommand -WorktreePath ([string]$snapshot.snapshot_path)
         $changed = [Collections.Generic.List[string]]::new()
-        foreach ($key in @(@($originalBefore.Keys) + @($originalAfter.Keys) | Sort-Object -Unique)) {
+        foreach ($key in @(@($originalBefore.Keys) + @($originalAfter.Keys) | Sort-Object -Unique -CaseSensitive)) {
             $beforeValue = if ($originalBefore.ContainsKey($key)) { [string]$originalBefore[$key] } else { '<missing>' }
             $afterValue = if ($originalAfter.ContainsKey($key)) { [string]$originalAfter[$key] } else { '<missing>' }
             if ($beforeValue -cne $afterValue) { $changed.Add([string]$key) | Out-Null }
@@ -662,7 +667,10 @@ function Resolve-ReviewCampaignTargetExternalRoot {
     }
 
     $failures = [Collections.Generic.List[string]]::new()
-    $comparer = if ([OperatingSystem]::IsWindows()) { [StringComparer]::OrdinalIgnoreCase } else { [StringComparer]::Ordinal }
+    # Volume-derived, never OS-family: this dedupes candidate external target roots. 'distinct' keeps
+    # two case-distinct candidates apart when the volume cannot be determined, so a viable root is
+    # never silently discarded as a duplicate of another.
+    $comparer = Get-ContinuousCoReviewPathComparer -Path $gitRoot -WhenUndetermined 'distinct'
     $seen = [Collections.Generic.HashSet[string]]::new($comparer)
     foreach ($candidate in @($candidates)) {
         $full = [IO.Path]::GetFullPath($candidate)

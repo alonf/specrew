@@ -213,7 +213,7 @@ function Select-ContinuousCoReviewVerificationPlan {
     }
     $skipped.Add([pscustomobject][ordered]@{ source_kind = 'project-config'; reason = 'absent' })
 
-    $detected = @($DetectedMetadataIds | Where-Object { Test-ContinuousCoReviewSupplierIdentity $_ } | ForEach-Object { $_.ToLowerInvariant() } | Sort-Object -Unique)
+    $detected = @($DetectedMetadataIds | Where-Object { Test-ContinuousCoReviewSupplierIdentity $_ } | ForEach-Object { $_.ToLowerInvariant() } | Sort-Object -Unique)   # specrew-dedup-not-a-path
     $metadataRows = @((Get-ContinuousCoReviewSupplierRows $Catalog 'project_metadata').rows)
     $metadataRow = $metadataRows | Where-Object { ([string]$_.detector_id).ToLowerInvariant() -in $detected } | Select-Object -First 1
     if ($null -ne $metadataRow) {
@@ -241,7 +241,7 @@ function Select-ContinuousCoReviewVerificationPlan {
     }
     $skipped.Add([pscustomobject][ordered]@{ source_kind = 'profile-selected'; reason = 'no eligible explicit profile' })
 
-    $providers = @($ActiveProviders | Where-Object { Test-ContinuousCoReviewSupplierIdentity $_ } | ForEach-Object { $_.ToLowerInvariant() } | Sort-Object -Unique)
+    $providers = @($ActiveProviders | Where-Object { Test-ContinuousCoReviewSupplierIdentity $_ } | ForEach-Object { $_.ToLowerInvariant() } | Sort-Object -Unique)   # specrew-dedup-not-a-path
     $providerRows = @((Get-ContinuousCoReviewSupplierRows $Catalog 'providers').rows)
     $providerRow = $providerRows | Where-Object { ([string]$_.provider_id).ToLowerInvariant() -in $providers } | Select-Object -First 1
     if ($null -ne $providerRow) {

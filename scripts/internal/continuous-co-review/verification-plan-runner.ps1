@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 
 # HARD dependency (DRIFT-198-I009-018): absent, declared-executable containment silently compared
 # with a DIFFERENT case rule instead of the volume's own.
-if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'path-identity.ps1')
 }
 
@@ -95,9 +95,9 @@ function Resolve-ContinuousCoReviewVerificationExecutable {
         # VOLUME-APPROPRIATE containment (review finding f1, run 20260714T172315119): on a
         # case-sensitive filesystem '../Repo/tool' is OUTSIDE '/tmp/repo'. 'same' is the refusing
         # direction here - when the volume cannot be determined, treat variants as one path so an
-        # aliased executable is refused rather than admitted. (The previous call passed NO arguments
-        # to a function whose parameters are both Mandatory, so it could only ever have thrown under
-        # -NonInteractive; the OS-family branch beside it was the only code that ever ran.)
+        # aliased executable is refused rather than admitted. (The previous call passed NO arguments.
+        # That did not throw as first assumed: it resolved to a same-named zero-arg duplicate in
+        # verification-plan-contract.ps1 that keyed off `$IsWindows`. That duplicate is now deleted.)
         $cmp = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'same'
         if (-not $full.StartsWith($rootPrefix, $cmp)) {
             return [pscustomobject]@{ resolved = $false; path = $null; method = 'repo-relative'; reason = "declared executable '$Executable' resolves outside the repository root" }

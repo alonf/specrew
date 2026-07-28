@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 
 # HARD dependency (DRIFT-198-I009-018): absent, digest denial and machinery dedup silently
 # compared with a DIFFERENT case rule instead of the volume's own.
-if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'path-identity.ps1')
 }
 

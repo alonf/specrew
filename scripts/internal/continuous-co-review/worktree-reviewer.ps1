@@ -10,7 +10,7 @@ if (Test-Path -LiteralPath $specrewProcessTreeHelper -PathType Leaf) { . $specre
 if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewDesignContextSelection' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-design-context.ps1') }
 # HARD dependency (DRIFT-198-I009-018): absent, the machinery dedup silently compared with a
 # DIFFERENT case rule instead of the worktree's own.
-if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function Invoke-WorktreeReviewerGitCapture {
     param(

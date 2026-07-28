@@ -9,7 +9,7 @@ if (-not (Get-Command -Name 'Resolve-ReviewCurrentness' -ErrorAction SilentlyCon
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'reviewed-state-digest.ps1') }
 # HARD dependency (DRIFT-198-I009-018): absent, target containment silently compared with a
 # DIFFERENT case rule instead of the volume's own.
-if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function Invoke-ReviewTargetGit {
     param(
@@ -201,7 +201,7 @@ function Get-GitReviewTargetOriginEvidence {
         $reason = if ($null -ne $digest) { [string]$digest.failure_reason } else { 'null-digest' }
         throw "review-target-digest-unavailable:$reason"
     }
-    $machineryPaths = @($digest.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Sort-Object -Unique)
+    $machineryPaths = @($digest.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Sort-Object -Unique -CaseSensitive)
     $machineryPathBytes = [Text.Encoding]::UTF8.GetBytes(($machineryPaths -join "`n"))
     $machineryPathsSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($machineryPathBytes)).ToLowerInvariant()
     return [pscustomobject]@{
@@ -590,7 +590,7 @@ function Test-GitReviewTargetSnapshotIntegrity {
     $after = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath ([string]$Snapshot.snapshot_path)
     $before = $Snapshot.source_hashes_before
     $changed = [System.Collections.Generic.List[string]]::new()
-    $keys = @(@($before.Keys) + @($after.Keys) | Sort-Object -Unique)
+    $keys = @(@($before.Keys) + @($after.Keys) | Sort-Object -Unique -CaseSensitive)
     foreach ($key in $keys) {
         $beforeValue = if ($before.ContainsKey($key)) { [string]$before[$key] } else { '<missing>' }
         $afterValue = if ($after.ContainsKey($key)) { [string]$after[$key] } else { '<missing>' }

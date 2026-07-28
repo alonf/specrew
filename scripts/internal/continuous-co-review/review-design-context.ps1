@@ -10,7 +10,7 @@ Set-StrictMode -Version Latest
 # and every containment comparison silently fell back to a DIFFERENT case rule - which is the exact
 # defect class DRIFT-198-I009-015 exists to remove, re-entering through the loader instead of the
 # comparison. See DRIFT-198-I009-018.
-if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'path-identity.ps1')
 }
 

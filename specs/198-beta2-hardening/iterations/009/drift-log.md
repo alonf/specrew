@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 26
-**Resolution rate**: 77% (20/26 resolved)
+**Total drift events**: 29
+**Resolution rate**: 72% (21/29 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -589,6 +589,89 @@ rather than attempted as a fifth consecutive in-flight fix.
 - **Correction**: both probe branches now compare against the parent's enumerated entries - a folded
   lookup resolves a name the parent does not list, whereas two real siblings are both listed.
   Enumeration returns true on-disk names, so the probe stays a pure read and still writes nothing.
+
+### DRIFT-198-I009-027 — a same-named duplicate silently SHADOWED the path-identity primitive
+
+- **Status**: resolved by the systematic sweep; structural enforcement added
+- **Severity**: blocking review-integrity defect — and the ROOT CAUSE of the whole convergence pattern
+- **Type**: cross-platform path identity, dependency resolution
+- **Discovered**: during the maintainer-directed systematic sweep (2026-07-28), not by review.
+- **Confirmed source evidence**: `verification-plan-contract.ps1` defined a SECOND function named
+  `Get-ContinuousCoReviewPathComparison`, taking no parameters and returning
+  `OrdinalIgnoreCase`/`Ordinal` from `$IsWindows`. `_load.ps1` loads that file AFTER
+  `path-identity.ps1`, so in every loaded context the duplicate WON. Measured directly:
+  `Get-Command Get-ContinuousCoReviewPathComparison` resolved to `verification-plan-contract.ps1`
+  with **0 parameters** after `_load.ps1`.
+- **Why it was invisible**: the duplicate declared no `param()` block, so PowerShell silently
+  swallowed the `-Path` and `-WhenUndetermined` arguments its callers passed instead of failing.
+  Every call site that had been "routed through the primitive" - including all six corrected in
+  DRIFT-198-I009-018 hours earlier - was still receiving the OS-family answer. The self-load guards
+  made it worse: they probed for `Get-ContinuousCoReviewPathComparison`, a name the DUPLICATE
+  satisfied, so they never loaded the real primitive.
+- **Why five rounds of point fixes could not converge**: each fix was verified at its own call site
+  and each looked correct in isolation, because the shadow is invisible locally - the call compiles,
+  runs, and returns a plausible comparison. Only enumerating definitions ACROSS the tree exposes it.
+  This is the mechanism behind the convergence assessment's observation that every correction was
+  "locally right and each too shallow".
+- **Impact**: on Windows and on ext4 the shadowed answer coincidentally matched the correct one,
+  so nothing failed. On a case-insensitive macOS volume it returned `Ordinal` where the volume folds
+  case - DRIFT-198-I009-015 unfixed, despite having been recorded as corrected.
+- **Correction**: the duplicate is deleted; `verification-plan-contract.ps1` self-loads the primitive
+  and its one caller passes `-Path`/`-WhenUndetermined`. Every self-load guard now probes
+  `Get-ContinuousCoReviewPathCaseSensitive`, a name unique to the primitive that no duplicate of the
+  comparison function can satisfy.
+- **Structural enforcement**: `path-identity.Tests.ps1` now asserts (1) exactly ONE definition of each
+  of the five path-identity function names across `scripts/`, (2) no line outside `path-identity.ps1`
+  picks a `StringComparison`/`StringComparer` from an `IsWindows` test, and (3) no `Sort-Object -Unique`
+  over paths omits `-CaseSensitive` unless explicitly annotated `specrew-dedup-not-a-path`. A seventh
+  site can no longer appear silently.
+
+### DRIFT-198-I009-028 — recording a reviewer grant clobbers unrelated host policy
+
+- **Status**: open; RECORDED not fixed, per maintainer instruction 2026-07-28
+- **Severity**: major governance-integrity defect, consumer-reachable
+- **Type**: configuration write scope
+- **Observed evidence**: `specrew review --host codex --authorization-ref <ref>` records the grant and
+  exits. On 2026-07-27 that single call rewrote `.specrew/reviewer-hosts.json` and, besides the
+  intended `authorization_ref`, ALSO: changed the codex row's `model` from the maintainer-pinned
+  `gpt-5.6-sol` to `chatgpt`, and nulled the copilot row's `authorization_ref`, destroying the note
+  `suspended-2026-07-26-reviewer-independence: the row's claude-4.8 arm cannot be excluded per-run,
+  so copilot is not selectable while the implementation host is claude`.
+- **Why it matters**: the copilot value was a deliberate reviewer-INDEPENDENCE suspension. Silently
+  nulling it could make copilot selectable while the implementation host is claude - the exact
+  independence violation it was recorded to prevent. The model overwrite separately destroys the
+  pinned reviewer-of-record provenance that review evidence cites.
+- **Assessment**: the writer appears to serialize a partially-populated in-memory host model over the
+  whole file rather than updating one field of one row, so every unrelated row loses values the
+  in-memory model does not carry.
+- **Containment applied**: the file was restored from HEAD and the single intended line re-applied by
+  hand; the pinned model and the copilot suspension are intact in the committed tree.
+- **Required correction (deferred)**: update only the addressed row's `authorization_ref`, preserving
+  every other field and row verbatim; add a regression asserting that recording a grant for one host
+  leaves all other rows byte-identical.
+- **Relation**: distinct from DRIFT-198-I009-007, which records that the declared model is never
+  ENFORCED at invocation. This one OVERWRITES the declaration.
+
+### DRIFT-198-I009-029 — a configured verification command inherits the operator's ambient PATH
+
+- **Status**: open; RECORDED not fixed, per maintainer instruction 2026-07-28
+- **Severity**: minor diagnosability defect; the fail-closed behaviour itself is correct
+- **Type**: verification execution environment
+- **Observed evidence**: run `run-f198-i009-aab37c3b-codex` failed pre-spend with
+  `verification-command-failed:f198-full-registry:diagnostics-require-command-scoped-disclosure`.
+  The registry was red only because the review had been launched from a Git-Bash-derived shell, so
+  `pwsh` inherited a PATH placing MSYS `/usr/bin/tar` ahead of `C:\Windows\system32\tar.exe`. MSYS
+  tar reads `C:\...` as a `host:path` remote spec and fails with `Cannot connect to C: resolve
+  failed`. From a clean PowerShell environment the identical test passes 10/10.
+- **What is CORRECT here and must not be "fixed" away**: refusing to spend a paid reviewer slot while
+  a configured verification command is red is right, and keeping command output private by default
+  is right. No provider budget was consumed.
+- **The actual gap**: the stable reason names the failing command but cannot distinguish "your tree is
+  red" from "this command could not execute in this environment". The operator reads the former and
+  investigates code. Discovering the true cause cost a full 345-second registry run.
+- **Required correction (deferred)**: distinguish an execution-environment failure (executable
+  resolution, spawn failure) from a command that ran and returned non-zero, and name that distinction
+  in the stable reason without disclosing output.
 
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 

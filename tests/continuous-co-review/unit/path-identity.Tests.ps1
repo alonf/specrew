@@ -134,6 +134,78 @@ Describe 'path identity primitive' {
         }
     }
 
+    It 'STRUCTURAL: exactly one definition of each path-identity function exists in the tree' {
+        # THE defect that regenerated this class for five review rounds. A SECOND
+        # `Get-ContinuousCoReviewPathComparison` lived in verification-plan-contract.ps1, took no
+        # parameters, and keyed off `$IsWindows`. `_load.ps1` loads that file AFTER path-identity.ps1,
+        # so the duplicate SHADOWED the real primitive for every consumer in a loaded context - and
+        # because it declared no `param()` block, PowerShell silently swallowed the -Path and
+        # -WhenUndetermined arguments its callers passed rather than failing. Every call site that
+        # had been "routed through the primitive" was still getting the OS-family answer. A shadow is
+        # invisible at every individual call site, which is exactly why point fixes never converged.
+        $sourceRoot = Join-Path $script:RepoRoot 'scripts'
+        $names = @(
+            'Get-ContinuousCoReviewPathCaseSensitive'
+            'Get-ContinuousCoReviewPathComparison'
+            'Get-ContinuousCoReviewPathComparer'
+            'ConvertTo-ContinuousCoReviewLiteralPathspec'
+            'Get-ContinuousCoReviewCaseFlippedName'
+        )
+        $files = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Filter '*.ps1')
+        foreach ($name in $names) {
+            $definers = @($files | Where-Object {
+                    (Get-Content -LiteralPath $_.FullName -Raw) -match ('(?m)^\s*function\s+' + [regex]::Escape($name) + '\s*\{')
+                })
+            @($definers).Count | Should -Be 1 -Because "'$name' must have exactly ONE definition; a same-named duplicate silently shadows the primitive (found: $(@($definers | ForEach-Object { $_.Name }) -join ', '))"
+        }
+    }
+
+    It 'STRUCTURAL: no path comparison decides case from the OS family outside the primitive' {
+        # The convergence assessment's item (a). An `IsWindows`-keyed comparer is wrong on a
+        # case-insensitive macOS volume in BOTH directions, and every one of these that survives is a
+        # site the primitive does not actually govern. path-identity.ps1 is the ONLY file permitted to
+        # decide case semantics, and it decides them from the volume.
+        $sourceRoot = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        $offenders = [Collections.Generic.List[string]]::new()
+        foreach ($file in @(Get-ChildItem -LiteralPath $sourceRoot -File -Filter '*.ps1')) {
+            if ($file.Name -ceq 'path-identity.ps1') { continue }
+            $lineNumber = 0
+            foreach ($line in @(Get-Content -LiteralPath $file.FullName)) {
+                $lineNumber++
+                if ($line -match '^\s*#') { continue }
+                # An OS test used to PICK a string comparison/comparer on the same line.
+                if ($line -match '(IsWindows)' -and $line -match 'StringComparison\]::|StringComparer\]::') {
+                    $offenders.Add("$($file.Name):$lineNumber") | Out-Null
+                }
+            }
+        }
+        @($offenders).Count | Should -Be 0 -Because "case semantics come from the volume via the primitive, never from the OS family (offenders: $($offenders -join ', '))"
+    }
+
+    It 'STRUCTURAL: path collections are never deduplicated with a case-folding default' {
+        # The convergence assessment's item (a) again, in its dedup form. `Sort-Object -Unique` folds
+        # case by default, which silently discarded one of two case-distinct machinery directories
+        # (DRIFT-198-I009-016) and one of two case-distinct operator exclusions (DRIFT-198-I009-023).
+        # Every such call over paths must state its case rule explicitly.
+        $sourceRoot = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        $offenders = [Collections.Generic.List[string]]::new()
+        foreach ($file in @(Get-ChildItem -LiteralPath $sourceRoot -File -Filter '*.ps1')) {
+            $lineNumber = 0
+            foreach ($line in @(Get-Content -LiteralPath $file.FullName)) {
+                $lineNumber++
+                if ($line -match '^\s*#') { continue }
+                if ($line -match 'Sort-Object\s+-Unique' -and $line -notmatch '-CaseSensitive') {
+                    # A dedup over something that is NOT a path (version strings, attempt counts,
+                    # supplier identity tokens) is exempt, but only when it SAYS SO on the line. The
+                    # marker is deliberately explicit: an unannotated dedup is treated as a path.
+                    if ($line -match 'specrew-dedup-not-a-path') { continue }
+                    $offenders.Add("$($file.Name):$lineNumber") | Out-Null
+                }
+            }
+        }
+        @($offenders).Count | Should -Be 0 -Because "a path dedup must state its case rule; the default folds case (offenders: $($offenders -join ', '))"
+    }
+
     It 'never writes while probing, so an OS-protected reviewer target stays byte-identical' {
         $probe = Join-Path $TestDrive 'readonly-probe'
         New-Item -ItemType Directory -Path $probe -Force | Out-Null

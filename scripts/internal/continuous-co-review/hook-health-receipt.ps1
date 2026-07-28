@@ -714,7 +714,7 @@ function Resolve-SpecrewHookHealth {
     # inconsistent evidence about what fired.
     $sessionStart = @($good | Where-Object { ([string]$_.event).Trim().ToLowerInvariant() -eq 'sessionstart' })
     if ($sessionStart.Count -gt 0) {
-        $distinctVersions = @($sessionStart | ForEach-Object { ([string]$_.observed_host_version).Trim() } | Sort-Object -Unique)
+        $distinctVersions = @($sessionStart | ForEach-Object { ([string]$_.observed_host_version).Trim() } | Sort-Object -Unique)   # specrew-dedup-not-a-path
         if ($distinctVersions.Count -gt 1) {
             return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'conflicting' -VersionStatus 'unavailable' -VersionSource '' -Reason ('conflicting SessionStart receipts (observed versions=[{0}]); the evidence disagrees with itself.' -f ($distinctVersions -join ' | ')) -Receipt $null
         }

@@ -1,3 +1,9 @@
+# HARD dependency: the ONE path-identity primitive, loaded into THIS scope before anything below
+# compares a path. See the note where the shadowing duplicate used to live.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'path-identity.ps1')
+}
+
 # T019 / FR-048 — the framework-NEUTRAL, ORDERED verification-PLAN contract (amended 2026-07-13).
 #
 # WHAT THIS IS: the contract layer for the verification plan a downstream command-plan SUPPLIER
@@ -92,14 +98,17 @@ function Resolve-ContinuousCoReviewVerificationTimeout {
     return [pscustomobject]@{ effective_seconds = [int]$reqNum; clamped = $false; source = 'supplier-requested'; reason = $null }
 }
 
-# PLATFORM-APPROPRIATE path comparison for CONTAINMENT checks (review finding f1, run
-# 20260714T172315119): case-insensitive comparison is a Windows filesystem semantic; on a case-sensitive
-# platform '/tmp/repo' and '/tmp/Repo' are DIFFERENT directories, so an ignore-case containment check
-# lets '../Repo/...' escape the repository. Every containment comparison routes through this.
-function Get-ContinuousCoReviewPathComparison {
-    if ($IsWindows) { return [System.StringComparison]::OrdinalIgnoreCase }
-    return [System.StringComparison]::Ordinal
-}
+# The path comparison for CONTAINMENT checks (review finding f1, run 20260714T172315119) comes from
+# the ONE path-identity primitive, loaded above.
+#
+# A SECOND function of this exact name used to live here, taking no parameters and keying off
+# `$IsWindows`. Because `_load.ps1` loads this file AFTER path-identity.ps1, that duplicate SHADOWED
+# the real primitive for every consumer in a loaded context - and since it declared no `param()`
+# block, PowerShell silently swallowed the `-Path`/`-WhenUndetermined` arguments its callers passed
+# instead of failing. Every call site that had been "routed through the primitive" was therefore
+# still getting the OS-family answer, which is precisely the defect the primitive exists to remove
+# and the reason this class kept reappearing one call site at a time across five review rounds.
+# There must be exactly ONE definition of this name in the tree; a structural test now enforces it.
 
 # CLOSED-SCHEMA property enforcement (review finding f5, run 20260714T172315119): the authoritative
 # verification-plan.schema.json declares additionalProperties:false at every level - an unknown property
@@ -157,7 +166,9 @@ function Test-ContinuousCoReviewVerificationPathSafe {
     }
     $rootFull = ([System.IO.Path]::GetFullPath($RepoRoot)).TrimEnd([char]'\', [char]'/')
     $rootPrefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
-    $pathCmp = Get-ContinuousCoReviewPathComparison
+    # 'same' is the refusing direction for a containment guard: when the volume cannot be
+    # determined, treat case variants as one path so an aliased path is refused, never admitted.
+    $pathCmp = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'same'
     $combined = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($rootFull, $Path))
     # LEXICAL escape guard: after canonicalizing '..', the path must still sit under the root prefix.
     if (-not ($combined.Equals($rootFull, $pathCmp) -or $combined.StartsWith($rootPrefix, $pathCmp))) {
@@ -486,7 +497,7 @@ function Test-ContinuousCoReviewPlanEvidenceInjectable {
         if ($group.Count -le 1) { $idVerdicts[$cid] = @{ ambiguous = $false; latest = $group[0] }; continue }
         $attempts = @($group | ForEach-Object { $a = Get-ContinuousCoReviewContractProp -Object $_ -Name 'attempt'; if ($null -ne $a) { [int]$a } else { $null } })
         $allNumbered = (@($attempts | Where-Object { $null -eq $_ }).Count -eq 0)
-        $distinct = (@($attempts | Sort-Object -Unique).Count -eq $group.Count)
+        $distinct = (@($attempts | Sort-Object -Unique).Count -eq $group.Count)   # specrew-dedup-not-a-path
         if ($allNumbered -and $distinct) {
             $latest = $group[0]; $latestA = [int]$attempts[0]
             for ($gi = 1; $gi -lt $group.Count; $gi++) { if ([int]$attempts[$gi] -gt $latestA) { $latest = $group[$gi]; $latestA = [int]$attempts[$gi] } }

@@ -10,7 +10,7 @@ if (-not (Get-Command -Name 'Test-ReviewAuthorityContractObject' -ErrorAction Si
 }
 # HARD dependency (DRIFT-198-I009-018): absent, store containment silently compared with a
 # DIFFERENT case rule instead of the volume's own.
-if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'path-identity.ps1')
 }
 

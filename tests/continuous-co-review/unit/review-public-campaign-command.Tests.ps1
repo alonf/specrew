@@ -484,7 +484,13 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $one | Should -Match '^[0-9a-f]{16}$'
 
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
-        $source | Should -Match '\[StringComparer\]::OrdinalIgnoreCase'
+        # This used to pin the literal `[StringComparer]::OrdinalIgnoreCase`, which encoded an
+        # OS-FAMILY case rule - right on Windows and wrong on a case-insensitive macOS volume. The
+        # dedup contract is unchanged in intent (case-variant candidates must not be treated as
+        # distinct where the filesystem folds them); what changed is WHERE the rule comes from. It is
+        # now derived from the volume by the one path-identity primitive (DRIFT-198-I009-027).
+        $source | Should -Match 'Get-ContinuousCoReviewPathComparer -Path'
+        $source | Should -Not -Match 'IsWindows\(\)\) \{ \[StringComparer\]::OrdinalIgnoreCase'
         $source | Should -Match 'HashSet\[string\]'
 
         $repoToken = Get-ReviewCampaignRepositoryToken -GitRoot $script:RepoRoot
