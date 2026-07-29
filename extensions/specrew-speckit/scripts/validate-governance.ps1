@@ -715,7 +715,7 @@ function Test-PostShipProposalAmendmentGovernance {
         return
     }
 
-    foreach ($relativePath in @($changedProposalFiles | Sort-Object -Unique)) {
+    foreach ($relativePath in @($changedProposalFiles | Sort-Object -Unique -CaseSensitive)) {
         $proposalPath = Join-Path -Path $ProjectRoot -ChildPath $relativePath
 
         # Baseline (pre-change) status from the base ref. A shipped/superseded baseline keeps the

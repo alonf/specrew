@@ -197,15 +197,21 @@ function Compare-SpecrewTurnSnapshot {
     if ($null -eq $Baseline -or $null -eq $Current -or -not [bool]$Current.available) { return $result }
 
     try {
-        $baselineMap = @{}
+        # ORDINAL path keys. A plain PowerShell hashtable folds case in its string keys, so on a
+        # case-sensitive repository `Foo` and `foo` overwrote each other here: an edit to the
+        # shadowed path could yield an empty changed set, material=false, and NO required
+        # conformance packet. Ordinal is correct in both directions - on a case-folding volume the
+        # two spellings name one file and only one entry is ever produced (co-review finding, run
+        # run-f198-i009-2c6d7cb8-sweep).
+        $baselineMap = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
         foreach ($entry in @($Baseline.entries)) {
             $baselineMap[[string]$entry.path] = ('{0}|{1}' -f [string]$entry.status, [string]$entry.fingerprint)
         }
-        $currentMap = @{}
+        $currentMap = [Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
         foreach ($entry in @($Current.entries)) {
             $currentMap[[string]$entry.path] = ('{0}|{1}' -f [string]$entry.status, [string]$entry.fingerprint)
         }
-        $paths = @(@($baselineMap.Keys) + @($currentMap.Keys) | Sort-Object -Unique)
+        $paths = @(@($baselineMap.Keys) + @($currentMap.Keys) | Sort-Object -Unique -CaseSensitive)
         $changed = @($paths | Where-Object {
                 -not $baselineMap.ContainsKey($_) -or -not $currentMap.ContainsKey($_) -or
                 [string]$baselineMap[$_] -ne [string]$currentMap[$_]

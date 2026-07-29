@@ -4,8 +4,8 @@
 
 ## Summary
 
-**Total drift events**: 29
-**Resolution rate**: 72% (21/29 resolved)
+**Total drift events**: 30
+**Resolution rate**: 73% (22/30 resolved)
 **Specification drift**: None detected
 
 Article Amplifier supplies read-only field evidence for F6, F10–F17. New
@@ -589,6 +589,33 @@ rather than attempted as a fifth consecutive in-flight fix.
 - **Correction**: both probe branches now compare against the parent's enumerated entries - a folded
   lookup resolves a name the parent does not list, whereas two real siblings are both listed.
   Enumeration returns true on-disk names, so the probe stays a pure read and still writes nothing.
+
+### DRIFT-198-I009-030 — the extensions sweep corrected the deployed MIRROR, not the canonical source
+
+- **Status**: resolved; structural mirror-parity guard added
+- **Severity**: major — a security correction that never reached a consumer
+- **Type**: source-versus-artifact identity
+- **Authority evidence**: `run-f198-i009-2c6d7cb8-sweep`, two of three major findings.
+- **Confirmed source evidence**: `.specify/extensions/` is a deployed MIRROR of the canonical packaged
+  source at `extensions/`. `specrew init` and `specrew update` load the packaged copy. The extensions
+  sweep was applied to the mirror only, so the `Set-ManagedFile` containment guard - the correction
+  for the write-through-links finding - was absent from the shipped helper, and the turn-delta dedup
+  correction likewise never reached consumers. Measured: the canonical
+  `deploy-squad-runtime.ps1` contained zero references to `Assert-ManagedTargetContained` while the
+  mirror contained two.
+- **Second defect in the same finding**: `Compare-SpecrewTurnSnapshot` kept path keys in ordinary
+  PowerShell hashtables, whose string keys fold case, so on a case-sensitive repository `Foo` and
+  `foo` overwrote each other. An edit to the shadowed path could yield an empty changed set,
+  `material=false`, and NO required conformance packet. The earlier sweep had corrected only the
+  `Sort-Object` dedup on those keys, not the maps producing them.
+- **Honest note**: this is the same failure shape as DRIFT-198-I009-027 one level up - a correction
+  verified against the wrong artifact. The structural tests scanned the mirror because that is the
+  tree the sweep had touched, so they confirmed the sweep rather than the shipped product.
+- **Correction**: all three patterns applied to the canonical `extensions/` tree; the turn-delta maps
+  are `Ordinal`-keyed dictionaries in both trees; the structural tests now scan the canonical source
+  as well; and a mirror-parity test asserts that a NAMED safety guard present in one tree exists in
+  the other. Deliberately not byte-parity - the trees are legitimately divergent, so byte-parity
+  would fail for correct reasons and be disabled.
 
 ### DRIFT-198-I009-027 — a same-named duplicate silently SHADOWED the path-identity primitive
 

@@ -177,7 +177,7 @@ function New-GovernedProviderFailureFallback {
         [string]$HostKind,
         [string[]]$FailedProviders
     )
-    $failed = if (@($FailedProviders).Count -gt 0) { (@($FailedProviders | Sort-Object -Unique) -join ', ') } else { 'provider' }
+    $failed = if (@($FailedProviders).Count -gt 0) { (@($FailedProviders | Sort-Object -Unique) -join ', ') } else { 'provider' }   # specrew-dedup-not-a-path
     return (@(
         '[specrew-bootstrap] degraded governed fallback',
         ("Specrew governance is still active, but the normal SessionStart provider path failed ({0})." -f $failed),

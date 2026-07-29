@@ -159,7 +159,8 @@ Describe 'path identity primitive' {
             'Get-ContinuousCoReviewCaseFlippedName'
         )
         $files = @(Get-ChildItem -LiteralPath $sourceRoot -Recurse -File -Filter '*.ps1') +
-            @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot '.specify/extensions') -Recurse -File -Filter '*.ps1' -ErrorAction SilentlyContinue)
+            @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot '.specify/extensions') -Recurse -File -Filter '*.ps1' -ErrorAction SilentlyContinue) +
+            @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'extensions') -Recurse -File -Filter '*.ps1' -ErrorAction SilentlyContinue)
         foreach ($name in $names) {
             $definers = @($files | Where-Object {
                     (Get-Content -LiteralPath $_.FullName -Raw) -match ('(?m)^\s*function\s+' + [regex]::Escape($name) + '\s*\{')
@@ -179,6 +180,10 @@ Describe 'path identity primitive' {
         $sourceRoots = @(
             (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
             (Join-Path $script:RepoRoot '.specify/extensions')
+            # The CANONICAL packaged source. `.specify/extensions` is a deployed MIRROR of it, and a
+            # correction applied only to the mirror never reaches a consumer: `specrew init` and
+            # `specrew update` ship from here (co-review finding, run run-f198-i009-2c6d7cb8-sweep).
+            (Join-Path $script:RepoRoot 'extensions')
         )
         $offenders = [Collections.Generic.List[string]]::new()
         foreach ($file in @($sourceRoots | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-ChildItem -LiteralPath $_ -Recurse -File -Filter '*.ps1' })) {
@@ -204,6 +209,10 @@ Describe 'path identity primitive' {
         $sourceRoots = @(
             (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
             (Join-Path $script:RepoRoot '.specify/extensions')
+            # The CANONICAL packaged source. `.specify/extensions` is a deployed MIRROR of it, and a
+            # correction applied only to the mirror never reaches a consumer: `specrew init` and
+            # `specrew update` ship from here (co-review finding, run run-f198-i009-2c6d7cb8-sweep).
+            (Join-Path $script:RepoRoot 'extensions')
         )
         $offenders = [Collections.Generic.List[string]]::new()
         foreach ($file in @($sourceRoots | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { Get-ChildItem -LiteralPath $_ -Recurse -File -Filter '*.ps1' })) {
@@ -221,6 +230,28 @@ Describe 'path identity primitive' {
             }
         }
         @($offenders).Count | Should -Be 0 -Because "a path dedup must state its case rule; the default folds case (offenders: $($offenders -join ', '))"
+    }
+
+    It 'STRUCTURAL: a containment guard present in the deployed mirror also exists in the canonical source' {
+        # The miss this test exists to prevent. The extensions sweep was applied to
+        # `.specify/extensions`, which is a deployed MIRROR. `specrew init` and `specrew update` ship
+        # from `extensions/`, the canonical packaged source, so the corrected containment guard never
+        # reached a consumer and the shipped helper still wrote through project-controlled links
+        # (co-review finding, run run-f198-i009-2c6d7cb8-sweep).
+        #
+        # The two trees are LEGITIMATELY divergent - the mirror is a stripped variant - so this is
+        # deliberately NOT a byte-parity check, which would fail for correct reasons. It asserts only
+        # that a NAMED SAFETY GUARD present in one is present in the other.
+        $guards = @('Assert-ManagedTargetContained')
+        foreach ($guard in $guards) {
+            $canonical = Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1'
+            $mirror = Join-Path $script:RepoRoot '.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1'
+            foreach ($file in @($canonical, $mirror)) {
+                if (-not (Test-Path -LiteralPath $file)) { continue }
+                (Get-Content -LiteralPath $file -Raw) | Should -Match ([regex]::Escape($guard)) `
+                    -Because "the '$guard' containment guard must exist in BOTH the canonical source and the deployed mirror; a mirror-only fix never ships to a consumer ($file)"
+            }
+        }
     }
 
     It 'never writes while probing, so an OS-protected reviewer target stays byte-identical' {
