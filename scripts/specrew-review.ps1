@@ -551,6 +551,20 @@ for ($ai = 0; $ai -lt $cliArgList.Count; $ai++) {
         '--model' { if (($ai + 1) -lt $cliArgList.Count) { $authModelValue = [string]$cliArgList[$ai + 1] } }
     }
 }
+function Set-ReviewerHostRowField {
+    # Assign one field of one reviewer-host row. Adds the property when the existing document predates
+    # it, because a bare `$row.name = value` throws on a PSCustomObject that lacks the property and the
+    # surrounding catch would then fall back to rewriting the whole file - reintroducing exactly the
+    # clobber this is here to prevent (DRIFT-198-I009-028).
+    param(
+        [Parameter(Mandatory = $true)]$Row,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][AllowNull()]$Value
+    )
+    if ($Row.PSObject.Properties[$Name]) { $Row.$Name = $Value }
+    else { $Row | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
+}
+
 if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNullOrWhiteSpace($authRefValue))) {
     $authWritten = $false
     $authError = $null
@@ -563,30 +577,67 @@ if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNu
             $reviewerHostsPath = Join-Path $authProjectPath '.specrew/reviewer-hosts.json'
             $rhDir = Split-Path -Parent $reviewerHostsPath
             if (-not (Test-Path -LiteralPath $rhDir)) { New-Item -ItemType Directory -Path $rhDir -Force | Out-Null }
-            # Preserve EXISTING human authorizations: a fresh --host authorize must NOT drop a previously-authorized
-            # host/fallback (Codex review P2). Re-apply any prior allowed+authorization_ref onto the fresh catalog
-            # (the newly-authorized host is already set in $authConfig). Fail-safe: an unreadable prior file just
-            # writes the fresh catalog rather than blocking the authorize.
+            # Update ONE FIELD of ONE ROW, and leave the rest of the file exactly as it was.
+            #
+            # The earlier implementation serialized a FRESH DEFAULT catalog and copied only `allowed` /
+            # `authorization_ref` / `model` back from prior rows that were BOTH allowed and authorized.
+            # Three things followed. (1) Re-authorizing a host RESET its pinned model whenever --model
+            # was omitted, destroying the reviewer-of-record provenance that review evidence cites.
+            # (2) Every other field of every row - adapter_id, review_class_rank, model_source,
+            # cost_class, installed, fallback_allowed, timeout_seconds - reverted to its default.
+            # (3) Worst: a SUSPENDED row is `allowed:false`, so it was not preserved at all, and a
+            # deliberate reviewer-INDEPENDENCE suspension recorded in its authorization_ref was
+            # silently nulled - which could make a suspended host selectable again, the exact
+            # violation the suspension existed to prevent. That is DRIFT-198-I009-028; it happened on
+            # 2026-07-27, had to be repaired by hand, and made this very re-certification's
+            # authorization reference unsafe to record through this path.
+            #
+            # Correct scope: start from the EXISTING document, set the addressed row's
+            # authorization_ref, set its model ONLY when one was explicitly supplied, and touch
+            # nothing else. Fail-safe unchanged: with no prior file (or an unreadable one) the fresh
+            # catalog is the right content.
+            $rhWroteInPlace = $false
             if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
                 try {
                     $existingRh = Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
-                    $priorAuth = @{}
+                    $targetRow = $null
                     foreach ($eh in @($existingRh.hosts)) {
-                        if ([bool]$eh.allowed -and -not [string]::IsNullOrWhiteSpace([string]$eh.authorization_ref)) { $priorAuth[[string]$eh.host] = $eh }
+                        if ([string]$eh.host -ceq [string]$authHostName) { $targetRow = $eh; break }
                     }
-                    foreach ($nh in @($authConfig.hosts)) {
-                        $nhName = [string]$nh.host
-                        if (($nhName -ne $authHostName) -and $priorAuth.ContainsKey($nhName)) {
-                            $prev = $priorAuth[$nhName]
-                            $nh.allowed = $true
-                            $nh.authorization_ref = [string]$prev.authorization_ref
-                            if (-not [string]::IsNullOrWhiteSpace([string]$prev.model)) { $nh.model = [string]$prev.model }
+                    if ($null -eq $targetRow) {
+                        foreach ($eh in @($existingRh.hosts)) {
+                            if ([string]::Equals([string]$eh.host, [string]$authHostName, [System.StringComparison]::OrdinalIgnoreCase)) { $targetRow = $eh; break }
+                        }
+                    }
+
+                    if ($null -ne $targetRow) {
+                        Set-ReviewerHostRowField -Row $targetRow -Name 'authorization_ref' -Value ([string]$authRefValue)
+                        Set-ReviewerHostRowField -Row $targetRow -Name 'allowed' -Value $true
+                        if (-not [string]::IsNullOrWhiteSpace($authModelValue)) {
+                            Set-ReviewerHostRowField -Row $targetRow -Name 'model' -Value ([string]$authModelValue)
+                        }
+                        ($existingRh | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+                        $rhWroteInPlace = $true
+                    }
+                    else {
+                        # The addressed host has no row yet. APPEND the fresh catalog's row for it and
+                        # keep every existing row as-is - never rebuild the file around it.
+                        $freshRow = $null
+                        foreach ($nh in @($authConfig.hosts)) {
+                            if ([string]::Equals([string]$nh.host, [string]$authHostName, [System.StringComparison]::OrdinalIgnoreCase)) { $freshRow = $nh; break }
+                        }
+                        if ($null -ne $freshRow) {
+                            $existingRh.hosts = @(@($existingRh.hosts) + @($freshRow))
+                            ($existingRh | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+                            $rhWroteInPlace = $true
                         }
                     }
                 }
-                catch { $null = $_ }
+                catch { $rhWroteInPlace = $false }
             }
-            ($authConfig | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+            if (-not $rhWroteInPlace) {
+                ($authConfig | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+            }
             $authWritten = $true
         }
         else { $authError = "Get-LiveReviewConfiguration returned no config for host '$authHostName'." }

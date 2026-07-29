@@ -286,6 +286,14 @@ jobs:
             $suites = @(
               './tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'
               './tests/continuous-co-review/unit/path-identity.Tests.ps1'
+              # The differential harness measures the VOLUME and asserts the primitive against what the
+              # OS actually did, rather than against an authored expectation. It is only meaningful
+              # BECAUSE this job is a three-OS matrix: the same assertions have different measured right
+              # answers on NTFS (case-insensitive), ext4 (case-sensitive), and APFS (case-insensitive on
+              # a POSIX host - the combination that DRIFT-198-I009-015 lives in and that no local dev
+              # machine here reproduces). Maintainer decision 2026-07-29: this, not another review round,
+              # is the certification instrument for the path-identity surface.
+              './tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1'
               './tests/continuous-co-review/unit/review-harness-contract.Tests.ps1'
               './tests/continuous-co-review/unit/review-codex-copilot-harness.Tests.ps1'
               './tests/continuous-co-review/unit/review-cursor-antigravity-harness.Tests.ps1'

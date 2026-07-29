@@ -715,7 +715,17 @@ function Test-PostShipProposalAmendmentGovernance {
         return
     }
 
-    foreach ($relativePath in @($changedProposalFiles | Sort-Object -Unique -CaseSensitive)) {
+    # Ordinal dedup: `-CaseSensitive` leaves Sort-Object culture-aware, so two byte-distinct proposal
+    # paths that are culture-equivalent collapse and one proposal goes ungoverned (DRIFT-198-I009-033).
+    $proposalOrder = [Collections.Generic.List[string]]::new()
+    $proposalSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($candidatePath in @($changedProposalFiles)) {
+        if ([string]::IsNullOrWhiteSpace($candidatePath)) { continue }
+        if ($proposalSeen.Add([string]$candidatePath)) { $proposalOrder.Add([string]$candidatePath) }
+    }
+    $proposalOrder.Sort([StringComparer]::Ordinal)
+
+    foreach ($relativePath in $proposalOrder) {
         $proposalPath = Join-Path -Path $ProjectRoot -ChildPath $relativePath
 
         # Baseline (pre-change) status from the base ref. A shipped/superseded baseline keeps the

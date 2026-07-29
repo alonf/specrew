@@ -211,7 +211,19 @@ function Compare-SpecrewTurnSnapshot {
         foreach ($entry in @($Current.entries)) {
             $currentMap[[string]$entry.path] = ('{0}|{1}' -f [string]$entry.status, [string]$entry.fingerprint)
         }
-        $paths = @(@($baselineMap.Keys) + @($currentMap.Keys) | Sort-Object -Unique -CaseSensitive)
+        # Ordinal, matching the two maps above. `Sort-Object -Unique -CaseSensitive` flips only the
+        # case flag and leaves the comparison culture-aware, so composed versus decomposed Unicode
+        # spellings that the Ordinal maps deliberately keep apart collapsed again right here - and an
+        # edit confined to the dropped path could yield an empty changed set, material=false, and NO
+        # required conformance packet. DRIFT-198-I009-033; the same shape as DRIFT-198-I009-030's
+        # second defect, which fixed these maps and left their union.
+        $pathOrder = [Collections.Generic.List[string]]::new()
+        $pathSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($pathKey in (@($baselineMap.Keys) + @($currentMap.Keys))) {
+            if ($pathSeen.Add([string]$pathKey)) { $pathOrder.Add([string]$pathKey) }
+        }
+        $pathOrder.Sort([StringComparer]::Ordinal)
+        $paths = @($pathOrder)
         $changed = @($paths | Where-Object {
                 -not $baselineMap.ContainsKey($_) -or -not $currentMap.ContainsKey($_) -or
                 [string]$baselineMap[$_] -ne [string]$currentMap[$_]

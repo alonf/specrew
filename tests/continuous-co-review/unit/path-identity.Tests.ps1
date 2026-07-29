@@ -220,11 +220,18 @@ Describe 'path identity primitive' {
             foreach ($line in @(Get-Content -LiteralPath $file.FullName)) {
                 $lineNumber++
                 if ($line -match '^\s*#') { continue }
-                if ($line -match 'Sort-Object\s+-Unique' -and $line -notmatch '-CaseSensitive') {
+                if ($line -match 'Sort-Object\s+-Unique') {
                     # A dedup over something that is NOT a path (version strings, attempt counts,
                     # supplier identity tokens) is exempt, but only when it SAYS SO on the line. The
                     # marker is deliberately explicit: an unannotated dedup is treated as a path.
                     if ($line -match 'specrew-dedup-not-a-path') { continue }
+                    # `-CaseSensitive` USED TO SATISFY THIS TEST, and that is why DRIFT-198-I009-033
+                    # shipped: the switch flips only the case flag and leaves the comparison
+                    # CULTURE-aware, so composed and decomposed Unicode spellings - which Git and
+                    # macOS both produce, and which the Ordinal maps upstream deliberately keep apart -
+                    # collapsed anyway, and the dropped path was never compared again. There is no
+                    # correct Sort-Object spelling for a path collection; route it through
+                    # Get-ContinuousCoReviewOrdinalUniquePath, which is Ordinal in both dedup and order.
                     $offenders.Add("$($file.Name):$lineNumber") | Out-Null
                 }
             }
@@ -242,7 +249,7 @@ Describe 'path identity primitive' {
         # The two trees are LEGITIMATELY divergent - the mirror is a stripped variant - so this is
         # deliberately NOT a byte-parity check, which would fail for correct reasons. It asserts only
         # that a NAMED SAFETY GUARD present in one is present in the other.
-        $guards = @('Assert-ManagedTargetContained')
+        $guards = @('Assert-ManagedTargetContained', 'Assert-ManagedMutationAllowed')
         foreach ($guard in $guards) {
             $canonical = Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1'
             $mirror = Join-Path $script:RepoRoot '.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1'
@@ -252,6 +259,57 @@ Describe 'path identity primitive' {
                     -Because "the '$guard' containment guard must exist in BOTH the canonical source and the deployed mirror; a mirror-only fix never ships to a consumer ($file)"
             }
         }
+    }
+
+    It 'STRUCTURAL: every deployment mutator traverses the containment choke point, in BOTH trees' {
+        # DRIFT-198-I009-031, and the third appearance of this containment class after -011 (deletion)
+        # and -025 (the Set-ManagedFile write). Each of those corrections guarded the ONE door the
+        # reviewer had reached, and the guard ended up called from exactly one of five mutators - so
+        # directory creation, team/routing/history writes, and a RECURSIVE host-skill delete all still
+        # ran unchecked, and a consumer-controlled ancestor junction could redirect them outside the
+        # project. Enumerating mutators is the check that a per-site fix cannot pass.
+        $mutators = @('Ensure-Directory', 'Write-MissingFile', 'Set-ManagedFile', 'Set-ManagedBlock', 'Set-ManagedTableRows')
+        $deployScripts = @(
+            (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1')
+            (Join-Path $script:RepoRoot '.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1')
+        )
+        $ungated = [Collections.Generic.List[string]]::new()
+
+        foreach ($deployScript in @($deployScripts | Where-Object { Test-Path -LiteralPath $_ })) {
+            $lines = @(Get-Content -LiteralPath $deployScript)
+            $treeLabel = if ($deployScript -match '\.specify') { 'mirror' } else { 'canonical' }
+
+            foreach ($mutator in $mutators) {
+                $start = -1
+                for ($i = 0; $i -lt $lines.Count; $i++) {
+                    if ($lines[$i] -match ('^function\s+' + [regex]::Escape($mutator) + '\s*\{')) { $start = $i; break }
+                }
+                if ($start -lt 0) { continue }
+                # Body runs to the next top-level function declaration.
+                $end = $lines.Count - 1
+                for ($j = $start + 1; $j -lt $lines.Count; $j++) {
+                    if ($lines[$j] -match '^function\s+') { $end = $j - 1; break }
+                }
+                $body = [string]::Join("`n", $lines[$start..$end])
+                if ($body -notmatch 'Assert-ManagedMutationAllowed') {
+                    $ungated.Add("$treeLabel/$mutator") | Out-Null
+                }
+            }
+
+            # A recursive delete is the highest-consequence mutation in the script: require the gate
+            # within the few lines above it, not merely somewhere in the file.
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match 'Remove-Item\s+-LiteralPath.*-Recurse') {
+                    $windowStart = [Math]::Max(0, $i - 5)
+                    $window = [string]::Join("`n", $lines[$windowStart..$i])
+                    if ($window -notmatch 'Assert-ManagedMutationAllowed') {
+                        $ungated.Add("$treeLabel/recursive-delete:line$($i + 1)") | Out-Null
+                    }
+                }
+            }
+        }
+
+        @($ungated).Count | Should -Be 0 -Because "every mutator and every recursive delete must pass the containment choke point in BOTH the canonical source and the deployed mirror (ungated: $($ungated -join ', '))"
     }
 
     It 'never writes while probing, so an OS-protected reviewer target stays byte-identical' {

@@ -125,12 +125,66 @@ culture-aware, not ordinal, at eight sites). DRIFT-198-I009-034 records that the
 disposition able to express the authorized deferral, so it cannot be honoured without either fixing
 DRIFT-198-I009-028 or extending the vocabulary.
 
-T079 remains in-progress; no closeout packet was presented. The three focused path-identity suites
-pass 39/39 at `0e0048b0` — including the test written for the exact scenario DRIFT-198-I009-032
-describes — which is itself recorded as evidence that focused green cannot falsify this class. The
-convergence assessment is updated with all six rounds and the root cause, and the question it now
-puts to the maintainer is whether this surface can be certified by review-and-fix rounds at all. No
-seventh point-fix round was attempted.
+T079 remains in-progress; no closeout packet was presented at that point. The three focused
+path-identity suites passed 39/39 at `0e0048b0` — including the test written for the exact scenario
+DRIFT-198-I009-032 describes — which is recorded as evidence that focused green cannot falsify this
+class.
+
+## Instrument change and the one-slice correction (maintainer decision, 2026-07-29)
+
+The maintainer ruled that review-and-fix rounds are no longer the certification instrument for the
+path-identity surface: **the oracle becomes the volume.** All four findings were then fixed as ONE
+slice using the reviewer's specifics, rather than as another point-fix round.
+
+Delivered:
+
+- **DRIFT-198-I009-028** — fixed rather than deferred (cheaper than deferral vocabulary, and
+  consumer-reachable major in its own right). Recording a grant now updates only the addressed row's
+  `authorization_ref` plus an explicitly supplied model. `reviewer-host-grant-write-scope.Tests.ps1`
+  fails 4/4 against the old writer and passes 4/4 against the fix.
+- **DRIFT-198-I009-031** — `Assert-ManagedMutationAllowed` is one containment choke point traversed by
+  all five mutators and both recursive host-skill deletes, in the canonical `extensions/` tree AND the
+  `.specify/extensions/` mirror. A structural test enumerates the mutators in both trees.
+- **DRIFT-198-I009-032** — the probe measures inside the physical target using ENUMERATED names and
+  requires both spellings before concluding two real siblings exist; its memo cache is now Ordinal
+  rather than case-folding.
+- **DRIFT-198-I009-033** — Ordinal dedup and Ordinal ordering at all eight reported sites plus four
+  more found in the extensions trees (`conformance-turn-delta.ps1`, `validate-governance.ps1`, both
+  copies). The structural test that had ACCEPTED `-CaseSensitive` now rejects `Sort-Object -Unique`
+  over paths outright.
+- **The differential volume harness** — `path-identity-volume-differential.Tests.ps1` creates real
+  fixture trees (case-distinct siblings, case-flipped lookups, composed vs decomposed Unicode) and
+  asserts the primitive against the OS's observed enumeration behavior, wired into the three-OS matrix
+  in `cross-platform-validation.yml`. Validated by falsification: 3 of 6 fail against the pre-fix
+  primitive, 6 of 6 pass against the corrected one. Its FIRST revision did not fail, because the old
+  case-folding memo cache served the second probe from the first probe's key — recorded under
+  DRIFT-198-I009-032 as the clearest available argument for measuring rather than asserting.
+
+DRIFT-198-I009-015 and -016 are now resolved: routing and answer both hold, with the honest residual
+that local proof is Windows/NTFS only and the macOS case (POSIX host, case-insensitive volume — the
+combination this class was reported for) is proven only when the three-volume CI job runs.
+
+Also recorded: DRIFT-198-I009-034 moves into **iteration 012's finality scope** explicitly; AST-based
+enumeration is backlog because the harness dominates it; iteration 009's actual capacity is restated
+honestly in plan.md at roughly **70 SP against a 20 SP capacity**, with the bounding lesson that a
+"fix what the reviewer finds" iteration cannot be bounded by scope; and the **fallback is decided in
+advance** — if the harness shows the surface cannot stabilize before the tag, the beta2 release claim
+narrows and the limitations are documented rather than spending further rounds.
+
+Two further findings came out of executing the slice, both recorded: DRIFT-198-I009-035 (a port
+scriptblock cannot resolve ambient function names — caught by the registry, not by review or by the
+focused suites, and a concrete limit on what the new instrument certifies: the harness proves the
+primitive's ANSWERS, not that every caller can reach it) and DRIFT-198-I009-036 (the registry's
+caller-contamination guard correctly fired on a concurrent edit made while it ran in the background —
+a process lesson, not a product defect).
+
+Certification evidence status against the maintainer's 2026-07-29 bar:
+
+| Required | Status |
+| --- | --- |
+| Differential harness green on all three CI volumes | **outstanding** — green locally on Windows/NTFS; needs the pushed `cross-platform-validation.yml` matrix run for ext4 and APFS |
+| Registry green | **met** — all 82 suites green in 566.6s at a quiescent tree |
+| ONE certifying review | **outstanding** — not yet requested; no slot spent since `run-f198-i009-0e0048b0-recert` |
 
 Execution was previously paused after round 3. Four consecutive rounds had found path-identity defects,
 and direct measurement shows four OS-family case shortcuts and twelve or more

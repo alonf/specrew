@@ -6,7 +6,10 @@ Set-StrictMode -Version Latest
 # case sensitivity is a property of the VOLUME, not the OS family. Route new comparisons through
 # here rather than adding a fifth local rule.
 
-$script:ContinuousCoReviewCaseSensitivityCache = @{}
+# Ordinal on purpose. A plain `@{}` hashtable folds its string keys, which is the very defect this
+# file exists to prevent (DRIFT-198-I009-024 / -030) - the primitive must not cache path answers in a
+# map that cannot tell two case-distinct roots apart.
+$script:ContinuousCoReviewCaseSensitivityCache = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
 
 function Get-ContinuousCoReviewCaseFlippedName {
     # The opposite-case spelling of a name, or $null when the name carries no cased letter and so
@@ -16,6 +19,59 @@ function Get-ContinuousCoReviewCaseFlippedName {
     if ($Name -cne $Name.ToUpperInvariant()) { return $Name.ToUpperInvariant() }
     if ($Name -cne $Name.ToLowerInvariant()) { return $Name.ToLowerInvariant() }
     return $null
+}
+
+function Get-ContinuousCoReviewOrdinalUniquePath {
+    # The ONE dedup for PATH collections. `Sort-Object -Unique -CaseSensitive` is not a substitute:
+    # -CaseSensitive flips only the case flag and the comparison stays CULTURE-aware, so byte-distinct
+    # but culture-equivalent names - composed versus decomposed Unicode spellings, which Git and macOS
+    # both produce - collapse into one entry and the dropped path is never compared again
+    # (DRIFT-198-I009-033). Deduping is Ordinal, and so is the ORDERING: these lists feed digests, and
+    # a culture-dependent order would make one tree hash differently on two runners.
+    # AllowEmptyString is load-bearing: callers hand this raw normalized lists that can contain empty
+    # entries, and a Mandatory [string[]] rejects an empty ELEMENT at the binder before the body can
+    # filter it. The filtering belongs here rather than at each call site - that is the point.
+    param([Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][AllowEmptyString()][string[]]$Path)
+
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $kept = [Collections.Generic.List[string]]::new()
+    foreach ($candidate in @($Path)) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+        if ($seen.Add([string]$candidate)) { $kept.Add([string]$candidate) }
+    }
+    $kept.Sort([StringComparer]::Ordinal)
+    return @($kept)
+}
+
+function Get-ContinuousCoReviewCaseVerdictFromListing {
+    # Decide the volume's case rule from ONE entry whose spelling is AUTHORITATIVE because it came out
+    # of a directory listing. $true = case-SENSITIVE, $false = case-INSENSITIVE, $null = this entry
+    # cannot answer (its name carries no cased letter).
+    #
+    # Never pass a caller-supplied name here. Reading the caller's spelling back as if the filesystem
+    # had confirmed it is precisely DRIFT-198-I009-032.
+    param(
+        [Parameter(Mandatory)][string]$Container,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$RealName,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$ListedNames
+    )
+
+    $flipped = Get-ContinuousCoReviewCaseFlippedName -Name $RealName
+    if ([string]::IsNullOrEmpty($flipped)) { return $null }
+
+    $listed = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($name in $ListedNames) { if (-not [string]::IsNullOrEmpty($name)) { $null = $listed.Add($name) } }
+
+    # BOTH spellings genuinely present in the listing: two distinct entries, which a case-folding
+    # volume could not hold at once. This is the case the earlier revisions read backwards.
+    if ($listed.Contains($RealName) -and $listed.Contains($flipped)) { return $true }
+
+    # Only the real spelling is listed. Ask whether a lookup of the ABSENT spelling still resolves.
+    # It resolves => the volume folded case to reach the listed entry => INSENSITIVE.
+    # It does not => the volume keeps the two spellings apart => SENSITIVE.
+    $candidate = Join-Path $Container $flipped
+    if ([IO.Directory]::Exists($candidate) -or [IO.File]::Exists($candidate)) { return $false }
+    return $true
 }
 
 function Get-ContinuousCoReviewPathCaseSensitive {
@@ -44,51 +100,45 @@ function Get-ContinuousCoReviewPathCaseSensitive {
     # A direct probe measures the volume itself rather than git's cached init-time answer, works for
     # directories outside any repository (the external target root), and cannot block. It only
     # reads, so it stays safe against an OS-protected read-only reviewer target.
+    #
+    # THE RULE, and why the previous two revisions got it wrong (DRIFT-198-I009-026, -032):
+    # every verdict must be derived from an on-disk spelling obtained by ENUMERATION. The caller's
+    # spelling is not evidence. `[IO.Path]::GetFullPath` preserves whatever the caller typed and does
+    # not canonicalise to the real entry, so a probe that flips the CALLER's leaf is comparing against
+    # a name the filesystem may never have held - which is how a case-INSENSITIVE volume holding
+    # `REPO`, asked about `repo`, was reported case-SENSITIVE. Given a real listed name and its
+    # flipped spelling, two reads decide it: both spellings listed means two genuinely distinct
+    # entries, which only a case-preserving volume can hold; exactly one listed, with the other still
+    # RESOLVING, means the lookup folded case.
     $result = $null
     try {
-        # Prefer the directory's OWN name: it needs no children and cannot be perturbed by them.
-        $leaf = [IO.Path]::GetFileName($probeDir.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar))
-        $parent = [IO.Path]::GetDirectoryName($probeDir)
-        $flipped = Get-ContinuousCoReviewCaseFlippedName -Name $leaf
-        if (-not [string]::IsNullOrEmpty($flipped) -and -not [string]::IsNullOrWhiteSpace($parent)) {
-            # Existence of the flipped spelling ALONE proves nothing. A case-sensitive volume may
-            # legitimately hold BOTH `Repo` and `REPO` as distinct directories, and an earlier
-            # revision read that as proof of case-INSENSITIVITY - exactly backwards, and it handed
-            # the wrong comparer to every downstream identity (co-review finding, run
-            # run-f198-i009-aab37c3b-codex-2). Distinguish the two cases by asking what the
-            # directory listing actually CONTAINS: a folded lookup resolves a name the parent does
-            # not list, whereas two real siblings are both listed. Enumeration returns true on-disk
-            # names, so this stays a pure read and needs no probe file.
-            $flippedPath = Join-Path $parent $flipped
-            if ([IO.Directory]::Exists($flippedPath)) {
-                $listed = $false
-                foreach ($entry in [IO.Directory]::EnumerateDirectories($parent)) {
-                    if ([IO.Path]::GetFileName($entry) -ceq $flipped) { $listed = $true; break }
-                }
-                # Listed => two distinct directories => the volume preserves case.
-                # Not listed => the lookup folded case to reach this directory.
-                $result = $listed
-            }
-            else {
-                $result = $true
-            }
+        # (a) Prefer probing INSIDE the physical target. Its children's names come straight from the
+        # directory listing, so no caller spelling can contaminate the answer.
+        $childEntries = @([IO.Directory]::GetFileSystemEntries($probeDir))
+        $childNames = @($childEntries | ForEach-Object { [IO.Path]::GetFileName($_) } | Where-Object { -not [string]::IsNullOrEmpty($_) })
+        foreach ($childName in @($childNames | Select-Object -First 64)) {
+            $result = Get-ContinuousCoReviewCaseVerdictFromListing -Container $probeDir -RealName $childName -ListedNames $childNames
+            if ($null -ne $result) { break }
         }
+
+        # (b) An empty target (or one whose entries carry no cased letter) still has its OWN entry in
+        # the parent. Read the REAL spelling of that entry out of the parent's listing - never the
+        # leaf the caller supplied - and apply the identical rule.
         if ($null -eq $result) {
-            # Same rule as above, applied to a child: a listed flipped name means two real entries
-            # on a case-preserving volume; an unlisted one that still resolves means a folded lookup.
-            $entries = @([IO.Directory]::GetFileSystemEntries($probeDir))
-            $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-            foreach ($entry in $entries) { $null = $names.Add([IO.Path]::GetFileName($entry)) }
-            foreach ($entry in @($entries | Select-Object -First 8)) {
-                $childLeaf = [IO.Path]::GetFileName($entry)
-                $childFlipped = Get-ContinuousCoReviewCaseFlippedName -Name $childLeaf
-                if ([string]::IsNullOrEmpty($childFlipped)) { continue }
-                $candidate = Join-Path $probeDir $childFlipped
-                if ([IO.File]::Exists($candidate) -or [IO.Directory]::Exists($candidate)) {
-                    $result = $names.Contains($childFlipped)
+            $parent = [IO.Path]::GetDirectoryName($probeDir)
+            if (-not [string]::IsNullOrWhiteSpace($parent) -and [IO.Directory]::Exists($parent)) {
+                $suppliedLeaf = [IO.Path]::GetFileName($probeDir.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar))
+                $parentNames = @([IO.Directory]::GetFileSystemEntries($parent) | ForEach-Object { [IO.Path]::GetFileName($_) } | Where-Object { -not [string]::IsNullOrEmpty($_) })
+                $realLeaf = $null
+                foreach ($name in $parentNames) { if ($name -ceq $suppliedLeaf) { $realLeaf = $name; break } }
+                if ([string]::IsNullOrEmpty($realLeaf)) {
+                    foreach ($name in $parentNames) {
+                        if ([string]::Equals($name, $suppliedLeaf, [System.StringComparison]::OrdinalIgnoreCase)) { $realLeaf = $name; break }
+                    }
                 }
-                else { $result = $true }
-                break
+                if (-not [string]::IsNullOrEmpty($realLeaf)) {
+                    $result = Get-ContinuousCoReviewCaseVerdictFromListing -Container $parent -RealName $realLeaf -ListedNames $parentNames
+                }
             }
         }
     }

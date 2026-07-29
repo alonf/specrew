@@ -201,7 +201,7 @@ function Get-GitReviewTargetOriginEvidence {
         $reason = if ($null -ne $digest) { [string]$digest.failure_reason } else { 'null-digest' }
         throw "review-target-digest-unavailable:$reason"
     }
-    $machineryPaths = @($digest.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Sort-Object -Unique -CaseSensitive)
+    $machineryPaths = Get-ContinuousCoReviewOrdinalUniquePath -Path @($digest.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') })
     $machineryPathBytes = [Text.Encoding]::UTF8.GetBytes(($machineryPaths -join "`n"))
     $machineryPathsSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($machineryPathBytes)).ToLowerInvariant()
     return [pscustomobject]@{
@@ -590,7 +590,10 @@ function Test-GitReviewTargetSnapshotIntegrity {
     $after = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath ([string]$Snapshot.snapshot_path)
     $before = $Snapshot.source_hashes_before
     $changed = [System.Collections.Generic.List[string]]::new()
-    $keys = @(@($before.Keys) + @($after.Keys) | Sort-Object -Unique -CaseSensitive)
+    # The maps themselves are Ordinal dictionaries (DRIFT-198-I009-024); their key UNION has to use the
+    # SAME comparer or a key the maps kept apart collapses here and its file is never compared, so a
+    # modified path can report intact (DRIFT-198-I009-033).
+    $keys = Get-ContinuousCoReviewOrdinalUniquePath -Path @(@($before.Keys) + @($after.Keys))
     foreach ($key in $keys) {
         $beforeValue = if ($before.ContainsKey($key)) { [string]$before[$key] } else { '<missing>' }
         $afterValue = if ($after.ContainsKey($key)) { [string]$after[$key] } else { '<missing>' }

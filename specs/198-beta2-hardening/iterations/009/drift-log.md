@@ -412,11 +412,38 @@ Round 6 found three more, and their shape is the assessment's real conclusion:
    model as the code. Focused green is not evidence that this class is closed.
 
 Six rounds, three of them after the root cause was found and a systematic sweep applied. The
-remaining question for the human is not "which site next" — it is whether this surface can be
-certified by review-and-fix rounds at all, or needs a different instrument (a property/differential
-test against real volumes, an AST-based enumeration, or a narrowed release claim that does not assert
-cross-platform path identity). That decision is the maintainer's; no seventh point-fix round was
-attempted.
+remaining question for the human was not "which site next" — it was whether this surface can be
+certified by review-and-fix rounds at all.
+
+### Resolution — maintainer decision, 2026-07-29
+
+**Review-and-fix rounds are no longer the certification instrument for this surface. The oracle
+becomes the volume.**
+
+A differential property harness (`tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1`)
+creates real fixture trees on each CI runner — case-distinct siblings, case-flipped lookups, composed
+versus decomposed Unicode — and asserts the primitive's verdicts against the OS's *observed
+enumeration behavior*. No expectation in it is authored: each one is measured on the volume the test
+is running on, and nothing is skipped for platform, because where a volume cannot materialize a
+scenario the fact that it could not IS the measurement. It runs on the existing three-OS matrix, where
+the same assertions have different measured right answers on NTFS, ext4, and APFS — the last being the
+POSIX-plus-case-insensitive combination that DRIFT-198-I009-015 was reported for and that no machine
+here reproduces.
+
+The instrument was validated by falsification before being trusted: run against the pre-fix primitive
+it fails 3 of 6; against the corrected one it passes 6 of 6. Its first revision did NOT fail, for the
+reason recorded under DRIFT-198-I009-032 — the old case-folding memo cache answered the second probe
+from the first probe's key. That near-miss is the argument for this whole approach in miniature.
+
+Certification evidence for this surface is therefore: the differential harness green on all three CI
+volumes, the registry green, and ONE certifying review — not another open-ended round.
+
+Also decided, so it is not decided under pressure later: **if the harness shows this surface cannot
+stabilize before the tag, the beta2 release claim narrows and the known path-identity limitations are
+documented, rather than spending further rounds.** Beta is the correct vehicle for that honesty.
+
+AST-based enumeration stays on the backlog: the harness dominates it. Grep-based structural tests
+catch spellings; the volume catches behavior, which is the thing that was actually wrong.
 
 ### DRIFT-198-I009-018 — the path-identity primitive was never loaded on the consumer's own door
 
@@ -493,11 +520,18 @@ attempted.
 
 ### DRIFT-198-I009-015 — case semantics taken from the OS family, not the volume
 
-- **Status**: open — routing corrected, ANSWER not yet trustworthy. Every site named below now asks
-  the one primitive instead of `$IsWindows` (re-verified in source at `0e0048b0`), but the primitive's
-  volume probe is itself still wrong per DRIFT-198-I009-032, so this defect is NOT closed: a wrong
-  probe answer re-opens exactly the case-alias containment bypass described here. Cannot be marked
-  resolved until 032 is.
+- **Status**: resolved 2026-07-29 — both halves now hold. Routing: every site named below asks the one
+  primitive instead of `$IsWindows`, and the shadowing duplicate that made that routing a no-op is gone
+  (DRIFT-198-I009-027). Answer: the probe those sites depend on is corrected and, for the first time in
+  this class, verified against the filesystem rather than against an authored expectation
+  (DRIFT-198-I009-032). The containment predicate specifically is now pinned by a differential test
+  that measures whether the volume resolves a case-aliased root to the SAME directory and requires
+  `Test-ContinuousCoReviewPathUnderRoot` to answer accordingly — the exploit path described below,
+  asserted against the OS instead of argued about.
+- **Residual, stated plainly**: proven on Windows/NTFS locally. The macOS case — POSIX host, case-
+  insensitive volume, which is the combination this defect was originally reported for and which no
+  machine here reproduces — is proven only when the three-volume CI matrix runs the differential
+  harness. Until that job is green, this status rests on one volume plus the corrected logic.
 - **Severity**: blocking containment defect
 - **Type**: cross-platform path identity
 - **Authority evidence**: `evidence/independent-review-5117c807-result.json`,
@@ -519,12 +553,15 @@ attempted.
 
 ### DRIFT-198-I009-016 — case-insensitive dedup drops distinct machinery paths
 
-- **Status**: open — correction in place, still not closed. `Get-ContinuousCoReviewMachineryPaths` now
-  dedupes through a volume-derived `HashSet` comparer biased to `distinct` (re-verified in source at
-  `0e0048b0`), so the case-folding `Sort-Object -Unique` named below is gone from THIS site. Two
-  reasons it is not resolved: the comparer's answer depends on the probe that DRIFT-198-I009-032 shows
-  is still wrong, and DRIFT-198-I009-033 finds the same culture-aware dedup surviving in machinery and
-  exclusion normalization at eight other sites.
+- **Status**: resolved 2026-07-29. `Get-ContinuousCoReviewMachineryPaths` dedupes through a
+  volume-derived `HashSet` comparer biased to `distinct`, so the case-folding `Sort-Object -Unique`
+  named below is gone from this site; the comparer's answer is now trustworthy because the probe behind
+  it is corrected and volume-verified (DRIFT-198-I009-032); and the same class of dedup has been
+  removed from every other site in `scripts/` and both `extensions/` trees, not just this one
+  (DRIFT-198-I009-033). The structural test that permitted the intermediate `-CaseSensitive` spelling
+  now rejects `Sort-Object -Unique` over paths outright, so this cannot re-enter under a different site.
+- **Residual**: the same one-volume caveat as DRIFT-198-I009-015 — full proof needs the three-volume
+  differential CI job green.
 - **Severity**: major candidate-membership defect
 - **Type**: cross-platform path identity
 - **Authority evidence**: `evidence/independent-review-5117c807-result.json`,
@@ -758,7 +795,16 @@ attempted.
 
 ### DRIFT-198-I009-031 — the deployment containment guard covers one mutator, not the four beside it
 
-- **Status**: open; reported by re-certification, NOT fixed — awaiting the human's convergence decision
+- **Status**: resolved 2026-07-29 under the maintainer's one-slice instruction. `Assert-ManagedMutationAllowed`
+  is now the single choke point in BOTH the canonical `extensions/` source and the `.specify/extensions/`
+  mirror, called by `Ensure-Directory`, `Write-MissingFile`, `Set-ManagedFile`, `Set-ManagedBlock`,
+  `Set-ManagedTableRows`, and before both recursive host-skill deletes (`Copy-ManagedDirectory`
+  delegates to `Set-ManagedFile`; retirement keeps its own DRIFT-198-I009-011 guard). A fifth
+  per-mutator copy was deliberately NOT the correction — that is the shape that produced -011, -025,
+  and this. Structural enforcement added: `path-identity.Tests.ps1` now enumerates the mutator
+  functions in both trees and fails any whose body does not reach the choke point, and separately
+  requires the gate within five lines above every `Remove-Item -Recurse`. `Assert-ManagedMutationAllowed`
+  joins the mirror-parity guard list.
 - **Severity**: major security defect (write path), consumer-reachable
 - **Type**: path containment
 - **Authority evidence**: `evidence/independent-review-0e0048b0-recert-result.json`, finding
@@ -779,7 +825,14 @@ attempted.
 
 ### DRIFT-198-I009-032 — the volume probe still misreads the target, and its own tests pass
 
-- **Status**: open; reported by re-certification, NOT fixed — awaiting the human's convergence decision
+- **Status**: resolved 2026-07-29, and the ONLY defect in this iteration whose fix is proven by an
+  oracle other than its author. The probe now derives every verdict from a name obtained by
+  ENUMERATION: it probes inside the physical target using its children, and falls back to reading its
+  own entry's REAL spelling out of the parent's listing rather than the caller's. The decision rule is
+  factored into `Get-ContinuousCoReviewCaseVerdictFromListing` — both spellings listed means two real
+  siblings (case-preserving); exactly one listed while the other still resolves means the lookup
+  folded. The memo cache is also now an `Ordinal` dictionary; it had been a case-FOLDING hashtable,
+  which is how it masked this very defect (see the falsification note below).
 - **Severity**: major cross-platform path identity defect — in the primitive every other correction depends on
 - **Type**: defect in the path-identity primitive itself
 - **Authority evidence**: `evidence/independent-review-0e0048b0-recert-result.json`, finding
@@ -812,10 +865,36 @@ attempted.
   siblings exist — if only one of the pair is listed, the lookup folded — and probe inside the
   physical target rather than its parent. Any fix needs a fixture whose assertion can FAIL when the
   probe is wrong, i.e. built from a known on-disk spelling rather than from the probe's own answer.
+- **Falsification evidence (the part that matters).** The new
+  `path-identity-volume-differential.Tests.ps1` was run against the OLD primitive and the NEW one on
+  the same Windows volume: **3 failed / 3 passed** against the old, **6 passed / 0 failed** against
+  the new. Independently, the old logic was reproduced verbatim on a fixture holding a real `REPO`
+  entry and asked as `repo`: it answered case-**sensitive** on a volume measured case-**insensitive**,
+  while the corrected primitive answers `False` under both spellings.
+- **Two honest notes about writing that harness.** (1) The first draft PASSED against the broken
+  probe. It probed both spellings under one fixture root, and the old case-FOLDING memo cache served
+  the second probe the first probe's correct answer — the two spellings collided as cache keys. Only
+  isolating each spelling in its own fixture made the assertion capable of failing. A harness that
+  cannot fail is worth nothing, and this one silently was not, for its first revision. (2) The
+  reported failure only reproduces when `flip(asked spelling)` EQUALS the real on-disk spelling, which
+  needs an all-caps/all-lower pair. A `Alpha`/`ALPHA` fixture passes against the broken probe — which
+  is a concrete mechanism for how the authored suite stayed green through six rounds.
 
 ### DRIFT-198-I009-033 — `-CaseSensitive` is culture-aware, so the integrity key union still folds distinct names
 
-- **Status**: open; reported by re-certification, NOT fixed — awaiting the human's convergence decision
+- **Status**: resolved 2026-07-29. All eight sites now route through
+  `Get-ContinuousCoReviewOrdinalUniquePath`, which is Ordinal in BOTH dedup and ordering — the order
+  matters because several of these lists are hashed into digests, and a culture-dependent order would
+  make one tree hash differently on two runners. **Scope went beyond the reported site**: the reviewer
+  named `review-target-port.ps1:593`, but direct measurement found the pattern at eight sites in
+  `scripts/` plus four more in the `extensions/` trees — `conformance-turn-delta.ps1:214`, which is the
+  key union over the very Ordinal maps DRIFT-198-I009-030 introduced, and `validate-governance.ps1:718`,
+  in both canonical and mirror. Fixing only the named line would have left the identical defect in the
+  shipped product, which is DRIFT-198-I009-030's lesson exactly.
+- **Structural enforcement tightened**: the dedup structural test previously ACCEPTED
+  `Sort-Object -Unique -CaseSensitive`, which is why this shipped. It now rejects `Sort-Object -Unique`
+  over paths outright — there is no correct Sort-Object spelling for a path collection — with the
+  existing explicit `specrew-dedup-not-a-path` annotation as the only exemption.
 - **Severity**: major review-integrity defect (false-intact integrity evidence)
 - **Type**: cross-platform path identity — dedup comparer
 - **Authority evidence**: `evidence/independent-review-0e0048b0-recert-result.json`, finding
@@ -838,7 +917,13 @@ attempted.
 
 ### DRIFT-198-I009-034 — the gate cannot express a human deferral for a FRESHLY discovered finding
 
-- **Status**: open; mechanism gap discovered while executing the maintainer's 2026-07-29 deferral instruction
+- **Status**: open as a PRODUCT gap, but no longer load-bearing for this iteration — the maintainer
+  chose 2026-07-29 to FIX DRIFT-198-I009-028 rather than build deferral vocabulary to carry it,
+  because the fix is smaller than the mechanism and the defect was consumer-reachable major in its own
+  right. The mechanism gap itself is now explicitly in **iteration 012's finality scope**, not the
+  general backlog: a human-observed defect that a fresh reviewer re-discovers has no way to be
+  recorded as deferred, and any future iteration that wants to ship with a known, accepted defect will
+  hit this wall.
 - **Severity**: major governance-mechanism gap — it makes an authorized deferral unrepresentable
 - **Type**: review-gate disposition vocabulary
 - **Observed evidence**: the maintainer instructed that a recurrence of DRIFT-198-I009-028 be treated
@@ -866,6 +951,46 @@ attempted.
 - **Required correction**: either a first-class deferral disposition that survives across campaigns
   and is surfaced to fresh rounds, or a reviewer instruction to check worktree-visible deferral
   records for newly discovered findings too. Recorded rather than acted on: this is the human's call.
+
+### DRIFT-198-I009-035 — a port scriptblock cannot resolve ambient function names
+
+- **Status**: resolved during the 2026-07-29 slice; caught by the registry, not by review or by the
+  focused suites. Recorded because the next edit will hit it.
+- **Severity**: minor structural hazard with a major failure mode (a fail-closed preflight, so no
+  provider spend — but every campaign run aborts)
+- **Type**: scope resolution in port scriptblocks
+- **How it surfaced**: routing the integrity key union through the new dedup primitive
+  (DRIFT-198-I009-033) inside `New-ReviewProductionVerificationPort`'s `$execute` scriptblock produced
+  `The term 'Get-ContinuousCoReviewOrdinalUniquePath' is not recognized` at preflight, in 2 of 82
+  registry suites. The primitive was correctly loaded and reachable everywhere else in the process;
+  `$execute` is invoked as a PORT in a foreign scope, where ambient function names do not resolve.
+- **The convention that already existed, undocumented**: that function deliberately captures
+  `Get-Command` OBJECTS for its four other dependencies (`$command`, `$copyCommand`, `$disposeCommand`,
+  `$hashCommand`) and invokes them with `&`. Nothing states why, so a plain call reads as correct.
+- **Correction**: the primitive is captured the same way, as `$uniquePathCommand`, with the reason
+  written down. Its self-load guard probes `Get-ContinuousCoReviewOrdinalUniquePath` — the function
+  actually needed — rather than a sibling name: a guard probing a DIFFERENT name than the one it wants
+  is exactly how DRIFT-198-I009-027's shadow survived, and a STALE copy of `path-identity.ps1`
+  satisfies `Get-ContinuousCoReviewPathCaseSensitive` while lacking anything added since.
+- **Why it is worth a ledger entry**: neither the differential harness nor the structural tests could
+  catch this — it is not a case-semantics defect and not a spelling the greps look for. Only executing
+  a real campaign run found it. It is a concrete limit on what the new instrument certifies: the
+  harness proves the primitive's ANSWERS, not that every caller can reach it.
+
+### DRIFT-198-I009-036 — the registry's contamination guard fired on the agent's own concurrent edit
+
+- **Status**: not a product defect — the guard worked. Recorded as a process lesson.
+- **Severity**: none (false failure, correctly raised)
+- **Type**: test-harness operating discipline
+- **Observed evidence**: the first full registry run of this slice reported
+  `FAIL (CALLER REPOSITORY CONTAMINATED): tracker honesty check (FR-020) -> tracked/untracked status
+  changed`, 1 of 82, at 19.8s. Cause: the run was launched in the background and drift-log.md was
+  edited while it was in flight, so the caller repository's tracked status changed mid-run. That is
+  precisely what the DRIFT-198-I008-056–058 caller-isolation guard exists to detect.
+- **Lesson**: the registry requires a QUIESCENT tree. Backgrounding it to work in parallel on
+  governance artifacts invalidates it, and the failure it produces looks like a real regression at
+  first glance — which costs a diagnosis cycle. Re-run with no concurrent writes: all 82 green in
+  566.6s.
 
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 

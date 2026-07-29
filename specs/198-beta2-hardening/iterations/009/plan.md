@@ -136,6 +136,39 @@ maintainer explicitly requires the `f197-i010-cap-revert-obligation` to execute
 at the next closeout; Iteration 009 closeout restores the configured capacity
 to 20 after historical iterations have been grandfathered.
 
+### Actual capacity consumed — restated honestly (maintainer instruction, 2026-07-29)
+
+The planned figure was **24.5 SP** across T072–T079 against a stated capacity of
+20. The delivered figure is far higher and pretending otherwise would corrupt the
+calibration this effort model exists to feed. What actually landed, none of it in
+the original plan:
+
+| Unplanned work | Rough SP | Why it was not plannable |
+| --- | --- | --- |
+| DRIFT-198-I009-001 through -014 corrections | ~12 | Fourteen defects found by review rounds 1–3, each corrected in-flight. |
+| DRIFT-198-I009-018 / -019 — loader scope + the reverted ignore filter | ~5 | Included three CI cycles spent on a Linux "hang" that never existed; `gh run view --log` truncation was read as silence. |
+| DRIFT-198-I009-022 through -026 — round 4 | ~8 | Five further defects, including one introduced by the -018 correction hours earlier. |
+| DRIFT-198-I009-027 — the shadowing duplicate | ~4 | The ROOT CAUSE of the whole class, found by a directed sweep rather than by review. Unknowable at plan time. |
+| DRIFT-198-I009-030 — canonical vs mirror | ~3 | A correction verified against the wrong artifact; the shipped product never received it. |
+| DRIFT-198-I009-031 / -032 / -033 + the differential harness | ~8 | Round 6, plus the instrument change that replaced review rounds as the certification mechanism. |
+| Review infrastructure repair (-008, -009, -029) and six paid review rounds | ~6 | Reviewing this iteration required repairing the reviewer. |
+
+**Honest total: on the order of 70 SP delivered against a 20 SP capacity —
+roughly 3.5x.** Iteration 009 was not a 24.5 SP iteration that ran long; it
+became a different iteration. The single largest driver is recorded in the
+convergence assessment: five consecutive rounds of point corrections that could
+not converge because a shadowing duplicate made every "fix" a no-op, which no
+amount of planning discipline would have exposed.
+
+What the calibration should carry forward, stated as signal rather than excuse:
+an iteration whose scope is "correct the defects an independent reviewer finds"
+has no knowable size at plan time, because the work is defined by what the
+reviewer has not looked at yet. Bounding such an iteration by SCOPE ("the
+approved finding cluster is fixed") does not bound it at all when each fix
+reveals the next defect. Future review-correction iterations should be bounded by
+ROUNDS or by budget, with a replan forced at the boundary, rather than by a
+finding cluster that grows as it is worked.
+
 ## Triaged to the Next Replan
 
 Recorded here because a drift-ledger entry alone is not a disposition
@@ -144,16 +177,14 @@ action into the next replan; they are not closed by this iteration.
 
 | Item | Severity | Required action at replan |
 | --- | --- | --- |
-| DRIFT-198-I009-028 — recording a reviewer grant clobbers unrelated host policy | **major, consumer-reachable** | Size and schedule a corrective task: update only the addressed row's `authorization_ref`, preserving every other field and row verbatim, plus a regression asserting that recording a grant for one host leaves all other rows byte-identical. The defect silently nulled a deliberate reviewer-INDEPENDENCE suspension, so it is a governance-integrity item, not cosmetic. |
+| ~~DRIFT-198-I009-028 — recording a reviewer grant clobbers unrelated host policy~~ | ~~major, consumer-reachable~~ | **CLOSED 2026-07-29, not deferred.** The maintainer chose fixing over building deferral vocabulary to carry it. Now updates only the addressed row's `authorization_ref` (and an explicitly supplied model), preserving every other field and row; `reviewer-host-grant-write-scope.Tests.ps1` asserts other rows stay byte-identical and fails 4/4 against the old writer. |
 | DRIFT-198-I009-029 — a verification command inherits the operator's ambient PATH | minor | Decide whether to distinguish an execution-environment failure from a command that ran and returned non-zero in the stable reason. The fail-closed behaviour and output privacy are correct and must not be traded away for diagnosability. |
 | DRIFT-198-I009-020 — retroactive closeout has no first-class boundary crossing | minor | Specrew product backlog: give the verdict record an explicit subject distinct from the cursor it advances. |
 | DRIFT-198-I009-021 — closure artifacts cannot express successor-iteration evidence | minor | Specrew product backlog: a concern-level disposition meaning "runtime evidence recorded by a named successor iteration". |
-| Structural path-identity tests are grep-based, not AST-based | accepted residual **— trigger now met** | The residual was accepted on the condition "revisit only if the path-identity class recurs" (maintainer decision 2026-07-28). It recurred at round 6: DRIFT-198-I009-031/032/033. Re-decide rather than carry forward. |
-| DRIFT-198-I009-031 — deployment containment guard covers one mutator of five | **major, consumer-reachable** | Size a corrective task placing the containment check at a single choke point every read and mutation traverses, including directory creation and deletion. Third appearance of this class after 011 and 025. |
-| DRIFT-198-I009-032 — the volume probe misreads the target directory | **major; the primitive every other correction depends on** | Size a corrective task requiring BOTH spellings to be enumerated before concluding two real siblings exist, probing inside the physical target. Third defect in the same function. The fixture must be able to FAIL — built from a known on-disk spelling, not from the probe's own answer. |
-| DRIFT-198-I009-033 — `-CaseSensitive` is culture-aware, not ordinal | **major, review-integrity** | Size a corrective task replacing all eight `Sort-Object -Unique -CaseSensitive` sites with a `HashSet` on the same comparer as the maps, sorting only for presentation. Falsifies DRIFT-198-I009-023's recorded reasoning. |
-| DRIFT-198-I009-034 — the gate cannot express a human deferral for a freshly discovered finding | **major governance-mechanism gap** | Decide: fix DRIFT-198-I009-028 (the reviewer supplied the exact correction, and it is smaller than the alternative) or add a first-class deferral disposition that survives across campaigns and reaches fresh rounds. Until one happens, `can_approve_current` cannot become true and the authorized deferral is unrepresentable. |
-| Whether this surface is certifiable by review-and-fix rounds | **open question for the maintainer** | Six rounds, three of them after the root cause was found and a systematic sweep applied. Decide between continuing rounds, a different instrument (property/differential tests against real volumes, AST enumeration), or a narrowed release claim that does not assert cross-platform path identity. See the convergence assessment in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/009/drift-log.md |
+| AST-based structural enumeration | backlog — **superseded, not carried** | The grep-based residual's revisit trigger ("only if the path-identity class recurs") was met at round 6. Re-decided 2026-07-29: the differential volume harness DOMINATES an AST check. Grep catches spellings; the volume catches behavior, which is what was actually wrong. Backlog only. |
+| ~~DRIFT-198-I009-031 / -032 / -033~~ | ~~major~~ | **CLOSED 2026-07-29 as one slice**, per the maintainer's instruction, using the reviewer's specifics. -031: one containment choke point every mutator and both recursive deletes traverse, in canonical AND mirror. -032: probe measures inside the target from enumerated names, both spellings required. -033: Ordinal dedup and Ordinal ordering at all eight sites plus four more found in the extensions trees. |
+| DRIFT-198-I009-034 — the gate cannot express a human deferral for a freshly discovered finding | **major governance-mechanism gap** | **Iteration 012 finality scope, explicitly** (maintainer decision 2026-07-29) — not the general backlog. Not needed for iteration 009 any more, because -028 was fixed rather than deferred, but any future iteration that ships with a known accepted defect hits this wall. Give the deferral record a subject that survives across campaigns and is surfaced to FRESH rounds, not only to carried prior-round findings. |
+| Beta2 release claim if the surface will not stabilize | **decided in advance, deliberately** | If the differential harness shows the path-identity surface cannot stabilize before the tag, NARROW the beta2 release claim and document the known path-identity limitations rather than spending further review rounds. Beta is the correct vehicle for that honesty. Decided 2026-07-29 so it is not decided under time pressure at the tag. |
 
 ## Verification
 

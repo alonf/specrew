@@ -213,9 +213,8 @@ function Get-ReviewCampaignVerificationSupportManifest {
     # target port freezes that exact normalized vocabulary and currentness-binds its
     # hash. Verification reuses it without a second origin scan; only FILE CONTENT is
     # read from the pinned commit.
-    $frozenPaths = @($Snapshot.machinery_paths |
-            ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } |
-            Sort-Object -Unique -CaseSensitive)
+    $frozenPaths = Get-ContinuousCoReviewOrdinalUniquePath -Path @($Snapshot.machinery_paths |
+            ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') })
     $pathBytes = [Text.Encoding]::UTF8.GetBytes(($frozenPaths -join "`n"))
     $pathHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($pathBytes)).ToLowerInvariant()
     if ($pathHash -cne [string]$Snapshot.machinery_paths_sha256) {
@@ -523,6 +522,13 @@ function New-ReviewProductionVerificationPort {
     $disposeCommand = Get-Command -Name 'Remove-GitReviewTargetSnapshot' -CommandType Function
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1') }
     $hashCommand = Get-Command -Name 'Get-ContinuousCoReviewWorktreeSourceHashes' -CommandType Function
+    # Captured as a COMMAND OBJECT, like the four above, because $execute below is invoked as a PORT in a
+    # foreign scope where ambient function names do not resolve. Guarded on the exact function needed
+    # rather than on a sibling name: a guard that probes a DIFFERENT name from the primitive it wants is
+    # how DRIFT-198-I009-027's shadow survived, and a stale copy of path-identity.ps1 satisfies
+    # `Get-ContinuousCoReviewPathCaseSensitive` while lacking this one.
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewOrdinalUniquePath' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
+    $uniquePathCommand = Get-Command -Name 'Get-ContinuousCoReviewOrdinalUniquePath' -CommandType Function
     $execute = {
         param($snapshot, $paths)
         if ($null -eq $paths -or -not $paths.PSObject.Properties['implementer_evidence_path']) {
@@ -550,7 +556,11 @@ function New-ReviewProductionVerificationPort {
         }
         $originalAfter = & $hashCommand -WorktreePath ([string]$snapshot.snapshot_path)
         $changed = [Collections.Generic.List[string]]::new()
-        foreach ($key in @(@($originalBefore.Keys) + @($originalAfter.Keys) | Sort-Object -Unique -CaseSensitive)) {
+        # Ordinal, matching the maps: `-CaseSensitive` leaves Sort-Object CULTURE-aware, so a
+        # byte-distinct key the maps kept apart collapsed here and its file was never compared - the
+        # integrity check could then report the frozen target intact after a real mutation
+        # (DRIFT-198-I009-033).
+        foreach ($key in (& $uniquePathCommand -Path @(@($originalBefore.Keys) + @($originalAfter.Keys)))) {
             $beforeValue = if ($originalBefore.ContainsKey($key)) { [string]$originalBefore[$key] } else { '<missing>' }
             $afterValue = if ($originalAfter.ContainsKey($key)) { [string]$originalAfter[$key] } else { '<missing>' }
             if ($beforeValue -cne $afterValue) { $changed.Add([string]$key) | Out-Null }

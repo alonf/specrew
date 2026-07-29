@@ -45,6 +45,8 @@ function Ensure-Directory {
         [System.Collections.ArrayList]$Actions
     )
 
+    Assert-ManagedMutationAllowed -TargetPath $Path
+
     if (Test-Path -LiteralPath $Path) {
         Add-DeploymentAction -Actions $Actions -Action 'preserved-directory' -Path $Path
         return
@@ -68,6 +70,8 @@ function Write-MissingFile {
         [Parameter(Mandatory = $true)]
         [System.Collections.ArrayList]$Actions
     )
+
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
 
     if (Test-Path -LiteralPath $TargetPath) {
         Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
@@ -137,6 +141,28 @@ function Assert-ManagedTargetContained {
     return $pathFull
 }
 
+function Assert-ManagedMutationAllowed {
+    # THE choke point. Every mutator in this script calls this before touching the filesystem.
+    #
+    # This body used to be inlined in Set-ManagedFile and nowhere else, so Ensure-Directory
+    # (New-Item), Write-MissingFile and Set-ManagedBlock / Set-ManagedTableRows (WriteAllText),
+    # Copy-ManagedDirectory, and the legacy/host-skill cleanup (Remove-Item -Recurse) all bypassed
+    # containment: a consumer-controlled `.squad` or host-skill ancestor junction could redirect
+    # `specrew init` / `specrew update` directory creation, team/routing/history writes, or a
+    # RECURSIVE delete outside the project even though runtime-FILE writes failed closed
+    # (DRIFT-198-I009-031, the third appearance of this class after -011 and -025). Adding a fifth
+    # per-mutator copy of the check would repeat the mistake that produced all three; one gate that
+    # every path must traverse is the correction.
+    param([Parameter(Mandatory = $true)][string]$TargetPath)
+
+    # Resolved via Get-Variable so this stays safe under StrictMode when the helper is dot-sourced
+    # without the script body having run.
+    $projectRootVariable = Get-Variable -Name 'resolvedProjectPath' -Scope Script -ErrorAction SilentlyContinue
+    $projectRoot = if ($null -ne $projectRootVariable) { [string]$projectRootVariable.Value } else { '' }
+    if ([string]::IsNullOrWhiteSpace($projectRoot)) { return }
+    $null = Assert-ManagedTargetContained -TargetPath $TargetPath -Root $projectRoot
+}
+
 function Set-ManagedFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -150,13 +176,8 @@ function Set-ManagedFile {
         [System.Collections.ArrayList]$Actions
     )
 
-    # Containment BEFORE the first read or write - never after. Resolved via Get-Variable so this
-    # stays safe under StrictMode when the helper is dot-sourced without the script body having run.
-    $projectRootVariable = Get-Variable -Name 'resolvedProjectPath' -Scope Script -ErrorAction SilentlyContinue
-    $projectRoot = if ($null -ne $projectRootVariable) { [string]$projectRootVariable.Value } else { '' }
-    if (-not [string]::IsNullOrWhiteSpace($projectRoot)) {
-        $null = Assert-ManagedTargetContained -TargetPath $TargetPath -Root $projectRoot
-    }
+    # Containment BEFORE the first read or write - never after.
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
 
     if (-not (Test-Path -LiteralPath $TargetPath)) {
         Add-DeploymentAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $TargetPath
@@ -356,6 +377,8 @@ function Set-ManagedBlock {
         [System.Collections.ArrayList]$Actions
     )
 
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
+
     $managedBlock = Get-ManagedBlock -Name $BlockName -Content $ManagedContent
     $startMarker = [regex]::Escape("<!-- >>> specrew-managed $BlockName >>> -->")
     $endMarker = [regex]::Escape("<!-- <<< specrew-managed $BlockName <<< -->")
@@ -429,12 +452,14 @@ function Set-ManagedTableRows {
         [System.Collections.ArrayList]$Actions
     )
 
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
+
     if (-not (Test-Path -LiteralPath $TargetPath)) {
         return
     }
 
     $existingContent = Get-Content -LiteralPath $TargetPath -Raw
-    
+
     $escapedHeader = [regex]::Escape($TableSectionHeader)
     $tablePattern = "($escapedHeader[^\r\n]*\r?\n(?:.*?\r?\n)*?\|[^\r\n]+\|\r?\n\|[\s\-|]+\|\r?\n)"
     
@@ -841,6 +866,8 @@ if (Test-Path -LiteralPath $legacySkillsRoot -PathType Container) {
         if (Test-IsManagedLegacySkillDirectory -SkillDirectoryPath $legacySkillDirectory.FullName -Definition $definition) {
             Add-DeploymentAction -Actions $actions -Action $(if ($DryRun) { 'would-remove-legacy-managed-skill' } else { 'removed-legacy-managed-skill' }) -Path $legacySkillDirectory.FullName
             if (-not $DryRun) {
+                # A RECURSIVE delete through an unverified path is the worst case in this script.
+                Assert-ManagedMutationAllowed -TargetPath $legacySkillDirectory.FullName
                 Remove-Item -LiteralPath $legacySkillDirectory.FullName -Recurse -Force
             }
             continue
@@ -860,6 +887,8 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
                 if (Test-IsManagedLegacySkillDirectory -SkillDirectoryPath $skillDirectoryPath -Definition $definition) {
                     Add-DeploymentAction -Actions $actions -Action $(if ($DryRun) { 'would-remove-host-scoped-managed-skill' } else { 'removed-host-scoped-managed-skill' }) -Path $skillDirectoryPath
                     if (-not $DryRun) {
+                        # A RECURSIVE delete through an unverified path is the worst case in this script.
+                        Assert-ManagedMutationAllowed -TargetPath $skillDirectoryPath
                         Remove-Item -LiteralPath $skillDirectoryPath -Recurse -Force
                     }
                     continue

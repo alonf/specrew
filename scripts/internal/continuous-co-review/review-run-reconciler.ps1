@@ -6,6 +6,7 @@ Set-StrictMode -Version Latest
 # published. A later controller process can therefore prove the original tree dead, publish the
 # spent/abandoned terminal envelope, retire the claim, and only then remove the frozen target.
 
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 if (-not (Get-Command -Name 'Get-ReviewRunReconciliationPlan' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-authority-store.ps1') }
 if (-not (Get-Command -Name 'Invoke-ReviewResultIngress' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-result-ingestor.ps1') }
 
@@ -40,9 +41,9 @@ function New-ReviewRunRecoveryFact {
     }
     $verificationPlanPresent = $Snapshot.PSObject.Properties['verification_plan_present'] -and [bool]$Snapshot.verification_plan_present
     $verificationPlanSha256 = if ($Snapshot.PSObject.Properties['verification_plan_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.verification_plan_sha256)) { [string]$Snapshot.verification_plan_sha256 } else { $notApplicable }
-    $machineryPaths = if ($Snapshot.PSObject.Properties['machinery_paths']) { @($Snapshot.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique -CaseSensitive) } else { @() }
+    $machineryPaths = if ($Snapshot.PSObject.Properties['machinery_paths']) { Get-ContinuousCoReviewOrdinalUniquePath -Path @($Snapshot.machinery_paths | ForEach-Object { ([string]$_ -replace '\\', '/').Trim('/') }) } else { @() }
     $machineryPathsSha256 = if ($Snapshot.PSObject.Properties['machinery_paths_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.machinery_paths_sha256)) { [string]$Snapshot.machinery_paths_sha256 } else { $notApplicable }
-    $excludedPathPatterns = if ($Snapshot.PSObject.Properties['excluded_path_patterns']) { @($Snapshot.excluded_path_patterns | ForEach-Object { ([string]$_ -replace '\\', '/').Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique -CaseSensitive) } else { @() }
+    $excludedPathPatterns = if ($Snapshot.PSObject.Properties['excluded_path_patterns']) { Get-ContinuousCoReviewOrdinalUniquePath -Path @($Snapshot.excluded_path_patterns | ForEach-Object { ([string]$_ -replace '\\', '/').Trim() }) } else { @() }
     $excludedPathPatternsSha256 = if ($Snapshot.PSObject.Properties['excluded_path_patterns_sha256'] -and -not [string]::IsNullOrWhiteSpace([string]$Snapshot.excluded_path_patterns_sha256)) { [string]$Snapshot.excluded_path_patterns_sha256 } else { $notApplicable }
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'recovery'; campaign_id = $CampaignId; run_id = $RunId
