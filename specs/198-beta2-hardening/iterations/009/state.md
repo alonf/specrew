@@ -105,7 +105,34 @@ DRIFT-198-I009-015 (blocking; case semantics read from the OS family rather than
 the volume, which the DRIFT-198-I009-012 correction itself introduced),
 DRIFT-198-I009-016, and DRIFT-198-I009-017.
 
-Execution is paused. Four consecutive rounds have found path-identity defects,
+The maintainer then authorized the systematic sweep. DRIFT-198-I009-027 found the ROOT CAUSE of the
+whole non-convergence pattern — a same-named duplicate function shadowing the path-identity
+primitive, so every call site "routed through the primitive" was still receiving the OS-family
+answer. Rounds 4 and 5 (`run-f198-i009-aab37c3b-codex-2`, `run-f198-i009-2c6d7cb8-sweep`) produced
+DRIFT-198-I009-022 through 026 and 030, all corrected, the last of them applying the sweep to the
+canonical `extensions/` source rather than only the deployed mirror, plus a mirror-parity guard.
+
+The re-certification round `run-f198-i009-0e0048b0-recert` completed on 2026-07-29 against digest
+`bd2c663aa19da364f2a5f3746ed58154663a923b` under authorization
+`recertification-i009-canonical-2026-07-29`: containment verified, validation valid, currentness
+current, completion complete, termination verified, and both controller verification commands green.
+It is NOT a clean certification — four major findings, `can_approve_current: false`. One,
+`finding-e78c294017b6e4fb`, is the expected DRIFT-198-I009-028 recurrence the maintainer pre-authorized
+as a recorded deferral. Three are new and confirmed in source: DRIFT-198-I009-031 (the deployment
+containment guard is called from one mutator of five), DRIFT-198-I009-032 (the volume probe misreads
+the target — the third defect in that same function), and DRIFT-198-I009-033 (`-CaseSensitive` is
+culture-aware, not ordinal, at eight sites). DRIFT-198-I009-034 records that the gate has no
+disposition able to express the authorized deferral, so it cannot be honoured without either fixing
+DRIFT-198-I009-028 or extending the vocabulary.
+
+T079 remains in-progress; no closeout packet was presented. The three focused path-identity suites
+pass 39/39 at `0e0048b0` — including the test written for the exact scenario DRIFT-198-I009-032
+describes — which is itself recorded as evidence that focused green cannot falsify this class. The
+convergence assessment is updated with all six rounds and the root cause, and the question it now
+puts to the maintainer is whether this surface can be certified by review-and-fix rounds at all. No
+seventh point-fix round was attempted.
+
+Execution was previously paused after round 3. Four consecutive rounds had found path-identity defects,
 and direct measurement shows four OS-family case shortcuts and twelve or more
 files carrying independent path comparison, wildcard, or dedup logic. There is
 no single path-identity primitive, so point corrections can only ever repair the
