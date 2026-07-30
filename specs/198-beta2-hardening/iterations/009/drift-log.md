@@ -1217,6 +1217,53 @@ focused path-identity suite, which pass because they load the primitive the conv
 - **Required correction (deferred)**: add a measured-volume fixture with mandates in both case-distinct
   files and assert both are reported.
 
+### DRIFT-198-I009-044 — closure cannot express a task deferred whose work is satisfied NOWHERE yet
+
+- **Status**: open; **it held Iteration 009 open.** Maintainer decision 2026-07-30: hold 009 at
+  `reviewing` with truthful verdicts rather than record a `pass` against an unsatisfied requirement,
+  and close it once Iteration 010 delivers -041/-042/-043 (the trigger is recorded in
+  `state.md` under `## Closure Record — HELD OPEN, with a defined trigger`). Joins DRIFT-198-I009-021
+  and -034 as the **disposition-vocabulary cluster** in Iteration 012 finality scope: three instances
+  of one gap is the case for fixing it as reviewed product work, not as a closeout side effect.
+- **Severity**: minor mechanism gap with a false-green consequence if resolved carelessly
+- **Type**: review/closure schema
+- **Observed evidence**: closing Iteration 009 requires `Iteration Status: complete`; a complete
+  iteration requires `review.md` overall verdict `accepted`; and `accepted` is refused while any task
+  verdict is non-passing (`review.md cannot record overall verdict 'accepted' while tasks remain
+  non-passing: T079`). The task vocabulary is only `pass | needs-work | blocked`.
+- **Why Iteration 003's precedent does NOT resolve it**: 003 hit the same wall and its review.md says
+  so explicitly — "`pass` ... means *the task's requirement is satisfied and verified* — it does not
+  assert that Iteration 003 delivered it", recording the schema gap as DRIFT-198-I009-021. That
+  reasoning was available to 003 because its six deferred tasks WERE delivered and verified in
+  Iteration 007; the Notes could truthfully point at where. **T079's corrections are scheduled for
+  Iteration 010 and delivered nowhere.** There is no successor evidence to point at, so `pass` here
+  would assert a requirement satisfied that is not satisfied — the exact false-green this iteration
+  spent eight rounds refusing.
+- **Distinct from DRIFT-198-I009-021**, which covers evidence recorded by a successor that ALREADY
+  happened. This covers work that has not happened anywhere yet.
+- **Measured, not assumed — four validator probes closed every escape**:
+  1. `complete` + `needs-rework` → `Complete iterations require review.md overall verdict 'accepted'`.
+  2. `Iteration Status: retro` + `needs-rework` → same error; the rule keys on plan.md's `Status`.
+  3. `Status: retro` → same error. Confirmed in source at `validate-governance.ps1:4584-4605`: BOTH
+     the `retro` and `complete` branches pass `-RequireAcceptedVerdict`.
+  4. `Status: reviewing` + `needs-rework` → `plan.md status 'reviewing' is stale: retro.md exists, so
+     the iteration must be in retro or complete`.
+  The constraint closes on itself: retro.md exists ⇒ status must be `retro` or `complete` ⇒ verdict
+  must be `accepted` ⇒ every task verdict must be `pass`. There is no shape in which an iteration
+  carrying a retro can record an honestly non-passing task.
+- **The honest options, none of which the schema supports cleanly**: (a) do not close — delete or
+  withhold retro.md and hold at `reviewing`, keeping `needs-rework` and `needs-work` truthful, at the
+  cost of leaving the iteration open and its retro unrecorded; (b) mark T079 `pass` and carry the
+  truth in the Notes cell, which is what the schema pushes toward and what Iteration 003 did — but 003
+  could say "satisfied and verified in Iteration 007" and 009 cannot say that of anything;
+  (c) extend the schema with a task verdict meaning "deferred, not satisfied here or elsewhere" and an
+  overall verdict meaning "accepted with recorded deferrals".
+- **Not resolved unilaterally.** Choosing (b) is a judgment about what the permanent record asserts,
+  and this iteration exists because of exactly that class of judgment. Referred to the human.
+- **Required correction (deferred)**: (c) — add the deferred-and-unsatisfied disposition at both task
+  and overall level, so a closure can be honest without a human having to choose between an inaccurate
+  verdict and an unclosed iteration.
+
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 
 - **Status**: open; backlog — product gap in Specrew itself, recorded at the maintainer's instruction

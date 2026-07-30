@@ -1,3 +1,34 @@
+## 2026-07-30 — F-198 iteration-009 closeout: termination rule fired, gap deferrals to iteration 010
+
+### 2026-07-30 — Defer: DRIFT-198-I009-041/-042/-043 path-identity + containment cluster to iteration 010
+
+- **Decision ID**: f198-i009-defer-path-identity-cluster-to-010
+- **Type**: defer
+- **Affected Requirement**: FR-008
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\009
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-30T05:20:00Z
+- **Next Action**: Iteration 010 takes the cluster as its opening work, receiving vehicles assigned at the
+  2026-07-30 bounded replan with NO re-estimate of iterations 010-013 (sizing happens at 010's own planning
+  boundary). DRIFT-198-I009-041 (authority-store containment is lexical; resolve/contain every existing
+  component or reject reparse points before any enumeration, creation, read or write, plus a linked-ancestor
+  regression) is the FIRST task — it is containment-class #4 after -011, -025, -031 and it touches the
+  integrity of the evidence chain itself. DRIFT-198-I009-042 (the case probe's existence test follows links,
+  so a dangling entry inverts the verdict and caches a wrong comparer) lands alongside it, because a hardened
+  store behind a wrong comparer is not hardened. DRIFT-198-I009-043 (the case-distinct firewall fixture) lands
+  with the link-state harness fixtures, since both are the same gap: the differential harness's fixtures do not
+  span the state space.
+- **Rationale**: The final certifying round `run-f198-i009-3d74f123-final` (digest `85bdfe01`) completed
+  current/valid under verified containment with both controller verification commands green, and reported two
+  majors of the path-identity/containment class plus one minor. That fired the termination rule agreed in
+  advance on 2026-07-29: any new blocking or major finding of this class ends the campaign rather than starting
+  another fix-and-review round, because eight rounds were spent and every round after the third found defects
+  introduced by the round before it. Verification PASSED and certification did NOT — T079 is therefore terminal
+  as `deferred`, never `done`, and the iteration's disposition of record is the narrowed beta2 release claim at
+  `specs\198-beta2-hardening\beta2-release-claim.md`, which names seven limitations, the threat model including
+  checkout-borne symlinks, and reparse-point detection commands. Deferring this cluster is the human-approved
+  disposition of a known gap under the no-gap policy, not a silent roll-forward.
+
 ## 2026-06-16 — F-183 iteration-001 before-implement approval with instructions
 
 ### 2026-06-16 — Decision: approve before-implement; ratify T001; authorize T003
@@ -28270,3 +28301,137 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Two maintainer honesty corrections applied**: (1) ADDED/DELETED/MODIFIED all count as mutations - a new file is exempt ONLY via an explicit AllowedOutputPaths allowlist (so a reviewer cannot plant new source that steers its own verification); (2) MaxOutputBytes now enforces a real UTF-8 BYTE limit, not characters.
 - **Binding fix (maintainer diagnosis, exactly right)**: the "Argument types do not match" at the call boundary was `return @($results)` over List[object] failing to enumerate; changed to `return $results.ToArray()`. No new launch helper needed.
 - **Proof**: paired suite 9/9 (read-only no-mutation, timeout, process-tree kill of a spawned child, byte cap, modified/deleted/added mutation, allowed-output exempt, empty-command); added to the F-198 CI registry - 15 suites all green.
+
+## 2026-07-16T00:56:59Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-07-16T00:56:59Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'plan'.
+
+## 2026-07-16T00:56:59Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 006
+- **Task ID**: (none)
+- **Auth Commit Hash**: 4aedb0268f550c5c78e3b9bf19dfc16583c21cc8
+- **Recorded At**: 2026-07-16T00:56:59Z
+
+## 2026-07-16T00:57:30Z — Boundary enforcement: tasks
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: tasks
+- **Current Boundary**: plan
+- **Requested Boundary**: tasks
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-07-16T01:00:40Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-07-16T01:00:40Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-07-16T01:00:41Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 006
+- **Task ID**: (none)
+- **Auth Commit Hash**: 169599ef7b7accfe92ccf37e9cfe96182f1d52f4
+- **Recorded At**: 2026-07-16T01:00:41Z
+
+## 2026-07-16T01:09:09Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 006
+- **Task ID**: (none)
+- **Auth Commit Hash**: 32d70abf5e6cf1f5e9f3a4081ae561d2508e0979
+- **Recorded At**: 2026-07-16T01:09:08Z
+
+## 2026-07-16T01:09:18Z — Boundary enforcement: before-implement
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-07-18T07:25:42Z — Boundary enforcement: review-signoff
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: review-signoff
+- **Current Boundary**: before-implement
+- **Requested Boundary**: review-signoff
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched before-implement -> review-signoff.
+
+## 2026-07-18T07:29:04Z — Boundary enforcement: review-signoff
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: review-signoff
+- **Current Boundary**: before-implement
+- **Requested Boundary**: review-signoff
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched before-implement -> review-signoff.
+
+## 2026-07-18T07:29:53Z — Boundary enforcement: review-signoff
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: review-signoff
+- **Current Boundary**: before-implement
+- **Requested Boundary**: review-signoff
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched before-implement -> review-signoff.
+
+## 2026-07-18T07:30:12Z — Boundary enforcement: review-signoff
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: review-signoff
+- **Current Boundary**: before-implement
+- **Requested Boundary**: review-signoff
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched before-implement -> review-signoff.
+
+## 2026-07-18T07:30:58Z — Boundary enforcement: review-signoff
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: review-signoff
+- **Current Boundary**: before-implement
+- **Requested Boundary**: review-signoff
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-07-18T20:37:07Z — Boundary sync warning: tasks
+
+- **Boundary Type**: tasks
+- **Latest Recorded Boundary**: tasks
+- **Recorded At**: 2026-07-18T20:37:07Z
+- **Warning**: Expected next boundary 'before-implement' but received 'tasks'.
+
+## 2026-07-18T20:37:08Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 008
+- **Task ID**: (none)
+- **Auth Commit Hash**: 29cf84084fd65da9f4199466a9aa4dccc5105958
+- **Recorded At**: 2026-07-18T20:37:08Z

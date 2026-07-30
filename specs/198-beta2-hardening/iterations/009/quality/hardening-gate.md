@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Planner
 **Reviewed At**: 2026-07-26
-**Post-Implementation Verification**: T072–T078 focused proof, three bounded-parallel complete registries, serial parity, and the post-prompt 82/82 registry are green. Exact-commit Codex review `run-f198-i009-29e9f6fa-codex` completed current/valid under verified containment but blocks approval with one blocking and two major product findings; see `evidence/independent-review-29e9f6fa-result.json` and DRIFT-198-I009-004–006.
+**Post-Implementation Verification**: closed at the 2026-07-30 iteration-closeout with verification GREEN and certification NOT ACHIEVED — see `## Closure Follow-Through` below. Final state: registry 87/87 (the path-identity family was registered during this iteration, 82 → 87), bootstrap suites green, markdownlint clean, the three-OS matrix green with per-leg measurements read directly from the job logs, serial parity green, and both controller verification commands green against the exact target digest on every round. Eight independent Codex rounds were spent; the final one, `run-f198-i009-3d74f123-final` at digest `85bdfe01`, completed current/valid under verified containment and reported two majors of the path-identity/containment class (DRIFT-198-I009-041, -042), firing the pre-agreed termination rule. Disposition of record is the narrowed beta2 release claim, not a clean certification; corrections carry to Iteration 010. All immutable results are under `evidence/`.
 
 ## Concern Review
 
@@ -41,3 +41,35 @@ Iteration 009 changes what is reviewed, not how substantive findings are
 judged. It must increase candidate fidelity without weakening independent
 review, escalation latching, drift-ledger discipline, or test-integrity
 enforcement.
+
+## Closure Follow-Through
+
+Recorded at the 2026-07-30 iteration-closeout. Every concern above closes with
+`Runtime Evidence Status: recorded` and real runtime evidence in this iteration —
+none required the successor-iteration disposition that DRIFT-198-I009-021 describes
+as missing from the schema.
+
+This section exists to keep one distinction explicit, because the gate has no field
+for it: **the concerns are satisfied by VERIFICATION, which passed. They are not a
+claim that the iteration achieved CERTIFICATION, which it did not.**
+
+- `reviewer-independence-and-false-green-resistance` is the concern most directly
+  tested this iteration, and it held in an uncomfortable direction: eight independent
+  rounds each found real defects, including in the corrections of the round before,
+  and the review gate refused approval every time. False-green resistance was
+  demonstrated by the gate declining to certify, not by a clean pass.
+- `candidate-source-identity` carried the canonical-versus-mirror lesson twice
+  (DRIFT-198-I009-030 and -037): a correction verified against the wrong artifact
+  ships nothing. Both trees are now covered by the structural mirror-parity assertions.
+- `provider-spend` closed clean: eight rounds, eight recorded spends, no unspent or
+  double-spent grant; two runs failed pre-spend and correctly consumed no provider
+  budget.
+- `test-integrity-targets` is the concern with the most honest residual. The
+  differential harness's fixtures do not span link states, which is precisely where
+  DRIFT-198-I009-042 hid, and the case-distinct firewall fixture required by
+  DRIFT-198-I009-040 was never added (DRIFT-198-I009-043). Both carry to Iteration 010.
+
+Where the evidence lives: immutable review results under `../evidence/`; verification
+and per-volume measurements in `../review.md`; the full defect ledger in
+`../drift-log.md`; the release position in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta2-release-claim.md.

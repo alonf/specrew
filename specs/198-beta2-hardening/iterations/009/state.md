@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Current Phase**: review-signoff
-**Iteration Status**: in_progress
-**Last Completed Task**: T078
-**Tasks Remaining**: T079
-**In Progress**: T079
+**Iteration Status**: reviewing
+**Last Completed Task**: T078 (last task DELIVERED in 009; T079 is terminal as DEFERRED — the verification ran green but certification did not pass, and its corrections move to Iteration 010 — see `## Closure Record`)
+**Tasks Remaining**: (none)
+**In Progress**: (none)
 **Baseline Ref**: afb3eda731d35ae922e92d9acf200f80e32e9580
 **Updated**: 2026-07-26T16:20:00Z
 
@@ -253,3 +253,98 @@ no single path-identity primitive, so point corrections can only ever repair the
 site the reviewer happened to reach. The convergence assessment and the durable
 correction are recorded in drift-log.md and await the human's decision; the
 authorized slot is spent.
+
+## Closure Record — HELD OPEN, with a defined trigger
+
+**Iteration 009 is NOT closed.** It is held at `reviewing` on explicit maintainer
+decision (2026-07-30), because closing it would require asserting a verdict the
+evidence does not support. This section is the closure record in waiting; it
+becomes the closure record when the trigger below fires.
+
+### Why it is held open
+
+Closing requires `Status: retro` or `complete`; both require `review.md` overall
+verdict `accepted`; `accepted` requires every task verdict to be `pass`. T079's
+requirement is satisfied nowhere — its corrections are scheduled for Iteration 010,
+not delivered — so `pass` would assert a satisfied requirement that is not
+satisfied. Measured across four validator probes; the constraint closes on itself
+(retro.md exists ⇒ retro/complete ⇒ accepted ⇒ all-pass). Recorded as
+DRIFT-198-I009-044.
+
+This mirrors Iteration 003, which stayed open across 007/008/009 while its
+residuals were delivered. 003's `pass` verdicts were legitimate *because* Iteration
+007 had already delivered the work its Notes cited. That precondition is the whole
+difference, and it does not exist here yet.
+
+### CLOSURE TRIGGER — do not lose this
+
+**When Iteration 010 delivers DRIFT-198-I009-041, -042 and -043, close Iteration 009
+using the 003 pattern applied legitimately:**
+
+1. Set T079's task verdict to `pass` in `review.md`, with Notes citing **Iteration 010**
+   as the delivering vehicle — the same shape 003 used for T019/T030/T031, and honest
+   only once 010's evidence exists.
+2. Set `review.md` overall verdict to `accepted`.
+3. Promote `retro-draft.md` to `retro.md` (content is complete and validator-conformant;
+   it was withheld only because its presence forces the status forward).
+4. Set `plan.md` `**Status**: complete` and add `**Completed**: <date>`; set this file's
+   `**Current Phase**: iteration-closeout` and `**Iteration Status**: complete`.
+5. Re-validate scoped: `validate-governance.ps1 -IterationPath specs/198-beta2-hardening/iterations/009`.
+
+Until then T079 stays `deferred` in `tasks-progress.yml`, the overall verdict stays
+`needs-rework`, and T079's task verdict stays `needs-work`. **The retro content is not
+lost** — it is complete in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/009/retro-draft.md
+and promoted verbatim at closure.
+
+### The closeout content, recorded now
+
+Everything below was authored at the 2026-07-30 closeout attempt and stands as the
+iteration's record regardless of when the status flips. The Iteration 003
+reconciliation pattern applies: the last delivered task is recorded as such, and the
+terminal-but-undelivered task is marked **deferred with ownership moved**, never `done`.
+
+**T079 is terminal as DEFERRED, not done.** The distinction is the whole point of
+this record. The verification RAN and is green — registry 87/87, bootstrap suites,
+lint, the three-volume matrix with per-leg measurements read directly from the job
+logs, serial parity, and both controller verification commands green against the
+exact target digest. What did not happen is CERTIFICATION. Eight independent review
+rounds were spent; the final one, `run-f198-i009-3d74f123-final` at digest
+`85bdfe01`, reported two majors of the path-identity/containment class and fired the
+termination rule agreed in advance. Marking T079 `done` would assert release
+confidence the evidence does not support.
+
+**Disposition of record**: the narrowed beta2 release claim at
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta2-release-claim.md.
+It states what beta2 claims, seven named limitations it does not, the threat model
+(including checkout-borne links, since Specrew runs over branches under review), and
+detection commands for reparse points. That document — not a clean certification — is
+this iteration's answer on release confidence.
+
+**Corrections carried to Iteration 010** (receiving vehicles only; no re-estimate of
+010-013 was made here): DRIFT-198-I009-041 as the first task, -042 alongside it, and
+-043 with the link-state harness fixtures. DRIFT-198-I009-034 stays in Iteration 012
+finality scope and AST-based structural enforcement stays a scheduled replan task,
+both unchanged.
+
+**Capacity, honestly**: planned 24.5 SP against a stated capacity of 20; delivered on
+the order of **70 SP — roughly 3.5x**. Iteration 009 did not run long, it became a
+different iteration. The full breakdown is in plan.md under
+`### Actual capacity consumed`.
+
+**The bounding lesson, which is the transferable output**: an iteration whose scope is
+"correct the defects an independent reviewer finds" has no knowable size at plan time,
+because the work is defined by what the reviewer has not looked at yet. Bounding it by
+SCOPE ("the approved finding cluster is fixed") does not bound it at all when each fix
+reveals the next defect. Future review-correction iterations must be bounded by ROUNDS
+or by BUDGET with a replan forced at the boundary. This iteration is the evidence:
+eight rounds, and every round after the third found defects introduced by the round
+before it.
+
+**What genuinely closed here**, and should not be lost in the deferral: the shadowing
+duplicate that made five rounds non-convergent (DRIFT-198-I009-027) is gone with
+structural enforcement against recurrence; the path-identity primitive is single and
+volume-derived; the certification instrument changed from review rounds to a
+differential harness whose oracle is the filesystem and which is PROVEN falsifiable by
+a mutation gate; and the deployment, grant-write, and dedup corrections landed in both
+the canonical source and the deployed mirror.

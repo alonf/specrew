@@ -2,7 +2,8 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
+**Completed**: 2026-07-30
 **Capacity**: 20.0/20 story_points
 **Started**: 2026-07-26
 **Completed**:
@@ -53,7 +54,7 @@ semantics remain assigned to Iterations 010–012.
 | T076 | Review-engine version handshake | F6 | Runtime identity | 2.5 | Implementer | scripts/internal/review-engine-resolution.ps1, scripts/specrew-review.ps1, scripts/internal/distribution-module-init.ps1, tests/** | done | Implementer | 2.5 | passed |
 | T077 | Consumer review-runtime ignore classification | F15 | Consumer hygiene | 0.5 | Implementer | scripts/internal/file-classification.ps1, tests/** | done | Implementer | 0.5 | passed |
 | T078 | Candidate fidelity frozen-evidence regression | F13, F16 | Frozen replay | 4.0 | Implementer | specs/198-beta2-hardening/iterations/009/evidence/**, tests/continuous-co-review/** | done | Implementer | 4.0 | passed |
-| T079 | Integrated verification and independent review | F6, F12, F13, F15, F16, P209-W1, P209-W2 | Release confidence | 4.5 | Reviewer | tests/**, specs/198-beta2-hardening/iterations/009/** | in-progress | Reviewer | 4.5 | registry, serial parity, and both controller verification commands green; re-certification `run-f198-i009-0e0048b0-recert` completed but NOT clean — 4 major, `can_approve_current: false`. NOT closed; awaiting the maintainer's convergence decision |
+| T079 | Integrated verification and independent review | F6, F12, F13, F15, F16, P209-W1, P209-W2 | Release confidence | 4.5 | Reviewer | tests/**, specs/198-beta2-hardening/iterations/009/** | deferred | Reviewer | 4.5 | **Terminal as DEFERRED, not done.** The verification RAN and is green — registry 87/87, bootstrap, lint, three-volume matrix, serial parity, both controller verification commands green against the exact digest. Certification did NOT pass: eight rounds, the last (`run-f198-i009-3d74f123-final`, digest `85bdfe01`) reporting two majors of this class, which fired the agreed termination rule. Disposition is the narrowed beta2 claim plus corrections carried to Iteration 010 — NOT a completed release-confidence task |
 
 ## Effort Model
 
@@ -183,6 +184,20 @@ finding cluster that grows as it is worked.
 Recorded here because a drift-ledger entry alone is not a disposition
 (maintainer instruction 2026-07-28). These carry a named owner and a required
 action into the next replan; they are not closed by this iteration.
+
+### Bounded replan — receiving vehicles assigned 2026-07-30
+
+Maintainer disposition after the termination rule fired. **Receiving vehicles only;
+iterations 010-013 are NOT re-estimated here.** Sizing happens at 010's own planning
+boundary, not retroactively from this iteration.
+
+| Item | Receiving vehicle | Why here |
+| --- | --- | --- |
+| DRIFT-198-I009-041 — authority-store containment is lexical | **Iteration 010, FIRST task** | Containment-class #4 after -011, -025, -031, and it touches the integrity of the evidence chain itself — the store holding grants, reservations, spend and results. First position is deliberate. |
+| DRIFT-198-I009-042 — the case probe follows links, so a dangling entry inverts the verdict | **Iteration 010, alongside -041** | It feeds containment, digest, and authority decisions from one place; leaving it while fixing -041 would harden the store against a comparer that can still be wrong. |
+| DRIFT-198-I009-043 — missing case-distinct firewall fixture | **Iteration 010**, with the link-state harness fixtures limitation 3 names | Both are the same gap: the differential harness's fixtures do not span the state space. Fix the coverage together rather than as two unrelated test chores. |
+| **Disposition-vocabulary cluster: DRIFT-198-I009-021 + -034 + -044** | **Iteration 012 finality scope, as ONE cluster** | Three instances of the same gap, and that is the case for fixing it properly as scheduled product work **with review** rather than as a closeout side effect (maintainer decision 2026-07-30). -021: closure cannot express "runtime evidence recorded by a named successor iteration". -034: the review gate cannot express a human deferral for a FRESHLY discovered finding. -044: closure cannot express "task terminal-as-deferred, work satisfied nowhere yet" — it forced Iteration 009 to be held open rather than record a `pass` against an unsatisfied requirement. Each was individually survivable by a workaround; together they say the disposition vocabulary is under-specified at both the task and the gate level. |
+| AST-based structural enforcement via the PowerShell parser | **Scheduled replan task** — unchanged | Recorded 2026-07-29 after the grep residual's trigger fired twice; no change at this replan. |
 
 | Item | Severity | Required action at replan |
 | --- | --- | --- |
