@@ -178,7 +178,13 @@ Describe 'path identity primitive' {
         # primitive, so a guard there must pick the FAIL-CLOSED direction unconditionally and state
         # why - never branch on the OS family, which is the same defect wearing a different coat.
         $sourceRoots = @(
-            (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
+            # `scripts/internal` WHOLE, not just the continuous-co-review subtree. Scanning the subtree
+            # is how two defects hid at once (DRIFT-198-I009-037): a SEVENTH OS-family case shortcut sat
+            # in `review-engine-resolution.ps1`, gating a delete-authorizing containment check, and
+            # `specrew-hook-dispatcher.ps1` needed a not-a-path annotation that could only be added to
+            # the `extensions/` MIRROR this scan could see - diverging the mirror from its own
+            # authoritative source and breaking provider parity. Scan where the source of truth lives.
+            (Join-Path $script:RepoRoot 'scripts/internal')
             (Join-Path $script:RepoRoot '.specify/extensions')
             # The CANONICAL packaged source. `.specify/extensions` is a deployed MIRROR of it, and a
             # correction applied only to the mirror never reaches a consumer: `specrew init` and
@@ -207,7 +213,13 @@ Describe 'path identity primitive' {
         # (DRIFT-198-I009-016) and one of two case-distinct operator exclusions (DRIFT-198-I009-023).
         # Every such call over paths must state its case rule explicitly.
         $sourceRoots = @(
-            (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
+            # `scripts/internal` WHOLE, not just the continuous-co-review subtree. Scanning the subtree
+            # is how two defects hid at once (DRIFT-198-I009-037): a SEVENTH OS-family case shortcut sat
+            # in `review-engine-resolution.ps1`, gating a delete-authorizing containment check, and
+            # `specrew-hook-dispatcher.ps1` needed a not-a-path annotation that could only be added to
+            # the `extensions/` MIRROR this scan could see - diverging the mirror from its own
+            # authoritative source and breaking provider parity. Scan where the source of truth lives.
+            (Join-Path $script:RepoRoot 'scripts/internal')
             (Join-Path $script:RepoRoot '.specify/extensions')
             # The CANONICAL packaged source. `.specify/extensions` is a deployed MIRROR of it, and a
             # correction applied only to the mirror never reaches a consumer: `specrew init` and

@@ -79,6 +79,19 @@ function Get-ContinuousCoReviewPathCaseSensitive {
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
 
     if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+
+    # Initialize the memo DEFENSIVELY rather than trusting the file-level assignment to have run in the
+    # scope this function resolves `$script:` against. It does not always: a consumer that self-loads
+    # this file from another tree (review-engine-resolution.ps1 loading it as
+    # `continuous-co-review/path-identity.ps1`) can end up with the functions defined while the
+    # top-level assignment landed in a different script scope, and under StrictMode reading an unset
+    # `$script:` variable THROWS - which surfaced as the deployed co-review runtime failing to load at
+    # all. Same family as DRIFT-198-I009-018/027/035: the primitive must be correct in whatever scope
+    # it is loaded into, never only in the one its author had in mind.
+    if (-not (Get-Variable -Name 'ContinuousCoReviewCaseSensitivityCache' -Scope Script -ErrorAction SilentlyContinue)) {
+        $script:ContinuousCoReviewCaseSensitivityCache = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
+    }
+
     $probeDir = $null
     try {
         $probeDir = [IO.Path]::GetFullPath($Path)

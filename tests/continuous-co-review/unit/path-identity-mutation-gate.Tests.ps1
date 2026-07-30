@@ -37,22 +37,54 @@ Describe 'differential harness falsifiability (mutation gate)' {
             $mutantPath = Join-Path $root 'path-identity.ps1'
             $source = Get-Content -LiteralPath $script:PrimitivePath -Raw
 
-            if ($Kind -eq 'inverted-verdict') {
-                # Mutate the single return that publishes the verdict. Everything else - the literal
-                # pathspec helper, the ordinal dedup, the comparer derivation - stays intact, so any
-                # failure the harness reports is attributable to the probe's ANSWER and nothing else.
-                $mutated = $source -replace '(?m)^(\s*)return \$script:ContinuousCoReviewCaseSensitivityCache\[\$probeDir\]$', '$1return $script:ContinuousCoReviewCaseSensitivityCache[$probeDir]'
-                $mutated = $mutated -replace '(?m)^(\s*)\$script:ContinuousCoReviewCaseSensitivityCache\[\$probeDir\] = \$result\r?\n(\s*)return \$result$', "`$1`$script:ContinuousCoReviewCaseSensitivityCache[`$probeDir] = `$result`n`$2if (`$null -ne `$result) { return (-not `$result) }`n`$2return `$result"
-                if ($mutated -eq $source) { throw 'inverted-verdict mutation did not apply - the primitive was refactored and this gate must be updated, not deleted' }
+            # APPEND-ONLY mutation, deliberately. The first version of this gate rewrote the probe body
+            # with `$`-anchored regexes, which matched the LF working copy and silently did NOT match
+            # after a Windows CI checkout converted the file to CRLF - so the mutation never applied,
+            # the guard threw, and the windows-latest leg failed in 5ms. A mutation that depends on
+            # line endings is not a mutation you can trust across a three-OS matrix. Redefining the
+            # function AFTER the original text needs no pattern matching at all, and PowerShell
+            # resolves the later definition, so every caller - including the comparison and comparer
+            # helpers that call the probe by name - picks up the mutant.
+            $mutation = if ($Kind -eq 'inverted-verdict') {
+                @'
+
+# --- MUTATION (falsifiability gate): invert the probe's verdict. Everything else - the literal
+# pathspec helper, the ordinal dedup, the comparer derivation - stays intact, so any failure the
+# harness reports is attributable to the probe's ANSWER and nothing else. Wrong on EVERY volume.
+$script:SpecrewMutationOriginalProbe = ${function:Get-ContinuousCoReviewPathCaseSensitive}
+function Get-ContinuousCoReviewPathCaseSensitive {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    $verdict = & $script:SpecrewMutationOriginalProbe -Path $Path
+    if ($null -eq $verdict) { return $null }
+    return (-not $verdict)
+}
+'@
             }
             else {
-                # The historical OS-family shape, reintroduced surgically: keep every other function
-                # and replace only the probe's body with the `$IsWindows` shortcut it used to be.
-                $mutated = $source -replace '(?ms)(function Get-ContinuousCoReviewPathCaseSensitive \{).*?(\r?\n\}\r?\n)', ('$1' + "`n    param([Parameter(Mandatory)][AllowEmptyString()][string]`$Path)`n    if ([string]::IsNullOrWhiteSpace(`$Path)) { return `$null }`n    return (-not `$IsWindows)`n}`n")
-                if ($mutated -eq $source) { throw 'os-family mutation did not apply - the primitive was refactored and this gate must be updated, not deleted' }
+                @'
+
+# --- MUTATION (falsifiability gate): the historical OS-family shape (DRIFT-198-I009-015) - case
+# semantics read from the OS family instead of from the volume. Wrong ONLY where the OS family
+# disagrees with the actual volume, which is why it survived review on Windows and ext4.
+function Get-ContinuousCoReviewPathCaseSensitive {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    return (-not $IsWindows)
+}
+'@
             }
 
-            Set-Content -LiteralPath $mutantPath -Value $mutated -Encoding UTF8
+            Set-Content -LiteralPath $mutantPath -Value ($source + [Environment]::NewLine + $mutation) -Encoding UTF8
+
+            # Positive proof the mutation TOOK EFFECT, replacing the old "did the regex apply" check.
+            # Asserting behaviour rather than text is also line-ending agnostic by construction.
+            $probeDir = Join-Path $root 'effect-probe'
+            $null = New-Item -ItemType Directory -Path (Join-Path $probeDir 'CHECK') -Force
+            $verify = & 'pwsh' '-NoProfile' '-Command' ". '$mutantPath'; `$v = Get-ContinuousCoReviewPathCaseSensitive -Path '$probeDir'; `"verdict=`$v`""
+            $verifyLine = @($verify | Where-Object { $_ -match '^verdict=' })[-1]
+            if ([string]::IsNullOrWhiteSpace($verifyLine)) {
+                throw ("mutant primitive did not load; output: " + ($verify -join ' | '))
+            }
             return $mutantPath
         }
 

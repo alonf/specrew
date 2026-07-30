@@ -992,6 +992,89 @@ catch spellings; the volume catches behavior, which is the thing that was actual
   first glance — which costs a diagnosis cycle. Re-run with no concurrent writes: all 82 green in
   566.6s.
 
+### DRIFT-198-I009-037 — the canonical-vs-mirror correction over-corrected, and the scan scope hid a seventh site
+
+- **Status**: resolved 2026-07-29
+- **Severity**: major — one shipped-stale provider plus a blocking CI failure, and an unfixed
+  OS-family containment shortcut on a delete-authorizing path
+- **Type**: source-versus-artifact identity, and structural-enforcement scope
+- **How it surfaced**: `Specrew CI` failed on this branch with
+  `FAILED bootstrap suites: ProviderMirrorParity.Tests.ps1`. It was **already failing on `4d807c29`**,
+  before the commit that carried the mutation gate, so it was not caused by that work.
+
+**Defect 1 — the DRIFT-198-I009-030 fix treated `extensions/` as canonical for a file where it is
+not.** For the `deploy-squad-runtime.ps1` family, `extensions/` IS the canonical packaged source and
+`.specify/extensions/` is its deployed mirror; that reading is correct and is what -030 established.
+But `specrew-hook-dispatcher.ps1` belongs to the PROVIDER family, whose authoritative copy is
+`scripts/internal/specrew-hook-dispatcher.ps1`, with BOTH `extensions/` and `.specify/extensions/`
+required byte-identical to it. Commit `0e0048b0` added a `# specrew-dedup-not-a-path` annotation to
+the `extensions/` copy only, diverging it from its own source and shipping a stale provider.
+`0e0048b0` is the commit whose whole purpose was "apply the sweep to the canonical source, not just
+the mirror" — it fixed that error for one family and committed the mirror image of it for another.
+
+**Defect 2, and the reason defect 1 was inevitable — the structural tests scanned
+`scripts/internal/continuous-co-review`, not `scripts/internal`.** The dispatcher's `Sort-Object
+-Unique` was therefore only visible in the `extensions/` MIRROR, so the annotation could only be put
+there. Widening the scan to `scripts/internal` whole immediately exposed a **SEVENTH OS-family case
+shortcut** that six review rounds and a systematic sweep never saw:
+`review-engine-resolution.ps1:8`, `$comparison = if ([OperatingSystem]::IsWindows()) {
+OrdinalIgnoreCase } else { Ordinal }`.
+- That is not cosmetic. `Test-SpecrewReviewRuntimePathUnderRoot` gates
+  `Assert-SpecrewReviewRuntimePathContained`, which authorizes **deleting** a file named by an
+  editable managed-file marker in the target project. On a case-insensitive macOS volume the
+  OS-family rule picks `Ordinal`, so a case-aliased path compares as OUTSIDE the root — DRIFT-198-I009-015's
+  exploit shape, on a delete path.
+- The convergence assessment says "enumerating the sites of a pattern only finds the pattern you
+  already named". This is the same failure in the SCOPE dimension: the enumeration was correct and
+  the search area was too small.
+- **Correction**: all three dispatcher copies re-synced byte-identical from the authoritative
+  `scripts/internal/` source with the annotation applied there;
+  `Test-SpecrewReviewRuntimePathUnderRoot` routed through
+  `Get-ContinuousCoReviewPathComparison -WhenUndetermined 'same'` (the refusing direction for
+  containment) with a guarded self-load of the primitive; and BOTH structural tests now scan
+  `scripts/internal` whole.
+
+**Defect 3 — the fix for defect 2 broke the deployed runtime, and only an integration suite caught
+it.** Routing `review-engine-resolution.ps1` through the primitive means that file self-loads
+`continuous-co-review/path-identity.ps1` from a different tree position than every other consumer. In
+that arrangement the primitive's functions ended up defined while the file-level
+`$script:ContinuousCoReviewCaseSensitivityCache` assignment landed in a different script scope, and
+under `Set-StrictMode -Version Latest` reading an unset `$script:` variable THROWS. Result:
+`co-review-deploy-completeness.Tests.ps1` failed with
+`The variable '$script:ContinuousCoReviewCaseSensitivityCache' cannot be retrieved because it has not
+been set` — the deployed co-review runtime could not load at all. Blocking, and invisible to every
+focused path-identity suite, which pass because they load the primitive the conventional way.
+- **Correction**: the memo is now initialized defensively inside the probe rather than trusting the
+  file-level assignment to have run in the scope the function resolves against. Same family as
+  DRIFT-198-I009-018 / -027 / -035: the primitive must be correct in whatever scope it is loaded into,
+  not only the one its author had in mind. This is the fourth distinct load-scope defect in this
+  primitive, which is itself worth carrying into the replan as a signal about the design.
+- **Verified**: 25 passed / 1 platform skip across the path-identity family plus the deployed-runtime
+  completeness suite; all ten provider parity assertions pass; the review-engine-resolution suite is
+  green.
+
+### DRIFT-198-I009-038 — "registry green" is not "CI green", twice over
+
+- **Status**: partially resolved; the remaining gap is recorded, not closed
+- **Severity**: minor process defect with major consequences for how evidence is read
+- **Type**: verification coverage claims
+- **Observed evidence**: two distinct instances in one day. (1) The path-identity family was never in
+  `f198-regression-suite.ps1`, so "all 82 suites green" was true through six rounds of path-identity
+  defects while none of those suites ran; now registered, 82 -> 87. (2) `ProviderMirrorParity.Tests.ps1`
+  is a BOOTSTRAP suite executed by a separate `Specrew CI` step, so the 87-suite registry run was
+  green locally while CI was red on this branch.
+- **The reporting failure this caused, stated plainly**: the matrix result for `4d807c29` was reported
+  as "green on all three volumes" on the strength of the `Cross-Platform Validation` workflow, while
+  `Specrew CI` for the same commit was still in progress and later failed. The narrower claim was
+  true; the impression given was not. Item 2's pre-authorization was conditioned on the full matrix
+  being green, so the certifying review would have been requested against a red tree had the slot not
+  been held back for an unrelated reason.
+- **Required correction (recorded, not done)**: the registry does not enumerate the bootstrap suites,
+  so no single local command reproduces the CI gate. Either register them or state explicitly, in the
+  evidence table, that "registry green" excludes them. Until then, a green registry is necessary and
+  not sufficient, and every certification claim must cite the CI conclusion per workflow rather than
+  one workflow's result.
+
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 
 - **Status**: open; backlog — product gap in Specrew itself, recorded at the maintainer's instruction

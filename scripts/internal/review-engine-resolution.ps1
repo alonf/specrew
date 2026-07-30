@@ -1,11 +1,26 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# HARD dependency on the ONE path-identity primitive. Guarded on the exact function needed rather than
+# on a sibling name - DRIFT-198-I009-027's shadow survived a guard that probed a DIFFERENT name, and a
+# stale copy of path-identity.ps1 satisfies the older names while lacking anything added since.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'continuous-co-review/path-identity.ps1')
+}
+
 function Test-SpecrewReviewRuntimePathUnderRoot {
+    # This was the SEVENTH OS-family case shortcut, and the structural tests could not see it: they
+    # scanned `scripts/internal/continuous-co-review` rather than `scripts/internal` whole
+    # (DRIFT-198-I009-037). It is not a cosmetic instance - this predicate gates
+    # Assert-SpecrewReviewRuntimePathContained, which authorizes DELETING a file named by an editable
+    # managed-file marker in the target project. On a case-insensitive macOS volume the OS-family rule
+    # chose Ordinal, so a case-aliased path compared as OUTSIDE the root: DRIFT-198-I009-015's exploit
+    # shape on a delete path. Undetermined resolves to 'same' so containment answers "inside" more
+    # readily, which is the REFUSING direction here.
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Root)
     $pathFull = [IO.Path]::GetFullPath($Path).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
     $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
-    $comparison = if ([OperatingSystem]::IsWindows()) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $rootFull -WhenUndetermined 'same'
     return $pathFull.Equals($rootFull, $comparison) -or $pathFull.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, $comparison)
 }
 
