@@ -107,6 +107,11 @@ Describe 'path identity differential property harness (the volume is the oracle)
         $listed = Get-ObservedEntryName -Directory $root
         $bothListed = ($listed -ccontains 'Repo') -and ($listed -ccontains 'REPO')
 
+        # EMIT the measured volume rule. This suite's value is that the same assertions have DIFFERENT
+        # right answers per runner, so the per-leg measurement belongs in the log rather than only in a
+        # failure message nobody sees on a green run.
+        Write-Host ("[volume-oracle] measured volume: case-sensitive={0} listing=[{1}]" -f $bothListed, ([string]::Join(', ', @($listed))))
+
         $verdict = Get-ContinuousCoReviewPathCaseSensitive -Path $root
         $verdict | Should -Not -BeNullOrEmpty
         $verdict | Should -Be $bothListed -Because "the volume was MEASURED holding [$([string]::Join(', ', @($listed)))]; two distinct spellings coexisting is something only a case-preserving volume can do, and one collapsed entry proves it folds"

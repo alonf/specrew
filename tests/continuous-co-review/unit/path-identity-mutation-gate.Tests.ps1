@@ -141,6 +141,14 @@ function Get-ContinuousCoReviewPathCaseSensitive {
         $mutant = New-MutantPrimitive -Kind 'os-family'
         $result = Invoke-HarnessAgainstPrimitive -PrimitivePath $mutant
 
+        # EMIT the measurement. A passing Pester line does not reveal which branch below was taken, so
+        # a green three-volume matrix could not previously be distinguished from a green matrix in which
+        # every leg skipped the real assertion. The whole point of this job is that the legs differ;
+        # the log has to say how.
+        Write-Host ("[volume-oracle] os-family mutant: volume-sensitive={0} os-family-sensitive={1} disagree={2} harness-failed={3} verdict={4}" -f `
+                $volumeSaysSensitive, $osFamilySaysSensitive, ($osFamilySaysSensitive -ne $volumeSaysSensitive), $result.Failed, `
+            $(if ($osFamilySaysSensitive -ne $volumeSaysSensitive) { 'CAUGHT-HERE-REQUIRED' } else { 'UNDETECTABLE-HERE-BY-CONSTRUCTION' }))
+
         if ($osFamilySaysSensitive -ne $volumeSaysSensitive) {
             $result.Failed | Should -BeGreaterThan 0 -Because "on this runner the OS family says case-sensitive=$osFamilySaysSensitive while the VOLUME was measured case-sensitive=$volumeSaysSensitive; that is DRIFT-198-I009-015 exactly, and the harness must catch it here"
         }
