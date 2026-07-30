@@ -130,11 +130,20 @@ Parallelism changes scheduling only:
 
 ## Capacity and Closeout
 
-The repository mechanically still carries `capacity_per_iteration: 26` from
-the grandfathered F197 override. This plan does not use that capacity. The
-maintainer explicitly requires the `f197-i010-cap-revert-obligation` to execute
-at the next closeout; Iteration 009 closeout restores the configured capacity
-to 20 after historical iterations have been grandfathered.
+**Reconciled at closeout (2026-07-29).** This paragraph previously stated that the
+repository "mechanically still carries `capacity_per_iteration: 26`" from the
+grandfathered F197 override, and that the revert to 20 would happen at this
+closeout. That is stale: the `f197-i010-cap-revert-obligation` is already
+DISCHARGED. file:///C:/Dev/specrew-beta2-hardening/.specrew/iteration-config.yml
+carries `capacity_per_iteration: 20`, changed from 26 in commit `b3e2960e`, and
+the file's own comment records the closure. The override had been raised in
+`7d4230a5` on 2026-07-02.
+
+One date correction for the record: the revert landed **2026-07-26**, not
+2026-07-27 — `b3e2960e` is dated 2026-07-26 and its comment reads "CLOSED
+2026-07-26 at F-198 iteration 009 closeout". No obligation remains outstanding,
+and this iteration's planning figures were always stated against 20 rather than
+26, so nothing downstream shifts.
 
 ### Actual capacity consumed — restated honestly (maintainer instruction, 2026-07-29)
 

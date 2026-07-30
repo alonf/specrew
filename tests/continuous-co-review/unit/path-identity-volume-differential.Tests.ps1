@@ -20,7 +20,20 @@ $ErrorActionPreference = 'Stop'
 Describe 'path identity differential property harness (the volume is the oracle)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
-        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/path-identity.ps1')
+
+        # The primitive under test is normally the repository's own. SPECREW_PATH_IDENTITY_UNDER_TEST
+        # lets the MUTATION GATE point this harness at a deliberately-broken primitive and require the
+        # harness to fail - the permanent form of a check that was, on its first revision, only "I
+        # verified this once by hand". See path-identity-mutation-gate.Tests.ps1.
+        # Loaded FIRST on purpose: review-design-context.ps1 self-loads the primitive only when the
+        # name is absent, so whichever copy is dot-sourced here wins for the whole run.
+        $script:PrimitiveUnderTest = if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_PATH_IDENTITY_UNDER_TEST)) {
+            $env:SPECREW_PATH_IDENTITY_UNDER_TEST
+        }
+        else {
+            Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/path-identity.ps1'
+        }
+        . $script:PrimitiveUnderTest
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-design-context.ps1')
 
         $script:VolumeOracleFixtures = [System.Collections.Generic.List[string]]::new()

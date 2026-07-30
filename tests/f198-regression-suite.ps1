@@ -87,6 +87,16 @@ $registry = @(
     @{ area = 'T069 production hook/writer capture - injected-context exclusion, complete instructions, contiguous crossing, idempotence'; path = 'tests/bootstrap/HookVerdictCapture.Tests.ps1'; kind = 'script'; serial = $true }
     @{ area = 'T069 dispatcher session-ownership delivery - sanitized genuine host identity as a clean provider argument'; path = 'tests/bootstrap/DispatcherTranscriptDelivery.Tests.ps1'; kind = 'script'; serial = $true }
     @{ area = 'reviewer containment (FR-008/SC-002)'; path = 'tests/continuous-co-review/unit/worktree-containment.Tests.ps1'; kind = 'pester' }
+    # The path-identity family was NOT in this registry, which is why "registry green" could be true
+    # through six rounds of path-identity defects. Registered 2026-07-29 so the phrase means something:
+    # the primitive itself, the machinery dedup, the volume-differential harness whose oracle is the
+    # filesystem, the mutation gate that proves that harness can FAIL, and the grant write-scope
+    # regression for DRIFT-198-I009-028.
+    @{ area = 'the ONE path-identity primitive + structural enforcement (DRIFT-198-I009-015/016/017/027/031/033)'; path = 'tests/continuous-co-review/unit/path-identity.Tests.ps1'; kind = 'pester' }
+    @{ area = 'path identity DIFFERENTIAL harness - the volume is the oracle (DRIFT-198-I009-032/033)'; path = 'tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1'; kind = 'pester' }
+    @{ area = 'differential harness falsifiability - mutation gate (maintainer decision 2026-07-29)'; path = 'tests/continuous-co-review/unit/path-identity-mutation-gate.Tests.ps1'; kind = 'pester'; serial = $true }
+    @{ area = 'machinery path resolution + case-distinct dedup (DRIFT-198-I009-016/019)'; path = 'tests/continuous-co-review/unit/worktree-reviewer-machinery-paths.Tests.ps1'; kind = 'pester' }
+    @{ area = 'reviewer-host grant write scope - one field of one row (DRIFT-198-I009-028)'; path = 'tests/continuous-co-review/unit/reviewer-host-grant-write-scope.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'reviewer origin-path hygiene (FR-009/SC-002)'; path = 'tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1'; kind = 'pester' }
     @{ area = 'bounded verification opt-in helper + regression evidence (FR-010)'; path = 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1'; kind = 'pester' }
     @{ area = 'no auto-verification + reviewer-invocation integrity (FR-010)'; path = 'tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1'; kind = 'pester' }

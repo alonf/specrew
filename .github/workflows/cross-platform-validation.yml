@@ -294,6 +294,13 @@ jobs:
               # machine here reproduces). Maintainer decision 2026-07-29: this, not another review round,
               # is the certification instrument for the path-identity surface.
               './tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1'
+              # The falsifiability gate for the harness above (maintainer decision 2026-07-29). It
+              # mutates the primitive and REQUIRES the harness to fail. It belongs in the matrix rather
+              # than only locally, because its `os-family` mutant - the DRIFT-198-I009-015 shape - is
+              # undetectable wherever the OS family happens to agree with the volume. Measured: it is
+              # invisible on Windows/NTFS and on ext4, and only the case-insensitive macOS leg can
+              # catch it. That leg is the whole reason this job runs three volumes.
+              './tests/continuous-co-review/unit/path-identity-mutation-gate.Tests.ps1'
               './tests/continuous-co-review/unit/review-harness-contract.Tests.ps1'
               './tests/continuous-co-review/unit/review-codex-copilot-harness.Tests.ps1'
               './tests/continuous-co-review/unit/review-cursor-antigravity-harness.Tests.ps1'
