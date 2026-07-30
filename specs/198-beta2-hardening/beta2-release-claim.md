@@ -82,14 +82,39 @@ accepted known defect cannot be expressed to the gate. (DRIFT-198-I009-034, in i
 
 | If you | Then |
 | --- | --- |
-| Run Specrew on a case-insensitive volume (default macOS, Windows) with no symlinks in the project | Limitations 1-3 are not reachable in normal operation. The derived-root paths and enumerated entries this code takes are the covered cases. |
+| Run Specrew on a case-insensitive volume (default macOS, Windows) and have **verified** there are no reparse points in the project | Limitations 1-3 are not reachable in normal operation. The derived-root paths and enumerated entries this code takes are the covered cases. **Do not assume this — verify it.** Reparse points arrive benignly and without any user intent: OneDrive / Dropbox / iCloud cloud-placeholder files, Windows directory junctions, and toolchain link farms (`node_modules` stores, package-manager caches, build output links) all create them. See the detection commands below. |
 | Have symlinks or junctions inside the project, especially under `.specrew/` | Limitations 1 and 2 are reachable. Prefer a project tree without reparse points beneath `.specrew/review/`, and do not place the authority store behind a link. |
 | Run on a case-sensitive volume (typical Linux) | Limitation 2 requires a case-folding volume and is not reachable. Limitation 1 is. |
 | Rely on the consumer applicability firewall for governance advisories | Limitation 4 applies: a case-distinct duplicate of a policy file may not be scanned. Avoid case-only filename distinctions in `docs/`, `specs/`, `.github/`. |
 
-None of these are remote-attacker paths. Each requires the ability to place a link inside the project
-tree, or a filename that differs only by case — i.e. an actor who can already write to the repository.
-They are integrity and correctness limits, not a remote compromise surface.
+### Detecting reparse points in your project
+
+"No symlinks" is not a safe default assumption — check it:
+
+```text
+# Symlinks recorded in the git index (mode 120000), any platform:
+git ls-files -s | findstr 120000          # Windows
+git ls-files -s | grep 120000             # POSIX
+
+# Reparse points on disk, Windows — junctions and cloud placeholders included:
+dir /AL /S
+
+# POSIX, including links whose target does not exist (the DRIFT-198-I009-042 case):
+find . -type l
+find . -xtype l                           # dangling links specifically
+```
+
+The git-index check matters most for the checkout case below: it shows links that arrive with someone
+else's commits rather than ones you created.
+
+### Threat model
+
+None of these are remote-attacker paths. Each requires a link inside the project tree, or a filename
+that differs only by case — i.e. an actor who can write to the repository, **or whose commits are
+checked out locally: git carries symlinks in tree objects, so checking out an untrusted branch, fork
+PR, or template repo materializes attacker-authored links without the local user creating one. This
+matters for Specrew specifically, which runs over branches under review.** They remain integrity and
+correctness limits, not a remote compromise surface.
 
 ## What is deliberately NOT claimed
 
