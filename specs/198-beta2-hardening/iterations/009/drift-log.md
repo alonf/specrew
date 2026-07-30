@@ -1019,6 +1019,7 @@ there. Widening the scan to `scripts/internal` whole immediately exposed a **SEV
 shortcut** that six review rounds and a systematic sweep never saw:
 `review-engine-resolution.ps1:8`, `$comparison = if ([OperatingSystem]::IsWindows()) {
 OrdinalIgnoreCase } else { Ordinal }`.
+
 - That is not cosmetic. `Test-SpecrewReviewRuntimePathUnderRoot` gates
   `Assert-SpecrewReviewRuntimePathContained`, which authorizes **deleting** a file named by an
   editable managed-file marker in the target project. On a case-insensitive macOS volume the
@@ -1044,6 +1045,7 @@ under `Set-StrictMode -Version Latest` reading an unset `$script:` variable THRO
 `The variable '$script:ContinuousCoReviewCaseSensitivityCache' cannot be retrieved because it has not
 been set` — the deployed co-review runtime could not load at all. Blocking, and invisible to every
 focused path-identity suite, which pass because they load the primitive the conventional way.
+
 - **Correction**: the memo is now initialized defensively inside the probe rather than trusting the
   file-level assignment to have run in the scope the function resolves against. Same family as
   DRIFT-198-I009-018 / -027 / -035: the primitive must be correct in whatever scope it is loaded into,
@@ -1069,11 +1071,24 @@ focused path-identity suite, which pass because they load the primitive the conv
   true; the impression given was not. Item 2's pre-authorization was conditioned on the full matrix
   being green, so the certifying review would have been requested against a red tree had the slot not
   been held back for an unrelated reason.
-- **Required correction (recorded, not done)**: the registry does not enumerate the bootstrap suites,
-  so no single local command reproduces the CI gate. Either register them or state explicitly, in the
-  evidence table, that "registry green" excludes them. Until then, a green registry is necessary and
-  not sufficient, and every certification claim must cite the CI conclusion per workflow rather than
-  one workflow's result.
+- **Third instance, same day**: after building a local gate of registry + bootstrap and getting both
+  green, `Specrew CI` failed again on `cdb7aee6` — this time on `Lint changed Markdown files`, the
+  F-033 markdownlint gate, with two MD032 violations in this very ledger entry. markdownlint IS
+  installed locally and the exact CI command
+  (`markdownlint '**/*.md' --ignore node_modules --ignore .squad --ignore .specify`) runs in seconds
+  and now exits 0. Three CI-only gates discovered by pushing, in one session, each time after
+  declaring a locally-constructed gate "clean".
+- **The actual lesson**: the failure mode is not any one missing suite, it is inferring the gate from
+  what is convenient to run instead of reading the workflow. The gate is whatever
+  file:///C:/Dev/specrew-beta2-hardening/.github/workflows/specrew-ci.yml and
+  file:///C:/Dev/specrew-beta2-hardening/.github/workflows/cross-platform-validation.yml execute — nothing less.
+- **Required correction (recorded, not done)**: the registry does not enumerate the bootstrap suites
+  or the lint step, so no single local command reproduces the CI gate. Either add a `verify-local`
+  entry point that runs exactly what the workflows run, or state explicitly in every evidence table
+  that "registry green" excludes bootstrap and lint. Until then a green registry is necessary and not
+  sufficient, and every certification claim must cite the conclusion PER WORKFLOW rather than one
+  workflow's result. Minimum local gate today: registry + bootstrap suites + the markdownlint command
+  above.
 
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 
