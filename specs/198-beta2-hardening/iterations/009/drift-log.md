@@ -1090,6 +1090,66 @@ focused path-identity suite, which pass because they load the primitive the conv
   workflow's result. Minimum local gate today: registry + bootstrap suites + the markdownlint command
   above.
 
+### DRIFT-198-I009-039 — the certification lane itself can report green when a suite fails in setup
+
+- **Status**: open; reported by the certifying review, NOT fixed — awaiting the human's decision
+- **Severity**: **blocking** — it is a false-green in the instrument designated to certify this surface
+- **Type**: verification-lane result detection
+- **Authority evidence**: `evidence/independent-review-f738f5cf-certify-result.json`, blocking finding,
+  at `.github/workflows/cross-platform-validation.yml:324`.
+- **Confirmed source evidence**: the lane runs
+  `$result = Invoke-Pester -Path $suite -Output Detailed -PassThru` and then
+  `if ($result.FailedCount -gt 0) { throw ... }`. A `BeforeAll` / `AfterAll` CONTAINER failure leaves
+  `FailedCount` at **zero** while `Result` is `Failed`, so the suite never throws and the leg stays
+  green — potentially with the per-volume measurement absent entirely.
+- **The repository already knew this.** `tests/f198-regression-suite.ps1:209-211` carries the comment
+  "FailedCount can remain zero for a failed BeforeAll/AfterAll container. Honor Pester's terminal
+  Result so suite-level failures never become green" and gates on `if ($r.Result -ne 'Passed')`. The
+  registry solved it; the matrix lane was never given the same rule.
+- **Why this one stings**: this exact failure SHAPE was observed locally earlier the same day.
+  `ProviderMirrorParity.Tests.ps1` failed as a discovery/container failure reporting
+  `Tests Passed: 0, Failed: 0` with `Container failed: 1`. In the matrix lane that would have been
+  GREEN. It was seen, diagnosed, and not connected to the lane's detection logic — while the lane was
+  simultaneously being declared the certification instrument for the path-identity surface.
+- **What it does and does not undermine**: the three-volume measurements reported for `f738f5cf` were
+  read directly out of the job logs, and the `[volume-oracle]` lines were present on all three legs,
+  so that evidence stands. What is NOT sound is the guarantee going forward: a future run where a
+  volume-oracle suite dies in `BeforeAll` would be indistinguishable from a passing one.
+- **Required correction**: require `Result -eq 'Passed'` (or otherwise fail on container state) for
+  every suite in the lane, matching the registry's rule.
+
+### DRIFT-198-I009-040 — a shipped consumer scanner folds file identities, and the structural test cannot see the spelling
+
+- **Status**: open; reported by the certifying review, NOT fixed — awaiting the human's decision
+- **Severity**: major — consumer-reachable, silently skips a file the FR-046 firewall must scan
+- **Type**: cross-platform path identity — dedup comparer
+- **Authority evidence**: `evidence/independent-review-f738f5cf-certify-result.json`, major finding,
+  at `extensions/specrew-speckit/scripts/test-consumer-assumptions.ps1:88`.
+- **Confirmed source evidence**: `Get-ConsumerAssumptionSurface` ends with
+  `@($files | Sort-Object FullName -Unique)`. `Sort-Object -Unique` is case-insensitive AND
+  culture-aware by default, so on a case-sensitive worktree holding `docs/Policy.md` and
+  `docs/policy.md` one file is discarded before scanning. An unqualified technology or delivery mandate
+  in the discarded file then produces no advisory finding, defeating the FR-046 applicability firewall.
+- **And the structural test I tightened for exactly this class cannot see it.** The rule matches
+  `Sort-Object\s+-Unique`, which requires `-Unique` to follow immediately. Verified directly:
+  `'@($files | Sort-Object FullName -Unique)' -match 'Sort-Object\s+-Unique'` is **False**, while
+  `-match 'Sort-Object\b[^|]*-Unique'` is **True**. The file IS inside the scanned roots; the pattern
+  is simply too narrow. DRIFT-198-I009-033's entry claims the class was closed at "all eight sites
+  plus four more"; that count was bounded by a regex that misses any spelling with a property argument
+  between the cmdlet and the switch.
+- **Relation**: the third distinct reason this dedup class has evaded enforcement — first the
+  `-CaseSensitive` spelling being ACCEPTED (-033), then the scan ROOT being too narrow (-037), now the
+  PATTERN being too narrow. The accepted residual "these structural tests are grep-based, not
+  AST-based" is the common cause of the second and third.
+- **Measured blast radius (before any fix)**: sweeping all three scan roots with
+  `Sort-Object\b[^|]*-Unique` while excluding what the current pattern already catches finds exactly
+  **2 sites** — `extensions/specrew-speckit/scripts/test-consumer-assumptions.ps1:88` and its
+  `.specify/extensions/` mirror, i.e. one defect in two trees. So the correction is small and bounded;
+  it is the ENFORCEMENT gap that is the substantive finding, not the volume of unfixed code.
+- **Required correction**: dedupe file identities ordinally, add a case-distinct fixture, widen the
+  structural pattern to catch `Sort-Object <property> -Unique`, and apply to BOTH trees (the canonical
+  source and the mirror) per DRIFT-198-I009-030 / -037.
+
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 
 - **Status**: open; backlog — product gap in Specrew itself, recorded at the maintainer's instruction
