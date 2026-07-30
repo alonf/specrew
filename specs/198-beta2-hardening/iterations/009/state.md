@@ -204,6 +204,40 @@ parser — explicitly not part of this slice. And the direct-reading habit stand
 rule fixed, the `[volume-oracle]` measurements are to be read out of the job logs rather than inferred
 from a green conclusion.
 
+## TERMINATION RULE FIRED — campaign ended, claim narrowed (2026-07-30)
+
+The final round `run-f198-i009-3d74f123-final` completed against digest `85bdfe01` with containment
+verified, validation valid, currentness current, completion complete, and both controller verification
+commands green. It reported **three findings, two of them major in this class**:
+
+- **DRIFT-198-I009-041** (major) — the review authority store contains paths LEXICALLY, so a reparse
+  point at the store root or any campaign/run ancestor redirects immutable authority-fact writes and
+  directory creation outside the store. Fourth appearance of the containment class after -011, -025,
+  -031 — in the one store whose integrity underwrites every certification claim here.
+- **DRIFT-198-I009-042** (major) — the case probe's flipped-spelling test uses
+  `Directory.Exists`/`File.Exists`, which follow the link target and report false for a DANGLING link,
+  so a listed dangling entry on a case-folding volume inverts the verdict and caches the wrong comparer.
+  A defect in the DRIFT-198-I009-032 correction written earlier the same day, and the differential
+  harness has ZERO link fixtures, so it was structurally unable to catch it.
+- **DRIFT-198-I009-043** (minor) — the case-distinct fixture that -040 explicitly required was never
+  added; only the regex self-test was. Recorded residual per the rule; does not block.
+
+Per the termination rule agreed in advance, two new major findings of this class **end the campaign**.
+No fix was attempted and no ninth round was requested. The beta2 release claim narrows instead, and the
+proposed wording is at
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta2-release-claim.md — it states what
+beta2 does claim (one enforced primitive, volume-derived semantics for enumerated entries, a falsifiable
+three-volume harness, the specific containment and dedup corrections), what it does not (seven named
+limitations), and what a consumer should do about each.
+
+**T079 is NOT closed and no iteration-closeout packet is presented**: certification did not pass, so the
+release-confidence task cannot be marked done. The iteration's closeout now depends on the maintainer's
+verdict on the narrowed claim rather than on a clean certification.
+
+Final tally for the record: **eight review rounds**, every round after the third finding defects
+introduced by the round before it. The instrument change (the volume as oracle) was a real improvement
+and is retained; what it did not do is make the surface converge.
+
 Certification evidence status against the maintainer's 2026-07-29 bar:
 
 | Required | Status |

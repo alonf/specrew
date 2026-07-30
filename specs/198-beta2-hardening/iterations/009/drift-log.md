@@ -1150,6 +1150,73 @@ focused path-identity suite, which pass because they load the primitive the conv
   structural pattern to catch `Sort-Object <property> -Unique`, and apply to BOTH trees (the canonical
   source and the mirror) per DRIFT-198-I009-030 / -037.
 
+### DRIFT-198-I009-041 — the authority store's containment is lexical, so a link can redirect the evidence chain
+
+- **Status**: open; reported by the final round. **NOT fixed — the termination rule fired.**
+- **Severity**: major security / governance-integrity defect (write path)
+- **Type**: path containment
+- **Authority evidence**: `evidence/independent-review-3d74f123-final-result.json`, major finding, at
+  `scripts/internal/continuous-co-review/review-authority-store.ps1:56`.
+- **Confirmed source evidence**: `Get-ReviewAuthorityStorePath` does `GetFullPath` plus a lexical
+  prefix comparison. `GetFullPath` folds `..` and separators but does NOT resolve reparse points, so a
+  symlink or junction at the store root or at any campaign/run ancestor passes the check;
+  `Directory.CreateDirectory` and `FileStream CreateNew` in `Write-ReviewAuthorityImmutableFact` then
+  follow it. The public command places this store at `.specrew/review/authority` inside the project, so
+  a project-controlled link can redirect immutable authority facts and directory creation outside the
+  intended store.
+- **Why this one is worse than its siblings**: this store holds the campaign's IMMUTABLE authority
+  facts — grants, reservations, spend, results. It is the evidence chain that every certification claim
+  in this iteration rests on. The identical containment class was closed for deletion
+  (DRIFT-198-I009-011), for the managed-file write (-025), and for the deployment mutators (-031). This
+  is its FOURTH appearance, in the one place whose integrity underwrites all the others.
+- **Required correction (deferred)**: resolve and contain every existing component, or reject reparse
+  points, before any authority-store enumeration, directory creation, read, or write; add a real
+  linked-ancestor regression.
+
+### DRIFT-198-I009-042 — the case probe's existence test follows links, so a dangling entry inverts the verdict
+
+- **Status**: open; reported by the final round. **NOT fixed — the termination rule fired.** This is a
+  defect in the correction written earlier the same day for DRIFT-198-I009-032.
+- **Severity**: major cross-platform path identity defect — in the primitive every path decision uses
+- **Type**: defect in the path-identity primitive itself
+- **Authority evidence**: `evidence/independent-review-3d74f123-final-result.json`, major finding, at
+  `scripts/internal/continuous-co-review/path-identity.ps1:73`.
+- **Confirmed source evidence**: `Get-ContinuousCoReviewCaseVerdictFromListing` correctly takes the real
+  entry name from ENUMERATION — that part of the -032 correction holds — but then decides whether the
+  flipped spelling resolves with `[IO.Directory]::Exists($candidate) -or [IO.File]::Exists($candidate)`.
+  Both APIs follow the link target and both return `$false` for a DANGLING symbolic link. So on a
+  case-folding volume holding a listed dangling entry `Alpha`, the flipped `alpha` lookup reports absent,
+  the function returns case-**SENSITIVE** on a case-**INSENSITIVE** volume, and caches that answer. The
+  wrong comparer then feeds containment, authority-store, verification-path, machinery, and digest
+  decisions — every consumer at once, which is the concentrated-risk property recorded under -032.
+- **The harness could not catch it, and that is the substantive lesson.** Measured: the differential
+  harness contains **zero** symlink, dangling-link, or reparse-point fixtures. Its oracle is what the OS
+  reports for real directories, so it is blind to entries whose existence check disagrees with their
+  presence in the listing. "The volume is the oracle" is a genuine improvement over authored
+  expectations, but the fixtures still have to span the state space, and link states were never in it.
+- **Required correction (deferred)**: use a link-aware directory-entry lookup that tests the entry
+  itself without following its target, and add a dangling-link fixture to the differential harness.
+
+### DRIFT-198-I009-043 — the case-distinct fixture DRIFT-198-I009-040 required was never added
+
+- **Status**: open; **recorded residual** — note/minor severity, so under the agreed termination rule it
+  does not block certification. It is nonetheless a failure to execute my own recorded correction.
+- **Severity**: minor test-coverage gap
+- **Type**: verification coverage
+- **Authority evidence**: `evidence/independent-review-3d74f123-final-result.json`, minor finding, at
+  `tests/unit/consumer-applicability-firewall.tests.ps1:52`.
+- **Confirmed observation**: DRIFT-198-I009-040's "Required correction" says, verbatim, "dedupe file
+  identities ordinally, add a case-distinct fixture, widen the structural pattern". The final slice
+  delivered the ordinal dedup and the widened pattern plus a regex self-test, and did **not** add the
+  case-distinct fixture. The existing firewall fixture still creates a single `docs/instructions.md`,
+  so no test runs the shipped scanner over `docs/Policy.md` and `docs/policy.md` and proves both reach
+  finding generation on a case-sensitive volume.
+- **Honest note**: the self-test I added pins the structural REGEX against previously-escaped spellings,
+  which is worth having, but it proves a matcher matches — not that the scanner scans both files. I
+  reported the slice as complete against a required correction I had only partly executed.
+- **Required correction (deferred)**: add a measured-volume fixture with mandates in both case-distinct
+  files and assert both are reported.
+
 ### DRIFT-198-I009-020 — retroactive iteration closeout has no first-class boundary crossing
 
 - **Status**: open; backlog — product gap in Specrew itself, recorded at the maintainer's instruction
