@@ -321,7 +321,14 @@ jobs:
             foreach ($suite in $suites) {
               Write-Host "--- deterministic suite: $suite" -ForegroundColor Cyan
               $result = Invoke-Pester -Path $suite -Output Detailed -PassThru
-              if ($result.FailedCount -gt 0) { throw "review-fault-suite-failed:$suite" }
+              # Honour Pester's TERMINAL Result, not just FailedCount. FailedCount stays ZERO for a
+              # failed BeforeAll/AfterAll container, so gating on it alone let this lane report green
+              # while a suite died in setup - with the per-volume measurement absent entirely
+              # (DRIFT-198-I009-039, blocking). tests/f198-regression-suite.ps1:209-211 already carried
+              # exactly this rule and this comment; the lane that was designated the path-identity
+              # certification instrument had never been given it. The shape is not hypothetical: it was
+              # observed the same day as `Tests Passed: 0, Failed: 0 / Container failed: 1`.
+              if ($result.Result -ne 'Passed') { throw "review-fault-suite-failed:$suite (result=$($result.Result) failed=$($result.FailedCount))" }
             }
           }
           if ($IsLinux) {

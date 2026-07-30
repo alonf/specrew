@@ -232,7 +232,13 @@ Describe 'path identity primitive' {
             foreach ($line in @(Get-Content -LiteralPath $file.FullName)) {
                 $lineNumber++
                 if ($line -match '^\s*#') { continue }
-                if ($line -match 'Sort-Object\s+-Unique') {
+                # `Sort-Object\s+-Unique` required the switch to follow the cmdlet IMMEDIATELY, so
+                # `Sort-Object FullName -Unique` was invisible - which is how DRIFT-198-I009-040 shipped
+                # in a consumer scanner while this very test claimed the class was closed. `[^|]*`
+                # keeps the match inside one pipeline stage so a later `-Unique` on a different cmdlet
+                # cannot be misattributed. Third widening of this rule: the accepted spelling (-033),
+                # then the scan root (-037), now the pattern itself.
+                if ($line -match 'Sort-Object\b[^|]*-Unique') {
                     # A dedup over something that is NOT a path (version strings, attempt counts,
                     # supplier identity tokens) is exempt, but only when it SAYS SO on the line. The
                     # marker is deliberately explicit: an unannotated dedup is treated as a path.
@@ -249,6 +255,20 @@ Describe 'path identity primitive' {
             }
         }
         @($offenders).Count | Should -Be 0 -Because "a path dedup must state its case rule; the default folds case (offenders: $($offenders -join ', '))"
+
+        # The RULE's own falsifiability. This pattern has now been widened three times, each time after
+        # a real defect slipped through it (-033 accepted `-CaseSensitive`, -037 had too narrow a scan
+        # root, -040 had too narrow a pattern). Pin the spellings that actually escaped, so narrowing it
+        # again fails here instead of shipping. A scan that finds zero offenders proves nothing unless
+        # the matcher is known to catch what it missed before.
+        $historicalEscapes = @(
+            '    @($files | Sort-Object FullName -Unique)'                       # DRIFT-198-I009-040
+            '$paths = @(@($a.Keys) + @($b.Keys) | Sort-Object -Unique -CaseSensitive)'  # DRIFT-198-I009-033
+            '$x = @($y | Sort-Object -Unique)'                                   # the original default-folding form
+        )
+        foreach ($escape in $historicalEscapes) {
+            $escape | Should -Match 'Sort-Object\b[^|]*-Unique' -Because "the dedup rule must still catch this previously-escaped spelling: $escape"
+        }
     }
 
     It 'STRUCTURAL: a containment guard present in the deployed mirror also exists in the canonical source' {

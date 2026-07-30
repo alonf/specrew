@@ -85,7 +85,19 @@ function Get-ConsumerAssumptionSurface {
         $candidate = Join-Path $Root $relative
         if (Test-Path -LiteralPath $candidate -PathType Leaf) { $null = $files.Add((Get-Item -LiteralPath $candidate)) }
     }
-    @($files | Sort-Object FullName -Unique)
+    # Dedupe file IDENTITIES ordinally. `Sort-Object FullName -Unique` is case-insensitive AND
+    # culture-aware, so on a case-sensitive worktree holding `docs/Policy.md` and `docs/policy.md` one
+    # file was silently dropped before scanning - and an unqualified technology or delivery mandate in
+    # the discarded file then produced no advisory finding at all, defeating the FR-046 applicability
+    # firewall (DRIFT-198-I009-040). Ordering stays `Sort-Object` because it is presentation only: the
+    # scan result does not depend on it, whereas MEMBERSHIP does.
+    $seenFullName = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $uniqueFiles = [System.Collections.Generic.List[object]]::new()
+    foreach ($candidateFile in $files) {
+        if ($null -eq $candidateFile) { continue }
+        if ($seenFullName.Add([string]$candidateFile.FullName)) { $uniqueFiles.Add($candidateFile) }
+    }
+    @($uniqueFiles | Sort-Object FullName)
 }
 
 $warnings = [System.Collections.ArrayList]::new()

@@ -178,6 +178,32 @@ primitive's ANSWERS, not that every caller can reach it) and DRIFT-198-I009-036 
 caller-contamination guard correctly fired on a concurrent edit made while it ran in the background —
 a process lesson, not a product defect).
 
+## Final slice and the agreed termination rule (maintainer decision, 2026-07-29)
+
+The certifying review `run-f198-i009-f738f5cf-certify` completed against digest `0e912d6d` with
+containment verified, validation valid, currentness current, completion complete, and both controller
+verification commands green — but did NOT certify: two findings,
+`can_approve_current: false`. DRIFT-198-I009-039 (blocking) found that the three-OS lane designated as
+the certification instrument gated on `FailedCount` alone, so a `BeforeAll`/`AfterAll` container
+failure left a leg green with the measurement absent; DRIFT-198-I009-040 (major, consumer-reachable)
+found `Sort-Object FullName -Unique` folding file identities in a shipped consumer scanner, in a
+spelling the structural rule could not see.
+
+The maintainer approved one final hard-scoped slice: the lane rule becomes `Result -eq 'Passed'`
+(the rule `tests/f198-regression-suite.ps1:209-211` already used), the two dedup sites are fixed in
+BOTH trees, and the structural pattern is widened.
+
+**Termination rule, agreed in advance:** if that final round reports ANY new blocking or major finding
+of this class — in these fixes or anywhere else — execution stops and the beta2 release claim narrows
+per the pre-decided fallback. Note-severity findings become recorded residuals and do not block
+certification. **There is no round nine.**
+
+Also decided: the "grep-based, not AST-based" residual is withdrawn as an accepted residual after its
+trigger fired twice, and becomes a scheduled replan task for AST-based enforcement via the PowerShell
+parser — explicitly not part of this slice. And the direct-reading habit stands: even with the lane
+rule fixed, the `[volume-oracle]` measurements are to be read out of the job logs rather than inferred
+from a green conclusion.
+
 Certification evidence status against the maintainer's 2026-07-29 bar:
 
 | Required | Status |
