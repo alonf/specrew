@@ -1,3 +1,42 @@
+## 2026-07-30 — F-198 iteration-010 plan: APPROVE WITH INSTRUCTIONS — stream A only, beta2 course 2
+
+### 2026-07-30 — Verdict: APPROVE WITH INSTRUCTIONS — advance iteration-closeout→plan for Iteration 010
+
+- **Decision ID**: f198-i010-plan-approval-stream-a-only
+- **Type**: approval
+- **Affected Requirement**: FR-008
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-30T06:10:00Z
+- **Disposition**: Split approved exactly as proposed — Iteration 010 is **stream A only**
+  (DRIFT-198-I009-041/-042/-043 plus the harness link-state fixtures); **stream B defers to
+  Iteration 011 in full** (F11, F1, F4/F4b, narrow F5/F9). **Review round cap: 3**, confirmed.
+  Planned at 20.0/20 SP with the correction allowance inside the certification task rather than
+  assumed free.
+- **Beta2 course**: **course 2** — narrow to the consumer-blocking subset and tag after
+  Iteration 011. Two iterations to a tag, not six and not one. The maintainer supplied the
+  consumer-reachability classification the Crew lacked, from the consumer manual test:
+  already delivered in 009 = F6, F12, F13, F15, F16; consumer-severe and must precede the tag
+  (Iteration 011) = **F11** premature verdict demand (risks false human authorization), **F10**
+  round-ceiling tax, **F17** non-convergent finality, **F1** first-boundary sync/marker; cheap
+  and consumer-visible if capacity allows = F2, F9, F7; beta3 = F3, F4/F4b, F5, F8, F14.
+  `beta2-release-claim.md` updates at each closeout.
+- **Rationale**: F10, F17 and F11 are exactly what prevented the maintainer's consumer manual
+  test from converging — five hygiene escalations, ceiling halts on every run, and a hook
+  demanding a verdict for a stage with no evidence. Tagging without them means every beta
+  consumer relives that session and returns feedback already in hand. The split itself is
+  evidence-based: Iteration 009's base work landed on estimate (19.5 planned / 19.5 delivered)
+  while its correction cycles consumed ~50 SP over eight rounds, so pairing two ~20 SP streams
+  would repeat 009's recorded mistake. T080-before-T082/T083 is the finding, not a preference:
+  DRIFT-198-I009-042 survived a green three-volume matrix precisely because the harness had no
+  link-state fixtures.
+- **Next Action**: Scaffold complete and validated (scoped governance PASS, markdownlint clean).
+  Stop at `before-implement` for explicit go-ahead; no code before that. Two standing
+  obligations: land the **F-register** before Iteration 011 opens — checking whether F-items map
+  to existing FRs before minting new ones, since the spec defines **FR-001..FR-065** and FR-046
+  already covers the consumer applicability firewall — and close Iteration 009 on its recorded
+  trigger only once T082/T083/T084 actually land.
+
 ## 2026-07-30 — F-198 iteration-009 closeout: termination rule fired, gap deferrals to iteration 010
 
 ### 2026-07-30 — Defer: DRIFT-198-I009-041/-042/-043 path-identity + containment cluster to iteration 010
