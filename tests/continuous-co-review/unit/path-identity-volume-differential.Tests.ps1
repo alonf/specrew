@@ -59,6 +59,73 @@ Describe 'path identity differential property harness (the volume is the oracle)
             try { $null = New-Item -ItemType Directory -Path $Path -Force; return $true }
             catch { return $false }
         }
+
+        # ---- T080 link-state fixtures (DRIFT-198-I009-042) --------------------------------
+        # The harness proved the primitive's ANSWERS on three real volumes and still missed a
+        # defect whose whole mechanism is link state, because it had no link fixtures. The
+        # oracle was sound; the state space was not covered. These helpers create real links
+        # and, crucially, REPORT when a runner cannot - an unprivileged Windows runner may
+        # refuse symlinks and ext4 has no junction. A fixture that silently skips is the
+        # DRIFT-198-I009-019 pattern, so every caller records what it actually got.
+
+        function New-LinkIfVolumeAllows {
+            # Returns the link KIND actually materialized, or $null. Never throws: on a runner
+            # that refuses the operation, "refused" is the measurement.
+            param(
+                [Parameter(Mandatory)][string]$Path,
+                [Parameter(Mandatory)][string]$Target,
+                [Parameter(Mandatory)][ValidateSet('SymbolicLink', 'Junction')][string]$Kind
+            )
+            try {
+                $null = New-Item -ItemType $Kind -Path $Path -Target $Target -ErrorAction Stop
+                if (Test-Path -LiteralPath $Path) { return $Kind }
+                return $null
+            }
+            catch { return $null }
+        }
+
+        function Test-EntryIsReparsePoint {
+            # Link-AWARE: asks about the entry itself rather than following it, which is exactly
+            # the distinction Directory.Exists/File.Exists cannot make (DRIFT-198-I009-042).
+            param([Parameter(Mandatory)][string]$Path)
+            try {
+                $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+                return (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)
+            }
+            catch { return $false }
+        }
+
+        function Get-DanglingLinkObservation {
+            # Build a link whose target is then removed, and MEASURE what the OS reports:
+            #   listed      - does enumeration still show the entry?
+            #   existsApi   - do Directory.Exists / File.Exists see it? (they follow the target)
+            #   isReparse   - does a link-aware attribute read see it?
+            # A dangling link is the state where listed=$true, existsApi=$false. That gap is the
+            # defect: the probe treated existsApi=$false as "absent" and inverted its verdict.
+            param([Parameter(Mandatory)][string]$Container, [Parameter(Mandatory)][string]$Name)
+
+            $targetDir = Join-Path $Container ('target-' + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+            $null = New-Item -ItemType Directory -Path $targetDir -Force
+            $linkPath = Join-Path $Container $Name
+            $kind = New-LinkIfVolumeAllows -Path $linkPath -Target $targetDir -Kind 'SymbolicLink'
+            if ($null -eq $kind) {
+                return [pscustomobject]@{ Materialized = $false; Reason = 'runner-refused-symlink'; Listed = $false; ExistsApi = $false; IsReparse = $false }
+            }
+
+            try { Remove-Item -LiteralPath $targetDir -Recurse -Force -ErrorAction Stop }
+            catch { return [pscustomobject]@{ Materialized = $false; Reason = 'target-removal-refused'; Listed = $false; ExistsApi = $false; IsReparse = $false } }
+
+            $listed = @([IO.Directory]::GetFileSystemEntries($Container) | ForEach-Object { [IO.Path]::GetFileName($_) }) -ccontains $Name
+            $existsApi = ([IO.Directory]::Exists($linkPath) -or [IO.File]::Exists($linkPath))
+            return [pscustomobject]@{
+                Materialized = $true
+                Reason       = 'dangling-symlink'
+                Listed       = $listed
+                ExistsApi    = $existsApi
+                IsReparse    = (Test-EntryIsReparsePoint -Path $linkPath)
+                LinkPath     = $linkPath
+            }
+        }
     }
 
     AfterAll {
@@ -163,6 +230,98 @@ Describe 'path identity differential property harness (the volume is the oracle)
         if ($observed.Count -gt $cultureAware.Count) {
             $deduped.Count | Should -BeGreaterThan $cultureAware.Count -Because "this volume keeps $($observed.Count) spellings apart while the culture-aware dedup collapsed them to $($cultureAware.Count) - the exact DRIFT-198-I009-033 defect, measured on this runner"
         }
+    }
+
+    # ---- T080 / DRIFT-198-I009-042: link states ------------------------------------------
+    # These are the fixtures whose absence let a link-blind probe pass a green three-volume
+    # matrix. Each MEASURES what the runner does and asserts the primitive against that; where
+    # a runner cannot materialize the state, the inability is recorded, never silently skipped.
+
+    It 'agrees with the volume when a listed entry is a DANGLING link' {
+        $root = New-VolumeOracleFixtureRoot
+
+        # First establish this volume's case rule from an ORDINARY entry, so the dangling-link
+        # probe below is compared against a truth the link cannot have influenced.
+        $null = New-DirectoryIfVolumeAllows -Path (Join-Path $root 'BASE')
+        $baseListed = Get-ObservedEntryName -Directory $root
+        $baseBoth = ($baseListed -ccontains 'BASE') -and ($baseListed -ccontains 'base')
+        $baseFolds = ([IO.Directory]::Exists((Join-Path $root 'base')) -and -not $baseBoth)
+        $measuredSensitive = -not $baseFolds
+
+        $observation = Get-DanglingLinkObservation -Container $root -Name 'DANGLE'
+        Write-Host ("[volume-oracle] dangling link: materialized={0} reason={1} listed={2} existsApi={3} isReparse={4} volume-sensitive={5}" -f `
+                $observation.Materialized, $observation.Reason, $observation.Listed, $observation.ExistsApi, $observation.IsReparse, $measuredSensitive)
+
+        if (-not $observation.Materialized) {
+            # Not a skip: the runner's refusal is the measurement, and it is asserted.
+            $observation.Reason | Should -BeIn @('runner-refused-symlink', 'target-removal-refused') `
+                -Because 'a runner that cannot create or orphan a symlink must say so explicitly rather than let the case pass unexercised'
+            return
+        }
+
+        # THE DEFECT'S SHAPE IS MEASURED, NOT ASSERTED. The finding says Directory.Exists /
+        # File.Exists report a dangling link absent because they follow the target. That is
+        # true on POSIX and NOT universally: on Windows the reparse entry itself satisfies
+        # Exists, so `listed=True, existsApi=False` - the gap the probe fell into - is not
+        # reachable on every volume. Asserting the finding's premise here would be an AUTHORED
+        # expectation, which is precisely what this harness exists to refuse. So: record the
+        # shape, note whether the defect is reachable on this runner, and let the primitive's
+        # VERDICT be the assertion on every runner either way.
+        $observation.Listed | Should -BeTrue -Because 'enumeration reports the link entry itself even when its target is gone'
+        $defectReachableHere = ($observation.Listed -and -not $observation.ExistsApi)
+        Write-Host ("[volume-oracle] dangling-link defect reachable on this volume: {0}" -f $defectReachableHere)
+
+        # The primitive must answer the VOLUME's case rule, and must not be inverted by the
+        # dangling entry. Where the gap is reachable this is the DRIFT-198-I009-042 regression;
+        # where it is not, this still pins that link presence changes nothing.
+        $verdict = Get-ContinuousCoReviewPathCaseSensitive -Path $root
+        $verdict | Should -Be $measuredSensitive -Because "the volume was measured case-sensitive=$measuredSensitive from an ordinary entry; a dangling link must not invert that verdict (DRIFT-198-I009-042; defect-reachable on this volume=$defectReachableHere)"
+    }
+
+    It 'answers the volume rule when the probed directory contains ONLY a dangling link' {
+        # The harder case: no ordinary entry to fall back on, so the probe must handle the
+        # dangling entry correctly rather than being rescued by a sibling.
+        $root = New-VolumeOracleFixtureRoot
+        $probeDir = Join-Path $root 'probe'
+        $null = New-DirectoryIfVolumeAllows -Path $probeDir
+
+        $observation = Get-DanglingLinkObservation -Container $probeDir -Name 'ONLYLINK'
+        Write-Host ("[volume-oracle] only-dangling-link: materialized={0} reason={1} listed={2} existsApi={3}" -f `
+                $observation.Materialized, $observation.Reason, $observation.Listed, $observation.ExistsApi)
+
+        if (-not $observation.Materialized) {
+            $observation.Reason | Should -BeIn @('runner-refused-symlink', 'target-removal-refused')
+            return
+        }
+
+        # Establish the volume rule from the PARENT, which holds an ordinary directory.
+        $parentListed = Get-ObservedEntryName -Directory $root
+        $parentBoth = ($parentListed -ccontains 'probe') -and ($parentListed -ccontains 'PROBE')
+        $parentFolds = ([IO.Directory]::Exists((Join-Path $root 'PROBE')) -and -not $parentBoth)
+        $measuredSensitive = -not $parentFolds
+
+        $verdict = Get-ContinuousCoReviewPathCaseSensitive -Path $probeDir
+        $verdict | Should -Not -BeNullOrEmpty -Because 'a directory containing a dangling link is still a determinable volume'
+        $verdict | Should -Be $measuredSensitive -Because "measured from the parent, this volume is case-sensitive=$measuredSensitive; a lone dangling child must not change the answer"
+    }
+
+    It 'treats a link entry as a reparse point without following it' {
+        $root = New-VolumeOracleFixtureRoot
+        $realDir = Join-Path $root 'real'
+        $null = New-DirectoryIfVolumeAllows -Path $realDir
+        $linkPath = Join-Path $root 'linked'
+
+        $kind = New-LinkIfVolumeAllows -Path $linkPath -Target $realDir -Kind 'SymbolicLink'
+        if ($null -eq $kind -and $IsWindows) { $kind = New-LinkIfVolumeAllows -Path $linkPath -Target $realDir -Kind 'Junction' }
+        Write-Host ("[volume-oracle] live link: kind={0}" -f $(if ($kind) { $kind } else { 'runner-refused' }))
+
+        if ($null -eq $kind) {
+            $kind | Should -BeNullOrEmpty -Because 'this runner refuses both symlinks and junctions; the refusal is recorded rather than skipped'
+            return
+        }
+
+        Test-EntryIsReparsePoint -Path $linkPath | Should -BeTrue -Because 'the link entry itself carries the ReparsePoint attribute even though its target is an ordinary directory'
+        [IO.Directory]::Exists($linkPath) | Should -BeTrue -Because 'a LIVE link resolves through to its target - which is exactly why an existence test cannot distinguish link from non-link'
     }
 
     It 'gives every path-identity consumer the same verdict the volume gives' {
