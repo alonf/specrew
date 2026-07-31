@@ -312,6 +312,47 @@ Describe 'path identity differential property harness (the volume is the oracle)
         $verdict | Should -Be $measuredSensitive -Because "measured from the parent, this volume is case-sensitive=$measuredSensitive; a lone dangling child must not change the answer"
     }
 
+    It 'measures whether ANY link construction produces the listed-but-not-existing gap' {
+        # DRIFT-198-I009-042's premise is that `Directory.Exists -or File.Exists` reports FALSE
+        # for a broken link while enumeration still lists it. That gap is the precondition for
+        # the defect. Measured on all three volumes for a plain dangling link: it does NOT hold
+        # (fileExists stays true). This case sweeps the other constructions that could produce
+        # it - a symlink LOOP, where stat() fails with ELOOP while lstat() succeeds - so the
+        # conclusion rests on measurement per runner rather than on reasoning about API
+        # semantics, which is what produced the wrong premise in the first place.
+        $root = New-VolumeOracleFixtureRoot
+        $results = [System.Collections.Generic.List[string]]::new()
+
+        $danglePath = Join-Path $root 'GAPDANGLE'
+        if (New-LinkIfVolumeAllows -Path $danglePath -Target (Join-Path $root 'never-here') -Kind 'SymbolicLink') {
+            $gap = (@([IO.Directory]::GetFileSystemEntries($root) | ForEach-Object { [IO.Path]::GetFileName($_) }) -ccontains 'GAPDANGLE') -and
+                   -not ([IO.Directory]::Exists($danglePath) -or [IO.File]::Exists($danglePath))
+            $results.Add("dangling=$gap")
+        }
+        else { $results.Add('dangling=runner-refused') }
+
+        $loopA = Join-Path $root 'GAPLOOPA'
+        $loopB = Join-Path $root 'GAPLOOPB'
+        if ((New-LinkIfVolumeAllows -Path $loopA -Target $loopB -Kind 'SymbolicLink') -and
+            (New-LinkIfVolumeAllows -Path $loopB -Target $loopA -Kind 'SymbolicLink')) {
+            $gap = (@([IO.Directory]::GetFileSystemEntries($root) | ForEach-Object { [IO.Path]::GetFileName($_) }) -ccontains 'GAPLOOPA') -and
+                   -not ([IO.Directory]::Exists($loopA) -or [IO.File]::Exists($loopA))
+            $results.Add("loop=$gap")
+        }
+        else { $results.Add('loop=runner-refused') }
+
+        Write-Host ("[volume-oracle] exists-gap sweep: {0}" -f ([string]::Join(' ', $results)))
+
+        # No assertion that the gap MUST or MUST NOT exist - that is the thing being measured.
+        # What is asserted: the primitive answers the volume's rule whatever the sweep found.
+        $null = New-DirectoryIfVolumeAllows -Path (Join-Path $root 'REF')
+        $listed = Get-ObservedEntryName -Directory $root
+        $bothRef = ($listed -ccontains 'REF') -and ($listed -ccontains 'ref')
+        $measuredSensitive = -not ([IO.Directory]::Exists((Join-Path $root 'ref')) -and -not $bothRef)
+        (Get-ContinuousCoReviewPathCaseSensitive -Path $root) | Should -Be $measuredSensitive `
+            -Because "whatever link states this volume can hold, the case verdict must still follow the volume (sweep: $([string]::Join(' ', $results)))"
+    }
+
     It 'treats a link entry as a reparse point without following it' {
         $root = New-VolumeOracleFixtureRoot
         $realDir = Join-Path $root 'real'
