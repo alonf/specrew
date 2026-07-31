@@ -96,32 +96,39 @@ Describe 'path identity differential property harness (the volume is the oracle)
         }
 
         function Get-DanglingLinkObservation {
-            # Build a link whose target is then removed, and MEASURE what the OS reports:
+            # MEASURE what the OS reports for a dangling link:
             #   listed      - does enumeration still show the entry?
-            #   existsApi   - do Directory.Exists / File.Exists see it? (they follow the target)
+            #   existsApi   - does `Directory.Exists -or File.Exists` see it? (the probe's own test)
             #   isReparse   - does a link-aware attribute read see it?
-            # A dangling link is the state where listed=$true, existsApi=$false. That gap is the
-            # defect: the probe treated existsApi=$false as "absent" and inverted its verdict.
+            # The gap the probe falls into is listed=$true with existsApi=$false.
+            #
+            # CONSTRUCTION MATTERS, and the first attempt got it wrong. Creating a DIRECTORY
+            # symlink and then deleting its target leaves `Directory.Exists` TRUE on Windows
+            # (the reparse entry satisfies it) and measured TRUE on all three CI volumes, so
+            # that construction never produced the state at all. A link whose target NEVER
+            # existed is created as a FILE-type link, and then `Directory.Exists` is false
+            # while `File.Exists` is true on Windows - so the probe's `-or` is still true here,
+            # and the gap remains unreachable on Windows. On POSIX both calls stat() and both
+            # fail for a broken link, which is where the defect lives.
             param([Parameter(Mandatory)][string]$Container, [Parameter(Mandatory)][string]$Name)
 
-            $targetDir = Join-Path $Container ('target-' + [Guid]::NewGuid().ToString('N').Substring(0, 8))
-            $null = New-Item -ItemType Directory -Path $targetDir -Force
             $linkPath = Join-Path $Container $Name
-            $kind = New-LinkIfVolumeAllows -Path $linkPath -Target $targetDir -Kind 'SymbolicLink'
+            $neverExisted = Join-Path $Container ('no-such-target-' + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+            $kind = New-LinkIfVolumeAllows -Path $linkPath -Target $neverExisted -Kind 'SymbolicLink'
             if ($null -eq $kind) {
                 return [pscustomobject]@{ Materialized = $false; Reason = 'runner-refused-symlink'; Listed = $false; ExistsApi = $false; IsReparse = $false }
             }
 
-            try { Remove-Item -LiteralPath $targetDir -Recurse -Force -ErrorAction Stop }
-            catch { return [pscustomobject]@{ Materialized = $false; Reason = 'target-removal-refused'; Listed = $false; ExistsApi = $false; IsReparse = $false } }
-
             $listed = @([IO.Directory]::GetFileSystemEntries($Container) | ForEach-Object { [IO.Path]::GetFileName($_) }) -ccontains $Name
-            $existsApi = ([IO.Directory]::Exists($linkPath) -or [IO.File]::Exists($linkPath))
+            $dirExists = [IO.Directory]::Exists($linkPath)
+            $fileExists = [IO.File]::Exists($linkPath)
             return [pscustomobject]@{
                 Materialized = $true
-                Reason       = 'dangling-symlink'
+                Reason       = 'symlink-to-never-existing-target'
                 Listed       = $listed
-                ExistsApi    = $existsApi
+                ExistsApi    = ($dirExists -or $fileExists)
+                DirExists    = $dirExists
+                FileExists   = $fileExists
                 IsReparse    = (Test-EntryIsReparsePoint -Path $linkPath)
                 LinkPath     = $linkPath
             }
@@ -249,13 +256,13 @@ Describe 'path identity differential property harness (the volume is the oracle)
         $measuredSensitive = -not $baseFolds
 
         $observation = Get-DanglingLinkObservation -Container $root -Name 'DANGLE'
-        Write-Host ("[volume-oracle] dangling link: materialized={0} reason={1} listed={2} existsApi={3} isReparse={4} volume-sensitive={5}" -f `
-                $observation.Materialized, $observation.Reason, $observation.Listed, $observation.ExistsApi, $observation.IsReparse, $measuredSensitive)
+        Write-Host ("[volume-oracle] dangling link: materialized={0} reason={1} listed={2} dirExists={3} fileExists={4} existsApi={5} isReparse={6} volume-sensitive={7}" -f `
+                $observation.Materialized, $observation.Reason, $observation.Listed, $observation.DirExists, $observation.FileExists, $observation.ExistsApi, $observation.IsReparse, $measuredSensitive)
 
         if (-not $observation.Materialized) {
             # Not a skip: the runner's refusal is the measurement, and it is asserted.
-            $observation.Reason | Should -BeIn @('runner-refused-symlink', 'target-removal-refused') `
-                -Because 'a runner that cannot create or orphan a symlink must say so explicitly rather than let the case pass unexercised'
+            $observation.Reason | Should -Be 'runner-refused-symlink' `
+                -Because 'a runner that cannot create a symlink must say so explicitly rather than let the case pass unexercised'
             return
         }
 
@@ -290,7 +297,7 @@ Describe 'path identity differential property harness (the volume is the oracle)
                 $observation.Materialized, $observation.Reason, $observation.Listed, $observation.ExistsApi)
 
         if (-not $observation.Materialized) {
-            $observation.Reason | Should -BeIn @('runner-refused-symlink', 'target-removal-refused')
+            $observation.Reason | Should -Be 'runner-refused-symlink'
             return
         }
 
