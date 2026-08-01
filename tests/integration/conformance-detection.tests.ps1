@@ -669,6 +669,110 @@ try {
     if ($rhdOk.Blocked) { Fail "Case PH-d: the long-turn packet, once rendered, MUST be accepted. Out: $($rhdOk.Out)" }
     Write-Pass "Case PH-d: a long read-only investigation owes the packet; rendering it satisfies the demand (maintainer fixture d)"
 
+    # ---- Cases PH-g/PH-h (2026-08-01, reproduced live in the maintainer's session): the long-turn RAW LINE
+    #      count over-fires because Claude Code's transcript writer splits ONE logical assistant response into
+    #      SEVERAL separate "assistant"-typed JSONL records - one per content block (thinking, text, tool_use) -
+    #      all sharing the SAME top-level `message.id`. Measured directly against this session's own live
+    #      transcript before writing this fixture: consecutive raw assistant lines paired up under one shared
+    #      "id":"msg_..." value. PH-d's OWN fixture (above) cannot catch this: New-Transcript writes one raw
+    #      line per synthetic turn with NO message.id at all, so it always modeled "N turns = N lines" and never
+    #      exercised the fragmentation shape. These two cases build REAL-shaped raw JSONL directly.
+    function New-RawAssistantFragmentLines {
+        # ONE logical assistant message split into $FragmentCount raw JSONL records sharing one message.id -
+        # the exact shape measured live. ToolCall $true makes the SECOND-TO-LAST fragment a tool_use block (a
+        # real round-trip) while the LAST fragment stays text - $canAssess (below, in the provider) walks
+        # backward for the last non-empty assistant `.text` across raw lines, and a message whose ONLY content
+        # is thinking+tool_use (no text anywhere) leaves NOTHING for it to find. A minimum FragmentCount of 3
+        # when -ToolCall is set keeps a real trailing text fragment present, matching how an actual agent turn
+        # looks (reasoning, then a tool call, then closing text) rather than an unrealistic tool-only message.
+        param([Parameter(Mandatory)][string]$MessageId, [int]$FragmentCount = 2, [switch]$ToolCall)
+        if ($ToolCall -and $FragmentCount -lt 3) { $FragmentCount = 3 }
+        $toolFragmentIndex = if ($ToolCall) { $FragmentCount - 1 } else { -1 }
+        $lines = for ($f = 1; $f -le $FragmentCount; $f++) {
+            $contentType = if ($f -eq $toolFragmentIndex) { 'tool_use' } elseif ($f -eq 1) { 'thinking' } else { 'text' }
+            $content = switch ($contentType) {
+                'tool_use' { [pscustomobject]@{ type = 'tool_use'; id = ('toolu_' + [guid]::NewGuid().ToString('N').Substring(0, 20)); name = 'Bash'; input = [pscustomobject]@{ command = 'gh run list' } } }
+                'thinking' { [pscustomobject]@{ type = 'thinking'; thinking = "reasoning fragment $f for $MessageId" } }
+                default { [pscustomobject]@{ type = 'text'; text = "text fragment $f for $MessageId" } }
+            }
+            ([pscustomobject]@{
+                    parentUuid   = [guid]::NewGuid().ToString()
+                    isSidechain  = $false
+                    message      = [pscustomobject]@{ model = 'claude-opus-5'; id = $MessageId; type = 'message'; role = 'assistant'; content = @($content) }
+                    type         = 'assistant'
+                    uuid         = [guid]::NewGuid().ToString()
+                    timestamp    = (Get-Date).ToUniversalTime().ToString('o')
+                } | ConvertTo-Json -Depth 8 -Compress)
+        }
+        return $lines
+    }
+    function New-RawHumanLine {
+        param([string]$Text = 'go')
+        return (([pscustomobject]@{
+                    parentUuid = $null; isSidechain = $false; promptId = [guid]::NewGuid().ToString()
+                    type       = 'user'; message = [pscustomobject]@{ role = 'user'; content = $Text }
+                } | ConvertTo-Json -Depth 8 -Compress))
+    }
+    function New-RawTranscript { param([string]$Proj, [string[]]$Lines)
+        $dir = Join-Path $Proj '.specrew\runtime'; New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $path = Join-Path $dir ('transcript-' + [guid]::NewGuid().ToString('N') + '.jsonl')
+        [System.IO.File]::WriteAllLines($path, [string[]]$Lines, [System.Text.UTF8Encoding]::new($false))
+        return $path
+    }
+
+    # ---- Case PH-g: ZERO-TOOL conversational turn. FIVE distinct logical replies, none of them a tool call,
+    #      each fragmented into 3 raw lines by the transcript writer = 15 raw lines from only 5 real turns. The
+    #      OLD raw-line count reads this as "long" (>= 15) with ZERO tool calls anywhere - the maintainer's live
+    #      repro exactly. The FIX counts distinct message.id values: 5 < 15, so no demand.
+    $phg = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phg
+    New-HandoverSnapshot -Proj $phg -ChangedUserFiles 0
+    $phgLines = @(New-RawHumanLine -Text 'why does the packet fire on a plain reply?')
+    for ($m = 1; $m -le 5; $m++) { $phgLines += New-RawAssistantFragmentLines -MessageId "msg_phg$m" -FragmentCount 3 }
+    $thg = New-RawTranscript -Proj $phg -Lines $phgLines
+    $rhg = Invoke-Conformance -Proj $phg -TranscriptPath $thg
+    if ($rhg.Blocked) { Fail "Case PH-g: a ZERO-TOOL conversational turn (5 real replies, 15 raw fragment lines, 0 tool calls) MUST NOT demand the packet. Out: $($rhg.Out)" }
+    Write-Pass "Case PH-g: a zero-tool conversational turn stays quiet even when transcript fragmentation inflates the raw line count past the long-turn threshold"
+
+    # ---- Case PH-h: READ-ONLY STATUS-POLL turn. THREE real tool round-trips (e.g. `gh run list` checks), each
+    #      fragmented into 5 raw lines (thinking + tool_use + more thinking/text around it) = 15 raw lines from
+    #      only 3 real steps. Same over-fire shape as PH-g, with genuine tool calls present this time.
+    $phh = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phh
+    New-HandoverSnapshot -Proj $phh -ChangedUserFiles 0
+    $phhLines = @(New-RawHumanLine -Text 'check CI status')
+    for ($m = 1; $m -le 3; $m++) { $phhLines += New-RawAssistantFragmentLines -MessageId "msg_phh$m" -FragmentCount 5 -ToolCall }
+    $thh = New-RawTranscript -Proj $phh -Lines $phhLines
+    $rhh = Invoke-Conformance -Proj $phh -TranscriptPath $thh
+    if ($rhh.Blocked) { Fail "Case PH-h: a read-only status-poll turn (3 real tool round-trips, 15 raw fragment lines) MUST NOT demand the packet. Out: $($rhh.Out)" }
+    Write-Pass "Case PH-h: a short read-only status-poll turn stays quiet even when transcript fragmentation inflates the raw line count past the long-turn threshold"
+
+    # ---- Case PH-i: the fragmentation fix does NOT weaken the material-delta lane. A short, heavily-fragmented
+    #      turn that ALSO contains a real file-changing surface still demands the packet - material=true is
+    #      independent of the long-turn line-vs-id counting fix.
+    $phi = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phi
+    New-HandoverSnapshot -Proj $phi -ChangedUserFiles 2
+    $phiLines = @(New-RawHumanLine -Text 'fix it') + (New-RawAssistantFragmentLines -MessageId 'msg_phi1' -FragmentCount 3 -ToolCall)
+    $thi = New-RawTranscript -Proj $phi -Lines $phiLines
+    $rhi = Invoke-Conformance -Proj $phi -TranscriptPath $thi
+    if (-not $rhi.Blocked) { Fail "Case PH-i: a short turn with a REAL material file delta MUST still demand the packet (maintainer fixture c, unaffected by the long-turn fix). Out: $($rhi.Out)" }
+    if ($rhi.Out -notmatch 'five-part context packet') { Fail "Case PH-i: the material-delta demand is the five-part packet. Out: $($rhi.Out)" }
+    Write-Pass "Case PH-i: a genuine material-delta turn still demands the packet regardless of the long-turn fragmentation fix (maintainer fixture c)"
+
+    # ---- Case PH-j: the fix does not WEAKEN a genuinely long investigation. FIVE real tool round-trips, each
+    #      fragmented into 4 raw lines = 20 raw lines but only 5 distinct ids... below is the CORRECTED analog of
+    #      PH-d built the same raw way: enough DISTINCT real steps (>= 15) still demands the packet.
+    $phj = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phj
+    New-HandoverSnapshot -Proj $phj -ChangedUserFiles 0
+    $phjLines = @(New-RawHumanLine -Text 'investigate the flaky test across the whole suite')
+    for ($m = 1; $m -le 16; $m++) { $phjLines += New-RawAssistantFragmentLines -MessageId "msg_phj$m" -FragmentCount 2 -ToolCall }
+    $thj = New-RawTranscript -Proj $phj -Lines $phjLines
+    $rhj = Invoke-Conformance -Proj $phj -TranscriptPath $thj
+    if (-not $rhj.Blocked) { Fail "Case PH-j: 16 DISTINCT real tool round-trips MUST still demand the packet - the fix must not silence a genuinely long investigation. Out: $($rhj.Out)" }
+    Write-Pass "Case PH-j: a genuinely long investigation (16 distinct real steps) still demands the packet - the fix narrows the count, it does not raise the bar"
+
     # ---- Case PH-f: BOUNDARY stop contract UNCHANGED - the six-section directive + the exact verdict marker,
     #      even with a session baseline on disk (the baseline lane never weakens boundary authorization).
     $phf = New-Fixture -Working 'plan' -LastAuth 'clarify'

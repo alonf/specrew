@@ -266,13 +266,30 @@ function Get-SpecrewLongTurnSignal {
     # Maintainer 2026-07-14 fixture (d): a GENUINELY LONG read-only investigation owes the five-part packet even
     # when no file changed - the human's re-entry cost is the turn itself, not the diff. DETERMINISTIC + CHEAP: a
     # raw string scan (NO per-line JSON parse - the T099 perf doctrine) of the transcript tail counts assistant
-    # entries SINCE the last HUMAN user line (a '"type":"user"' line WITHOUT a '"tool_use_id"' marker - tool
-    # results ride user-role lines on Claude-format transcripts). Count >= the threshold -> long; with no human
-    # line in the window every assistant line in the tail counts, so a saturated window reads long by count
-    # alone while a short no-human transcript stays quiet. A host whose transcript lines carry neither marker counts 0 and is never
-    # long (fail-open - the documented honest ceiling; the material-delta lane still enforces there). The hash
-    # keys the enforcement to the LAST HUMAN line, which is STABLE across a forced-continue loop, so consecutive
-    # packet-less retries accumulate on ONE loop-guard key and the block cap can trip (never an uncapped loop).
+    # TURNS SINCE the last HUMAN user line (a '"type":"user"' line WITHOUT a '"tool_use_id"' marker - tool
+    # results ride user-role lines on Claude-format transcripts).
+    #
+    # DRIFT-198-I0NN-0NN (2026-08-01, reproduced live in the maintainer's session): raw LINE count over-fired.
+    # Claude Code's transcript writer splits ONE logical assistant response into SEVERAL separate
+    # "assistant"-typed JSONL records - one per content block (a thinking block, a text block, a tool_use block)
+    # - all sharing the SAME top-level `message.id`. Measured directly against this session's own live
+    # transcript: consecutive raw assistant lines paired up under one shared `"id":"msg_..."` value. A SINGLE
+    # purely conversational reply with ZERO tool calls, split into a thinking block plus a text block, already
+    # read as multiple "entries" before any tool ran at all; a short 2-3-call read-only status-poll turn (each
+    # call contributing a thinking+tool_use PAIR under its own message id) could cross the threshold the same
+    # way a genuinely long, many-STEP investigation was meant to. The count now dedupes by `message.id`, so ONE
+    # logical response counts ONCE regardless of how many raw lines the writer split it into - restoring the
+    # original intent (count STEPS, not fragments) without changing the threshold or the anchor. A line whose
+    # id cannot be extracted (a synthetic/legacy transcript, or an unrecognized shape) still counts on its own -
+    # fail toward STILL counting, never toward silently going quiet, matching this function's existing
+    # fail-open direction for shapes it does not recognize.
+    #
+    # Count >= the threshold -> long; with no human line in the window every assistant TURN in the tail counts,
+    # so a saturated window reads long by count alone while a short no-human transcript stays quiet. A host whose
+    # transcript lines carry neither marker counts 0 and is never long (fail-open - the documented honest
+    # ceiling; the material-delta lane still enforces there). The hash keys the enforcement to the LAST HUMAN
+    # line, which is STABLE across a forced-continue loop, so consecutive packet-less retries accumulate on ONE
+    # loop-guard key and the block cap can trip (never an uncapped loop).
     param([AllowNull()][string]$TranscriptPath)
     $result = [pscustomobject]@{ long = $false; assistant_entries = 0; hash = '' }
     try {
@@ -280,10 +297,17 @@ function Get-SpecrewLongTurnSignal {
         $tail = @(Get-Content -LiteralPath $TranscriptPath -Tail 200 -Encoding UTF8 -ErrorAction Stop)
         $assistantRx = [regex]::new('"type"\s*:\s*"assistant"')
         $userRx = [regex]::new('"type"\s*:\s*"user"')
+        $messageIdRx = [regex]::new('"id"\s*:\s*"(msg_[^"]*)"')
+        $seenMessageIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         $count = 0; $humanLine = $null
         for ($i = $tail.Count - 1; $i -ge 0; $i--) {
             $ln = [string]$tail[$i]
-            if ($assistantRx.IsMatch($ln)) { $count++; continue }
+            if ($assistantRx.IsMatch($ln)) {
+                $idMatch = $messageIdRx.Match($ln)
+                if ($idMatch.Success) { if ($seenMessageIds.Add($idMatch.Groups[1].Value)) { $count++ } }
+                else { $count++ }
+                continue
+            }
             if ($userRx.IsMatch($ln) -and -not $ln.Contains('"tool_use_id"')) { $humanLine = $ln; break }
         }
         $result.assistant_entries = $count

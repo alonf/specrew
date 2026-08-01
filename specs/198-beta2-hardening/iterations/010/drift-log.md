@@ -222,3 +222,67 @@ this datum exists to name.
 - **Required correction (deferred)**: add `rounds` (and `budget`) to the supported
   `iteration_bounding` vocabulary, with the round cap as a first-class configured value the
   validator can check against the certification section.
+
+### DRIFT-198-I010-003 — the material-work Stop packet over-fired on turns with no material work
+
+- **Status**: resolved 2026-08-01. Fixed as a priority instruction, spending part of the slack T083's
+  withdrawal freed, per explicit maintainer override of the "do not backfill slack" guardrail — this
+  is exactly what slack is for.
+- **Severity**: major, consumer-reachable on every host running the governed Stop hook — alarm-fatigue
+  class, actively degrading the human's trust in the packet signal
+- **Type**: transcript-heuristic miscounting
+- **Reported**: live, in the maintainer's own concurrent session with the Reviewer role, on a turn
+  containing ZERO tool calls — pure conversational analysis. The Stop hook demanded the five-part
+  packet anyway. This had been an open irritant "for days"; prior attempts to fix it at the
+  instruction-text level (the refocus discipline already states "quick discussion... stays
+  conversational; length alone does not count") did not hold, because the enforcement mechanism never
+  implemented that policy.
+- **Confirmed root cause, measured against this session's OWN live transcript
+  (`83188c58-3c60-434c-92d8-4eb830ec52a2.jsonl`) before writing any fix**:
+  `Get-SpecrewLongTurnSignal` in `specrew-conformance-provider.ps1` counted RAW `"type":"assistant"`
+  JSONL lines since the last human message, on the theory that line count approximates turn count.
+  It does not. Claude Code's transcript writer splits ONE logical assistant response into SEVERAL
+  separate JSONL records — one per content block (a thinking block, a text block, a tool_use block) —
+  all sharing the SAME top-level `message.id`. Grepped directly: consecutive raw assistant lines in
+  the live transcript paired up under one shared `"id":"msg_..."` value. A single verbose,
+  zero-tool-call reply, split into a thinking fragment plus several text fragments, could already read
+  as multiple "entries" before any tool ran; a short 2-3-call read-only status-poll turn (each call
+  contributing a thinking+tool_use pair under its own message id) could cross the 15-entry threshold
+  the same way a genuinely long, many-STEP investigation was meant to.
+- **Why the existing regression test (case PH-d, 2026-07-14) could not have caught this**: PH-d's own
+  fixture helper (`New-Transcript`) writes ONE raw line per synthetic "turn" with NO `message.id`
+  field at all — it always modeled "N turns = N lines" and never exercised the fragmentation shape
+  that real transcripts produce. The bug was invisible to the very test written to guard this lane.
+- **Correction**: the count now dedupes by `message.id` (extracted via a cheap regex, preserving the
+  documented "no per-line JSON parse" performance doctrine), so ONE logical response counts ONCE
+  regardless of how many raw lines the writer split it into. A line whose id cannot be extracted (a
+  synthetic/legacy transcript, or an unrecognized shape) still counts on its own — fail toward STILL
+  counting, never toward silently going quiet, matching the function's existing fail-open direction.
+  Applied identically to both `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`
+  (canonical) and `.specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1` — the
+  LATTER is what this repository's own live Stop hook actually executes
+  (`.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1`), confirmed identical to
+  canonical in this function's body before either was touched.
+- **Four new regression fixtures added to `tests/integration/conformance-detection.tests.ps1`** (cases
+  PH-g/h/i/j), built with a NEW raw-JSONL helper that faithfully reproduces the fragmentation shape
+  (unlike `New-Transcript`):
+  - PH-g: 5 real zero-tool replies fragmented into 15 raw lines — MUST NOT block. RED before the fix.
+  - PH-h: 3 real tool round-trips fragmented into 15 raw lines — MUST NOT block. RED before the fix.
+  - PH-i: a short, heavily-fragmented turn that ALSO has a real file-changing surface — MUST still
+    block (the material-delta lane is independent of this fix; unaffected either way).
+  - PH-j: 16 genuinely distinct real tool round-trips — MUST still block. Proves the fix narrows the
+    COUNT, it does not raise the BAR: a genuinely long investigation still owes the packet.
+- **Two defects found and fixed in the FIXTURES themselves while proving this, both instructive**:
+  (1) PH-j's first draft ended every synthetic message in a bare `tool_use` fragment with no trailing
+  text anywhere in the transcript. The provider's SEPARATE `$lastAssistantText` extraction (used to
+  decide whether a stop is even assessable, and whether a packet is already present) walks backward
+  for the last non-empty assistant `.text` — with none anywhere, `$canAssess` was false and NOTHING
+  downstream ever evaluated, independent of the long-turn fix entirely. A real agent turn ending on
+  Stop always has SOME trailing text; the fixture was unrealistic, not the product. Fixed by requiring
+  a minimum 3-fragment shape (`thinking` → `tool_use` → `text`) whenever `-ToolCall` is set.
+  (2) Diagnosing this required extracting the target function from the live provider file into an
+  isolated probe script; the naive extraction via `grep -v` piping stripped CRLF to LF, and a blind
+  restore would have shown as a whole-file diff. Verified with `diff` on CR-stripped copies of both
+  the pre- and post-instrumentation files before trusting the result, then explicitly restored CRLF.
+- **Registry**: `tests/f198-regression-suite.ps1:160` already covers
+  `conformance-detection.tests.ps1`; no new registration needed. Full suite: 75/75 passed, exit 0.
