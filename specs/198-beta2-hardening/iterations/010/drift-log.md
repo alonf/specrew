@@ -300,3 +300,19 @@ this datum exists to name.
   the pre- and post-instrumentation files before trusting the result, then explicitly restored CRLF.
 - **Registry**: `tests/f198-regression-suite.ps1:160` already covers
   `conformance-detection.tests.ps1`; no new registration needed. Full suite: 75/75 passed, exit 0.
+
+### T085 pre-certification evidence — three-volume matrix, read directly from job logs
+
+Measured at `493128d3` (stream A complete: T080/T081/T082/T084 delivered, T083 withdrawn), per the
+plan's own standard — measurements pulled from the job logs, not inferred from a green conclusion.
+
+| Leg | Measured volume | Dangling-link defect (DRIFT-198-I009-042) | os-family mutant |
+| --- | --- | --- | --- |
+| windows-latest / NTFS | case-sensitive=False | not reachable | disagree=False → undetectable here |
+| ubuntu-latest / ext4 | case-sensitive=True, `[REPO, Repo]` | not reachable | disagree=False → undetectable here |
+| macos-latest / APFS | case-sensitive=False | not reachable | **disagree=True, harness-failed=8, CAUGHT-HERE-REQUIRED** |
+
+Consistent with T080's original finding: the dangling-link and symlink-loop constructions both measure
+`gap=False` on all three volumes (DRIFT-198-I010-002's disposition holds under repeated measurement),
+and the macOS leg remains the only one that can catch the historical OS-family mutant — the harness's
+falsifiability is intact after every commit in this iteration, not just the one that introduced it.
