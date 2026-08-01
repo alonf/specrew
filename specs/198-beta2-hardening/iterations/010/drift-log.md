@@ -157,6 +157,28 @@ caught at intake.
 claim requires execution. Confirming the first and recording the pair as confirmed is the failure mode
 this datum exists to name.
 
+### DRIFT-198-I009-041 — T082 corrected in Iteration 010
+
+- **Status**: resolved. `Get-ReviewAuthorityStorePath` is now the single choke point every read,
+  write, and enumeration in `review-authority-store.ps1` resolves through, and it rejects a reparse
+  point at the store root and at every existing ancestor component before returning a path. Verified
+  locally with the same A/B discipline used for the mutation gate: fixtures for a link AT the store
+  root, at a CAMPAIGN ancestor, and at a RUN ancestor.
+- **RED proof (pre-fix, git-checkout A/B)**: 3 of 15 failed —
+  `refuses to write through a reparse point AT THE STORE ROOT`,
+  `... at a CAMPAIGN ancestor`, `... at a RUN ancestor` — each because the write silently succeeded
+  and the fact landed inside the linked external directory rather than being refused.
+- **GREEN proof (post-fix)**: 15/15, including a sanity control asserting an ordinary unlinked store
+  root and ancestors still work.
+- **Probe evidence for the escape itself**, measured before writing any assertion: with the store
+  root a symlink to an external directory, `Write-ReviewAuthorityImmutableFact` returned
+  `created=True` and the fact file existed under the EXTERNAL target — confirming the vulnerability
+  as a real write-through-link, not merely a missed check.
+- **Unlike DRIFT-198-I009-042**, this defect is not platform-dependent in the same way — .NET's
+  `Directory.CreateDirectory`/`FileStream` follow reparse points identically on Windows and POSIX —
+  so local A/B proof plus the standard three-volume CI run is the applied rigor, rather than a
+  dedicated cross-platform RED push.
+
 ### DRIFT-198-I010-001 — the effort model cannot express a round-bounded iteration
 
 - **Status**: open; recorded at the plan boundary, not worked around

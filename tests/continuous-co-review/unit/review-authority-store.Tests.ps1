@@ -46,6 +46,79 @@ Describe 'Immutable review authority JSON store (T045)' {
             return Start-Process @parameters
         }
         function script:Quote-PsLiteral([string]$Value) { return "'" + $Value.Replace("'", "''") + "'" }
+
+        # T082 / DRIFT-198-I009-041 link-state fixtures. Never silently skipped
+        # (DRIFT-198-I009-019 pattern): a runner that refuses symlink creation reports the
+        # refusal as the measurement rather than letting the case pass unexercised.
+        function script:New-AuthorityStoreLinkFixture {
+            param([Parameter(Mandatory)][string]$LinkPath, [Parameter(Mandatory)][string]$Target)
+            try { $null = New-Item -ItemType SymbolicLink -Path $LinkPath -Target $Target -ErrorAction Stop; return $true }
+            catch { return $false }
+        }
+    }
+
+    It 'refuses to write through a reparse point AT THE STORE ROOT, and leaves the external target untouched' {
+        $outside = Join-Path $TestDrive 'root-link-outside'
+        $null = New-Item -ItemType Directory -Path $outside -Force
+        $storeLink = Join-Path $TestDrive 'root-link-store'
+
+        if (-not (New-AuthorityStoreLinkFixture -LinkPath $storeLink -Target $outside)) {
+            Set-ItResult -Skipped -Because 'this runner refuses symlink creation; the store-root-link case cannot be materialized here'
+            return
+        }
+
+        { Add-ReviewCampaignGrantFact -StoreRoot $storeLink -Fact (New-StoreGrant) } |
+            Should -Throw -ExpectedMessage '*review-store-root-link-unsupported*' `
+            -Because 'a reparse point AT the store root must be refused before any directory is created or file written through it'
+        @(Get-ChildItem -LiteralPath $outside -Recurse -File -ErrorAction SilentlyContinue).Count | Should -Be 0 `
+            -Because 'the external target the link points at must stay byte-for-byte untouched'
+    }
+
+    It 'refuses to write through a reparse point at a CAMPAIGN ancestor, and leaves the external target untouched' {
+        $store = Join-Path $TestDrive 'campaign-link-store'
+        $null = New-Item -ItemType Directory -Path $store -Force
+        $outside = Join-Path $TestDrive 'campaign-link-outside'
+        $null = New-Item -ItemType Directory -Path $outside -Force
+        $campaignsLink = Join-Path $store 'campaigns'
+
+        if (-not (New-AuthorityStoreLinkFixture -LinkPath $campaignsLink -Target $outside)) {
+            Set-ItResult -Skipped -Because 'this runner refuses symlink creation; the campaign-ancestor-link case cannot be materialized here'
+            return
+        }
+
+        { Add-ReviewCampaignGrantFact -StoreRoot $store -Fact (New-StoreGrant) } |
+            Should -Throw -ExpectedMessage '*review-store-path-link-unsupported*' `
+            -Because 'a reparse point at the CAMPAIGN ancestor must be refused before the grant is written through it'
+        @(Get-ChildItem -LiteralPath $outside -Recurse -File -ErrorAction SilentlyContinue).Count | Should -Be 0 `
+            -Because 'the external campaign-ancestor link target must stay untouched'
+    }
+
+    It 'refuses to write through a reparse point at a RUN ancestor, and leaves the external target untouched' {
+        $store = Join-Path $TestDrive 'run-link-store'
+        $null = New-Item -ItemType Directory -Path (Join-Path $store 'campaigns/cmp-demo') -Force
+        $outside = Join-Path $TestDrive 'run-link-outside'
+        $null = New-Item -ItemType Directory -Path $outside -Force
+        $runsLink = Join-Path $store 'campaigns/cmp-demo/runs'
+
+        if (-not (New-AuthorityStoreLinkFixture -LinkPath $runsLink -Target $outside)) {
+            Set-ItResult -Skipped -Because 'this runner refuses symlink creation; the run-ancestor-link case cannot be materialized here'
+            return
+        }
+
+        { Write-ReviewRunAuthorityFact -StoreRoot $store -CampaignId cmp-demo -RunId run-one -Stage requested -Fact (New-StoreRun) } |
+            Should -Throw -ExpectedMessage '*review-store-path-link-unsupported*' `
+            -Because 'a reparse point at the RUN ancestor must be refused before the run fact is written through it'
+        @(Get-ChildItem -LiteralPath $outside -Recurse -File -ErrorAction SilentlyContinue).Count | Should -Be 0 `
+            -Because 'the external run-ancestor link target must stay untouched'
+    }
+
+    It 'still accepts an ordinary, unlinked store root and ancestors' {
+        # Sanity control: the containment walk must not reject a ROOT or ancestor that is a real
+        # directory. Every ordinary test above and below this one already exercises this path;
+        # this makes the control explicit rather than implicit.
+        $store = Join-Path $TestDrive 'ordinary'
+        $result = Add-ReviewCampaignGrantFact -StoreRoot $store -Fact (New-StoreGrant)
+        $result.created | Should -BeTrue
     }
 
     It 'publishes with CreateNew, treats canonical identity as idempotent, and rejects conflicting overwrite' {

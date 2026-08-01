@@ -54,6 +54,19 @@ function Assert-ReviewAuthoritySafeRelativePath {
 }
 
 function Get-ReviewAuthorityStorePath {
+    # Lexical containment is NOT containment (DRIFT-198-I009-041). GetFullPath only folds '..'
+    # and separators, so a reparse point AT THE STORE ROOT, or at any CAMPAIGN/RUN ancestor
+    # beneath it, still compares as under the root while Directory.CreateDirectory,
+    # FileStream(CreateNew/Open), and Directory.EnumerateFiles all follow it outside the
+    # intended store. This store holds the campaign's IMMUTABLE authority facts - grants,
+    # reservations, spend, results - the evidence chain every certification claim in this
+    # repository's own review history rests on. Measured before this fix: a symlinked store
+    # root or a symlinked `campaigns/` ancestor causes a written fact to land, unrefused, inside
+    # the external link target (probe evidence recorded against T082 in the iteration-010 drift
+    # log). Fourth appearance of this containment class after DRIFT-198-I009-011 (retirement
+    # delete), -025 (managed-file write), -031 (deployment mutators - all five, one choke
+    # point). This module's every read, write, and enumeration resolves its path through this
+    # ONE function, so hardening it here covers the whole module rather than each call site.
     param(
         [Parameter(Mandatory)][string]$StoreRoot,
         [Parameter(Mandatory)][string]$RelativePath
@@ -65,6 +78,32 @@ function Get-ReviewAuthorityStorePath {
     # Store containment: refuse an aliased path rather than admit it when the volume is unknown.
     $comparison = Get-ContinuousCoReviewPathComparison -Path $root -WhenUndetermined 'same'
     if (-not $full.StartsWith($prefix, $comparison)) { throw "review-store-path-escape:$RelativePath" }
+
+    # The store root need not exist yet - CreateDirectory below creates the whole chain on a
+    # project's first-ever review, and nothing can be maliciously linked before it exists. Where
+    # it DOES exist, a reparse point there is refused before anything beneath it is touched.
+    if (Test-Path -LiteralPath $root) {
+        $rootItem = Get-Item -LiteralPath $root -Force -ErrorAction Stop
+        if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "review-store-root-link-unsupported:$StoreRoot"
+        }
+    }
+
+    # Walk every EXISTING component from the root down to the target - the campaign directory,
+    # the run directory, any intermediate kind folder (grants/reservations/spend/releases) - and
+    # refuse a reparse point at any of them. A not-yet-created component is skipped: it cannot
+    # redirect a write that has not reached it, and CreateDirectory will create it as an
+    # ordinary directory.
+    $relative = $full.Substring($root.Length).Trim([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $current = $root
+    foreach ($segment in @($relative -split '[\\/]' | Where-Object { -not [string]::IsNullOrEmpty($_) })) {
+        $current = Join-Path $current $segment
+        if (-not (Test-Path -LiteralPath $current)) { continue }
+        $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
+        if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "review-store-path-link-unsupported:$RelativePath"
+        }
+    }
     return $full
 }
 
