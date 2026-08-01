@@ -156,6 +156,36 @@ if ($deployedText -match '(?i)C:\\Dev\\Specrew|C:/Dev/Specrew|PowerShell termina
 $general = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/refocus/general.md') -Raw
 if ($general -notmatch 'Specrew is the methodology tool, never the project') { Write-Fail 'refocus identity inoculation is absent' } else { Write-Pass 'refocus explicitly separates governed project identity from the Specrew tool' }
 
+Write-Host 'Test 8: case-distinct surface files are BOTH scanned (T084 / DRIFT-198-I009-043)'
+# DRIFT-198-I009-040 (fixed in iteration 009): Get-ConsumerAssumptionSurface deduped file
+# identities with `Sort-Object FullName -Unique`, which is case-insensitive, so a case-distinct
+# duplicate was silently dropped before the FR-046 firewall ever scanned it. DRIFT-198-I009-043
+# records that the fix landed with a regex self-test but no fixture proving the SCANNER itself
+# reaches both files on a volume that actually holds them. This is that fixture. Measured, not
+# assumed, per the T080 discipline: a case-insensitive runner cannot materialize two case-distinct
+# files at all (the second Set-Content overwrites the first), so the volume is asked first and the
+# inability to exercise the case is recorded rather than silently skipped.
+$fixture = New-ConsumerFixture -Name 'case-distinct'
+$docsDir = Join-Path $fixture 'docs'
+$upperPath = Join-Path $docsDir 'Policy.md'
+$lowerPath = Join-Path $docsDir 'policy.md'
+'The project must run pytest before handoff.' | Set-Content -LiteralPath $upperPath -Encoding UTF8
+'The project must use GitHub for delivery.' | Set-Content -LiteralPath $lowerPath -Encoding UTF8
+$listed = @([IO.Directory]::GetFileSystemEntries($docsDir) | ForEach-Object { [IO.Path]::GetFileName($_) })
+$bothListed = ($listed -ccontains 'Policy.md') -and ($listed -ccontains 'policy.md')
+Write-Host ("  [volume-oracle] case-distinct fixture: listing=[{0}] bothListed={1}" -f ([string]::Join(', ', $listed)), $bothListed)
+if (-not $bothListed) {
+    Write-Host '  MEASURED: this volume folds case - the second Set-Content overwrote the first file, so only one on-disk entry exists here. The case-distinct scanning behaviour cannot be exercised on this runner; recorded, not silently skipped.' -ForegroundColor Yellow
+}
+else {
+    $result = Invoke-ConsumerCheck -FixtureRoot $fixture
+    $paths = @($result.findings | ForEach-Object { [string]$_.path })
+    if ($result.finding_count -ne 2) { Write-Fail "expected two findings, one per case-distinct file on a volume that holds both, got $($result.finding_count)" }
+    elseif (($paths -ccontains 'docs/Policy.md') -and ($paths -ccontains 'docs/policy.md')) { Write-Pass 'both case-distinct files reached finding generation - the FR-046 firewall is not blind to either' }
+    else { Write-Fail "findings did not cover both case-distinct paths (got: $($paths -join ', '))" }
+}
+Remove-Item -Recurse -Force $fixture
+
 Write-Host ''
 if ($script:failCount -gt 0) { Write-Host "$script:failCount test(s) FAILED" -ForegroundColor Red; exit 1 }
 Write-Host 'All consumer applicability firewall tests passed.' -ForegroundColor Green

@@ -179,6 +179,25 @@ this datum exists to name.
   so local A/B proof plus the standard three-volume CI run is the applied rigor, rather than a
   dedicated cross-platform RED push.
 
+### DRIFT-198-I009-043 — T084 corrected in Iteration 010
+
+- **Status**: resolved. `tests/unit/consumer-applicability-firewall.tests.ps1` gains Test 8, a
+  case-distinct fixture (`docs/Policy.md` + `docs/policy.md`, each with a distinct mandate) that
+  measures whether this runner's volume can materialize both, and if so asserts BOTH reach finding
+  generation. This is coverage-only: the underlying fix (Ordinal `HashSet` dedup, replacing
+  `Sort-Object FullName -Unique`) already shipped in Iteration 009 at `f738f5cf`/`3d74f123`.
+- **Measured, not assumed**: on this Windows dev machine the volume folds case, so
+  `[volume-oracle] case-distinct fixture: listing=[Policy.md] bothListed=False` — the second
+  `Set-Content` silently overwrote the first file at the OS level, and the case cannot be
+  materialized here. Recorded explicitly rather than silently skipped, per the T080 discipline. The
+  real filesystem proof depends on ubuntu-latest/ext4, already measured case-sensitive in T080's own
+  CI evidence.
+- **Logic-level A/B, since no filesystem here can hold the state**: fed two synthetic in-memory
+  entries differing only by case directly into both dedup implementations. `Sort-Object FullName
+  -Unique` (pre-fix): input 2, output **1** — drops one. The current `Ordinal HashSet` dedup: input
+  2, output **2** — keeps both. Confirms the fixture's shape would have caught the original defect,
+  independent of any one runner's volume.
+
 ### DRIFT-198-I010-001 — the effort model cannot express a round-bounded iteration
 
 - **Status**: open; recorded at the plan boundary, not worked around
