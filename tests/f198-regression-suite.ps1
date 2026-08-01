@@ -97,6 +97,7 @@ $registry = @(
     @{ area = 'differential harness falsifiability - mutation gate (maintainer decision 2026-07-29)'; path = 'tests/continuous-co-review/unit/path-identity-mutation-gate.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'machinery path resolution + case-distinct dedup (DRIFT-198-I009-016/019)'; path = 'tests/continuous-co-review/unit/worktree-reviewer-machinery-paths.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewer-host grant write scope - one field of one row (DRIFT-198-I009-028)'; path = 'tests/continuous-co-review/unit/reviewer-host-grant-write-scope.Tests.ps1'; kind = 'pester'; serial = $true }
+    @{ area = 'authority-store link-containment falsifiability - mutation gate (DRIFT-198-I009-041, T081)'; path = 'tests/continuous-co-review/unit/review-authority-store-mutation-gate.Tests.ps1'; kind = 'pester'; serial = $true }
     @{ area = 'reviewer origin-path hygiene (FR-009/SC-002)'; path = 'tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1'; kind = 'pester' }
     @{ area = 'bounded verification opt-in helper + regression evidence (FR-010)'; path = 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1'; kind = 'pester' }
     @{ area = 'no auto-verification + reviewer-invocation integrity (FR-010)'; path = 'tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1'; kind = 'pester' }

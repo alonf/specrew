@@ -5,7 +5,15 @@ Describe 'Immutable review authority JSON store (T045)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         $script:CorePath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-core.ps1'
-        $script:StorePath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-store.ps1'
+        # SPECREW_AUTHORITY_STORE_UNDER_TEST lets the mutation gate point this suite at a deliberately
+        # link-blind mutant and require the T082 fixtures to fail - the permanent form of the
+        # git-checkout A/B that proved the fix once by hand. See review-authority-store-mutation-gate.Tests.ps1.
+        $script:StorePath = if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_AUTHORITY_STORE_UNDER_TEST)) {
+            $env:SPECREW_AUTHORITY_STORE_UNDER_TEST
+        }
+        else {
+            Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-store.ps1'
+        }
         . $script:CorePath
         . $script:StorePath
 

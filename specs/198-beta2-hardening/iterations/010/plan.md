@@ -62,7 +62,7 @@ repeat precisely the mistake Iteration 009 recorded as its transferable lesson.
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T080 | Link-state fixtures for the volume-differential harness, proven RED first | FR-008 | Containment coverage | 6.0 | Implementer | tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1 | planned | — | — | — |
-| T081 | Extend the mutation gate to link states; prove it fails against a link-blind primitive | FR-008 | Falsifiability | 2.0 | Implementer | tests/continuous-co-review/unit/path-identity-mutation-gate.Tests.ps1 | planned | — | — | — |
+| T081 | Mutation gate for link containment; prove it fails against a link-blind primitive | FR-008 | Falsifiability | 2.0 | Implementer | tests/continuous-co-review/unit/review-authority-store-mutation-gate.Tests.ps1 | done | Implementer | 2.0 | **Re-targeted after T083's withdrawal** — see Notes. CONTROL 0 failed against the real store; mutant (lexical-only, pre-T082 shape) failed the reparse-point fixtures. Positive-verified: the mutant genuinely accepts a linked root (measured `ACCEPTED`) before the fixtures are run against it |
 | T082 | DRIFT-198-I009-041 — authority-store containment against reparse points | FR-008 | Evidence-chain integrity | 5.0 | Implementer | scripts/internal/continuous-co-review/review-authority-store.ps1, tests/continuous-co-review/unit/review-authority-store.Tests.ps1 | done | Implementer | 5.0 | RED 3/15 pre-fix (root/campaign/run link fixtures) via git-checkout A/B; GREEN 15/15 post-fix incl. an ordinary-path sanity control |
 | T083 | ~~DRIFT-198-I009-042 — link-aware directory-entry lookup in the case probe~~ | FR-008 | Path identity | 0.0 | Implementer | — | deferred | — | 0.0 | **WITHDRAWN 2026-07-31 — no reachable defect.** T080 measured the finding's premise on all three volumes and it does not hold; -042 is re-dispositioned NOT REPRODUCIBLE AS REPORTED (DRIFT-198-I010-002). Its 3.0 SP returns to SLACK and is deliberately NOT backfilled |
 | T084 | DRIFT-198-I009-043 — case-distinct consumer-firewall fixture | FR-046 | Applicability firewall | 1.5 | Implementer | tests/unit/consumer-applicability-firewall.tests.ps1 | done | Implementer | 1.5 | logic-level A/B: old Sort-Object dedup drops 1 of 2 synthetic case-distinct entries, new Ordinal HashSet keeps both; real-fixture measurement deferred to ubuntu/ext4 leg, reported not skipped where the volume folds case |
@@ -226,8 +226,25 @@ re-cut stream B against this classification rather than inheriting it verbatim.
 
 ## Notes
 
-- Capacity is 20/20 — at cap by design, with the correction allowance inside T085 rather
-  than assumed free.
+- **Capacity, restated after T083's withdrawal and the priority DRIFT-198-I010-003 fix.**
+  Originally 20/20 at cap by design. T083 (DRIFT-198-I009-042) was withdrawn when T080's own
+  fixtures measured its premise not reproducible on any volume — freeing 3.0 SP to SLACK,
+  deliberately not backfilled with new scope ("that headroom is exactly what 009 never had").
+  The maintainer then explicitly overrode that guardrail to spend part of the slack on
+  DRIFT-198-I010-003 (~1.5-2 SP, the material-work Stop-packet over-fire) — a days-old
+  irritant fixed now rather than deferred, with the override recorded in the drift log. Net:
+  roughly 20 - 3 (T083) + 1.5-2 (I010-003) ≈ 18.5-19 SP against 20, still under cap.
+- **T081 was re-targeted, not silently reinterpreted.** Originally scoped to extend
+  `path-identity-mutation-gate.Tests.ps1` — the file that mutates the CASE-SENSITIVITY
+  primitive — for link states. That target no longer exists once T083 was withdrawn: there is
+  no case-probe link defect to guard, and per the maintainer's instruction a link-aware lookup
+  "as defence in depth" is explicitly NOT to be built or mutation-tested absent a real defect.
+  The one link-state correction that DID survive is T082 (authority-store containment), which
+  lives in a different file entirely. T081 was re-targeted there:
+  `review-authority-store-mutation-gate.Tests.ps1`, mutating
+  `Get-ReviewAuthorityStorePath` back to its pre-T082 lexical-only shape and requiring the T082
+  fixtures to fail against it — the permanent form of the git-checkout A/B done once by hand
+  during T082.
 - **The effort model records `scope` bounding, and that is not what actually bounds this
   iteration.** Iteration 009's single most transferable lesson is that a scope-bounded
   review-correction iteration is not bounded at all — "the approved finding cluster is

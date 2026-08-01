@@ -178,6 +178,20 @@ this datum exists to name.
   `Directory.CreateDirectory`/`FileStream` follow reparse points identically on Windows and POSIX —
   so local A/B proof plus the standard three-volume CI run is the applied rigor, rather than a
   dedicated cross-platform RED push.
+- **T081 makes this A/B permanent.** The git-checkout comparison above was a one-time manual check;
+  `review-authority-store-mutation-gate.Tests.ps1` mutates `Get-ReviewAuthorityStorePath` back to its
+  pre-fix lexical-only shape (regex-derived from the current file, not hand-written to be caught) and
+  requires the T082 fixtures to fail against it on every future run. **Positive-verified before
+  trusting the mutant**: dot-sourced in isolation and probed directly — a linked store root returned
+  `ACCEPTED:<path>` rather than throwing, confirming the mutation genuinely removed containment and
+  is not merely textually different. Measured: CONTROL 0 failed / >0 passed against the real store;
+  3 fixtures failed against the mutant, matching the original manual A/B exactly. Two bugs found and
+  fixed while building this, both about the mutant's OWN runtime environment rather than the
+  mutation logic: (1) the mutant's `$PSScriptRoot`-relative self-load guards for
+  `review-authority-core.ps1`/`path-identity.ps1` resolved to the scratch directory it was written
+  to, not the real tree, so both real siblings must be copied alongside it; (2) the regex-based
+  mutation itself was correct on the first attempt (verified via `[System.Management.Automation.Language.Parser]::ParseFile`,
+  zero syntax errors), so the failure was entirely in the harness around it, not the mutation.
 
 ### DRIFT-198-I009-043 — T084 corrected in Iteration 010
 
