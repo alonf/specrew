@@ -1175,8 +1175,19 @@ focused path-identity suite, which pass because they load the primitive the conv
 
 ### DRIFT-198-I009-042 — the case probe's existence test follows links, so a dangling entry inverts the verdict
 
-- **Status**: open; reported by the final round. **NOT fixed — the termination rule fired.** This is a
-  defect in the correction written earlier the same day for DRIFT-198-I009-032.
+- **Status**: **NOT REPRODUCIBLE AS REPORTED — re-dispositioned 2026-07-31, not fixed and not
+  deferred.** Iteration 010's T080 fixtures measured the finding's behavioural premise on all three CI
+  volumes and it does not hold: `[IO.File]::Exists` returns **true** for a broken symlink on POSIX as
+  well as Windows, so `Directory.Exists -or File.Exists` never evaluates false for a dangling entry,
+  the "absent" branch is never taken, and the verdict is never inverted. Both candidate constructions
+  were swept — a dangling symlink and a symlink loop (`ELOOP`) — with `gap=False` on windows, macos and
+  ubuntu. The finding's SOURCE reading is exact; the behavioural consequence drawn from it does not
+  occur. Full evidence and the two measurement tables: DRIFT-198-I010-002 in
+  file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/010/drift-log.md
+- **Recording honesty**: this entry originally read "Confirmed source evidence". That confirmation
+  covered the code reading only; the API behaviour was reasoned about, not measured. See the
+  reviewer-precision datum in Iteration 010's ledger — this is the first finding in nine independent
+  rounds that measurement could not reproduce.
 - **Severity**: major cross-platform path identity defect — in the primitive every path decision uses
 - **Type**: defect in the path-identity primitive itself
 - **Authority evidence**: `evidence/independent-review-3d74f123-final-result.json`, major finding, at

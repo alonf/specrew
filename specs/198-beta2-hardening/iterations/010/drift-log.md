@@ -46,8 +46,10 @@ The following resolution strategies remain available if drift is detected later 
 
 ### DRIFT-198-I010-002 — DRIFT-198-I009-042's premise is FALSE on all three volumes; T083 has no reachable defect
 
-- **Status**: open — T080 evidence contradicts the finding T083 was scheduled to fix.
-  **Awaiting the maintainer's decision; no "fix" attempted.**
+- **Status**: **FINALIZED 2026-07-31 — DRIFT-198-I009-042 is re-dispositioned NOT REPRODUCIBLE AS
+  REPORTED.** Held qualified until the POSIX loop sweep landed (maintainer instruction: do not state
+  it flatly while one construction is unmeasured). It has now landed — see the second table — and
+  both candidate constructions are measured on all three volumes. No fix was attempted.
 - **Severity**: major process finding — a confirmed-in-source finding that is not reachable in behaviour
 - **Type**: evidence discipline / finding validity
 
@@ -69,10 +71,21 @@ commit `7cf063c2`, for a symlink whose target never existed:
 `[IO.File]::Exists` returns **true** for a broken symlink on POSIX as well as Windows — .NET's
 `FileStatus` completes an `lstat` and treats the link entry itself as an existing non-directory. The
 `-or` therefore never evaluates false for a dangling link, the "absent" branch is never taken, and the
-verdict is never inverted. A local sweep of the other candidate construction, a symlink LOOP
-(`a -> b -> a`, where `stat()` fails with `ELOOP` while `lstat()` succeeds), also produced
-`gap=False`; the sweep is now part of the harness so the POSIX legs measure it too rather than
-inheriting a Windows inference.
+verdict is never inverted.
+
+**The second construction, measured on all three volumes at `10fbe831`.** A symlink LOOP
+(`a -> b -> a`), where `stat()` fails with `ELOOP` while `lstat()` succeeds, was the remaining
+candidate for producing the gap. The harness sweep now measures both:
+
+| Leg | dangling gap | loop gap |
+| --- | --- | --- |
+| windows-latest / NTFS | False | False |
+| macos-latest / APFS | False | False |
+| ubuntu-latest / ext4 | False | False |
+
+Neither construction produces `listed=True` with `existsApi=False` on any supported volume. That is
+what finalizes the disposition: the conclusion no longer rests on a Windows measurement plus an
+inference about POSIX.
 
 **So T083 as planned has nothing to correct.** The code reads exactly as the reviewer described. The
 consequence the reviewer drew from it does not occur on any supported platform.
@@ -84,22 +97,65 @@ and I violated it while recording a finding as confirmed. The reviewer's code-re
 behavioural claim was wrong; I propagated the claim into the ledger, into the narrowed release claim as
 limitation 2, and into this iteration's plan as a 3 SP task.
 
-**Consequences to decide (maintainer's call, not assumed here):**
+**Consequences, decided by the maintainer 2026-07-31:**
 
-1. **DRIFT-198-I009-042** should be re-dispositioned as *not reproducible* rather than fixed — with
-   this measurement as the evidence.
-2. **Limitation 2** of
-   file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta2-release-claim.md
-   ("the case probe returns the wrong answer when a directory entry is a dangling link") is not
-   supported by measurement and should be removed or restated at closeout.
-3. **T083's 3.0 SP** frees. It should NOT be silently reallocated; that is a planning decision.
-4. **The link-aware lookup may still be worth having** as defence in depth — the probe's existence
-   test is semantically the wrong question even where the current answer happens to be right — but
-   that is a design choice with no defect behind it, and it must not be recorded as a fix.
+1. **DRIFT-198-I009-042 re-dispositioned NOT REPRODUCIBLE AS REPORTED** — finalized only after the
+   POSIX loop sweep landed, per instruction. Recorded against the entry in
+   file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/009/drift-log.md
+2. **Limitation 2 of the release claim revised ONCE**, now that both constructions are measured. The
+   claim is unpublished, so waiting avoided editing release-facing text twice on a provisional result.
+3. **T083's 3.0 SP returns to SLACK.** Iteration 010 becomes **17.0/20 with 3.0 headroom**, and the
+   headroom is explicitly NOT backfilled with new scope — "that headroom is exactly what 009 never
+   had".
+4. **No link-aware lookup as defence in depth.** There is no defect, and T080's fixtures now measure
+   the behaviour on all three volumes, so accidental correctness that later breaks is caught by the
+   oracle rather than guarded by speculation. Recorded as a backlog note — *lookup semantics: no known
+   defect, guarded by harness measurement* — never as a fix.
+5. **Iteration 009's closure trigger amended** — it fired on "-041, -042 and -043", which with -042
+   withdrawn could never be satisfied. See the reviewer-precision datum below and the amended trigger.
 
 **What this does NOT change.** T082 (DRIFT-198-I009-041, authority-store containment) is untouched:
 it is a lexical-containment defect, independent of any `Exists` behaviour, and its fixtures are still
 required. T080/T081/T084 stand.
+
+**Backlog note (maintainer decision, not a fix): lookup semantics.** The probe asks "does this path
+resolve?" where "is this entry present?" is the semantically correct question. There is **no known
+defect** — both candidate constructions measure clean on all three volumes — and the harness now
+measures the behaviour per volume, so an accidental correctness that later breaks is caught by the
+oracle rather than pre-empted by speculation. Recorded here as a note; deliberately NOT scheduled and
+NOT counted as a correction.
+
+### Reviewer-precision datum — measure the instrument as honestly as the code
+
+Recorded at the maintainer's instruction, 2026-07-31.
+
+**Of every finding this campaign produced across nine independent review rounds, DRIFT-198-I009-042 is
+the FIRST that measurement could not reproduce.**
+
+| Campaign fact | Value |
+| --- | --- |
+| Independent rounds spent (iterations 009 + 010) | 9 |
+| Findings reported and confirmed reachable | all but one |
+| Findings not reproducible as reported | **1** (DRIFT-198-I009-042) |
+| Nature of the miss | code reading CORRECT; the behavioural consequence drawn from it was wrong |
+
+This is not a reason to discount the reviewer. The same instrument found the shadowing duplicate that
+five rounds of point fixes could not converge on (-027), the canonical-versus-mirror miss that shipped
+nothing to consumers (-030), the containment guard called from one mutator of five (-031), the
+culture-aware dedup at twelve sites (-033), the lane that could false-green a container failure (-039),
+and the lexical authority-store containment still open as -041. Its precision on this surface has been
+high and its findings have repeatedly been sharper than the implementer's own review.
+
+What the datum says is narrower and worth holding: **a reviewer's source reading and its behavioural
+inference are separately reliable.** -042's reading of the code was exact. Its claim about what
+`Directory.Exists` / `File.Exists` do with a broken symlink was not, and it was stated with the same
+confidence as the reading. The implementer then propagated that claim into the ledger as "Confirmed
+source evidence" without measuring it (DRIFT-198-I010-002), so the error compounded rather than being
+caught at intake.
+
+**The operational lesson**: a finding's *source* claim can be confirmed by reading; its *behavioural*
+claim requires execution. Confirming the first and recording the pair as confirmed is the failure mode
+this datum exists to name.
 
 ### DRIFT-198-I010-001 — the effort model cannot express a round-bounded iteration
 

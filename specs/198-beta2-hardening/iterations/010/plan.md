@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 20/20 story_points
+**Capacity**: 17/20 story_points
 **Started**: 2026-07-30
 **Completed**:
 **Planning Baseline**: `3c4f2496`
@@ -64,12 +64,20 @@ repeat precisely the mistake Iteration 009 recorded as its transferable lesson.
 | T080 | Link-state fixtures for the volume-differential harness, proven RED first | FR-008 | Containment coverage | 6.0 | Implementer | tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1 | planned | — | — | — |
 | T081 | Extend the mutation gate to link states; prove it fails against a link-blind primitive | FR-008 | Falsifiability | 2.0 | Implementer | tests/continuous-co-review/unit/path-identity-mutation-gate.Tests.ps1 | planned | — | — | — |
 | T082 | DRIFT-198-I009-041 — authority-store containment against reparse points | FR-008 | Evidence-chain integrity | 5.0 | Implementer | scripts/internal/continuous-co-review/review-authority-store.ps1, tests/continuous-co-review/unit/review-authority-store.Tests.ps1 | planned | — | — | — |
-| T083 | DRIFT-198-I009-042 — link-aware directory-entry lookup in the case probe | FR-008 | Path identity | 3.0 | Implementer | scripts/internal/continuous-co-review/path-identity.ps1 | planned | — | — | — |
+| T083 | ~~DRIFT-198-I009-042 — link-aware directory-entry lookup in the case probe~~ | FR-008 | Path identity | 0.0 | Implementer | — | deferred | — | 0.0 | **WITHDRAWN 2026-07-31 — no reachable defect.** T080 measured the finding's premise on all three volumes and it does not hold; -042 is re-dispositioned NOT REPRODUCIBLE AS REPORTED (DRIFT-198-I010-002). Its 3.0 SP returns to SLACK and is deliberately NOT backfilled |
 | T084 | DRIFT-198-I009-043 — case-distinct consumer-firewall fixture | FR-046 | Applicability firewall | 1.5 | Implementer | tests/unit/consumer-applicability-firewall.tests.ps1 | planned | — | — | — |
 | T085 | Integrated verification and capped certification | FR-008, FR-046 | Release confidence | 2.5 | Reviewer | tests/**, specs/198-beta2-hardening/iterations/010/** | planned | — | — | — |
 
-**Total planned: 20.0 SP against a capacity of 20.** At cap, not over it, and deliberately
-so: the correction allowance is inside T085 rather than pretending rework is free.
+**Total planned: 17.0 SP against a capacity of 20, with 3.0 SP of SLACK.**
+
+Originally 20.0/20. T083 was withdrawn on 2026-07-31 when T080's measurement showed
+DRIFT-198-I009-042 has no reachable defect, and the maintainer directed its 3.0 SP to **slack
+rather than backfill**: *"That headroom is exactly what 009 never had."* Iteration 009 planned
+24.5 against a cap of 20 and delivered ~70; entering an iteration at cap with zero absorption
+is what made every subsequent finding an overrun. The headroom is the correction, and filling
+it with new scope would undo it.
+
+The correction allowance for rework remains inside T085 rather than pretending rework is free.
 
 ### T080 precedes T082 and T083 — this is the finding, not a preference
 
@@ -155,7 +163,7 @@ reconstructed from memory.
 | # | Limitation | Disposition after Iteration 010 |
 | --- | --- | --- |
 | 1 | Authority-store containment unproven against reparse points | **REMOVED** by T082 |
-| 2 | Case probe returns the wrong answer for a dangling link | **REMOVED** by T083 |
+| 2 | ~~Case probe returns the wrong answer for a dangling link~~ | **WITHDRAWN — not reproducible.** Not removed by a fix; removed because measurement showed no such defect exists (DRIFT-198-I010-002). T083 withdrawn |
 | 3 | The differential harness covers no link states | **REMOVED** by T080/T081 |
 | 4 | Consumer applicability firewall's case-distinct behaviour unproven | **REMOVED** by T084 |
 | 5 | Structural enforcement is textual, not syntactic (AST) | remains — scheduled replan task |

@@ -278,12 +278,24 @@ difference, and it does not exist here yet.
 
 ### CLOSURE TRIGGER — do not lose this
 
-**When Iteration 010 delivers DRIFT-198-I009-041, -042 and -043, close Iteration 009
-using the 003 pattern applied legitimately:**
+**AMENDED 2026-07-31 — the original trigger became unsatisfiable.** It fired on
+"-041, -042 and -043". DRIFT-198-I009-042 has since been re-dispositioned **NOT
+REPRODUCIBLE AS REPORTED**: measured on all three CI volumes, neither a dangling
+symlink nor a symlink loop produces the `listed=True, existsApi=False` state the
+finding depends on, because `[IO.File]::Exists` returns true for a broken link on
+POSIX as well as Windows. Evidence: DRIFT-198-I010-002 in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/010/drift-log.md.
+With -042 withdrawn rather than delivered, a trigger requiring its delivery could
+never fire and Iteration 009 would have been held open permanently.
+
+**Amended trigger — when Iteration 010 delivers DRIFT-198-I009-041 and -043, AND
+-042's not-reproducible disposition is recorded, close Iteration 009 using the 003
+pattern applied legitimately:**
 
 1. Set T079's task verdict to `pass` in `review.md`, with Notes citing **Iteration 010**
-   as the delivering vehicle — the same shape 003 used for T019/T030/T031, and honest
-   only once 010's evidence exists.
+   as the delivering vehicle for -041 and -043, and naming -042's **not-reproducible**
+   disposition rather than implying it was fixed — the same shape 003 used for
+   T019/T030/T031, and honest only once 010's evidence exists.
 2. Set `review.md` overall verdict to `accepted`.
 3. Promote `retro-draft.md` to `retro.md` (content is complete and validator-conformant;
    it was withheld only because its presence forces the status forward).

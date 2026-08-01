@@ -52,16 +52,25 @@ or at any campaign/run ancestor, passes that check, and directory creation and i
 then follow it outside the intended store. The store holds grants, reservations, spend records, and
 review results — the evidence chain itself. (DRIFT-198-I009-041)
 
-**2. The volume case probe returns the wrong answer when a directory entry is a dangling link.**
-The probe reads real entry names from enumeration, then tests the flipped spelling with
-`Directory.Exists`/`File.Exists`. Both follow the link target and both report false for a dangling
-symbolic link, so on a case-folding volume a listed dangling entry makes the flipped lookup look absent
-and the probe reports case-sensitive — caching a wrong comparer that feeds containment, authority-store,
-verification-path, machinery, and digest decisions. (DRIFT-198-I009-042)
+**2. ~~The volume case probe returns the wrong answer when a directory entry is a dangling link.~~
+WITHDRAWN — not reproducible.** This limitation was published in draft on a reported finding whose
+behavioural premise later failed measurement. The premise was that `Directory.Exists` and `File.Exists`
+both report false for a dangling symbolic link. Measured on all three CI volumes — NTFS, APFS and ext4 —
+`File.Exists` returns **true** for a broken symlink on POSIX as well as Windows, because .NET's
+`FileStatus` completes an `lstat` and treats the link entry itself as an existing non-directory. Both
+candidate constructions were swept, a dangling symlink and a symlink loop, with no gap on any volume.
+The probe's `-or` therefore never takes the "absent" branch and the verdict is never inverted.
+(DRIFT-198-I009-042, re-dispositioned NOT REPRODUCIBLE AS REPORTED; evidence in DRIFT-198-I010-002.)
+
+The entry is struck rather than deleted deliberately: a limitation that was stated and then withdrawn
+on measurement is part of the honest record of how this claim was built.
 
 **3. The differential harness does not cover link states.** It contains zero symlink, dangling-link, or
 reparse-point fixtures. The volume is a sound oracle for what it is asked; it was never asked about
-links. Limitation 2 is inside this blind spot, which is why CI stayed green through it.
+links. Limitation 2 was believed to sit inside this blind spot; extending the fixtures is what
+established that it is not a defect at all. The blind spot was real — the fixtures were genuinely
+missing — but what they found on being written was the absence of the reported defect rather than its
+presence.
 
 **4. The consumer applicability firewall's case-distinct behaviour is unproven by test.** The scanner
 now dedupes file identities ordinally, but no fixture runs it over two case-distinct files and asserts
@@ -82,9 +91,9 @@ accepted known defect cannot be expressed to the gate. (DRIFT-198-I009-034, in i
 
 | If you | Then |
 | --- | --- |
-| Run Specrew on a case-insensitive volume (default macOS, Windows) and have **verified** there are no reparse points in the project | Limitations 1-3 are not reachable in normal operation. The derived-root paths and enumerated entries this code takes are the covered cases. **Do not assume this — verify it.** Reparse points arrive benignly and without any user intent: OneDrive / Dropbox / iCloud cloud-placeholder files, Windows directory junctions, and toolchain link farms (`node_modules` stores, package-manager caches, build output links) all create them. See the detection commands below. |
+| Run Specrew on a case-insensitive volume (default macOS, Windows) and have **verified** there are no reparse points in the project | Limitations 1 and 3 are not reachable in normal operation (2 is withdrawn). The derived-root paths and enumerated entries this code takes are the covered cases. **Do not assume this — verify it.** Reparse points arrive benignly and without any user intent: OneDrive / Dropbox / iCloud cloud-placeholder files, Windows directory junctions, and toolchain link farms (`node_modules` stores, package-manager caches, build output links) all create them. See the detection commands below. |
 | Have symlinks or junctions inside the project, especially under `.specrew/` | Limitations 1 and 2 are reachable. Prefer a project tree without reparse points beneath `.specrew/review/`, and do not place the authority store behind a link. |
-| Run on a case-sensitive volume (typical Linux) | Limitation 2 requires a case-folding volume and is not reachable. Limitation 1 is. |
+| Run on a case-sensitive volume (typical Linux) | Limitation 1 is reachable. Limitation 2 is withdrawn on all volumes, not merely unreachable here. |
 | Rely on the consumer applicability firewall for governance advisories | Limitation 4 applies: a case-distinct duplicate of a policy file may not be scanned. Avoid case-only filename distinctions in `docs/`, `specs/`, `.github/`. |
 
 ### Detecting reparse points in your project

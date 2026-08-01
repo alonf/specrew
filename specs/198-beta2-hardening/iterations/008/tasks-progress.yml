@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "008"
-updated_at: "2026-07-26T14:28:19.4582797Z"
+updated_at: "2026-08-01T02:24:07.5535151Z"
 tasks:
   T068:
     title: "Narrow stale-binding rebind"
