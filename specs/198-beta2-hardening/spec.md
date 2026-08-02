@@ -187,6 +187,42 @@ inherit them:
   Containment and T020 keep priority; the capture fix is sized at
   iteration 003's design-analysis, never displacing them silently.
 
+### Session 2026-08-02 (clarify) — Iteration 011 phase 1
+
+Scoped to the phase-1 amendments only. Two questions went to the maintainer because either
+reading changed the design; the third was resolved from repo doctrine and is recorded here
+rather than asked.
+
+- Q: What KEYS the round allowance — the reviewed-state digest, or the lifecycle checkpoint?
+  → A (human): **the lifecycle checkpoint identity.** The digest identifies WHAT was
+  reviewed; the checkpoint identifies WHICH allowance is charged. All rounds certifying one
+  checkpoint share an allowance however often the tree moves during fixing; a different
+  checkpoint opens its own. FR-019 amended accordingly.
+  **Why this was asked:** the drafted FR-019 said the allowance was "identified by the
+  reviewed-state digest it certifies" and that "a checkpoint at a new digest opens its own
+  allowance." Read literally that is unbounded — every fix moves the digest, so
+  fix → re-review → fix would replenish each cycle and the per-checkpoint ceiling would only
+  delay reaching the campaign total. That is the same spin hazard the 2026-07-12 ruling
+  rejected, reintroduced through the fix for F10. **Caught and corrected at the clarify
+  boundary, before any implementation** — which is what this boundary is for.
+- Q: What does "remediation is grant-scoped" bind to — the checkpoint, or the remediation
+  action? → A (human): **the checkpoint.** A grant names the checkpoint it pays for, is spent
+  within it, and expires with it; work elsewhere needs its own grant. Grant and allowance
+  therefore share one key. FR-019 kept as drafted, with the binding made explicit.
+- Q: Who declares FR-067's blocking severity threshold, and where does it live? → A
+  (self-answered from repo doctrine, NOT asked): the threshold is **explicit and recorded in
+  the result**, per FR-067 as written, and NFR-001/NFR-002 already require that any
+  classification be earned by a deterministic check and legible in the output. Its default
+  source is the `quality:` block in `.specrew/config.yml`, which is where finding
+  classification config already lives (`findings_schema_version`, `presets_path`,
+  `routing.default_policy`) — not a new config surface. **Evidence this needs writing down at
+  all:** Iteration 010's plan had to state "note-severity findings are recorded residuals and
+  do not block certification" by hand, in prose, per-iteration, because no requirement carried
+  it. A rule restated by hand each iteration is a requirement that was never written.
+- **Not asked, deliberately**: nothing about F2/F9/F7 (Iteration 011 stretch, not phase-1
+  scope), nothing about F3/F8/F14 (no recorded description; beta3), and nothing that would
+  widen the amendment beyond the consumer-severe set. No scope entered through this section.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One approval advances one boundary, on every host (Priority: P1)
@@ -671,11 +707,19 @@ pin-surface consistency assertions.
   round to 0 and unintentionally replenished the allowance — see
   DRIFT-198-I003-005.)
 
-  **SCOPE (2026-08-02 ruling — the allowance is per-CHECKPOINT, not per-campaign):**
-  a round allowance MUST be scoped to a single checkpoint, identified by the
-  reviewed-state digest it certifies. Rounds spent reviewing one checkpoint MUST NOT
-  reduce the allowance available to a different checkpoint; a checkpoint at a new
-  digest opens its own allowance rather than inheriting a spent one. The prior
+  **SCOPE (2026-08-02 ruling — the allowance is per-CHECKPOINT, not per-campaign;
+  allowance KEY settled at clarify 2026-08-02):** a round allowance MUST be keyed to the
+  **LIFECYCLE CHECKPOINT identity** — the boundary/stage being certified — and NOT to the
+  reviewed-state digest. **The digest identifies WHAT was reviewed; the checkpoint
+  identifies WHICH allowance is charged.** All rounds certifying the same checkpoint share
+  one allowance however many times the tree moves while findings are being fixed, so a fix
+  MUST NOT open a fresh allowance. Rounds spent at one checkpoint MUST NOT reduce the
+  allowance available to a different checkpoint, which does open its own. (Keying on the
+  digest instead would be unbounded: every fix moves the digest, so fix → re-review → fix
+  would replenish on each cycle and the ceiling would only delay reaching the campaign
+  total — reintroducing precisely the spin hazard the 2026-07-12 ruling rejected. That
+  reading was drafted and corrected at the clarify boundary before any implementation.)
+  The prior
   reading — one allowance for a whole campaign — meant that any lifecycle producing
   findings at two or more checkpoints paid for all of them out of one budget, so runs
   halted at the ceiling whether or not any individual checkpoint was converging. This
@@ -718,12 +762,14 @@ pin-surface consistency assertions.
   keep reviewing*; it never buys another round. Closure that is not evidence-verified
   MUST NOT retire anything.
 
-  **REMEDIATION IS GRANT-SCOPED.** A human allowance grant MUST name the scope it
-  authorizes — the checkpoint or digest whose remediation it pays for — and MUST NOT
-  silently become a global or standing increase. A grant is spent within its named
-  scope and expires with it; work at a different checkpoint requires its own grant.
-  This keeps FR-058's rule intact (only a human may grant more allowance) while making
-  the grant's *extent* explicit rather than implied.
+  **REMEDIATION IS GRANT-SCOPED.** A human allowance grant MUST name the **checkpoint**
+  whose remediation it pays for (confirmed at clarify 2026-08-02 — the binding is the
+  checkpoint, not the remediation action), and MUST NOT silently become a global or
+  standing increase. A grant is spent within its named scope and expires with it; work at
+  a different checkpoint requires its own grant. This keeps FR-058's rule intact (only a
+  human may grant more allowance) while making the grant's *extent* explicit rather than
+  implied, and it composes with the checkpoint-keyed allowance above: grant and allowance
+  share one key.
 
   **SPEND GUARD PRESERVED.** Per-checkpoint scoping multiplies the reachable total, so
   the spend guard MUST NOT rest on the per-checkpoint ceiling alone: a campaign-level
