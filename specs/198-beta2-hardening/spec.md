@@ -681,10 +681,33 @@ pin-surface consistency assertions.
   halted at the ceiling whether or not any individual checkpoint was converging. This
   is the **F10 round-ceiling tax**, and it is a defect of this requirement's scope,
   not of its implementation: the machinery was charging exactly what the requirement
-  said to charge. (Falsifying evidence: the maintainer's consumer manual test halted at
-  the ceiling on every run, at 9+ of 15 rounds spent — reported by the maintainer with
-  the 2026-08-02 ruling. The session itself is not an artifact in this repository; the
-  F-register records that gap.)
+  said to charge.
+
+  Falsifying evidence, in descending order of strength:
+  1. **Committed artifact.** The maintainer's frozen consumer repository records the end
+     state directly: run `20260725T234822895-d38a8704` at `round: 15`, `blocking: true`,
+     164 changed paths — asserted in
+     file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/009/evidence/article-amplifier-frozen-replay.Tests.ps1
+     (environment-gated, deliberately outside the portable registry because CI does not
+     own the consumer evidence repository).
+  2. **An INDEPENDENT downstream consumer hit the same class three weeks earlier**, and
+     its agent named the trap precisely: *"the ceiling blocks the very re-review that
+     would confirm the finding is gone"* (2026-07-09, project `tesr197local`, recorded in
+     file:///C:/Dev/specrew-beta2-hardening/proposals/203-reviewer-containment-identity-hardening.md).
+     That consumer burned two full rounds rediscovering the sanctioned door.
+  3. **The maintainer's report** with this ruling: the consumer manual test halted at the
+     ceiling on every run, at 9+ of 15 rounds spent. The session transcript is not an
+     artifact in this repository — the F-register records that gap explicitly.
+
+  **Provenance worth keeping.** Proposal 203-W12 already argued this class in July
+  ("fix-responsive rounds do not burn the ceiling"), and clarify 2026-07-10 deliberately
+  overrode it — which is why this requirement reads "EVERY review round counts". That
+  override was not wrong: W12's remedy, not incrementing on fix-responsive rounds, leaves a
+  spinning checkpoint able to spend without bound, and the 2026-07-12 ruling rejected the
+  adjacent implicit-replenishment path for the same reason. The 2026-08-02 ruling resolves
+  the same field complaint differently and better: every round still counts, but against
+  the checkpoint that caused it. Spin is still bounded; one checkpoint's spend no longer
+  taxes another's.
 
   **VERIFIED CLOSURE RETIRES ROUND-STATE FINDINGS.** When a finding is closed against
   VERIFIED evidence — a re-review of the same target at a current digest, not an
@@ -1240,6 +1263,15 @@ and the register's FR-mapping pass established that no existing requirement cove
 mechanism — these are not re-statements of FR-002, FR-045, or FR-045a. They gate the beta2
 tag.
 
+**Evidentiary honesty, stated once for all three.** The F1..F17 session itself left no
+artifact in this repository; that gap is the reason the F-register was owed. So each
+requirement below cites what is actually citable and labels its source. Where the only
+basis is the maintainer's report, it says so. Where committed on-mechanism evidence exists
+from a DIFFERENT session — the Iteration 008 manual test, the Antigravity dogfood, or
+Specrew's own Iteration 010 — it is cited as that, never relabelled as consumer-test
+evidence. A requirement resting on a report is still a legitimate requirement; a
+requirement that dresses a report up as an artifact is not.
+
 - **FR-066 (F1 — first-boundary arrival sync precedes the first packet)**: On a project's
   FIRST arrival at any lifecycle boundary — where no `last_authorized_boundary` cursor and no
   verdict history yet exist — boundary state MUST be synchronized and the boundary record
@@ -1253,6 +1285,20 @@ tag.
   recorded BEFORE the human is asked to rule on it, never after. This is reachable by every
   new project at its very first boundary, which is also a consumer's first impression of the
   lifecycle.
+
+  *Evidence*: the F1 report itself is maintainer-reported with no session artifact. Three
+  committed observations from OTHER sessions establish that the first-boundary surface
+  genuinely fails, and are the concrete shapes this requirement must hold against —
+  **DRIFT-198-I008-055** (at a fresh project's `specify` boundary, before any iteration
+  existed, the Stop hook emitted `review-campaign-active-iteration-unresolved`; issue #3099),
+  **DRIFT-198-I008-060** (a fresh run scaffolded `spec.md`, rendered the first questions, and
+  the Stop hook forced the generic packet because the strict controller could not yet prove
+  an active workshop; issue #3104), both in
+  file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/008/drift-log.md
+  — and the **Antigravity dogfood marker gap** recorded in the conformance provider's own
+  code: a weak host rendered the packet headers but NOT the verdict marker, so the verdict
+  was never captured and `last_authorized` stayed `none` while the header check suppressed
+  the block. All three are first-arrival failures; none is the F1 session.
 - **FR-067 (F17 — post-green finality converges)**: The finality/closeout check MUST reach a
   terminal state in bounded work. It MUST NOT be possible for a green result to be reopened
   by the act of recording it.
@@ -1270,6 +1316,15 @@ tag.
     controller-owned carry-forward covers only the six generated review artifacts and
     expressly excludes `state`/`plan`/`tasks` — which is precisely why closeout writes
     currently re-trigger the audit, and why that exclusion cannot be the whole answer.
+  - *Evidence*: the F17 report is maintainer-reported with no session artifact, but the
+    mechanism was observed live on Specrew itself and logged as **DRIFT-198-I010-006** — after
+    a campaign terminated, every Stop demanded a re-review of a tree *whose only change since
+    the reviewed digest was the record of why certification failed*, with the blocking defect
+    deliberately untouched. That is the self-referential-audit shape exactly. The
+    residual-threshold half is corroborated differently: Iteration 010's plan had to state
+    *"note-severity findings are recorded residuals and do not block certification"* by hand,
+    per-iteration, because no requirement carries it — a rule restated by hand each time is a
+    requirement that has not been written down.
 - **FR-068 (F11 — a verdict demand requires its stage's evidence to exist)**: A verdict demand
   for a pending boundary crossing MUST NOT be emitted unless the evidence that boundary's
   stage is defined to produce EXISTS. **A stage that has produced nothing has nothing to
@@ -1284,6 +1339,17 @@ tag.
   and MUST preserve the losing signal in the record rather than dropping it silently.
   FR-045a's PRECEDENCE orders stop-INTENT classes *within one decision*; it does not compose
   competing providers, and composing them is the half of F11 no requirement covers.
+
+  *Evidence, and its limit.* The premature-verdict-demand half rests on a single
+  maintainer-reported phrase — "a hook demanding a verdict for a stage with no evidence" —
+  repeated in two approval rationales. **The contradictory-hook-composition half has NO
+  recorded observation anywhere in this repository**, only the maintainer's report that it
+  occurred. It is specified here because a false human authorization is the severest failure
+  in the governance model and the composition gap is real in the requirement text regardless
+  of how it was found — but implementation MUST begin by reproducing it, not by assuming its
+  shape. Do NOT substitute DRIFT-198-I010-003 (the Stop-packet over-fire on zero-tool turns)
+  as this evidence: that is thoroughly measured and already fixed, and it is a PACKET
+  over-fire, not a VERDICT demand. The maintainer's own decision lists it separately.
 
 ### Non-Functional Requirements
 
