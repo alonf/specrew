@@ -492,10 +492,13 @@ same confidence as the parts I had actually measured.
   shape: *"the supported authorization API cannot append this entry because the stale global
   `last_authorized_boundary=before-implement` treats Iteration 006 `tasks` as backward movement.
   The ledger was not hand-edited."* Two instances, ~7 weeks apart, same root.
-- **Relation to the vocabulary cluster**: adjacent but DISTINCT. DRIFT-198-I009-021/-034/-044,
-  DRIFT-198-I010-001 and -006 are about *dispositions* being inexpressible; this is about the
-  *cursor* being unable to represent a legitimate re-entry. It belongs with them as a schema-
-  completeness concern, not as another instance of the same field.
+- **CLUSTERED 2026-08-02, maintainer instruction at the specify verdict**: joins the
+  machinery/vocabulary cluster carried by Proposal 206 into beta3, alongside
+  DRIFT-198-I009-021/-034/-044 and DRIFT-198-I010-001/-006. It is adjacent but DISTINCT in
+  field: those five are about *dispositions* being inexpressible, this is about the *cursor*
+  being unable to represent a legitimate re-entry. Same schema-completeness root, different
+  vocabulary — which is exactly why it belongs in one designed vocabulary rather than a
+  seventh point fix.
 - **Directly relevant to FR-066**, authored in this same phase: FR-066 requires that first-boundary
   ARRIVAL sync precede the first packet. This finding is its mirror — RE-ENTRY arrival has the same
   defect one level up, and a consumer running a two-phase iteration will hit it.

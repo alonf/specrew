@@ -17,6 +17,16 @@ discussion: tbd
 > at six instances it is overdue rather than optional. The count in the original text below
 > reads "five"; it is left as written and corrected here rather than rewritten, per the
 > supersede-not-rewrite record discipline.
+>
+> **Updated 2026-08-02: SEVEN, and the scope widens from dispositions to MACHINERY.**
+> DRIFT-198-I010-008 was observed live while opening iteration 011 — a legitimate, human-
+> instructed RE-ENTRY to an earlier boundary cannot open a pending verdict, because the cursor
+> is global and monotonic and reads the return as backward movement. The maintainer clustered
+> it here at the specify verdict. It is the first instance whose field is not a *disposition*
+> but the *boundary cursor* itself, so this proposal's remit is now **governance-schema
+> vocabulary completeness across both** — what a state can be recorded AS, and what a position
+> can be recorded as MOVING TO. It is also the second occurrence of its own shape: iteration
+> 006's `state.md` recorded the identical failure seven weeks earlier.
 
 **Five times in one feature, the governance schema could not express the honest disposition,
 and each time a human had to choose between an inaccurate record and a blocked lifecycle.**
@@ -35,6 +45,7 @@ The five instances, all from F-198:
 | DRIFT-198-I009-044 | "This task is terminal-as-deferred and its work is satisfied NOWHERE yet." Closing requires `accepted`, which requires every task `pass`. Iteration 009 was held open rather than record a `pass` against an unsatisfied requirement. |
 | DRIFT-198-I010-001 | "This iteration is bounded by ROUNDS, not scope." `iteration_bounding` offers only `scope` or `time`, and the validator requires the plan to match config — so the plan's structured field says `scope` while the real bound is a 3-round cap stated in prose. |
 | DRIFT-198-I010-006 *(added 2026-08-01)* | "This campaign was TERMINATED by a human rule; no further round is authorized." The campaign gate models a moved digest as either authorized or needing a review, so after a termination rule fired it kept emitting `request-current-digest-review` — an action that would spend a paid round the governing decision forbids. Its only honest output is a request the human has prohibited. |
+| DRIFT-198-I010-008 *(added 2026-08-02 — CURSOR, not disposition)* | "This feature has legitimately RETURNED to an earlier boundary for scoped work." The cursor is global and monotonic, so a human-instructed re-entry to `specify` reads as backward movement from `review-signoff` and no pending crossing opens — the machinery cannot produce the verdict stop the human explicitly asked for. Second occurrence: iteration 006 recorded the same shape. |
 
 The cost is not theoretical. DRIFT-198-I009-044 **held Iteration 009 open** — it is still at
 `reviewing` with a recorded closure trigger, because the alternative was asserting a satisfied

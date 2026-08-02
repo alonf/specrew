@@ -1340,16 +1340,36 @@ requirement that dresses a report up as an artifact is not.
   FR-045a's PRECEDENCE orders stop-INTENT classes *within one decision*; it does not compose
   competing providers, and composing them is the half of F11 no requirement covers.
 
-  *Evidence, and its limit.* The premature-verdict-demand half rests on a single
-  maintainer-reported phrase — "a hook demanding a verdict for a stage with no evidence" —
-  repeated in two approval rationales. **The contradictory-hook-composition half has NO
-  recorded observation anywhere in this repository**, only the maintainer's report that it
-  occurred. It is specified here because a false human authorization is the severest failure
-  in the governance model and the composition gap is real in the requirement text regardless
-  of how it was found — but implementation MUST begin by reproducing it, not by assuming its
-  shape. Do NOT substitute DRIFT-198-I010-003 (the Stop-packet over-fire on zero-tool turns)
-  as this evidence: that is thoroughly measured and already fixed, and it is a PACKET
-  over-fire, not a VERDICT demand. The maintainer's own decision lists it separately.
+  *Evidence — BOTH halves observed, in the same delivered messages.* Supplied by the
+  maintainer 2026-08-02 and verified against the host transcript
+  file:///C:/Users/alon/.claude/projects/C--Dev-article-amplifier/1d431b7f-a56c-4533-a710-9545ce95ccf2.jsonl
+  at `2026-07-25T17:40:45.851Z` and `2026-07-25T17:43:51.507Z` — twice, for the identical
+  crossing `crossing-ca49bb4c…` (`before-implement -> review-signoff`) at commit
+  `5b83a746`, with `last authorized: before-implement`.
+
+  Each message carried both defects at once, separated by a literal `----- AND ALSO -----`:
+
+  1. **Premature verdict demand** — *"Give the explicit verdict 'approved for
+     review-signoff' to authorize this exact crossing"*, demanded at the moment
+     before-implement was the last authorized boundary, i.e. with implementation authorized
+     but not performed (the maintainer reports no code existed yet).
+  2. **Contradictory composition** — the same message says *"emit the verdict marker as the
+     LAST line: `<!-- SPECREW-VERDICT-BOUNDARY: before-implement -> review-signoff -->`"*
+     and then, below the separator, *"Specrew campaign review — review-required … (Campaign
+     review block, not a lifecycle verdict — **do NOT emit a SPECREW-VERDICT-BOUNDARY
+     marker**.)"* One message, two providers, instructing emit and do-not-emit of the same
+     marker. There is no rule that composes them, so the agent must pick — and either choice
+     violates a live instruction.
+
+  The two defects compound rather than merely co-occur: the demand is for a verdict the
+  stage cannot justify, and the composition conflict means the honest response (withhold the
+  marker) is indistinguishable from the failure mode FR-045 guards against.
+
+  **The citation is an observation elsewhere, not a reproduction here**: implementation MUST
+  begin by reproducing it, not by assuming its shape. Do NOT substitute DRIFT-198-I010-003
+  (the Stop-packet over-fire on zero-tool turns) as this evidence: that is thoroughly
+  measured and already fixed, and it is a PACKET over-fire, not a VERDICT demand. The
+  maintainer's own decision lists it separately.
 
 ### Non-Functional Requirements
 
@@ -1415,6 +1435,8 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
 | Release | FR-040 | 004 |
 | US1 (boundaries) — consumer-severe additions | FR-066, FR-067, FR-068 | 011 |
 | US3 (round economy) — scope amendment | FR-019 (2026-08-02 per-checkpoint ruling) | 011 |
+
+Criteria for the above: SC-022 (FR-019), SC-023 (FR-066), SC-024 (FR-067), SC-025 (FR-068).
 
 **Known gap, recorded not silently fixed**: this map covers FR-001..FR-040 plus the 2026-08-02
 additions above. **FR-041..FR-065 have no rows** — the map stopped being extended after
@@ -1565,6 +1587,37 @@ with the DRIFT-198-I010-007 traceability backfill.
   is preserved; no durable diagnostic contains credentials/raw environment; and a
   complete plus partial finding pair is deduplicated into retrospective problem
   evidence retaining all required provenance. (FR-062, FR-063)
+
+### Iteration 011 — consumer-severe criteria (maintainer instruction, specify verdict 2026-08-02)
+
+Deliberately minimal: one criterion per new requirement plus one for the FR-019 amendment.
+They exist so no requirement in this group reaches the tasks boundary without a measurable
+done-condition — the trap the tasks-stage rule names, closed at specify rather than deferred.
+
+- **SC-022 (round-ceiling scope)**: A lifecycle producing findings at N checkpoints (N ≥ 2)
+  completes with **no ceiling halt attributable to checkpoint progression alone** — each
+  checkpoint's allowance is charged only by its own rounds, and reaching the ceiling at one
+  checkpoint does not halt review at another. The campaign-level total remains enforced and
+  its exhaustion still halts, distinguishably: the halt text names WHICH bound was reached.
+  A verified closure retires the finding without changing any spent-round count. (FR-019)
+- **SC-023 (first-boundary arrival)**: On a brand-new project with no cursor and no verdict
+  history, the first lifecycle boundary yields a packet whose crossing was already
+  established — the boundary record, its approval phrase, and its marker resolve to concrete
+  values before the packet renders. Forcing the pre-sync state produces a packet with NO
+  approval options and NO marker, never a packet that names a boundary it created. (FR-066)
+- **SC-024 (finality converges)**: A closeout run whose findings are all below the declared
+  blocking threshold reaches a terminal state with those findings recorded as residuals, and
+  **re-running it against the tree it just wrote reaches the same terminal state without new
+  blocking findings attributable to its own writes**. A finding at or above the threshold
+  still holds it open. The bound is the criterion: the check terminates in both cases.
+  (FR-067)
+- **SC-025 (verdict demand needs evidence; composition is deterministic)**: A verdict demand
+  for boundary B, issued when the stage preceding B has none of its required artifacts,
+  renders no approval options and no marker, and names what is missing. Separately, two
+  providers emitting conflicting stop signals in one turn resolve to a single recorded
+  outcome under the stated precedence, with the losing signal preserved — **the transcript
+  shape observed at 2026-07-25T17:40:45Z, emit-and-do-not-emit of the same marker in one
+  message, cannot recur**. (FR-068)
 
 ## Assumptions
 

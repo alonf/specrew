@@ -1,3 +1,70 @@
+## 2026-08-02 — F-198 iteration-011 phase 1: APPROVE WITH INSTRUCTIONS — approved for specify
+
+### 2026-08-02 — Verdict: APPROVE WITH INSTRUCTIONS — advance specify→clarify, iteration 011 phase 1
+
+- **Decision ID**: f198-i011-phase1-specify-approval
+- **Type**: approval
+- **Affected Requirement**: FR-019
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-02T00:00:00Z
+- **Disposition**: **Approved for specify.** Iteration 011 runs as a **two-phase iteration**,
+  decided in advance rather than discovered at the estimate. Phase 1 is specify amendments scoped
+  strictly to the consumer-severe set: the FR-019 scope amendment (round-ceiling semantics become
+  per-checkpoint/per-digest, verified closure retires round-state findings, remediation is
+  grant-scoped) plus **FR-066** (F1, first-boundary arrival sync precedes the first packet),
+  **FR-067** (F17, post-green finality: severity thresholds, residuals, no self-referential audit
+  blocking) and **FR-068** (F11's uncovered half, a pending crossing's verdict demand requires its
+  stage evidence to exist). Nothing else rides along. Phase 2 is plan, tasks and implementation
+  against the amended spec, same method constraints, round cap 3.
+- **Instructions carried**:
+  1. **The spend-guard backstop is ACCEPTED and endorsed** — the Crew's addition, not the
+     maintainer's ask. Without a campaign-level total enforced alongside per-checkpoint scoping,
+     the amendment deletes the budget rather than reallocating the tax. Kept.
+  2. **Minimal Success Criteria added at specify, not deferred to tasks** — SC-022 (FR-019),
+     SC-023 (FR-066), SC-024 (FR-067), SC-025 (FR-068). A requirement without a measurable
+     criterion is the tasks-stage trap; closed now.
+  3. **FR-068's evidence label UPGRADES from "no recorded observation" to a cited artifact.**
+     The maintainer supplied the consumer dogfood host transcript
+     file:///C:/Users/alon/.claude/projects/C--Dev-article-amplifier/1d431b7f-a56c-4533-a710-9545ce95ccf2.jsonl
+     at `2026-07-25T17:40:45.851Z` and `17:43:51.507Z`. Verified: twice, for the identical
+     crossing `crossing-ca49bb4c…` (`before-implement -> review-signoff`), the Stop hook demanded
+     `approved for review-signoff`, and **each demand co-rendered — in the same message, past a
+     literal `----- AND ALSO -----` — with a campaign block forbidding the very marker the first
+     half instructed be emitted.** Both halves of FR-068 in one message. The reproduction-first
+     mandate is kept exactly as written: the citation is an observation elsewhere, not a
+     reproduction here.
+  4. **No review campaign for this specify increment** — the Crew's read confirmed. The amendments
+     are reviewed at iteration 011's certification, where implementation must trace to them.
+- **Rationale**: the F-register's FR-mapping pass established that F10 is not an implementation gap
+  at all — FR-019 mandates as a MUST that every round counts and that resolving preserves the spent
+  count, so the round-ceiling tax is the specified design working as written. Fixing it is a
+  specify-boundary change. F1, F17 and F11's composition half have no covering FR whatsoever. Three
+  of four consumer-severe items therefore need requirements WRITTEN before they can be built, which
+  is why 011 was opened as two explicit phases rather than estimated as an implementation iteration
+  and discovered mid-flight — the failure mode iteration 009 demonstrated at ~70 SP against a 20 cap.
+- **Next Action**: advance to clarify with the amendment texts landed; then phase 2 planning.
+
+### 2026-08-02 — Cluster: DRIFT-198-I010-008 joins the beta3 governance-vocabulary proposal
+
+- **Decision ID**: f198-i010-008-cluster-to-proposal-206
+- **Type**: defer
+- **Affected Requirement**: FR-002
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-02T00:00:00Z
+- **Next Action**: carried by Proposal 206 into beta3, alongside the containment consolidation.
+- **Rationale**: observed live while opening iteration 011 — a human-instructed RE-ENTRY to
+  `specify` could not open a pending verdict, because the global monotonic cursor read the return
+  from `review-signoff` as backward movement. `sync-boundary-state.ps1` was run twice, once with
+  `-FeatureRef` resolving correctly, and both returned `pending_verdict_has_pending: false` with a
+  null marker and null approval phrase. The ledger was NOT hand-edited and no marker was
+  fabricated; the boundary packet stated its verdict in plain language and declared the gap.
+  **Second occurrence of the identical shape** — iteration 006's `state.md` recorded it seven weeks
+  earlier. It is the SEVENTH instance in Proposal 206's cluster and the first whose field is the
+  boundary CURSOR rather than a disposition, which widens that proposal's remit to cover both what
+  a state can be recorded as and what a position can be recorded as moving to.
+
 ## 2026-08-01 — F-198 iteration-010 termination: consolidation to beta3, tag beta2 after 011
 
 ### 2026-08-01 — Defer: DRIFT-198-I009-041 + DRIFT-198-I010-004 to a beta3 containment consolidation
@@ -28524,3 +28591,51 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 29cf84084fd65da9f4199466a9aa4dccc5105958
 - **Recorded At**: 2026-07-18T20:37:08Z
+
+## 2026-08-02T12:43:16Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: tasks
+- **Recorded At**: 2026-08-02T12:43:16Z
+- **Warning**: Expected next boundary 'before-implement' but received 'specify'.
+
+## 2026-08-02T12:43:17Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: (none)
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 737aed7625577840d8d005ea316e78c1029fe49b
+- **Recorded At**: 2026-08-02T12:43:16Z
+
+## 2026-08-02T12:47:55Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: specify
+- **Recorded At**: 2026-08-02T12:47:55Z
+- **Warning**: Expected next boundary 'clarify' but received 'specify'.
+
+## 2026-08-02T12:47:55Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: (none)
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 327ac35c13b014b79fa3b9d0419087bf0f4f9006
+- **Recorded At**: 2026-08-02T12:47:55Z
+
+## 2026-08-02T12:48:48Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: specify
+- **Recorded At**: 2026-08-02T12:48:48Z
+- **Warning**: Expected next boundary 'clarify' but received 'specify'.
+
+## 2026-08-02T12:48:48Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 327ac35c13b014b79fa3b9d0419087bf0f4f9006
+- **Recorded At**: 2026-08-02T12:48:48Z
