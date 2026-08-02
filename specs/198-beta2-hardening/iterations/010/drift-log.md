@@ -157,13 +157,19 @@ caught at intake.
 claim requires execution. Confirming the first and recording the pair as confirmed is the failure mode
 this datum exists to name.
 
-### DRIFT-198-I009-041 — T082 corrected in Iteration 010
+### DRIFT-198-I009-041 — T082 PARTIALLY corrected in Iteration 010; NOT delivered
 
-- **Status**: resolved. `Get-ReviewAuthorityStorePath` is now the single choke point every read,
-  write, and enumeration in `review-authority-store.ps1` resolves through, and it rejects a reparse
-  point at the store root and at every existing ancestor component before returning a path. Verified
-  locally with the same A/B discipline used for the mutation gate: fixtures for a link AT the store
-  root, at a CAMPAIGN ancestor, and at a RUN ancestor.
+- **Status**: **SUPERSEDED — see DRIFT-198-I010-004.** This entry originally read "resolved". That was
+  wrong, on a coverage claim I never verified. The certifying round found that
+  `Get-ReviewAuthorityStorePath` contains path RESOLUTION only; paths obtained by ENUMERATION bypass it
+  entirely at four sites. **-041 is NOT delivered**, Iteration 009's closure trigger does NOT fire, and
+  release-claim limitation 1 is not removed. What follows below is accurate about what T082 DID do —
+  it is retained unchanged as the record of a correct-but-incomplete fix.
+- **What T082 actually delivered**: `Get-ReviewAuthorityStorePath` rejects a reparse point at the store
+  root and at every existing ancestor component before returning a path, and every caller that
+  constructs a path from a known relative string routes through it. Verified locally with the same A/B
+  discipline used for the mutation gate: fixtures for a link AT the store root, at a CAMPAIGN ancestor,
+  and at a RUN ancestor. That work stands; it is the claim of COMPLETENESS that was false.
 - **RED proof (pre-fix, git-checkout A/B)**: 3 of 15 failed —
   `refuses to write through a reparse point AT THE STORE ROOT`,
   `... at a CAMPAIGN ancestor`, `... at a RUN ancestor` — each because the write silently succeeded
@@ -316,3 +322,82 @@ Consistent with T080's original finding: the dangling-link and symlink-loop cons
 `gap=False` on all three volumes (DRIFT-198-I010-002's disposition holds under repeated measurement),
 and the macOS leg remains the only one that can catch the historical OS-family mutant — the harness's
 falsifiability is intact after every commit in this iteration, not just the one that introduced it.
+
+### DRIFT-198-I010-004 — T082's containment covers path RESOLUTION, not ENUMERATION; -041 is NOT delivered
+
+- **Status**: open — **BLOCKING**, reported by the certifying round. **NOT fixed: the termination rule
+  fired.** DRIFT-198-I009-041 is therefore **NOT delivered** by Iteration 010.
+- **Severity**: blocking security defect (read path), consumer-reachable via checkout-borne links
+- **Type**: path containment — the SAME class T082 corrected in this iteration
+- **Authority evidence**: `evidence/independent-review-64878edb-certify-result.json`, blocking finding,
+  at `scripts/internal/continuous-co-review/review-authority-store.ps1:309`.
+
+**Confirmed in source, and WIDER than reported.** T082 hardened `Get-ReviewAuthorityStorePath`, which
+resolves a RELATIVE path to an absolute one. Every caller that constructs a path from a known relative
+string is contained. But paths obtained by ENUMERATION are never routed back through it — they are
+handed straight to the reader. The reviewer named two sites; direct measurement of all
+`Enumerate*` call sites in the module finds **four**:
+
+| Line | Function | Shape | State |
+| --- | --- | --- | --- |
+| 200 | `Get-ReviewAuthorityCampaignFacts` (grants/reservations/spend/releases) | `EnumerateFiles(AllDirectories)` → read | **unprotected** (reviewer-named) |
+| 309 | `Get-ReviewAuthorityCampaignRunResults` | `EnumerateDirectories` → `Join-Path` → read | **unprotected** (reviewer-named) |
+| 362 | `Get-ReviewCampaignHumanDispositionFacts` | `EnumerateFiles(AllDirectories)` → **read**, then compare | **reads first, and the compare is lexical** |
+| 447 | `Get-ReviewAuthorityClaimFacts` | `EnumerateFiles(TopDirectoryOnly)` → read | **unprotected**, not reviewer-named |
+
+Line 362 deserves its own note: it does compare `GetFullPath($file)` against a `Get-ReviewAuthorityStorePath`-resolved
+expected path — but it does so AFTER `Read-ReviewAuthorityFactFile` has already opened and read the
+entry, and `GetFullPath` does not resolve reparse points. That is precisely the lesson
+DRIFT-198-I009-041 recorded: lexical comparison is not containment. A link whose NAME matches the
+fact's own `run_id`/`disposition_id` passes the check while pointing outside the store.
+
+**Reachability**: a checkout-borne link — a fork PR or untrusted branch carrying
+`.specrew/review/authority/campaigns/<id>/runs/<valid-name>` as a symlink to an external directory
+holding a schema-valid `result.json` — puts out-of-store data into signoff and allowance decisions.
+Git carries symlinks in tree objects, so this needs no local action by the user, and Specrew runs over
+branches under review. Same threat model already documented in the narrowed release claim.
+
+**My own false claim, stated plainly.** T082's commit message and its drift entry both asserted: *"This
+module's every read, write, and enumeration resolves its path through this ONE function, so hardening
+it here covers the whole module rather than each call site."* That is **false**. I verified it by
+reading the call sites OF `Get-ReviewAuthorityStorePath` and confirming each was contained — never by
+auditing every READ path to check whether it reached that function at all. Enumeration-derived paths
+never do. This is the mirror image of the DRIFT-198-I010-002 error: there I propagated a reviewer's
+unverified BEHAVIOURAL claim; here I authored an unverified COVERAGE claim. Both were stated with the
+same confidence as the parts I had actually measured.
+
+**Consequences (not acted on — the rule fired):**
+
+1. **DRIFT-198-I009-041 is NOT delivered.** T082 is a partial correction, not a complete one.
+2. **Iteration 009's closure trigger does NOT fire.** It requires -041 delivered; it is not. Iteration
+   009 stays held open at `reviewing`, exactly as its Closure Record specifies.
+3. **Limitation 1 of the narrowed release claim is NOT removed** — it must be revised to describe the
+   partial state (resolution contained, enumeration not), rather than struck.
+4. **The plan's Release-Claim Impact table is now wrong** where it says limitation 1 is REMOVED by T082.
+5. **Required correction (deferred)**: reject link entries during traversal, or re-resolve and validate
+   every enumerated child through the choke point BEFORE reading it — at all four sites, with the read
+   ordered after the check at line 362.
+
+### DRIFT-198-I010-005 — iteration 010's state.md was never updated; the supported resume path is broken
+
+- **Status**: open — major, reported by the certifying round. **NOT fixed pending the maintainer's
+  decision** (see the note on scope below).
+- **Severity**: major — breaks the supported resume path for this iteration
+- **Type**: artifact/state honesty — a DIFFERENT class from the containment defects corrected here
+- **Authority evidence**: `evidence/independent-review-64878edb-certify-result.json`, major finding, at
+  `specs/198-beta2-hardening/iterations/010/state.md:4`.
+- **Confirmed in source**: `state.md` still reads `**Last Completed Task**: (none)`,
+  `**Tasks Remaining**: (populate from plan.md)`, and `- Execution has not started yet.` — while
+  `plan.md` marks T081/T082/T084 `done` and T085 `in-progress`. T080 is also still `planned` in the
+  plan table although its fixtures and evidence are committed. `resume-iteration.ps1` parses the
+  literal string `(populate from plan.md)` as a task ID and reports an unknown-task blocker, so a
+  resumed session cannot recover the real T085 state.
+- **Mine, and a repeat of a pattern already recorded this iteration.** I updated `plan.md` task rows
+  after every task and never once updated `state.md`. This is the same failure mode as the T081 gap —
+  claiming a status without checking the canonical record against reality — and it is the second time
+  in this iteration.
+- **Scope question for the maintainer, deliberately not decided here**: the termination rule ends the
+  campaign on *"a new blocking or major finding of a class already corrected in this iteration."* This
+  finding is major but belongs to no class corrected here — it is iteration bookkeeping, and correcting
+  it is closeout work the closure process requires regardless, not a fix-and-recertify round on the
+  surface under test. DRIFT-198-I010-004 fires the rule on its own merits either way.

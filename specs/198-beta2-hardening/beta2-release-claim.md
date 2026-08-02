@@ -46,11 +46,25 @@ These are proven by runtime evidence, not by inspection:
 
 ## What beta2 does NOT claim — known limitations
 
-**1. Path containment is not proven against reparse points in the review authority store.**
-`Get-ReviewAuthorityStorePath` validates containment lexically. A symlink or junction at the store root,
-or at any campaign/run ancestor, passes that check, and directory creation and immutable-fact writes
-then follow it outside the intended store. The store holds grants, reservations, spend records, and
-review results — the evidence chain itself. (DRIFT-198-I009-041)
+**1. Path containment in the review authority store is proven for path RESOLUTION, not for
+ENUMERATION.** *Revised 2026-08-01 — narrowed, not removed.*
+
+Iteration 010 hardened `Get-ReviewAuthorityStorePath`: a reparse point at the store root, or at any
+existing campaign/run ancestor, is now rejected before the path is returned, and every caller that
+builds a path from a known relative string routes through it. That half is delivered, regression-tested,
+and mutation-gated.
+
+What remains open: paths obtained by **enumeration** never go back through that function. Four sites
+enumerate directory entries and read them directly — campaign grant/reservation/spend/release facts, run
+results, human dispositions, and claim facts. A reparse-point CHILD beneath a clean parent is therefore
+still followed, and out-of-store data with a schema-valid shape can enter signoff and allowance
+decisions. One of the four compares the resolved path afterwards, but reads the entry first and compares
+lexically — which is the same "lexical containment is not containment" mistake one level down.
+
+The store holds grants, reservations, spend records, and review results — the evidence chain itself.
+This is reachable by a **checkout-borne link** (see the threat model below): no local user action is
+required, only a fetched branch. (DRIFT-198-I009-041, partially corrected; DRIFT-198-I010-004, open and
+blocking.)
 
 **2. ~~The volume case probe returns the wrong answer when a directory entry is a dangling link.~~
 WITHDRAWN — not reproducible.** This limitation was published in draft on a reported finding whose
@@ -91,7 +105,7 @@ accepted known defect cannot be expressed to the gate. (DRIFT-198-I009-034, in i
 
 | If you | Then |
 | --- | --- |
-| Run Specrew on a case-insensitive volume (default macOS, Windows) and have **verified** there are no reparse points in the project | Limitations 1 and 3 are not reachable in normal operation (2 is withdrawn). The derived-root paths and enumerated entries this code takes are the covered cases. **Do not assume this — verify it.** Reparse points arrive benignly and without any user intent: OneDrive / Dropbox / iCloud cloud-placeholder files, Windows directory junctions, and toolchain link farms (`node_modules` stores, package-manager caches, build output links) all create them. See the detection commands below. |
+| Run Specrew on a case-insensitive volume (default macOS, Windows) and have **verified** there are no reparse points in the project | Limitations 1 and 3 are not reachable in normal operation (2 is withdrawn). **Do not assume this — verify it**, and note that limitation 1's ENUMERATION half needs only a link at a leaf entry beneath an otherwise clean store, which is a lower bar than the root/ancestor half. Reparse points arrive benignly and without any user intent: OneDrive / Dropbox / iCloud cloud-placeholder files, Windows directory junctions, and toolchain link farms (`node_modules` stores, package-manager caches, build output links) all create them. See the detection commands below. |
 | Have symlinks or junctions inside the project, especially under `.specrew/` | Limitations 1 and 2 are reachable. Prefer a project tree without reparse points beneath `.specrew/review/`, and do not place the authority store behind a link. |
 | Run on a case-sensitive volume (typical Linux) | Limitation 1 is reachable. Limitation 2 is withdrawn on all volumes, not merely unreachable here. |
 | Rely on the consumer applicability firewall for governance advisories | Limitation 4 applies: a case-distinct duplicate of a policy file may not be scanned. Avoid case-only filename distinctions in `docs/`, `specs/`, `.github/`. |
