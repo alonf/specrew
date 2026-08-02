@@ -1,7 +1,13 @@
 # Beta2 Release Claim — Narrowed
 
 **Feature**: 198-beta2-hardening
-**Status**: proposed wording, awaiting the maintainer's verdict
+**Status**: **APPROVED as the beta2 claim.** Wording approved 2026-07-30 with two edits (threat model
+extended to checkout-borne links; applicability table qualified). Tag point confirmed 2026-08-01: **the
+beta2 tag is cut after Iteration 011**, which carries the consumer-severe set only (F11, F10, F17, F1,
+plus any remaining Stop-packet detector acceptance fixtures). **Limitation 1 stands at the tag** in its
+revised form — resolution contained, enumeration not — and is closed by the beta3 containment
+consolidation, not before. Iterations 009 and 010 remain at `reviewing` until then, per the Iteration
+003 precedent.
 **Authored**: 2026-07-30, under the pre-decided fallback (maintainer decision 2026-07-29, item 7)
 **Trigger**: the agreed termination rule fired. The final certifying round
 `run-f198-i009-3d74f123-final` (digest `85bdfe01`) reported two new **major** findings of the

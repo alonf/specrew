@@ -239,6 +239,30 @@ this datum exists to name.
   cannot express the honest disposition. See DRIFT-198-I009-021, -034, -044 (the
   disposition-vocabulary cluster in Iteration 012 finality scope) and -020. Candidate for
   that same cluster rather than a separate fix.
+
+### DRIFT-198-I010-006 — "campaign terminated by human rule" is inexpressible to the review gate
+
+- **Status**: open; **sixth instance** of the disposition-vocabulary gap. Clustered 2026-08-01 with
+  DRIFT-198-I009-021, -034, -044 and DRIFT-198-I010-001. Moved to **beta3, alongside the containment
+  consolidation** — the vocabulary proposal (Proposal 206) is now overdue at six instances.
+- **Severity**: minor mechanism gap, with a real operational cost — it demands a paid action the
+  governing rule forbids
+- **Type**: review-gate disposition vocabulary
+- **Observed live, this iteration**: after the termination rule fired on DRIFT-198-I010-004, every
+  subsequent Stop emitted `Specrew campaign review — review-stale ... Implementer action:
+  request-current-digest-review`. That action would spend round 2 of a 3-round cap to re-certify a tree
+  whose only change since the reviewed digest is the RECORD of why certification failed — with the
+  blocking defect deliberately untouched, so it would simply be found again.
+- **The gap**: the campaign gate models exactly two states for a moved digest — authorized, or needs a
+  review. It has no way to record "this campaign was TERMINATED by a human rule, and no further round
+  is authorized". So its only honest output is a request the governing decision forbids, and the agent
+  must leave a live block unanswered by design. An agent with less explicit instruction would comply
+  and spend the slot.
+- **Distinct from -034**, which is about a single finding's deferral. This is about the CAMPAIGN's
+  terminal state.
+- **Required correction (deferred to beta3)**: a terminal campaign disposition — human-authorized, with
+  the authorizing reference and the rule that fired — which suppresses `request-authorized-review` and
+  `request-current-digest-review` for that campaign until a human explicitly reopens it.
 - **Required correction (deferred)**: add `rounds` (and `budget`) to the supported
   `iteration_bounding` vocabulary, with the round cap as a first-class configured value the
   validator can check against the certification section.
@@ -374,9 +398,20 @@ same confidence as the parts I had actually measured.
 3. **Limitation 1 of the narrowed release claim is NOT removed** — it must be revised to describe the
    partial state (resolution contained, enumeration not), rather than struck.
 4. **The plan's Release-Claim Impact table is now wrong** where it says limitation 1 is REMOVED by T082.
-5. **Required correction (deferred)**: reject link entries during traversal, or re-resolve and validate
-   every enumerated child through the choke point BEFORE reading it — at all four sites, with the read
-   ordered after the check at line 362.
+5. **Vehicle assigned 2026-08-01 — a beta3 CONTAINMENT-CONSOLIDATION feature, explicitly NOT another
+   per-site fix.** Maintainer decision. Two consecutive per-site containment fixes have now failed a
+   completeness review — DRIFT-198-I009-031 (guard on one mutator of five) corrected in iteration 009,
+   then T082/-041 (resolution but not enumeration) corrected here — which is the same "locally right,
+   too shallow" shape that ended iteration 009's campaign. A third per-site patch would repeat it.
+   Apply instead the playbook that actually ended the path-identity class's recurrence:
+   - **ONE containment primitive** covering BOTH resolution and enumeration, so there is a single
+     definition rather than a guard replicated per call site.
+   - **Link-state oracle fixtures for enumerated children** — the volume as oracle, extended to the
+     entry-traversal path that T080's fixtures never reached.
+   - **A structural rule**: no direct enumeration-read inside the store without the primitive. This is
+     what would have caught the present defect at authoring time, exactly as the
+     `Sort-Object -Unique` structural rule catches its class.
+   - **A mutation gate** proving those fixtures can fail, per T081's pattern.
 
 ### DRIFT-198-I010-005 — iteration 010's state.md was never updated; the supported resume path is broken
 

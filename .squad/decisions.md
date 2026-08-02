@@ -1,3 +1,53 @@
+## 2026-08-01 — F-198 iteration-010 termination: consolidation to beta3, tag beta2 after 011
+
+### 2026-08-01 — Defer: DRIFT-198-I009-041 + DRIFT-198-I010-004 to a beta3 containment consolidation
+
+- **Decision ID**: f198-i010-defer-containment-consolidation-to-beta3
+- **Type**: defer
+- **Affected Requirement**: FR-008
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-01T00:00:00Z
+- **Next Action**: A beta3 **containment-consolidation feature**, explicitly NOT another per-site fix:
+  ONE containment primitive covering BOTH path resolution and enumeration; link-state oracle fixtures
+  for enumerated children; a structural rule forbidding a direct enumeration-read inside the store
+  without the primitive; and a mutation gate proving those fixtures can fail. This is the playbook that
+  ended the path-identity class's recurrence, applied to containment.
+- **Rationale**: Iteration 010's certifying round (`run-f198-i010-64878edb-certify`, digest `0f53945e`)
+  returned `can_approve_current: false` with a BLOCKING finding — T082's correction contained path
+  RESOLUTION but not ENUMERATION, at four sites. That is the containment class already corrected in the
+  same iteration, so the pre-agreed termination rule fired: campaign ended, no extra round, round 1 of a
+  3-round cap with the remainder deliberately unspent. **Two consecutive per-site containment fixes have
+  now failed a completeness review** — DRIFT-198-I009-031 (guard on one mutator of five) in iteration
+  009, then T082 here — which is the same "locally right, too shallow" shape that ended iteration 009's
+  campaign after eight rounds. A third per-site patch would repeat it. DRIFT-198-I009-041 is therefore
+  NOT delivered; iterations 009 and 010 both stay at `reviewing` per the Iteration 003 precedent, and
+  iteration 009's closure trigger is amended a SECOND time to name the beta3 consolidation as -041's
+  vehicle so it remains satisfiable.
+
+### 2026-08-01 — Verdict: tag beta2 after Iteration 011 on the narrowed claim, limitation 1 standing
+
+- **Decision ID**: f198-beta2-tag-after-i011-limitation-1-standing
+- **Type**: approval
+- **Affected Requirement**: FR-040
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-01T00:00:00Z
+- **Disposition**: **Iteration 011 = the consumer-severe set ONLY** — F11 (premature verdict demand),
+  F10 (round-ceiling tax), F17 (non-convergent finality), F1 (first-boundary sync/marker) — plus
+  completing the Stop-packet detector fix (DRIFT-198-I010-003) if any acceptance fixtures remain. The
+  F2/F9/F7 "cheap and consumer-visible" row is not pulled in by default. **Tag beta2 after Iteration
+  011** on the narrowed claim, with **limitation 1 STANDING** in its revised form: path containment in
+  the authority store is proven for resolution, not enumeration.
+- **Rationale**: limitation 1 is honest, its checkout-borne reachability is documented, and it is not a
+  remote-attacker path — shipping with a named, characterised limitation is precisely what the narrowed
+  claim exists for. F10/F17/F11 are what stopped the maintainer's own consumer manual test from
+  converging, so tagging without them means every beta consumer relives that session and returns
+  feedback already in hand. The disposition-vocabulary cluster also moves to beta3 alongside the
+  consolidation: six instances (DRIFT-198-I009-021/-034/-044, DRIFT-198-I010-001, and the newly
+  clustered -006, where "campaign terminated by human rule" is inexpressible and the gate kept
+  demanding a forbidden paid round), which makes Proposal 206 overdue rather than optional.
+
 ## 2026-07-30 — F-198 iteration-010 plan: APPROVE WITH INSTRUCTIONS — stream A only, beta2 course 2
 
 ### 2026-07-30 — Verdict: APPROVE WITH INSTRUCTIONS — advance iteration-closeout→plan for Iteration 010

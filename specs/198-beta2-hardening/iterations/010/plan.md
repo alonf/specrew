@@ -188,6 +188,28 @@ this as their authoritative source until the register lands in the spec.
 
 **Tag beta2 after Iteration 011.** Two iterations to a tag — not six, and not one.
 
+### Release path CONFIRMED and narrowed, 2026-08-01 (post-termination)
+
+Maintainer decision after Iteration 010's termination rule fired. The plan holds, with the
+scope of 011 tightened and limitation 1 explicitly carried into the tag:
+
+- **Iteration 011 = the consumer-severe set ONLY**: F11, F10, F17, F1 — plus completing the
+  Stop-packet detector fix (DRIFT-198-I010-003) if any acceptance fixtures remain. The
+  "cheap and consumer-visible" stretch row above (F2/F9/F7) is NOT pulled in by default.
+- **Tag beta2 after Iteration 011 on the narrowed claim, with limitation 1 STANDING.** It is
+  honest, its checkout-borne reachability is documented, and it is not a remote-attacker
+  path. Shipping with a named, characterised limitation is the whole purpose of the narrowed
+  claim.
+- **DRIFT-198-I009-041 moves to a beta3 containment-consolidation feature**, not another
+  per-site fix — two consecutive per-site containment corrections have now failed a
+  completeness review.
+- **Iterations 009 and 010 both stay at `reviewing`** per the Iteration 003 precedent, until
+  that beta3 consolidation delivers -041. Iteration 009's closure trigger is amended a second
+  time to name that vehicle so it remains satisfiable.
+- **The disposition-vocabulary cluster moves to beta3** alongside the consolidation: six
+  instances now (DRIFT-198-I009-021/-034/-044, DRIFT-198-I010-001, and -006), which makes
+  Proposal 206 overdue rather than optional.
+
 The decisive evidence is the maintainer's own consumer manual test: F10, F17 and F11 are
 exactly what prevented it from converging — five hygiene escalations, ceiling halts on every
 run, and a hook demanding a verdict for a stage with no evidence. Tagging without them means

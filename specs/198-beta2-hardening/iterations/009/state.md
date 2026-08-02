@@ -288,12 +288,28 @@ file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/010/
 With -042 withdrawn rather than delivered, a trigger requiring its delivery could
 never fire and Iteration 009 would have been held open permanently.
 
-**Amended trigger — when Iteration 010 delivers DRIFT-198-I009-041 and -043, AND
--042's not-reproducible disposition is recorded, close Iteration 009 using the 003
-pattern applied legitimately:**
+**SECOND AMENDMENT, 2026-08-01 — the first amendment also became unsatisfiable.** It
+named Iteration 010 as -041's delivering vehicle. Iteration 010's certifying round
+found T082's containment correction PARTIAL: path resolution is contained, but
+enumeration-derived paths bypass the choke point at four sites
+(DRIFT-198-I010-004, blocking). **-041 is NOT delivered by Iteration 010**, and the
+termination rule fired rather than attempting another per-site fix — so a trigger
+naming Iteration 010 could never fire either.
 
-1. Set T079's task verdict to `pass` in `review.md`, with Notes citing **Iteration 010**
-   as the delivering vehicle for -041 and -043, and naming -042's **not-reproducible**
+Maintainer decision: -041's vehicle is a **beta3 containment-consolidation feature**
+(one primitive covering resolution AND enumeration, link-state oracle fixtures for
+enumerated children, a structural no-direct-enumeration-read rule, and a mutation
+gate). Two consecutive per-site containment fixes failing completeness review is the
+evidence for consolidating rather than patching a third time.
+
+**Amended trigger (2nd) — when the beta3 containment-consolidation feature delivers
+DRIFT-198-I009-041, AND Iteration 010's delivery of -043 stands, AND -042's
+not-reproducible disposition is recorded, close Iteration 009 using the 003 pattern
+applied legitimately:**
+
+1. Set T079's task verdict to `pass` in `review.md`, with Notes citing **the beta3
+   containment-consolidation feature** as -041's delivering vehicle, **Iteration 010**
+   for -043, and naming -042's **not-reproducible**
    disposition rather than implying it was fixed — the same shape 003 used for
    T019/T030/T031, and honest only once 010's evidence exists.
 2. Set `review.md` overall verdict to `accepted`.

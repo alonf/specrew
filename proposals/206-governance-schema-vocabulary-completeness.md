@@ -11,6 +11,13 @@ discussion: tbd
 
 ## Why
 
+> **Updated 2026-08-01: now SIX instances, and scheduled.** A sixth appeared during F-198
+> iteration 010's certification (DRIFT-198-I010-006, added to the table below). The maintainer
+> has moved this proposal into **beta3, alongside the containment-consolidation feature** —
+> at six instances it is overdue rather than optional. The count in the original text below
+> reads "five"; it is left as written and corrected here rather than rewritten, per the
+> supersede-not-rewrite record discipline.
+
 **Five times in one feature, the governance schema could not express the honest disposition,
 and each time a human had to choose between an inaccurate record and a blocked lifecycle.**
 
@@ -27,6 +34,7 @@ The five instances, all from F-198:
 | DRIFT-198-I009-034 | "This finding is known, human-deferred, and unfixed." The review gate's deferral vocabulary covers findings CARRIED across rounds; a fresh reviewer rediscovering a deferred defect re-raises it forever, and `can_approve_current` can never become true. |
 | DRIFT-198-I009-044 | "This task is terminal-as-deferred and its work is satisfied NOWHERE yet." Closing requires `accepted`, which requires every task `pass`. Iteration 009 was held open rather than record a `pass` against an unsatisfied requirement. |
 | DRIFT-198-I010-001 | "This iteration is bounded by ROUNDS, not scope." `iteration_bounding` offers only `scope` or `time`, and the validator requires the plan to match config — so the plan's structured field says `scope` while the real bound is a 3-round cap stated in prose. |
+| DRIFT-198-I010-006 *(added 2026-08-01)* | "This campaign was TERMINATED by a human rule; no further round is authorized." The campaign gate models a moved digest as either authorized or needing a review, so after a termination rule fired it kept emitting `request-current-digest-review` — an action that would spend a paid round the governing decision forbids. Its only honest output is a request the human has prohibited. |
 
 The cost is not theoretical. DRIFT-198-I009-044 **held Iteration 009 open** — it is still at
 `reviewing` with a recorded closure trigger, because the alternative was asserting a satisfied
@@ -88,6 +96,16 @@ High-level capabilities for a candidate; FR-NNN entries come at draft.
 - **Total**: ~8 SP.
 
 ## Phase placement
+
+**Scheduled 2026-08-01: beta3, alongside the containment-consolidation feature.** Six instances
+across one feature is the threshold at which patching each individually stops being defensible —
+the same argument that moved DRIFT-198-I009-041 from a third per-site fix to a consolidation.
+Both are the same lesson in different domains: when a class recurs, build the primitive and the
+structural rule, not another instance-level patch.
+
+Originally filed as Phase 2, on the reasoning below. That reasoning still holds and is why this
+must land BEFORE the affected cluster is implemented — it has simply moved to beta3 with the
+iterations that carry it:
 
 Phase 2. It is a prerequisite for F-198 iteration 012's finality scope, which currently carries
 the -021/-034/-044 cluster as implementation work. **This proposal should be approved before
