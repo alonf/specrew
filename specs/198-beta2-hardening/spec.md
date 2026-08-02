@@ -653,9 +653,10 @@ pin-surface consistency assertions.
   references) — a message-content test asserts their absence.
 - **FR-019 (W12, amended by clarify 2026-07-10 — supersedes the
   workshop's no-increment design; further amended by maintainer ruling
-  2026-07-12, DRIFT-198-I003-005)**: The round ceiling is an AI-usage
-  spend allowance: EVERY review round counts toward it, including
-  fix-responsive rounds. The halt MUST distinguish the states honestly in
+  2026-07-12, DRIFT-198-I003-005; SCOPE amended by maintainer ruling
+  2026-08-02 — per-checkpoint/per-digest, F-register F10)**: The round
+  ceiling is an AI-usage spend allowance: EVERY review round counts toward
+  it, including fix-responsive rounds. The halt MUST distinguish the states honestly in
   consumer language — "your previous finding was resolved; a fresh round
   is needed to confirm" vs "a blocking finding is still open" — so the
   human's reset decision is informed; the resolved-prior-finding state
@@ -669,6 +670,43 @@ pin-surface consistency assertions.
   resolved-finding evidence intact. (Earlier, `resolved-against-disk` reset the
   round to 0 and unintentionally replenished the allowance — see
   DRIFT-198-I003-005.)
+
+  **SCOPE (2026-08-02 ruling — the allowance is per-CHECKPOINT, not per-campaign):**
+  a round allowance MUST be scoped to a single checkpoint, identified by the
+  reviewed-state digest it certifies. Rounds spent reviewing one checkpoint MUST NOT
+  reduce the allowance available to a different checkpoint; a checkpoint at a new
+  digest opens its own allowance rather than inheriting a spent one. The prior
+  reading — one allowance for a whole campaign — meant that any lifecycle producing
+  findings at two or more checkpoints paid for all of them out of one budget, so runs
+  halted at the ceiling whether or not any individual checkpoint was converging. This
+  is the **F10 round-ceiling tax**, and it is a defect of this requirement's scope,
+  not of its implementation: the machinery was charging exactly what the requirement
+  said to charge. (Falsifying evidence: the maintainer's consumer manual test halted at
+  the ceiling on every run, at 9+ of 15 rounds spent — reported by the maintainer with
+  the 2026-08-02 ruling. The session itself is not an artifact in this repository; the
+  F-register records that gap.)
+
+  **VERIFIED CLOSURE RETIRES ROUND-STATE FINDINGS.** When a finding is closed against
+  VERIFIED evidence — a re-review of the same target at a current digest, not an
+  asserted or self-declared fix — that finding and its lineage MUST retire from the
+  checkpoint's round state and stop contributing to its blocking set. **Retiring a
+  finding MUST NOT replenish the allowance**: the 2026-07-12 ruling stands unamended,
+  and the checkpoint's spent-round count is PRESERVED. Retiring removes a *reason to
+  keep reviewing*; it never buys another round. Closure that is not evidence-verified
+  MUST NOT retire anything.
+
+  **REMEDIATION IS GRANT-SCOPED.** A human allowance grant MUST name the scope it
+  authorizes — the checkpoint or digest whose remediation it pays for — and MUST NOT
+  silently become a global or standing increase. A grant is spent within its named
+  scope and expires with it; work at a different checkpoint requires its own grant.
+  This keeps FR-058's rule intact (only a human may grant more allowance) while making
+  the grant's *extent* explicit rather than implied.
+
+  **SPEND GUARD PRESERVED.** Per-checkpoint scoping multiplies the reachable total, so
+  the spend guard MUST NOT rest on the per-checkpoint ceiling alone: a campaign-level
+  total MUST also be enforced, raisable only by an explicit human grant under the same
+  `allowance-reset` recording rules. Per-checkpoint scoping removes an unfair tax; it
+  does not remove the budget.
 
 #### Digest identity & budgets (203 W13–W16) — owner: implementer + spec steward; iteration 002
 
@@ -1193,6 +1231,60 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   combined with "nothing required" or automatic continuation FAILS packet
   validation.
 
+#### Consumer-severe lifecycle correctness (F-register F1/F11/F17; maintainer consumer manual test) — owner: implementer + spec steward; iteration 011
+
+These three requirements exist because a consumer ran the tool and hit them. Each was
+reported as an F-item in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/consumer-feedback-register.md,
+and the register's FR-mapping pass established that no existing requirement covers the
+mechanism — these are not re-statements of FR-002, FR-045, or FR-045a. They gate the beta2
+tag.
+
+- **FR-066 (F1 — first-boundary arrival sync precedes the first packet)**: On a project's
+  FIRST arrival at any lifecycle boundary — where no `last_authorized_boundary` cursor and no
+  verdict history yet exist — boundary state MUST be synchronized and the boundary record
+  established BEFORE the first boundary packet is rendered. **A packet MUST NOT be the event
+  that creates the boundary state it reports.** Concretely, the arrival sync MUST establish
+  the cursor baseline, resolve the boundary name and its approval phrase, and determine the
+  verdict marker, and only then may a packet present approval options; a packet rendered
+  ahead of that sync has no authoritative boundary to name and MUST NOT present approval
+  options or a verdict marker. FR-002's ratchet is unchanged — the first, unavoidable
+  unapproved crossing is still recorded mechanically — but "recorded mechanically" MUST mean
+  recorded BEFORE the human is asked to rule on it, never after. This is reachable by every
+  new project at its very first boundary, which is also a consumer's first impression of the
+  lifecycle.
+- **FR-067 (F17 — post-green finality converges)**: The finality/closeout check MUST reach a
+  terminal state in bounded work. It MUST NOT be possible for a green result to be reopened
+  by the act of recording it.
+  - **Severity threshold**: only findings at or above a declared blocking threshold may hold
+    finality open. The threshold MUST be explicit and recorded, never implied by a finding's
+    presence.
+  - **Residuals are terminal**: findings below the threshold are RESIDUALS — recorded with
+    their original severity, visible in the result, and explicitly non-blocking. Closing with
+    recorded residuals MUST be a first-class terminal outcome, distinct from both "clean" and
+    "blocked". A check that can only end clean cannot end.
+  - **No self-referential audit blocking**: artifacts that the finality check itself writes,
+    or that a closeout necessarily writes (iteration `state`, `plan`, `tasks`, and the
+    generated review artifacts), MUST NOT be inputs that re-open the check. A closeout that
+    mutates the tree it audits MUST NOT thereby invalidate its own result. FR-045's single
+    controller-owned carry-forward covers only the six generated review artifacts and
+    expressly excludes `state`/`plan`/`tasks` — which is precisely why closeout writes
+    currently re-trigger the audit, and why that exclusion cannot be the whole answer.
+- **FR-068 (F11 — a verdict demand requires its stage's evidence to exist)**: A verdict demand
+  for a pending boundary crossing MUST NOT be emitted unless the evidence that boundary's
+  stage is defined to produce EXISTS. **A stage that has produced nothing has nothing to
+  approve, and asking for a verdict on it invites a false human authorization** — the
+  approval is then recorded against an empty increment, which is indistinguishable in the
+  ledger from an approval of real work. Concretely: before any surface demands a verdict for
+  boundary B, the stage preceding B MUST have its required artifacts present; when they are
+  absent the surface MUST name what is missing and MUST NOT render approval options or the
+  verdict marker — the same suppression FR-045 applies when a required co-review is pending.
+  **Hook composition**: when two or more providers emit conflicting boundary-stop signals for
+  the same turn, the resolution MUST be deterministic, MUST follow one stated precedence rule,
+  and MUST preserve the losing signal in the record rather than dropping it silently.
+  FR-045a's PRECEDENCE orders stop-INTENT classes *within one decision*; it does not compose
+  competing providers, and composing them is the half of F11 no requirement covers.
+
 ### Non-Functional Requirements
 
 - **NFR-001 (honesty)**: Every bypass, pass, or label in this bundle is
@@ -1255,6 +1347,15 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
 | US5 (self-leak firewall) | FR-033..FR-037, FR-046..FR-047 | 001 (FR-033, FR-034, FR-037), 003 (205-W10 realized by FR-015/T018), 004 (FR-035, FR-036, FR-046, FR-047) |
 | US6 (toolchain) | FR-038..FR-039 | 001 |
 | Release | FR-040 | 004 |
+| US1 (boundaries) — consumer-severe additions | FR-066, FR-067, FR-068 | 011 |
+| US3 (round economy) — scope amendment | FR-019 (2026-08-02 per-checkpoint ruling) | 011 |
+
+**Known gap, recorded not silently fixed**: this map covers FR-001..FR-040 plus the 2026-08-02
+additions above. **FR-041..FR-065 have no rows** — the map stopped being extended after
+iteration 004 while the requirement register kept growing, which is the staleness that produced
+the incorrect "FR-001..FR-040" figure in Iteration 010's plan packet. Backfilling it is real
+work with a real estimate and is deliberately NOT ridden along with this amendment; it belongs
+with the DRIFT-198-I010-007 traceability backfill.
 
 ### Key Entities *(include if feature involves data)*
 
