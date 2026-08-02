@@ -468,3 +468,66 @@ same confidence as the parts I had actually measured.
   bidirectional checks in `tasks.md`; and, so it cannot recur, make the per-iteration traceability
   check a gate rather than a convention — the same "structural rule beats per-instance diligence"
   lesson the path-identity and containment classes both taught.
+
+### DRIFT-198-I010-008 — a legitimate boundary RE-ENTRY cannot open a pending verdict
+
+- **Status**: open, observed live 2026-08-02 while opening Iteration 011 phase 1
+- **Severity**: major — the boundary mechanism cannot express the verdict stop it is designed for
+- **Type**: boundary-cursor vocabulary (global monotonic cursor vs. legitimate re-entry)
+- **Observed evidence, this session**: Iteration 011 was opened as a two-phase iteration by
+  maintainer decision — phase 1 amends the spec (FR-019 scope, plus FR-066/067/068), phase 2 plans
+  and implements against it. The spec amendments were written and committed as
+  `boundary(specify)` commits `737aed76` and `327ac35c`. `sync-boundary-state.ps1` was then run for
+  the `specify` boundary, twice — once without and once with `-FeatureRef` (which resolved
+  correctly to `198-beta2-hardening`). **Both runs returned `pending_verdict_has_pending: false`
+  with a null boundary, null approval phrase, and null marker, and
+  `.specrew/runtime/pending-verdict-stop.md` was never created.** `active_boundary` was set to
+  `specify`, but `last_authorized_boundary` remains `review-signoff` from Iteration 010.
+- **The gap**: the boundary cursor is global and monotonic, so re-entering an EARLIER boundary for
+  new work reads as backward movement rather than as a new crossing awaiting a verdict. There is no
+  way to say "this feature has legitimately returned to `specify` for a scoped amendment". The
+  machinery therefore cannot open the verdict stop for a boundary the human explicitly asked to be
+  brought to them.
+- **Not new — this is the SECOND recorded instance.** Iteration 006's `state.md` carries the same
+  shape: *"the supported authorization API cannot append this entry because the stale global
+  `last_authorized_boundary=before-implement` treats Iteration 006 `tasks` as backward movement.
+  The ledger was not hand-edited."* Two instances, ~7 weeks apart, same root.
+- **Relation to the vocabulary cluster**: adjacent but DISTINCT. DRIFT-198-I009-021/-034/-044,
+  DRIFT-198-I010-001 and -006 are about *dispositions* being inexpressible; this is about the
+  *cursor* being unable to represent a legitimate re-entry. It belongs with them as a schema-
+  completeness concern, not as another instance of the same field.
+- **Directly relevant to FR-066**, authored in this same phase: FR-066 requires that first-boundary
+  ARRIVAL sync precede the first packet. This finding is its mirror — RE-ENTRY arrival has the same
+  defect one level up, and a consumer running a two-phase iteration will hit it.
+- **Handled honestly, not worked around**: the ledger was NOT hand-edited and no marker was
+  fabricated. The boundary packet is rendered with its verdict stated in plain language and the
+  mechanism gap declared, per the refocus rule that `pending-verdict-stop.md` is authoritative —
+  when it does not exist, there are no authoritative values to quote.
+- **Required correction (deferred)**: allow a recorded, human-authorized re-entry to an earlier
+  boundary to open a pending crossing, so the cursor can distinguish "went backward" from "returned
+  deliberately". Belongs with the beta3 vocabulary work (Proposal 206) rather than a point fix.
+
+### DRIFT-198-I010-009 — the module-manifest sorter uses a culture-aware comparer
+
+- **Status**: open, found 2026-08-02; **not fixed — out of the maintainer's declared phase-1 scope**
+- **Severity**: minor, but in a class this feature has spent two iterations eliminating
+- **Type**: path/string identity comparer
+- **Observed evidence**: `Specrew.psd1` arrived dirty during this session's boundary work. The
+  change is **reordering only** — verified: 411 entries before, 411 after, membership identical
+  under `Compare-Object`. The reordering flips `Test-CopilotInstructionsChangeType.ps1` to AFTER
+  `test-consumer-assumptions.ps1`, which is culture-aware collation order, not ordinal.
+- **Root cause**: `scripts/psd1-sort.ps1` sorts with
+  `Sort-Object { $_.ToLowerInvariant() }` — case-normalized, but then ordered by `Sort-Object`'s
+  **culture-aware default comparer**. This is the same defect class as the `Sort-Object -Unique`
+  finding that the path-identity structural rules exist to prevent (DRIFT-198-I009-027's cluster):
+  culture-aware ordering of strings containing hyphens and mixed case is locale-dependent, so the
+  same input can produce different manifests on different machines.
+- **Why it matters beyond churn**: `Specrew.psd1` is the SHIPPED module manifest. A locale-dependent
+  ordering means a contributor on a different culture regenerates a spuriously different manifest.
+- **Why the structural rule did not catch it**: the rules scan for `Sort-Object -Unique` and
+  OS-family case derivation. A bare `Sort-Object { ... }` with a culture-aware default is neither
+  spelling — which is limitation 5 of the narrowed release claim (structural enforcement is textual,
+  not syntactic) demonstrating itself on a new surface.
+- **Required correction (deferred)**: sort with an explicit ordinal comparer, and widen the
+  structural rule to catch culture-aware `Sort-Object` on path/identity collections generally rather
+  than the two spellings it knows.
