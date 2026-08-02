@@ -239,6 +239,9 @@ this datum exists to name.
   cannot express the honest disposition. See DRIFT-198-I009-021, -034, -044 (the
   disposition-vocabulary cluster in Iteration 012 finality scope) and -020. Candidate for
   that same cluster rather than a separate fix.
+- **Required correction (deferred)**: add `rounds` (and `budget`) to the supported
+  `iteration_bounding` vocabulary, with the round cap as a first-class configured value the
+  validator can check against the certification section.
 
 ### DRIFT-198-I010-006 — "campaign terminated by human rule" is inexpressible to the review gate
 
@@ -263,9 +266,6 @@ this datum exists to name.
 - **Required correction (deferred to beta3)**: a terminal campaign disposition — human-authorized, with
   the authorizing reference and the rule that fired — which suppresses `request-authorized-review` and
   `request-current-digest-review` for that campaign until a human explicitly reopens it.
-- **Required correction (deferred)**: add `rounds` (and `budget`) to the supported
-  `iteration_bounding` vocabulary, with the round cap as a first-class configured value the
-  validator can check against the certification section.
 
 ### DRIFT-198-I010-003 — the material-work Stop packet over-fired on turns with no material work
 
