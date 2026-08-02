@@ -239,6 +239,30 @@ re-cut stream B against this classification rather than inheriting it verbatim.
   this boundary said FR-001..FR-040, which was wrong — that is where the Traceability Map
   ends, not the requirement register.
 
+  **DISCHARGED 2026-08-02** as the findings artifact
+  file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/consumer-feedback-register.md
+  (artifact rather than a spec.md edit — it adds no FRs, so it needs no specify boundary).
+  The map-to-existing-FRs-first check was run and returned three consequential answers, all of
+  which land on Iteration 011's planning boundary rather than here:
+
+  1. **F10 is not an implementation gap.** FR-019 mandates as a MUST that *every* review round
+     counts toward the ceiling including fix-responsive ones, and that resolving a finding
+     PRESERVES the spent count. Nothing scopes or scales the ceiling per checkpoint. The
+     round-ceiling tax is the specified design working as written, so F10 requires an **FR-019
+     amendment at a specify boundary**, not a fix.
+  2. **F1, F17, and F11's composition half have no covering FR at all.** Three of the four
+     consumer-severe items need requirements written before they can be built and verified —
+     so Iteration 011 is not a pure implementation iteration, and estimating it as one would
+     repeat Iteration 009's capacity failure in a new form.
+  3. **`tasks.md` stopped at Iteration 008** — recorded as DRIFT-198-I010-007. T072–T085 appear
+     nowhere in it, so fourteen delivered tasks across two iterations have no traced requirement
+     of record. This is also the root of the F-label problem: Iteration 009 planned against the
+     F-labels in its Requirement column, and the bidirectional check that would have caught
+     unresolvable identifiers was never extended to that iteration.
+
+  F3, F8 and F14 have no recorded description anywhere and are listed as gaps for the maintainer
+  rather than guessed at. They are beta3 and do not block the tag.
+
 ## Traceability Summary
 
 - Requirement scope: FR-008 (reviewer containment), FR-046 (consumer applicability firewall).

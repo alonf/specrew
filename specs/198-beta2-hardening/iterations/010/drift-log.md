@@ -436,3 +436,35 @@ same confidence as the parts I had actually measured.
   finding is major but belongs to no class corrected here — it is iteration bookkeeping, and correcting
   it is closeout work the closure process requires regardless, not a fix-and-recertify round on the
   surface under test. DRIFT-198-I010-004 fires the rule on its own merits either way.
+
+### DRIFT-198-I010-007 — feature `tasks.md` stopped at Iteration 008; two iterations have no traceability of record
+
+- **Status**: open, found 2026-08-02 while discharging the F-register obligation
+- **Severity**: major — a bidirectional-traceability violation spanning two delivered iterations
+- **Type**: feature-level traceability maintenance
+- **Confirmed by direct search**, not inference: `specs/198-beta2-hardening/tasks.md` contains **zero
+  occurrences** of `T072`–`T079` (Iteration 009) and **zero** of `T080`–`T085` (Iteration 010). Its
+  task inventory ends with the Iteration 008 section and its
+  `## Bidirectional traceability (tasks ↔ requirements)` block ends with the Iteration 008 check.
+- **Consequence**: the tasks-stage rule is that every task maps to ≥1 FR/SC AND every FR/SC has ≥1
+  covering task, run in both directions and written into `tasks.md`. For Iterations 009 and 010 that
+  check was never run at the feature level. Fourteen delivered tasks have no traced requirement of
+  record.
+- **Root cause, and why it matters more than the bookkeeping**: Iteration 009's plan used the
+  **F-labels themselves in its Requirement column** instead of FR IDs — and those labels resolved to
+  nothing in the repository until
+  file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/consumer-feedback-register.md
+  landed today. So an iteration was planned, delivered, and reviewed against identifiers no reader
+  could resolve, and the one mechanism designed to catch exactly that — the bidirectional check — had
+  not been extended to cover it. The two failures are the same failure: traceability treated as a
+  step that happened once rather than an invariant maintained per iteration.
+- **Related**: this is the structural sibling of DRIFT-198-I010-005 (iteration `state.md` never
+  updated). Both are records that drifted from disk truth because nothing checked them per iteration.
+- **Deliberately NOT fixed here**: backfilling two iterations of bidirectional traceability is real
+  work with a real estimate. Absorbing it silently into a closeout is the pattern this feature has
+  spent nine iterations learning not to repeat. Scope and vehicle are a decision for Iteration 011's
+  planning boundary.
+- **Required correction (deferred)**: backfill the Iteration 009 and 010 task sections and their
+  bidirectional checks in `tasks.md`; and, so it cannot recur, make the per-iteration traceability
+  check a gate rather than a convention — the same "structural rule beats per-instance diligence"
+  lesson the path-identity and containment classes both taught.
