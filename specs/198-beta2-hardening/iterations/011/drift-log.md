@@ -124,6 +124,38 @@ the same discipline that disproved DRIFT-198-I009-042.
 arrival that cannot be recorded must become a state the provider can see and speak to. Silence is
 the current behaviour, not an absence of behaviour.
 
+### Requirement audit before T088 builds — FR-066 did NOT cover the measured shape
+
+Maintainer-directed check, 2026-08-03: read FR-066's text against the silent-pass shape before
+building the reshaped correction. **Result: the text did not cover it, and it was amended rather
+than reinterpreted.**
+
+Clause-by-clause against the measured behaviour:
+
+| FR-066 clause | Silent shape |
+| --- | --- |
+| record established BEFORE the first packet renders | **not triggered** — no packet renders |
+| a packet MUST NOT create the state it reports | **not triggered** — no packet |
+| the arrival sync MUST establish the cursor baseline | **VIOLATED** |
+| a packet rendered ahead of sync presents no options/marker | **not triggered** — no packet |
+| "recorded mechanically" means before the human is asked | **not triggered** — no human is asked |
+
+**Four of five MUSTs are conditioned on a packet rendering.** Only one is violated, and the text is
+silent on what must happen when the sync *cannot* establish the record. Nothing required the failure
+to be distinguishable from "no pending verdict"; nothing required any surface at all in the
+unrecorded state — yet both are exactly what T088/T089 must build. Building them under the unamended
+text would have been an unstated broadening.
+
+Corroborating the diagnosis: FR-066's own Evidence block cites three first-arrival failures, and
+**all three are emit-the-wrong-thing failures** — a wrong block (DRIFT-198-I008-055), a forced
+generic packet (DRIFT-198-I008-060), headers without a marker (the Antigravity gap). The requirement
+was drafted against that family; the silent-pass family was never in view.
+
+**Amendment applied** under the maintainer's conditional authorization, using the SC-025
+authorized-touch pattern: two MUSTs added to FR-066 — the failure must be a distinguishable state
+and MUST NOT report success, and the surface MUST speak and name what is missing. Recorded in the
+spec's Clarifications under Session 2026-08-02/03.
+
 ### Two more fixture defects, both caught by the INCONCLUSIVE guard
 
 The guard adopted from T086 paid for itself immediately — twice, on its first use:
@@ -141,6 +173,46 @@ Both would have been silent false results under a two-outcome harness: the first
 like "sync correctly refused", the second like "no boundary surface needed". **Three of the four
 fixture defects found across T086 and T087 would have read as passes.** The third outcome is not
 bookkeeping — it is what separates a measurement from a wish.
+
+## FOR THE RETRO — a practice that has earned promotion to shipped method guidance
+
+**Flagged for the retro facilitator by maintainer instruction, 2026-08-03.** This is a process
+finding, not a test note, and it should not be discovered by reading two tasks' evidence.
+
+### The running total
+
+**Three of the four fixture defects found across T086 and T087 would have read as PASSES** under an
+ordinary two-outcome harness:
+
+| # | Task | Defect | Two-outcome reading |
+| --- | --- | --- | --- |
+| 1 | T086 | transcript omitted; provider emitted nothing | "half 1 satisfied" ✅ **false pass** |
+| 2 | T086 | asserted the scoped branch's phrase; unscoped demand missed | "no demand" ✅ **false pass** |
+| 3 | T087 | schema `v2` used for the un-bootstrapped shape; ledger threw fail-closed | "sync correctly refused" ✅ **false pass** |
+| 4 | T087 | `.squad/active-features.yml` absent; claim upsert threw | INCONCLUSIVE (caught by the guard) |
+
+**The INCONCLUSIVE third outcome has now paid for itself four times in two tasks.** That is past the
+threshold where a practice becomes a rule.
+
+### Two candidate rules for the shipped method guidance
+
+Both belong in
+file:///C:/Dev/specrew-beta2-hardening/docs/methodology/lifecycle-discipline.md, not only in this
+feature's record — every downstream consumer writing a RED-first fixture hits the same trap.
+
+1. **INCONCLUSIVE is a required third outcome.** A harness MUST distinguish *the defect is absent*
+   from *the probe never reached the code path*, and report the latter as a fixture defect. Folding
+   "no signal at all" into pass/fail is precisely how DRIFT-198-I009-042's first harness revision
+   lied, and it recurred twice more here on the very next attempt.
+2. **Read the measured output against the claim being made about it.** Defects 1 and 2 above both
+   *passed their own assertions*. **Neither was found by a harness failing** — the exit code was
+   green, and would have stayed green. They were found by looking at what the green actually
+   measured. This is the practice that made the -042 lesson transfer; the lesson did not transfer
+   on its own the first time, and the record should say so plainly.
+
+The second rule is the harder one to institutionalize, because it cannot be automated: it is a
+discipline about not trusting your own instrument. The first rule is its mechanical proxy and should
+ship as a checkable convention.
 
 ## Deliberately NOT registered in the regression suite yet
 

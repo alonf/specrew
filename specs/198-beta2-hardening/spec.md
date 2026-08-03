@@ -209,6 +209,19 @@ rather than asked.
   action? → A (human): **the checkpoint.** A grant names the checkpoint it pays for, is spent
   within it, and expires with it; work elsewhere needs its own grant. Grant and allowance
   therefore share one key. FR-019 kept as drafted, with the binding made explicit.
+- Q (2026-08-03, mid-iteration-011, maintainer-directed audit): does FR-066's text as written cover
+  the silent-pass shape T087 measured, or did it assume the marker-less-block form? → A
+  (audited, then amended under the maintainer's conditional authorization): **it did not cover it.**
+  Of FR-066's five operative MUSTs, **four are conditioned on a packet rendering** — and the
+  measured failure renders no packet. Only "the arrival sync MUST establish the cursor baseline" is
+  violated, and the text says nothing about what must happen when the sync *cannot*. Nothing
+  required the failure to be distinguishable from "no pending verdict", and nothing required any
+  surface at all in the unrecorded state — yet both are what T088/T089 must build. The Evidence
+  block's three cited observations are all *emit-the-wrong-thing* failures, confirming the
+  requirement was drafted against that family. **FR-066 amended with two MUSTs** (distinguishable
+  failure state; the surface must speak and name what is missing) rather than reinterpreted, on the
+  same reasoning as SC-025: an unstated broadening is something the certifying review is entitled
+  to flag.
 - Q: Who declares FR-067's blocking severity threshold, and where does it live? → A
   (self-answered from repo doctrine, NOT asked): the threshold is **explicit and recorded in
   the result**, per FR-067 as written, and NFR-001/NFR-002 already require that any
@@ -1331,6 +1344,35 @@ requirement that dresses a report up as an artifact is not.
   recorded BEFORE the human is asked to rule on it, never after. This is reachable by every
   new project at its very first boundary, which is also a consumer's first impression of the
   lifecycle.
+
+  **AMENDED at clarify, 2026-08-03 — the SILENT-PASS shape, added on measurement.** T087's
+  fixtures measured the real surface and found a shape this requirement did not cover. Every
+  clause above except one is conditioned on *a packet rendering*; the measured failure renders
+  no packet at all. On a pre-bootstrap project the arrival sync fails to establish the crossing,
+  **swallows the failure into a warning, sets `has_pending = false`, and returns `success =
+  true`** — and the provider then runs and emits nothing. A brand-new project's first boundary
+  passes with **no enforcement surface, no human-visible warning, and success on the wire.**
+  That is this requirement's target in its severest form, not a deviation from it: instead of a
+  packet creating the state it reports, nothing creates anything. Two MUSTs are therefore added:
+
+  - **A failure to establish the crossing MUST be a distinguishable state.** "No verdict is
+    pending" and "the crossing could not be recorded" MUST NOT resolve to the same value on the
+    wire, and the second MUST NOT be reported as success. A `Write-Warning` does not satisfy
+    this: a warning is not a state a caller can branch on (NFR-002 — legitimate paths announce
+    themselves, and so must illegitimate ones).
+  - **In that state the surface MUST speak, and MUST name what is missing.** Silence is not an
+    acceptable rendering of an unrecordable boundary. It MUST still present no approval options
+    and no verdict marker — the existing clauses hold — but it MUST tell the human that a
+    boundary was reached and could not be recorded, and what is absent. A marker-less block at
+    least reveals that a boundary exists; silence reveals nothing, which is why the measured
+    shape is worse than the one this requirement was drafted against.
+
+  *Why the amendment rather than a reinterpretation*: the Evidence block below cites three
+  first-arrival failures, and **all three are emit-the-wrong-thing failures** — a wrong block, a
+  forced generic packet, headers without a marker. The requirement was authored against that
+  family. Building the silent-pass correction under the unamended text would have been an
+  unstated broadening that the certifying review would be entitled to flag, which is the same
+  reason SC-025's composition clause was amended rather than quietly re-scoped.
 
   *Evidence*: the F1 report itself is maintainer-reported with no session artifact. Three
   committed observations from OTHER sessions establish that the first-boundary surface
