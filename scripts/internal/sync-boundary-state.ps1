@@ -566,8 +566,16 @@ function Sync-SpecrewPendingVerdictStopArtifact {
 
     $artifactPath = Get-SpecrewPendingVerdictStopPath -ProjectRoot $ProjectRoot
     $pendingState = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+    # FR-066 (amended 2026-08-03): `RecordStatus` exists so a caller can tell "no verdict is
+    # pending" apart from "the crossing could not be recorded". Before this, both resolved to
+    # HasPendingVerdict=$false and were indistinguishable on the wire, which is why nothing
+    # downstream branched on the failure. `IsFirstBoundary` is threaded for the same reason: it was
+    # computed in shared-governance and had no consumer anywhere in the tree.
     $result = [pscustomobject]@{
         HasPendingVerdict = $false
+        RecordStatus      = 'established'
+        FailureReason     = $null
+        IsFirstBoundary   = if ($null -ne $pendingState) { [bool]$pendingState.IsFirstBoundary } else { $false }
         Path              = $artifactPath
         Boundary          = $null
         ApprovalPhrase    = $null
@@ -1658,9 +1666,22 @@ function Invoke-SpecrewBoundaryStateSync {
         $pendingVerdictStop = Sync-SpecrewPendingVerdictStopArtifact -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
     }
     catch {
-        Write-Warning ("Boundary sync '{0}' could not write the pending-verdict stop artifact: {1}" -f $BoundaryType, $_.Exception.Message)
+        # FR-066 (amended 2026-08-03), T088. This catch used to degrade to a bare
+        # HasPendingVerdict=$false behind a Write-Warning — a value identical to "no verdict is
+        # pending", so no caller could tell that the crossing had FAILED to record. T087 measured
+        # the consequence: sync returned success=true, wrote no artifact, and the provider then
+        # emitted nothing at all, so a brand-new project's first boundary passed with no
+        # enforcement surface and no human-visible signal.
+        #
+        # The failure is now a first-class state. A warning is NOT a state a caller can branch on
+        # (NFR-002), so the warning is kept for the console and the STATE is what travels.
+        $failureReason = [string]$_.Exception.Message
+        Write-Warning ("Boundary sync '{0}' could not establish the boundary crossing record: {1}" -f $BoundaryType, $failureReason)
         $pendingVerdictStop = [pscustomobject]@{
             HasPendingVerdict = $false
+            RecordStatus      = 'unrecordable'
+            FailureReason     = $failureReason
+            IsFirstBoundary   = $true
             Path              = Get-SpecrewPendingVerdictStopPath -ProjectRoot $paths.ProjectRoot
             Boundary          = $null
             ApprovalPhrase    = $null
@@ -1779,8 +1800,22 @@ function Invoke-SpecrewBoundaryStateSync {
         }
     }
 
+    # FR-066 (amended 2026-08-03): a crossing that could not be recorded MUST NOT be reported as
+    # success. Every other step may have succeeded; the boundary record is the point of the call.
+    $boundaryRecordStatus = if ($null -ne $pendingVerdictStop -and $pendingVerdictStop.PSObject.Properties.Name -contains 'RecordStatus') {
+        [string]$pendingVerdictStop.RecordStatus
+    }
+    else { 'established' }
+    $boundaryRecordFailureReason = if ($null -ne $pendingVerdictStop -and $pendingVerdictStop.PSObject.Properties.Name -contains 'FailureReason') {
+        $pendingVerdictStop.FailureReason
+    }
+    else { $null }
+
     return [pscustomobject]@{
-        success          = $true
+        success          = ($boundaryRecordStatus -ne 'unrecordable')
+        boundary_record_status = $boundaryRecordStatus
+        boundary_record_failure_reason = $boundaryRecordFailureReason
+        is_first_boundary = if ($null -ne $pendingVerdictStop -and $pendingVerdictStop.PSObject.Properties.Name -contains 'IsFirstBoundary') { [bool]$pendingVerdictStop.IsFirstBoundary } else { $false }
         boundary_type    = $sessionState.boundary_type
         feature_ref      = $sessionState.feature_ref
         iteration_number = $sessionState.iteration_number

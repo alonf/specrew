@@ -124,7 +124,14 @@ else {
     $reportedSuccess = [bool]$json.success
     $hasPending = [bool]$json.pending_verdict_has_pending
     $marker = [string]$json.pending_verdict_marker
-    $warned = $syncOut -match 'could not write the pending-verdict stop artifact'
+    # Match either wording: the pre-T088 text and the post-T088 text. The console warning is kept
+    # deliberately (a human reading the terminal should still see it); what changed is that the
+    # STATE now travels too, so the second assertion below stops firing.
+    $warned = ($syncOut -match 'could not write the pending-verdict stop artifact') -or ($syncOut -match 'could not establish the boundary crossing record')
+    $stateTravels = ($null -ne $json.boundary_record_status) -and ([string]$json.boundary_record_status -ne 'established')
+    Write-Measured ("boundary_record_status={0}; failure_reason_present={1}; is_first_boundary={2}" -f `
+            $(if ($null -eq $json.boundary_record_status) { '(absent)' } else { $json.boundary_record_status }), `
+        (-not [string]::IsNullOrWhiteSpace([string]$json.boundary_record_failure_reason)), $json.is_first_boundary)
     $artifactPath = Join-Path $proj '.specrew\runtime\pending-verdict-stop.md'
     $artifactExists = Test-Path -LiteralPath $artifactPath
 
@@ -140,8 +147,11 @@ else {
         Write-Pass 'sync distinguishes "could not establish the crossing" from "no pending verdict"'
     }
 
-    if ($warned) {
+    if ($warned -and -not $stateTravels) {
         Write-Red 'the failure is surfaced only as a Write-Warning — a warning is not a state a caller can branch on (NFR-002: legitimate paths announce themselves)'
+    }
+    elseif ($stateTravels) {
+        Write-Pass 'the failure travels as a branchable state (boundary_record_status), not only as console text'
     }
 }
 
