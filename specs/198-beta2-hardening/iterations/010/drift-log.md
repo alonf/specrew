@@ -618,3 +618,41 @@ same confidence as the parts I had actually measured.
 - **Required correction (deferred)**: accept provenance parentheticals and the `NNNa` suffix in the
   requirement pattern, and make the partial-match case warn with the count it could see rather than
   failing on the caller's scope.
+
+### DRIFT-198-I010-012 — the ceiling-halt message teaches a command that throws in the shipped mode
+
+- **Status**: open, found 2026-08-03 while writing limitation 8 of the narrowed release claim
+- **Severity**: **major, consumer-reachable** — it is the documented escape from a limitation the
+  release is about to ship, and it does not work
+- **Type**: consumer instruction vs. runtime gate
+- **Observed by reading the shipped chain end to end**:
+  1. `scripts/internal/continuous-co-review/review-authority-mode.json` ships
+     `{"schema_version":"1.0","mode":"campaign"}`, and it **is** in `Specrew.psd1`'s FileList — so
+     every consumer runs in campaign mode, not just this repo.
+  2. `review-authority-cutover.ps1:73` sets `campaign_authority_enabled = ($mode -ceq 'campaign')`.
+  3. `scripts/specrew-review.ps1:803` then throws for **every** `--remediate` choice except
+     `override-block`: *"Campaign remediation '&lt;x&gt;' does not create signoff authority; use a new
+     explicitly authorized run."*
+  4. But the ceiling-halt text at `worktree-reviewer.ps1:1337` instructs the consumer to
+     *"run `specrew review --remediate more-time`, or approve the assistant doing it"*, and
+     `specrew-review.ps1:105-110` advertises all seven remediation choices with no indication that
+     six of them fail.
+- **Consequence**: a consumer who hits the round ceiling is told to run a command that throws. This
+  **compounds F10** and explains the maintainer's consumer test better than F10 alone does: the
+  ceiling was mis-scoped AND the named escape was nailed shut, so every run halted with no working
+  door. It also puts FR-018 — which REQUIRES the halt text name the sanctioned next step — in
+  violation on the shipped default, and NFR-005 ("teach, don't trap") with it.
+- **The door that does work** in campaign mode is a new explicitly authorized run: a fresh
+  `--authorization-ref`, which mints a new grant with a slot. Re-using a previous reference resolves
+  to the same grant id and grants no new slot
+  (`review-campaign-orchestrator.ps1:888-908`), so the reference must be new.
+- **Instruction correction, recorded**: the maintainer's 2026-08-03 verdict directed that the
+  round-ceiling limitation "name the consumer workaround (the human-typed more-time command)" in the
+  affected-users table. That instruction rests on a premise this finding falsifies. The table names
+  the `--authorization-ref` door instead and warns against `more-time` explicitly. Written this way
+  deliberately: a release claim that tells a consumer to run a command that throws is worse than one
+  that names no workaround at all.
+- **Required correction (deferred to beta3, with F10)**: either make the remediation doors reachable
+  in campaign mode, or make the halt text and `--help` mode-aware so they teach the door that is
+  actually open. A test must assert the halt message's named command succeeds in the shipped mode —
+  the absence of that assertion is why this survived.

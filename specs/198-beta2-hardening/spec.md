@@ -1659,11 +1659,24 @@ done-condition — the trap the tasks-stage rule names, closed at specify rather
   (FR-067)
 - **SC-025 (verdict demand needs evidence; composition is deterministic)**: A verdict demand
   for boundary B, issued when the stage preceding B has none of its required artifacts,
-  renders no approval options and no marker, and names what is missing. Separately, two
-  providers emitting conflicting stop signals in one turn resolve to a single recorded
-  outcome under the stated precedence, with the losing signal preserved — **the transcript
-  shape observed at 2026-07-25T17:40:45Z, emit-and-do-not-emit of the same marker in one
-  message, cannot recur**. (FR-068)
+  renders no approval options and no marker, and names what is missing. **This clause is
+  beta2's gate.**
+
+  *Composition clause — scoped to beta3 by maintainer verdict, 2026-08-03.* Two providers
+  emitting conflicting stop signals in one turn resolve to a single recorded outcome under a
+  stated precedence, with the losing signal preserved. **Vehicle: the beta3 hook-machinery
+  cluster** — named explicitly so FR-068 closes honestly at Iteration 011 rather than holding
+  the iteration open against an unmet clause, which is the DRIFT-198-I009-044 wall.
+
+  The reasoning is a claim about causation, and it is recorded because Iteration 011's
+  certification must be able to check it: **the evidence clause removes the observed conflict
+  at its origin.** The 2026-07-25T17:40:45Z shape — emit-and-do-not-emit of the same marker in
+  one message — arose because a premature verdict demand was co-rendered with a campaign block
+  forbidding that marker. Gating the demand on stage evidence means the demand is not emitted,
+  so that pairing cannot form. Composition conflicts that survive are annoyance-class rather
+  than authorization-class. If Iteration 011's certification finds a conflict that stage-evidence
+  gating does NOT remove, that finding reopens this clause rather than being waved through.
+  (FR-068)
 
 ## Assumptions
 

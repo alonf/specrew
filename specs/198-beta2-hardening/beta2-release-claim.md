@@ -2,12 +2,26 @@
 
 **Feature**: 198-beta2-hardening
 **Status**: **APPROVED as the beta2 claim.** Wording approved 2026-07-30 with two edits (threat model
-extended to checkout-borne links; applicability table qualified). Tag point confirmed 2026-08-01: **the
-beta2 tag is cut after Iteration 011**, which carries the consumer-severe set only (F11, F10, F17, F1,
-plus any remaining Stop-packet detector acceptance fixtures). **Limitation 1 stands at the tag** in its
-revised form — resolution contained, enumeration not — and is closed by the beta3 containment
-consolidation, not before. Iterations 009 and 010 remain at `reviewing` until then, per the Iteration
-003 precedent.
+extended to checkout-borne links; applicability table qualified).
+
+**Tag basis RE-CUT 2026-08-03, on the measured estimate.** The tag was previously gated on the whole
+consumer-severe set (F11, F10, F17, F1). Surveying the implementation surfaces put that set at **~52 SP
+against a 20 SP cap** — three iterations, not the two the plan assumed — with F10's requirement needing
+a checkpoint-identity minting rule that does not exist and F17's needing two severity vocabularies
+unified first. Rather than move the tag by two iterations, the maintainer re-cut what it gates on:
+
+**beta2 gates on AUTHORIZATION-INTEGRITY only** — FR-066 (first-boundary arrival sync precedes the
+first packet) and FR-068's evidence half (a verdict demand requires its stage's evidence to exist).
+These are the defects where a human can be led to authorize an increment that does not exist, which is
+the severest failure the governance model has. **The tag is cut after Iteration 011.**
+
+**F10 and F17 move to beta3** and enter this document as named limitations 8 and 9, in the same honest
+posture limitation 1 already takes. Iterations 012 and 013 of the five-iteration plan are formally
+re-homed to beta3. The release gate and the maintainer's manual test follow Iteration 011.
+
+**Limitation 1 stands at the tag** in its revised form — resolution contained, enumeration not — closed
+by the beta3 containment consolidation. Iterations 009 and 010 remain at `reviewing` until then, per
+the Iteration 003 precedent.
 **Authored**: 2026-07-30, under the pre-decided fallback (maintainer decision 2026-07-29, item 7)
 **Trigger**: the agreed termination rule fired. The final certifying round
 `run-f198-i009-3d74f123-final` (digest `85bdfe01`) reported two new **major** findings of the
@@ -105,7 +119,54 @@ PowerShell parser is a scheduled replan task, not delivered here.
 
 **7. A human-observed defect that a fresh reviewer rediscovers cannot be recorded as deferred.** The
 review gate's deferral vocabulary covers findings carried across rounds, not fresh discoveries, so an
-accepted known defect cannot be expressed to the gate. (DRIFT-198-I009-034, in iteration 012 scope)
+accepted known defect cannot be expressed to the gate. (DRIFT-198-I009-034, now in **beta3** with the
+governance-vocabulary cluster — Proposal 206.)
+
+**8. The review round ceiling is charged per campaign, not per checkpoint — so a lifecycle that
+produces findings at two or more checkpoints pays for all of them out of one budget.** *Added
+2026-08-03 with the tag re-cut.*
+
+This is the **F10 round-ceiling tax**, and it is a defect of FR-019's SCOPE rather than of its
+implementation: the machinery charges exactly what the requirement told it to charge. FR-019 was
+amended on 2026-08-02 so the allowance keys to lifecycle checkpoint identity, but **the amendment is
+specification only — no implementation ships in beta2.** Measured surface: two independent allowance
+systems plus a third dormant one, with the legacy ceiling held in a repo-global singleton keyed on
+changed-path overlap, and no checkpoint-identity minting rule in existence.
+
+Consumer effect: runs halt at the ceiling whether or not any individual checkpoint is converging. The
+maintainer's own consumer manual test halted on every run. **Read limitation 8b with this one — the
+escape route the halt message names does not work in the shipped mode.** (F10; FR-019 amended,
+unimplemented; beta3.)
+
+**8b. The ceiling-halt message, and the CLI help, name remediation commands that throw in the shipped
+default mode.** *Added 2026-08-03; found while writing limitation 8.*
+
+`review-authority-mode.json` ships `{"mode": "campaign"}` and is in the module FileList, so **every
+consumer runs in campaign mode**. In that mode `specrew review` rejects every `--remediate` choice
+except `override-block`. But the ceiling-halt text tells the consumer to *"run `specrew review
+--remediate more-time`"*, and `--help` advertises all seven choices with no indication that six of
+them fail. The documented escape from limitation 8 is nailed shut.
+
+**The door that does work in campaign mode is a new explicitly authorized run** — a fresh
+`--authorization-ref`, which mints a new grant with a slot. Re-using a previous reference yields the
+same grant and no new slot, so the reference must be new. See the affected-users table.
+
+**9. The finality/closeout check is not guaranteed to converge.** *Added 2026-08-03 with the tag
+re-cut.*
+
+This is **F17**. FR-067 was specified on 2026-08-02 — explicit severity threshold, residuals as a
+first-class terminal outcome, no self-referential audit blocking — but **no implementation ships in
+beta2.** Today there is no third terminal state between "clean" and "blocked": findings below the
+blocking bar still route to a human turn rather than closing with recorded residuals. A closeout that
+writes `state.md`, `plan.md` or `tasks.md` can re-arm the very check it is completing, because
+FR-045's carry-forward allowlist covers only the six generated review artifacts and denies exactly
+those files.
+
+Two prerequisites are recorded so the beta3 work starts from measurement: the severity vocabulary is
+not one vocabulary (`blocking|major|minor|note` in the authority core versus `blocking|advisory|nit`
+in the reviewer, with the only rank map in a third file), and the digest strip list cannot be widened
+as a shortcut because that file documents exclusion as a false-allow vector. (F17; FR-067 specified,
+unimplemented; beta3.)
 
 ## Who is affected, and what to do
 
@@ -115,6 +176,8 @@ accepted known defect cannot be expressed to the gate. (DRIFT-198-I009-034, in i
 | Have symlinks or junctions inside the project, especially under `.specrew/` | Limitations 1 and 2 are reachable. Prefer a project tree without reparse points beneath `.specrew/review/`, and do not place the authority store behind a link. |
 | Run on a case-sensitive volume (typical Linux) | Limitation 1 is reachable. Limitation 2 is withdrawn on all volumes, not merely unreachable here. |
 | Rely on the consumer applicability firewall for governance advisories | Limitation 4 applies: a case-distinct duplicate of a policy file may not be scanned. Avoid case-only filename distinctions in `docs/`, `specs/`, `.github/`. |
+| Run a lifecycle that produces review findings at **two or more checkpoints** | Limitations 8 and 8b apply, and they compound. Your rounds are charged against one shared budget, so you will reach the ceiling sooner than the per-checkpoint arithmetic suggests — possibly on every run. **When you halt, do NOT follow the halt message's instruction to run `specrew review --remediate more-time`: that command throws in the shipped campaign mode.** The working escape is a **new explicitly authorized review run** — supply a fresh `--authorization-ref <ref>`, which mints a new grant with a review slot. The reference must be one you have not used before; re-using an earlier reference resolves to the same grant and grants no new slot. This is a human decision by design: the allowance guards real AI spend, and only a person may extend it. |
+| Reach a closeout or finality check with findings outstanding | Limitation 9 applies. Findings below the blocking bar do not close the check on their own — they route to a human turn rather than terminating with recorded residuals. If the closeout writes `state.md`, `plan.md` or `tasks.md`, expect the check to re-arm on its own writes. Budget a human decision at closeout rather than expecting it to converge unattended. |
 
 ### Detecting reparse points in your project
 

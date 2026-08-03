@@ -175,6 +175,64 @@ Ranked lowest-priority-first, as the method requires, the reasoning is:
 **Recommendation: defer T091 to the FR-019/FR-067 slice**, where the dispatcher is untouched by
 other work and the composition change can carry its own certification.
 
+## Tag basis RE-CUT, 2026-08-03 — beta2 gates on authorization-integrity only
+
+Maintainer verdict on the estimate above. Rather than move the tag by two iterations, the tag's
+basis was re-cut:
+
+- **beta2 gates on FR-066 and FR-068's evidence half.** Tag after Iteration 011.
+- **F10 (FR-019) and F17 (FR-067) move to beta3**, entering
+  file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta2-release-claim.md as named
+  limitations 8 and 9, in the same posture limitation 1 takes.
+- **Iterations 012 and 013 of the five-iteration plan are formally re-homed to beta3.** The release
+  gate and the maintainer's manual test follow Iteration 011.
+- **T091 stays deferred**, and the verdict authorized a scoped specify touch naming the beta3
+  hook-machinery cluster as SC-025's composition vehicle — so FR-068 closes honestly here rather
+  than holding Iteration 011 open against an unmet clause (the DRIFT-198-I009-044 wall).
+
+The causation claim behind that last point is written into SC-025 and is **checkable at this
+iteration's certification**: T090's stage-evidence gating removes the observed conflict at its
+origin, because the 2026-07-25 emit/do-not-emit pair only formed when a premature demand
+co-rendered with a campaign block. If certification finds a conflict that stage-evidence gating does
+NOT remove, that finding reopens the clause rather than being waved through.
+
+## Beta3 scope, recorded now so it is planned rather than rediscovered
+
+Per the maintainer's instruction that FR-019's precondition be named now rather than found later:
+
+| Item | Why it is here |
+| --- | --- |
+| **PRECONDITION — campaign mode rejects all remediations except `override-block`** (`scripts/specrew-review.ps1:803`) | FR-019 changes `allowance-reset` and `resolved-against-disk`; both are unreachable in the shipped mode. **This must be settled before FR-019 is scheduled, not during** — either the story lifts the gate, or the new behaviour ships unreachable. |
+| **DRIFT-198-I010-012 — the halt message teaches a command that throws** | Found while writing limitation 8. Compounds F10 and belongs with it: the ceiling is mis-scoped AND its documented escape is nailed shut. Puts FR-018 in violation on the shipped default. |
+| **FR-019 implementation** (~19 SP + certification) | Checkpoint-identity minting from the lifecycle state machine is net-new design; closed-shape contract migration; campaign-total enforcement is net-new. |
+| **FR-067 implementation** (~14 SP + certification) | Prerequisite: unify the two severity vocabularies. The digest strip list is not available as a shortcut. |
+| **T091 — deterministic stop-block composition** (3.0 SP, deferred from here) | Joins the hook-machinery cluster named in SC-025. |
+| **Containment consolidation** (delivers DRIFT-198-I009-041 / -I010-004) | One primitive covering resolution AND enumeration, link-state oracle fixtures, structural rule, mutation gate. |
+| **Proposal 206 — governance-schema vocabulary completeness** | Seven instances, including DRIFT-198-I010-008 (boundary cursor). |
+| **Repo-wide `state.md` audit** | Maintainer-assigned to beta3 backlog. This feature's nine iterations were measured; other features on other branches were not. |
+| **DRIFT-198-I010-010 — the `Status` projection fix** | See the slack assessment below. |
+
+## Does DRIFT-198-I010-010 fit the 1.5 SP slack? — assessed, and NO
+
+The maintainer's instruction was explicit: *"rides 011's 1.5 SP slack **only if it genuinely
+fits**."* Assessed honestly, it does not.
+
+The fix is three parts: carry `Status` through `Get-TaskProgressPlanRows`, seed a newly-minted
+ledger from it, and prove it RED-first. The projection change is nearly free. The seeding is not —
+it has to interact correctly with the existing preserve-live-state logic
+(`task-progress.ps1:657-662`, which deliberately protects `in-progress`, `blocked`, `needs-rework`
+and `deferred` from being downgraded), and it must decide how three disagreeing status vocabularies
+map. The RED-first fixture needs a project whose plan records `done` tasks and no ledger.
+
+**Estimate: 1.5 SP — exactly the available slack, leaving zero absorption.** That is the Iteration
+009 condition restated: entering an iteration at cap with nothing to absorb the first surprise.
+Iteration 010 proved the alternative works, and the maintainer's own words on that headroom were
+*"that headroom is exactly what 009 never had."*
+
+**Recommendation: it does not fit; it goes to beta3 with the `state.md` audit** it is the root cause
+of. The immediate risk is already mitigated — Iteration 011's `tasks-progress.yml` was authored at
+plan time, which removes the condition the defect requires, and Iteration 010's record is restored.
+
 ## Method — carried forward, binding
 
 Unchanged from Iteration 010, which delivered on estimate under them:
@@ -233,10 +291,10 @@ than silent defects — the same honest posture limitation 1 already takes.
 
 - Requirement scope: FR-066, FR-068. Criteria: SC-023, SC-025.
 - Every task traces to at least one; both requirements have at least one covering task.
-- **Known feature-level gap, not introduced here**: `tasks.md` carries no Iteration 009 or 010
-  sections, so its bidirectional check has not covered T072–T085 (DRIFT-198-I010-007). Iteration
-  011's tasks will land in the same gap unless that backfill is scheduled. Flagged, not silently
-  absorbed.
+- **`tasks.md` backfill — SCHEDULED at this iteration's tasks boundary** (maintainer instruction,
+  2026-08-03). `tasks.md` carries no Iteration 009, 010 or 011 sections, so its bidirectional check
+  has not covered T072 onward (DRIFT-198-I010-007). All three sections and their bidirectional
+  checks land when the tasks boundary is authored, rather than 011 joining the same gap.
 
 ## Notes
 

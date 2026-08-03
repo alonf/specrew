@@ -1,3 +1,89 @@
+## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
+
+### 2026-08-03 — Verdict: re-cut the beta2 tag basis; F10 and F17 to beta3 as named limitations
+
+- **Decision ID**: f198-beta2-tag-basis-recut-authorization-integrity
+- **Type**: approval
+- **Affected Requirement**: FR-040
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-03T00:00:00Z
+- **Disposition**: **beta2 gates on authorization-integrity only** — FR-066 (first-boundary arrival
+  sync precedes the first packet) and **FR-068's evidence half** (a verdict demand requires its
+  stage's evidence to exist). Tag after Iteration 011. **F10 (FR-019) and F17 (FR-067) move to
+  beta3**, entering `beta2-release-claim.md` as named limitations 8 and 9 in the same honest posture
+  limitation 1 takes; the round-ceiling entry names the consumer workaround in the affected-users
+  table. **Iterations 012 and 013 of the five-iteration plan are formally re-homed to beta3.** The
+  release gate and the maintainer's manual test follow Iteration 011.
+- **Rationale**: two surveys measured the implementation surfaces before any estimate was written.
+  The full consumer-severe set is **~52 SP against a 20 SP cap** — three iterations, not the two the
+  carried instruction assumed, which would have put iteration 012 at ~33 SP: the Iteration 009 shape
+  (planned 24.5, delivered ~70). FR-019 needs a checkpoint-identity minting rule that does not exist
+  (today `checkpoint_id = "nav-$RunId"`, per-run), a closed-shape contract migration, and a
+  campaign-total that is net-new. FR-067 needs two incompatible severity vocabularies unified first.
+  FR-066/FR-068 are the defects where a human can be led to authorize an increment that does not
+  exist — the severest failure the governance model has — and they are separable.
+
+### 2026-08-03 — Verdict: T091 deferred, with an authorized scoped specify touch for SC-025
+
+- **Decision ID**: f198-i011-t091-defer-sc025-beta3-vehicle
+- **Type**: defer
+- **Affected Requirement**: FR-068
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-03T00:00:00Z
+- **Disposition**: T091 (deterministic stop-block composition, 3.0 SP) stays deferred, bringing
+  Iteration 011 to 18.5/20. **The verdict additionally authorizes a scoped specify touch** amending
+  SC-025's composition clause to name the **beta3 hook-machinery cluster** as its vehicle, so FR-068
+  closes honestly at Iteration 011 instead of holding it open against an unmet clause — the
+  DRIFT-198-I009-044 wall that already holds Iteration 009 open.
+- **Rationale**: T088/T090's stage-evidence gating removes the observed conflict source at its
+  origin. The 2026-07-25T17:40:45Z emit/do-not-emit pair formed only because a premature verdict
+  demand co-rendered with a campaign block forbidding that marker; gate the demand on stage evidence
+  and the pairing cannot form. Remaining composition conflicts are annoyance-class rather than
+  authorization-class. The causation claim is written into SC-025 so Iteration 011's certification
+  can check it: a surviving conflict that gating does not remove reopens the clause.
+
+### 2026-08-03 — Instruction correction: the named consumer workaround does not work
+
+- **Decision ID**: f198-i010-012-halt-message-teaches-throwing-command
+- **Type**: correction
+- **Affected Requirement**: FR-018
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\010
+- **Approving Human**: (pending — raised by the Crew against the maintainer's instruction)
+- **Recorded At**: 2026-08-03T00:00:00Z
+- **Disposition**: the verdict directed that limitation 8 "name the consumer workaround (the
+  human-typed more-time command)". **Verified before writing: that command throws for every
+  consumer.** `review-authority-mode.json` ships `{"mode":"campaign"}` and is in the module
+  FileList; `review-authority-cutover.ps1:73` enables campaign authority on that value; and
+  `specrew-review.ps1:803` then rejects every `--remediate` choice except `override-block`. The
+  ceiling-halt text nonetheless instructs the consumer to run `specrew review --remediate
+  more-time`, and `--help` advertises all seven choices. The affected-users table therefore names
+  the door that **does** open — a new explicitly authorized run via a fresh `--authorization-ref`,
+  which mints a new grant with a slot — and warns against `more-time` explicitly.
+- **Rationale**: a release claim that tells a consumer to run a command that throws is worse than
+  one naming no workaround. Recorded as DRIFT-198-I010-012, deferred to beta3 with F10, which it
+  compounds: the maintainer's consumer test halted on every run because the ceiling was mis-scoped
+  AND its documented escape was nailed shut. Also places FR-018 in violation on the shipped default.
+
+### 2026-08-03 — Assessment: DRIFT-198-I010-010 does not fit Iteration 011's slack
+
+- **Decision ID**: f198-i011-drift-010-does-not-fit-slack
+- **Type**: defer
+- **Affected Requirement**: FR-008
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\011
+- **Approving Human**: Alon Fliess (conditional instruction — "only if it genuinely fits")
+- **Recorded At**: 2026-08-03T00:00:00Z
+- **Disposition**: assessed at **1.5 SP against exactly 1.5 SP of slack — zero absorption left**, so
+  it does not genuinely fit. Goes to beta3 with the repo-wide `state.md` audit it is the root cause
+  of. Immediate risk is already mitigated: Iteration 011's `tasks-progress.yml` was authored at plan
+  time, removing the condition the defect requires, and Iteration 010's record is restored.
+- **Rationale**: the projection change is nearly free, but the seeding must interact correctly with
+  the preserve-live-state logic that deliberately protects `in-progress`/`blocked`/`needs-rework`/
+  `deferred` from downgrade, and must reconcile three disagreeing status vocabularies. Consuming all
+  absorption restates the Iteration 009 condition the maintainer corrected in 010: *"that headroom
+  is exactly what 009 never had."*
+
 ## 2026-08-02 — F-198 iteration-011 phase 1: APPROVE WITH INSTRUCTIONS — approved for specify
 
 ### 2026-08-02 — Verdict: APPROVE WITH INSTRUCTIONS — advance specify→clarify, iteration 011 phase 1
