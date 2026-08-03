@@ -552,10 +552,19 @@ same confidence as the parts I had actually measured.
   Every one of those statements is false. T080/T081/T084 are delivered, T082 is `needs-rework`,
   T083 and T085 are terminal-as-deferred, and the iteration was CERTIFIED AGAINST — the campaign
   `run-f198-i010-64878edb-certify` reviewed this work.
-- **Root cause**: Iteration 010 never had a `tasks-progress.yml`. One was **auto-created at
-  2026-08-03T04:57:11Z, initialized with every task `pending`**, derived from `plan.md`'s task
-  titles but NOT from its Status column. The `state.md` summary writer then trusted that fresh
-  all-pending tracker over the existing honest content and overwrote it.
+- **Root cause, located exactly**: Iteration 010 never had a `tasks-progress.yml`. One was
+  **auto-created at 2026-08-03T04:57:11Z with every task `pending`**, and the `state.md` summary
+  writer then trusted that fresh all-pending tracker over the existing honest content.
+  The seeding gap is one projection: `Get-TaskProgressPlanRows` in
+  `scripts/internal/task-progress.ps1` reads `plan.md`'s Tasks table and projects **Task, Title,
+  Requirement, Story, Effort — and deliberately not Status**, although `plan.md` carries a Status
+  column recording `done` / `needs-rework` / `deferred` per task. For iteration N ≥ 2 the code's
+  own comment states that *"the ledger + iterations/&lt;N&gt;/plan.md are the source of truth"*, but
+  because the projection drops Status, plan.md contributes nothing to a fresh ledger and the empty
+  ledger wins uncontested. The stated design and the behaviour disagree.
+- **Blast radius, measured**: the defect needs an OPEN iteration with no tracker. Across this
+  feature's nine iterations, 001/002/005/006 lack one but are all `complete` or `abandoned`, and
+  003/007/008/009 have one. **Iteration 010 was the only exposed target, and it was hit.**
 - **Why Iteration 009 was not hit**: 009 has a populated `tasks-progress.yml` from 2026-07-26, so
   no fresh all-pending file was minted and its `state.md` is untouched. The defect needs the
   *absence* of a tracker on an iteration that already has history — exactly the shape a
@@ -573,10 +582,13 @@ same confidence as the parts I had actually measured.
   `ValidateSet('pending','in-progress','complete','blocked')` and counts completion by
   `$_ -in @('done','complete')` — but Iteration 009's committed tracker uses `completed` and
   `deferred`, neither of which is in either set. Three vocabularies for one field.
-- **Required correction (deferred)**: (a) a tracker auto-created for an iteration with existing
-  history MUST derive statuses from `plan.md`'s Status column, or refuse to create and say so —
-  never mint all-pending; (b) the summary writer MUST NOT downgrade a recorded status without
-  announcing it (NFR-002); (c) reconcile the three status vocabularies. Candidate for the beta3
+- **Required correction (deferred)**: (a) carry `Status` through `Get-TaskProgressPlanRows` and seed
+  a newly-minted ledger from it — or refuse to mint and say so — so a tracker can never assert
+  `pending` for a task `plan.md` records as `done`; (b) the summary writer MUST NOT downgrade a
+  recorded status without announcing it (NFR-002 — legitimate paths announce themselves);
+  (c) reconcile the three status vocabularies. A regression test must prove (a) by minting a
+  tracker against a plan whose tasks are `done` and asserting the summary does not say
+  "not-started" — RED first, since this defect passed every existing test. Candidate for the beta3
   vocabulary work alongside DRIFT-198-I010-008.
 
 ### DRIFT-198-I010-011 — the iteration-plan scaffolder can see only 8 of the spec's 70 requirements
