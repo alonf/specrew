@@ -76,6 +76,72 @@ only because the first made me re-check.
 against the claim being made about it. The lesson is the one iteration 010 recorded and it did not
 transfer on its own: a passing assertion is not evidence until you have checked what it measured.
 
+## T087 — FR-066 fixtures, RED-first evidence
+
+**Harness**: file:///C:/Dev/specrew-beta2-hardening/tests/integration/fr066-first-boundary-arrival.tests.ps1
+**Run**: 2026-08-03 against HEAD, before any correction. **Exit 1, three RED assertions.**
+
+### Case 1 — sync reports success after failing to establish the crossing: REPRODUCED
+
+Fixture: a genuine pre-bootstrap project — schema `v1`, no `boundary_enforcement` block, arriving at
+its first `specify` boundary. Measured against the real `sync-boundary-state.ps1`:
+
+```text
+MEASURED: sync success=True; has_pending=False; marker=(null); artifact_written=False; degrade-warning emitted=True
+RED: sync reports SUCCESS with has_pending=false and no artifact, after failing to establish the
+     crossing — indistinguishable from a legitimate "no pending verdict"
+RED: the failure is surfaced only as a Write-Warning — a warning is not a state a caller can branch
+     on (NFR-002: legitimate paths announce themselves)
+```
+
+`Set-SpecrewPendingBoundaryCrossingScope` throws, the `catch` at `sync-boundary-state.ps1:1660`
+swallows it to a warning and sets `HasPendingVerdict = $false`, and the sync then returns success.
+**The two states — "no verdict is pending" and "I could not record the crossing" — are the same
+value on the wire.** No caller can distinguish them, which is precisely why no consumer branches on
+the failure.
+
+### Case 2 — the premise was wrong, and the measurement is worse than the premise
+
+The case was authored expecting the Antigravity *"headers but no marker"* shape. Measurement says
+otherwise:
+
+```text
+MEASURED: provider exit=0; faulted=False
+MEASURED: provider blocked=False; announces a BOUNDARY stop=False; supplies marker text=False
+RED: the provider runs and emits NOTHING at a first boundary whose crossing was never established
+```
+
+The provider does not emit a marker-less boundary block on an un-bootstrapped project — **it runs
+successfully and says nothing at all.** So a brand-new project's very first boundary passes with no
+enforcement surface whatsoever, while sync reports success. That is quieter and worse than the shape
+the case was written to catch: a marker-less block at least tells the human a boundary exists.
+
+The marker-less block belongs to a **different** state — enforcement present, crossing scope absent —
+which T086 already exercises. Recorded as measured rather than reshaped to fit the premise; this is
+the same discipline that disproved DRIFT-198-I009-042.
+
+**Consequence for T088/T089**: the correction cannot be only "supply the missing marker". A first
+arrival that cannot be recorded must become a state the provider can see and speak to. Silence is
+the current behaviour, not an absence of behaviour.
+
+### Two more fixture defects, both caught by the INCONCLUSIVE guard
+
+The guard adopted from T086 paid for itself immediately — twice, on its first use:
+
+1. **Wrong un-bootstrapped shape.** The fixture used schema `v2` with no enforcement block.
+   `NeedsMigration` is `Exists AND schema in (v0,v1) AND enforcement is null`
+   (`shared-governance.ps1:1797`), so a v2 context with no block is **malformed**, not
+   un-bootstrapped — the ledger read throws fail-closed long before the crossing path. Reported
+   INCONCLUSIVE, not passed.
+2. **Missing `.squad/active-features.yml`.** The specify boundary upserts a feature claim; without
+   the directory the atomic write threw and the probe again never reached the decision. Reported
+   INCONCLUSIVE, not passed.
+
+Both would have been silent false results under a two-outcome harness: the first would have looked
+like "sync correctly refused", the second like "no boundary surface needed". **Three of the four
+fixture defects found across T086 and T087 would have read as passes.** The third outcome is not
+bookkeeping — it is what separates a measurement from a wish.
+
 ## Deliberately NOT registered in the regression suite yet
 
 `tests/f198-regression-suite.ps1` does **not** register this harness, and that is intentional: it is
@@ -86,3 +152,9 @@ the method rule that a red workflow is a stop.
 MUST be green on half 1. An unregistered test is one nobody runs — leaving it out permanently would
 convert a deliberate RED into a silently skipped one, which is the same class of defect as the
 `.pending` scaffolder byproducts.
+
+The same applies to T087's harness
+(file:///C:/Dev/specrew-beta2-hardening/tests/integration/fr066-first-boundary-arrival.tests.ps1),
+RED by design until T088/T089 land. **Both harnesses are registered together at T092, and neither
+closes the iteration while unregistered.** The maintainer's ruling of 2026-08-03 stands as written:
+a deliberate RED must never quietly become a skipped test.

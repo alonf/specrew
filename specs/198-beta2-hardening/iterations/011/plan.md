@@ -286,6 +286,38 @@ was only ever its proxy.
 Applies to T092's certification too: a finding outside scope is recorded as a residual and routed to
 beta3, not fixed inside the round cap.
 
+## T090 — two-branch scope CONFIRMED, with a pre-agreed relief valve
+
+Maintainer ruling 2026-08-03, after T086's reproduction surfaced the second branch.
+
+**Both `Get-SpecrewPendingVerdictState` branches gate on stage evidence. Partial coverage is not an
+outcome.** Gating only the scoped branch while the identical demand stays reachable through the
+legacy-unscoped path would be **the T082 shape reproduced exactly** — partial coverage shipped under
+a complete-sounding claim, found by the next review. The expansion does not change T090's scope; it
+confirms it.
+
+What changes is the risk posture, so the relief is set now rather than negotiated under pressure:
+
+1. **Re-estimate T090 immediately before starting it**, after T088 and T089 land. **If the honest
+   number exceeds 4.0 SP, the pre-agreed relief fires automatically**: T093 reverts to a named
+   limitation line in the release claim, its 1.5 SP covers the gap, and the halt-text fix moves to
+   **beta3's first row**. No new decision cycle, no absorption, no silent overrun.
+2. **The deliberate-RED registration obligation on T092 stands as written.** A deliberate RED must
+   never quietly become a skipped test.
+
+## Carried-forward practice — proven twice, now binding
+
+Two patterns from T086 are method, not anecdote:
+
+- **INCONCLUSIVE is a third outcome.** "No signal at all" folded into pass/fail is precisely how
+  DRIFT-198-I009-042's first harness revision lied, and T086's first revision repeated it. Every
+  harness in this iteration MUST distinguish *the defect is absent* from *the probe never reached
+  the code path*, and report the latter as a fixture defect rather than a pass.
+- **Read the measured output against the claim being made about it.** Both of T086's fixture errors
+  passed their own assertions. Neither was found by a harness failing; both were found by checking
+  what the green actually measured. The -042 lesson did not transfer on its own — it transferred
+  because someone looked. That belongs in the retro as a process finding, not just a test note.
+
 ## Method — carried forward, binding
 
 Unchanged from Iteration 010, which delivered on estimate under them:
