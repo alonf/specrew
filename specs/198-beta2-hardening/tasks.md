@@ -388,3 +388,110 @@ Iteration 006 traceability is complete for its bounded authority-foundation scop
 - Stability is P0, so the default remains one Implementer and serial
   integration. The task graph documents logical separability but does not
   authorize same-specialty parallelism or overlapping owner globs.
+
+## Iteration 009 — Candidate identity + provider delivery (24.5 SP planned; BACKFILLED 2026-08-03)
+
+Backfilled under DRIFT-198-I010-007. This section did not exist: `tasks.md` stopped being
+maintained after Iteration 008, so T072–T085 had no feature-level traceability of record and the
+bidirectional check was never run for two delivered iterations.
+
+**Read the Requirement column with care.** Iteration 009's plan used **F-labels and proposal-work
+references in place of FR IDs** — the root cause the register was written to fix. Those labels
+resolved to nothing in the repository until
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/consumer-feedback-register.md
+landed. The FR column below is therefore reconstructed, and every entry is marked **[record]** or
+**[inferred]**. An inferred mapping is a same-owned-file argument, not a traced requirement, and it
+is not promoted to record by appearing in a table.
+
+| Task | Title | As planned | FR mapping | Effort | Status |
+| --- | --- | --- | --- | ---: | --- |
+| T072 | Proposal 209 W1 per-suite timing | P209-W1 | none — verification-cost work, no FR **[record: none]** | 0.5 | done |
+| T073 | Proposal 209 W2 bounded parallel registry | P209-W2 | none — verification-cost work, no FR **[record: none]** | 1.5 | done |
+| T074 | Canonical candidate inclusion and exclusion identity | F13, F16 | FR-059, FR-065 **[inferred]**; FR-012 machinery-strip identity **[inferred]** | 5.0 | done |
+| T075 | Codex file-primary delivery without duplicate invocation | F12 | FR-060, FR-063, FR-064 **[inferred]** | 1.5 | done |
+| T076 | Review-engine version handshake | F6 | **none of record** — no FR governs engine-version resolution between installed and project engines | 2.5 | done |
+| T077 | Consumer review-runtime ignore classification | F15 | FR-027 **[inferred]** | 0.5 | done |
+| T078 | Candidate fidelity frozen-evidence regression | F13, F16 | as T074 **[inferred]** | 4.0 | done |
+| T079 | Integrated verification and independent review | F6, F12, F13, F15, F16, P209-W1/W2 | spans the above | 4.5 | **deferred (terminal)** |
+
+### Iteration 009 traceability check — PARTIAL, and recorded as such
+
+- **Task → requirement**: 8/8 tasks map to at least one planned identifier. **Only 5 map to an FR
+  at all, and none of those 5 by record.**
+- **Requirement → task**: cannot be computed in the FR direction, because the iteration was not
+  planned against FRs. F6/F12/F13/F15/F16 each have covering tasks; that is an F-label check, not
+  the FR/SC check the tasks-stage rule requires.
+- **Verdict**: **PARTIAL — the bidirectional check does not pass for Iteration 009 and is not
+  claimed to.** Recording it as PASS would repeat exactly the unverified-coverage error this
+  feature has now made twice.
+- **Orphan tasks**: none. **Invalid requirement references**: F-labels are resolvable as of
+  2026-08-03 via the register; they were not at planning time.
+- **Capacity**: 24.5/20 planned; ~70 SP delivered across eight review rounds.
+- **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/009/plan.md
+  against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-08-03.
+
+## Iteration 010 — Path-identity/containment stream A (17.0 SP; BACKFILLED 2026-08-03)
+
+| Task | Title | Requirement | Effort | Status |
+| --- | --- | --- | ---: | --- |
+| T080 | Link-state fixtures for the volume-differential harness, proven RED first | FR-008 | 6.0 | done |
+| T081 | Mutation gate for link containment | FR-008 | 2.0 | done |
+| T082 | Authority-store containment against reparse points | FR-008 | 5.0 | **needs-rework** |
+| T083 | ~~Link-aware directory-entry lookup in the case probe~~ | FR-008 | 0.0 | deferred (withdrawn) |
+| T084 | Case-distinct consumer-firewall fixture | FR-046 | 1.5 | done |
+| T085 | Integrated verification and capped certification | FR-008, FR-046 | 2.5 | **deferred (terminal)** |
+
+### Iteration 010 traceability check — PASS, with one requirement unsatisfied
+
+- **Task → requirement**: 6/6 map to FR-008 or FR-046. **[record]** — 010 planned against FR IDs.
+- **Requirement → task**: FR-008 → T080/T081/T082/T083/T085; FR-046 → T084/T085. No uncovered
+  scoped requirement.
+- **Verdict**: **PASS for traceability.** Traceability is not delivery: **FR-008 is NOT satisfied** —
+  T082's containment covers resolution but not enumeration (DRIFT-198-I010-004), which is why the
+  iteration stands at `reviewing` and its closure waits on the beta3 consolidation.
+- **Orphan tasks**: none. **Invalid requirement references**: none.
+- **Capacity**: 17.0/20, with 3.0 SP returned to slack on T083's withdrawal and deliberately not
+  backfilled.
+- **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/010/plan.md
+  against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-08-03.
+
+## Iteration 011 — Authorization integrity (20.0 SP; beta2 tag gate)
+
+| Task | Title | Requirement | Criterion | Effort | Status |
+| --- | --- | --- | --- | ---: | --- |
+| T086 | FR-068 reproduction harness — both halves of the 2026-07-25T17:40:45Z shape | FR-068 | SC-025 | 2.5 | planned |
+| T087 | FR-066 RED fixtures — first-boundary arrival, proven RED before any fix | FR-066 | SC-023 | 2.0 | planned |
+| T088 | Give `IsFirstBoundary` a consumer; the sync's degraded catch becomes a suppressed state | FR-066 | SC-023 | 5.0 | planned |
+| T089 | The conformance provider honors the unsynced state — no options, no marker, names what is missing | FR-066 | SC-023 | 2.5 | planned |
+| T090 | Artifact-gated verdict demand — a seam between the conformance provider and stage evidence | FR-068 | SC-025 | 4.0 | planned |
+| T091 | ~~Deterministic stop-block composition~~ | FR-068 | SC-025 (composition clause) | 0.0 | **deferred → beta3** |
+| T093 | Campaign-mode halt text and `--help` name only reachable doors | FR-018 | — | 1.5 | planned |
+| T092 | Integrated verification and capped certification | FR-066, FR-068, FR-018 | SC-023, SC-025 | 2.5 | planned |
+
+### Iteration 011 traceability check — PASS
+
+- **Task → requirement**: 8/8 map to at least one FR. **[record]** — every mapping is a traced FR
+  ID, not an F-label.
+- **Requirement → task**: FR-066 → T087, T088, T089, T092. FR-068 → T086, T090, T092 (T091
+  deferred). FR-018 → T093, T092. **No uncovered scoped requirement.**
+- **Criterion → task**: SC-023 → T087, T088, T089. SC-025 evidence clause → T086, T090, T092.
+  SC-025 **composition clause → beta3 hook-machinery cluster**, named in the criterion itself by
+  the maintainer's authorized specify touch, so it is scoped-out rather than uncovered.
+- **Verdict**: **PASS.** Orphan tasks: none. Invalid requirement references: none. Tasks missing
+  owner, effort, story, status, or ownership metadata: none.
+- **Capacity**: 20.0/20 — exactly at cap after T091's deferral (−3.0) and T093's addition (+1.5).
+  Zero external slack; T092's internal correction allowance intact.
+- **Sequence**: T086 and T087 are RED-first and precede every correction. T088 precedes T089 (the
+  provider cannot honor a state that does not yet exist). T090 depends on T086's reproduction.
+  T093 is independent and parallel-safe — it touches no file another task owns. T092 is last.
+- **Round cap**: 3, with the termination rule carried from Iteration 010.
+- **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/plan.md
+  against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-08-03.
+
+### Backfill note — what this section does and does not fix
+
+The three sections above close the structural half of DRIFT-198-I010-007: the feature-level check
+now covers T072–T093. They do **not** retroactively make Iteration 009 traceable to requirements it
+was never planned against, and they do not claim to. The durable correction — making the
+per-iteration bidirectional check a gate rather than a convention — remains open and belongs with
+the beta3 vocabulary and machinery work.

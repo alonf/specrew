@@ -3,16 +3,19 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 18.5/20 story_points
+**Capacity**: 20.0/20 story_points
 **Started**: 2026-08-03
 **Completed**:
 **Planning Baseline**: `d7f27f6a`
 
 > **This plan measured 21.5/20 — over cap by 1.5, which `overcommit_threshold: 1.0` forbids.**
-> T091 (3.0 SP) was deferred at plan time to bring it to 18.5/20 with 1.5 SP of slack. That
-> deferral is the planner's selection under `defer_strategy: manual`, it is **reversible at the
-> plan verdict**, and its requirement impact is stated in `## Capacity` rather than buried: FR-068
-> ships partially delivered and SC-025's second clause is unmet.
+> T091 (3.0 SP) was deferred at plan time to bring it to 18.5/20, and T093 (1.5 SP) was then added
+> by maintainer instruction on 2026-08-03, putting the iteration at **exactly 20.0/20 with zero
+> external slack**. T092's internal correction allowance is intact. See `## Capacity`.
+>
+> T091's deferral is the planner's selection under `defer_strategy: manual`; its requirement impact
+> is stated rather than buried — FR-068 ships partially delivered, and SC-025's composition clause
+> is scoped to beta3 by the maintainer's authorized specify touch so that closes honestly.
 >
 > The validator's own suggestion was to defer **T088 (5.0 SP)**, ranked `[unmapped; priority
 > unavailable]` — i.e. chosen by size because it could not resolve FR-066's priority. That cut was
@@ -141,12 +144,39 @@ Deferred on the estimate above, not on preference.
 | T089 | FR-066 — the conformance provider honors the unsynced state: no approval options, no marker, names what is missing | FR-066 | Authorization integrity | 2.5 | Implementer | extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 | planned | | | Today the `else` branch at `:1088-1090` emits a boundary stop naming a boundary with **no marker text**, because the pending crossing was null — the Antigravity "headers but no marker" shape |
 | T090 | FR-068 — artifact-gated verdict demand: a new seam between the conformance provider and stage evidence | FR-068 | Authorization integrity | 4.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 | planned | | | `Get-SpecrewPendingVerdictState` probes no artifact at all, and the block warrant at `:1024` is purely cursor/marker/intent with no evidence term. The suppression shape to reuse exists (`render_boundary_packet` / `render_verdict_marker`), but the two subsystems do not currently talk |
 | T091 | FR-068 — deterministic stop-block composition: stated precedence, conflict detection, losing signal preserved | FR-068 | Authorization integrity | 0.0 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1 | deferred | | | **DEFERRED at plan time to bring the iteration under cap — carries 3.0 SP into the FR-019/FR-067 slice.** Reversible at the plan verdict; see `## Capacity`. Composition today is concatenation with `----- AND ALSO -----` at `:1197-1202`; no precedence, no conflict detection, and the `:1209` fall-through discards the merged reason with no record. Only two providers can ever conflict (conformance 40, navigator 50), which caps the work. Dispatcher is a byte-identical twin: every edit is a two-file edit |
-| T092 | Integrated verification and capped certification | FR-066, FR-068 | Release confidence | 2.5 | Reviewer | tests/**, specs/198-beta2-hardening/iterations/011/** | planned | | | Round cap 3. Correction allowance is inside this task rather than assumed free |
+| T093 | DRIFT-198-I010-012 — the campaign-mode halt text and `--help` name only reachable doors | FR-018 | Consumer truthfulness | 1.5 | Implementer | scripts/internal/continuous-co-review/worktree-reviewer.ps1, scripts/specrew-review.ps1 | planned | | | **Added 2026-08-03 by maintainer instruction; message-only, NO behaviour change.** In campaign mode the ceiling halt must name `override-block` and the fresh `--authorization-ref` door, and `--help` must stop advertising the six unreachable choices. A guard test asserts the command the halt text names is actually reachable in the shipped mode — its absence is why this survived. The existing identifier-free assertion (`review-spend-allowance.Tests.ps1:154-164`) must still pass |
+| T092 | Integrated verification and capped certification | FR-066, FR-068, FR-018 | Release confidence | 2.5 | Reviewer | tests/**, specs/198-beta2-hardening/iterations/011/** | planned | | | Round cap 3. Correction allowance is inside this task rather than assumed free |
 
-**Total planned: 18.5 SP against a capacity of 20, with 1.5 SP of SLACK.**
+**Total planned: 20.0 SP against a capacity of 20 — exactly at cap, zero external slack.**
 
-Before the deferral it was 21.5 — over cap by 1.5, which `overcommit_threshold: 1.0` forbids. T091
-was deferred to bring it under; the reasoning is below and the maintainer can reverse it.
+Before T091's deferral it was 21.5 — over cap by 1.5, which `overcommit_threshold: 1.0` forbids.
+T091 was deferred to bring it to 18.5, and **T093 (1.5 SP) was then added by maintainer instruction
+on 2026-08-03**, spending the recovered slack.
+
+### T093 — does the halt-text fix genuinely fit? Assessed: YES, with the caveat stated
+
+The instruction was *"fits the 1.5 SP slack. If it does not fit, say so."* It fits at 1.5, and the
+iteration goes to exactly 20.0/20.
+
+**The caveat, said plainly: this takes external absorption to zero**, which is the condition
+Iteration 009 entered at and Iteration 010 deliberately avoided. What remains is the correction
+allowance held *inside* T092 — that was budgeted rather than assumed free, so it is not consumed
+here. External slack is gone; internal rework allowance is intact.
+
+**Why this is a fit when DRIFT-198-I010-010 was not, at the same 1.5 SP.** The number is the same;
+the variance is not. -010 changes ledger seeding, which must interact correctly with the
+preserve-live-state logic that protects `in-progress`/`blocked`/`needs-rework`/`deferred` from
+downgrade, and must reconcile three disagreeing status vocabularies — an estimate with real spread.
+T093 is strings plus a guard test: no state machine, no migration, no vocabulary reconciliation, and
+the maintainer's constraint of *message-only, no behaviour change* holds the blast radius at the
+text itself. A low-variance 1.5 consuming the slack is a defensible trade; a high-variance one is
+not. That is the whole distinction, and it is why the two assessments differ.
+
+**And the trade is plainly worth it**: the shipped ceiling halt currently instructs consumers to run
+a command that throws. Fixing the string removes the defect from the consumer's path entirely,
+rather than documenting it in the claim and leaving every consumer to hit it. The maintainer's
+framing — *fix-the-string beats a paragraph explaining why the string is wrong* — is the correct
+call, and it also retires the consumer face of DRIFT-198-I010-012 before the tag.
 
 ## Capacity
 
@@ -269,6 +299,7 @@ Unchanged from Iteration 010, which delivered on estimate under them:
 | --- | --- |
 | Discovery / reproduction (T086, T087) | 4.5 |
 | Implementation (T088, T089, T090) | 11.5 |
+| Consumer truthfulness (T093) | 1.5 |
 | Verification + certification (T092) | 2.5 |
 | *(deferred: T091)* | *3.0, carried out* |
 

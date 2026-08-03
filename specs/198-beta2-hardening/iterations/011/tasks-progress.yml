@@ -44,6 +44,12 @@ tasks:
     started_at: ""
     completed_at: ""
     blocked_reason: "DEFERRED at plan time to bring 21.5 under the 20 cap; carries 3.0 SP into the FR-019/FR-067 slice. Reversible at the plan verdict"
+  T093:
+    title: "DRIFT-198-I010-012 - campaign-mode halt text and --help name only reachable doors"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
   T092:
     title: "Integrated verification and capped certification"
     status: "pending"
