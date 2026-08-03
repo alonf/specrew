@@ -263,6 +263,29 @@ Iteration 010 proved the alternative works, and the maintainer's own words on th
 of. The immediate risk is already mitigated — Iteration 011's `tasks-progress.yml` was authored at
 plan time, which removes the condition the defect requires, and Iteration 010's record is restored.
 
+## The zero-slack rule — BINDING, recorded before implementation starts
+
+Iteration 011 runs at exactly 20.0/20 with no external absorption. The maintainer accepted that
+condition **with its mitigation named in advance**, so it governs as a rule rather than being
+discovered under pressure:
+
+> **Any externally-arriving work during Iteration 011 — new findings, environmental failures,
+> review discoveries outside the FR-066 / FR-068 / FR-018 scope — goes to the drift ledger and
+> beta3 BY DEFAULT. It does not enter this iteration.**
+>
+> **The single exception is an authorization-integrity defect**, which stops for the maintainer's
+> decision rather than being absorbed or deferred unilaterally.
+>
+> **011 records; it does not absorb.**
+
+That sentence is the whole difference between *entering Iteration 009's condition* and *entering
+Iteration 009*. Iteration 009 had no absorption either — what it lacked was a rule for what to do
+when work arrived anyway, so every finding became an overrun. The rule is the mitigation; the slack
+was only ever its proxy.
+
+Applies to T092's certification too: a finding outside scope is recorded as a residual and routed to
+beta3, not fixed inside the round cap.
+
 ## Method — carried forward, binding
 
 Unchanged from Iteration 010, which delivered on estimate under them:
