@@ -534,3 +534,75 @@ same confidence as the parts I had actually measured.
 - **Required correction (deferred)**: sort with an explicit ordinal comparer, and widen the
   structural rule to catch culture-aware `Sort-Object` on path/identity collections generally rather
   than the two spellings it knows.
+
+### DRIFT-198-I010-010 — machinery silently FALSIFIED a governed record: state.md rewritten to "not-started"
+
+- **Status**: observed live and CORRECTED 2026-08-03; the underlying defect is open
+- **Severity**: **major** — an automated writer asserted a false claim about delivered work, with no
+  announcement. This is the honesty premise failing from the tooling side rather than the agent side.
+- **Type**: task-progress tracker / state summary writer
+- **Observed evidence**: while planning Iteration 011, a routine `git status` showed
+  `specs/198-beta2-hardening/iterations/010/state.md` modified. The diff had replaced the
+  human-corrected record with generated defaults:
+  - `Iteration Status`: `reviewing` → **`not-started`**
+  - `Last Completed Task`: the honest T084/T085 note → **`(none)`**
+  - `Tasks Remaining`: `(none)` → **all six tasks**
+  - and an inserted block reading **"Execution has not started yet. Task progress: 0 complete,
+    0 in-progress, 6 pending, 0 blocked."**
+  Every one of those statements is false. T080/T081/T084 are delivered, T082 is `needs-rework`,
+  T083 and T085 are terminal-as-deferred, and the iteration was CERTIFIED AGAINST — the campaign
+  `run-f198-i010-64878edb-certify` reviewed this work.
+- **Root cause**: Iteration 010 never had a `tasks-progress.yml`. One was **auto-created at
+  2026-08-03T04:57:11Z, initialized with every task `pending`**, derived from `plan.md`'s task
+  titles but NOT from its Status column. The `state.md` summary writer then trusted that fresh
+  all-pending tracker over the existing honest content and overwrote it.
+- **Why Iteration 009 was not hit**: 009 has a populated `tasks-progress.yml` from 2026-07-26, so
+  no fresh all-pending file was minted and its `state.md` is untouched. The defect needs the
+  *absence* of a tracker on an iteration that already has history — exactly the shape a
+  mid-lifecycle iteration carries.
+- **This is DRIFT-198-I010-005's defect reintroduced by machinery.** -005 was that `state.md` had
+  never been updated and said "Execution has not started yet"; it was corrected by hand as record
+  honesty. The tracker then restored the identical false text automatically. A correction that
+  tooling can silently revert is not a correction.
+- **Correction applied now**: `tasks-progress.yml` populated by hand to match `plan.md` and
+  `state.md` (`done` / `needs-rework` / `deferred`), with `completed_at` left EMPTY rather than
+  back-filled with invented timestamps — the writer falls back to file order and yields T084
+  correctly. `state.md` restored from git. Verified stable across subsequent tool calls.
+- **A second, quieter defect surfaced by the same code**: the vocabulary does not agree with itself.
+  `scripts/internal/task-progress.ps1` validates writes against
+  `ValidateSet('pending','in-progress','complete','blocked')` and counts completion by
+  `$_ -in @('done','complete')` — but Iteration 009's committed tracker uses `completed` and
+  `deferred`, neither of which is in either set. Three vocabularies for one field.
+- **Required correction (deferred)**: (a) a tracker auto-created for an iteration with existing
+  history MUST derive statuses from `plan.md`'s Status column, or refuse to create and say so —
+  never mint all-pending; (b) the summary writer MUST NOT downgrade a recorded status without
+  announcing it (NFR-002); (c) reconcile the three status vocabularies. Candidate for the beta3
+  vocabulary work alongside DRIFT-198-I010-008.
+
+### DRIFT-198-I010-011 — the iteration-plan scaffolder can see only 8 of the spec's 70 requirements
+
+- **Status**: open, found 2026-08-03 while opening Iteration 011's plan
+- **Severity**: minor-to-major depending on reachability — it silently breaks the SUPPORTED planning
+  path for any spec that records requirement provenance
+- **Type**: requirement-parsing format assumption
+- **Observed evidence**: running the supported scaffolder for Iteration 011 —
+  `scaffold-iteration-plan.ps1 -RequirementScope FR-019,FR-066,FR-067,FR-068` — failed with
+  `Requirement(s) not found in spec: FR-019, FR-066, FR-067, FR-068`, although all four are defined
+  in `spec.md`.
+- **Root cause**: the parser requires the exact shape `- **FR-NNN**: <text>`
+  (`^\s*-\s+\*\*(FR-\d+)\*\*:\s+`). Any parenthetical provenance inside the bold makes the
+  requirement invisible. **Measured on this spec: 8 of 70 FR definitions match; 62 do not** — because
+  `- **FR-008 (W1)**:`, `- **FR-015 (W8, amended by maintainer ruling …)**:` and
+  `- **FR-045a …**:` are the dominant convention, and are the convention the spec itself teaches by
+  example. `FR-045a` also cannot match `FR-\d+` at all.
+- **Why the existing guard does not catch it**: iteration 006's T003 added graceful degradation for
+  a spec with ZERO canonical FRs. This spec has eight, so the guard stays silent and the scaffolder
+  instead throws on whichever requirements the planner actually asked for. The partial case is worse
+  than the empty case, because the empty case warns.
+- **Consumer-reachable**: any downstream project that records amendment provenance the way Specrew's
+  own spec does hits this the first time it scopes an iteration to an amended requirement.
+- **Workaround used**: Iteration 011's plan is hand-authored against Iteration 010's proven
+  structure, which the governance validator checks. No scaffolder output was faked.
+- **Required correction (deferred)**: accept provenance parentheticals and the `NNNa` suffix in the
+  requirement pattern, and make the partial-match case warn with the count it could see rather than
+  failing on the caller's scope.
