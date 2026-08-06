@@ -69,6 +69,28 @@ function New-Spec {
     Save-FixtureStructure -Proj $Proj -Message 'fixture spec'
 }
 
+function New-BoundaryStageEvidence {
+    # FR-068 (T090): seed the evidence a boundary legitimately owes, for cases whose SUBJECT is
+    # boundary precedence or marker emission. Without it the stage-evidence gate correctly replaces
+    # the verdict demand with "produce the missing artifact", and the case silently starts measuring
+    # the gate instead of itself. Applied per-case ON PURPOSE rather than inside New-Spec: seeding
+    # every fixture perturbs unrelated intake cases, and a shared helper is too blunt an instrument
+    # for a behaviour only some cases depend on. Cases that deliberately test ABSENT evidence build
+    # their own fixtures (fr068-verdict-demand-reproduction.tests.ps1).
+    param([string]$Proj, [string]$Iteration = '001')
+    $iter = Join-Path $Proj ("specs\050-host-neutral-gate\iterations\{0}" -f $Iteration)
+    New-Item -ItemType Directory -Path (Join-Path $iter 'quality') -Force | Out-Null
+    foreach ($pair in @(
+            @{ Rel = 'plan.md'; Body = "# Iteration Plan" },
+            @{ Rel = 'state.md'; Body = "# Iteration State" },
+            @{ Rel = 'review.md'; Body = "# Iteration Review" },
+            @{ Rel = 'retro.md'; Body = "# Iteration Retro" },
+            @{ Rel = 'quality\hardening-gate.md'; Body = "# Hardening Gate" })) {
+        Set-Content -LiteralPath (Join-Path $iter $pair.Rel) -Value $pair.Body -Encoding UTF8
+    }
+    Save-FixtureStructure -Proj $Proj -Message 'fixture stage evidence'
+}
+
 function New-LensApplicability {
     # Write strict feature-level intake truth and, unless FeatureOnly is selected, the exact later
     # design-analysis iteration artifact. Completed lenses carry the full workshop contract and a matching durable
@@ -981,6 +1003,7 @@ try {
     #      is otherwise valid. The six-section packet and exact boundary marker remain mandatory.
     $p16b = New-Fixture -Working 'plan' -LastAuth 'clarify'
     New-Spec -Proj $p16b
+    New-BoundaryStageEvidence -Proj $p16b
     New-LensApplicability -Proj $p16b -Selected @('architecture-core','data-storage') -Done @()
     New-HandoverSnapshot -Proj $p16b -ChangedUserFiles 2
     $t16b = New-Transcript -Proj $p16b -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
@@ -1049,6 +1072,7 @@ Write-Pass "Case 16pa: strict pre-agenda product-domain state suppresses the gen
 
 $p16pb = New-Fixture -Working 'plan' -LastAuth 'clarify'
 New-Spec -Proj $p16pb
+New-BoundaryStageEvidence -Proj $p16pb
 New-PreAgendaLensApplicability -Proj $p16pb
 New-HandoverSnapshot -Proj $p16pb -ChangedUserFiles 2
 $r16pb = Invoke-Conformance -Proj $p16pb -TranscriptPath (New-Transcript -Proj $p16pb -Turns @(@{ role = 'assistant'; text = 'Who uses this product?' }))

@@ -3,8 +3,8 @@
 **Schema**: v1
 **Current Phase**: tasks
 **Iteration Status**: implementing
-**Last Completed Task**: T089
-**Tasks Remaining**: T090, T093, T092 (T091 deferred to beta3)
+**Last Completed Task**: T090
+**Tasks Remaining**: T092 (T091 and T093 deferred to beta3)
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
 **Updated**: 2026-08-06T01:29:52.3968925Z
@@ -13,8 +13,8 @@
 
 <!-- specrew:task-progress-summary:begin -->
 - Execution is in progress.
-- Task progress: 4 complete, 0 in-progress, 3 pending, 0 blocked.
-- Latest completed task: T089
+- Task progress: 5 complete, 0 in-progress, 1 pending, 2 deferred.
+- Latest completed task: T090
 <!-- specrew:task-progress-summary:end -->
 
 | Task | Status | Evidence |
@@ -23,9 +23,9 @@
 | T087 | done | FR-066 fixtures RED-first; premise corrected on measurement |
 | T088 | done | Unrecordable crossing is a branchable state; `success=false` |
 | T089 | done | Provider speaks and names what is missing; T087 fully green |
-| T090 | planned | Re-estimate at its start gate, per the relief valve |
+| T090 | done | Both branches gated from one helper; T086 half 1 GREEN; contract authored |
 | T091 | deferred | Composition half → beta3 hook-machinery cluster |
-| T093 | planned | Campaign-mode halt text and `--help` |
+| T093 | deferred | Relief valve fired at T090's re-estimate → beta3 first row |
 | T092 | planned | Capped certification; needs the authorization reference |
 
 A `tasks-progress.yml` is authored alongside this file rather than left to be auto-created later.
@@ -43,7 +43,7 @@ where a human can be led to authorize an increment that does not exist.
 
 - **Phase 1 (specify + clarify)**: approved 2026-08-02. The spec carries the FR-019 scope
   amendment and FR-066/FR-067/FR-068, with SC-022..SC-025.
-- **Phase 2 (this plan)**: awaiting the plan verdict.
+- **Phase 2 (plan → tasks → before-implement)**: approved 2026-08-03/06. Implementation authorized; T086–T090 delivered.
 
 ## Scope
 
@@ -57,9 +57,7 @@ half) was deferred to beta3, bringing it to 18.5; **T093 (1.5 SP) was then added
 instruction on 2026-08-03** to fix the campaign-mode halt text, putting the iteration at **exactly
 20.0/20 with zero external slack.** T092's internal correction allowance is intact.
 
-T093 was assessed against the maintainer's "only if it genuinely fits" condition and **does** fit —
-message-only, no behaviour change, no state-machine or vocabulary interaction. That low variance is
-why it is a fit at 1.5 SP where DRIFT-198-I010-010 was not at the same number.
+**Superseded 2026-08-06**: T090 re-estimated 4.0 → 5.5 SP at its start gate and the pre-agreed relief valve fired, deferring T093 to beta3's first row. Its 1.5 SP covers T090's gap exactly, so the iteration total is unchanged at 20.0/20.
 
 FR-068's composition clause no longer holds this iteration open: the maintainer's authorized specify
 touch names the beta3 hook-machinery cluster inside SC-025 itself, so the requirement closes
@@ -86,8 +84,7 @@ honestly rather than hitting the DRIFT-198-I009-044 wall.
 - **FR-019 has a blocking precondition to settle before it is scheduled**: the repo runs in
   campaign mode, where `specrew-review.ps1:803` rejects every remediation except `override-block`,
   so the two paths FR-019 changes are unreachable in the live mode today.
-- **`tasks.md` backfill (DRIFT-198-I010-007)** — no Iteration 009, 010 or 011 sections exist, so
-  the feature-level bidirectional check does not cover T072 onward.
+- **`tasks.md` backfill (DRIFT-198-I010-007)** — DISCHARGED at the tasks boundary: Iterations 009, 010 and 011 sections landed, with 009 recorded PARTIAL rather than PASS.
 
 ## Blockers
 

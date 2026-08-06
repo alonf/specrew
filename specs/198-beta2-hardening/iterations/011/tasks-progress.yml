@@ -29,7 +29,7 @@ tasks:
     blocked_reason: ""
   T090:
     title: "FR-068 — artifact-gated verdict demand: a new seam between the conformance provider and stage evidence"
-    status: "pending"
+    status: "done"
     started_at: ""
     completed_at: ""
     blocked_reason: ""

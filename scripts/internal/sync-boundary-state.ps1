@@ -593,6 +593,21 @@ function Sync-SpecrewPendingVerdictStopArtifact {
         return $result
     }
 
+    # FR-068 (T090). The crossing IS pending, so capture stays live — but the stage owes evidence it
+    # has not produced, and this artifact is what the packet renderer reads the MARKER out of. Writing
+    # it here would hand over an approval phrase and a verdict marker for an empty increment, which is
+    # exactly what the requirement forbids: suppressing the demand in the provider while still
+    # supplying the marker through this file would be a partial correction under a complete-sounding
+    # claim (the T082 shape, one surface over). Found by asking who else consumes the marker.
+    if ($pendingState.PSObject.Properties.Name -contains 'StageEvidenceAbsent' -and [bool]$pendingState.StageEvidenceAbsent) {
+        if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+            Remove-Item -LiteralPath $artifactPath -Force -ErrorAction Stop
+        }
+        $result.RecordStatus = 'stage-evidence-absent'
+        $result.FailureReason = ("the '{0}' stage has not produced: {1}" -f [string]$pendingState.PendingToMarkerBoundary, (@($pendingState.StageEvidenceMissing) -join ', '))
+        return $result
+    }
+
     $fromMarkerBoundary = [string]$pendingState.PendingFromMarkerBoundary
     $toMarkerBoundary = [string]$pendingState.PendingToMarkerBoundary
     if ([string]::IsNullOrWhiteSpace($fromMarkerBoundary) -or [string]::IsNullOrWhiteSpace($toMarkerBoundary)) {

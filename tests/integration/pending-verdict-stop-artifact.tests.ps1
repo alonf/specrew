@@ -58,8 +58,27 @@ function New-TestProject {
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.squad\config.json'), "{}`n", [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.squad\decisions.md'), "# Decisions`n", [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.github\agents\squad.agent.md'), "# Squad Agent`n", [System.Text.UTF8Encoding]::new($false))
-    [System.IO.File]::WriteAllText((Join-Path $projectRoot 'specs\001-test-feature\spec.md'), "# Spec`n", [System.Text.UTF8Encoding]::new($false))
+    # FR-068 (T090): the stage-evidence gate suppresses the stop artifact when the boundary being
+    # approved owes evidence it has not produced. These fixtures test the ARTIFACT, not the gate, so
+    # they must represent a boundary that legitimately HAS its evidence — otherwise they assert the
+    # old behaviour (an artifact, with a marker, for an empty increment) and would fail correctly.
+    # `clarify` is satisfied by a Clarifications session block OR a recorded skip-with-rationale
+    # (maintainer ruling 2026-08-06); the session-block arm is seeded here.
+    [System.IO.File]::WriteAllText((Join-Path $projectRoot 'specs\001-test-feature\spec.md'), "# Spec`n`n## Clarifications`n`n### Session 2026-08-06 (clarify)`n`n- Q: fixture question? -> A: fixture answer.`n", [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $projectRoot 'README.md'), "# Test Repo`n", [System.Text.UTF8Encoding]::new($false))
+    # ...and the iteration-scoped evidence for the same reason. These fixtures cross plan, tasks,
+    # before-implement, review-signoff and iteration-closeout; each owes an artifact under
+    # iterations/001/, so seed the full set once rather than case by case.
+    $iterDir = Join-Path $projectRoot 'specs\001-test-feature\iterations\001'
+    New-Item -ItemType Directory -Path (Join-Path $iterDir 'quality') -Force | Out-Null
+    foreach ($pair in @(
+            @{ Rel = 'plan.md'; Body = "# Iteration Plan: 001`n" },
+            @{ Rel = 'state.md'; Body = "# Iteration State: 001`n" },
+            @{ Rel = 'review.md'; Body = "# Iteration Review: 001`n" },
+            @{ Rel = 'retro.md'; Body = "# Iteration Retro: 001`n" },
+            @{ Rel = 'quality\hardening-gate.md'; Body = "# Hardening Gate: 001`n" })) {
+        [System.IO.File]::WriteAllText((Join-Path $iterDir $pair.Rel), $pair.Body, [System.Text.UTF8Encoding]::new($false))
+    }
 
     $context = [ordered]@{
         schema = 'v2'

@@ -63,6 +63,20 @@ function New-Spec {
     $dir = Join-Path $Proj 'specs\050-host-neutral-gate'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $dir 'spec.md') -Value "# Feature Specification: Host-Neutral Gate Enforcement`n`nThe authoritative contract for the active feature." -Encoding UTF8
+    # FR-068 (T090): case (d) asserts the boundary block still demands the contiguous marker, so its
+    # fixture must be a boundary that legitimately HAS its stage evidence — otherwise the
+    # stage-evidence gate correctly replaces the demand and the case measures the gate instead of the
+    # stop-intent precedence it exists to prove.
+    $iter = Join-Path $dir 'iterations\001'
+    New-Item -ItemType Directory -Path (Join-Path $iter 'quality') -Force | Out-Null
+    foreach ($pair in @(
+            @{ Rel = 'plan.md'; Body = '# Iteration Plan' },
+            @{ Rel = 'state.md'; Body = '# Iteration State' },
+            @{ Rel = 'review.md'; Body = '# Iteration Review' },
+            @{ Rel = 'retro.md'; Body = '# Iteration Retro' },
+            @{ Rel = 'quality\hardening-gate.md'; Body = '# Hardening Gate' })) {
+        Set-Content -LiteralPath (Join-Path $iter $pair.Rel) -Value $pair.Body -Encoding UTF8
+    }
     $null = & git -C $Proj add -- specs
     $null = & git -C $Proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture spec'
     if ($LASTEXITCODE -ne 0) { throw 'fixture spec commit failed' }

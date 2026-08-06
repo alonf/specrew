@@ -1799,6 +1799,173 @@ function Get-SpecrewBoundaryEnforcementState {
     }
 }
 
+function Get-SpecrewBoundaryStageEvidenceContract {
+    <#
+    FR-068 (T090). The boundary -> required-evidence contract.
+
+    THIS DID NOT EXIST BEFORE. Nothing in the repository mapped the nine canonical boundaries to the
+    artifacts each stage owes: the work-kind lifecycle contract names evidence CATEGORIES and names
+    only `spec.md` as a file; the canonical boundary list in this file carries no artifact
+    information; the governance validator's requirements are keyed on `plan.md`'s Status (five
+    statuses against nine boundaries, with no mapping between the axes); and its one hard-coded
+    artifact list is git-diff-gated, so it cannot answer a static "what does stage X owe".
+
+    So this table is AUTHORED, not derived, and its provenance is recorded per row. It decides
+    product-wide gate semantics, and every row is deliberately MINIMAL: the gate exists to catch "the
+    stage produced nothing", not to audit completeness. A too-eager row here becomes a false block on
+    a legitimate boundary, which is the failure mode this requirement's own correction must not
+    introduce.
+
+    `Kind` values:
+      'iteration-file' - a file under specs/<feature>/iterations/<NNN>/
+      'feature-file'   - a file under specs/<feature>/
+      'content'        - a section that must exist INSIDE a feature file (clarify owns no file)
+      'none'           - this boundary owes no checkable artifact; the gate never suppresses it
+    #>
+    return @(
+        # specify: the spec itself. The only artifact named as a file in the work-kind contract.
+        [pscustomobject]@{ Boundary = 'specify'; Kind = 'feature-file'; Paths = @('spec.md'); Marker = $null; Provenance = 'work-kind lifecycle contract (names spec.md explicitly)' }
+
+        # clarify: owns NO file of its own - its output lands INSIDE spec.md. TWO arms satisfy it, and
+        # EITHER is enough (maintainer ruling 2026-08-06): a dated Clarifications session block, OR a
+        # recorded skip-with-rationale. Both are lived practice, and the skip arm is load-bearing: a
+        # contract with only the session arm would force ceremony on projects whose workshop
+        # legitimately resolved everything - the exact noise class this requirement exists to remove.
+        [pscustomobject]@{ Boundary = 'clarify'; Kind = 'content'; Paths = @('spec.md'); Markers = @('##\s+Clarifications', 'clarif\w*[^.\r\n]{0,40}\bskip'); MarkerMatch = 'any'; Provenance = 'MAINTAINER-RULED 2026-08-06 - session block OR recorded skip-with-rationale' }
+
+        # plan / tasks: the iteration plan. `tasks` records its breakdown in the SAME plan.md table in
+        # this methodology, so both rows point at it rather than inventing a per-iteration tasks file.
+        [pscustomobject]@{ Boundary = 'plan'; Kind = 'iteration-file'; Paths = @('plan.md'); Marker = $null; Provenance = 'scaffold-iteration-artifacts.ps1 emits plan/state/drift-log' }
+        [pscustomobject]@{ Boundary = 'tasks'; Kind = 'iteration-file'; Paths = @('plan.md'); Marker = $null; Provenance = 'AUTHORED - the task breakdown lives in plan.md''s Tasks table' }
+
+        # before-implement: hardening-gate.md AND the iteration plan, per the launch-contract
+        # documentation table. Reconstructed from documentation rather than derived from code - and
+        # the authoring act here is what promotes it to contract from this point forward (maintainer
+        # ruling 2026-08-06). Consistency note: the validator already demands hardening-gate
+        # follow-through at `complete` status, so this pair was half-enforced at the BACK door; the
+        # contract makes the front door match it.
+        [pscustomobject]@{ Boundary = 'before-implement'; Kind = 'iteration-file'; Paths = @('quality/hardening-gate.md', 'plan.md'); Marker = $null; Provenance = 'RECONSTRUCTED from launch-contract.ps1''s documentation table; promoted to contract 2026-08-06' }
+
+        # review-signoff: review.md. This is the boundary the 2026-07-25 transcript demanded a verdict
+        # for while the stage had produced nothing, so it is the row the reproduction exercises.
+        [pscustomobject]@{ Boundary = 'review-signoff'; Kind = 'iteration-file'; Paths = @('review.md'); Marker = $null; Provenance = 'validator Test-ReviewArtifact treats review.md as required' }
+
+        # retro: retro.md.
+        [pscustomobject]@{ Boundary = 'retro'; Kind = 'iteration-file'; Paths = @('retro.md'); Marker = $null; Provenance = 'validator Test-RetroArtifact treats retro.md as required' }
+
+        # iteration-closeout: state.md is the closeout's own record.
+        [pscustomobject]@{ Boundary = 'iteration-closeout'; Kind = 'iteration-file'; Paths = @('state.md'); Marker = $null; Provenance = 'validator Test-StateArtifact treats state.md as required' }
+
+        # feature-closeout: NOT gated. The closeout record's name and location come from the project's
+        # repository-governance (release model, publish target), which this layer must not assume -
+        # guessing here would block a legitimate closeout on a forge convention the project rejected.
+        [pscustomobject]@{ Boundary = 'feature-closeout'; Kind = 'none'; Paths = @(); Marker = $null; Provenance = 'DELIBERATELY UNGATED - the closeout record is governance-defined, never assumed' }
+    )
+}
+
+function Get-SpecrewBoundaryStageEvidence {
+    <#
+    FR-068 (T090). Does the stage being approved actually have its evidence on disk?
+
+    Returns Satisfied/Missing/Checked. FAIL-OPEN by construction: an unknown boundary, an
+    unresolvable feature path, or any read error returns Satisfied=$true with Checked=$false. This
+    function can SUPPRESS a verdict demand, so a bug here must never invent a block on a legitimate
+    boundary. Absence of evidence is only reported when the paths were genuinely resolvable and
+    genuinely absent.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$Boundary,
+        [AllowNull()][string]$FeaturePath,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $result = [pscustomobject]@{ Satisfied = $true; Checked = $false; Missing = @(); Boundary = $Boundary }
+    try {
+        if ([string]::IsNullOrWhiteSpace($Boundary)) { return $result }
+        $row = @(Get-SpecrewBoundaryStageEvidenceContract | Where-Object { $_.Boundary -ceq $Boundary })
+        if ($row.Count -ne 1) { return $result }
+        $row = $row[0]
+        if ([string]$row.Kind -ceq 'none') { return $result }
+        if ([string]::IsNullOrWhiteSpace($FeaturePath) -or -not (Test-Path -LiteralPath $FeaturePath -PathType Container)) { return $result }
+
+        $missing = New-Object System.Collections.Generic.List[string]
+        foreach ($rel in @($row.Paths)) {
+            $full = if ([string]$row.Kind -ceq 'iteration-file') {
+                if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $null } else { Join-Path (Join-Path (Join-Path $FeaturePath 'iterations') $IterationNumber) $rel }
+            }
+            else { Join-Path $FeaturePath $rel }
+
+            # An iteration-scoped boundary with no iteration number is not a violation - it is an
+            # unresolvable question. Fail open rather than guess.
+            if ($null -eq $full) { return $result }
+
+            if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { $missing.Add($rel) | Out-Null; continue }
+
+            if ([string]$row.Kind -ceq 'content') {
+                $markers = @()
+                if ($row.PSObject.Properties.Name -contains 'Markers') { $markers = @($row.Markers) }
+                elseif (-not [string]::IsNullOrWhiteSpace([string]$row.Marker)) { $markers = @([regex]::Escape([string]$row.Marker)) }
+                if ($markers.Count -eq 0) { continue }
+
+                $raw = Get-Content -LiteralPath $full -Raw -Encoding UTF8 -ErrorAction Stop
+                $hits = @($markers | Where-Object { $raw -imatch $_ })
+                $mode = if ($row.PSObject.Properties.Name -contains 'MarkerMatch') { [string]$row.MarkerMatch } else { 'all' }
+                # 'any' is the clarify case: either a dated session block OR a recorded skip satisfies
+                # it, so one hit is enough and reporting "missing" needs ALL arms absent.
+                $satisfiedHere = if ($mode -ceq 'any') { $hits.Count -gt 0 } else { $hits.Count -eq $markers.Count }
+                if (-not $satisfiedHere) {
+                    $desc = if ($mode -ceq 'any') { 'a Clarifications session block or a recorded clarify skip-with-rationale' } else { ($markers -join ' + ') }
+                    $missing.Add(("{0} ({1})" -f $rel, $desc)) | Out-Null
+                }
+            }
+        }
+
+        $result.Checked = $true
+        $result.Missing = @($missing)
+        $result.Satisfied = ($missing.Count -eq 0)
+        return $result
+    }
+    catch {
+        return [pscustomobject]@{ Satisfied = $true; Checked = $false; Missing = @(); Boundary = $Boundary }
+    }
+}
+
+function Set-SpecrewStageEvidenceGate {
+    <#
+    FR-068 (T090). Applied to BOTH branches of Get-SpecrewPendingVerdictState, from one place, so the
+    two can never drift apart. Leaves HasPendingVerdict and IntegrityStatus untouched: only the DEMAND
+    is suppressed, never the pending crossing itself.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][pscustomobject]$Result,
+        [AllowNull()]$Enforcement,
+        [AllowNull()][string]$TargetBoundary
+    )
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($TargetBoundary)) { return $Result }
+        $featurePath = $null; $iterationNumber = $null
+        $ctx = if ($null -ne $Enforcement) { $Enforcement.Context } else { $null }
+        if ($null -ne $ctx) {
+            if ($ctx.Contains('feature_path')) { $featurePath = [string]$ctx['feature_path'] }
+            if ($ctx.Contains('session_state') -and $null -ne $ctx['session_state']) {
+                $ss = $ctx['session_state']
+                if ($ss.Contains('iteration_number')) { $iterationNumber = [string]$ss['iteration_number'] }
+            }
+        }
+
+        $ev = Get-SpecrewBoundaryStageEvidence -ProjectRoot '.' -Boundary $TargetBoundary -FeaturePath $featurePath -IterationNumber $iterationNumber
+        if ($null -eq $ev -or -not [bool]$ev.Checked -or [bool]$ev.Satisfied) { return $Result }
+
+        $Result.StageEvidenceAbsent = $true
+        $Result.StageEvidenceMissing = @($ev.Missing)
+        $Result.Message = ("BOUNDARY NOT READY FOR A VERDICT: '{0}' has produced none of the evidence its stage owes, so there is nothing to approve yet. Missing: {1}. A verdict recorded now would authorize an empty increment, and the ledger could not tell it apart from an approval of real work — so no approval options and no verdict marker are offered. Produce the missing artifact(s), then stop for the verdict." -f $TargetBoundary, (@($ev.Missing) -join ', '))
+        return $Result
+    }
+    catch { return $Result }
+}
+
 function Get-SpecrewPendingVerdictState {
     # F-174 iteration 011 (T006, FR-027 / decision f174-i011-verdict-authority-stop-hook): is the session's
     # WORKING boundary ahead of the last HUMAN-AUTHORIZED boundary? A committed / in-progress boundary is NOT an
@@ -1825,6 +1992,14 @@ function Get-SpecrewPendingVerdictState {
         ArtifactStateKind      = $null
         ArtifactStateId        = $null
         IntegrityStatus        = 'unreadable'
+        # FR-068 (T090). Deliberately SEPARATE from HasPendingVerdict and from IntegrityStatus.
+        # Setting HasPendingVerdict=$false when evidence is missing would break verdict CAPTURE, not
+        # just the demand: ConversationCaptureAccessor returns early when the state is not pending and
+        # skips its marker cross-check, so a human's real verdict on a legitimately-pending boundary
+        # would be silently dropped. That converts an over-demanding gate into a lost authorization —
+        # worse than the defect. The crossing stays pending; only the DEMAND is suppressed.
+        StageEvidenceAbsent    = $false
+        StageEvidenceMissing   = @()
         Message                = $null
     }
     try {
@@ -1919,6 +2094,7 @@ function Get-SpecrewPendingVerdictState {
             $result.IntegrityStatus = 'scoped-verified'
             $authLabel = if ([string]::IsNullOrWhiteSpace([string]$crossing.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$crossing.LastAuthorizedBoundary }
             $result.Message = ("AWAITING YOUR VERDICT: crossing '{0}' ({1} -> {2}) at commit {3}, Git tree {4}, is NOT human-authorized (last authorized: {5}). Give the explicit verdict 'approved for {2}' to authorize this exact crossing; numeric replies are not authority." -f $result.CrossingId, $crossing.PendingFromMarkerBoundary, $crossing.PendingToMarkerBoundary, $result.BoundaryCommitHash, $result.ArtifactStateId, $authLabel)
+            $result = Set-SpecrewStageEvidenceGate -Result $result -Enforcement $enforcement -TargetBoundary ([string]$crossing.PendingToMarkerBoundary)
             return $result
         }
 
@@ -1946,6 +2122,9 @@ function Get-SpecrewPendingVerdictState {
             $result.HasPendingVerdict = $true
             $authLabel = if ([string]::IsNullOrWhiteSpace([string]$crossing.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$crossing.LastAuthorizedBoundary }
             $result.Message = ("AWAITING YOUR VERDICT: '{0}' is committed / in-progress but NOT human-authorized (last authorized: {1}). A committed boundary is not an approved one — the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm." -f $crossing.WorkingBoundary, $authLabel)
+            # BOTH branches gate. Fixing only the scoped one would leave the identical demand reachable
+            # through this path — the T082 shape (partial coverage under a complete-sounding claim).
+            $result = Set-SpecrewStageEvidenceGate -Result $result -Enforcement $enforcement -TargetBoundary ([string]$crossing.PendingToMarkerBoundary)
         }
     }
     catch {

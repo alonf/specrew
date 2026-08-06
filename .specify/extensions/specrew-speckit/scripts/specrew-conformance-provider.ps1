@@ -700,6 +700,10 @@ try {
     # $lastAssistantText null, so $canAssess was false and the block could never warrant: the
     # correction looked right and changed nothing. Caught by re-running T087 rather than by review.
     $boundaryUnrecordable = ($null -ne $pending) -and ([string]$pending.IntegrityStatus -eq 'boundary-unrecordable')
+    # FR-068 (T090): the crossing IS pending — capture must keep working — but the stage owes evidence
+    # it has not produced, so the DEMAND is suppressed. Same reachability lesson as T089: read beside
+    # $hasPending, not at the block decision.
+    $stageEvidenceAbsent = ($null -ne $pending) -and ($pending.PSObject.Properties.Name -contains 'StageEvidenceAbsent') -and ([bool]$pending.StageEvidenceAbsent)
 
     # Any feature spec on disk (cheap dir check) -> the substantial + #1 triggers need this.
     $anySpec = $false; $specPath = $null; $specs = @()
@@ -978,7 +982,9 @@ try {
     $materialInitialBlock = (-not $hasPending) -and $materialStop -and (-not $packetPresent) -and (-not $materialAlreadySatisfied)
     $materialRetryBlock = (-not $hasPending) -and (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $packetPresent)
     $materialBlock = $materialInitialBlock -or $materialRetryBlock
-    $blockKind = if ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
+    # FR-068 (T090): stage-evidence absence PRE-EMPTS the ordinary boundary block, so the demand and
+    # its marker instruction are never composed. It deliberately does NOT clear $hasPending.
+    $blockKind = if ($boundaryBlock -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1102,6 +1108,15 @@ try {
                     [void]$sb.AppendLine(("This is a BOUNDARY stop into '{0}' (the first unauthorized boundary); emit the contiguous verdict marker as the LAST line." -f $toBoundary))
                 }
                 [void]$sb.AppendLine('Do NOT record the authorization yourself; the verdict is captured from your rendered packet + the human''s reply.')
+            }
+            elseif ($blockKind -eq 'boundary-evidence-absent') {
+                # FR-068: names what the stage owes, offers no approval options, emits no marker.
+                # The crossing remains pending, so if the human approves anyway their verdict is still
+                # captured — suppressing the demand must not suppress the capture.
+                [void]$sb.AppendLine([string]$pending.Message)
+                [void]$sb.AppendLine('')
+                [void]$sb.AppendLine('Report this plainly and name the missing artifact(s). Do NOT present approval options and do NOT emit a verdict marker: the stage has produced nothing to approve, and a verdict recorded now would be indistinguishable in the ledger from an approval of real work.')
+                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
             elseif ($blockKind -eq 'boundary-unrecordable') {
                 # FR-066 amended MUST: the surface MUST speak and MUST name what is missing. It also

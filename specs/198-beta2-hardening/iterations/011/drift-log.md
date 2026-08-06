@@ -238,6 +238,72 @@ byte-identical between `extensions/specrew-speckit/scripts/` and the deployed
 `.specify/extensions/specrew-speckit/scripts/`, verified by hash. Provider-mirror divergence is a
 recurring defect class in this feature.
 
+## T090 — FR-068's evidence half, delivered
+
+**T086 half 1 is GREEN.** The demand is gone and replaced by a message naming the missing artifact:
+
+```text
+MEASURED: provider emitted a stop-block: True; emitted a verdict demand: False; branch: none
+MEASURED: block text: "BOUNDARY NOT READY FOR A VERDICT: 'review-signoff' has produced none of the
+          evidence its stage owes, so there is nothing to approve yet. Missing: review.md. A verdict
+          recorded now would authorize an empty increment, and the ledger could not tell it apart
+          from an approval of real work — so no approval options and no verdict marker are offered."
+```
+
+Both branches gate from **one shared helper** (`Set-SpecrewStageEvidenceGate`) so they cannot drift —
+fixing only the scoped branch would have been the T082 shape exactly.
+
+The contract is authored as a durable artifact per the maintainer's instruction:
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/boundary-evidence-contract.md
+
+### The third surface, found by asking who else consumes the marker
+
+Suppressing the demand in the provider was not sufficient. **The pending-verdict stop artifact is what
+the packet renderer reads the marker out of**, and it composes boundary/approval-phrase/marker from
+the crossing without consulting the evidence flag — so a suppressed demand would still have handed
+over a marker for an empty increment. That is a partial correction under a complete-sounding claim,
+one surface over from T082's. The artifact writer is now gated too.
+
+### The fixture-flip cost was real, and smaller than estimated
+
+Five suites had fixtures that represent a project *at* a boundary without the evidence that boundary
+owes. Each correctly started measuring the gate instead of its own subject. All were seeded:
+`pending-verdict-stop-artifact` (clarify + the iteration set), `conformance-detection` (cases 16b and
+16pb), `conformance-stop-intent-wiring` (case d). **The predicted ~70–80 assertion blast radius did
+not materialize — because the design keeps `HasPendingVerdict` true.** That is the re-estimate's
+design rejection paying off measurably, not just in argument.
+
+One method note worth keeping: seeding inside the shared `New-Spec` helper of the 76-case suite
+perturbed an unrelated intake case. **A shared fixture helper is too blunt an instrument for a
+behaviour only some cases depend on** — reverted to a named `New-BoundaryStageEvidence` applied
+per-case, on purpose.
+
+### Regression
+
+`fr068-verdict-demand-reproduction`, `fr066-first-boundary-arrival`, `pending-verdict-stop-artifact`,
+`pending-verdict-surface`, `verdict-capture-blocks`, `boundary-correction-ledger`, `boundary-ratchet`,
+`HookVerdictCapture`, `dispatcher-stop-block`, `launch-mode-boundary-enforcement`,
+`boundary-sync-atomic`, `conformance-stop-intent-wiring` — all exit 0.
+`conformance-detection` — **all 76 cases pass.** Mirror parity verified by hash.
+
+## DRIFT-198-I011-001 — an unregistered suite fails on HEAD, and CI cannot see it
+
+- **Status**: open; **routed to beta3 under the zero-slack rule, NOT absorbed**
+- **Severity**: minor-to-major — an unrun test is an unenforced invariant
+- **Observed**: `tests/unit/boundary-authorization-prompt-truth.tests.ps1` exits 1 on HEAD:
+  *"Status: Approved with verdict evidence should pass validation … No iteration directories with
+  plan.md yet."*
+- **Not mine, and proven so**: stashing every T090 change and re-running reproduces the same
+  failure. The cause is a validator/fixture interaction, not the stage-evidence gate.
+- **Why CI is green anyway**: the suite is **not registered** in
+  `tests/f198-regression-suite.ps1`, so nothing runs it. That is the finding — the failure is
+  incidental, the invisibility is structural, and it is the same class as this iteration's own
+  deliberate-RED registration obligation on T092.
+- **Rule applied**: outside the FR-066 / FR-068 / FR-018 scope and not an authorization-integrity
+  defect, so it is recorded and routed rather than fixed here. **011 records; it does not absorb.**
+- **Required correction (deferred to beta3)**: fix the suite, register it, and sweep for other
+  unregistered test files so the registry's coverage is a fact rather than an assumption.
+
 ## FOR THE RETRO — a practice that has earned promotion to shipped method guidance
 
 **Flagged for the retro facilitator by maintainer instruction, 2026-08-03.** This is a process
