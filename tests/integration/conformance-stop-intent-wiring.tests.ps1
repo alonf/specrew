@@ -80,6 +80,41 @@ function New-Spec {
     $null = & git -C $Proj add -- specs
     $null = & git -C $Proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture spec'
     if ($LASTEXITCODE -ne 0) { throw 'fixture spec commit failed' }
+    Set-FixtureBoundCrossing -Proj $Proj
+}
+
+function Set-FixtureBoundCrossing {
+    # T092 rework 3/3 (2026-08-06). Committing the evidence above is no longer sufficient.
+    #
+    # DRIFT-198-I011-003 moved the stage-evidence gate onto the tree the crossing is BOUND to, and
+    # DRIFT-198-I011-005 made "could not verify" fail CLOSED. A fixture that commits its artifacts but
+    # records NO crossing carries no bound tree id, so the gate cannot verify and correctly suppresses
+    # the very demand case (d) asserts — the case then measures the gate instead of the stop-intent
+    # precedence it exists to prove, which is exactly what the comment above was written to prevent.
+    #
+    # Built through the REAL writer boundary sync uses, in a child process: crossing_id is a hash over
+    # the crossing's fields and artifact_state_id is re-derived from the commit, so a hand-written
+    # record is rejected as an integrity mismatch and re-implementing the hash here would drift.
+    param([string]$Proj)
+
+    $ctxPath = Join-Path $Proj '.specrew\start-context.json'
+    $ctx = Get-Content -LiteralPath $ctxPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 12
+    $working = if ($null -ne $ctx['session_state']) { [string]$ctx['session_state']['boundary_type'] } else { '' }
+    $lastAuth = [string]$ctx['boundary_enforcement']['last_authorized_boundary']
+    # A fixture at rest stays at rest: no crossing when nothing is pending.
+    if ([string]::IsNullOrWhiteSpace($working) -or $working -eq $lastAuth) { return }
+
+    $bind = Join-Path $scratch ('bind-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $body = @"
+`$ErrorActionPreference = 'Stop'
+. '$repoRoot/extensions/specrew-speckit/scripts/shared-governance.ps1'
+`$commit = (@(& git -C '$Proj' rev-parse HEAD) -join '').Trim()
+Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot '$Proj' -WorkingBoundary '$working' ``
+    -BoundaryCommitHash `$commit -RecordedAt '2026-06-20T00:00:00Z' | Out-Null
+"@
+    [System.IO.File]::WriteAllText($bind, $body, [System.Text.UTF8Encoding]::new($false))
+    $out = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -File $bind 2>&1) -join "`n")
+    if ($LASTEXITCODE -ne 0) { throw "fixture crossing bind failed for '$working': $out" }
 }
 
 function New-Transcript {

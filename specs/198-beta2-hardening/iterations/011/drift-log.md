@@ -537,6 +537,118 @@ does not name the mint path" — a false PASS on a defect that was still live.**
 3c now builds its own untouched project. That is five false passes prevented across T086, T087 and
 T092, and it is the strongest evidence yet for promoting the third outcome to shipped method guidance.
 
+## T092 rework 3/3 — finding 4, the residuals, and the fixture collateral at its true size
+
+### Finding 4 — the clarify matcher now enforces the contract it was authored from
+
+**Maintainer ruling: the STRICT rule**, on the recorded asymmetry — over-blocking is visible and
+correctable; under-blocking silently re-enables approval options. Both arms demand positive structure:
+
+| Arm | Strict form |
+| --- | --- |
+| session block | `## Clarifications` **and** a dated `### Session YYYY-MM-DD` beneath it, confined to that section by `(?!^##[ \t])` so a dated session under another heading cannot satisfy clarify from across the document |
+| recorded skip | the structured `**Clarify Disposition**: skip …` record **with a rationale following it** |
+
+**RED → GREEN**, 2 RED. The reviewer's proof string is dead and the placeholder heading with it:
+
+```text
+MEASURED: shape 'negated prose ("must not be skipped")': satisfied=False
+MEASURED: shape 'placeholder heading, empty section':    satisfied=False
+MEASURED: shape 'dated session block (arm 1)':           satisfied=True
+MEASURED: shape 'structured skip-with-rationale (arm 2)': satisfied=True
+```
+
+Both legitimate arms are asserted as **positive controls**, not left implicit. A one-directional test
+would have proven only that the matcher got stricter — never that it stayed correct. The contract rows
+were ruled correct and are unchanged; the gap was always between the authored rows and the matcher.
+
+### Two residuals in the same function — ACCEPTED as completing finding 3's landing
+
+Found while landing finding 4, disclosed rather than smoothed over, and ruled in scope by the
+maintainer: the same could-not-check / nothing-to-find conflation, surviving in the one path the
+re-cut did not rewrite.
+
+1. **The docstring still advertised the pre-re-cut posture** — *"FAIL-OPEN by construction … any read
+   error returns Satisfied=$true"* — directly contradicting the code beneath it. A stale contract
+   comment on an authorization-integrity function is how the next reader reintroduces the defect.
+2. **The trailing catch-all still returned `Satisfied=$true / Checked=$false`.** `Set-SpecrewStage
+   EvidenceGate` reads `Checked=$false` as "nothing to say" and leaves the demand intact, so **any
+   unexpected throw re-armed a verdict demand against evidence nobody had verified.** Now fails closed
+   with a named reason.
+
+### Two note-level deviations, verified by the maintainer and ACCEPTED as design choices
+
+Recorded so they are decisions on the record rather than accidents someone re-derives later.
+
+1. **Overwrite, not append.** `Set-SpecrewUnrecordableCrossingRecord` writes
+   `.specrew/unrecordable-crossing.json` whole; a second failed crossing replaces the first. The record
+   is a **latch** — "there is an unrecorded crossing here" — not a ledger. The ledger exists for
+   history; this file exists to make one bit detectable across processes when the ledger does not yet
+   exist. Accepted.
+2. **Any-success clearing.** The record is cleared whenever a crossing is successfully established,
+   including one for a *different* boundary. Accepted because the latch's meaning is "the cursor must
+   not be minted from session state", and a successfully established crossing is exactly the condition
+   that makes minting unnecessary. The alternative — per-boundary clearing — would leave a stale latch
+   refusing legitimate bootstraps, trading a visible false-authorization risk for an invisible
+   permanent block.
+
+### The fixture collateral was three suites, not one — OPTION (a) executed
+
+The handoff priced ONE fixture repair. Measured reality: **the fail-closed conversion left three suites
+red**, all pre-existing at `5a284bbb` (verified in a worktree at that commit, not inferred).
+
+| Suite | Collateral |
+| --- | --- |
+| `pending-verdict-surface` | the priced one — no git repo, no feature, no crossing |
+| `conformance-stop-intent-wiring` | case (d) — evidence committed, but no bound crossing |
+| `conformance-detection` | **26 fixtures open a pending crossing; only 2 seeded** |
+
+**Maintainer ruled OPTION (a)**: seed all 26 per-case and check each premise. (b) — seeding inside the
+shared `New-Fixture` — was rejected as the blunt-helper trap this suite already learned once, and
+because it would MASK wrong-reason passes. (c) was rejected because it would leave 24 unverified
+premises inside the very suite that gates FR-066/FR-068 — the tag's evidence base.
+
+**The wrong-reason-pass class, stated precisely.** Cases asserting a block fail loudly when the gate
+suppresses. Cases asserting **no block** do not: with the gate suppressing for an unrelated reason,
+"no block" is satisfied whatever their own subject does. Those are the ones that were passing for the
+wrong reason, and the repair is what restores attribution — each is now paired with a seeded partner
+that proves the block WOULD fire:
+
+| No-block guard | Paired block-asserting case | What the pair now proves |
+| --- | --- | --- |
+| Case 2 (packet rendered) | Case 1 (no packet) | the silence is attributable to the packet |
+| Case 9b (multi-gate packet) | Cases 9 / 9c | the silence is attributable to the correct marker |
+| Case 11 (relevant packet) | Case 10 (stale packet) | the silence is attributable to crossing relevance |
+| Case 14 (unpersistable counter) | Case 13 | the silence is the fail-open counter, not the gate |
+| Case 12 (enforcement disabled) | — | never gate-dependent: disabled short-circuits ahead of the gate |
+
+**Honest limit on this analysis**: the suite aborts on first failure, so before seeding only Case 1's
+failure was directly observable — the later cases never ran. The table above is a structural argument
+about which assertions *can* pass for the wrong reason, not a per-case observation of one doing so.
+Recorded as reasoning rather than dressed up as measurement.
+
+Seeding is boundary-aware: the `clarify` row owns no file, so its evidence is a dated session block
+written into `spec.md` **only when the fixture's working boundary is clarify** — appending it to every
+fixture would perturb the workshop/intake cases that read `spec.md`, which is the exact blunt-helper
+failure recorded at T090.
+
+### A measurement hazard worth its own line: Git-Bash `tar`
+
+The first full-gate run reported **3 of 90 red**. One — `distribution-module-update.ps1` — was not a
+product failure at all: run through Bash, Git-Bash's `tar` resolves `C:\…` as a remote host
+(*"Cannot connect to C: resolve failed"*) and the extract throws. **From PowerShell it exits 0.**
+
+The suite is the same; the shell changed the answer. That is the iteration's own rule turned on its
+author — *read what the measurement measured before trusting its colour* — and it is recorded because
+the next person to run this gate from a Bash shell will otherwise spend an hour on a phantom.
+**Run the F-198 gate from PowerShell.**
+
+### Full gate
+
+**`F-198 honesty regression suite: all 90 suites green in 444.864s`**, from PowerShell. Mirror parity
+verified by hash across `shared-governance.ps1`, `specrew-conformance-provider.ps1` and
+`sync-boundary-state.ps1`.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.

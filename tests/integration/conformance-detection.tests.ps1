@@ -88,6 +88,23 @@ function New-BoundaryStageEvidence {
             @{ Rel = 'quality\hardening-gate.md'; Body = "# Hardening Gate" })) {
         Set-Content -LiteralPath (Join-Path $iter $pair.Rel) -Value $pair.Body -Encoding UTF8
     }
+
+    # The `clarify` row is CONTENT, not a file: it owns no artifact of its own and is satisfied by a
+    # dated session block inside spec.md (DRIFT-198-I011-006 made that structure strict, so a bare
+    # heading no longer counts). Seeded ONLY when the fixture's working boundary is actually clarify —
+    # appending a Clarifications section to every fixture would perturb the workshop/intake cases that
+    # read spec.md, which is the blunt-helper trap this suite already learned once.
+    $ctxProbe = Get-Content -LiteralPath (Join-Path $Proj '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 12
+    $workingProbe = if ($null -ne $ctxProbe['session_state']) { [string]$ctxProbe['session_state']['boundary_type'] } else { '' }
+    if ($workingProbe -eq 'clarify') {
+        $specPath = Join-Path $Proj 'specs\050-host-neutral-gate\spec.md'
+        $specBody = if (Test-Path -LiteralPath $specPath -PathType Leaf) { (Get-Content -LiteralPath $specPath -Raw -Encoding UTF8) } else { "# Feature Specification: Host-Neutral Gate Enforcement" }
+        if ($specBody -notmatch '(?m)^###[ \t]+Session[ \t]+\d{4}-\d{2}-\d{2}') {
+            $specBody = $specBody.TrimEnd() + "`n`n## Clarifications`n`n### Session 2026-06-20 (clarify)`n`n- Q: Is the gate host-neutral? -> A (human): yes.`n"
+            Set-Content -LiteralPath $specPath -Value $specBody -Encoding UTF8
+        }
+    }
+
     Save-FixtureStructure -Proj $Proj -Message 'fixture stage evidence'
     Set-FixtureBoundCrossing -Proj $Proj
 }
@@ -427,6 +444,7 @@ try {
     # ---- Case 1: BOUNDARY block. Working 'plan' ahead of authorized 'clarify', no packet -> emit the block sentinel
     #              with the packet directive + the CONTIGUOUS clarify -> plan verdict marker.
     $p1 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p1
     $t1 = New-Transcript -Proj $p1 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'I have written plan.md and moved on to tasks.' })
     $r1 = Invoke-Conformance -Proj $p1 -TranscriptPath $t1
     if ($r1.Code -ne 0) { Fail "Case 1: provider must exit 0 (got $($r1.Code)); out: $($r1.Out)" }
@@ -438,6 +456,7 @@ try {
     # ---- Case 2: FALSE-POSITIVE GUARD (boundary). Same state, but the packet WAS rendered this turn
     #              (clarify -> plan == pending crossing) -> no block.
     $p2 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p2
     $t2 = New-Transcript -Proj $p2 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $realPacket })
     $r2 = Invoke-Conformance -Proj $p2 -TranscriptPath $t2
     if ($r2.Blocked) { Fail "Case 2: a rendered packet (clarify -> plan == pending crossing) is a legitimate awaiting-verdict stop - MUST NOT block. Out: $($r2.Out)" }
@@ -837,6 +856,7 @@ try {
     # ---- Case PH-f: BOUNDARY stop contract UNCHANGED - the six-section directive + the exact verdict marker,
     #      even with a session baseline on disk (the baseline lane never weakens boundary authorization).
     $phf = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $phf
     New-HandoverSnapshot -Proj $phf -ChangedUserFiles 2
     $null = Invoke-Conformance -Proj $phf -Event SessionStart   # baseline present; must not matter at a boundary
     $thf = New-Transcript -Proj $phf -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'plan.md is written; moving on.' })
@@ -882,6 +902,7 @@ try {
     # ---- Case 7: LOOP-GUARD. Consecutive packet-less boundary stops block up to the cap, then degrade to a nudge
     #              (never hang); a packet-present stop resets the counter so a later advance re-blocks.
     $p7 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p7
     # DISTINCT message per dispatch - the real loop-guard scenario is the agent re-rendering DIFFERENT no-packet
     # messages (same advance), which the idempotency guard does NOT dedup (different identities). (A truly identical
     # re-fire is Case 22.)
@@ -904,6 +925,7 @@ try {
 
     # ---- Case 8: ISOLATION. A firing leaves start-context.json (the gate authority) byte-unchanged.
     $p8 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p8
     $ctx8 = Join-Path $p8 '.specrew\start-context.json'
     $before = (Get-FileHash -LiteralPath $ctx8).Hash
     $t8 = New-Transcript -Proj $p8 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
@@ -914,6 +936,7 @@ try {
     # ---- Case 9: MULTI-GATE-GAP marker. working 'tasks' two gates past authorized 'clarify' -> the block names the
     #              CONTIGUOUS first-unauthorized crossing clarify -> plan, never the gate-skipping plan -> tasks.
     $p9 = New-Fixture -Working 'tasks' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p9
     $t9 = New-Transcript -Proj $p9 -Turns @(@{ role = 'assistant'; text = 'tasks.md drafted; proceeding.' })
     $r9 = Invoke-Conformance -Proj $p9 -TranscriptPath $t9
     if (-not $r9.Blocked) { Fail "Case 9: a 2-gate jump MUST block. Out: $($r9.Out)" }
@@ -924,6 +947,7 @@ try {
     # ---- Case 9b: MULTI-GATE-GAP rendered packet. working 'tasks' two gates past authorized 'clarify', but the
     #               rendered packet targets the FIRST unauthorized crossing clarify -> plan -> suppress and let capture bind.
     $p9b = New-Fixture -Working 'tasks' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p9b
     $t9b = New-Transcript -Proj $p9b -Turns @(@{ role = 'assistant'; text = $realPacket })
     $r9b = Invoke-Conformance -Proj $p9b -TranscriptPath $t9b
     if ($r9b.Blocked) { Fail "Case 9b: a marker for the first unauthorized crossing clarify -> plan MUST suppress even when working already jumped to tasks. Out: $($r9b.Out)" }
@@ -933,6 +957,7 @@ try {
     #               let the human authorize a later crossing while clarify -> plan is still missing.
     $packetPlanTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
     $p9c = New-Fixture -Working 'tasks' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p9c
     $t9c = New-Transcript -Proj $p9c -Turns @(@{ role = 'assistant'; text = $packetPlanTasks })
     $r9c = Invoke-Conformance -Proj $p9c -TranscriptPath $t9c
     if (-not $r9c.Blocked) { Fail "Case 9c: a gate-skipping plan -> tasks marker MUST NOT suppress while clarify -> plan is first unauthorized. Out: $($r9c.Out)" }
@@ -942,6 +967,7 @@ try {
     # ---- Case 10: STALE-PACKET still blocks. working 'tasks', authorized 'plan', a stale clarify->plan packet (to=plan)
     #               in the tail must NOT suppress the genuine plan->tasks advance (to != working).
     $p10 = New-Fixture -Working 'tasks' -LastAuth 'plan'
+    New-BoundaryStageEvidence -Proj $p10
     $t10 = New-Transcript -Proj $p10 -Turns @(
         @{ role = 'assistant'; text = $realPacket },
         @{ role = 'user'; text = 'approved for plan' },
@@ -956,6 +982,7 @@ try {
     #                a plan->tasks packet rendered.
     $packetTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
     $p11 = New-Fixture -Working 'tasks' -LastAuth 'plan'
+    New-BoundaryStageEvidence -Proj $p11
     $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetTasks })
     $r11 = Invoke-Conformance -Proj $p11 -TranscriptPath $t11
     if ($r11.Blocked) { Fail "Case 11: a packet whose marker matches the pending crossing is a legitimate awaiting stop - MUST suppress. Out: $($r11.Out)" }
@@ -965,6 +992,7 @@ try {
     #                 authorizable crossing is still intake -> specify. That exact marker suppresses.
     $packetFirst = $realPacket -replace 'clarify -> plan', 'intake -> specify'
     $p11b = New-Fixture -Working 'clarify' -LastAuth ''
+    New-BoundaryStageEvidence -Proj $p11b
     $t11b = New-Transcript -Proj $p11b -Turns @(@{ role = 'assistant'; text = $packetFirst })
     $r11b = Invoke-Conformance -Proj $p11b -TranscriptPath $t11b
     if ($r11b.Blocked) { Fail "Case 11b: first-boundary marker intake -> specify MUST suppress even when working already jumped to clarify. Out: $($r11b.Out)" }
@@ -974,6 +1002,7 @@ try {
     #                 authorization from an empty ledger; it must block and demand intake -> specify.
     $packetWrongFirst = $realPacket -replace 'clarify -> plan', 'specify -> clarify'
     $p11c = New-Fixture -Working 'clarify' -LastAuth ''
+    New-BoundaryStageEvidence -Proj $p11c
     $t11c = New-Transcript -Proj $p11c -Turns @(@{ role = 'assistant'; text = $packetWrongFirst })
     $r11c = Invoke-Conformance -Proj $p11c -TranscriptPath $t11c
     if (-not $r11c.Blocked) { Fail "Case 11c: first-boundary wrong marker specify -> clarify MUST block when specify is not authorized yet. Out: $($r11c.Out)" }
@@ -982,6 +1011,7 @@ try {
 
     # ---- Case 12: ENFORCEMENT DISABLED -> never blocks.
     $p12 = New-Fixture -Working 'plan' -LastAuth 'clarify' -Enabled $false
+    New-BoundaryStageEvidence -Proj $p12
     $t12 = New-Transcript -Proj $p12 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $r12 = Invoke-Conformance -Proj $p12 -TranscriptPath $t12
     if ($r12.Blocked) { Fail "Case 12: enforcement disabled MUST NOT block. Out: $($r12.Out)" }
@@ -991,6 +1021,7 @@ try {
     #      pre-seeded count at the cap for this advance caps regardless of elapsed time (the old epoch window let a
     #      >120s/turn loop reset to 0 forever and never cap -> an unbounded hang on a capless host).
     $p13 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p13
     $cf13 = Join-Path $p13 '.specrew\runtime\conformance-stop-block.json'
     New-Item -ItemType Directory -Path (Split-Path $cf13) -Force | Out-Null
     Set-Content -LiteralPath $cf13 -Value '{"key":"plan|clarify","count":3}' -Encoding UTF8
@@ -1003,6 +1034,7 @@ try {
     # ---- Case 14 (145 HANG-2): an unpersistable counter degrades to NO block (fail-open). A directory placed at the
     #      counter file path makes the verified write fail -> the provider must NOT start an uncappable loop on a capless host.
     $p14 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p14
     New-Item -ItemType Directory -Path (Join-Path $p14 '.specrew\runtime\conformance-stop-block.json') -Force | Out-Null
     $t14 = New-Transcript -Proj $p14 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $r14 = Invoke-Conformance -Proj $p14 -TranscriptPath $t14
@@ -1013,6 +1045,7 @@ try {
     #      dark) degrades to NO block. We cannot claim the packet is absent without reading the message -> fail-OPEN,
     #      matching the boundary-trigger load-failure direction (never fail-closed on a missing component).
     $p15 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p15
     $r15 = Invoke-Conformance -Proj $p15 -TranscriptPath $null
     if ($r15.Blocked) { Fail "Case 15: with no readable last message the provider MUST NOT block (cannot claim the packet is absent; 145 F1-CC). Out: $($r15.Out)" }
     Write-Pass "Case 15: an unreadable last message (no transcript / CC unresolved) degrades to NO block (fail-open, never fail-closed on a missing component; 145 F1-CC)"
@@ -1273,6 +1306,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) cannot prove an intermediate pause;
     #      a real boundary stop blocks again.
     $p17 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p17
     New-Spec -Proj $p17
     New-LensApplicability -Proj $p17 -Selected @('product-domain','data-storage') -Done @('product-domain','data-storage')
     $t17 = New-Transcript -Proj $p17 -Turns @(@{ role = 'assistant'; text = 'spec.md written; plan.md drafted.' })
@@ -1300,6 +1334,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     if ($h19 -lt 4) { Fail "Case 19 fixture INVALID: expected >=4 section headers preserved, got $h19 (the strip-regex ate the headers - this case would silently become a Case-1 dup)" }
     if ($packetNoMarker -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 19 fixture INVALID: the verdict marker was NOT stripped (the case would not test the headers-without-marker path)" }
     $p19 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p19
     $t19 = New-Transcript -Proj $p19 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetNoMarker })
     $r19 = Invoke-Conformance -Proj $p19 -TranscriptPath $t19
     if (-not $r19.Blocked) { Fail "Case 19: a boundary stop with the six section HEADERS but NO verdict marker MUST block (headers don't authorize the crossing; the verdict was never captured). Out: $($r19.Out)" }
@@ -1309,6 +1344,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     # ---- Case 20 (145 OB-1): workshop validation must scope to the ACTIVE feature. A DIFFERENT abandoned feature
     #      whose lens workshop still has lenses remaining MUST NOT affect the ACTIVE feature's boundary block.
     $p20 = New-Fixture -Working 'plan' -LastAuth 'clarify'  # ACTIVE feature 050 at a real boundary; NO lens-applicability of its own
+    New-BoundaryStageEvidence -Proj $p20
     $abDir = Join-Path $p20 'specs\049-abandoned'
     New-Item -ItemType Directory -Path $abDir -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $abDir 'spec.md') -Value '# abandoned feature' -Encoding UTF8
@@ -1321,6 +1357,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     # ---- Case 21 (145 TI-2): a #3 raw-Spec-Kit hit concurrent with a FIRING boundary block folds the redirect INTO
     #      the block directive (the standalone-nudge path is covered by Case 6; the fold-into-block path was not).
     $p21 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p21
     $t21 = New-Transcript -Proj $p21 -Turns @(@{ role = 'assistant'; text = 'I will now invoke specify workflow --type feature to scaffold the next phase.' })
     $r21 = Invoke-Conformance -Proj $p21 -TranscriptPath $t21
     if (-not $r21.Blocked) { Fail "Case 21: the boundary block should fire. Out: $($r21.Out)" }
@@ -1330,6 +1367,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     # ---- Case 22 (IDEMPOTENCY): a DUPLICATE hook fire for the SAME message (identical transcript + boundary state)
     #      within the dedup window is a no-op - the stop blocks ONCE; the re-fire does not re-block (maintainer 2026-06-21).
     $p22 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p22
     $t22 = New-Transcript -Proj $p22 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $r22a = Invoke-Conformance -Proj $p22 -TranscriptPath $t22
     $r22b = Invoke-Conformance -Proj $p22 -TranscriptPath $t22  # identical re-fire (same transcript content + state)
@@ -1340,12 +1378,14 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     # ---- Case 23 (145 SC-2 / IDEMP-2): the idempotency dedup FILE failing must FAIL-OPEN - a corrupt or unwritable
     #      conformance-last-fire.json still lets a genuine boundary stop BLOCK (dedup disabled, never skip-or-hang).
     $p23 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p23
     New-Item -ItemType Directory -Path (Join-Path $p23 '.specrew\runtime') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $p23 '.specrew\runtime\conformance-last-fire.json') -Value '{ not valid json ::' -Encoding UTF8  # corrupt read
     $t23 = New-Transcript -Proj $p23 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $r23 = Invoke-Conformance -Proj $p23 -TranscriptPath $t23
     if (-not $r23.Blocked) { Fail "Case 23: a CORRUPT conformance-last-fire.json must fail-open (the boundary stop still blocks). Out: $($r23.Out)" }
     $p23b = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p23b
     New-Item -ItemType Directory -Path (Join-Path $p23b '.specrew\runtime\conformance-last-fire.json') -Force | Out-Null  # a DIRECTORY at the file path -> unwritable
     $t23b = New-Transcript -Proj $p23b -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $r23b = Invoke-Conformance -Proj $p23b -TranscriptPath $t23b
@@ -1357,6 +1397,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     #      and both block - the identity uses the ROLE-AWARE last-assistant message, not a coarse tail-40 that collides.
     $trail24 = @(1..45 | ForEach-Object { @{ role = 'user'; text = 'identical trailing tool/user entry' } })
     $p24 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p24
     $t24a = New-Transcript -Proj $p24 -Turns (@(@{ role = 'assistant'; text = 'MESSAGE A: plan.md written, no packet.' }) + $trail24)
     $t24b = New-Transcript -Proj $p24 -Turns (@(@{ role = 'assistant'; text = 'MESSAGE B: a different summary, still no packet.' }) + $trail24)
     $r24a = Invoke-Conformance -Proj $p24 -TranscriptPath $t24a
