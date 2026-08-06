@@ -449,6 +449,94 @@ it replaced. The named-limitation posture covers absences and costs — limitati
 with a working alternative, limitation 1 is a characterized gap — not fresh broken trust machinery.
 If round 2 fails on these same fixes, T088–T090 revert entirely and the decision reopens.
 
+## T092 rework 2/3 — finding 2 landed, and the consequence-graph walk re-scoped it before building
+
+**The design-gate walk ran BEFORE construction this time, in writing, and it immediately changed the
+work.** This is the first application of the practice as a required step rather than a virtue, and it
+paid on its first use.
+
+### The finding as filed understated the defect on two axes — both measured, not argued
+
+DRIFT-198-I011-004 names `specrew-start.ps1:2643` and frames the defect as *"the recovery INSTRUCTION
+points at a path that mints authorization"*. Both halves are narrower than the mechanism.
+
+**Axis 1 — three live mint sites, not one.** Every caller of
+`Initialize-SpecrewBoundaryEnforcementState` that passes a boundary mints the cursor:
+
+| Site | Guard | `CurrentBoundary` | State |
+| --- | --- | --- | --- |
+| `specrew-start.ps1:2643` | `NeedsMigration` | `$SessionState.boundary_type` | mints — the site the reviewer verified |
+| `SessionBootstrapManager.ps1:262` | `$null -eq $beState.State` | hook session anchor | **mints — the SessionStart hook, the path this project actually runs** |
+| `shared-governance.ps1:3070` | `NeedsMigration` | caller's | mints, inside `Add-SpecrewBoundaryAuthorization` (a real verdict follows in-call) |
+| `shared-governance.ps1:3247` | `NeedsMigration` | `$null` | **already safe — the safe form already existed in the file** |
+
+**The maintainer surfaced the axis that mattered**: the launcher (`specrew start`) is rarely used here;
+the SessionStart hook is. The reviewer verified the one site the maintainer does not exercise. Fixing
+only the filed line would have been correct code on an unreached path — T089's defect exactly.
+
+**Axis 2 — no human action is required.** Sync persists `session_state.boundary_type`
+(`sync-boundary-state.ps1:1672`) *before* the crossing write throws. The next session's hook reads it
+back through `SessionStateAccessor.ps1:38` → `SessionBootstrapManager.ps1:204,212` → `:262`.
+**Merely opening the next session mints the cursor** — the instruction is the smaller half of the
+defect, and a human who ignores it is no safer.
+
+Measured on the un-bootstrapped fixture, before any fix:
+
+```text
+MEASURED: durable record present=False
+MEASURED: hook bootstrap exit=0; last_authorized_boundary=specify; verdict_history=0
+RED: opening the next session CONVERTED the unrecordable crossing into an authorized cursor
+RED: the recovery instruction still names the start/bootstrap path
+```
+
+### Ruling applied: verification of finding 2, NOT a new finding
+
+The termination rule ends the iteration on a **new** blocking or major finding *in these fixes*. This
+is neither: it is DRIFT-198-I011-004 measured to its true extent, and the mint sites are **pre-existing
+code** — `SessionBootstrapManager.ps1:262` dates to F-174 iteration 006. T089 added an *instruction*
+pointing at a hole that already existed and already self-fired. Maintainer ruled the widened scope in
+on 2026-08-06: fix all live sites via the shared guard, record the widening here.
+
+### The fix — one guarded refusal, not three patched callers
+
+- **`.specrew/unrecordable-crossing.json`**, its own durable file. It cannot live in
+  `boundary_enforcement` (the defect state IS that block's absence), and it cannot be a plain
+  start-context key: **`specrew-start.ps1:2524` rebuilds that file from scratch**, forwarding only
+  `boundary_enforcement` and `user_profile`, so the recovery path would drop the signal it needs to
+  read. Chosen by the maintainer over the context-key option for exactly that reason.
+- **The guard sits in `Initialize-SpecrewBoundaryEnforcementState`**, which all three live sites funnel
+  through — so no site can be missed. With no record on disk the branch never fires, so
+  **fresh-project semantics are untouched by construction**, which was the maintainer's constraint.
+  Proven, not asserted: `LaunchContractWrite.Tests.ps1` (fresh init + preserve-merge) stays green.
+- **Fail-closed on an unreadable record**, matching the conversion finding 3 required: a present but
+  malformed record returns a refusing sentinel, because "could not read" must not be spelled the same
+  way as "nothing to find".
+- **The instruction names no remedy path at all.** There is no path that resolves this without a
+  human, so the message says so and asks for explicit confirmation.
+
+### RED → GREEN
+
+`tests/integration/fr066-first-boundary-arrival.tests.ps1` CASE 3, three assertions, **3 RED → 3 GREEN**.
+The case drives the **real SessionStart seam** (`Write-SpecrewLaunchContractArtifact`), not the
+initializer in isolation — a fix proven only against the primitive would have repeated T089's
+unreachable-branch defect.
+
+```text
+MEASURED: durable record present=True; boundary=specify; failure_reason_present=True
+MEASURED: hook bootstrap exit=0; last_authorized_boundary=(null); verdict_history=0
+PASS: the SessionStart seam refused to cursor over the failed crossing
+PASS: the instruction surfaces the unrecordable state for human confirmation and names no minting path
+```
+
+### A fifth INCONCLUSIVE catch, on the first run of the new case
+
+CASE 3c originally reused CASE 3b's project. 3b's bootstrap **writes** the enforcement block, so by 3c
+the project was no longer unrecordable and the provider correctly emitted nothing — measured as
+`blocked=False, pointsAtMint=False`. **A two-outcome harness would have scored that as "the instruction
+does not name the mint path" — a false PASS on a defect that was still live.** The guard caught it;
+3c now builds its own untouched project. That is five false passes prevented across T086, T087 and
+T092, and it is the strongest evidence yet for promoting the third outcome to shipped method guidance.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.

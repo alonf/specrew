@@ -28,7 +28,7 @@ $ErrorActionPreference = 'Stop'
 $script:Red = 0
 $script:Hard = 0
 function Write-Pass { param([string]$m) Write-Host "PASS: $m" -ForegroundColor Green }
-function Write-Red { param([string]$m) Write-Host "RED (expected until T088/T089): $m" -ForegroundColor Yellow; $script:Red++ }
+function Write-Red { param([string]$m) Write-Host "RED (expected until the fix lands): $m" -ForegroundColor Yellow; $script:Red++ }
 function Write-Measured { param([string]$m) Write-Host "MEASURED: $m" -ForegroundColor Cyan }
 function Write-Inconclusive { param([string]$m) Write-Host "INCONCLUSIVE (fixture defect, NOT a pass): $m" -ForegroundColor Magenta; $script:Hard++ }
 
@@ -197,6 +197,163 @@ elseif ($namesBoundary -and $carriesMarker) {
 }
 else {
     Write-Pass 'the provider does not present a boundary crossing that was never established'
+}
+
+# ---------------------------------------------------------------------------------------------
+# CASE 3 — the unrecordable crossing must NOT be converted into an authorized cursor.
+#
+# DRIFT-198-I011-004 (certification finding 2), re-scoped on measurement 2026-08-06. The finding as
+# filed names `specrew-start.ps1:2643` and frames the defect as "the recovery INSTRUCTION points at a
+# path that mints authorization". The consequence-graph walk found that understates it on two axes:
+#
+#   1. THREE live mint sites, not one. `specrew-start.ps1:2643` (the launcher),
+#      `SessionBootstrapManager.ps1:262` (the SessionStart HOOK - the path this project actually runs),
+#      and `shared-governance.ps1:3070` (inside the authorization writer). A fourth,
+#      `shared-governance.ps1:3247`, already passes $null - proof the safe form exists.
+#   2. NO HUMAN ACTION IS REQUIRED. Sync persists `session_state.boundary_type`
+#      (sync-boundary-state.ps1:1672) BEFORE the crossing write throws. The next session's hook reads
+#      that value back through SessionStateAccessor.ps1:38 -> SessionBootstrapManager.ps1:204,212 and
+#      initializes `last_authorized_boundary` AT that boundary. Merely OPENING the next session
+#      converts a crossing that failed to record into an authorized one, instruction or not.
+#
+# So this case measures the HOOK seam, not the initializer in isolation: a fix proven only against
+# `Initialize-...` called directly would repeat T089's unreachable-branch defect, where the code was
+# correct and the path never reached it.
+# ---------------------------------------------------------------------------------------------
+
+Write-Host "`n--- CASE 3: a failed crossing must not become an authorized cursor ---`n" -ForegroundColor White
+
+$proj3 = New-UnbootstrappedProject
+$sync3Out = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -File $sync -ProjectPath $proj3 -BoundaryType 'specify' -FeatureRef 'specs/050-host-neutral-gate' 2>&1) -join "`n")
+$json3 = $null
+$m3 = [regex]::Match($sync3Out, '(?s)\{.*?"success".*?\}')
+if ($m3.Success) { try { $json3 = $m3.Value | ConvertFrom-Json } catch { $json3 = $null } }
+
+$recordStatus3 = if ($null -ne $json3 -and $null -ne $json3.boundary_record_status) { [string]$json3.boundary_record_status } else { '(absent)' }
+Write-Measured ("case 3 precondition: boundary_record_status={0}" -f $recordStatus3)
+
+if ($recordStatus3 -ne 'unrecordable') {
+    # The scenario never happened, so nothing below measures the defect. Third outcome, not a pass.
+    Write-Inconclusive ("sync did not reach the unrecordable state (status={0}) — this case measures nothing about finding 2" -f $recordStatus3)
+}
+else {
+    # 3a — the failure must leave a DURABLE record. Without one there is nothing any later process can
+    # detect: the enforcement ledger does not exist yet (that is the whole condition), and
+    # `specrew-start.ps1:2524` rebuilds start-context.json from scratch, forwarding only
+    # `boundary_enforcement` and `user_profile`, so a context key would be dropped by the very
+    # recovery path that needs to read it. Hence its own file.
+    $recordPath3 = Join-Path $proj3 '.specrew\unrecordable-crossing.json'
+    $recordExists3 = Test-Path -LiteralPath $recordPath3 -PathType Leaf
+    $recordBoundary3 = $null
+    $recordReason3 = $null
+    if ($recordExists3) {
+        try {
+            $rec3 = Get-Content -LiteralPath $recordPath3 -Raw -Encoding UTF8 | ConvertFrom-Json
+            $recordBoundary3 = [string]$rec3.boundary
+            $recordReason3 = [string]$rec3.failure_reason
+        }
+        catch { $recordBoundary3 = $null }
+    }
+    Write-Measured ("durable record present={0}; boundary={1}; failure_reason_present={2}" -f `
+            $recordExists3, $(if ($recordBoundary3) { $recordBoundary3 } else { '(none)' }), (-not [string]::IsNullOrWhiteSpace($recordReason3)))
+
+    if (-not $recordExists3) {
+        Write-Red 'the failed crossing leaves NO durable record — nothing downstream can detect it, so every bootstrap path is free to cursor over it'
+    }
+    elseif ([string]::IsNullOrWhiteSpace($recordBoundary3) -or [string]::IsNullOrWhiteSpace($recordReason3)) {
+        Write-Red 'the durable record exists but does not name the boundary and the reason — a detector cannot tell the human WHAT failed'
+    }
+    else {
+        Write-Pass 'the failed crossing leaves a durable, named record'
+    }
+
+    # 3b — THE LIVE PATH. Drive the real SessionStart seam (Write-SpecrewLaunchContractArtifact ->
+    # SessionBootstrapManager.ps1:262) in a child process: its dependency chain sets
+    # `Set-StrictMode -Version Latest` at FILE scope, which would leak into the cases above.
+    $bootScript = Join-Path $scratch ('boot-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $bootBody = @"
+`$ErrorActionPreference = 'Stop'
+. '$repoRoot/scripts/internal/bootstrap/SessionStateAccessor.ps1'
+. '$repoRoot/scripts/internal/bootstrap/SessionBootstrapManager.ps1'
+. '$repoRoot/scripts/internal/launch-contract.ps1'
+. '$repoRoot/scripts/internal/coordinator-resume.ps1'
+. '$repoRoot/scripts/internal/coordinator-prompt-surgery.ps1'
+. '$repoRoot/scripts/internal/user-profile.ps1'
+. '$repoRoot/extensions/specrew-speckit/scripts/shared-governance.ps1'
+# The REAL anchor shape the hook receives (`boundary`/`iteration`, per SessionStateAccessor.ps1:38),
+# carrying the boundary sync persisted before the crossing write failed.
+`$anchor = [pscustomobject]@{
+    active = `$true; feature_ref = '050-host-neutral-gate'
+    feature_path = (Join-Path '$proj3' 'specs/050-host-neutral-gate')
+    boundary = 'specify'; iteration = ''; auth_commit_hash = 'x'; recorded_at = '2026-08-03T00:00:00Z'
+}
+Write-SpecrewLaunchContractArtifact -ProjectRoot '$proj3' -Mode 'welcome-back' -SessionState `$anchor | Out-Null
+"@
+    [System.IO.File]::WriteAllText($bootScript, $bootBody, [System.Text.UTF8Encoding]::new($false))
+    $bootOut = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -File $bootScript 2>&1) -join "`n")
+    $bootExit = $LASTEXITCODE
+    $bootFaulted = ($bootExit -ne 0)
+
+    $ctxAfter = $null
+    try { $ctxAfter = Get-Content -LiteralPath (Join-Path $proj3 '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $ctxAfter = $null }
+    $beAfter = if ($null -ne $ctxAfter) { $ctxAfter.boundary_enforcement } else { $null }
+    $cursorAfter = if ($null -ne $beAfter) { [string]$beAfter.last_authorized_boundary } else { '(no block)' }
+    $verdictCount = if ($null -ne $beAfter -and $null -ne $beAfter.verdict_history) { @($beAfter.verdict_history).Count } else { -1 }
+
+    Write-Measured ("hook bootstrap exit={0}; last_authorized_boundary={1}; verdict_history={2}" -f `
+            $bootExit, $(if ([string]::IsNullOrWhiteSpace($cursorAfter)) { '(null)' } else { $cursorAfter }), $verdictCount)
+
+    if ($bootFaulted) {
+        Write-Inconclusive ("the SessionStart seam faulted rather than deciding — measures nothing about the mint. Output head: {0}" -f `
+            (($bootOut -replace '\s+', ' ').Trim() | ForEach-Object { $_.Substring(0, [Math]::Min(220, $_.Length)) }))
+    }
+    elseif ($null -eq $beAfter) {
+        Write-Inconclusive 'the SessionStart seam wrote no boundary_enforcement block at all — the probe never reached the initializer'
+    }
+    elseif ($cursorAfter -eq 'specify') {
+        Write-Red 'opening the next session CONVERTED the unrecordable crossing into an authorized cursor (last_authorized_boundary=specify, verdict_history empty) — a boundary no human ever approved is now recorded as approved'
+    }
+    elseif ([string]::IsNullOrWhiteSpace($cursorAfter)) {
+        Write-Pass 'the SessionStart seam refused to cursor over the failed crossing (last_authorized_boundary stays null, awaiting a human verdict)'
+    }
+    else {
+        Write-Red ("the cursor was initialized at an unexpected boundary '{0}' — neither refused nor the failed boundary" -f $cursorAfter)
+    }
+
+    # 3c — the INSTRUCTION must surface the state for HUMAN confirmation and must never name a path
+    # that mints authorization.
+    #
+    # FIXTURE DEFECT, caught by the INCONCLUSIVE guard on the first run and recorded rather than
+    # quietly patched: this originally reused $proj3, but 3b's bootstrap WRITES the
+    # boundary_enforcement block — so the project is no longer in the unrecordable state and the
+    # provider correctly emits nothing. Measured as "blocked=False, pointsAtMint=False", which a
+    # two-outcome harness would have scored as "the instruction does not name the mint path" — a
+    # false PASS on a defect that is still live. 3c gets its own untouched project.
+    $proj3c = New-UnbootstrappedProject
+    $null = & pwsh -NoProfile -ExecutionPolicy Bypass -File $sync -ProjectPath $proj3c -BoundaryType 'specify' -FeatureRef 'specs/050-host-neutral-gate' 2>&1
+    $transcript3 = New-FixtureTranscript -Proj $proj3c
+    $cmd3 = "Set-Location -LiteralPath '$proj3c'; & '$provider' --host-kind claude --source-event Stop --transcript-path '$transcript3'"
+    $provOut3 = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -Command $cmd3 2>&1) -join "`n")
+    $flat3 = ($provOut3 -replace '\s+', ' ').Trim()
+    $blocked3 = $provOut3 -match '<<<SPECREW-STOP-BLOCK>>>'
+    # The defective wording: it tells the human to run the bootstrap path, which is exactly the path
+    # that mints the cursor. Any remedy phrased as "run start/bootstrap to create it" is the defect.
+    $pointsAtMint3 = $flat3 -match '(?i)run the Specrew start/bootstrap path'
+    $asksHuman3 = $flat3 -match '(?i)(human|you) must (confirm|approve|authorize)|awaiting your|needs your explicit'
+    Write-Measured ("provider blocked={0}; instruction points at the bootstrap path={1}; asks for human confirmation={2}" -f $blocked3, $pointsAtMint3, $asksHuman3)
+
+    if (-not $blocked3) {
+        Write-Inconclusive 'the provider emitted no block on the unrecordable project — the instruction text cannot be measured'
+    }
+    elseif ($pointsAtMint3) {
+        Write-Red 'the recovery instruction still names the start/bootstrap path — it points the human at the mechanism that mints the authorization it failed to record'
+    }
+    elseif (-not $asksHuman3) {
+        Write-Red 'the instruction no longer names the mint path but does not surface the state for HUMAN confirmation either — the human is left with no way to resolve it'
+    }
+    else {
+        Write-Pass 'the instruction surfaces the unrecordable state for human confirmation and names no authorization-minting path'
+    }
 }
 
 Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue

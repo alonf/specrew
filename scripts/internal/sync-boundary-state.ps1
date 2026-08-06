@@ -1679,6 +1679,10 @@ function Invoke-SpecrewBoundaryStateSync {
             -RecordedAt $sessionState.recorded_at `
             -OpenNextCrossingWhenBoundaryAuthorized | Out-Null
         $pendingVerdictStop = Sync-SpecrewPendingVerdictStopArtifact -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
+        # DRIFT-198-I011-004: the crossing IS recorded now, so any prior unrecordable-crossing record
+        # is discharged. Clearing here — and only here, on the path that actually establishes the
+        # crossing — keeps the record from becoming sticky and refusing every future bootstrap.
+        Clear-SpecrewUnrecordableCrossingRecord -ProjectRoot $paths.ProjectRoot
     }
     catch {
         # FR-066 (amended 2026-08-03), T088. This catch used to degrade to a bare
@@ -1692,6 +1696,26 @@ function Invoke-SpecrewBoundaryStateSync {
         # (NFR-002), so the warning is kept for the console and the STATE is what travels.
         $failureReason = [string]$_.Exception.Message
         Write-Warning ("Boundary sync '{0}' could not establish the boundary crossing record: {1}" -f $BoundaryType, $failureReason)
+        # DRIFT-198-I011-004 (T092 rework). The in-memory state below tells THIS caller the crossing
+        # failed, but it dies with the process — and the defect is in the NEXT process. Sync has
+        # already persisted `session_state.boundary_type` above, so without a durable failure record
+        # the next SessionStart hook reads that boundary back and initializes
+        # `last_authorized_boundary` AT it, converting a crossing no human approved into an authorized
+        # one with no human action at all. Measured: last_authorized_boundary=specify,
+        # verdict_history=0. The record is what makes the failure detectable across processes.
+        try {
+            Set-SpecrewUnrecordableCrossingRecord `
+                -ProjectRoot $paths.ProjectRoot `
+                -Boundary $BoundaryType `
+                -FailureReason $failureReason `
+                -AttemptedCommitHash $effectiveAuthCommitHash `
+                -RecordedAt $sessionState.recorded_at | Out-Null
+        }
+        catch {
+            # The record is the ONLY thing standing between a failed crossing and a minted
+            # authorization, so a failure to write it must be loud rather than swallowed.
+            Write-Warning ("Boundary sync '{0}' could ALSO not persist the unrecordable-crossing record: {1}. A later bootstrap may cursor over this boundary — confirm it with a human before trusting the ledger." -f $BoundaryType, [string]$_.Exception.Message)
+        }
         $pendingVerdictStop = [pscustomobject]@{
             HasPendingVerdict = $false
             RecordStatus      = 'unrecordable'

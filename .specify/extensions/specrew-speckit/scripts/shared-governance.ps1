@@ -2086,7 +2086,13 @@ function Get-SpecrewPendingVerdictState {
                 $result.IntegrityStatus = 'boundary-unrecordable'
                 $result.IsFirstBoundary = $true
                 $result.WorkingBoundary = $workingUnrecordable
-                $result.Message = ("BOUNDARY REACHED BUT NOT RECORDABLE: this project arrived at '{0}' before its boundary approval ledger was initialized, so the crossing could not be recorded and no verdict can be captured for it yet. Missing: the project's boundary-enforcement state (run the Specrew start/bootstrap path for this project to create it). Until it exists there is nothing to approve — no approval options and no verdict marker are offered, deliberately, because approving an unrecorded crossing would authorize nothing." -f $workingUnrecordable)
+                # DRIFT-198-I011-004: this message used to end with "run the Specrew start/bootstrap
+                # path for this project to create it" — which pointed the human at the exact mechanism
+                # that MINTED the authorization. It no longer names any remedy path, because there is
+                # no path that can resolve this without a human: bootstrapping now refuses to move the
+                # cursor onto an unrecorded crossing (Initialize-SpecrewBoundaryEnforcementState), so
+                # the only thing that can authorize '{0}' is the human saying so.
+                $result.Message = ("BOUNDARY REACHED BUT NOT RECORDABLE: this project arrived at '{0}' before its boundary approval ledger was initialized, so the crossing could not be recorded and no verdict can be captured for it yet. Missing: the project's boundary-enforcement state. This boundary is NOT authorized, and no automatic path will make it so — initializing the ledger deliberately refuses to move the cursor onto a crossing that failed to record. It needs your explicit confirmation that '{0}' was genuinely reached before it can be authorized. Until then no approval options and no verdict marker are offered, because approving an unrecorded crossing would authorize nothing." -f $workingUnrecordable)
             }
             return $result
         }
@@ -2464,6 +2470,82 @@ function Add-SpecrewBoundaryAuthorizationCorrection {
     return [pscustomobject]@{ Appended = $true; Correction = $correction; EffectiveState = $after.EffectiveState }
 }
 
+# --- FR-066 (T092 rework, DRIFT-198-I011-004) — the unrecordable-crossing record ------------------
+#
+# When boundary sync reaches a lifecycle boundary it CANNOT record (the enforcement ledger does not
+# exist yet), that failure has to survive into the next process. It cannot live inside
+# `boundary_enforcement` — the whole condition is that that block is absent — and it cannot live as a
+# plain key in start-context.json, because `specrew-start.ps1:2524` rebuilds that file from scratch
+# and forwards only `boundary_enforcement` and `user_profile`, so the recovery path would drop the
+# very signal it needs to read. Hence its own file.
+#
+# Its ONE job: let every bootstrap path detect that a crossing was attempted here and FAILED, so that
+# none of them initializes `last_authorized_boundary` AT that boundary — which would convert a
+# crossing no human ever approved into an authorized one.
+
+function Get-SpecrewUnrecordableCrossingPath {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    return (Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew\unrecordable-crossing.json')
+}
+
+function Get-SpecrewUnrecordableCrossingRecord {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $path = Get-SpecrewUnrecordableCrossingPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+
+    $record = $null
+    try {
+        $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+        if (-not [string]::IsNullOrWhiteSpace($raw)) { $record = $raw | ConvertFrom-Json }
+    }
+    catch { $record = $null }
+
+    # FAIL-CLOSED, deliberately. A record that is present but unreadable or malformed is NOT evidence
+    # that no crossing failed — it is a record we cannot clear as safe. Returning a shaped sentinel
+    # keeps the detector refusing to cursor instead of falling through to the permissive branch. This
+    # is the same fail-open -> fail-closed conversion DRIFT-198-I011-005 required of the evidence gate:
+    # "could not check" must never be spelled the same way as "nothing to find".
+    if ($null -eq $record -or [string]::IsNullOrWhiteSpace([string]$record.boundary)) {
+        return [pscustomobject]@{
+            boundary       = $null
+            failure_reason = 'an unrecordable-crossing record is present but could not be read or does not name a boundary'
+            recorded_at    = $null
+            unreadable     = $true
+        }
+    }
+    return $record
+}
+
+function Set-SpecrewUnrecordableCrossingRecord {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Boundary,
+        [AllowNull()][string]$FailureReason,
+        [AllowNull()][string]$AttemptedCommitHash,
+        [AllowNull()][string]$RecordedAt
+    )
+
+    $record = [ordered]@{
+        boundary         = $Boundary
+        failure_reason   = if ([string]::IsNullOrWhiteSpace($FailureReason)) { 'the boundary crossing record could not be established' } else { $FailureReason }
+        attempted_commit = if ([string]::IsNullOrWhiteSpace($AttemptedCommitHash)) { $null } else { $AttemptedCommitHash }
+        recorded_at      = if ([string]::IsNullOrWhiteSpace($RecordedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $RecordedAt }
+    }
+    Write-Utf8FileAtomic -Path (Get-SpecrewUnrecordableCrossingPath -ProjectRoot $ProjectRoot) `
+        -Content (([pscustomobject]$record | ConvertTo-Json -Depth 6) + [Environment]::NewLine)
+    return $record
+}
+
+function Clear-SpecrewUnrecordableCrossingRecord {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $path = Get-SpecrewUnrecordableCrossingPath -ProjectRoot $ProjectRoot
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Initialize-SpecrewBoundaryEnforcementState {
     param(
         [Parameter(Mandatory = $true)]
@@ -2482,6 +2564,23 @@ function Initialize-SpecrewBoundaryEnforcementState {
     }
     else {
         $null
+    }
+
+    # DRIFT-198-I011-004 — REFUSE to cursor over a crossing that failed to record.
+    #
+    # Every bootstrap path funnels through this ONE function: `specrew-start.ps1:2643` (the launcher),
+    # `SessionBootstrapManager.ps1:262` (the SessionStart hook — the path most sessions actually take,
+    # and the one measured converting a failed crossing into `last_authorized_boundary=specify` with an
+    # empty verdict_history), and `shared-governance.ps1:3070` (the authorization writer). Guarding
+    # here covers all three; guarding the callers would leave whichever one was missed as a live
+    # false-authorization path, which is exactly how this defect reached certification.
+    #
+    # Fresh-project semantics are DELIBERATELY untouched: with no record on disk this branch never
+    # fires and initialize-at-current-boundary behaves exactly as before. The cursor is left at $null
+    # so the boundary stays UNAUTHORIZED and must be carried by a real human verdict.
+    $failedCrossing = Get-SpecrewUnrecordableCrossingRecord -ProjectRoot $ProjectRoot
+    if ($null -ne $failedCrossing) {
+        $effectiveCurrentBoundary = $null
     }
 
     $initialized = New-SpecrewBoundaryEnforcementState -CurrentBoundary $effectiveCurrentBoundary -ProjectRoot $ProjectRoot
