@@ -888,6 +888,91 @@ than picking the reading that was cheapest to execute. Paired with the earlier r
 review allowance, these are the authorization-integrity principle governing the agent rather than only
 the code.
 
+## Round 3 (FINAL) — did not certify; the pre-committed outcome executed
+
+`run-f198-i011-fe88af18-certify`. **Verdict `findings`, completion `complete`, `Currentness: current`**
+(no digest drift — commits were held for the duration), `can_approve_current: false`, 1025.6s.
+**One blocking, one major.** Both verified at source before acceptance.
+
+### DRIFT-198-I011-008 (BLOCKING) — concurrent sync can clear another invocation's refusal latch
+
+The arm/read/persist/crossing/clear sequence used **one project-wide `unrecordable-crossing.json` with
+no lock and no per-invocation identity.** Two syncs can both arm; the first establishes its crossing and
+**unconditionally clears the shared file**; the second then persists its advanced boundary with neither
+a crossing nor a refusal record on disk, and a later bootstrap mints from it.
+
+**This is the "any-success clearing" deviation accepted as note-level on 2026-08-06.** The acceptance
+reasoning — *"a successfully established crossing is exactly the condition that makes minting
+unnecessary"* — held only for a single sequential invocation and was never tested against concurrency.
+**A note-level acceptance is a claim about consequence, and it inherits every gap in the consequence
+walk that produced it.** The reviewer walked the concurrent case; neither the implementer nor the
+maintainer had.
+
+### DRIFT-198-I011-009 (MAJOR) — the atomic writer, at its true blast radius
+
+`Write-Utf8FileAtomic` reports success when the destination path is a directory. **Found independently
+during round 2's fixture work and routed to beta3 as latent**; the reviewer rates it MAJOR because
+`start-context`, `boundary-state`, the ledger and other governance writers all trust its return, so a
+directory collision can silently discard a critical state update. The routing was right; the severity
+estimate was low. Recorded because under-rating a defect one has already found is its own failure mode.
+
+### The pre-committed outcome, executed without reopening it
+
+Maintainer paragraph 4 of 2026-08-07 fixed this outcome in advance, in both directions, expressly to
+remove debate at this point. Executed exactly:
+
+| Action | State |
+| --- | --- |
+| Revert `2103866e` + `fe88af18` — the finding-2 attempts ONLY | done, commit `86c5eb07` |
+| Keep findings 1, 3, 4 and every fixture repair | verified: 0 occurrences of the unrecordable-crossing machinery remain; the strict clarify matcher and the fail-closed docstring are both present |
+| Keep the drift log in full | **the record of a reverted attempt is not itself reverted** |
+| No further rounds | the 3-round cap is spent |
+
+**Full gate after the revert: all 90 suites green in 504.054s** (PowerShell).
+
+One measurement note, since it nearly became a false finding: the first post-revert gate reported
+`distribution-module-update` failing. Cause was my own **uncommitted mid-revert state** —
+`tests/integration/distribution-module-update.ps1:132` uses `git stash create`, which fails while a
+revert is in progress. Committing the revert and re-running returned 90/90. Third distinct measurement
+hazard this iteration, after Git-Bash `tar` and the directory-swallowing atomic write.
+
+## FR-066 — PARTIALLY DELIVERED, recorded at that granularity
+
+| FR-066 half | State | Evidence |
+| --- | --- | --- |
+| **Arrival state** — an unrecordable first crossing is a distinguishable, branchable state that reports failure rather than success, and a surface that speaks and names what is missing | **DELIVERED** | T088/T089; `fr066` CASES 1–2 green; round 2 did not fault it |
+| **Mint guard** — a failed crossing must not be convertible into an authorized cursor by any bootstrap path | **NOT DELIVERED** | two attempts, both faulted (round 2: double-failure window; round 3: concurrent clear). Reverted. |
+
+**The mint hole is therefore OPEN and known**, at its measured extent: three bootstrap sites funnel
+through `Initialize-SpecrewBoundaryEnforcementState`, and merely opening the next session converts a
+crossing that failed to record into an authorized one. That is recorded here as a live defect, not as
+an absence — the difference matters for the tag.
+
+FR-068's evidence half is unaffected and stands: tree-bound stage evidence, fail-closed unverifiable
+reasons, and the strict clarify matcher were all validated by round 2 and are unchanged since.
+
+## TAG BASIS — re-cut to what actually holds
+
+**Stated without overclaim: the current tree carries NO independent certification.** All three rounds
+are spent, and the tree that exists now (`86c5eb07`) has never been reviewed in this exact shape — the
+revert removed the code rounds 2 and 3 faulted.
+
+What the record does support:
+
+- **Round 2 validated findings 1, 3 and 4** (it re-reviewed them and did not fault them), and **their
+  code is byte-unchanged since**. That is real, bounded, independently-obtained assurance.
+- **Rounds 2 and 3 faulted only the finding-2 mint guard**, which is now reverted and recorded as not
+  delivered.
+- **The local gate is green at 90/90**, which is a regression floor, not a certification.
+
+**Recommended tag basis**: authorization-integrity gated on **FR-068's evidence half plus FR-066's
+arrival state**, with FR-066's mint guard named as a known open defect carried to beta3 — the
+named-limitation posture, which covers a characterized gap rather than fresh broken trust machinery.
+That distinction is exactly why Option 4 was rejected on 2026-08-06, and it cuts the same way here: the
+reverted attempts are gone, so nothing ships in a half-trusted state.
+
+**This is a maintainer decision, not an implementer one**, and it is the last open item of iteration 011.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.

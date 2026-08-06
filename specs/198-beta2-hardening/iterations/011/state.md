@@ -26,7 +26,22 @@
 | T090 | done | Both branches gated from one helper; T086 half 1 GREEN; contract authored |
 | T091 | deferred | Composition half → beta3 hook-machinery cluster |
 | T093 | deferred | Relief valve fired at T090's re-estimate → beta3 first row |
-| T092 | planned | Capped certification; needs the authorization reference |
+| T092 | done (did NOT certify) | 3 of 3 rounds spent. R1: 4 findings. R2: validated findings 1/3/4, 1 blocking on the finding-2 fix. R3 (current digest): 1 blocking + 1 major. Finding-2 attempts reverted per the pre-committed ruling; gate green 90/90 |
+
+## Delivery Position — FR-066 PARTIAL, FR-068 evidence half DELIVERED
+
+| Requirement | State |
+| --- | --- |
+| FR-068 evidence half | **delivered** — tree-bound stage evidence, fail-closed unverifiable reasons, strict clarify matcher; validated by round 2, unchanged since |
+| FR-066 arrival state | **delivered** — the unrecordable crossing is branchable and the surface names what is missing |
+| FR-066 mint guard | **NOT delivered** — two attempts, both faulted (double-failure window; concurrent latch clear). Reverted. **The mint hole is OPEN and known.** |
+
+**The current tree carries no independent certification**: all three rounds are spent and `86c5eb07`
+has never been reviewed in this exact shape. Round 2's validation of findings 1/3/4 stands, and their
+code is byte-unchanged since — that is the assurance the tag can honestly rest on. The green 90/90 gate
+is a regression floor, not a certification. Tag-basis recommendation and the open FR-066 defect are
+recorded in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/drift-log.md
+and await the maintainer's ruling — the last open item of this iteration.
 
 A `tasks-progress.yml` is authored alongside this file rather than left to be auto-created later.
 Iteration 010 had none, one was minted all-pending mid-life, and the summary writer overwrote a
