@@ -1669,6 +1669,57 @@ function Invoke-SpecrewBoundaryStateSync {
     # surfaced-pending -> human-response cycle. Safety rule (the maintainer's): prefer losing a real approval
     # (the human re-confirms once) over inventing, inferring, or carrying forward an unproven one.
 
+    # DRIFT-198-I011-007 (certification round 2, sole blocking finding) — ORDERING, not loudness.
+    #
+    # The refusal latch is ARMED BEFORE the advanced boundary is persisted, and cleared only once the
+    # crossing is genuinely established. That ordering is the guard: there is no instant at which
+    # start-context.json carries the advanced boundary while neither a crossing record nor a refusal
+    # record exists on disk — which is the only state a later bootstrap can mint authorization from.
+    #
+    # The previous shape armed the latch in the failure handler and, when THAT write also failed,
+    # merely warned. A warning dies with the session; the mint happens in the NEXT one. That is the
+    # rule stated eleven lines below, in this same block, since T088: "A warning is NOT a state a
+    # caller can branch on (NFR-002)" — violated by the code written to enforce it.
+    #
+    # Rolling back the persisted boundary in the handler was considered and rejected: if the rollback
+    # write also fails the hole simply reopens one level deeper. Ordering closes it structurally, and
+    # a crash anywhere between the arm and the clear fails CLOSED — the surviving latch makes the next
+    # bootstrap refuse to cursor, which is the conservative direction.
+    $latchArmFailure = $null
+    try {
+        Set-SpecrewUnrecordableCrossingRecord `
+            -ProjectRoot $paths.ProjectRoot `
+            -Boundary $BoundaryType `
+            -FailureReason 'the boundary crossing record for this sync had not been established yet' `
+            -AttemptedCommitHash $effectiveAuthCommitHash `
+            -RecordedAt $sessionState.recorded_at | Out-Null
+    }
+    catch {
+        $latchArmFailure = [string]$_.Exception.Message
+    }
+
+    # READ THE LATCH BACK. A write that did not throw is NOT evidence that a later process can find
+    # the record — and the difference is not theoretical. `Write-Utf8FileAtomic` finishes with
+    # `Move-Item -Force`, and when the destination path is occupied by a DIRECTORY, Move-Item moves the
+    # file INTO it and reports success. The write then "succeeds" into a location no reader looks at,
+    # every reader sees no latch, and the mint path is wide open with no exception raised anywhere.
+    #
+    # So the guard is the READ, not the write. This is the iteration's own rule applied to my own
+    # instrument: a green tells you nothing until you check what it measured.
+    if ($null -eq $latchArmFailure) {
+        $armedLatch = Get-SpecrewUnrecordableCrossingRecord -ProjectRoot $paths.ProjectRoot
+        if ($null -eq $armedLatch -or [bool]$armedLatch.unreadable) {
+            $latchArmFailure = 'the record was written without error but could not be read back'
+        }
+    }
+
+    if ($null -ne $latchArmFailure) {
+        # Nothing has been persisted yet, so refusing here leaves the tree exactly as it was found.
+        # This is the one place the sync may fail hard: it cannot guarantee the invariant, and
+        # advancing anyway is precisely the false-authorization path FR-066 exists to close.
+        throw ("Boundary sync '{0}' refuses to advance the persisted session boundary: the unrecordable-crossing latch could not be established ({1}). A boundary persisted with neither a crossing record nor a refusal record is one a later bootstrap can mint authorization from, so the sync stops instead of creating that state." -f $BoundaryType, $latchArmFailure)
+    }
+
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
     $pendingVerdictStop = $null
     try {
@@ -1712,9 +1763,11 @@ function Invoke-SpecrewBoundaryStateSync {
                 -RecordedAt $sessionState.recorded_at | Out-Null
         }
         catch {
-            # The record is the ONLY thing standing between a failed crossing and a minted
-            # authorization, so a failure to write it must be loud rather than swallowed.
-            Write-Warning ("Boundary sync '{0}' could ALSO not persist the unrecordable-crossing record: {1}. A later bootstrap may cursor over this boundary — confirm it with a human before trusting the ledger." -f $BoundaryType, [string]$_.Exception.Message)
+            # Best-effort DETAIL refresh only. The latch itself was armed before the boundary was
+            # persisted and is already on disk, so this failing cannot reopen the mint path — it only
+            # costs the human the specific reason. That is why a warning is adequate HERE and was not
+            # adequate when this write was the guard (DRIFT-198-I011-007).
+            Write-Warning ("Boundary sync '{0}' could not refresh the unrecordable-crossing record with the failure detail: {1}. The pre-armed refusal record still stands, so the boundary remains unminted." -f $BoundaryType, [string]$_.Exception.Message)
         }
         $pendingVerdictStop = [pscustomobject]@{
             HasPendingVerdict = $false

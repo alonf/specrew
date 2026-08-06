@@ -803,6 +803,91 @@ remediation surface's naming and its reachability are the same defect family.
   risks a conflicting-fact refusal. The new id also follows the convention of embedding the reviewed
   HEAD. Nothing else differs.
 
+## DRIFT-198-I011-007 (BLOCKING, round 2) — a failed refusal-record write left bootstrap free to mint
+
+**Round 2 verdict**: `findings`, completion `complete`, **one blocking**, `can_approve_current: false`,
+harness `codex-cli-file-primary`, 955.9s. Findings 1, 3 and 4 were NOT re-faulted — round 2 validated
+them and localized the remaining defect to a single write-failure path in `2103866e`.
+
+**The defect, verified at source before acceptance.** `sync-boundary-state.ps1` persisted the advanced
+session boundary, then attempted the crossing. When the crossing failed, the refusal latch was the only
+durable thing keeping the next bootstrap from minting — and when *that* write also failed, the handler
+merely warned and returned. The advanced boundary stayed on disk with no refusal record, so the next
+bootstrap took the ordinary no-record path and initialized `last_authorized_boundary` at the failed
+boundary.
+
+**The rule it broke was written eleven lines above it, by me, in the same block**: *"A warning is NOT a
+state a caller can branch on (NFR-002)"* — the T088 lesson, violated by the code written to enforce it.
+A warning dies with the session; the mint happens in the next one.
+
+### The fix is ORDERING plus a READ-BACK, not loudness
+
+Per the maintainer's acceptance criterion (2026-08-07 ruling): after the double failure there must be
+**no state a later bootstrap can mint authorization from**. Loudness cannot satisfy that.
+
+1. **The latch is armed BEFORE the advanced boundary is persisted**, and cleared only once the crossing
+   is genuinely established. No instant exists in which start-context.json carries the advanced
+   boundary while neither a crossing nor a refusal record is on disk. A crash anywhere between arm and
+   clear fails CLOSED — the surviving latch makes the next bootstrap refuse to cursor.
+2. **Rollback-on-failure was considered and rejected**: if the rollback write also fails, the hole
+   reopens one level deeper. Ordering closes it structurally rather than adding another best-effort step.
+3. **The arm is verified by READING IT BACK**, and that turned out to be load-bearing — see below.
+
+**RED → GREEN**, `fr066` CASE 4, injected at the real writer with no stubbing.
+
+```text
+BEFORE: after double failure: persisted boundary=specify; refusal record readable=False
+        hook bootstrap -> last_authorized_boundary=specify        <- minted
+AFTER:  after double failure: persisted boundary=(none)
+        hook bootstrap -> last_authorized_boundary=(null)         <- nothing to mint from
+```
+
+### Two latent defects surfaced by building the fixture, both worse than the bug being fixed
+
+**1. `Write-Utf8FileAtomic` can report SUCCESS while writing where no reader will look.** The fixture
+occupied the record path with a directory, expecting the write to throw. It did not: the function ends
+with `Move-Item -LiteralPath $temp -Destination $path -Force`, and when the destination is a
+**container**, Move-Item moves the file INTO it and reports success. The latch "wrote" successfully into
+`unrecordable-crossing.json\<temp>.tmp`, every reader saw no latch, and **no exception was raised
+anywhere**. An ordering fix keyed on the write throwing would have been defeated silently.
+
+This is why the guard is the READ, not the write: *a green tells you nothing until you check what it
+measured*, applied to my own instrument. **Routed to beta3**, not fixed here (bounded scope): the
+atomic-write helper is shared machinery and every caller inherits this.
+
+**2. A discriminator that existed on only one branch of a two-branch return.**
+`Get-SpecrewUnrecordableCrossingRecord` returned a fail-closed sentinel carrying `unreadable = $true`,
+but on success returned the raw parsed JSON, which has no such property. Branching on
+`$rec.unreadable` therefore threw under StrictMode-Latest **on the healthy path, and only there** — the
+first fix attempt broke every ordinary boundary sync while CASE 4 passed. Corrected by making both
+returns the same shape: a caller must not have to probe for the field that tells it which branch it got.
+
+## FOR THE RETRO — three items flagged by maintainer instruction, 2026-08-07
+
+**(a) Termination rules must name their revert scope at the granularity findings actually arrive at.**
+The rule said "revert T088–T090" — drafted for a design-level failure. Round 2 instead validated
+findings 1/3/4 and localized one defect to a single write path in a later commit. Honoring the letter
+would have destroyed certified-clean authorization-integrity work; honoring the intent required the
+human who set the rule to amend it openly. **"These fixes" was too coarse a scope for a rule with a
+destructive remedy.** The rule still did its job — no fix-forward, option value preserved, decision
+escalated — but its remedy clause was mis-calibrated.
+
+**(b) Rules stated in prose do not transfer; only structurally-enforced rules hold.** The
+warning-is-not-a-state rule was not forgotten or unavailable — **it was a comment eleven lines above the
+code that violated it**, in the same block, written in the same feature. Proximity, authorship and
+recency all failed to make it bind. This is the third distinct instance of the same shape this iteration
+(the -042 lesson not transferring; the consequence-graph practice missing the one design it was not
+applied to; now this). The conclusion is not "read your own comments" — it is that a rule which can be
+violated in the file that states it is not yet a rule, it is a wish.
+
+**(c) The disposition, recorded as the iteration's actual output.** Two behaviours flagged by the
+maintainer as what this feature exists to produce: **not fixing forward while fully able to** — the
+correction was obvious and small, and was withheld because the standing rule said escalate — and
+**refusing to guess the revert scope** when the rule's letter and the defect's location diverged, rather
+than picking the reading that was cheapest to execute. Paired with the earlier refusal to self-reset the
+review allowance, these are the authorization-integrity principle governing the agent rather than only
+the code.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.

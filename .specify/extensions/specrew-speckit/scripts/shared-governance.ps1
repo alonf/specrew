@@ -2550,13 +2550,27 @@ function Get-SpecrewUnrecordableCrossingRecord {
     # "could not check" must never be spelled the same way as "nothing to find".
     if ($null -eq $record -or [string]::IsNullOrWhiteSpace([string]$record.boundary)) {
         return [pscustomobject]@{
-            boundary       = $null
-            failure_reason = 'an unrecordable-crossing record is present but could not be read or does not name a boundary'
-            recorded_at    = $null
-            unreadable     = $true
+            boundary         = $null
+            failure_reason   = 'an unrecordable-crossing record is present but could not be read or does not name a boundary'
+            attempted_commit = $null
+            recorded_at      = $null
+            unreadable       = $true
         }
     }
-    return $record
+
+    # UNIFORM SHAPE, both outcomes. The success path used to return the raw parsed JSON, which carries
+    # no `unreadable` property at all — so a caller branching on `$rec.unreadable` threw under
+    # StrictMode-Latest on the HEALTHY path, and only there. A discriminator that exists on one branch
+    # of a two-branch return is a trap for the next consumer; the caller should not have to probe for
+    # the field that tells it which branch it got.
+    $prop = { param($n) ($record.PSObject.Properties.Name -contains $n) }
+    return [pscustomobject]@{
+        boundary         = [string]$record.boundary
+        failure_reason   = if (& $prop 'failure_reason') { [string]$record.failure_reason } else { $null }
+        attempted_commit = if (& $prop 'attempted_commit') { [string]$record.attempted_commit } else { $null }
+        recorded_at      = if (& $prop 'recorded_at') { [string]$record.recorded_at } else { $null }
+        unreadable       = $false
+    }
 }
 
 function Set-SpecrewUnrecordableCrossingRecord {

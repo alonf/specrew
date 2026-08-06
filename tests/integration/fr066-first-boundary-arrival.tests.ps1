@@ -39,6 +39,11 @@ $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ("fr066-" + [guid]::NewGu
 New-Item -ItemType Directory -Path $scratch -Force | Out-Null
 
 function New-UnbootstrappedProject {
+    # $InitialBoundary = '' builds a project that has NOT yet reached any boundary, so the boundary
+    # sync under test is the thing that ADVANCES it. CASE 4 needs that: the defect is about a boundary
+    # sync persisted and then failed to back out of, which cannot be observed on a fixture whose
+    # boundary was already on disk before sync ran.
+    param([string]$InitialBoundary = 'specify')
     # A brand-new project that reached a boundary WITHOUT `specrew start` having written the
     # boundary_enforcement block. This is the first-arrival shape: a feature and a spec exist, a
     # session cursor exists, and there is no cursor baseline and no verdict history — because
@@ -66,7 +71,7 @@ function New-UnbootstrappedProject {
         schema        = 'v1'
         feature_path  = $featureDir
         session_state = [ordered]@{
-            active = $true; boundary_type = 'specify'
+            active = $true; boundary_type = $(if ([string]::IsNullOrWhiteSpace($InitialBoundary)) { $null } else { $InitialBoundary })
             feature_ref = '050-host-neutral-gate'; iteration_number = ''
             recorded_at = '2026-08-03T00:00:00Z'
         }
@@ -353,6 +358,95 @@ Write-SpecrewLaunchContractArtifact -ProjectRoot '$proj3' -Mode 'welcome-back' -
     }
     else {
         Write-Pass 'the instruction surfaces the unrecordable state for human confirmation and names no authorization-minting path'
+    }
+}
+
+# ---------------------------------------------------------------------------------------------
+# CASE 4 — the DOUBLE failure: the crossing cannot be recorded AND the refusal record cannot be
+# written. Certification round 2, sole blocking finding, against the finding-2 fix itself.
+#
+# The defect: boundary sync persists the ADVANCED session boundary before attempting the crossing.
+# When the crossing failed, the refusal latch was the only durable thing keeping the next bootstrap
+# from minting authorization — and if writing THAT failed too, the catch merely warned and returned.
+# The advanced boundary stayed on disk with no refusal record, so the next bootstrap took the
+# ordinary no-record path and initialized last_authorized_boundary AT the failed boundary.
+#
+# The comment eleven lines above the defect already stated the rule it broke: "A warning is NOT a
+# state a caller can branch on (NFR-002)". A warning in a dying session cannot bind the next one.
+#
+# ACCEPTANCE CRITERION (maintainer, 2026-08-07), asserted here rather than an implementation shape:
+# after the double failure there must be NO state a later bootstrap can mint authorization from.
+# ---------------------------------------------------------------------------------------------
+
+Write-Host "`n--- CASE 4: a double write failure must leave nothing to mint from ---`n" -ForegroundColor White
+
+# A project that has NOT yet reached a boundary: the sync under test is what advances it.
+$proj4 = New-UnbootstrappedProject -InitialBoundary ''
+
+# INJECTION: make the refusal-record write fail deterministically by occupying its exact path with a
+# DIRECTORY. This is the real failure the finding describes (the record cannot be persisted), induced
+# without stubbing the writer — the production code path runs unmodified.
+$recordPath4 = Join-Path $proj4 '.specrew\unrecordable-crossing.json'
+New-Item -ItemType Directory -Path $recordPath4 -Force | Out-Null
+
+$sync4Out = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -File $sync -ProjectPath $proj4 -BoundaryType 'specify' -FeatureRef 'specs/050-host-neutral-gate' 2>&1) -join "`n")
+
+# What ended up on disk is the whole question: a persisted advanced boundary with no refusal record
+# is exactly the mintable state.
+$ctx4 = $null
+try { $ctx4 = Get-Content -LiteralPath (Join-Path $proj4 '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $ctx4 = $null }
+$persistedBoundary4 = if ($null -ne $ctx4 -and $null -ne $ctx4.session_state) { [string]$ctx4.session_state.boundary_type } else { '' }
+$recordIsFile4 = (Test-Path -LiteralPath $recordPath4 -PathType Leaf)
+Write-Measured ("after double failure: persisted boundary={0}; refusal record is a readable file={1}" -f `
+        $(if ([string]::IsNullOrWhiteSpace($persistedBoundary4)) { '(none)' } else { $persistedBoundary4 }), $recordIsFile4)
+
+if ($null -eq $ctx4) {
+    Write-Inconclusive 'start-context.json is unreadable after the run — the probe cannot tell what state was left behind'
+}
+else {
+    # Drive the REAL SessionStart seam, the path that actually mints. Asserting on the outcome rather
+    # than on sync's internals keeps this a test of the criterion, not of one implementation of it.
+    $bootScript4 = Join-Path $scratch ('boot4-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $bootBody4 = @"
+`$ErrorActionPreference = 'Stop'
+. '$repoRoot/scripts/internal/bootstrap/SessionStateAccessor.ps1'
+. '$repoRoot/scripts/internal/bootstrap/SessionBootstrapManager.ps1'
+. '$repoRoot/scripts/internal/launch-contract.ps1'
+. '$repoRoot/scripts/internal/coordinator-resume.ps1'
+. '$repoRoot/scripts/internal/coordinator-prompt-surgery.ps1'
+. '$repoRoot/scripts/internal/user-profile.ps1'
+. '$repoRoot/extensions/specrew-speckit/scripts/shared-governance.ps1'
+# The anchor the hook builds from whatever sync actually left on disk.
+`$ctx = Get-Content -LiteralPath '$proj4/.specrew/start-context.json' -Raw -Encoding UTF8 | ConvertFrom-Json
+`$b = if (`$null -ne `$ctx.session_state) { [string]`$ctx.session_state.boundary_type } else { '' }
+`$anchor = [pscustomobject]@{
+    active = `$true; feature_ref = '050-host-neutral-gate'
+    feature_path = (Join-Path '$proj4' 'specs/050-host-neutral-gate')
+    boundary = `$b; iteration = ''; auth_commit_hash = 'x'; recorded_at = '2026-08-03T00:00:00Z'
+}
+Write-SpecrewLaunchContractArtifact -ProjectRoot '$proj4' -Mode 'welcome-back' -SessionState `$anchor | Out-Null
+"@
+    [System.IO.File]::WriteAllText($bootScript4, $bootBody4, [System.Text.UTF8Encoding]::new($false))
+    $bootOut4 = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -File $bootScript4 2>&1) -join "`n")
+    $bootExit4 = $LASTEXITCODE
+
+    $ctxAfter4 = $null
+    try { $ctxAfter4 = Get-Content -LiteralPath (Join-Path $proj4 '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $ctxAfter4 = $null }
+    $beAfter4 = if ($null -ne $ctxAfter4) { $ctxAfter4.boundary_enforcement } else { $null }
+    $cursor4 = if ($null -ne $beAfter4) { [string]$beAfter4.last_authorized_boundary } else { '(no block)' }
+    Write-Measured ("hook bootstrap exit={0}; last_authorized_boundary={1}" -f $bootExit4, $(if ([string]::IsNullOrWhiteSpace($cursor4)) { '(null)' } else { $cursor4 }))
+
+    if ($bootExit4 -ne 0) {
+        Write-Inconclusive ("the SessionStart seam faulted rather than deciding: {0}" -f (($bootOut4 -replace '\s+', ' ').Trim() | ForEach-Object { $_.Substring(0, [Math]::Min(200, $_.Length)) }))
+    }
+    elseif ($cursor4 -eq 'specify') {
+        Write-Red 'the DOUBLE failure left a mintable state: neither the crossing nor a refusal record persisted, yet the advanced boundary did — and the next bootstrap authorized it (last_authorized_boundary=specify)'
+    }
+    elseif ([string]::IsNullOrWhiteSpace($cursor4) -or $cursor4 -eq '(no block)') {
+        Write-Pass 'after the double failure there is no state to mint authorization from (cursor stays null)'
+    }
+    else {
+        Write-Red ("the cursor was initialized at an unexpected boundary '{0}'" -f $cursor4)
     }
 }
 
