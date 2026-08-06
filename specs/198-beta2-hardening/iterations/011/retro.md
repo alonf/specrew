@@ -22,9 +22,10 @@ capacity, and its most durable output is not code.**
 | Capacity | **~29.0 SP against 20** — over by ~9, recorded uncompressed |
 | Certification | 3 of 3 rounds spent; **the shipping tree carries no certification**, and the tag basis says so |
 
-**The central finding is not about any of those defects.** Three times this iteration, a rule that was
+**The central finding is not about any of those defects.** Four times this iteration, a rule that was
 written down, recent, and authored by the person who then violated it, failed to prevent the violation
-— the last time from **eleven lines away in the same code block**. The conclusion the ledger reached is
+— once from **eleven lines away in the same code block**, and once at the closeout itself, where three
+independent parties each held the relevant knowledge and none of them was structurally checked. The conclusion the ledger reached is
 the one this retro promotes: *a rule that can be violated in the file that states it is not a rule, it
 is a wish.* Everything that actually held this iteration held because it was structural.
 
@@ -53,16 +54,28 @@ red.**
 
 ## Finding 1 — Prose rules do not bind; only structure does
 
-Three instances, same shape, escalating in how damning each is:
+Four instances, same shape, escalating in how damning each is — the fourth arrived *after this retro was
+first drafted*, during the closeout it was written to conclude:
 
 | # | The rule | Where it lived | How it failed |
 | --- | --- | --- | --- |
 | 1 | "A passing assertion is not evidence until you check what it measured" (DRIFT-198-I009-042) | Iteration 010's record | Did not transfer. Reproduced twice in T086's first two fixture revisions. |
 | 2 | "Walk every consumer of every flag before building" | Practised, unwritten | Killed two wrong designs; **not applied** to the one design that shipped a blocking defect. |
 | 3 | "A warning is NOT a state a caller can branch on (NFR-002)" | **A comment eleven lines above the code that violated it**, same block, same author, same day | The finding-2 fix made the failure *loud* — a warning — which is precisely what that line says is insufficient. |
+| 4 | "A status must not claim more than its artifacts support" (FR-018, and the boundary-evidence contract authored *in this iteration*) | The contract file, and the iteration's own scope | **The closeout marked 011 `closed` with no `review.md` and no `quality/hardening-gate.md`.** See DRIFT-198-I011-010. |
 
 Instance 3 is the proof. Proximity, authorship, recency and relevance were all maximal, and the rule
 still did not bind. **The conclusion is not "read your own comments."**
+
+**Instance 4 is worse, and it is the one that should change practice**, because it was **three-party**:
+the executor set the status without checking the boundary's artifact preconditions — having personally
+authored the contract that names `review.md`; the human approved the closeout; and the reviewer's
+drafted verdict omitted the artifact checklist despite having audited iteration 003's closure
+requirements first-hand. **Three competent parties, each holding the relevant knowledge, and no
+structural check existed between any of them and the over-claim** — only a release gate whose *natural
+command silently skips closed iterations*, and which therefore returned exit 0 on the first run.
+
+**Knowledge does not bind. Structure binds.** Instance 4 is the sentence this retro is for.
 
 ### What DID bind — and it is worth as much as the failures
 
@@ -218,6 +231,8 @@ arriving through a governance decision rather than a code change.
 | 3 | Rules that matter ship as a test, a choke point, or a read-back — prose alone is unenforced | All roles | constitution candidate |
 | 4 | Estimate fixture collateral on the invalidated invariant, not the first red suite | Planner | capacity practice |
 | 5 | Run the F-198 gate from PowerShell; record Git-Bash `tar` as a known hazard | Implementer | recorded in drift log |
+| 7 | Closeout probe: validate-as-if-closed BEFORE committing the status flip (the 003 pattern, promoted to standing practice) | Implementer | ceremonies |
+| 8 | `-IncludeClosed` on every release-gate run — the default command skips closed iterations and nearly converted a false green into a tag | Implementer, Reviewer | confirmed beta3 finding |
 | 6 | Carry the six beta3 items as recorded, FR-066's mint guard first | Planner | drift log carry table |
 
 ### Maintainer rulings on the three discussion prompts, 2026-08-06

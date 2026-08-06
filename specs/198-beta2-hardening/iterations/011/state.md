@@ -1,11 +1,14 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: iteration-closeout
-**Iteration Status**: closed
-**Closed At**: 2026-08-06T13:19:56Z
-**Closing Verdict**: approved for iteration-closeout (approve-with-instructions), 2026-08-06
-**Last Completed Task**: T092
+**Current Phase**: retro
+**Iteration Status**: retro
+**Closure Attempt (REVERSED)**: closed 2026-08-06T13:19:56Z on an approved verdict, then **un-closed the
+same day** when the release gate (`validate-governance.ps1 -IncludeClosed`) rejected the closure as
+`over-claim`: the status claimed closure while `review.md` and `quality/hardening-gate.md` did not exist.
+The verdict was real; the artifacts were not. **The status was reversed rather than the evidence
+backfilled under it**, so the record never shows closure preceding its evidence.
+**Last Completed Task**: T090 (T092 ran to its cap and is terminal as `deferred`)
 **Tasks Remaining**: (none — T091 and T093 deferred to beta3 by recorded decision)
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
@@ -28,7 +31,7 @@
 | T090 | done | Both branches gated from one helper; T086 half 1 GREEN; contract authored |
 | T091 | deferred | Composition half → beta3 hook-machinery cluster |
 | T093 | deferred | Relief valve fired at T090's re-estimate → beta3 first row |
-| T092 | done (did NOT certify) | 3 of 3 rounds spent. R1: 4 findings. R2: validated findings 1/3/4, 1 blocking on the finding-2 fix. R3 (current digest): 1 blocking + 1 major. Finding-2 attempts reverted per the pre-committed ruling; gate green 90/90 |
+| T092 | deferred (ran to the cap; did NOT certify) | 3 of 3 rounds spent. R1: 4 findings. R2: validated findings 1/3/4, 1 blocking on the finding-2 fix. R3 (current digest): 1 blocking + 1 major. Finding-2 attempts reverted per the pre-committed ruling; gate green 90/90 |
 
 ## Delivery Position — FR-066 PARTIAL, FR-068 evidence half DELIVERED
 
@@ -44,11 +47,32 @@ code is byte-unchanged since — that is the assurance the tag rests on. The gre
 regression floor, not a certification.
 
 **TAG BASIS RULED 2026-08-06 — named-limitation.** Beta2 gates on FR-068's evidence half plus FR-066's
-arrival state; FR-066's mint guard ships as a named known defect carried to beta3. Iteration 011 closes
-at **~29.0/20 uncompressed with FR-066 partial**. The beta3 carry list is consolidated in
+arrival state; FR-066's mint guard ships as a named known defect carried to beta3. Iteration 011 **records**
+at **~29.0/20 uncompressed with FR-066 partial** and is held open — see the closure trigger below. The beta3 carry list is consolidated in
 file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/drift-log.md
 
-**CLOSED 2026-08-06** on an explicit `approved for iteration-closeout` (approve-with-instructions),
+## Closure Trigger — why 011 is honestly OPEN
+
+**The schema vocabulary blocks an honest closure, and the words were not bent to reach one.**
+
+Closure requires `Overall Verdict: accepted`, which the schema permits only when **every** task verdict is
+`pass`. T092's deliverable is *integrated verification and capped certification*. Verification passed
+(90/90); **certification was attempted to the full 3-round cap and not achieved.** Marking T092 `pass`
+would assert a result that does not exist, so `review.md` records `needs-rework` and the iteration is held
+at `retro` — past its approved retrospective, but not closed.
+
+**Closure trigger**: iteration 011 closes when **beta3 delivers FR-066's mint guard** from its design
+spike — at which point FR-066 is whole and T092's certification claim can be re-made against a tree that
+carries it.
+
+**The beta2 tag proceeds with 011 honestly open.** The named-limitation basis never claimed 011's
+certification, so nothing downstream depends on this closure. An open iteration with true artifacts beats
+a closed one with false words.
+
+### Superseded closure attempt (retained for the record)
+
+**Closed 2026-08-06T13:19:56Z, then REVERSED the same day.** Closed on an explicit
+`approved for iteration-closeout` (approve-with-instructions),
 following `approved for retro` and the retro boundary packet. Closeout actions executed:
 
 | Action | Result |
