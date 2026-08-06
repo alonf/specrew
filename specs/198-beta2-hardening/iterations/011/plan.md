@@ -142,12 +142,15 @@ Deferred on the estimate above, not on preference.
 | T087 | FR-066 RED fixtures — first-boundary arrival, proven RED before any fix | FR-066 | Authorization integrity | 2.0 | Implementer | tests/integration/pending-verdict-stop-artifact.tests.ps1, tests/integration/pending-verdict-surface.tests.ps1 | planned | | | Must include the un-bootstrapped project path that makes `Set-SpecrewPendingBoundaryCrossingScope` throw, since that is the live hole |
 | T088 | FR-066 — give `IsFirstBoundary` a consumer; the sync's degraded catch becomes a first-class suppressed state | FR-066 | Authorization integrity | 5.0 | Implementer | scripts/internal/sync-boundary-state.ps1, extensions/specrew-speckit/scripts/shared-governance.ps1 | planned | | | `IsFirstBoundary` is computed at `shared-governance.ps1:1192` and **no consumer branches on it**. The `catch` at `sync-boundary-state.ps1:1660` degrades to warn-and-continue, producing no record and no artifact — that silent degrade is the defect |
 | T089 | FR-066 — the conformance provider honors the unsynced state: no approval options, no marker, names what is missing | FR-066 | Authorization integrity | 2.5 | Implementer | extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 | planned | | | Today the `else` branch at `:1088-1090` emits a boundary stop naming a boundary with **no marker text**, because the pending crossing was null — the Antigravity "headers but no marker" shape |
-| T090 | FR-068 — artifact-gated verdict demand: a new seam between the conformance provider and stage evidence | FR-068 | Authorization integrity | 4.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 | planned | | | `Get-SpecrewPendingVerdictState` probes no artifact at all, and the block warrant at `:1024` is purely cursor/marker/intent with no evidence term. The suppression shape to reuse exists (`render_boundary_packet` / `render_verdict_marker`), but the two subsystems do not currently talk |
+| T090 | FR-068 — artifact-gated verdict demand: a new seam between the conformance provider and stage evidence | FR-068 | Authorization integrity | 5.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 | planned | | | **RE-ESTIMATED 4.0 → 5.5 at the start gate; the relief valve fired.** Gates BOTH `Get-SpecrewPendingVerdictState` branches — partial coverage is not an outcome. Dominated by authoring a boundary → required-artifacts contract for nine boundaries, which does not exist anywhere in the tree. MUST follow T089's shape (distinct status + provider suppression) and MUST NOT set `HasPendingVerdict=false`: that would break verdict CAPTURE via `ConversationCaptureAccessor.ps1:355`/`:471`, silently dropping authorizations the human did give |
 | T091 | FR-068 — deterministic stop-block composition: stated precedence, conflict detection, losing signal preserved | FR-068 | Authorization integrity | 0.0 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1 | deferred | | | **DEFERRED at plan time to bring the iteration under cap — carries 3.0 SP into the FR-019/FR-067 slice.** Reversible at the plan verdict; see `## Capacity`. Composition today is concatenation with `----- AND ALSO -----` at `:1197-1202`; no precedence, no conflict detection, and the `:1209` fall-through discards the merged reason with no record. Only two providers can ever conflict (conformance 40, navigator 50), which caps the work. Dispatcher is a byte-identical twin: every edit is a two-file edit |
-| T093 | DRIFT-198-I010-012 — the campaign-mode halt text and `--help` name only reachable doors | FR-018 | Consumer truthfulness | 1.5 | Implementer | scripts/internal/continuous-co-review/worktree-reviewer.ps1, scripts/specrew-review.ps1 | planned | | | **Added 2026-08-03 by maintainer instruction; message-only, NO behaviour change.** In campaign mode the ceiling halt must name `override-block` and the fresh `--authorization-ref` door, and `--help` must stop advertising the six unreachable choices. A guard test asserts the command the halt text names is actually reachable in the shipped mode — its absence is why this survived. The existing identifier-free assertion (`review-spend-allowance.Tests.ps1:154-164`) must still pass |
+| T093 | ~~DRIFT-198-I010-012 — the campaign-mode halt text and `--help` name only reachable doors~~ | FR-018 | Consumer truthfulness | 0.0 | Implementer | — | deferred | | | **DEFERRED to beta3's FIRST row 2026-08-03 — the pre-agreed relief valve fired when T090 re-estimated to 5.5 SP.** Its 1.5 SP covers T090's gap exactly, which is what the valve was sized for. Consequence, accepted in advance: the campaign-mode halt text stays wrong at the tag and stands as named limitation 8b in the release claim. It leads beta3 ahead of FR-019 because it is that limitation's consumer face |
 | T092 | Integrated verification and capped certification | FR-066, FR-068, FR-018 | Release confidence | 2.5 | Reviewer | tests/**, specs/198-beta2-hardening/iterations/011/** | planned | | | Round cap 3. Correction allowance is inside this task rather than assumed free |
 
 **Total planned: 20.0 SP against a capacity of 20 — exactly at cap, zero external slack.**
+
+*Composition changed 2026-08-03 at T090's start gate and the total did not: T090 4.0 → 5.5, T093
+1.5 → 0.0 (deferred). The relief valve was sized for exactly this swap.*
 
 Before T091's deferral it was 21.5 — over cap by 1.5, which `overcommit_threshold: 1.0` forbids.
 T091 was deferred to bring it to 18.5, and **T093 (1.5 SP) was then added by maintainer instruction
@@ -232,8 +235,8 @@ Per the maintainer's instruction that FR-019's precondition be named now rather 
 
 | Item | Why it is here |
 | --- | --- |
-| **PRECONDITION — campaign mode rejects all remediations except `override-block`** (`scripts/specrew-review.ps1:803`) | FR-019 changes `allowance-reset` and `resolved-against-disk`; both are unreachable in the shipped mode. **This must be settled before FR-019 is scheduled, not during** — either the story lifts the gate, or the new behaviour ships unreachable. |
-| **DRIFT-198-I010-012 — the halt message teaches a command that throws** | Found while writing limitation 8. Compounds F10 and belongs with it: the ceiling is mis-scoped AND its documented escape is nailed shut. Puts FR-018 in violation on the shipped default. |
+| **FIRST ROW — DRIFT-198-I010-012, the halt message teaches a command that throws (T093, 1.5 SP)** | Deferred out of Iteration 011 by the relief valve on 2026-08-03. Message-only, no behaviour change, and it is limitation 8's consumer face — a consumer who hits the ceiling is told to run a command that throws. Leads beta3 because it is the cheapest real consumer harm on the list. |
+| **PRECONDITION — campaign mode rejects all remediations except `override-block`** (`scripts/specrew-review.ps1:803`) | FR-019 changes `allowance-reset` and `resolved-against-disk`; both are unreachable in the shipped mode. **This must be settled before FR-019 is scheduled, not during** — either the story lifts the gate, or the new behaviour ships unreachable. Settling it also settles T093's wording, so the two are adjacent work. |
 | **FR-019 implementation** (~19 SP + certification) | Checkpoint-identity minting from the lifecycle state machine is net-new design; closed-shape contract migration; campaign-total enforcement is net-new. |
 | **FR-067 implementation** (~14 SP + certification) | Prerequisite: unify the two severity vocabularies. The digest strip list is not available as a shortcut. |
 | **T091 — deterministic stop-block composition** (3.0 SP, deferred from here) | Joins the hook-machinery cluster named in SC-025. |
@@ -305,6 +308,73 @@ What changes is the risk posture, so the relief is set now rather than negotiate
 2. **The deliberate-RED registration obligation on T092 stands as written.** A deliberate RED must
    never quietly become a skipped test.
 
+## T090 RE-ESTIMATE, 2026-08-03 — the relief valve FIRES
+
+Run at T090's start gate as required, after T088 and T089 landed. **Honest number: 5.5 SP against a
+4.0 SP allocation. The pre-agreed relief fires automatically.**
+
+### What the survey found
+
+**1. The irreducible cost: a boundary → required-artifacts contract does not exist and must be
+authored.** Nothing in the repository maps the nine canonical boundaries to the artifacts each stage
+owes. What exists is four partial, differently-shaped encodings, none of them boundary-keyed:
+
+- The active work-kind contract names *evidence categories*, not paths — only `spec.md` is named as a
+  file at all.
+- `shared-governance.ps1` holds the only enumeration of boundaries in code, and it carries no
+  artifact information.
+- The validator's requirements are keyed on `plan.md`'s **Status** (`executing`/`reviewing`/…),
+  **not** on a boundary — five statuses against nine boundaries, with no mapping between the axes.
+- The one real hard-coded artifact list is gated on a git diff, so it cannot answer a static
+  "what does stage X owe".
+
+The nearest thing to an authored mapping in the whole tree is **in a test fixture I wrote for T086**,
+and it covers one boundary. **T090 must author the other eight and get them ratified as contract** —
+`clarify` and `before-implement` in particular have no artifact of their own in any source. That is a
+*specification* task hidden inside an implementation estimate, and it decides gate semantics
+product-wide.
+
+**2. No reusable "what is missing" helper exists.** The validator's nine artifact checks are all
+`$Errors`-mutating and void-returning, keyed on Status rather than boundary, and live in the layer
+*above* `shared-governance.ps1` — calling upward would pull a 5,505-line validator with a top-level
+execution body into every Stop hook. Message composition is new code in two places.
+
+**3. Every edit lands twice**, per this plan's own binding parity rule.
+
+### The design finding — the obvious implementation would have been WRONG, not merely expensive
+
+The survey assumed the gate works by setting `HasPendingVerdict = $false` when evidence is absent.
+**That approach breaks verdict CAPTURE, not just verdict demand.** Verified directly:
+`ConversationCaptureAccessor.ps1:355` returns early when the state is not pending, and its
+marker↔pending cross-check at `:471` is skipped for the same reason. So a legitimately-pending
+boundary with incomplete evidence would stop capturing the human's verdict **even when they gave
+one** — turning an over-demanding gate into a silently-dropped authorization. That is a worse defect
+than the one T090 exists to fix, and it is on the authorization-integrity path.
+
+**T090 must therefore follow T089's shape**: leave `HasPendingVerdict` alone, add a distinct
+evidence-absent status, and suppress the *demand text, options and marker* at the provider. That also
+collapses most of the estimated blast radius — the ~70–80 assertions across six files that would have
+flipped were all consequences of the naive design, since every pending fixture builds artifact-free
+projects. Recording this because it is worth more than the estimate: **the cheaper design is also the
+only correct one, and the survey found that by asking what else reads the flag.**
+
+### The arithmetic
+
+| | Before | After |
+| --- | ---: | ---: |
+| T090 (both branches, evidence-gated demand) | 4.0 | **5.5** |
+| T093 (campaign-mode halt text) | 1.5 | **0.0 — deferred to beta3** |
+| Iteration total | 20.0 | **20.0** |
+
+The 1.5 SP gap is exactly what T093 carried, which is what the relief valve was sized for. **No new
+decision cycle, no absorption, no silent overrun** — the iteration stays at cap, and the tag path
+stays arithmetic.
+
+**T093's consequence, per the pre-agreed terms**: the campaign-mode halt text stays wrong at the tag
+and enters `beta2-release-claim.md` as a named limitation, joining limitation 8b which already
+documents it. It becomes **beta3's first row**, ahead of FR-019, because it is that limitation's
+consumer face.
+
 ## Carried-forward practice — proven twice, now binding
 
 Two patterns from T086 are method, not anecdote:
@@ -353,10 +423,9 @@ Unchanged from Iteration 010, which delivered on estimate under them:
 | Phase | Planned SP |
 | --- | --- |
 | Discovery / reproduction (T086, T087) | 4.5 |
-| Implementation (T088, T089, T090) | 11.5 |
-| Consumer truthfulness (T093) | 1.5 |
+| Implementation (T088, T089, T090) | 13.0 |
 | Verification + certification (T092) | 2.5 |
-| *(deferred: T091)* | *3.0, carried out* |
+| *(deferred: T091, T093)* | *3.0 + 1.5, carried out* |
 
 Iteration 010's calibration is the reference: base work landed on estimate, and the 3-round cap
 plus the termination rule held the correction cycle to **one** round rather than Iteration 009's

@@ -151,6 +151,13 @@ them fail. The documented escape from limitation 8 is nailed shut.
 `--authorization-ref`, which mints a new grant with a slot. Re-using a previous reference yields the
 same grant and no new slot, so the reference must be new. See the affected-users table.
 
+**Confirmed as STANDING at the tag, 2026-08-03.** A message-only fix was scheduled inside Iteration
+011 (T093) and was **deferred to beta3 when Iteration 011's T090 re-estimated upward at its start
+gate** — the pre-agreed relief valve, which traded exactly these 1.5 SP rather than absorb an
+overrun. That trade was the right one: T090 closes an authorization-integrity defect, and this one is
+a wrong instruction with a working alternative documented below. It becomes **beta3's first item**,
+ahead of FR-019, because it is limitation 8's consumer face.
+
 **9. The finality/closeout check is not guaranteed to converge.** *Added 2026-08-03 with the tag
 re-cut.*
 
