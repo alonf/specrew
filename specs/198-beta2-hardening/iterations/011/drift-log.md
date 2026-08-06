@@ -685,6 +685,81 @@ the allowance check. `spend` remained at 1 throughout. Unlike DRIFT-198-I011-002
 burn, both failed fast — the allowance check in particular is exactly the immediate-refusal shape that
 open finding asks preflight to adopt.
 
+## FOR THE RETRO — the authorization-integrity principle governed the AGENT, not just the code
+
+**Flagged by maintainer instruction, 2026-08-06, as the iteration's live demonstration.**
+
+Round 2 was blocked by an exhausted allowance. The replenish path, `--remediate allowance-reset`, was
+available to the implementer to run unilaterally. **It was not run.** The reasoning, recorded at the
+time rather than reconstructed: an agent that resets its own review allowance in order to obtain the
+certification of its own work is minting its own authorization — structurally identical to
+DRIFT-198-I011-004, where a failed crossing was converted into an authorized cursor by the recovery
+path itself.
+
+This is FR-066/FR-068's principle **generalized from the code paths to the conduct of the agent
+operating them**. The requirement says a mechanism must not create the authorization it reports; the
+refusal says the same of the agent. The maintainer ruled it correct and retro material.
+
+Paired with it, and flagged in the same ruling: the **wrong-reason-pass analysis was recorded as a
+structural argument rather than dressed up as per-case observation**, because the suite aborts on first
+failure and only Case 1 was directly observable. Claiming per-case measurement would have been the
+-042 shape one more time — a green whose meaning was never checked.
+
+**The retro should state plainly**: these two behaviours are the feature's actual output. The code
+changes close specific holes; the disposition to refuse a self-serving authorization and to label an
+argument as an argument is what generalizes.
+
+## The allowance model: CAP is policy, SLOT is a per-round human grant — never re-conflate them
+
+**Maintainer ruling, 2026-08-06, recorded so no future session re-derives it wrongly.**
+
+| Concept | What it is | Who sets it |
+| --- | --- | --- |
+| **3-round cap** | the budget POLICY ceiling — how many rounds the maintainer is willing to fund in total | maintainer's standing policy |
+| **grant slot** | ONE round, funded by ONE human spend decision | a human authorization reference, per round |
+
+**The 1-slot grant is CORRECT AS BUILT, not a defect.** A pre-funded 3-slot grant would let rounds
+launch without per-round human consent — precisely the property this iteration exists to close. The
+earlier entry in this log that read "the grant is intact and the 3-round cap is untouched" conflated
+the two; rounds remaining under the cap is not slots available under the grant, and only the latter
+gates a launch.
+
+**This is the model FR-019's beta3 grant-scoping should follow.**
+
+### Mechanism finding: `allowance-reset` is UNREACHABLE in campaign mode, and one ref funds exactly one slot
+
+Measured live before acting on the maintainer's replenish authorization, not read from source:
+
+```text
+MEASURED: Get-ContinuousCoReviewAuthorityDecision -> valid=True mode=campaign
+          campaign_authority_enabled=True  legacy_promotion_enabled=False
+```
+
+Two independent facts make the replenish-by-reset instruction unexecutable **as literally specified**:
+
+1. **Campaign mode rejects it.** `specrew-review.ps1:803` throws for every remediation except
+   `override-block`: *"Campaign remediation 'allowance-reset' does not create signoff authority; use a
+   new explicitly authorized run."* The legacy branch that implements `allowance-reset` additionally
+   requires `legacy_promotion_enabled`, which is **False** here. This is the live confirmation of the
+   blocking precondition `state.md` already records against FR-019 — previously read from source, now
+   measured in the running mode.
+2. **One authorization reference funds exactly one slot, permanently.**
+   `review-campaign-orchestrator.ps1:889-891` derives `grant_id` deterministically from
+   `campaign_id/authorization_ref` and comments: *"One human authorization reference creates at most
+   one campaign slot. A new run that reuses the same reference sees the already-spent grant; it does
+   not mint another allowance slot."* Line 906 treats a grant whose `slots != 1` as store corruption,
+   so a top-up is not merely unsupported — it is unrepresentable.
+
+**Consequence**: re-running under `certification-i011-auth-integrity-2026-08-06` will hit the same
+exhausted grant forever. **Round 2 requires a NEW authorization reference**, which mints a fresh 1-slot
+grant — which is exactly the per-round human spend decision the ruling above describes. The design and
+the maintainer's stated intent agree; only the named mechanism does not exist in this mode.
+
+**Escalated rather than resolved by the agent.** The implementer holds a recorded human authorization
+to fund round 2, but the authorization *reference* is the human-provenance anchor the grant is built
+from. Choosing that string unilaterally — even with genuine consent recorded elsewhere — would recreate
+the refusal above in a quieter form.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.
