@@ -338,6 +338,75 @@ that reason).
   unresolved host and the `--host` flag. The `unselected-harness` sentinel already exists and is
   already written into the reservation record — nothing new needs detecting, only checking.
 
+## T092 certification, attempt 2 — RAN, and did NOT certify
+
+`run-f198-i011-ee78a818-certify`, harness `codex-cli-file-primary`. **Invoked: True, Completion:
+complete, Currentness: current, validated-findings 4, `can_approve_current: false`.** Round 1 of 3
+spent — legitimately this time.
+
+**Two blocking and two major, ALL inside FR-066/FR-068, all defects in the corrections just
+delivered.** Nothing routes to beta3 under the zero-slack rule; this is in-scope rework.
+
+**Every finding was verified against the source before being accepted** — the -042 discipline, run
+on a reviewer this time rather than on myself. All four hold.
+
+### DRIFT-198-I011-003 (BLOCKING) — evidence is checked on the live tree, the crossing is bound to an immutable one
+
+The pending crossing verifies against its immutable boundary commit/tree.
+`Get-SpecrewBoundaryStageEvidence` checks artifacts with `Test-Path`/`Get-Content` on the **mutable
+live filesystem**. So: the artifact is absent, the message says produce it and stop again, the agent
+produces it — and on the next stop the *same old* `pending_crossing` is still valid while the live
+file now passes the gate. **The marker then authorizes a commit/tree that never contained the
+artifact**, and the artifact may be uncommitted entirely.
+
+True by construction: I used `Test-Path` against a path derived from persisted config, with no
+reference to the crossing's `artifact_state_id`. **This is a time-of-check defect that turns my own
+correction into a false-authorization path** — the precise failure FR-068 exists to prevent,
+reintroduced by FR-068's fix.
+
+### DRIFT-198-I011-004 (BLOCKING) — the recovery instruction authorizes the crossing it failed to record
+
+T089's `boundary-unrecordable` message tells the user to run the start/bootstrap path. Boundary sync
+has **already persisted `session_state.boundary_type`** before the crossing write fails. On recovery,
+`specrew-start.ps1:2643` calls `Initialize-SpecrewBoundaryEnforcementState -CurrentBoundary
+$boundaryTypeForInit` — creating `last_authorized_boundary` **equal to the current boundary, with no
+verdict history**. Verified at that line.
+
+So the failed first crossing is converted into an *authorized* cursor and disappears, instead of
+being mechanically recorded for a human verdict. **FR-066's core invariant, defeated by FR-066's own
+remedy.** The correction I shipped to stop a boundary passing silently instead makes it pass
+*authorized*.
+
+### DRIFT-198-I011-005 (MAJOR) — the gate demands a verdict when evidence could not be VERIFIED
+
+My fail-open design returns `Satisfied=true / Checked=false` for unknown boundaries, unresolvable
+feature paths, missing iteration identity and every read error — and `Set-SpecrewStageEvidenceGate`
+then leaves the ordinary demand intact. FR-068 says a demand MUST NOT be emitted unless the evidence
+exists; "could not check" is not "exists".
+
+Worse, and verified: **`Get-SpecrewBoundaryStageEvidence` never uses its `$ProjectRoot` parameter** —
+it appears exactly once, in the param block — and the caller passes `'.'`. The function trusts the
+persisted absolute `feature_path`, so a stale path into another checkout can satisfy the gate with
+**foreign artifacts**. I wrote a containment bug into a containment-adjacent gate.
+
+### DRIFT-198-I011-006 (MAJOR) — a heading or negated prose falsely satisfies clarify
+
+The contract requires a dated session block or a recorded skip-with-rationale. The implementation
+accepts any `## Clarifications` heading and a loose skip regex. Verified: the string
+`clarifications must not be skipped` matches my pattern and marks the stage satisfied. A placeholder
+heading or an empty section does the same.
+
+**The contract was ruled correct and the implementation does not enforce it** — the gap is between
+the authored rows and the matcher, not in the rows.
+
+### Assessment, stated plainly
+
+Three of these four are defects *in the corrections themselves*, and two of those hand back the exact
+false-authorization the requirements exist to prevent. This is the "locally right, wrong about the
+consequence graph" shape a third time — but this round it was the reviewer that walked the graph, not
+me. The reproduction-first and consequence-interrogation practice that killed two wrong designs
+pre-construction did not extend to the design I did ship.
+
 ## FOR THE RETRO — a practice that has earned promotion to shipped method guidance
 
 **Flagged for the retro facilitator by maintainer instruction, 2026-08-03.** This is a process
