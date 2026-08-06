@@ -649,6 +649,42 @@ the next person to run this gate from a Bash shell will otherwise spend an hour 
 verified by hash across `shared-governance.ps1`, `specrew-conformance-provider.ps1` and
 `sync-boundary-state.ps1`.
 
+### Round 2 is BLOCKED on a human allowance reset — the grant is exhausted, and the earlier note was wrong
+
+Round 2 was launched against the green tree and **did not run**:
+
+```text
+review failed elapsed=0.2s tree=dead - allowance-exhausted
+Run: run-f198-i011-9a39e271-certify  Status: not-started  Invoked: False
+Reason: allowance-exhausted
+```
+
+Verified against the store, not inferred:
+
+| Fact | Value |
+| --- | --- |
+| grant `grant-be26e1dc1b03e662c47a` (`certification-i011-auth-integrity-2026-08-06`) | **slots: 1** |
+| spend records | **1** — `res-3e4d70611ad4c878833a`, run `run-f198-i011-ee78a818-certify` |
+| rounds consumed | 1 (attempt 2, the round that returned the four findings) |
+
+**Correction to this log's own earlier entry.** The T092 attempt-1 section states *"the grant
+(certification-i011-auth-integrity-2026-08-06, 1 slot) is intact and the 3-round cap is untouched"*.
+That was true **at the time** — attempt 1's pre-invocation release returned the slot — but it conflated
+two different things, and the conflation matters now: **the 3-round ceiling is the CAMPAIGN cap; the
+GRANT carries 1 slot.** Attempt 2 spent that slot legitimately. Rounds remaining under the cap is not
+the same as slots available under the grant, and only the second one gates a launch.
+
+**This is where the agent stops.** `--remediate allowance-reset` is documented as *"the separate
+human-approved replenish of the round allowance"*. An agent that resets its own review allowance to
+obtain the certification it needs is minting its own authorization — the precise defect class this
+entire iteration exists to close. Recorded and escalated rather than exercised.
+
+Two failed launches preceded it and **neither cost anything**, verified the same way: the first
+(missing `--feature`) failed argument validation before any reservation; the second failed in 0.2s at
+the allowance check. `spend` remained at 1 throughout. Unlike DRIFT-198-I011-002's ten-minute preflight
+burn, both failed fast — the allowance check in particular is exactly the immediate-refusal shape that
+open finding asks preflight to adopt.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.

@@ -2,18 +2,18 @@
 
 **Schema**: v1
 **Current Phase**: tasks
-**Iteration Status**: implementing
+**Iteration Status**: executing
 **Last Completed Task**: T090
-**Tasks Remaining**: T092 (T091 and T093 deferred to beta3)
+**Tasks Remaining**: T091, T093, T092
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
-**Updated**: 2026-08-06T01:29:52.3968925Z
+**Updated**: 2026-08-06T10:01:22.0165619Z
 
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
 - Execution is in progress.
-- Task progress: 5 complete, 0 in-progress, 1 pending, 2 deferred.
+- Task progress: 5 complete, 0 in-progress, 3 pending, 0 blocked.
 - Latest completed task: T090
 <!-- specrew:task-progress-summary:end -->
 
@@ -50,7 +50,28 @@ where a human can be led to authorize an increment that does not exist.
 FR-066 and FR-068 only, with criteria SC-023 and SC-025. FR-019 and FR-067 are deferred on the
 measured estimate, not on preference — see `plan.md`.
 
-## Capacity Position — 20.0/20, exactly at cap
+## Capacity Position — ~29.0/20, OVER BY ~9.0, uncompressed
+
+**Superseded 2026-08-06 (second time), and recorded at the number it actually is.** Certification
+round 1 returned four validated findings — two blocking, two major, all defects in 011's own
+corrections — and the rework is internal to this iteration's deliverables, so the zero-slack rule does
+not route it.
+
+| | Planned | Running total |
+| --- | ---: | ---: |
+| Iteration 011 as approved | 20.0 | 20.0 |
+| Option 3 rework (findings 1–4 + RED-first fixtures) | +5.5 | 25.5 |
+| Fixture collateral at measured size (option (a), 3 suites not 1) | +3.5 | **~29.0** |
+
+**Capacity 20. Position: OVER by ~9.0.** The estimates are NOT compressed to make the cap appear to
+hold — that is precisely what Iteration 009's ledger prices at ~70 SP against a cap of 20, and the
+reason its trigger needed amending twice.
+
+**Maintainer ruling 2026-08-06: beta2 still gates on 011.** The tag basis is authorization-integrity by
+explicit ruling; this overrun is honest rework of the tag-gating machinery itself, and re-cutting the
+tag to avoid finishing trust machinery was already rejected as option 4 — same logic, same answer.
+
+### Superseded capacity note (retained for the record) — 20.0/20, exactly at cap
 
 The iteration measured **21.5 SP against a capacity of 20**. T091 (3.0 SP, FR-068's composition
 half) was deferred to beta3, bringing it to 18.5; **T093 (1.5 SP) was then added by maintainer
