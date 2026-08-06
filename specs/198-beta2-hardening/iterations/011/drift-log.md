@@ -760,6 +760,49 @@ to fund round 2, but the authorization *reference* is the human-provenance ancho
 from. Choosing that string unilaterally — even with genuine consent recorded elsewhere — would recreate
 the refusal above in a quieter form.
 
+### Correction to maintainer ruling 2 — recorded at the maintainer's instruction
+
+**The maintainer's ruling 2 of 2026-08-06 instructed `allowance-reset` on the existing reference. That
+remedy cannot run in this mode.** Recorded as a correction to the ruling, at the maintainer's own
+direction, rather than quietly substituted:
+
+> "my ruling 2 instructed a remedy (allowance-reset) that cannot run in this mode — the second
+> documented-remedy-points-at-nothing this iteration, this one mine."
+
+**This is the SECOND documented-remedy-points-at-nothing in iteration 011**, and the pairing is the
+finding, not the individual instances:
+
+| # | Remedy | Points at | Found by |
+| --- | --- | --- | --- |
+| 1 | T089's `boundary-unrecordable` message: *"run the Specrew start/bootstrap path"* | the mechanism that MINTS the authorization it failed to record (DRIFT-198-I011-004) | certification round 1 |
+| 2 | ruling 2: `--remediate allowance-reset` | a code path unreachable in campaign mode; the per-reference grant IS the replenish mechanism | the implementer, before acting on it |
+
+Both were authored in good faith by someone who knew the system, and **neither was wrong about the
+intent — both were wrong about the mechanism existing.** The class is not carelessness; it is that a
+remedy's reachability is a separate claim from a remedy's correctness, and nothing in either authoring
+path required the reachability claim to be checked. That is the consequence-graph lesson again, arriving
+from a third direction: the first instance was code, the second was a human instruction, and the same
+check would have caught both.
+
+**Routed to the beta3 remediation-surface reconciliation row**: `allowance-reset` must either be reachable
+in campaign mode or **stop being named as the replenish mechanism**, since the per-reference grant already
+is one. This sits with DRIFT-198-I011-002 (immediate-refusal preflight) in the same beta3 row — the
+remediation surface's naming and its reachability are the same defect family.
+
+### Round 2 funded and launched
+
+- **Authorization reference (verbatim)**: `certification-i011-auth-integrity-round2-2026-08-06`
+- **Rationale (verbatim, as authorized)**: *"Round 2 of the pre-agreed 3-round certification cap, funding
+  re-review of the completed four-finding rework — code under review unchanged since dec6e4a5; recorded
+  at HEAD b4263a33 (documentation commits only between them). Human-authorized per FR-058. Supersedes
+  the allowance-reset instruction, which is unreachable in campaign mode by design — the per-reference
+  grant IS the replenish mechanism."*
+- **One deviation from the parked invocation, and why**: the run id is `run-f198-i011-b4263a33-certify`,
+  not the parked `run-f198-i011-9a39e271-certify`. The blocked launch had already written a
+  `requested.json` under the parked id, and this store is append-only immutable-fact — reusing the id
+  risks a conflicting-fact refusal. The new id also follows the convention of embedding the reviewed
+  HEAD. Nothing else differs.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.
