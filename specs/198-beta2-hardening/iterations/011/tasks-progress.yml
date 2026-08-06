@@ -1,51 +1,46 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "011"
-updated_at: "2026-08-03T00:00:00Z"
-# Authored at plan time, deliberately. Iteration 010 had no tracker; one was minted
-# all-pending mid-life and the state.md summary writer overwrote a corrected record with
-# "not-started" for delivered work (DRIFT-198-I010-010). Authoring it here removes the
-# condition that defect requires. All-pending is CORRECT for this iteration: no task has
-# started, and the plan awaits its verdict.
+updated_at: "2026-08-06T01:29:52.3532045Z"
 tasks:
   T086:
-    title: "FR-068 reproduction harness - reproduce BOTH halves of the 2026-07-25T17:40:45Z shape"
-    status: "pending"
+    title: "FR-068 reproduction harness — reproduce BOTH halves of the 2026-07-25T17:40:45Z shape"
+    status: "done"
     started_at: ""
     completed_at: ""
     blocked_reason: ""
   T087:
-    title: "FR-066 RED fixtures - first-boundary arrival, proven RED before any fix"
-    status: "pending"
+    title: "FR-066 RED fixtures — first-boundary arrival, proven RED before any fix"
+    status: "done"
     started_at: ""
     completed_at: ""
     blocked_reason: ""
   T088:
-    title: "FR-066 - give IsFirstBoundary a consumer; the sync's degraded catch becomes a suppressed state"
-    status: "pending"
+    title: "FR-066 — give `IsFirstBoundary` a consumer; the sync's degraded catch becomes a first-class suppressed state"
+    status: "done"
     started_at: ""
     completed_at: ""
     blocked_reason: ""
   T089:
-    title: "FR-066 - the conformance provider honors the unsynced state: no options, no marker, names what is missing"
-    status: "pending"
+    title: "FR-066 — the conformance provider honors the unsynced state: no approval options, no marker, names what is missing"
+    status: "done"
     started_at: ""
     completed_at: ""
     blocked_reason: ""
   T090:
-    title: "FR-068 - artifact-gated verdict demand: a new seam between the conformance provider and stage evidence"
+    title: "FR-068 — artifact-gated verdict demand: a new seam between the conformance provider and stage evidence"
     status: "pending"
     started_at: ""
     completed_at: ""
     blocked_reason: ""
   T091:
-    title: "FR-068 - deterministic stop-block composition: precedence, conflict detection, losing signal preserved"
+    title: "FR-068 — deterministic stop-block composition: stated precedence, conflict detection, losing signal preserved"
     status: "deferred"
     started_at: ""
     completed_at: ""
     blocked_reason: "DEFERRED at plan time to bring 21.5 under the 20 cap; carries 3.0 SP into the FR-019/FR-067 slice. Reversible at the plan verdict"
   T093:
-    title: "DRIFT-198-I010-012 - campaign-mode halt text and --help name only reachable doors"
+    title: "DRIFT-198-I010-012 — the campaign-mode halt text and `--help` name only reachable doors"
     status: "pending"
     started_at: ""
     completed_at: ""

@@ -174,6 +174,70 @@ like "sync correctly refused", the second like "no boundary surface needed". **T
 fixture defects found across T086 and T087 would have read as passes.** The third outcome is not
 bookkeeping — it is what separates a measurement from a wish.
 
+## T088 + T089 — FR-066 corrections, and the fix that changed nothing
+
+**T087 is now GREEN on all three assertions** (`exit 0`), from three RED. Both amended MUSTs hold.
+
+### T088 (sync side) — the unrecordable crossing is a branchable state
+
+```text
+MEASURED: boundary_record_status=unrecordable; failure_reason_present=True; is_first_boundary=True
+MEASURED: sync success=False; has_pending=False; artifact_written=False
+PASS: sync distinguishes "could not establish the crossing" from "no pending verdict"
+PASS: the failure travels as a branchable state, not only as console text
+```
+
+`RecordStatus`/`FailureReason` now travel from the catch, `success` is false when the record could
+not be established, and **`IsFirstBoundary` has a consumer for the first time** — it was computed in
+`shared-governance.ps1` and read by nothing anywhere in the tree.
+
+### T089 (provider side) — the surface speaks and names what is missing
+
+```text
+MEASURED: provider blocked=True; announces a BOUNDARY stop=False; supplies marker text=False
+MEASURED: block text: "BOUNDARY REACHED BUT NOT RECORDABLE: this project arrived at 'specify'
+          before its boundary approval ledger was initialized, so the crossing could not be
+          recorded and no verdict can be captured for it yet. Missing: the project's
+          boundary-enforcement state ..."
+PASS: the provider does not present a boundary crossing that was never established
+```
+
+A new `boundary-unrecordable` status in `Get-SpecrewPendingVerdictState`, and a matching block kind
+in the provider — deliberately **not** `'boundary'`, so no approval options and no verdict marker are
+ever offered. Both halves are load-bearing: silence hides the boundary, and a marker would capture a
+verdict against a crossing that does not exist.
+
+### The correction that looked right and changed nothing
+
+Worth its own entry, because it is a new failure shape for this iteration's record.
+
+The first T089 revision was **complete and correct in isolation** — the primitive returned
+`boundary-unrecordable` when probed directly, and the provider had a matching branch. Re-running T087
+showed the provider still silent. The cause: the transcript-read gate keys on `$hasPending`, and this
+state is deliberately **not** pending. So `$lastAssistantText` stayed null, `$canAssess` was false,
+and `$blockWarranted` could never become true. **The branch was unreachable.**
+
+Diagnosis went through the provider's own diagnostic journal — which was not written either,
+narrowing it to a path that never reached the journal write. The fix moves `$boundaryUnrecordable`
+up beside `$hasPending` and adds it to the gate.
+
+**A review of the diff would have approved it.** The code was right; the reachability was not. This
+is the same family as T082's containment claim — locally correct, and wrong about coverage — and it
+was caught only by re-running the fixture against the changed code rather than trusting the change.
+That is the third distinct instance in this iteration of *the green tells you nothing until you
+check what it measured.*
+
+### Regression
+
+`pending-verdict-stop-artifact`, `pending-verdict-surface`, `boundary-ratchet`,
+`conformance-stop-intent-wiring`, `dispatcher-stop-block` — all exit 0.
+`conformance-detection.tests.ps1` — **all 76 cases pass**.
+
+**Mirror parity maintained**: `shared-governance.ps1` and `specrew-conformance-provider.ps1` are
+byte-identical between `extensions/specrew-speckit/scripts/` and the deployed
+`.specify/extensions/specrew-speckit/scripts/`, verified by hash. Provider-mirror divergence is a
+recurring defect class in this feature.
+
 ## FOR THE RETRO — a practice that has earned promotion to shipped method guidance
 
 **Flagged for the retro facilitator by maintainer instruction, 2026-08-03.** This is a process

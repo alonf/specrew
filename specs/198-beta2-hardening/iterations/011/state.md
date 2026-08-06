@@ -2,23 +2,37 @@
 
 **Schema**: v1
 **Current Phase**: tasks
-**Iteration Status**: not-started
-**Last Completed Task**: (none)
-**Tasks Remaining**: T086, T087, T088, T089, T090, T092, T093
+**Iteration Status**: implementing
+**Last Completed Task**: T089
+**Tasks Remaining**: T090, T093, T092 (T091 deferred to beta3)
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
-**Updated**: 2026-08-03T00:00:00Z
+**Updated**: 2026-08-06T01:29:52.3968925Z
 
 ## Execution Summary
 
-- Execution has not started yet. This is accurate: the plan awaits its human verdict.
-- Task progress: 0 complete, 0 in-progress, 7 pending, 0 blocked.
-- Latest completed task: (none)
+<!-- specrew:task-progress-summary:begin -->
+- Execution is in progress.
+- Task progress: 4 complete, 0 in-progress, 3 pending, 0 blocked.
+- Latest completed task: T089
+<!-- specrew:task-progress-summary:end -->
+
+| Task | Status | Evidence |
+| --- | --- | --- |
+| T086 | done | FR-068 reproduction, both halves, RED-first |
+| T087 | done | FR-066 fixtures RED-first; premise corrected on measurement |
+| T088 | done | Unrecordable crossing is a branchable state; `success=false` |
+| T089 | done | Provider speaks and names what is missing; T087 fully green |
+| T090 | planned | Re-estimate at its start gate, per the relief valve |
+| T091 | deferred | Composition half → beta3 hook-machinery cluster |
+| T093 | planned | Campaign-mode halt text and `--help` |
+| T092 | planned | Capped certification; needs the authorization reference |
 
 A `tasks-progress.yml` is authored alongside this file rather than left to be auto-created later.
 Iteration 010 had none, one was minted all-pending mid-life, and the summary writer overwrote a
 corrected record with "not-started" for delivered work (DRIFT-198-I010-010). Authoring the tracker
-at plan time removes the condition that defect needs.
+at plan time removes the condition that defect needs — and it worked: the tracker carried the real
+statuses, so the generated summary above recomputed to disk truth instead of overwriting it.
 
 ## Objective
 

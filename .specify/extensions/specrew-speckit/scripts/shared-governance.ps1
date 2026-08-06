@@ -1829,6 +1829,33 @@ function Get-SpecrewPendingVerdictState {
     }
     try {
         $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+
+        # FR-066 (amended 2026-08-03), T089. A project that reached a boundary before boundary
+        # enforcement was ever bootstrapped has NO ledger to record the crossing in. That used to
+        # return the default `unreadable` state — indistinguishable from "no enforcement configured"
+        # and from "nothing pending" — so every surface downstream stayed silent and the consumer's
+        # very first boundary passed with no enforcement surface at all (measured in T087).
+        #
+        # It is now its own status. The crossing genuinely CANNOT be recorded, so HasPendingVerdict
+        # stays false and no marker or approval phrase is ever synthesized — but the state says WHY,
+        # so a surface can speak to it instead of falling silent. Fail-open still holds: this never
+        # fabricates a pending verdict.
+        if ($null -ne $enforcement -and [bool]$enforcement.NeedsMigration) {
+            $workingUnrecordable = $null
+            $ctxUnrecordable = $enforcement.Context
+            if ($null -ne $ctxUnrecordable -and $ctxUnrecordable.Contains('session_state') -and $null -ne $ctxUnrecordable['session_state']) {
+                $ssUnrecordable = $ctxUnrecordable['session_state']
+                if ($ssUnrecordable.Contains('boundary_type')) { $workingUnrecordable = [string]$ssUnrecordable['boundary_type'] }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($workingUnrecordable)) {
+                $result.IntegrityStatus = 'boundary-unrecordable'
+                $result.IsFirstBoundary = $true
+                $result.WorkingBoundary = $workingUnrecordable
+                $result.Message = ("BOUNDARY REACHED BUT NOT RECORDABLE: this project arrived at '{0}' before its boundary approval ledger was initialized, so the crossing could not be recorded and no verdict can be captured for it yet. Missing: the project's boundary-enforcement state (run the Specrew start/bootstrap path for this project to create it). Until it exists there is nothing to approve — no approval options and no verdict marker are offered, deliberately, because approving an unrecorded crossing would authorize nothing." -f $workingUnrecordable)
+            }
+            return $result
+        }
+
         if ($null -eq $enforcement -or $null -eq $enforcement.State -or -not [bool]$enforcement.State['enabled']) { return $result }
         if ($enforcement.Issues.Count -gt 0) {
             $result.IntegrityStatus = 'state-invalid'

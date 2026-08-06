@@ -694,6 +694,12 @@ try {
         [Console]::Error.WriteLine('[specrew-conformance] WARN CONFORMANCE_DETECTOR_UNAVAILABLE shared-governance/Get-SpecrewPendingVerdictState did not load; the boundary lane is dark this stop (the gate STATE + resume surface remain the authority).')
     }
     $hasPending = ($null -ne $pending -and [bool]$pending.HasPendingVerdict)
+    # FR-066 (amended 2026-08-03), T089. Computed HERE, beside $hasPending, and not at the block
+    # decision — because the transcript-read gate below keys on $hasPending, and this state is
+    # deliberately NOT pending (there is no crossing to approve). Computing it late left
+    # $lastAssistantText null, so $canAssess was false and the block could never warrant: the
+    # correction looked right and changed nothing. Caught by re-running T087 rather than by review.
+    $boundaryUnrecordable = ($null -ne $pending) -and ([string]$pending.IntegrityStatus -eq 'boundary-unrecordable')
 
     # Any feature spec on disk (cheap dir check) -> the substantial + #1 triggers need this.
     $anySpec = $false; $specPath = $null; $specs = @()
@@ -849,7 +855,7 @@ try {
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
     }
-    if ($hasPending -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState) {
+    if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
             $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
@@ -960,12 +966,19 @@ try {
     # hard block is deterministic material work only: the live turn delta reports changed user files or new commits.
     # Once a packet has been rendered for the same material surface, later quick discussion while the tree
     # stays dirty is allowed; a changed material surface requires a fresh packet.
+    # FR-066 (amended 2026-08-03), T089: a boundary that could not be RECORDED must still be spoken
+    # to. `$boundaryUnrecordable` is computed up beside $hasPending; it carries
+    # HasPendingVerdict=$false — there is genuinely nothing to approve — so it can never reach
+    # $boundaryBlock, and before this the provider fell silent and a brand-new project's first
+    # boundary passed with no enforcement surface at all (T087 case 2). It gets its own block kind,
+    # deliberately NOT 'boundary': no approval options, no verdict marker, and no marker-suppression
+    # check, because there is no crossing to approve.
     $boundaryBlock = $hasPending -and (-not $markerForPendingCrossing)
     $materialAlreadySatisfied = $materialStop -and (-not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) -and ([string]$materialSignal.key -eq [string]$materialSatisfiedKey)
     $materialInitialBlock = (-not $hasPending) -and $materialStop -and (-not $packetPresent) -and (-not $materialAlreadySatisfied)
     $materialRetryBlock = (-not $hasPending) -and (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $packetPresent)
     $materialBlock = $materialInitialBlock -or $materialRetryBlock
-    $blockKind = if ($boundaryBlock) { 'boundary' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
+    $blockKind = if ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1089,6 +1102,17 @@ try {
                     [void]$sb.AppendLine(("This is a BOUNDARY stop into '{0}' (the first unauthorized boundary); emit the contiguous verdict marker as the LAST line." -f $toBoundary))
                 }
                 [void]$sb.AppendLine('Do NOT record the authorization yourself; the verdict is captured from your rendered packet + the human''s reply.')
+            }
+            elseif ($blockKind -eq 'boundary-unrecordable') {
+                # FR-066 amended MUST: the surface MUST speak and MUST name what is missing. It also
+                # MUST NOT present approval options or a verdict marker — there is no recorded
+                # crossing, so approving would authorize nothing. Both halves are load-bearing:
+                # silence hides the boundary, and a marker here would capture a verdict against a
+                # crossing that does not exist.
+                [void]$sb.AppendLine([string]$pending.Message)
+                [void]$sb.AppendLine('')
+                [void]$sb.AppendLine('Tell the human plainly: a lifecycle boundary was reached, it could NOT be recorded, and what is missing. Do NOT present approval options and do NOT emit a verdict marker — there is no crossing to approve, and approving an unrecorded crossing would authorize nothing.')
+                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
             elseif ($blockKind -eq 'workshop-conflict') {
                 $conflict = $workshopQuestion.binding_conflict
