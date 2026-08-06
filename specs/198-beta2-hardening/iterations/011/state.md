@@ -1,10 +1,12 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: tasks
-**Iteration Status**: executing
-**Last Completed Task**: T090
-**Tasks Remaining**: T091, T093, T092
+**Current Phase**: iteration-closeout
+**Iteration Status**: closed
+**Closed At**: 2026-08-06T13:19:56Z
+**Closing Verdict**: approved for iteration-closeout (approve-with-instructions), 2026-08-06
+**Last Completed Task**: T092
+**Tasks Remaining**: (none — T091 and T093 deferred to beta3 by recorded decision)
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
 **Updated**: 2026-08-06T10:01:22.0165619Z
@@ -46,9 +48,17 @@ arrival state; FR-066's mint guard ships as a named known defect carried to beta
 at **~29.0/20 uncompressed with FR-066 partial**. The beta3 carry list is consolidated in
 file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/drift-log.md
 
-**Boundary status**: the iteration-closeout boundary has NOT been authorized. The tag-basis ruling is a
-content decision, not a boundary verdict — one approval advances at most one boundary, and discussion is
-not approval. This iteration stays open until an explicit `approved for iteration-closeout`.
+**CLOSED 2026-08-06** on an explicit `approved for iteration-closeout` (approve-with-instructions),
+following `approved for retro` and the retro boundary packet. Closeout actions executed:
+
+| Action | Result |
+| --- | --- |
+| Iteration registered closed | file:///C:/Dev/specrew-beta2-hardening/.specrew/closed-iterations.yml — `198-beta2-hardening / 011 / 2026-08-06T13:19:56Z`, written through `Add-SpecrewClosedIterationEntry` rather than hand-edited |
+| Campaign disposition | `override-block` recorded on `run-f198-i011-fe88af18-certify` by the maintainer; **no round re-funded** |
+| Disposition rationale (verbatim) | *"the named-limitation tag basis explicitly does not claim certification of the final tree; this disposition formally registers that already-made human decision."* |
+
+The disposition **registers** a human decision already made in the tag-basis ruling; it does not create
+one, and it does not assert certification the tree does not have.
 
 A `tasks-progress.yml` is authored alongside this file rather than left to be auto-created later.
 Iteration 010 had none, one was minted all-pending mid-life, and the summary writer overwrote a

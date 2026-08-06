@@ -220,6 +220,27 @@ arriving through a governance decision rather than a code change.
 | 5 | Run the F-198 gate from PowerShell; record Git-Bash `tar` as a known hazard | Implementer | recorded in drift log |
 | 6 | Carry the six beta3 items as recorded, FR-066's mint guard first | Planner | drift log carry table |
 
+### Maintainer rulings on the three discussion prompts, 2026-08-06
+
+1. **Action 3 goes to CONSTITUTION level — through the governed path, not as a retro rider.** *"Rules
+   that matter ship as a test, a choke point, or a read-back"* changes how every future requirement is
+   written, which is exactly what a constitution amendment process exists to decide deliberately.
+   **Proposed at beta3's planning boundary with its evidence attached** — the three prose failures AND
+   the control group. Until then it binds this repo as iteration guidance only. *(Note the shape: the
+   ruling applies the finding to itself — a rule about structural enforcement is not allowed to enter by
+   the unstructured path.)*
+2. **Finding 6 ships.** INCONCLUSIVE becomes shipped method guidance with its counted evidence (five
+   false passes prevented; four of five would have read as passes). Routed as **one named beta3 task on
+   the shipped surface**, bundled with the other downstream-bound discipline rules already queued
+   (CI-consumption, evidence-before-hypothesis) — **one "shipped method guidance" work item, not three
+   riders.**
+3. **The FR-066 mint guard enters beta3 as a DESIGN SPIKE, not a task.** Two designs have failed at
+   design level, so the spike's deliverable is **the concurrency/failure matrix and a design that
+   survives it** — serialize the sequence vs attempt-scoped records with same-attempt clearance —
+   **priced before any implementation is scheduled.** Same price-before-build pattern that worked for the
+   `artifact_state_id` re-cut, which came in sane at 5.5 SP because it was priced against machinery that
+   already existed.
+
 ---
 
 ## Carried to beta3

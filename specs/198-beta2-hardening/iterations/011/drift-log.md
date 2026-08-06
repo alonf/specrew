@@ -997,7 +997,7 @@ same distinction that rejected Option 4 on 2026-08-06.
 | DRIFT-198-I011-002 — preflight burns the full timeout to discover no harness resolved | minor mechanism, real cost | pairs with the remediation-surface row below |
 | `allowance-reset` named as the replenish mechanism while unreachable in campaign mode | remediation-surface | must become reachable or stop being named; the per-reference grant already is the mechanism |
 | DRIFT-198-I011-001 — an unregistered suite fails on HEAD and CI cannot see it | minor-to-major | an unrun test is an unenforced invariant; sweep for other unregistered files |
-| SC-025 composition clause — contradictory directives joined by `----- AND ALSO -----` | characterized | T086 half 2 holds the proven reproduction; **observed live in this session's own Stop blocks** |
+| SC-025 composition clause — contradictory directives joined by `----- AND ALSO -----` | characterized, **now observed CONSEQUENTIAL** | T086 half 2 holds the proven reproduction. Observed live in this session's Stop blocks twice: first benignly (both directives agreed), then **consequentially at the retro boundary**, where the campaign block's *"do NOT emit a SPECREW-VERDICT-BOUNDARY marker"* composed against a genuine boundary stop that requires one. Read literally it would have suppressed the marker capturing the human's retro verdict — the characterized defect reproducing against this iteration's own governance. Resolved by scope-reading (the block's own text says it is *"not a lifecycle verdict"*), which is judgment the mechanism should not require. |
 
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
