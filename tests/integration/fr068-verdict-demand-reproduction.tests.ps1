@@ -224,6 +224,117 @@ Write-Host @"
   update them alongside the fix, not a regression.
 "@ -ForegroundColor DarkGray
 
+# ---------------------------------------------------------------------------------------------
+# HALF 3 — the clarify row's matcher must enforce the contract it was authored from.
+#
+# DRIFT-198-I011-006 (certification finding 4). The contract requires "a dated Clarifications session
+# block OR a recorded skip-with-rationale". The shipped matcher accepted `##\s+Clarifications` (any
+# heading, including an empty placeholder) and `clarif\w*[^.\r\n]{0,40}\bskip` — a loose regex that
+# NEGATED PROSE satisfies. The reviewer's proof: the sentence "Clarifications must not be skipped"
+# marks the stage satisfied and re-enables the approval options this whole requirement exists to
+# withhold.
+#
+# Maintainer ruling: take the STRICT rule. Over-blocking is visible and correctable; under-blocking
+# silently re-enables approval options, which is the defect class this iteration exists to kill.
+#
+# Measured by calling the REAL gate against REAL committed trees — four shapes, both directions, so
+# the strictness is proven to block the bad AND still admit the two legitimate arms. A one-directional
+# test would prove only that the matcher got stricter, not that it stayed correct.
+# ---------------------------------------------------------------------------------------------
+
+Write-Host "`n--- HALF 3: the clarify matcher enforces the authored contract ---`n" -ForegroundColor White
+
+function Test-ClarifyShape {
+    param([string]$Label, [string]$SpecBody, [bool]$ExpectSatisfied, [string]$Why)
+
+    $proj = Join-Path $scratch ([guid]::NewGuid().ToString('N'))
+    $featureDir = Join-Path $proj 'specs\050-host-neutral-gate'
+    New-Item -ItemType Directory -Path $featureDir -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $featureDir 'spec.md') -Value $SpecBody -Encoding UTF8
+    $null = & git -C $proj init --quiet
+    $null = & git -C $proj config core.autocrlf false
+    $null = & git -C $proj add -A
+    $null = & git -C $proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'clarify shape'
+    if ($LASTEXITCODE -ne 0) { Fail "fixture commit failed for shape '$Label'"; return }
+    $tree = (@(& git -C $proj rev-parse 'HEAD^{tree}') -join '').Trim()
+
+    # Child process: shared-governance sets StrictMode at file scope, and the gate must be exercised
+    # through its real entry point rather than a re-implementation of the regex here.
+    $probe = Join-Path $scratch ('clarify-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $body = @"
+`$ErrorActionPreference = 'Stop'
+. '$repoRoot/extensions/specrew-speckit/scripts/shared-governance.ps1'
+`$ev = Get-SpecrewBoundaryStageEvidence -ProjectRoot '$proj' -Boundary 'clarify' ``
+    -FeaturePath '$featureDir' -IterationNumber '001' -ArtifactStateId '$tree'
+[pscustomobject]@{ satisfied = [bool]`$ev.Satisfied; checked = [bool]`$ev.Checked; unverifiable = [bool]`$ev.Unverifiable } | ConvertTo-Json -Compress
+"@
+    [System.IO.File]::WriteAllText($probe, $body, [System.Text.UTF8Encoding]::new($false))
+    $out = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -File $probe 2>&1) -join "`n")
+    $res = $null
+    $m = [regex]::Match($out, '(?s)\{.*"satisfied".*\}')
+    if ($m.Success) { try { $res = $m.Value | ConvertFrom-Json } catch { $res = $null } }
+
+    if ($null -eq $res) {
+        Fail ("shape '{0}': the gate produced no parseable result — measures nothing. Output: {1}" -f $Label, (($out -replace '\s+', ' ').Trim()))
+        return
+    }
+    Write-Measured ("shape '{0}': satisfied={1}; checked={2}; unverifiable={3}" -f $Label, $res.satisfied, $res.checked, $res.unverifiable)
+
+    if ([bool]$res.satisfied -eq $ExpectSatisfied) {
+        Write-Pass ("{0} -> satisfied={1} ({2})" -f $Label, $ExpectSatisfied, $Why)
+    }
+    elseif ($ExpectSatisfied) {
+        Write-Red ("OVER-BLOCKS: {0} is a legitimate clarify arm but the gate refuses it ({1})" -f $Label, $Why)
+    }
+    else {
+        Write-Red ("UNDER-BLOCKS: {0} satisfies the clarify gate but must not ({1})" -f $Label, $Why)
+    }
+}
+
+# The reviewer's exact proof string. Negated prose that ASSERTS clarify may not be skipped was
+# scored as evidence that it WAS legitimately skipped.
+Test-ClarifyShape -Label 'negated prose ("must not be skipped")' -ExpectSatisfied $false `
+    -Why 'a sentence forbidding a skip is not a record of one' `
+    -SpecBody @"
+# Feature Specification: Host-Neutral Gate Enforcement
+
+## Process Notes
+
+Clarifications must not be skipped on a feature of this size.
+"@
+
+Test-ClarifyShape -Label 'placeholder heading, empty section' -ExpectSatisfied $false `
+    -Why 'an empty section records no session and no skip' `
+    -SpecBody @"
+# Feature Specification: Host-Neutral Gate Enforcement
+
+## Clarifications
+
+## Requirements
+"@
+
+Test-ClarifyShape -Label 'dated session block (arm 1)' -ExpectSatisfied $true `
+    -Why 'the lived shape: a dated session under the Clarifications heading' `
+    -SpecBody @"
+# Feature Specification: Host-Neutral Gate Enforcement
+
+## Clarifications
+
+### Session 2026-08-06 (clarify)
+
+- Q: Which host owns the reap? -> A (human): the watchdog.
+"@
+
+Test-ClarifyShape -Label 'structured skip-with-rationale (arm 2)' -ExpectSatisfied $true `
+    -Why 'the skip arm is load-bearing: a workshop that resolved everything must not be forced into ceremony' `
+    -SpecBody @"
+# Feature Specification: Host-Neutral Gate Enforcement
+
+## Clarifications
+
+- **Clarify Disposition**: skip with recorded rationale - the 7-lens intake workshop resolved every open design question interactively; zero NEEDS CLARIFICATION markers remain.
+"@
+
 Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ""

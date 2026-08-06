@@ -1831,7 +1831,27 @@ function Get-SpecrewBoundaryStageEvidenceContract {
         # recorded skip-with-rationale. Both are lived practice, and the skip arm is load-bearing: a
         # contract with only the session arm would force ceremony on projects whose workshop
         # legitimately resolved everything - the exact noise class this requirement exists to remove.
-        [pscustomobject]@{ Boundary = 'clarify'; Kind = 'content'; Paths = @('spec.md'); Markers = @('##\s+Clarifications', 'clarif\w*[^.\r\n]{0,40}\bskip'); MarkerMatch = 'any'; Provenance = 'MAINTAINER-RULED 2026-08-06 - session block OR recorded skip-with-rationale' }
+        #
+        # STRICT, per the maintainer ruling of 2026-08-06 (DRIFT-198-I011-006). The first
+        # implementation accepted `##\s+Clarifications` (ANY heading, including an empty placeholder)
+        # and `clarif\w*[^.\r\n]{0,40}\bskip` — loose enough that NEGATED PROSE satisfied it: the
+        # sentence "Clarifications must not be skipped" marked the stage done and re-enabled the
+        # approval options this requirement exists to withhold. The contract rows were ruled CORRECT;
+        # the gap was between the authored rows and the matcher.
+        #
+        # The ruling is asymmetric on purpose: over-blocking is VISIBLE and correctable (a human sees
+        # a boundary refuse and fixes the spec), while under-blocking silently re-enables approval —
+        # the exact defect class this iteration exists to kill. So each arm demands positive structure.
+        #
+        #   arm 1: the `## Clarifications` heading AND a dated `### Session YYYY-MM-DD` beneath it,
+        #          confined to that section by `(?!^##[ \t])` so a dated session under some OTHER
+        #          heading cannot satisfy clarify from across the document.
+        #   arm 2: the structured `**Clarify Disposition**: skip ...` record with an actual rationale
+        #          following it — a positive record of the decision, which prose about skipping is not.
+        [pscustomobject]@{ Boundary = 'clarify'; Kind = 'content'; Paths = @('spec.md'); Markers = @(
+                '(?ms)^##[ \t]+Clarifications[ \t]*\r?$(?:(?!^##[ \t]).)*?^###[ \t]+Session[ \t]+\d{4}-\d{2}-\d{2}',
+                '(?im)^[ \t]*[-*][ \t]+\*\*Clarify Disposition\*\*[ \t]*:[ \t]*skip\b[^\r\n]{20,}'
+            ); MarkerMatch = 'any'; Provenance = 'MAINTAINER-RULED 2026-08-06 - session block OR recorded skip-with-rationale; STRICT forms ruled 2026-08-06 after DRIFT-198-I011-006' }
 
         # plan / tasks: the iteration plan. `tasks` records its breakdown in the SAME plan.md table in
         # this methodology, so both rows point at it rather than inventing a per-iteration tasks file.
@@ -1865,13 +1885,22 @@ function Get-SpecrewBoundaryStageEvidenceContract {
 
 function Get-SpecrewBoundaryStageEvidence {
     <#
-    FR-068 (T090). Does the stage being approved actually have its evidence on disk?
+    FR-068 (T090, re-cut T092). Does the stage being approved actually have its evidence in the tree
+    the crossing is bound to?
 
-    Returns Satisfied/Missing/Checked. FAIL-OPEN by construction: an unknown boundary, an
-    unresolvable feature path, or any read error returns Satisfied=$true with Checked=$false. This
-    function can SUPPRESS a verdict demand, so a bug here must never invent a block on a legitimate
-    boundary. Absence of evidence is only reported when the paths were genuinely resolvable and
-    genuinely absent.
+    Returns Satisfied/Checked/Unverifiable/Missing.
+
+    FAILS CLOSED on anything it cannot verify. This docstring previously read "FAIL-OPEN by
+    construction ... any read error returns Satisfied=$true" — that was the pre-re-cut posture and
+    DRIFT-198-I011-005 is exactly what it produced: "I could not check" spelled identically to "it
+    exists", so a demand was emitted against evidence nobody had verified. The text is corrected here
+    rather than left to contradict the code beneath it, because a stale contract comment on an
+    authorization-integrity function is how the next reader reintroduces the defect.
+
+    Three distinct outcomes, deliberately not two:
+      Satisfied=$true,  Checked=$false -> this boundary owes nothing checkable (unknown row, 'none')
+      Satisfied=$false, Unverifiable=$true  -> could NOT be checked; the caller must SUPPRESS
+      Satisfied=$false, Unverifiable=$false -> checked, and the evidence is genuinely absent
     #>
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -1978,7 +2007,20 @@ function Get-SpecrewBoundaryStageEvidence {
         return $result
     }
     catch {
-        return [pscustomobject]@{ Satisfied = $true; Checked = $false; Missing = @(); Boundary = $Boundary }
+        # RESIDUAL FAIL-OPEN, closed 2026-08-06 while landing DRIFT-198-I011-006.
+        #
+        # This catch-all returned Satisfied=$true / Checked=$false, and Set-SpecrewStageEvidenceGate
+        # reads Checked=$false as "nothing to say" and leaves the ordinary verdict demand intact. So
+        # ANY unexpected throw inside the tree read re-armed a demand against evidence that was never
+        # verified — the same conflation DRIFT-198-I011-005 was raised for, surviving in the one path
+        # the re-cut did not rewrite. The named unverifiable returns above were converted; this was not.
+        return [pscustomobject]@{
+            Satisfied    = $false
+            Checked      = $true
+            Unverifiable = $true
+            Missing      = @(("the stage evidence check failed unexpectedly, so it could not be verified: {0}" -f [string]$_.Exception.Message))
+            Boundary     = $Boundary
+        }
     }
 }
 

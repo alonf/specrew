@@ -89,6 +89,45 @@ function New-BoundaryStageEvidence {
         Set-Content -LiteralPath (Join-Path $iter $pair.Rel) -Value $pair.Body -Encoding UTF8
     }
     Save-FixtureStructure -Proj $Proj -Message 'fixture stage evidence'
+    Set-FixtureBoundCrossing -Proj $Proj
+}
+
+function Set-FixtureBoundCrossing {
+    # T092 rework 3/3 (2026-08-06). Committing the artifacts is no longer enough.
+    #
+    # DRIFT-198-I011-003 moved the stage-evidence gate off the mutable live filesystem and onto the
+    # tree the crossing is BOUND to, and DRIFT-198-I011-005 made "could not verify" fail CLOSED. A
+    # fixture that commits its evidence but records NO crossing carries no bound tree id, so the gate
+    # cannot verify anything and correctly suppresses the very boundary demand these cases assert —
+    # the case silently starts measuring the gate instead of itself, which is exactly the trap the
+    # per-case seeding above exists to avoid. Binding a REAL crossing to the fixture's own HEAD
+    # restores the subject.
+    #
+    # Built through the REAL writer (Set-SpecrewPendingBoundaryCrossingScope, the one boundary sync
+    # uses) in a child process: the crossing_id is a hash over the crossing's fields and the
+    # artifact_state_id is re-derived from the commit, so a hand-written record would be rejected as
+    # an integrity mismatch — and re-implementing the hash here is precisely the duplication that
+    # drifts from the product.
+    param([string]$Proj)
+
+    $ctxPath = Join-Path $Proj '.specrew\start-context.json'
+    $ctx = Get-Content -LiteralPath $ctxPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable -Depth 12
+    $working = if ($null -ne $ctx['session_state']) { [string]$ctx['session_state']['boundary_type'] } else { '' }
+    $lastAuth = [string]$ctx['boundary_enforcement']['last_authorized_boundary']
+    # No crossing when nothing is pending — a fixture at rest must stay at rest.
+    if ([string]::IsNullOrWhiteSpace($working) -or $working -eq $lastAuth) { return }
+
+    $bind = Join-Path $scratch ('bind-' + [guid]::NewGuid().ToString('N') + '.ps1')
+    $body = @"
+`$ErrorActionPreference = 'Stop'
+. '$repoRoot/extensions/specrew-speckit/scripts/shared-governance.ps1'
+`$commit = (@(& git -C '$Proj' rev-parse HEAD) -join '').Trim()
+Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot '$Proj' -WorkingBoundary '$working' ``
+    -BoundaryCommitHash `$commit -RecordedAt '2026-06-20T00:00:00Z' | Out-Null
+"@
+    [System.IO.File]::WriteAllText($bind, $body, [System.Text.UTF8Encoding]::new($false))
+    $out = (@(& pwsh -NoProfile -ExecutionPolicy Bypass -File $bind 2>&1) -join "`n")
+    if ($LASTEXITCODE -ne 0) { throw "fixture crossing bind failed for '$working': $out" }
 }
 
 function New-LensApplicability {
