@@ -407,6 +407,71 @@ consequence graph" shape a third time — but this round it was the reviewer tha
 me. The reproduction-first and consequence-interrogation practice that killed two wrong designs
 pre-construction did not extend to the design I did ship.
 
+## Option 3 PRICED, 2026-08-06 — sane, and the expectation holds
+
+Bounded pricing pass before any code, per the ruling. **The re-cut reuses machinery that already
+exists, in the same file as the defective gate.**
+
+| Evidence for the price | Finding |
+| --- | --- |
+| `artifact_state_id` **is already a git tree id** — `Get-SpecrewGitArtifactStateId` resolves `<commit>^{tree}` and the crossing stores it. It is available at the gate today; nothing new is computed. | 1 |
+| `Test-ReviewCitedFilesInTree` (same file) already does the exact presence pattern: resolve the tree hash, `git ls-tree -r --name-only`, normalize separators, and set a **`TreeResolved`** flag. That flag is precisely the fail-closed signal finding 3 asks for — "the tree could not be read" is already distinguishable from "the file is absent". | 1, 3 |
+| Content reads for the clarify row have a pattern too (`cat-file blob` in the review target port); `git show <tree>:<path>` is the one small addition. | 4 |
+| Paths become **tree-relative** and are read via `git -C $ProjectRoot`, so there is no absolute live path left to redirect — the foreign-checkout hole closes structurally rather than by validation. | 3 |
+
+**Price: 5.5 SP.**
+
+| Work | SP |
+| --- | ---: |
+| `artifact_state_id` re-cut — read evidence from the bound tree, tree-relative paths, fail-closed on unreadable tree | 2.0 |
+| Recovery instruction + start/bootstrap DETECTS an existing failed crossing and refuses to cursor over it (bootstrap's initialize-at-current semantics deliberately untouched) | 1.5 |
+| Tightened clarify matcher — dated session structure or a positive structured skip record | 0.5 |
+| RED-first fixtures for all four, proven red before each fix | 1.5 |
+
+Recertification is already inside T092's existing 2.5 SP.
+
+### Budget arithmetic, uncompressed
+
+| | Before | After |
+| --- | ---: | ---: |
+| Iteration 011 planned | 20.0 | **25.5** |
+| Capacity | 20 | 20 |
+| Position | at cap | **OVER by 5.5** |
+
+**This is internal rework of 011's own deliverables — the zero-slack rule routed EXTERNAL work, and
+this is not that.** The overrun is recorded at the number it actually is. Compressing these estimates
+to make the cap appear to hold is exactly what Iteration 009's ledger prices at ~70 SP against a
+cap of 20, and the reason its trigger needed amending twice.
+
+**Option 4 was rejected on the merits and the record should say why**: shipping newly-written
+authorization-integrity machinery with two known false-authorization paths is worse than the defect
+it replaced. The named-limitation posture covers absences and costs — limitation 8 is a wrong string
+with a working alternative, limitation 1 is a characterized gap — not fresh broken trust machinery.
+If round 2 fails on these same fixes, T088–T090 revert entirely and the decision reopens.
+
+## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
+
+Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.
+
+The practice of walking every consumer of every flag before building **killed two wrong designs
+pre-construction**: T088's "supply the missing marker" (measurement showed silence, not a marker-less
+block) and T090's `HasPendingVerdict=false` (which would have broken verdict capture). Both saves
+were real and both were cheap.
+
+**It missed the one design it was not applied to.** The shipped evidence gate checks a mutable live
+tree while the marker authorizes an immutable bound tree — one consumer, unwalked — and that produced
+a false-authorization path in the code written to prevent false authorization. The independent
+reviewer walked the graph the implementer didn't.
+
+**The lesson is not "apply it harder."** A practice applied intermittently is indistinguishable from
+luck, and this iteration has the control group to prove it: two applications, two saves; one
+omission, one blocking defect. **It must become a named design-gate step — walk every consumer of
+every flag you touch, in writing, before building** — so the record shows whether it was done rather
+than whether it occurred to someone.
+
+The reviewer being the backstop worked. The point of making the practice structural is that it should
+not need to.
+
 ## FOR THE RETRO — a practice that has earned promotion to shipped method guidance
 
 **Flagged for the retro facilitator by maintainer instruction, 2026-08-03.** This is a process
