@@ -1877,30 +1877,77 @@ function Get-SpecrewBoundaryStageEvidence {
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
         [AllowNull()][string]$Boundary,
         [AllowNull()][string]$FeaturePath,
-        [AllowNull()][string]$IterationNumber
+        [AllowNull()][string]$IterationNumber,
+        [AllowNull()][string]$ArtifactStateId
     )
 
-    $result = [pscustomobject]@{ Satisfied = $true; Checked = $false; Missing = @(); Boundary = $Boundary }
+    # RE-CUT 2026-08-06 after certification round 1 (DRIFT-198-I011-003/-005, both blocking/major).
+    #
+    # The first version checked `Test-Path` against the MUTABLE LIVE filesystem while the marker it
+    # gates authorizes an IMMUTABLE BOUND tree. Produce the missing artifact, stop again, and the same
+    # old pending_crossing was still valid while the live file now passed — so the marker could
+    # authorize a commit that never contained the artifact, possibly one still uncommitted. It also
+    # ignored $ProjectRoot entirely and trusted a persisted ABSOLUTE feature_path, so a stale path
+    # into another checkout could satisfy the gate with foreign artifacts.
+    #
+    # Evidence is now read FROM THE BOUND TREE by its artifact_state_id, using the same tree-reading
+    # the review machinery already uses for digests. Paths are TREE-RELATIVE and resolved through
+    # `git -C $ProjectRoot`, so there is no absolute live path left to redirect — the foreign-checkout
+    # hole closes structurally rather than by validation. And it FAILS CLOSED: a tree that cannot be
+    # read is malformed state, not "assume the evidence exists".
+    $result = [pscustomobject]@{ Satisfied = $true; Checked = $false; Unverifiable = $false; Missing = @(); Boundary = $Boundary }
     try {
         if ([string]::IsNullOrWhiteSpace($Boundary)) { return $result }
         $row = @(Get-SpecrewBoundaryStageEvidenceContract | Where-Object { $_.Boundary -ceq $Boundary })
         if ($row.Count -ne 1) { return $result }
         $row = $row[0]
         if ([string]$row.Kind -ceq 'none') { return $result }
-        if ([string]::IsNullOrWhiteSpace($FeaturePath) -or -not (Test-Path -LiteralPath $FeaturePath -PathType Container)) { return $result }
+
+        # UNVERIFIABLE is its own outcome, and it SUPPRESSES rather than waves through. "I could not
+        # check" is not "it exists" — that conflation is DRIFT-198-I011-005.
+        $unverifiable = {
+            param([string]$Why)
+            [pscustomobject]@{ Satisfied = $false; Checked = $true; Unverifiable = $true; Missing = @($Why); Boundary = $Boundary }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($ArtifactStateId) -or [string]$ArtifactStateId -notmatch '^[0-9a-fA-F]{40,64}$') {
+            return (& $unverifiable 'the crossing carries no readable bound tree id, so its evidence cannot be verified')
+        }
+
+        $root = Resolve-ProjectPath -Path $ProjectRoot
+        # TREE-RELATIVE, derived from the project root — never the persisted absolute feature path.
+        $featureRel = $null
+        if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
+            $fp = ($FeaturePath -replace '\\', '/').TrimEnd('/')
+            $rp = ($root -replace '\\', '/').TrimEnd('/')
+            if ($fp.StartsWith($rp, [System.StringComparison]::OrdinalIgnoreCase) -and $fp.Length -gt $rp.Length) {
+                $featureRel = $fp.Substring($rp.Length).TrimStart('/')
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($featureRel)) {
+            return (& $unverifiable 'the active feature could not be resolved inside this project, so its evidence cannot be verified')
+        }
+
+        $lsTree = @(& git -C $root ls-tree -r --name-only $ArtifactStateId 2>$null)
+        if ($LASTEXITCODE -ne 0 -or $lsTree.Count -eq 0) {
+            return (& $unverifiable ("the bound tree {0} could not be read, so the evidence cannot be verified" -f $ArtifactStateId.Substring(0, [Math]::Min(12, $ArtifactStateId.Length))))
+        }
+        $tracked = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($line in $lsTree) { $null = $tracked.Add((($line -replace '\\', '/').Trim())) }
 
         $missing = New-Object System.Collections.Generic.List[string]
         foreach ($rel in @($row.Paths)) {
-            $full = if ([string]$row.Kind -ceq 'iteration-file') {
-                if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $null } else { Join-Path (Join-Path (Join-Path $FeaturePath 'iterations') $IterationNumber) $rel }
+            $relNorm = ($rel -replace '\\', '/')
+            $treePath = if ([string]$row.Kind -ceq 'iteration-file') {
+                if ([string]::IsNullOrWhiteSpace($IterationNumber)) { $null } else { ('{0}/iterations/{1}/{2}' -f $featureRel, $IterationNumber, $relNorm) }
             }
-            else { Join-Path $FeaturePath $rel }
+            else { ('{0}/{1}' -f $featureRel, $relNorm) }
 
-            # An iteration-scoped boundary with no iteration number is not a violation - it is an
-            # unresolvable question. Fail open rather than guess.
-            if ($null -eq $full) { return $result }
+            if ($null -eq $treePath) {
+                return (& $unverifiable 'the iteration identity is missing, so the stage evidence cannot be located in the bound tree')
+            }
 
-            if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { $missing.Add($rel) | Out-Null; continue }
+            if (-not $tracked.Contains($treePath)) { $missing.Add($rel) | Out-Null; continue }
 
             if ([string]$row.Kind -ceq 'content') {
                 $markers = @()
@@ -1908,7 +1955,11 @@ function Get-SpecrewBoundaryStageEvidence {
                 elseif (-not [string]::IsNullOrWhiteSpace([string]$row.Marker)) { $markers = @([regex]::Escape([string]$row.Marker)) }
                 if ($markers.Count -eq 0) { continue }
 
-                $raw = Get-Content -LiteralPath $full -Raw -Encoding UTF8 -ErrorAction Stop
+                # Content comes from the BOUND TREE too, not the working copy.
+                $raw = (@(& git -C $root show ("{0}:{1}" -f $ArtifactStateId, $treePath) 2>$null) -join "`n")
+                if ($LASTEXITCODE -ne 0) {
+                    return (& $unverifiable ("'{0}' could not be read from the bound tree, so its content cannot be verified" -f $relNorm))
+                }
                 $hits = @($markers | Where-Object { $raw -imatch $_ })
                 $mode = if ($row.PSObject.Properties.Name -contains 'MarkerMatch') { [string]$row.MarkerMatch } else { 'all' }
                 # 'any' is the clarify case: either a dated session block OR a recorded skip satisfies
@@ -1940,7 +1991,8 @@ function Set-SpecrewStageEvidenceGate {
     param(
         [Parameter(Mandatory = $true)][pscustomobject]$Result,
         [AllowNull()]$Enforcement,
-        [AllowNull()][string]$TargetBoundary
+        [AllowNull()][string]$TargetBoundary,
+        [Parameter(Mandatory = $true)][string]$ProjectRoot
     )
 
     try {
@@ -1955,12 +2007,20 @@ function Set-SpecrewStageEvidenceGate {
             }
         }
 
-        $ev = Get-SpecrewBoundaryStageEvidence -ProjectRoot '.' -Boundary $TargetBoundary -FeaturePath $featurePath -IterationNumber $iterationNumber
+        # The evidence is read from the crossing's OWN bound tree — the same tree the marker would
+        # authorize — so producing an artifact after the fact cannot retro-satisfy an older crossing.
+        $ev = Get-SpecrewBoundaryStageEvidence -ProjectRoot $ProjectRoot -Boundary $TargetBoundary -FeaturePath $featurePath -IterationNumber $iterationNumber -ArtifactStateId ([string]$Result.ArtifactStateId)
         if ($null -eq $ev -or -not [bool]$ev.Checked -or [bool]$ev.Satisfied) { return $Result }
 
         $Result.StageEvidenceAbsent = $true
         $Result.StageEvidenceMissing = @($ev.Missing)
-        $Result.Message = ("BOUNDARY NOT READY FOR A VERDICT: '{0}' has produced none of the evidence its stage owes, so there is nothing to approve yet. Missing: {1}. A verdict recorded now would authorize an empty increment, and the ledger could not tell it apart from an approval of real work — so no approval options and no verdict marker are offered. Produce the missing artifact(s), then stop for the verdict." -f $TargetBoundary, (@($ev.Missing) -join ', '))
+        $Result.Message = if ([bool]$ev.Unverifiable) {
+            # Suppress, and say why. "Could not verify" must never read as "verified".
+            ("BOUNDARY EVIDENCE COULD NOT BE VERIFIED: '{0}' cannot be approved because its stage evidence could not be checked against the tree this crossing is bound to — {1}. No approval options and no verdict marker are offered: an unverifiable increment must not be authorized, and a verdict recorded now could not be shown to cover any particular work. Fix the recorded state, then stop for the verdict." -f $TargetBoundary, (@($ev.Missing) -join '; '))
+        }
+        else {
+            ("BOUNDARY NOT READY FOR A VERDICT: the tree this crossing is bound to does not contain the evidence '{0}' owes, so there is nothing to approve yet. Missing from the bound tree: {1}. A verdict recorded now would authorize an increment that does not contain the work, and the ledger could not tell it apart from an approval of real work — so no approval options and no verdict marker are offered. Produce the missing artifact(s), COMMIT them, and stop again so the crossing rebinds to a tree that contains them." -f $TargetBoundary, (@($ev.Missing) -join ', '))
+        }
         return $Result
     }
     catch { return $Result }
@@ -2094,7 +2154,7 @@ function Get-SpecrewPendingVerdictState {
             $result.IntegrityStatus = 'scoped-verified'
             $authLabel = if ([string]::IsNullOrWhiteSpace([string]$crossing.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$crossing.LastAuthorizedBoundary }
             $result.Message = ("AWAITING YOUR VERDICT: crossing '{0}' ({1} -> {2}) at commit {3}, Git tree {4}, is NOT human-authorized (last authorized: {5}). Give the explicit verdict 'approved for {2}' to authorize this exact crossing; numeric replies are not authority." -f $result.CrossingId, $crossing.PendingFromMarkerBoundary, $crossing.PendingToMarkerBoundary, $result.BoundaryCommitHash, $result.ArtifactStateId, $authLabel)
-            $result = Set-SpecrewStageEvidenceGate -Result $result -Enforcement $enforcement -TargetBoundary ([string]$crossing.PendingToMarkerBoundary)
+            $result = Set-SpecrewStageEvidenceGate -Result $result -Enforcement $enforcement -TargetBoundary ([string]$crossing.PendingToMarkerBoundary) -ProjectRoot $ProjectRoot
             return $result
         }
 
@@ -2124,7 +2184,7 @@ function Get-SpecrewPendingVerdictState {
             $result.Message = ("AWAITING YOUR VERDICT: '{0}' is committed / in-progress but NOT human-authorized (last authorized: {1}). A committed boundary is not an approved one — the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm." -f $crossing.WorkingBoundary, $authLabel)
             # BOTH branches gate. Fixing only the scoped one would leave the identical demand reachable
             # through this path — the T082 shape (partial coverage under a complete-sounding claim).
-            $result = Set-SpecrewStageEvidenceGate -Result $result -Enforcement $enforcement -TargetBoundary ([string]$crossing.PendingToMarkerBoundary)
+            $result = Set-SpecrewStageEvidenceGate -Result $result -Enforcement $enforcement -TargetBoundary ([string]$crossing.PendingToMarkerBoundary) -ProjectRoot $ProjectRoot
         }
     }
     catch {
