@@ -38,10 +38,17 @@
 
 **The current tree carries no independent certification**: all three rounds are spent and `86c5eb07`
 has never been reviewed in this exact shape. Round 2's validation of findings 1/3/4 stands, and their
-code is byte-unchanged since — that is the assurance the tag can honestly rest on. The green 90/90 gate
-is a regression floor, not a certification. Tag-basis recommendation and the open FR-066 defect are
-recorded in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/drift-log.md
-and await the maintainer's ruling — the last open item of this iteration.
+code is byte-unchanged since — that is the assurance the tag rests on. The green 90/90 gate is a
+regression floor, not a certification.
+
+**TAG BASIS RULED 2026-08-06 — named-limitation.** Beta2 gates on FR-068's evidence half plus FR-066's
+arrival state; FR-066's mint guard ships as a named known defect carried to beta3. Iteration 011 closes
+at **~29.0/20 uncompressed with FR-066 partial**. The beta3 carry list is consolidated in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/drift-log.md
+
+**Boundary status**: the iteration-closeout boundary has NOT been authorized. The tag-basis ruling is a
+content decision, not a boundary verdict — one approval advances at most one boundary, and discussion is
+not approval. This iteration stays open until an explicit `approved for iteration-closeout`.
 
 A `tasks-progress.yml` is authored alongside this file rather than left to be auto-created later.
 Iteration 010 had none, one was minted all-pending mid-life, and the summary writer overwrote a

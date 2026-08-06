@@ -971,7 +971,33 @@ named-limitation posture, which covers a characterized gap rather than fresh bro
 That distinction is exactly why Option 4 was rejected on 2026-08-06, and it cuts the same way here: the
 reverted attempts are gone, so nothing ships in a half-trusted state.
 
-**This is a maintainer decision, not an implementer one**, and it is the last open item of iteration 011.
+### RULED by the maintainer, 2026-08-06: the named-limitation basis
+
+**Beta2's tag is gated on FR-068's evidence half plus FR-066's arrival state.** FR-066's mint guard
+ships as a **named known defect carried to beta3**. Iteration 011 closes at **~29.0/20 uncompressed with
+FR-066 partial**.
+
+Recorded precisely, because the difference between these two lines is the whole point of the ruling:
+
+- **Claimed**: round 2 independently validated findings 1, 3 and 4, and their code is byte-unchanged
+  since. The local gate is green at 90/90 — a regression floor.
+- **NOT claimed**: any certification of `725257b9`. All three rounds are spent and the reverted tree has
+  never been reviewed in this shape. The tag rests on bounded, dated assurance, not on a certification
+  that does not exist.
+
+The reverted attempts are gone rather than shipped, so nothing goes out in a half-trusted state — the
+same distinction that rejected Option 4 on 2026-08-06.
+
+### Carried to beta3, consolidated
+
+| Item | Severity | Why it is carried |
+| --- | --- | --- |
+| **FR-066 mint guard** (three bootstrap sites; opening the next session converts a failed crossing into an authorized cursor) | **blocking, OPEN and named** | two attempts, both faulted and reverted. Needs a design that survives concurrency: serialize the sequence, or use attempt-scoped records whose clearance is conditional on the same attempt. |
+| DRIFT-198-I011-009 — `Write-Utf8FileAtomic` succeeds onto a directory destination | major | shared machinery; `start-context`, `boundary-state` and ledger writers all trust its return |
+| DRIFT-198-I011-002 — preflight burns the full timeout to discover no harness resolved | minor mechanism, real cost | pairs with the remediation-surface row below |
+| `allowance-reset` named as the replenish mechanism while unreachable in campaign mode | remediation-surface | must become reachable or stop being named; the per-reference grant already is the mechanism |
+| DRIFT-198-I011-001 — an unregistered suite fails on HEAD and CI cannot see it | minor-to-major | an unrun test is an unenforced invariant; sweep for other unregistered files |
+| SC-025 composition clause — contradictory directives joined by `----- AND ALSO -----` | characterized | T086 half 2 holds the proven reproduction; **observed live in this session's own Stop blocks** |
 
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
