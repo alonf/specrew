@@ -158,6 +158,14 @@ $registry = @(
     @{ area = 'T065 SC-015 supplier-to-campaign deterministic project matrix - source precedence, ordered evidence, safe paths, zero-spend failures'; path = 'tests/continuous-co-review/integration/verification-plan-end-to-end.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-045a stop-intent classifier - continue|intermediate|real precedence, marker corrections, packet consistency'; path = 'tests/continuous-co-review/unit/stop-intent-contract.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-045a stop-intent WIRING into the conformance Stop-provider - continue directive / intermediate suppress / real fail-safe / boundary-never-downgraded / bounded runaway'; path = 'tests/integration/conformance-stop-intent-wiring.tests.ps1'; kind = 'script' }
+    # T086/T087 (iteration 011). Both were authored RED-first and deliberately left UNREGISTERED
+    # while red, so the registry could not go green on a known-failing suite. They are registered
+    # here now that T088/T089/T090 have made them pass - discharging the obligation recorded in
+    # specs/198-beta2-hardening/iterations/011/drift-log.md. A deliberate RED must never quietly
+    # become a skipped test, and an unregistered suite is one nobody runs (see DRIFT-198-I011-001,
+    # which is that exact failure mode found live in another file).
+    @{ area = 'FR-068 verdict-demand reproduction - a demand against a stage with no evidence (half 1, GREEN after T090) plus the emit/do-not-emit marker contradiction (half 2, CHARACTERIZED for beta3)'; path = 'tests/integration/fr068-verdict-demand-reproduction.tests.ps1'; kind = 'script' }
+    @{ area = 'FR-066 first-boundary arrival - an unrecordable crossing is a branchable state, not a silent success, and the surface names what is missing'; path = 'tests/integration/fr066-first-boundary-arrival.tests.ps1'; kind = 'script' }
     @{ area = 'FR-055 Stop-packet classification honesty - session-baseline turn-delta, long-turn lane, PostToolUse pre-arrangement nudge, boundary contract untouched, maintainer fixtures (a)-(f)'; path = 'tests/integration/conformance-detection.tests.ps1'; kind = 'script'; timeout_seconds = 420 }
     @{ area = 'FR-056/SC-016 workshop question delivery - shared conduct with deterministic host-specific capability materialization'; path = 'tests/integration/code-rules-skill-multihost.tests.ps1'; kind = 'script' }
     @{ area = 'Beta2 manual-test blocker - Claude workshop cannot call AskUserQuestion and swallow the rendered agenda; other hosts retain structured questions'; path = 'tests/integration/design-workshop-claude-tool-safety.tests.ps1'; kind = 'script' }
