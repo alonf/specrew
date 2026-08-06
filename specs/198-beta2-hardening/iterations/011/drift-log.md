@@ -304,6 +304,40 @@ per-case, on purpose.
 - **Required correction (deferred to beta3)**: fix the suite, register it, and sweep for other
   unregistered test files so the registry's coverage is a fact rather than an assumption.
 
+## T092 certification, attempt 1 — DID NOT RUN, and did not cost a round
+
+**Result**: `preflight-failed:harness`, `runtime_outcome: preflight-failed`, `Invoked: False`,
+`harness_id: "unselected-harness"`, elapsed **614.5s**. Run `run-f198-i011-230717a9-certify`.
+
+**No allowance was spent — verified against the facts, not inferred.** The campaign store shows
+`spend/` **empty** and `releases/` holding one record with `reason: "preflight-failed:harness"`. The
+pre-invocation release returned the slot exactly as FR-058 requires, so the grant
+(`certification-i011-auth-integrity-2026-08-06`, 1 slot) is intact and **the 3-round cap is
+untouched**. This is the allowance model working correctly under failure: no provider was invoked,
+so nothing was charged.
+
+**Cause: mine.** The invocation omitted `--host`, so no reviewer harness ever resolved. The catalog
+has `codex` allowed and installed at rank 85 — the reviewer of record, and the one that preserves
+independence while `claude` is the code writer (`copilot`'s row is explicitly suspended for exactly
+that reason).
+
+### DRIFT-198-I011-002 — preflight burns the FULL timeout to discover it selected no harness
+
+- **Status**: open; **routed to beta3 under the zero-slack rule** (outside FR-066/FR-068/FR-018 and
+  not an authorization-integrity defect)
+- **Severity**: minor mechanism, real consumer cost
+- **Observed**: with no host resolvable, the run sat `requested` for **614.5 seconds** and then failed
+  preflight. `harness_id` was `unselected-harness` from the first written fact onward — the
+  `requested.json` and `reserved.json` records both carry it — so the condition was **knowable at
+  reservation time**, before any waiting began.
+- **Why it matters**: ten minutes of wall clock to learn that a required argument was missing. A
+  consumer hits this on their first misconfigured review and has no signal for the whole budget; the
+  failure text arrives only after the timeout it never needed to spend. It also interacts badly with
+  the round ceiling's UX: the run looks like it is reviewing.
+- **Required correction (deferred)**: fail preflight IMMEDIATELY when no harness resolves, naming the
+  unresolved host and the `--host` flag. The `unselected-harness` sentinel already exists and is
+  already written into the reservation record — nothing new needs detecting, only checking.
+
 ## FOR THE RETRO — a practice that has earned promotion to shipped method guidance
 
 **Flagged for the retro facilitator by maintainer instruction, 2026-08-03.** This is a process
