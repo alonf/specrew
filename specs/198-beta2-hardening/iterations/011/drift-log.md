@@ -1203,6 +1203,70 @@ corrected record was overwritten by the machinery that maintains it — **exactl
 reproducing against this iteration's own state file.** Restored here and flagged rather than silently
 re-fixed, since a hook that overwrites corrections will do it again.
 
+## DRIFT-198-I011-011 — severity RAISED to consumer-reachable; FIXED IN-RELEASE
+
+**Disposition: fixed in-release.** Evidence: `tests/integration/generator-markdown-parity.tests.ps1`,
+RED→GREEN, now a registry row (**91 suites green**, up from 90).
+
+### Severity raised, on a corrected citation
+
+The maintainer's ruling cited `templates/lifecycle/docs-only-lifecycle.md`. **That file does not
+exist** — verified, not assumed. The CLAIM is correct and the evidence is stronger elsewhere, so the
+citation is corrected rather than repeated:
+
+| Consumer surface | Why it raises severity |
+| --- | --- |
+| `templates/github/workflows/specrew-methodology-gate.yml:34` | a workflow **shipped to consumers** runs `npx markdownlint-cli@0 "**/*.md"` — every downstream project inherits a red methodology gate |
+| `docs/user-guide.md:341` (F-033 / Proposal 088) | **every `Invoke-SpecrewBoundaryStateSync` runs `markdownlint --fix` on changed `.md` BEFORE any state write, and unfixable violations HALT boundary sync** |
+
+The second is the sharper one and worse than "consumers are told to run markdownlint": generator output
+flows straight into **boundary sync**. MD009/MD032/MD047 are auto-fixable, so consumers get spurious
+`chore(lint):` directives on every iteration that scaffolds reviewer artifacts — and any unfixable
+violation would **halt their lifecycle at a boundary**, caused entirely by a Specrew-authored file.
+
+### The fix, and why it is one function rather than N patches
+
+`ConvertTo-LintCleanMarkdown` at the single write choke point of **both** governed writers —
+`scaffold-reviewer-artifacts.ps1` (2 write sites) and `scaffold-review-artifact.ps1` (1). Mirrors
+synced and hash-verified.
+
+**The second writer was found only because the parity test covers both.** Fixing the first took the
+count 40 → 3, and all three survivors were in `review.md`, emitted by a writer the CI failure never
+named. A test scoped to the file CI complained about would have shipped a half-fix.
+
+### The harness earned its keep four times before it could be trusted
+
+Recorded because it is this iteration's central lesson arriving in the tooling built to close it:
+
+| # | Harness defect | What it would have reported |
+| --- | --- | --- |
+| 1 | fixture missing `state.md`/`drift-log.md` | INCONCLUSIVE — caught, not scored |
+| 2 | verdict taken from a regex over the output | **PASS while `markdownlint exit=1`** — a false green |
+| 3 | absolute paths → `RangeError: path should be a path.relative()'d string` | **RED on an invocation error** — a false finding |
+| 4 | repo config not passed | flagged MD013, **disabled in `.markdownlint.json`** — over-blocking |
+
+Defects 2 and 3 are the same error in opposite directions: trusting the harness's reading of the
+instrument instead of the instrument's own verdict. The exit code is now the verdict; an exit with no
+named rule is INCONCLUSIVE, never a finding.
+
+### Class fix stays in beta3
+
+This repairs TWO writers. **Every other governed writer remains unpinned** — parity tests for all of
+them stay the beta3 row, unchanged in scope by this in-release fix.
+
+## RELEASE SLICE COST — recorded separately, the retro does NOT reopen
+
+Iteration 011's retro'd **~29.0/20 stands and is not rewritten.** This work is release-gate scope,
+after the retro, so its cost is recorded on its own line to keep the feature total honest without
+editing a closed retrospective:
+
+| Release-gate slice | SP |
+| --- | ---: |
+| Generator parity test (RED-first, 4 harness corrections) + both-writer fix + registry row + full gate | **~1.0** |
+
+Feature-level total therefore reads **~29.0 (iteration 011, retro'd and closed to edits) + ~1.0
+(release slice)**, not a restated 30.0 — the two are different scopes and the record keeps them apart.
+
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
 Recorded now, while it is sharp, and it is the sharpest lesson this iteration produced.

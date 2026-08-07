@@ -165,6 +165,7 @@ $registry = @(
     # become a skipped test, and an unregistered suite is one nobody runs (see DRIFT-198-I011-001,
     # which is that exact failure mode found live in another file).
     @{ area = 'FR-068 verdict-demand reproduction - a demand against a stage with no evidence (half 1, GREEN after T090) plus the emit/do-not-emit marker contradiction (half 2, CHARACTERIZED for beta3)'; path = 'tests/integration/fr068-verdict-demand-reproduction.tests.ps1'; kind = 'script' }
+    @{ area = 'DRIFT-198-I011-011 generator parity - governed writers must emit markdown that passes the repository''s OWN required lint, the same markdownlint step consumers are instructed to run'; path = 'tests/integration/generator-markdown-parity.tests.ps1'; kind = 'script' }
     @{ area = 'FR-066 first-boundary arrival - an unrecordable crossing is a branchable state, not a silent success, and the surface names what is missing'; path = 'tests/integration/fr066-first-boundary-arrival.tests.ps1'; kind = 'script' }
     @{ area = 'FR-055 Stop-packet classification honesty - session-baseline turn-delta, long-turn lane, PostToolUse pre-arrangement nudge, boundary contract untouched, maintainer fixtures (a)-(f)'; path = 'tests/integration/conformance-detection.tests.ps1'; kind = 'script'; timeout_seconds = 420 }
     @{ area = 'FR-056/SC-016 workshop question delivery - shared conduct with deterministic host-specific capability materialization'; path = 'tests/integration/code-rules-skill-multihost.tests.ps1'; kind = 'script' }
