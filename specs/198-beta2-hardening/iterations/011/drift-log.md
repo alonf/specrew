@@ -1346,3 +1346,65 @@ The same applies to T087's harness
 RED by design until T088/T089 land. **Both harnesses are registered together at T092, and neither
 closes the iteration while unregistered.** The maintainer's ruling of 2026-08-03 stands as written:
 a deliberate RED must never quietly become a skipped test.
+
+## DRIFT-198-I011-012 (BLOCKING, pre-tag) — the shipped orchestration gates BEFORE it syncs; FR-066's arrival state is unreachable through the shipped path
+
+**Found by the maintainer's pre-tag manual test on a fresh consumer project (`C:\Temp\testbeta2`,
+frozen as evidence) — not by any engine test.** The tag is held; `main` carries this as a known
+standing red until the slice closes. Requirement: FR-066 (first-boundary arrival state).
+
+### The mechanism, verified at source
+
+In `extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-specify.md`:
+
+| Order | Line | What runs | At a FIRST boundary |
+| --- | --- | --- | --- |
+| block 1 | 28 | `Test-SpecrewBoundaryAuthorization` | **throws** — no authorization can exist yet — aborting the skill |
+| block 2 | 40 | `sync-boundary-state.ps1` (the arrival sync) | **never reached** |
+
+So no crossing is recorded, no `pending-verdict-stop.md` is written, and the gate-stop skill's
+no-artifact fallback then instructs the agent to INVENT a marker (observed: `specify -> specify`,
+July's F1 signature). FR-066's arrival-state code is delivered and correct — and unreachable at the
+exact moment it exists for.
+
+### Why every engine test missed it
+
+The existing suites invoke the sync FUNCTION directly. That proves the engine records an arrival
+correctly — and it does. It cannot prove the shipped ORCHESTRATION ever calls it. **The tested path
+was not the shipped path.** This is the third instance of the reachability class (T089's unreachable
+branch; finding 2's three-mint-site funnel; this), and the sharpest: it survived two releases
+because every green pointed at the engine.
+
+### Evidence status at this commit — recorded honestly, nothing banked
+
+`tests/integration/shipped-orchestration-arrival.tests.ps1` is committed WITH this entry, in exactly
+this state:
+
+**Ordering RED: honest and recorded.** The fixture reads the shipped skill itself — not a copy —
+and measures the authorization gate (line 28) preceding the arrival sync (line 40).
+
+**Behavioral RED: explicitly UNPROVEN.** Two probe runs produced REDs that could not be attributed
+to the product refusing — probe contamination, refused rather than banked:
+
+1. `-CurrentBoundary ''` — parameter-binding failure: the probe failing, not the product refusing.
+2. `-CurrentBoundary 'intake'` — the RED could not be attributed to the product's first-boundary
+   refusal rather than canonical-vocabulary rejection of `'intake'` itself. Whether the
+   authorization surface can represent a first crossing AT ALL — the `intake -> specify` crossing
+   that `Get-SpecrewPendingBoundaryCrossing` emits vs the vocabulary
+   `Resolve-SpecrewCanonicalBoundaryType` accepts — is an open question under evidence-only
+   investigation, and its answer decides the fix's shape.
+
+A third gap, seen at source while committing: the shipped block computes its own `$currentBoundary`
+(defaulting to `'specify'` when `session_state.boundary_type` is missing or blank), so a probe
+passing `'intake'` does not replicate the shipped computation it claims to test. **A RED that fires
+for the wrong reason is refused, not banked** — it is the mirror image of the green that measures
+nothing.
+
+### Scope
+
+Release-gate scope, pre-tag; iteration 011's retro'd ~29.0/20 does not reopen. Cost lands on the
+release-slice cost line when the slice closes. Orchestration-path fixtures as a class are the
+structural cure for the reachability class and belong in the release gate — the beta3 row carries
+them. The fixture is deliberately NOT registered in `tests/f198-regression-suite.ps1` while RED (a
+red workflow is a stop); registering it green is an obligation of the slice's close, under the same
+ruling as T092: a deliberate RED must never quietly become a skipped test.
