@@ -1287,9 +1287,11 @@ editing a closed retrospective:
 | Release-gate slice | SP |
 | --- | ---: |
 | Generator parity test (RED-first, 4 harness corrections) + both-writer fix + registry row + full gate | **~1.0** |
+| DRIFT-198-I011-012 orchestration-path slice: honest-RED fixture through the shipped skill's own blocks, consequence-graph walk in writing, gate first-crossing translation, nine-skill reorder (+ before-implement's missing arrival sync), marker-invention retirement, FR-066 reconciliation, secondary findings with named writers, registry row + full gate | **~2.5** |
 
-Feature-level total therefore reads **~29.0 (iteration 011, retro'd and closed to edits) + ~1.0
-(release slice)**, not a restated 30.0 — the two are different scopes and the record keeps them apart.
+Feature-level total therefore reads **~29.0 (iteration 011, retro'd and closed to edits) + ~1.0 +
+~2.5 (release slices)**, not a restated total — the scopes are different and the record keeps them
+apart.
 
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
@@ -1619,7 +1621,11 @@ overclaimed** (`model_source: "human-entered"` for a model value the human never
 write **executed by version-skewed 0.39.0 code inside a 0.40.0-governed project**. Correcting this
 slice's own earlier framing, honestly: this is NOT fabricated-from-nothing (the first reading);
 the human decision is real and recorded — the defect is the bypassed ceremony, the overclaimed
-provenance fields, and the skewed writer the 0.40.0 tree cannot vouch for.
+provenance fields, and the skewed writer the 0.40.0 tree cannot vouch for. The write also violates
+the DRIFT-198-I009-028 write-scope contract pinned by
+`tests/continuous-co-review/unit/reviewer-host-grant-write-scope.Tests.ps1` — a grant writes ONE
+field of ONE row; this write set `allowed`, `authorization_ref`, `model_source`, and `model`
+together.
 
 Routed to beta3: (a) review-side writers gain the sync wrapper's stale-install refusal; (b) a
 workshop-lens reviewer selection flows INTO the 028 ceremony (minted via `specrew review --host`)
