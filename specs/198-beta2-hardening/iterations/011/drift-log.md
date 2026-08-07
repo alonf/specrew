@@ -1585,3 +1585,75 @@ every leg measured live: ordering (sync 32 < gate 53); block 2's engine result
 advancement gate blocking with `` Boundary `intake -> specify` requires explicit human
 authorization ``; and the gate authorizing after the capture-minted `{from: null, to: specify}`
 entry. The orchestration was the subject under test, end to end.
+
+## DRIFT-198-I011-012 — secondary findings (3e), each with its writer named
+
+### (1) MOST SERIOUS — a reviewer authorization written outside the 028 ceremony, by version-skewed 0.39.0 machinery
+
+The evidence chain, from the frozen `C:\Temp\testbeta2`:
+
+- Bootstrapped 2026-08-07 23:17 local under `specrew_version: "0.40.0"` — which exists ONLY as the
+  dev tree (installed modules: 0.39.0, 0.38.0, 0.37.0, 0.32.0 — no 0.40.0).
+- `reviewer-hosts.json` was created 2026-08-08 00:49:33 — 92 minutes AFTER bootstrap, mid-session,
+  by runtime machinery, not by project scaffolding.
+- Its codex row: `allowed: true`, `authorization_ref: "workshop-001-linkcheck"`,
+  `model_source: "human-entered"`, `model: "chatgpt"`. All other rows carry the contract-clean
+  defaults (`allowed: false`, `authorization_ref: null`).
+- The workshop record EXISTS and is human-confirmed: 001-linkcheck's code-implementation lens
+  (`confirmation: human-confirmed`, `confirmation_scope: lens-question`) records "Reviewer: codex,
+  human-selected (intake brief + strongest independent host), authorization-ref
+  workshop-001-linkcheck".
+- `workshop-001-linkcheck` appears NOWHERE in the 0.40.0 tree nor in any installed module — the
+  row was synthesized at runtime from the workshop answer.
+- With `SPECREW_MODULE_PATH` unset and no 0.40.0 module installed, the deployed wrapper's path-2
+  resolution dispatches to the INSTALLED newest module — 0.39.0 — whose reviewer-hosts writers
+  (`specrew-review.ps1`, `worktree-review-orchestrator.ps1`) carry NO stale-install guard; that
+  refusal exists only in the sync wrapper.
+
+**Verdict against the 028-fixed shape** (`docs/data-contracts.md:131`: the authorization writer is
+`specrew review --host <h> --authorization-ref <ref>` — human authorization — plus installed-state
+refresh): structurally conformant; non-codex defaults clean; the codex authorization is
+**human-real but ceremony-bypassed** — workshop machinery converted a lens answer into registry
+authorization rows the contract reserves for the explicit ceremony — with **provenance
+overclaimed** (`model_source: "human-entered"` for a model value the human never entered) and the
+write **executed by version-skewed 0.39.0 code inside a 0.40.0-governed project**. Correcting this
+slice's own earlier framing, honestly: this is NOT fabricated-from-nothing (the first reading);
+the human decision is real and recorded — the defect is the bypassed ceremony, the overclaimed
+provenance fields, and the skewed writer the 0.40.0 tree cannot vouch for.
+
+Routed to beta3: (a) review-side writers gain the sync wrapper's stale-install refusal; (b) a
+workshop-lens reviewer selection flows INTO the 028 ceremony (minted via `specrew review --host`)
+instead of writing registry rows directly; (c) `model_source` records its true source.
+
+### (2) The state.md re-revert — third strike, writer NAMED
+
+- The write pair at 2026-08-07T22:36:31Z: `tasks-progress.yml` `updated_at` at `.017Z`, `state.md`
+  `Updated` at `.078Z` — one writer pass, 60ms apart.
+- `.specrew/runtime/hook-bootstrap-render-8d74ccea-…-clear.json` is stamped the SAME second —
+  **the writer is THIS session's SessionStart (/clear) bootstrap**: its task-progress refresh
+  (`scripts/internal/task-progress.ps1`, loaded by `specrew-start.ps1` /
+  `coordinator-resume.ps1`) regenerated state.md's managed block from `tasks-progress.yml`.
+- Root cause, which the third strike finally surfaces: the closure correction lives ONLY in
+  state.md's narrative; `tasks-progress.yml` still records T091/T093/T092 as pending. The
+  generator faithfully re-asserts yml-truth over narrative-truth at every session start — so
+  restoring state.md alone re-reverts at the NEXT start. The durable fix is reconciling the yml's
+  terminal statuses (needs a maintainer ruling on the exact statuses) or teaching the generator
+  the recorded closure attempt. Until one lands, every restore is temporary and this entry is the
+  standing explanation.
+- state.md and tasks-progress.yml are restored to the committed corrected record with this entry.
+
+### (3) The timestampless pending_next_boundary mutation (-010 family)
+
+`Test-SpecrewBoundaryAuthorization`'s blocked path writes state (`pending_next_boundary` set to
+the requested boundary) through `Set-SpecrewBoundaryEnforcementState`, which stamps
+`generated_at_utc` only when the field is absent — an existing stamp is preserved stale, so the
+mutation is invisible in the file's own dating. The -010 family shape: machinery mutating records
+without honest self-dating. Recorded, not fixed in this slice.
+
+### (4) The reachability class, third instance — structural cure named
+
+Consolidated: T089's unreachable branch; finding 2's three-mint-site funnel; -012's
+gate-before-sync. The cure is the orchestration-path fixture class — execute the shipped skill's
+OWN blocks against a real project — now instantiated once
+(`shipped-orchestration-arrival.tests.ps1`) and routed to beta3 as a per-shipped-skill release-gate
+requirement, alongside the second-feature reset edge named by the walk.
