@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "011"
-updated_at: "2026-08-06T10:01:21.9384550Z"
+updated_at: "2026-08-06T20:15:10.3495705Z"
 tasks:
   T086:
     title: "FR-068 reproduction harness — reproduce BOTH halves of the 2026-07-25T17:40:45Z shape"

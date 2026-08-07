@@ -9,10 +9,10 @@ same day** when the release gate (`validate-governance.ps1 -IncludeClosed`) reje
 The verdict was real; the artifacts were not. **The status was reversed rather than the evidence
 backfilled under it**, so the record never shows closure preceding its evidence.
 **Last Completed Task**: T090 (T092 ran to its cap and is terminal as `deferred`)
-**Tasks Remaining**: (none — T091 and T093 deferred to beta3 by recorded decision)
+**Tasks Remaining**: (none — T091, T093 and T092 are all terminal)
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
-**Updated**: 2026-08-06T10:01:22.0165619Z
+**Updated**: 2026-08-06T20:15:10.3996504Z
 
 ## Execution Summary
 
