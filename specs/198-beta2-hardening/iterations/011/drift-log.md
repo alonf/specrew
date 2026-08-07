@@ -1521,3 +1521,43 @@ expanded into this release slice.
 - Ordering checks inside the gate — rejected; the ratchet owns ordering and already refuses skips.
 - 3c before the reorder — would strand boundaries 2..N (the crutch discovery above); sequencing
   locked as: gate fix → nine-skill reorder → fallback replacement.
+
+### The nine-skill audit and reorder (3b executed)
+
+Every gate-carrying skill audited at source; every one carried the gate-first pattern; all nine
+reordered (arrival sync before the advancement gate, gate last with the controller-truth render
+instruction). Mirrors under `.specify/` synced and hash-verified.
+
+| Skill | Gate-first | From-side (kept) | Arrival sync before the fix | Action |
+| --- | --- | --- | --- | --- |
+| sync-specify | yes (gate 28 / sync 40) | computed, `'specify'` fallback | present, unreachable | reordered; workshop gate stays pre-work |
+| sync-clarify | yes | `'specify'` | present, post-gate | reordered |
+| sync-plan | yes | `'clarify'` | present, post-gate | reordered |
+| sync-tasks | yes | `'plan'` | present, post-gate | reordered |
+| before-implement | yes | `'tasks'` | **ABSENT — no sync in the skill at all** | reordered + arrival sync ADDED |
+| sync-review-signoff | yes | `'before-implement'` | present, post-gate | reordered |
+| sync-retro | yes | `'review-signoff'` | present, post-gate | reordered |
+| sync-iteration-closeout | yes | `'retro'` | present, post-gate | reordered |
+| sync-feature-closeout | yes | `'iteration-closeout'` | present, post-gate | reordered |
+
+The hard-coded from-sides are retained: for non-first crossings they are the exact vocabulary the
+capture writer mints (`{cursor -> X}`), so the gate matches recorded reality. `before-implement`
+was the sharpest audit find after sync-specify: it gated with NO arrival sync anywhere in the
+skill, so its pending ask depended entirely on off-skill machinery.
+
+Semantics note, recorded as a deliberate trade: work-before-authorization at each skill's own
+boundary is the ratchet's stated contract ("the FIRST unapproved crossing still records
+mechanically; a SECOND advance is refused"). A skill invoked out of order now performs its work
+before the ratchet refuses at the sync — governance holds (nothing advances, nothing records), and
+the refusal is consumer-legible; the wasted work is visible instead of a silent gate-abort with no
+artifact.
+
+### GREEN through the shipped path (the fixture's full contract)
+
+After gate fix + reorder, `tests/integration/shipped-orchestration-arrival.tests.ps1` exits 0 with
+every leg measured live: ordering (sync 32 < gate 53); block 2's engine result
+`boundary_record_status: "established", is_first_boundary: true`; `pending_crossing`
+`intake -> specify`; `pending-verdict-stop.md` present with the `intake -> specify` marker; the
+advancement gate blocking with `` Boundary `intake -> specify` requires explicit human
+authorization ``; and the gate authorizing after the capture-minted `{from: null, to: specify}`
+entry. The orchestration was the subject under test, end to end.
