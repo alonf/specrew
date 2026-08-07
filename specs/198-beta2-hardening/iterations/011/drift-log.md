@@ -940,7 +940,7 @@ hazard this iteration, after Git-Bash `tar` and the directory-swallowing atomic 
 
 | FR-066 half | State | Evidence |
 | --- | --- | --- |
-| **Arrival state** — an unrecordable first crossing is a distinguishable, branchable state that reports failure rather than success, and a surface that speaks and names what is missing | **DELIVERED** | T088/T089; `fr066` CASES 1–2 green; round 2 did not fault it |
+| **Arrival state** — an unrecordable first crossing is a distinguishable, branchable state that reports failure rather than success, and a surface that speaks and names what is missing | **DELIVERED — later found UNREACHABLE through the shipped path** (reconciled 2026-08-08, below) | T088/T089; `fr066` CASES 1–2 green; round 2 did not fault it. Engine-direct evidence only: the shipped orchestration aborted pre-sync at a first boundary (DRIFT-198-I011-012) |
 | **Mint guard** — a failed crossing must not be convertible into an authorized cursor by any bootstrap path | **NOT DELIVERED** | two attempts, both faulted (round 2: double-failure window; round 3: concurrent clear). Reverted. |
 
 **The mint hole is therefore OPEN and known**, at its measured extent: three bootstrap sites funnel
@@ -987,6 +987,30 @@ Recorded precisely, because the difference between these two lines is the whole 
 
 The reverted attempts are gone rather than shipped, so nothing goes out in a half-trusted state — the
 same distinction that rejected Option 4 on 2026-08-06.
+
+### RECONCILED 2026-08-08 (DRIFT-198-I011-012): the arrival state was delivered-but-unreachable
+
+The 2026-08-06 ruling gated the tag on "FR-066's arrival state" while every green behind that claim
+drove the sync FUNCTION directly. The maintainer's pre-tag fresh-project test then showed the
+shipped orchestration never reaches that code at the exact moment it exists for: the skills gated
+before they synced, so at a first boundary the skill aborted pre-sync. **The honest delivery claim
+for the 2026-08-06 ruling is therefore "delivered-but-unreachable-until-the--012-slice"** — the
+engine half was true, the reachability half was untested, and the tested path was not the shipped
+path.
+
+As of the -012 slice the arrival state is REACHABLE through the shipped path and proven there:
+gate first-crossing translation (79533264), nine-skill reorder with before-implement gaining its
+missing arrival sync (68242247), marker-invention fallback retired (3ccd7f60), all pinned by
+`tests/integration/shipped-orchestration-arrival.tests.ps1` executing the shipped skill's own
+blocks — exit 0, engine result `boundary_record_status: "established"` at
+`is_first_boundary: true`, stop rendered from controller truth, post-verdict authorization
+matching.
+
+**The tag basis therefore reads, corrected**: FR-068's evidence half plus FR-066's arrival state
+*reachable through the shipped path via the -012 slice*. The mint guard stays a named open defect
+carried to beta3, unchanged. The reachability claim awaits the maintainer's fresh-project re-test
+before the tag moves — a shipped-path fixture is necessary evidence, and the manual first-boundary
+check that found this finding is the confirming instrument.
 
 ### Carried to beta3, consolidated
 
