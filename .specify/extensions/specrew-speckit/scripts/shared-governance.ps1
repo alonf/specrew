@@ -2802,12 +2802,30 @@ function Test-SpecrewBoundaryAuthorization {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
     }
 
+    # DRIFT-198-I011-012 (first-crossing translation): the first crossing is representable
+    # everywhere except this gate — the detector emits marker-from 'intake'
+    # (Get-SpecrewPendingBoundaryCrossing), the capture writer mints {from: null, to: order[0]}
+    # (Invoke-SpecrewBoundaryVerdictCapture -> Add-SpecrewBoundaryAuthorization), and the
+    # unreconciled primitive already matches with NO from-side (the matcher's null-targetFrom arm,
+    # its existing convention). The only call shape a first boundary can produce here is the
+    # self-transition ask (current == requested == the first canonical boundary): no writer ever
+    # mints a self-edge entry for it, so without translation the ask is unsatisfiable even AFTER
+    # the human approves. In exactly that shape, match on the to-side alone — the cycle-scoped
+    # walk stays the sole authority on which entries are reachable — and report the crossing in
+    # marker vocabulary ('intake -> <first>'). 'intake' is never accepted as an input boundary
+    # here and is never written to verdict_history; ordering enforcement stays in the sync
+    # ratchet, which this gate defers to.
+    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+    $isFirstCrossingAsk = ($requestedCanonical -eq $boundaryOrder[0] -and $currentCanonical -eq $boundaryOrder[0])
+    $matchFromBoundary = if ($isFirstCrossingAsk) { $null } else { $currentCanonical }
+    $displayCurrentBoundary = if ($isFirstCrossingAsk) { 'intake' } else { $currentCanonical }
+
     if ($EmergencyBypassActive) {
-        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'bypassed' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Emergency bypass is active for this session.'
+        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'bypassed' -CurrentBoundary $displayCurrentBoundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Emergency bypass is active for this session.'
         return [pscustomobject]@{
             Authorized            = $true
             Decision              = 'bypassed'
-            CurrentBoundary       = $currentCanonical
+            CurrentBoundary       = $displayCurrentBoundary
             RequestedBoundary     = $requestedCanonical
             MatchedVerdict        = $null
             DirectiveSentinel     = 'SPECREW_BOUNDARY_BYPASS_ACTIVE'
@@ -2822,14 +2840,14 @@ function Test-SpecrewBoundaryAuthorization {
     # would otherwise authorize the current cycle's same-named crossing with zero human
     # involvement. It consumes THE shared cycle-scoped matcher the unreconciled primitive
     # uses - one read, no per-site copy to drift.
-    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.EffectiveState['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $currentCanonical -LastAuthorizedBoundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
+    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.EffectiveState['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $matchFromBoundary -LastAuthorizedBoundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
 
     if ($null -ne $matchedVerdict) {
-        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
+        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $displayCurrentBoundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
         return [pscustomobject]@{
             Authorized            = $true
             Decision              = 'authorized'
-            CurrentBoundary       = $currentCanonical
+            CurrentBoundary       = $displayCurrentBoundary
             RequestedBoundary     = $requestedCanonical
             MatchedVerdict        = [pscustomobject]$matchedVerdict
             DirectiveSentinel     = 'SPECREW_BOUNDARY_AUTHORIZED'
@@ -2849,16 +2867,16 @@ function Test-SpecrewBoundaryAuthorization {
         bypass_history           = @($enforcementState.State['bypass_history'])
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $mutableState -Context $enforcementState.Context | Out-Null
-    Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'blocked' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason "No persisted authorization matched $currentCanonical -> $requestedCanonical."
+    Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'blocked' -CurrentBoundary $displayCurrentBoundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason "No persisted authorization matched $displayCurrentBoundary -> $requestedCanonical."
     return [pscustomobject]@{
         Authorized            = $false
         Decision              = 'blocked'
-        CurrentBoundary       = $currentCanonical
+        CurrentBoundary       = $displayCurrentBoundary
         RequestedBoundary     = $requestedCanonical
         MatchedVerdict        = $null
         DirectiveSentinel     = 'SPECREW_BOUNDARY_BLOCKED'
         BypassAttemptDetected = $bypassAttemptDetected
-        Reason                = "No persisted authorization matched $currentCanonical -> $requestedCanonical."
+        Reason                = "No persisted authorization matched $displayCurrentBoundary -> $requestedCanonical."
         PolicyClass           = $policyClass
     }
 }
@@ -3222,7 +3240,11 @@ function Write-SpecrewBoundaryAuthorizationDirective {
         [string]$BypassReason
     )
 
-    $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
+    # DRIFT-198-I011-012: the gate reports first crossings in marker vocabulary, so the from-side
+    # may be the marker-only 'intake' — the same tolerance New-SpecrewBoundaryCrossingIdentity
+    # already has. 'intake' is display vocabulary here; it is never a canonical boundary.
+    $normalizedCurrent = Normalize-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary
+    $currentCanonical = if ($normalizedCurrent -eq 'intake') { 'intake' } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary' }
     $requestedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
     $sentinel = $DirectiveSentinel.Trim()
     if ($sentinel -notin @('SPECREW_BOUNDARY_BLOCKED', 'SPECREW_BOUNDARY_AUTHORIZED', 'SPECREW_BOUNDARY_BYPASS_ACTIVE', 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED')) {
@@ -3233,7 +3255,7 @@ function Write-SpecrewBoundaryAuthorizationDirective {
         'SPECREW_BOUNDARY_AUTHORIZED' {
             return @(
                 'SPECREW_BOUNDARY_AUTHORIZED'
-                "Boundary `$currentCanonical -> $requestedCanonical` is authorized."
+                ('Boundary `{0} -> {1}` is authorized.' -f $currentCanonical, $requestedCanonical)
             ) -join [Environment]::NewLine
         }
         'SPECREW_BOUNDARY_BYPASS_ACTIVE' {
@@ -3246,14 +3268,14 @@ function Write-SpecrewBoundaryAuthorizationDirective {
         'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED' {
             return @(
                 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED'
-                "Boundary `$currentCanonical -> $requestedCanonical` still requires explicit human authorization."
+                ('Boundary `{0} -> {1}` still requires explicit human authorization.' -f $currentCanonical, $requestedCanonical)
                 'Recognized verdicts:'
             ) + @(Get-SpecrewBoundaryEnforcementRecognizedVerdicts -RequestedBoundary $requestedCanonical | ForEach-Object { "- $_" }) -join [Environment]::NewLine
         }
         default {
             return @(
                 'SPECREW_BOUNDARY_BLOCKED'
-                "Boundary `$currentCanonical -> $requestedCanonical` requires explicit human authorization."
+                ('Boundary `{0} -> {1}` requires explicit human authorization.' -f $currentCanonical, $requestedCanonical)
                 'Recognized verdicts:'
             ) + @(Get-SpecrewBoundaryEnforcementRecognizedVerdicts -RequestedBoundary $requestedCanonical | ForEach-Object { "- $_" }) -join [Environment]::NewLine
         }
