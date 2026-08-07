@@ -1408,3 +1408,116 @@ structural cure for the reachability class and belong in the release gate — th
 them. The fixture is deliberately NOT registered in `tests/f198-regression-suite.ps1` while RED (a
 red workflow is a stop); registering it green is an obligation of the slice's close, under the same
 ruling as T092: a deliberate RED must never quietly become a skipped test.
+
+## DRIFT-198-I011-012 — the consequence-graph walk, in writing, before the reorder
+
+Maintainer verdict 2026-08-08: Option 1 (gate-internal first-crossing translation), with the
+implementation lead "derive targetFrom as null and let the matcher's dormant arm do the work", and
+the constraint that ordering enforcement stays where it lives. This walk is the named design-gate
+step the retro promoted: every consumer of every surface the change touches, walked before building.
+
+### The honest RED, banked first (commit 74594c35)
+
+The repaired probe executes the shipped skill's own fenced blocks against a bootstrapped fresh
+consumer project. Four REDs, zero INCONCLUSIVE, each firing for the product's reason — including the
+runtime kill-shot: after writing the exact entry the capture writer mints (`{from: null, to:
+specify}`), the gate still answers `blocked: No persisted authorization matched specify -> specify`.
+The detector measured live: `pending=True, from=null, markerFrom=intake`.
+
+### What the arrival sync writes, and who consumes each write
+
+| Sync write | Consumers (verified at source) |
+| --- | --- |
+| `session_state.boundary_type` (the working cursor) | pending-crossing detector; unreconciled read's legacy arm; conformance provider; the skills' own `$currentBoundary` computation |
+| `pending_crossing` scope (`intake -> specify` at first arrival) | `Get-SpecrewPendingVerdictState` scoped read (integrity + re-derive cross-check); verdict capture's expected-marker derivation; unreconciled read's working-boundary arm; ratchet |
+| `pending_next_boundary` | state validator (canonical-only field); informational readers |
+| `.specrew/runtime/pending-verdict-stop.md` | the gate-stop skill (controller truth for the marker); Stop-hook packet renderer; retired/refreshed post-capture by `Sync-SpecrewPendingVerdictArtifactAfterAuthorization` |
+| ledger + `.squad` claims + lint pass + dashboards | decision ledger readers; unchanged by this slice |
+
+### Ordering authority: the ratchet owns it; the gate defers
+
+`Invoke-SpecrewBoundaryStateSync` calls `Invoke-SpecrewBoundaryRatchetGate` before recording
+(`scripts/internal/sync-boundary-state.ps1:1556`). The ratchet's contract states the design intent
+verbatim: **"the FIRST unapproved crossing still records mechanically … a SECOND advance while that
+crossing is unapproved is refused … re-syncing the SAME boundary stays allowed."** Sync-then-gate is
+therefore not a new policy — it is the ratchet's own contract, currently unreachable through the
+skills because the advancement gate aborts the skill before the sync runs. The gate translation
+adds no ordering logic; skipped-boundary refusal stays in the ratchet (verified: an unauthorized
+skip is refused at the SYNC, before any recording).
+
+### The dormant-arm lead: CONFIRMED, with in-repo precedent
+
+`Get-SpecrewUnreconciledBoundary` already calls the shared matcher with **no `-FromBoundary`**
+(shared-governance.ps1:3004) — the null-targetFrom arm (2916) is the unreconciled primitive's
+existing convention for exactly this question. The gate fix aligns the live gate with that
+convention in first-crossing mode only: when the effective `last_authorized_boundary` is null and
+the requested boundary is the first canonical boundary, pass targetFrom null. It matches recorded
+reality (`{from: null}` entries are all any writer mints — `Add-SpecrewBoundaryAuthorization`
+resolves a non-null from-side canonically, so `intake` can never be written into history), and it
+cannot loosen later crossings (trigger requires a null cursor AND requested == order[0]).
+
+### The walk's biggest finding: the marker-invention fallback is LOAD-BEARING for boundaries 2..N
+
+Three facts compose:
+
+1. Post-capture, `Sync-SpecrewPendingVerdictArtifactAfterAuthorization` re-derives pending state,
+   gets none (cursor == working), and REMOVES `pending-verdict-stop.md`.
+2. The next ask is minted only by a SYNC: the next boundary's own sync (arrival ask), or a re-sync
+   of the authorized boundary via `-OpenNextCrossingWhenBoundaryAuthorized`
+   (sync-boundary-state.ps1:1680) — nothing mints at capture time.
+3. Under gate-first ordering, every skill's first pass aborts BEFORE its sync.
+
+So at every boundary after capture there is a window with NO artifact and NO pending ask, and the
+gate-first skill aborts inside it — which is precisely when the gate-stop skill's no-artifact
+fallback tells the agent to infer a marker. **The shipped flow for boundaries 2..N has been standing
+on the invention crutch the whole time**: linearly the invented marker happens to be correct, so it
+looked like working machinery; at the first boundary the inference produced `specify -> specify`
+(July's F1), and at over-advances it names the wrong crossing. Consequence, binding on sequencing:
+**all nine gate-carrying skills reorder BEFORE the fallback clause is replaced** — retiring the
+crutch first would strand every boundary after specify. The audit below records per-skill verdicts,
+but the reorder is not optional per skill.
+
+### The reordered flow, walked end-to-end
+
+- **First boundary**: work → sync records arrival (ratchet passes: nothing unreconciled), mints
+  `intake -> specify` + artifact → gate refuses (no entry yet) → stop WITH controller truth →
+  capture writes `{null -> specify}`, cursor moves, artifact retired → flow proceeds; any re-run of
+  the skill re-syncs idempotently (ratchet allows same-boundary), `OpenNext` mints the advance ask,
+  and the translated gate now matches the recorded entry (probe leg D turns green).
+- **Normal boundary X**: work → sync mints `prev -> X` + artifact → gate refuses → stop with truth →
+  capture `{prev -> X}` → proceed. The ask is machinery-minted at every stop; no inference remains.
+- **Over-advance recovery**: working jumped ahead on a fresh project → sync still mints the FIRST
+  unpaid crossing (`intake -> specify`, IsMultiBoundaryGap) → the stop demands the earliest
+  boundary, one approval at a time — conformance Cases 11b/11c behavior preserved.
+- **Unauthorized skip**: sync for a later boundary while an earlier crossing is unapproved → the
+  RATCHET refuses before recording — ordering enforcement untouched by the gate change.
+
+### Gate-result consumers under the translation
+
+- The nine skills consume `.Authorized`, `.Reason` (thrown), and pass `.CurrentBoundary` /
+  `.RequestedBoundary` / `.DirectiveSentinel` to `Write-SpecrewBoundaryAuthorizationDirective`. In
+  first-crossing mode the result reports the crossing in marker vocabulary (`intake`), so the
+  directive writer learns the same from-side tolerance the crossing-identity minting already has
+  (shared-governance.ps1:1443 pattern). `verdict_history` vocabulary is untouched.
+- The 3a run surfaced a latent directive bug fixed in the same touch: the blocked/authorized
+  directive text backtick-escapes `$currentCanonical`, rendering the VARIABLE NAME literally to the
+  human ("Boundary $currentCanonical -> specify requires…") — measured in the probe's block-1
+  output.
+- The enforcement decision-ledger entry's `Current Boundary` line is a free-text field (only the
+  `Boundary` title field resolves canonically) — safe to carry `intake`.
+
+### Named, not solved here: the second-feature arrival edge
+
+The crossing detector has exactly one reset edge (`iteration-closeout -> plan`). A SECOND feature in
+the same project leaves the cursor at `feature-closeout`, from which no `-> specify` crossing can be
+minted. Feature 198's own ledger began `{null -> specify}` only because this worktree was fresh.
+Same reachability class, adjacent scope — recorded for the beta3 vocabulary/reset cluster, not
+expanded into this release slice.
+
+### Killed by the walk
+
+- Capture-side `from: 'specify'` self-edges (Option 3) — falsified before the verdict; stays
+  never-offerable.
+- Ordering checks inside the gate — rejected; the ratchet owns ordering and already refuses skips.
+- 3c before the reorder — would strand boundaries 2..N (the crutch discovery above); sequencing
+  locked as: gate fix → nine-skill reorder → fallback replacement.
