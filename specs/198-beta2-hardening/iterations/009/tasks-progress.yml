@@ -1,0 +1,53 @@
+schema: "v1"
+feature: "198-beta2-hardening"
+iteration: "009"
+updated_at: "2026-07-26T04:55:25Z"
+tasks:
+  T072:
+    title: "Proposal 209 W1 per-suite timing"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T073:
+    title: "Proposal 209 W2 bounded parallel registry"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T074:
+    title: "Canonical candidate inclusion and exclusion identity"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T075:
+    title: "Codex file-primary delivery without duplicate invocation"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T076:
+    title: "Review-engine version handshake"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T077:
+    title: "Consumer review-runtime ignore classification"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T078:
+    title: "Candidate fidelity frozen-evidence regression"
+    status: "completed"
+    started_at: "2026-07-26T00:00:00Z"
+    completed_at: "2026-07-26T04:55:25Z"
+    blocked_reason: ""
+  T079:
+    title: "Integrated verification and independent review"
+    status: "deferred"
+    started_at: "2026-07-26T04:55:25Z"
+    completed_at: ""
+    blocked_reason: "deferred at the 2026-07-30 iteration-closeout, NOT done. The verification RAN and is green: registry 87/87, bootstrap suites, lint, the three-volume matrix with per-leg measurements, serial parity, and both controller verification commands green against the exact target digest. CERTIFICATION did not pass. Eight independent review rounds; the final one (run-f198-i009-3d74f123-final, digest 85bdfe01) reported two majors of the path-identity/containment class - DRIFT-198-I009-041 (authority-store containment is lexical) and DRIFT-198-I009-042 (the case probe follows links, so a dangling entry inverts the verdict) - which fired the pre-agreed termination rule. Disposition of record is the narrowed beta2 release claim at specs/198-beta2-hardening/beta2-release-claim.md; corrections carried to Iteration 010 (041 first task, 042 alongside it, 043 with the link-state harness fixtures). Marking this done would assert release confidence the evidence does not support."

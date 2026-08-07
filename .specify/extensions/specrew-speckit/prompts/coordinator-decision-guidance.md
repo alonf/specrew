@@ -62,14 +62,14 @@ Examples:
 2. In **What needs your review**, say exactly what should be reviewed and why.
 3. In **What happens next**, say what will happen after review or approval.
 4. In **What I need from you**, ask for the single review/verdict action.
-5. If the review target is a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
+5. If the review target is a local repository file, include a `file:///` URI resolved from the current project's absolute path.
 6. Name the owner when it matters.
 
 Example next step:
 
-> Review the new handoff wording in the coordinator prompt, template, and Squad agent contract. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
+> Review the new handoff wording in the coordinator prompt, template, and agent contract. Start with `file:///absolute/project/path/specs/001-feature/contracts/coordinator-handoff-template.md`.
 
-At `feature-closeout`, the review decision must split release SDLC ownership into `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows. The steps below describe the closeout **shape**; instantiate each from the project's `.specrew/repository-governance.yml` (provider, `branch_model`, `review_gate`) and the project's own release/publish mechanism — never assume a specific forge or package registry. `AGENT NEXT ACTION:` executes Step 5 push the feature branch to the project's forge, Step 6 open the PR/MR via that forge (the provider adapter describes how), Step 7 self-review and address the project's `review_gate` (human approvals + comment resolution are always-available; automated review is opt-in), Step 8 merge per the `branch_model` (the project's merge strategy) after approvals/checks, Step 9 if the work produces a release, tag the merge commit (or the PASS-candidate fix commit if looping) and publish a prerelease per the project's release mechanism, Step 10 verify the prerelease published via the project's package/registry tooling, Step 11 PAUSE for the human manual test PASS/FAIL verdict on the installed prerelease in a clean environment, Step 12 if FAIL fix on the release-truth branch then tag the next prerelease and repeat from Step 9, Step 13 if PASS tag the PASS-validated commit and publish the stable release per the project's release mechanism, then verify, and Step 14 stop before any new feature work. `HUMAN ACTION NEEDED:` asks the human to approve each agent action when prompted and, at Step 11, install + exercise the prerelease via the project's package mechanism and report PASS or FAIL with evidence. **Specrew's own instantiation (a Specrew-specific example, NOT a downstream mandate)**: provider `github` + PowerShell Gallery — Step 6 `gh pr create`; Step 7 address Copilot's opt-in PR review; Step 10 `Find-Module Specrew -AllowPrerelease`; Step 11 `Install-Module Specrew -AllowPrerelease`; push `v<next-version>-beta.1` then promote `v<next-version>` stable.
+At `feature-closeout`, copy the `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows from the launch contract's `## Resolved Feature-Closeout Delivery` block. That resolved block is authoritative: execute only its applicable steps, keep every named N/A reason visible, never invent a forge, review, or publication step, and require prerelease validation before stable only for `beta-stable`.
 
 At lifecycle-end / `feature-closeout`, route every carried-forward item by its **owner**, not into one bucket (FR-025): (a) **downstream project work** — a follow-up in THIS project → a new PR-backed work item (`docs-only` / `devops` / `bug-bash`) per the work-kind model, never a reopen of the merged feature; (b) an **upstream Specrew / tool defect** surfaced while using Specrew → route it to the TOOL's backlog (an upstream issue / the tool's maintainers), NOT the project's carried-forward items — a framework defect is not the project's work item; (c) a **new work KIND** (CI/devops, docs, a separate bug fix) → open a SEPARATE work item of that kind, never an "iteration N" of a different-kind feature.
 
@@ -108,7 +108,7 @@ Example next step:
 
 Examples:
 
-- **Compliant**: "I used the current authorization to advance only to the implementation boundary. I stopped again and I need your review of `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` before the review-boundary."
+- **Compliant**: "I used the current authorization to advance only to the implementation boundary. I stopped again and I need your review of `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/plan.md` before the review-boundary."
 - **Violation**: "You said continue, so I emitted review-boundary, retro-boundary, and iteration-closeout commits." Expected validator result: `validation-fail.bundled-boundary-advance`.
 
 ### 5A. Stop-vs-Progress Decision
@@ -161,7 +161,7 @@ Examples:
 - **Why I stopped**: The approved slice is implemented, but the wording still needs a human review pass.
 - **What needs your review**: Review the coordinator response wording, the decision guidance, and the validator expectations for consistency.
 - **What happens next**: If approved, the rollout proceeds to the next proof task; if sent back, I will revise only the wording slice.
-- **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
+- **What I need from you**: Review the wording in the prompt, template, and agent section for clarity and consistency. Start with `file:///absolute/project/path/specs/001-feature/contracts/coordinator-handoff-template.md`.
 
 ### Boundary-Blocked Stop Message
 
@@ -169,7 +169,7 @@ Examples:
 - **Why I stopped**: I stopped at the review-boundary because per-boundary discipline requires a separate authorization before any review-boundary commit can be emitted.
 - **What needs your review**: Review the plan and hardening gate evidence before deciding whether the review-boundary should advance.
 - **What happens next**: If approved, the Crew emits the review-boundary commit and begins review evidence collection.
-- **What I need from you**: Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and approve or reject advancement to the review-boundary.
+- **What I need from you**: Review `file:///absolute/project/path/specs/016-substantive-interaction-model/iterations/001/plan.md` and approve or reject advancement to the review-boundary.
 
 ### Verification-Gap Stop Message
 

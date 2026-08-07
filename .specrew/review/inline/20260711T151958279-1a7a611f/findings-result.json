@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260711T151958279-1a7a611f",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T151958279-1a7a611f",
+      "location": {
+        "path": "extensions/specrew-speckit/scripts/shared-governance.ps1",
+        "line_start": 1791,
+        "line_end": 1791
+      },
+      "severity": "blocking",
+      "kind": "self-leak-ci-red",
+      "design_reference": "FR-033 / SC-011; devops-operations and verification-confidence lenses",
+      "comment": "The newly added blocking self-leak CI lane is red on the reviewed tree. Running tests/unit/self-leak-lint.tests.ps1 reaches its real-repo born-clean guard and reports five unannotated DEC-198-* hits (shared-governance.ps1 lines 1791, 1836, 1925, 1962 and validate-governance.ps1 line 1567), so scripts/internal/lint-self-leak.ps1 exits 1. Because .github/workflows/specrew-ci.yml now invokes that command as a blocking job, this increment cannot pass its claimed CI enforcement. Remove/parameterize the self identifiers or add valid reason-bearing annotations where they are intentionally shipped, then rerun the paired test and real lint.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-11T15:23:56Z"
+}

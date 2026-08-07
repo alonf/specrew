@@ -118,7 +118,7 @@ if /I "%~1"=="--version" (
 if /I "%~1"=="version" (
   echo GitHub Spec Kit - Spec-Driven Development Toolkit
   echo CLI Version    1.0.0
-  echo Template Version    0.8.4
+  echo Template Version    0.12.9
   exit /b 0
 )
 echo unexpected specify args: %*
@@ -128,7 +128,7 @@ exit /b 9
     New-CliShim -DirectoryPath $healthyShimPath -CommandName 'squad' -Content @'
 @echo off
 if /I "%~1"=="--version" (
-  echo 0.9.1
+  echo 0.11.0
   exit /b 0
 )
 echo unexpected squad args: %*
@@ -164,12 +164,12 @@ exit /b 9
         exit 1
     }
 
-    if ($healthySpecKit.SuggestedInstall -ne 'uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.4') {
+    if ($healthySpecKit.SuggestedInstall -ne 'uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.12.9') {
         Write-Fail ("Healthy Spec Kit install guidance should point at the official GitHub release source, found: {0}" -f $healthySpecKit.SuggestedInstall)
         exit 1
     }
 
-    if ($healthySpecKit.SuggestedRepair -ne 'uv tool install --force specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.4') {
+    if ($healthySpecKit.SuggestedRepair -ne 'uv tool install --force specify-cli --from git+https://github.com/github/spec-kit.git@v0.12.9') {
         Write-Fail ("Healthy Spec Kit repair guidance should point at the official GitHub release source, found: {0}" -f $healthySpecKit.SuggestedRepair)
         exit 1
     }
@@ -196,7 +196,7 @@ exit /b 9
     New-CliShim -DirectoryPath $brokenShimPath -CommandName 'squad' -Content @'
 @echo off
 if /I "%~1"=="--version" (
-  echo 0.9.1
+  echo 0.11.0
   exit /b 0
 )
 echo unexpected squad args: %*
@@ -237,7 +237,7 @@ exit /b 9
         exit 1
     }
 
-    if ($brokenSpecKit.SuggestedRepair -ne 'uv tool install --force specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.4') {
+    if ($brokenSpecKit.SuggestedRepair -ne 'uv tool install --force specify-cli --from git+https://github.com/github/spec-kit.git@v0.12.9') {
         Write-Fail ("Broken Spec Kit repair guidance should point at the official GitHub release source, found: {0}" -f $brokenSpecKit.SuggestedRepair)
         exit 1
     }

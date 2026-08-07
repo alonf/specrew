@@ -139,25 +139,28 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
         }
     }
 
-    Context 'Get-ContinuousCoReviewTrunkName (145 carry T080, default main)' {
-        It 'defaults to main when the config file is missing' {
+    Context 'Get-ContinuousCoReviewConfiguredTrunk (shared resolver level 1; no hardcoded main default)' {
+        # The former Get-ContinuousCoReviewTrunkName (which defaulted to 'main') is retired: an unset
+        # co_review_trunk now returns '' so the shared resolver AUTO-DETECTS (origin/HEAD -> upstream ->
+        # conventional refs -> single pre-feature branch), never a silent 'main'.
+        It 'returns empty (auto-detect) when the config file is missing' {
             $f = New-WiringFeatureRepo 'trunk-nofile'
-            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should -Be 'main'
+            Get-ContinuousCoReviewConfiguredTrunk -RepoRoot $f.repo | Should -BeNullOrEmpty
         }
-        It 'defaults to main when co_review_trunk is absent' {
+        It 'returns empty (auto-detect) when co_review_trunk is absent' {
             $f = New-WiringFeatureRepo 'trunk-missingkey'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
-            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should -Be 'main'
+            Get-ContinuousCoReviewConfiguredTrunk -RepoRoot $f.repo | Should -BeNullOrEmpty
         }
         It 'reads a configured non-main trunk (master)' {
             $f = New-WiringFeatureRepo 'trunk-master'
             Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_trunk: "master"'
-            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should -Be 'master'
+            Get-ContinuousCoReviewConfiguredTrunk -RepoRoot $f.repo | Should -Be 'master'
         }
         It 'reads a single-quoted trunk WITH an inline comment' {
             $f = New-WiringFeatureRepo 'trunk-develop'
             Set-WiringConfig -Repo $f.repo -EnforcementLine "co_review_trunk: 'develop'  # our default branch"
-            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should -Be 'develop'
+            Get-ContinuousCoReviewConfiguredTrunk -RepoRoot $f.repo | Should -Be 'develop'
         }
     }
 

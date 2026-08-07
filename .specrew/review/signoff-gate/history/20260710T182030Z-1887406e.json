@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "boundary_type": "review-signoff",
+  "recorded_at": "2026-07-10T18:20:30Z",
+  "decision": {
+    "schema_version": "1.0",
+    "decision": "allow",
+    "reason": "fresh-and-covered",
+    "message": "The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor.",
+    "current_tree_id": "fd1d6baf86f1a9b93eb1d907d39d7eae1dc6f6ee",
+    "matched_run_id": "20260710T181853407-a07ff4ec",
+    "anchor_ref": "5bca4fdf7d6aafe09d65144485c2a2156b6d4ab7",
+    "override": null,
+    "evidence_labels": {
+      "completeness": "full",
+      "independence": "independent",
+      "budget": "normal"
+    },
+    "acknowledgement": null
+  }
+}

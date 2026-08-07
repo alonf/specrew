@@ -45,6 +45,8 @@ function Ensure-Directory {
         [System.Collections.ArrayList]$Actions
     )
 
+    Assert-ManagedMutationAllowed -TargetPath $Path
+
     if (Test-Path -LiteralPath $Path) {
         Add-DeploymentAction -Actions $Actions -Action 'preserved-directory' -Path $Path
         return
@@ -69,6 +71,8 @@ function Write-MissingFile {
         [System.Collections.ArrayList]$Actions
     )
 
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
+
     if (Test-Path -LiteralPath $TargetPath) {
         Add-DeploymentAction -Actions $Actions -Action 'preserved' -Path $TargetPath
         return
@@ -85,6 +89,80 @@ function Write-MissingFile {
     }
 }
 
+function Assert-ManagedTargetContained {
+    # Lexical containment is NOT containment. GetFullPath folds '..' and separators, but a path whose
+    # ANCESTOR is a symlink/junction to an external directory still compares as under the root while
+    # ReadAllText/WriteAllText follow that ancestor outside the project. Every managed file this
+    # deployment writes goes through Set-ManagedFile, so a project-controlled junction - say at
+    # `scripts/internal/continuous-co-review` - could redirect `specrew update` writes onto arbitrary
+    # external files (co-review finding, run run-f198-i009-aab37c3b-codex-2). This is the same
+    # containment class DRIFT-198-I009-011 closed for the RETIREMENT path; the WRITE path was never
+    # covered. Reject a reparse point at the root and at EVERY existing component beneath it, then
+    # re-verify containment before any read or write.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    $rootFull = [System.IO.Path]::GetFullPath($Root).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $pathFull = [System.IO.Path]::GetFullPath($TargetPath)
+    $prefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
+    # ORDINAL, unconditionally - and deliberately NOT an `$IsWindows` branch. This tree is deployed
+    # into consumer projects where the continuous-co-review path-identity primitive is not present,
+    # so the rule cannot be derived from the volume here. Ordinal is the FAIL-CLOSED direction for
+    # THIS guard: its polarity is "must be INSIDE, else refuse", so folding case would accept a
+    # case-aliased path as contained and let the write escape. Refusing a genuine case-variant instead
+    # fails loudly and visibly. In practice both sides derive from the same resolved project path, so
+    # their prefixes match exactly. (An OS-family branch here would be the DRIFT-198-I009-027 defect
+    # class re-entering a tree the primitive cannot reach.)
+    $comparison = [System.StringComparison]::Ordinal
+    if (-not $pathFull.StartsWith($prefix, $comparison)) {
+        throw "managed-deploy-path-escapes-project:$TargetPath"
+    }
+
+    $rootItem = Get-Item -LiteralPath $rootFull -Force -ErrorAction Stop
+    if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "managed-deploy-root-link-unsupported:$Root"
+    }
+
+    $relative = $pathFull.Substring($rootFull.Length).Trim([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $current = $rootFull
+    foreach ($segment in @($relative -split '[\\/]' | Where-Object { -not [string]::IsNullOrEmpty($_) })) {
+        $current = Join-Path $current $segment
+        if (-not (Test-Path -LiteralPath $current)) { continue }
+        $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
+        if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "managed-deploy-path-link-unsupported:$TargetPath"
+        }
+    }
+    return $pathFull
+}
+
+function Assert-ManagedMutationAllowed {
+    # THE choke point. Every mutator in this script calls this before touching the filesystem.
+    #
+    # This body used to be inlined in Set-ManagedFile and nowhere else, so Ensure-Directory
+    # (New-Item), Write-MissingFile and Set-ManagedBlock / Set-ManagedTableRows (WriteAllText),
+    # Copy-ManagedDirectory, and the legacy/host-skill cleanup (Remove-Item -Recurse) all bypassed
+    # containment: a consumer-controlled `.squad` or host-skill ancestor junction could redirect
+    # `specrew init` / `specrew update` directory creation, team/routing/history writes, or a
+    # RECURSIVE delete outside the project even though runtime-FILE writes failed closed
+    # (DRIFT-198-I009-031, the third appearance of this class after -011 and -025). Adding a fifth
+    # per-mutator copy of the check would repeat the mistake that produced all three; one gate that
+    # every path must traverse is the correction.
+    param([Parameter(Mandatory = $true)][string]$TargetPath)
+
+    # Resolved via Get-Variable so this stays safe under StrictMode when the helper is dot-sourced
+    # without the script body having run.
+    $projectRootVariable = Get-Variable -Name 'resolvedProjectPath' -Scope Script -ErrorAction SilentlyContinue
+    $projectRoot = if ($null -ne $projectRootVariable) { [string]$projectRootVariable.Value } else { '' }
+    if ([string]::IsNullOrWhiteSpace($projectRoot)) { return }
+    $null = Assert-ManagedTargetContained -TargetPath $TargetPath -Root $projectRoot
+}
+
 function Set-ManagedFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -97,6 +175,9 @@ function Set-ManagedFile {
         [Parameter(Mandatory = $true)]
         [System.Collections.ArrayList]$Actions
     )
+
+    # Containment BEFORE the first read or write - never after.
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
 
     if (-not (Test-Path -LiteralPath $TargetPath)) {
         Add-DeploymentAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $TargetPath
@@ -243,6 +324,8 @@ function Set-ManagedBlock {
         [System.Collections.ArrayList]$Actions
     )
 
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
+
     $managedBlock = Get-ManagedBlock -Name $BlockName -Content $ManagedContent
     $startMarker = [regex]::Escape("<!-- >>> specrew-managed $BlockName >>> -->")
     $endMarker = [regex]::Escape("<!-- <<< specrew-managed $BlockName <<< -->")
@@ -316,12 +399,14 @@ function Set-ManagedTableRows {
         [System.Collections.ArrayList]$Actions
     )
 
+    Assert-ManagedMutationAllowed -TargetPath $TargetPath
+
     if (-not (Test-Path -LiteralPath $TargetPath)) {
         return
     }
 
     $existingContent = Get-Content -LiteralPath $TargetPath -Raw
-    
+
     $escapedHeader = [regex]::Escape($TableSectionHeader)
     $tablePattern = "($escapedHeader[^\r\n]*\r?\n(?:.*?\r?\n)*?\|[^\r\n]+\|\r?\n\|[\s\-|]+\|\r?\n)"
     
@@ -525,6 +610,37 @@ function Get-SpecrewSkillHostScopes {
     return $scopes
 }
 
+function Get-SpecrewSkillContentForHost {
+    param(
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostName
+    )
+
+    # Some skill capabilities are host-specific even though the conduct itself is shared.
+    # Keep the canonical metadata explicit, then materialize only the frontmatter understood
+    # by that host. In particular, Claude's AskUserQuestion picker can replace the assistant
+    # prose that precedes it, so the design-workshop skill removes that tool on Claude while
+    # preserving structured-question UX on the other hosts.
+    $claudeDisallowedToolsPattern = '(?m)^claude-disallowed-tools\s*:\s*(?<tools>[^\r\n]+)(?<newline>\r?\n)'
+    if (-not [regex]::IsMatch($Content, $claudeDisallowedToolsPattern)) {
+        return $Content
+    }
+
+    if ($HostName.Equals('claude', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return [regex]::Replace(
+            $Content,
+            $claudeDisallowedToolsPattern,
+            'disallowed-tools: ${tools}${newline}'
+        )
+    }
+
+    return [regex]::Replace($Content, $claudeDisallowedToolsPattern, '')
+}
+
 function Test-SpecrewSkillAppliesToHost {
     param(
         [Parameter(Mandatory = $true)]
@@ -697,6 +813,8 @@ if (Test-Path -LiteralPath $legacySkillsRoot -PathType Container) {
         if (Test-IsManagedLegacySkillDirectory -SkillDirectoryPath $legacySkillDirectory.FullName -Definition $definition) {
             Add-DeploymentAction -Actions $actions -Action $(if ($DryRun) { 'would-remove-legacy-managed-skill' } else { 'removed-legacy-managed-skill' }) -Path $legacySkillDirectory.FullName
             if (-not $DryRun) {
+                # A RECURSIVE delete through an unverified path is the worst case in this script.
+                Assert-ManagedMutationAllowed -TargetPath $legacySkillDirectory.FullName
                 Remove-Item -LiteralPath $legacySkillDirectory.FullName -Recurse -Force
             }
             continue
@@ -716,6 +834,8 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
                 if (Test-IsManagedLegacySkillDirectory -SkillDirectoryPath $skillDirectoryPath -Definition $definition) {
                     Add-DeploymentAction -Actions $actions -Action $(if ($DryRun) { 'would-remove-host-scoped-managed-skill' } else { 'removed-host-scoped-managed-skill' }) -Path $skillDirectoryPath
                     if (-not $DryRun) {
+                        # A RECURSIVE delete through an unverified path is the worst case in this script.
+                        Assert-ManagedMutationAllowed -TargetPath $skillDirectoryPath
                         Remove-Item -LiteralPath $skillDirectoryPath -Recurse -Force
                     }
                     continue
@@ -730,7 +850,8 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
         }
 
         Ensure-Directory -Path $skillDirectoryPath -Actions $actions
-        Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath 'SKILL.md') -Content $definition.CurrentContent -Actions $actions
+        $hostContent = Get-SpecrewSkillContentForHost -Content $definition.CurrentContent -HostName $activeSkillRoot.Name
+        Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath 'SKILL.md') -Content $hostContent -Actions $actions
         Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath '.specrew-managed') -Content (Get-ManagedSkillMarkerContent -SkillDirectory $definition.Directory) -Actions $actions
     }
 }

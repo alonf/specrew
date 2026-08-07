@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260712T002803347-40a06e84",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260712T002803347-40a06e84",
+      "location": {
+        "path": "specs/198-beta2-hardening/iterations/003/coverage-evidence.md",
+        "line_start": 32,
+        "line_end": 32
+      },
+      "severity": "blocking",
+      "kind": "verification-evidence-gap",
+      "design_reference": "FR-010 / NFR-007 / verification-confidence rule",
+      "comment": "T015 is marked done on the strength of the new production-path reviewer integrity guard, but the only digest-matched implementer evidence injected for this reviewed tree covers bounded-verification.Tests.ps1 (11 tests), an opt-in helper that the production orchestrator explicitly never calls. The claimed 7/7 orchestrator-reviewer-integrity result appears only in this hand-authored table, which the review contract gives zero evidence standing. Record the production-path suite (or a focused subset proving mutation failure, allowed findings output, and no auto-verification) through the digest-bound recorder before treating T015/FR-010 as verified.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f2",
+      "source_run_id": "20260712T002803347-40a06e84",
+      "location": {
+        "path": "specs/198-beta2-hardening/iterations/003/plan.md",
+        "line_start": 50,
+        "line_end": 50
+      },
+      "severity": "advisory",
+      "kind": "process-drift-record",
+      "design_reference": "process drift-log rule / T015 / FR-010",
+      "comment": "The worktree-visible maintainer decision in state.md says option 1 removed automatic bounded verification and made the helper opt-in, but the authoritative iteration plan still marks 'REQUIRED bounded in-worktree verification' done and drift-log.md records only the unrelated tracker-parser drift. Reconcile the plan/design wording and record this approved design change in the drift log so the done claim describes what actually shipped; the visible maintainer decision prevents this from being blocking.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-12T00:31:01Z"
+}

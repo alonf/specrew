@@ -30,11 +30,12 @@
     # Feature 171 (FR-013, T014): refocus hook bindings. Copilot hooks went GA
     # 2026-02-25 (research-matrix.md — the earlier no-surface finding is
     # obsolete). B2 via sessionStart (additionalContext verified); B1 pending
-    # local source-value verification; B3 rides channel 1 (per-prompt injection
-    # unverified on userPromptSubmitted; per-tool-call latency-rejected).
+    # local source-value verification; B3 and the T070 turn baseline use the
+    # documented userPromptSubmitted event (per-tool-call delivery remains latency-rejected).
     RefocusHookBindings = @{
-        BoundTriggers  = @('b2')
-        Events         = @('sessionStart')
+        BoundTriggers  = @('b2', 'b3')
+        Events         = @('sessionStart', 'userPromptSubmitted')
+        TurnStartCapability = @{ Mode = 'exact'; NativeEvent = 'userPromptSubmitted'; DispatcherEvent = 'UserPromptSubmit' }
         SettingsFile   = '~/.copilot/hooks/specrew-refocus.json'   # hooks-dir model: wholly Specrew-owned file
         OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-copilot'
         DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
@@ -58,6 +59,7 @@
         }
         Registrations  = @(
             @{ Event = 'sessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'dual-shell-entry'; TimeoutSec = 30 },
+            @{ Event = 'userPromptSubmitted'; DispatcherEvent = 'UserPromptSubmit'; HandlerShape = 'dual-shell-entry'; TimeoutSec = 30 },
             @{ Event = 'agentStop'; DispatcherEvent = 'agentStop'; HandlerShape = 'dual-shell-entry'; TimeoutSec = 30 }
         )
     }

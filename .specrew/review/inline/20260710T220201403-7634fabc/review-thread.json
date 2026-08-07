@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "thread_id": "thread-20260710T220201403-7634fabc",
+  "run_id": "20260710T220201403-7634fabc",
+  "checkpoint_id": "nav-20260710T220201403-7634fabc",
+  "findings": [
+    "f1"
+  ],
+  "dispositions": [
+    {
+      "disposition_id": "disposition-f1-open",
+      "finding_id": "f1",
+      "state": "escalated_to_human",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T23:33:53Z"
+    },
+    {
+      "disposition_id": "disposition-f1-resolved-stale-snapshot",
+      "finding_id": "f1",
+      "state": "resolved",
+      "rationale": "Stale threaded re-check (the exact mechanism diagnosed by the Devin crew and folded into FR-017/T019 this same day): the version lock and the unknown-version exit-2 abuse test landed in commit 697d7de5 BEFORE this run surfaced; verified at HEAD - Read-SelfLeakDenyList enforces supported schema 1.0 and the paired test passes.",
+      "fix_evidence_ref": "commit 697d7de5; tests/unit/self-leak-lint.tests.ps1 (unsupported schema_version -> exit 2, green)",
+      "review_round": 15,
+      "actor_role": "editor",
+      "recorded_at": "2026-07-10T23:34:15Z"
+    }
+  ],
+  "resolution_summary": "Inline reviewer returned 1 finding(s); disposition trail persisted by orchestrator.",
+  "escalation_ref": "",
+  "created_at": "2026-07-10T23:33:53Z",
+  "updated_at": "2026-07-10T23:34:15Z"
+}

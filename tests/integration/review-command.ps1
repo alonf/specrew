@@ -200,10 +200,13 @@ Write-Host "`nTest 5: live review REFUSES an unregistered host loudly (honour-or
 # must fail with a stated reason and write NO gate evidence - never silently substitute a harness.
 $liveProjectRoot = Join-Path $scratchRoot 'live-project'
 $liveSourcePath = Join-Path $liveProjectRoot 'src\sample.ps1'
+$liveIterationDirectory = Join-Path $liveProjectRoot 'specs\001-live\iterations\001'
 $null = New-Item -ItemType Directory -Path (Split-Path -Parent $liveSourcePath) -Force
+$null = New-Item -ItemType Directory -Path $liveIterationDirectory -Force
 $null = New-Item -ItemType Directory -Path (Join-Path $liveProjectRoot '.specrew') -Force
 [System.IO.File]::WriteAllText((Join-Path $liveProjectRoot '.specrew\config.yml'), "project_name: live-review`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText($liveSourcePath, "function Get-Sample { 'before' }`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $liveProjectRoot 'specs\001-live\spec.md'), "# Live Review Fixture`n", [System.Text.UTF8Encoding]::new($false))
 Invoke-Git -Repository $liveProjectRoot -Arguments @('init', '--initial-branch=main') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.email', 'specrew-test@example.invalid') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.name', 'Specrew Test') | Out-Null
@@ -211,12 +214,14 @@ Invoke-Git -Repository $liveProjectRoot -Arguments @('add', '.') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('commit', '-m', 'baseline') | Out-Null
 Add-Content -LiteralPath $liveSourcePath -Value "function Get-SampleAfter { 'after' }" -Encoding UTF8
 
-$liveRunId = 'test-live-unregistered-host'
+$liveRunId = 'run-test-live-unregistered'
 $liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'review', '--project-path', $liveProjectRoot,
     '--live',
     '--host', 'fixture',
     '--code-writer-host', 'claude',
+    '--feature', '001-live',
+    '--iteration', '001',
     '--run-id', $liveRunId
 )
 if ($liveResult.ExitCode -eq 0) {
@@ -235,22 +240,19 @@ if (Test-Path -LiteralPath (Join-Path $liveProjectRoot ".specrew\review\inline\$
     Write-Fail 'an unregistered-host refusal must not write promoted gate evidence'
     exit 1
 }
-# D-197-I010-006 budget-drift regression: with NO --timeout-seconds, the --live door must resolve the
-# SAME config-aware default as the auto path (300s baseline) - NOT the stale hardcoded 120 that starved
-# agentic reviewers (nor the dead-code 900). The refused run still writes its status envelope.
+# D-197-I010-006 / F-198 FR-022 budget-drift regression: with NO --timeout-seconds, the --live door
+# must resolve the SAME config/catalog/floor chain as the auto path. An unknown host reaches the
+# intentional 600-second terminal floor (300 was superseded as too short). Campaign fail-fast
+# reports that resolved budget but writes no legacy pending or authority-store evidence.
 $liveStatusPath = Join-Path $liveProjectRoot ".specrew\review\pending\$liveRunId\status.json"
 if (Test-Path -LiteralPath $liveStatusPath -PathType Leaf) {
-    $liveStatus = Get-Content -LiteralPath $liveStatusPath -Raw | ConvertFrom-Json
-    if ([int]$liveStatus.timeout_seconds -ne 300) {
-        Write-Fail ("default --live budget must be the config-aware 300s baseline, got '{0}'" -f $liveStatus.timeout_seconds)
-        exit 1
-    }
-    Write-Pass 'Default --live budget resolves to the config-aware 300s baseline (not the stale 120)'
-}
-else {
-    Write-Fail "expected the refused run's status envelope at $liveStatusPath (needed for the default-budget assertion)"
+    Write-Fail 'campaign unregistered-host fail-fast must not write a legacy pending status envelope'
     exit 1
 }
+if (-not (Assert-Contains -Content $liveOutput -Pattern 'Resolved timeout:\s+600 seconds' -FailureMessage 'the refusal must report the shared 600s terminal floor')) {
+    exit 1
+}
+Write-Pass 'Default --live budget resolves through the shared chain to the 600s terminal floor'
 Write-Pass 'Live review refuses an unregistered host loudly and writes no gate evidence'
 
 Write-Host "`nTest 6: --ack-degraded with a flag-shaped run-id fails with precise usage (downstream field bug 2026-07-09)"

@@ -1,0 +1,196 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell-markdown-yaml-json"
+selections:
+  - id: "code-rule.intent-revealing-names"
+    checked: true
+  - id: "code-rule.short-functions"
+    checked: true
+  - id: "code-rule.avoid-deep-nesting"
+    checked: true
+  - id: "code-rule.dependency-injection"
+    checked: true
+    decision: "Use PowerShell-friendly composition: pure core functions receive records and policies; application coordinators receive repository, target, harness, runtime, and clock functions/scriptblocks. Do not add a DI framework or class hierarchy."
+    enforcement: [review, tests]
+  - id: "code-rule.dtos-between-services"
+    checked: true
+    decision: "Treat ReviewInvocation, candidate ReviewerResult, terminal result, campaign/run/claim facts, classifications, and retrospective finding projections as closed versioned DTOs. Validate and map external candidate JSON before it reaches internal state policy."
+    enforcement: [review, tests]
+  - id: "code-rule.avoid-common-utility-libs"
+    checked: true
+    decision: "No broad utility modules; extract only focused seams around real boundaries (deny-list reading, delta computation, claims parsing, release-model resolution)."
+    enforcement: [review]
+  - id: "code-rule.immutability-intent"
+    checked: true
+    decision: "Campaign allowance, claim generations, run stages, terminal results, validation, classification, and finding lineage are immutable facts. Reconciliation creates the missing next fact; it never overwrites or deletes authority evidence."
+    enforcement: [review, tests]
+  - id: "code-rule.comments-wisely"
+    checked: true
+    decision: "Comments explain trust-boundary rationale (why fail-closed here, fail-open there), strip-list membership reasons, and T096/D5 constraints; never restate control flow."
+    enforcement: [review]
+  - id: "code-rule.no-magic-numbers"
+    checked: true
+    decision: "Harness timeouts, the configurable 10-second default termination grace, heartbeat interval, schema/output bounds, and recovery limits are named catalog/configuration values with explicit units."
+    enforcement: [review]
+  - id: "code-rule.optimize-apis-for-call-site"
+    checked: true
+  - id: "code-rule.stronger-domain-types"
+    checked: true
+    decision: "Use named contract fields, closed enum-like lifecycle/runtime/completion/verdict statuses, schema versions, run/campaign/target identities, and explicit outcome categories rather than free-form strings."
+    enforcement: [review, tests]
+  - id: "code-rule.object-invariants"
+    checked: true
+    decision: "Guard impossible states as internal defects: spend above grants, two live claim generations for one lineage, approval from an incomplete/invalid/moved result, terminal result before verified timeout termination, or conflicting immutable facts."
+    enforcement: [tests, review]
+  - id: "code-rule.no-leaky-mutable-internals"
+    checked: true
+  - id: "code-rule.normalize-state"
+    checked: true
+    decision: "Campaign, run, claim, and result facts in the JSON review store are the single review authority. CLI progress, Markdown reports, navigator state, and retro descriptions are consumers/projections and never parallel mutation authorities."
+    enforcement: [review, tests]
+  - id: "code-rule.simple-trustworthy-tests"
+    checked: true
+    decision: "Use deterministic Pester tests for pure transitions, repository concurrency, schema/identity validation, recovery, currentness, and finding lineage; executable fixtures for process/output failures; paid live AI only for bounded harness conformance."
+    enforcement: [tests]
+  - id: "code-rule.docs-as-api-test"
+    checked: true
+  - id: "code-rule.language-native-constructs"
+    checked: true
+  - id: "code-rule.secure-coding-defaults"
+    checked: true
+    decision: "Do not persist credentials, raw environments, full prompts, or unrestricted raw output. Reviewers run only in disposable external worktrees; execution observed under the origin is a containment violation."
+    enforcement: [review, tests]
+  - id: "code-rule.solid-baseline"
+    checked: true
+  - id: "code-rule.strategy-state-over-repeated-conditionals"
+    checked: true
+    decision: "The ReviewRun state machine and policies replace repeated lifecycle conditionals. Per-host executable, prompt, contract, and timeout variation remains in the reviewer-host catalog plus thin adapters, never host-name branches in core policy."
+    enforcement: [review]
+  - id: "code-rule.polymorphism-mechanism"
+    checked: true
+  - id: "code-rule.complex-code-stable"
+    checked: true
+    decision: "Stable identity/gate/authorization logic inward; volatile lists and budgets in data files."
+    enforcement: [review]
+  - id: "code-rule.anti-corruption-layers"
+    checked: true
+  - id: "code-rule.type-inference-deliberate"
+    checked: true
+  - id: "code-rule.concurrency-over-locks"
+    checked: true
+    decision: "Use unique run directories, immutable stage facts, and atomic FileMode.CreateNew claim/allowance generations. Do not introduce a generic lock, mutable revision/CAS framework, SQLite store, or event-sourcing subsystem."
+    enforcement: [review, tests]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Use StrictMode and terminating errors internally. Expected preflight, launch, auth, timeout, invalid-output, identity, containment, and snapshot-movement failures become structured terminal outcomes; authority contradictions fail closed and loudly."
+    enforcement: [review, tests]
+  - id: "code-rule.careful-retries"
+    checked: true
+    decision: "Adapters never retry provider invocation secretly. Every rerun has a new run_id and reserves another human-authorized allowance slot; only pre-invocation releases avoid spend. Schema and invariant failures are not retried."
+    enforcement: [review, tests]
+  - id: "code-rule.logging-traceability"
+    checked: true
+    decision: "Correlate safe diagnostics, results, and retrospective evidence by campaign_id, run_id, target_digest, harness/version, stage, system-observed time/duration, finding_id, and finding lineage."
+    enforcement: [review, tests]
+  - id: "code-rule.robustness-state-boundaries"
+    checked: true
+    decision: "Distinguish preflight-failed, launch-failed, timed-out, terminated, invalid-output, identity-mismatch, containment-violated, snapshot-moved, incomplete, changes-requested, approved, and repository-corruption outcomes."
+    enforcement: [review, tests]
+  - id: "code-rule.testing-posture"
+    checked: true
+    decision: "Deterministic Pester unit/contract/fault-injection tests; executable reviewer fixtures for failure paths; adapter/runtime fixtures on Windows, macOS, and Linux; one authorized bounded live review for each of Claude, Codex, Copilot, Cursor, and Antigravity."
+    enforcement: [tests, review]
+  - id: "code-rule.evidence-driven-performance"
+    checked: true
+    decision: "Performance is P1 below stability/integrity: measure phase durations and safe usage; preflight before spend; use shared-object worktrees, bounded prompts, delta-assisted full-snapshot re-review, duplicate warnings, low-cost heartbeats, and only required pre/post hashing."
+    enforcement: [tests, review]
+  - id: "code-rule.copy-semantics"
+    checked: true
+    decision: "Pass immutable DTO projections and target identities between stages. Reviewers receive a disposable frozen worktree; no mutable runtime object or origin workspace is shared across the trust boundary."
+    enforcement: [review]
+  - id: "code-rule.extension-points"
+    checked: true
+    decision: "Target types extend through ReviewTargetPort adapters; harnesses through HarnessPort plus catalog rows; operating systems through RuntimePort adapters. Do not edit core policies for a new target, harness, or platform."
+    enforcement: [review]
+  - id: "code-rule.api-service-design"
+    checked: true
+    decision: "The local ReviewInvocation, terminal result, report, and status shapes are versioned public integration contracts with closed required fields, stable outcome semantics, identity binding, and compatibility fixtures."
+    enforcement: [review, tests]
+  - id: "code-rule.authz-security-context"
+    checked: true
+    decision: "Only a human grants campaign review allowance. Coordinators may atomically reserve granted slots but cannot increase allowance; repository facts retain grant provenance and every provider invocation consumes a visible slot."
+    enforcement: [review, tests]
+  - id: "code-rule.validation-boundaries"
+    checked: true
+    decision: "Validate request/result schema versions, bounds, run/target identity, harness contract, repository fact consistency, process termination evidence, containment, and snapshot currentness at their owning boundaries before authority promotion."
+    enforcement: [tests, review]
+  - id: "code-rule.write-conflict-semantics"
+    checked: true
+    decision: "Publish immutable authority facts with atomic FileMode.CreateNew only. An identical existing fact is idempotent success; a conflicting fact is corruption and fails closed. Never Test-Path-then-write, overwrite, or delete/recreate authority facts."
+    enforcement: [tests, review]
+  - id: "code-rule.collection-query-semantics"
+    checked: false
+    decision: "Exception: no user collection query surfaces."
+  - id: "code-rule.pagination-delivery"
+    checked: false
+    decision: "Exception: no paginated delivery surface."
+  - id: "code-rule.protocol-choice"
+    checked: true
+    decision: "Use a synchronous local CLI/process/file contract. Adapters may deliver prompts through conformance-proven stdin, bounded prompt files, or native flags and may materialize candidate files from stdout; no network API, queue, daemon, or stream."
+    enforcement: [review]
+  - id: "code-rule.messaging-event-processing"
+    checked: false
+    decision: "Exception: no queue, pub-sub, event stream, or background worker introduced."
+  - id: "code-rule.cache-boundaries"
+    checked: false
+    decision: "Exception: no cache introduced; state files are records, not communication channels."
+  - id: "code-rule.lts-version-check"
+    checked: true
+    decision: "Existing PowerShell 7.x baseline; Spec-Kit pinned 0.12.9 and Squad 0.11.0 per the I2 single-tested-pin decision."
+    enforcement: [review]
+  - id: "code-rule.framework-validation"
+    checked: true
+  - id: "code-rule.shared-code-packaging"
+    checked: true
+    decision: "Ship through existing module/deployment surfaces; FileList + mirror parity per the 198 custom rules; no new package."
+    enforcement: [review, tests]
+  - id: "code-rule.public-api-reusable-design"
+    checked: true
+custom_rules:
+  - id: "feature-198.rule.provider-mirror-parity"
+    text: "Every extensions/specrew-speckit script change syncs its .specify mirror in the same commit (ProviderMirrorParity)."
+    scope: "feature-198"
+    provenance: "free-text"
+  - id: "feature-198.rule.psd1-filelist"
+    text: "Every new shipped file (deny-list data, machinery-path list, methodology-gate template, new scripts) joins Specrew.psd1 FileList in the commit that creates it."
+    scope: "feature-198"
+    provenance: "free-text"
+  - id: "feature-198.rule.born-clean"
+    text: "Every template, prompt, skill, or refocus surface this feature touches passes SelfLeakLintLane from its first commit; 205-W1 lands in iteration 001 so nothing needs retro-scrubbing."
+    scope: "feature-198"
+    provenance: "free-text"
+  - id: "feature-198.rule.scratch-probes-only"
+    text: "Agentic/init CLI probes (specify, squad, copilot/codex/agy/claude) run in scratch directories ONLY, never a governed cwd - their hooks and init flows mutate lifecycle state."
+    scope: "feature-198"
+    provenance: "free-text"
+  - id: "feature-198.rule.remote-main-sync"
+    text: "Merge or rebase the feature branch with latest remote main before each iteration's implement phase; a large conflict surface becomes its own preparatory step."
+    scope: "feature-198"
+    provenance: "free-text"
+  - id: "feature-198.rule.paired-honesty-tests"
+    text: "Every honesty invariant ships as a paired test (legitimate path works + abuse path fails) with message-content assertions for agent-action transparency; this is a code-review enforcement item, not a plan note."
+    scope: "feature-198"
+    provenance: "free-text"
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+reviewer_preference:
+  mode: "human-selected"
+  host: "claude"
+  model: null
+  effort: null
+  source: "code-implementation-workshop"
+  authorization_ref: "workshop-198-beta2-hardening"
+  rationale: "Human selected the strongest detected independent reviewer while Codex is the code-writer host."
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

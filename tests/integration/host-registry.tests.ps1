@@ -80,8 +80,21 @@ foreach ($kind in @(Get-SpecrewHookCapableHosts)) {
     if ([string]$runtime.BootstrapDeliveryMode -notin $validDeliveryModes) {
         Write-Fail "Host '$kind' DispatcherRuntime.BootstrapDeliveryMode '$($runtime.BootstrapDeliveryMode)' is not valid."
     }
+    $turnStart = $manifest.RefocusHookBindings.TurnStartCapability
+    if ($null -eq $turnStart -or [string]$turnStart.Mode -notin @('exact', 'capability-absent')) {
+        Write-Fail "Host '$kind' lacks a closed TurnStartCapability declaration."
+    }
+    elseif ([string]$turnStart.Mode -eq 'exact') {
+        if ([string]::IsNullOrWhiteSpace([string]$turnStart.NativeEvent) -or [string]::IsNullOrWhiteSpace([string]$turnStart.DispatcherEvent)) {
+            Write-Fail "Host '$kind' exact turn-start capability lacks its native/dispatcher event mapping."
+        }
+        $matching = @($manifest.RefocusHookBindings.Registrations | Where-Object {
+                [string]$_.Event -eq [string]$turnStart.NativeEvent -and [string]$_.DispatcherEvent -eq [string]$turnStart.DispatcherEvent
+            })
+        if ($matching.Count -ne 1) { Write-Fail "Host '$kind' turn-start capability is not wired exactly once through Registrations." }
+    }
 }
-Write-Pass "All hook-capable hosts declare manifest-driven dispatcher runtime policy"
+Write-Pass "All hook-capable hosts declare runtime policy and a wired turn-start capability"
 
 # Test 3: registry parity with legacy Get-SpecrewSupportedHostKinds
 $legacy = @(Get-SpecrewSupportedHostKinds | Sort-Object)

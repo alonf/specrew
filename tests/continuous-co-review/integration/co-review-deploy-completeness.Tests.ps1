@@ -26,7 +26,80 @@ Describe 'F-197 co-review deploy is complete (deployed runtime loads + can fire)
         (Test-Path (Join-Path $proj 'scripts/internal/agent-tasks/isolated-task-supervisor.ps1')) | Should -Be $true
         (Test-Path (Join-Path $proj 'scripts/internal/atomic-write.ps1')) | Should -Be $true
         (Test-Path (Join-Path $proj 'scripts/internal/continuous-co-review/_load.ps1')) | Should -Be $true
+        $runtimeMarkerPath = Join-Path $proj 'scripts/internal/continuous-co-review/.specrew-runtime.json'
+        (Test-Path $runtimeMarkerPath) | Should -Be $true
         (Test-Path (Join-Path $proj '.specrew/review/contracts/findings-result.schema.json')) | Should -Be $true
+
+        # F6: init/update must leave enough stable identity for the installed CLI to
+        # select the exact project-deployed engine, rather than silently mixing copies.
+        . (Join-Path $script:RepoRoot 'scripts/internal/review-engine-resolution.ps1')
+        $marker = Get-Content -LiteralPath $runtimeMarkerPath -Raw | ConvertFrom-Json
+        $deployedRuntime = Join-Path $proj 'scripts/internal/continuous-co-review'
+        @($marker.managed_files).Count | Should -BeGreaterThan 20
+        @($marker.managed_files | Where-Object path -CEQ '_load.ps1').Count | Should -Be 1
+        $actualHash = Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $deployedRuntime -ManagedFiles $marker.managed_files
+        [string]$marker.runtime_bundle_sha256 | Should -Be $actualHash
+        $selection = Resolve-SpecrewReviewEngineRoot `
+            -ProjectRoot $proj `
+            -InstalledRuntimeRoot (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')
+        [string]$selection.source | Should -Be 'project-deployed'
+        [string]$selection.runtime_root | Should -Be (Resolve-Path $deployedRuntime).Path
+
+        # A previously managed, unmodified file can be retired with proof of ownership.
+        $retired = Join-Path $deployedRuntime 'retired-by-update.ps1'
+        [IO.File]::WriteAllText($retired, 'old managed runtime', [Text.UTF8Encoding]::new($false))
+        $marker.managed_files = @($marker.managed_files) + @(
+            [pscustomobject][ordered]@{
+                path = 'retired-by-update.ps1'
+                sha256 = Get-SpecrewReviewRuntimeManagedTextSha256 -Path $retired
+            }
+        )
+        $marker.runtime_bundle_sha256 = Get-SpecrewReviewRuntimeBundleSha256 `
+            -RuntimeRoot $deployedRuntime -ManagedFiles $marker.managed_files
+        [IO.File]::WriteAllText($runtimeMarkerPath, ($marker | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+
+        $retirementActions = @(& $script:DeployScript -ProjectPath $proj -PassThru)
+        Test-Path -LiteralPath $retired | Should -BeFalse
+        @($retirementActions | Where-Object {
+                $_.Action -ceq 'removed-retired-runtime-file' -and $_.Path -ceq $retired
+            }).Count | Should -Be 1
+
+        # A modified retired file and an unlisted user file are preserved, but neither
+        # poisons the identity of the newly deployed current managed bundle.
+        $marker = Get-Content -LiteralPath $runtimeMarkerPath -Raw | ConvertFrom-Json -Depth 12
+        $modifiedRetired = Join-Path $deployedRuntime 'retired-but-user-modified.ps1'
+        [IO.File]::WriteAllText($modifiedRetired, 'old managed runtime', [Text.UTF8Encoding]::new($false))
+        $marker.managed_files = @($marker.managed_files) + @(
+            [pscustomobject][ordered]@{
+                path = 'retired-but-user-modified.ps1'
+                sha256 = Get-SpecrewReviewRuntimeManagedTextSha256 -Path $modifiedRetired
+            }
+        )
+        $marker.runtime_bundle_sha256 = Get-SpecrewReviewRuntimeBundleSha256 `
+            -RuntimeRoot $deployedRuntime -ManagedFiles $marker.managed_files
+        [IO.File]::WriteAllText($runtimeMarkerPath, ($marker | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText($modifiedRetired, 'user changed this retired file', [Text.UTF8Encoding]::new($false))
+        $unlistedUserFile = Join-Path $deployedRuntime 'user-owned-not-managed.txt'
+        [IO.File]::WriteAllText($unlistedUserFile, 'preserve me', [Text.UTF8Encoding]::new($false))
+
+        $preservationActions = @(& $script:DeployScript -ProjectPath $proj -PassThru)
+        [IO.File]::ReadAllText($modifiedRetired) | Should -Be 'user changed this retired file'
+        [IO.File]::ReadAllText($unlistedUserFile) | Should -Be 'preserve me'
+        @($preservationActions | Where-Object {
+                $_.Action -ceq 'preserved-modified-retired-runtime-file' -and $_.Path -ceq $modifiedRetired
+            }).Count | Should -Be 1
+        $currentMarker = Get-Content -LiteralPath $runtimeMarkerPath -Raw | ConvertFrom-Json -Depth 12
+        @($currentMarker.managed_files | Where-Object path -CEQ 'retired-but-user-modified.ps1').Count | Should -Be 0
+        @($currentMarker.managed_files | Where-Object path -CEQ 'user-owned-not-managed.txt').Count | Should -Be 0
+        (Resolve-SpecrewReviewEngineRoot `
+                -ProjectRoot $proj `
+                -InstalledRuntimeRoot (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review')).source |
+            Should -Be 'project-deployed'
+
+        # Reapplying update is idempotent and preserves both non-current files.
+        & $script:DeployScript -ProjectPath $proj -PassThru | Out-Null
+        [IO.File]::ReadAllText($modifiedRetired) | Should -Be 'user changed this retired file'
+        [IO.File]::ReadAllText($unlistedUserFile) | Should -Be 'preserve me'
 
         # CLASS guard: dot-source the DEPLOYED runtime in an ISOLATED child process (no worktree functions
         # in scope) and confirm it LOADS + can fire - this trips on ANY missing deployed dependency.

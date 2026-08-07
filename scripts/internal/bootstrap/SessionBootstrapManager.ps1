@@ -140,9 +140,9 @@ function Invoke-SpecrewSessionBootstrap {
     }
 
     if ($JournalPath) {
-        $dir = Split-Path -Parent $JournalPath
-        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        ($record | ConvertTo-Json -Compress) | Add-Content -LiteralPath $JournalPath -Encoding UTF8
+        # Advisory and fail-open, but not best-effort under ordinary concurrent provider fires: the accessor
+        # serializes one JSONL append within a short bound so both forensic records survive.
+        $null = Add-SpecrewBootstrapJournalRecord -JournalPath $JournalPath -Record $record
     }
 
     [pscustomobject]@{

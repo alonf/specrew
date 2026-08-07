@@ -1,77 +1,65 @@
 # PSGallery Release Credentials
 
-Maintainer-facing operations guidance for credentials used by the PowerShell Gallery release workflow.
+Maintainer-facing operations guidance for the PowerShell Gallery release workflow.
 
-> Authenticode signing was removed from the active PSGallery publish path in `v0.24.1`; see `file:///C:/Dev/Specrew/proposals/072-psgallery-unsigned-default.md`. The current live release flow requires only the PSGallery API key. Any signing-certificate material below is retained as historical context for the removed pre-`v0.24.1` flow.
+> Authenticode signing was removed from the active PSGallery publish path in `v0.24.1`; see
+> `proposals/072-psgallery-unsigned-default.md`. The live release path requires only the PSGallery API key.
 
-## Iteration 001 Release Boundary
+## Current Tag-Driven Release Flow
 
 - Workflow: `.github/workflows/publish-module.yml`
 - Helper: `scripts/internal/invoke-module-release.ps1`
-- Safety model:
-  - `push` on `v*.*` tags runs the **dry-run** lane only
-  - a live publish requires `workflow_dispatch` with `release_mode=publish`
-- Iteration 001 explicitly stops short of a real PSGallery publish; the first live publish remains a human-owned follow-up.
+- A push of a `v*.*` prerelease tag automatically selects `publish-prerelease`.
+- The Linux Docker prepublication job must pass before the Windows publication job can run.
+- The publication job stamps a staged copy of the manifest from the tag, publishes with
+  `PSGALLERY_API_KEY`, and creates or updates the corresponding GitHub prerelease.
+- A stable tag selects `publish-stable`, but stable promotion always requires its own explicit authority.
 
-## Required GitHub Actions Secrets
+`workflow_dispatch` remains an operational fallback for `dry-run`, `publish-prerelease`,
+`publish-stable`, or `promote-prerelease`. It is not required for the normal tag-push prerelease path.
 
-| Secret | Purpose | Human follow-up |
+## Required GitHub Actions Secret
+
+| Secret | Purpose | Current operational fact |
 | --- | --- | --- |
-| `PSGALLERY_API_KEY` | Authenticates `Publish-Module` against PSGallery | Create/rotate in PowerShell Gallery, then add it in repository Actions secrets |
+| `PSGALLERY_API_KEY` | Authenticates `Publish-Module` against PSGallery | Present in repository Actions secrets as of 2026-05-18; rotate without exposing its value |
 
-### Removed Signing Secrets (Historical)
+The repository may still contain `SIGNING_CERT_BASE64` and `SIGNING_CERT_PASSWORD`. They are historical
+credentials from the removed Authenticode path and are not consumed by current PSGallery publication.
 
-- `SIGNING_CERT_BASE64`
-- `SIGNING_CERT_PASSWORD`
+## Prerelease Publication Procedure
 
-These secrets belonged to the removed Authenticode-signing path and are no longer required for current PSGallery publishes.
+1. Merge the approved release PR through the protected branch after all required checks and review pass.
+2. Confirm the merge commit is the intended release source and the worktree is clean.
+3. Create the approved prerelease tag, for example `v0.40.0-beta2`, at that exact commit and push the tag once.
+4. Observe **Publish Specrew module**. Stop on any prepublication, stamping, publication, or GitHub-release
+   failure; do not retry or move the tag without a new diagnosis and explicit authority.
+5. Record the immutable tag, workflow run URL/ID, and the visible PSGallery listing as release evidence.
+6. Verify the published version from a fresh PowerShell process:
 
-## First Live Publish Follow-Up
+   ```powershell
+   Find-Module Specrew -Repository PSGallery -RequiredVersion 0.40.0-beta2 -AllowPrerelease
+   ```
 
-1. Create or rotate `PSGALLERY_API_KEY` if needed, then store it in the repository Actions secrets.
-2. Push the approved `v*.*` release tag to `origin`; this should run the dry-run lane only.
-3. Inspect the GitHub Actions run and confirm the stamp/WhatIf steps succeeded.
-4. Manually dispatch **Publish Specrew module** against that same tag with `release_mode=publish`.
-5. After the manual publish run succeeds, verify the new version on PSGallery.
+Publication of a prerelease does not authorize a stable tag or promotion.
 
 ## PSGallery API Key Rotation
 
 ### Cadence
 
-- **Routine review/rotation**: once per year, at the calendar anniversary of the key's creation
-- **Rotate immediately if**:
-  - module-maintainer ownership changes
-  - you suspect the key leaked
-  - publish authentication fails unexpectedly
-  - the annual review finds the key is older than 12 months
+- Review or rotate annually at the key-creation anniversary.
+- Rotate immediately when maintainer ownership changes, exposure is suspected, or authentication fails
+  unexpectedly.
 
-### Rotation Procedure
+### Procedure
 
-1. Generate a new API key on `PowerShellGallery.com`, scoped to the Specrew module, with an appropriate expiration.
-2. Update the GitHub Actions secret (`PSGALLERY_API_KEY`, or the workflow's equivalent secret name) to the new value.
-3. Run the publish workflow through its **manual-dispatch dry-run path** to confirm authentication without performing a real publish.
-4. Revoke the old API key only after the dry run confirms the new key works.
+1. Generate a PSGallery key scoped to the Specrew module with an appropriate expiry.
+2. Replace `PSGALLERY_API_KEY` in repository Actions secrets without logging or copying its value into evidence.
+3. Use the workflow's manual `dry-run` mode to validate the staged release path without a live publication.
+4. Revoke the old key only after the replacement path succeeds.
 
-## Module-Signing Certificate Renewal (Removed in v0.24.1)
+## Historical Signing Material
 
-This section is historical context only. Proposal 072 removed the Authenticode-signing flow from the live PSGallery publish path, so these renewal steps no longer apply to current releases unless a future proposal reintroduces signing.
-
-### Cadence
-
-- **Routine renewal**: once per year, aligned to the annual PSGallery credential review
-- **Renew immediately if**:
-  - certificate material is suspected to be exposed
-  - signing fails unexpectedly during publish validation
-  - maintainer ownership changes and you want fresh certificate custody
-
-### Renewal Procedure
-
-1. Generate a new self-signed code-signing certificate with `-NotAfter (Get-Date).AddYears(1)`.
-2. Export the certificate to a password-protected PFX, Base64-encode it, and update the GitHub Actions secrets (`SIGNING_CERT_BASE64`, `SIGNING_CERT_PASSWORD`).
-3. Run the publish workflow through its **manual-dispatch dry-run path** to confirm signing succeeds without performing a real publish.
-4. Archive the old certificate material for historical signature verification after the new certificate is validated.
-5. Record the renewal date and set the next annual reminder.
-
-## Annual Operations Event
-
-Review the PSGallery API key during the annual operations event. Only revisit the historical signing-certificate flow if a future release proposal explicitly restores Authenticode signing.
+Proposal 072 removed Authenticode signing from current publication. Do not rotate or test the retained signing
+secrets as part of a normal release. Reintroducing signing requires a separately approved proposal and updated
+workflow contract.

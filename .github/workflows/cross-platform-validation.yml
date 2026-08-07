@@ -236,6 +236,118 @@ jobs:
           Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor White
           Write-Host "✅ macOS validation checks passed" -ForegroundColor Green
 
+  review-runtime-fault-matrix:
+    name: Deterministic fake-provider review runtime (${{ matrix.os }}) — never live support evidence
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Verify PowerShell and install pinned Pester
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSVersionTable | Format-List | Out-Host
+          if ($IsLinux) {
+            & sudo pwsh -NoProfile -NonInteractive -Command "Install-Module Pester -RequiredVersion 5.7.1 -Scope AllUsers -Force -SkipPublisherCheck"
+            if ($LASTEXITCODE -ne 0) { throw 'pester-allusers-install-failed' }
+          }
+          else {
+            Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+          Import-Module Pester -RequiredVersion 5.7.1 -Force
+
+      - name: Prepare bounded cgroup v2 root for privileged Linux review-process tests
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -eu
+          sudo mkdir -p /sys/fs/cgroup/specrew-review-ci
+          echo "SPECREW_REVIEW_CGROUP_ROOT=/sys/fs/cgroup/specrew-review-ci" >> "$GITHUB_ENV"
+
+      - name: Run bounded deterministic review fault and conformance suites
+        shell: pwsh
+        env:
+          SPECREW_REQUIRE_POSIX_RUNTIME_PROOF: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runSuites = {
+            $ErrorActionPreference = 'Stop'
+            Import-Module Pester -RequiredVersion 5.7.1 -Force
+            $suites = @(
+              './tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'
+              './tests/continuous-co-review/unit/path-identity.Tests.ps1'
+              # The differential harness measures the VOLUME and asserts the primitive against what the
+              # OS actually did, rather than against an authored expectation. It is only meaningful
+              # BECAUSE this job is a three-OS matrix: the same assertions have different measured right
+              # answers on NTFS (case-insensitive), ext4 (case-sensitive), and APFS (case-insensitive on
+              # a POSIX host - the combination that DRIFT-198-I009-015 lives in and that no local dev
+              # machine here reproduces). Maintainer decision 2026-07-29: this, not another review round,
+              # is the certification instrument for the path-identity surface.
+              './tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1'
+              # The falsifiability gate for the harness above (maintainer decision 2026-07-29). It
+              # mutates the primitive and REQUIRES the harness to fail. It belongs in the matrix rather
+              # than only locally, because its `os-family` mutant - the DRIFT-198-I009-015 shape - is
+              # undetectable wherever the OS family happens to agree with the volume. Measured: it is
+              # invisible on Windows/NTFS and on ext4, and only the case-insensitive macOS leg can
+              # catch it. That leg is the whole reason this job runs three volumes.
+              './tests/continuous-co-review/unit/path-identity-mutation-gate.Tests.ps1'
+              './tests/continuous-co-review/unit/review-harness-contract.Tests.ps1'
+              './tests/continuous-co-review/unit/review-codex-copilot-harness.Tests.ps1'
+              './tests/continuous-co-review/unit/review-cursor-antigravity-harness.Tests.ps1'
+              './tests/continuous-co-review/unit/review-authority-store.Tests.ps1'
+              './tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1'
+              './tests/continuous-co-review/unit/review-campaign-orchestrator.Tests.ps1'
+              './tests/continuous-co-review/unit/review-result-ingestor.Tests.ps1'
+              './tests/continuous-co-review/unit/review-target-port.Tests.ps1'
+              './tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'
+              './tests/continuous-co-review/unit/worktree-containment.Tests.ps1'
+            )
+            if ($IsWindows) {
+              $suites += './tests/continuous-co-review/unit/review-windows-runtime.Tests.ps1'
+            }
+            else {
+              $suites += './tests/continuous-co-review/unit/review-posix-runtime.Tests.ps1'
+            }
+            foreach ($suite in $suites) {
+              Write-Host "--- deterministic suite: $suite" -ForegroundColor Cyan
+              $result = Invoke-Pester -Path $suite -Output Detailed -PassThru
+              # Honour Pester's TERMINAL Result, not just FailedCount. FailedCount stays ZERO for a
+              # failed BeforeAll/AfterAll container, so gating on it alone let this lane report green
+              # while a suite died in setup - with the per-volume measurement absent entirely
+              # (DRIFT-198-I009-039, blocking). tests/f198-regression-suite.ps1:209-211 already carried
+              # exactly this rule and this comment; the lane that was designated the path-identity
+              # certification instrument had never been given it. The shape is not hypothetical: it was
+              # observed the same day as `Tests Passed: 0, Failed: 0 / Container failed: 1`.
+              if ($result.Result -ne 'Passed') { throw "review-fault-suite-failed:$suite (result=$($result.Result) failed=$($result.FailedCount))" }
+            }
+          }
+          if ($IsLinux) {
+            & sudo git config --global --add safe.directory ([IO.Path]::GetFullPath((Get-Location).Path))
+            if ($LASTEXITCODE -ne 0) { throw 'privileged-linux-git-safe-directory-failed' }
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($runSuites.ToString()))
+            & sudo --preserve-env=SPECREW_REVIEW_CGROUP_ROOT,SPECREW_REQUIRE_POSIX_RUNTIME_PROOF pwsh -NoProfile -NonInteractive -EncodedCommand $encoded
+            if ($LASTEXITCODE -ne 0) { throw 'privileged-linux-review-fault-suite-failed' }
+          }
+          else {
+            & $runSuites
+          }
+
+      - name: Clean delegated Linux cgroup root
+        if: always() && runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo rmdir /sys/fs/cgroup/specrew-review-ci 2>/dev/null || true
+
   # ── Feature 140 (Unix-native install) Iteration 2: Ubuntu-first auto-install proof ──
   feature140-install-bootstrap:
     name: install.sh - shellcheck + detection + clean no-pwsh proof

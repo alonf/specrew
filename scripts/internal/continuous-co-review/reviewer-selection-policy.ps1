@@ -89,3 +89,41 @@ function Select-ContinuousCoReviewReviewerCandidate {
 
     return $selection[0]
 }
+
+function Resolve-ContinuousCoReviewConfiguredReviewerCandidate {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $RepoRoot,
+
+        [AllowNull()]
+        [string] $ReviewerConfigPath,
+
+        [AllowNull()]
+        [string] $RequestedHost,
+
+        [AllowNull()]
+        [string] $RequestedModel,
+
+        [AllowNull()]
+        [string] $CodeWriterHost
+    )
+
+    $root = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction Stop).Path
+    $configPath = if ([string]::IsNullOrWhiteSpace($ReviewerConfigPath)) {
+        Join-Path $root '.specrew/reviewer-hosts.json'
+    }
+    else {
+        (Resolve-Path -LiteralPath $ReviewerConfigPath -ErrorAction Stop).Path
+    }
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { return $null }
+
+    try {
+        $configuration = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 100 -ErrorAction Stop
+        $catalog = Get-ContinuousCoReviewReviewerHostCatalog -Configuration $configuration
+        return Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -RequestedHost $RequestedHost -RequestedModel $RequestedModel -CodeWriterHost $CodeWriterHost
+    }
+    catch {
+        throw ("reviewer-host-config-invalid:{0}:{1}" -f $configPath, $_.Exception.Message)
+    }
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260711T182845454-50b5ec1b",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T182845454-50b5ec1b",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1",
+        "line_start": 193,
+        "line_end": 223
+      },
+      "severity": "blocking",
+      "kind": "escalation",
+      "design_reference": "FR-019/T020 verification-confidence and observability-resilience lenses; devops-operations lens and T034b/DRIFT-198-I001-001",
+      "comment": "HUMAN DECISION REQUIRED: stop the autonomous review/fix loop. Both prior blocking findings remain unresolved and no worktree-visible human deferral covers either. Get-ContinuousCoReviewRoundSpendClass still has no production call site (only three unit-test calls), so T020 remains falsely marked done without preflight gating, failed-invocation disposition persistence, provider-spend recording, or round consumption on the real failure path. Separately, changes.diff still changes bin/specrew*, install.sh, and two shell entrypoints from 100755 to 100644 despite the binding exec-bit restoration seam. A human must decide whether to require both fixes before proceeding or record an explicit worktree-visible approved deferral naming the issues and carried work.",
+      "disposition": "escalated_to_human",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-11T18:31:19Z"
+}

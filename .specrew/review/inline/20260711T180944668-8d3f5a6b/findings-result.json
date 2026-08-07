@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260711T180944668-8d3f5a6b",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T180944668-8d3f5a6b",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1",
+        "line_start": 193,
+        "line_end": 223
+      },
+      "severity": "blocking",
+      "kind": "unwired-accounting",
+      "design_reference": "FR-019 / T020; verification-confidence and observability-resilience lenses",
+      "comment": "T020 is marked done, but Get-ContinuousCoReviewRoundSpendClass is only a standalone classifier: no production call site uses it, and the actual no-parseable-review failure path writes failed status without a failed-invocation disposition, updating round state, or recording provider spend. The new tests invoke only this helper, so they do not prove the required preflight-before-model behavior or post-invocation accounting. Wire the classification into the orchestrator around input materialization/model invocation, persist the distinct failed-invocation disposition plus provider telemetry and round consumption, and add an end-to-end fixture proving a missing changes.diff prevents reviewer invocation while an invoked invalid result consumes both budgets.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T180944668-8d3f5a6b",
+      "location": {
+        "path": "bin/specrew",
+        "line_start": null,
+        "line_end": null
+      },
+      "severity": "blocking",
+      "kind": "executable-mode-regression",
+      "design_reference": "devops-operations lens; specs/198-beta2-hardening/iterations/003/design-analysis.md T034b exec-bit restoration / DRIFT-198-I001-001",
+      "comment": "The change set strips the executable bit (100755 -> 100644) from every committed bin/specrew* Unix launcher, and also from install.sh and two shell test entrypoints. This is unrelated to claimed T013/T020 work and conflicts with the binding exec-bit-restoration/Unix distribution seam: a checkout or packaged tree can no longer execute bin/specrew directly (permission denied), while the focused PowerShell tests do not exercise repository file modes and therefore cannot validate this regression. Restore 100755 for the launchers (and executable shell entrypoints) and add/retain a checkout-mode assertion on a Unix lane.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-11T18:13:12Z"
+}

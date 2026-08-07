@@ -3,7 +3,6 @@ scope: boundary.review-signoff
 sources:
   - docs/methodology/review-instructions.md
   - docs/methodology/lifecycle-discipline.md
-  - proposals/145-structured-multi-phase-reviewer.md
 reviewed_at: 2026-06-07
 ---
 ## Review-signoff-stage discipline

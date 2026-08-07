@@ -1,0 +1,176 @@
+{
+  "fixture_schema_version": "1.0",
+  "scenario": "FR-048 (amended 2026-07-13): the framework-NEUTRAL, ORDERED verification-plan contract T018 executes and T019 injects against. Proves the contract accepts ARBITRARY, MIXED technologies (pytest/cargo/dotnet/custom shell) purely from what the plan DECLARES — it never discovers, infers, or privileges a technology. Also pins the amended guardrails: stable plan_id + unique command_id, object provenance, string-array arguments, repo-relative non-escaping paths, engine-bounded timeouts, env_refs NAMES only (no secret values), an empty plan as the explicit verification-not-configured state, and the T019 evidence-join reject of digest-mismatch/duplicate/unjoinable records.",
+  "requirement_refs": ["FR-048"],
+  "note": "Contract predicates under test are pure (except the path-safety symlink check). Plan/command shapes mirror contracts/verification-plan.schema.json. Path-bearing command cases are validated against the real repo root by the test. The 'example-not-a-real-secret' literal is a rejection FIXTURE, never a real value.",
+
+  "plan_cases": [
+    {
+      "name": "mixed-technology-declared-plan",
+      "expected_valid": true,
+      "expected_command_count": 4,
+      "expected_state": "configured",
+      "why": "one ORDERED plan mixing four unrelated technologies + four different provenances; the contract accepts them purely from the declaration, proving framework-neutrality.",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "plan-mixed-001",
+        "commands": [
+          {
+            "command_id": "cmd-pytest",
+            "executable": "pytest",
+            "arguments": ["-q", "--maxfail=1"],
+            "provenance": { "kind": "project-detected", "source": "pyproject.toml:[tool.pytest.ini_options]" },
+            "label": "python unit (pytest)"
+          },
+          {
+            "command_id": "cmd-cargo",
+            "executable": "cargo",
+            "arguments": ["test", "--all"],
+            "provenance": { "kind": "profile-selected", "source": "verify-profile", "profile": "rust-ci" },
+            "label": "rust (cargo test)"
+          },
+          {
+            "command_id": "cmd-dotnet",
+            "executable": "dotnet",
+            "arguments": ["test", "--configuration", "Release"],
+            "result_path": "artifacts/specrew-result.json",
+            "require_result": true,
+            "provenance": { "kind": "provider-gated", "source": "provider-registry", "provider": "dotnet-sdk" },
+            "label": ".NET (dotnet test)"
+          },
+          {
+            "command_id": "cmd-shell",
+            "executable": "bash",
+            "arguments": ["-lc", "./scripts/verify.sh"],
+            "working_directory": "verification",
+            "timeout_seconds": 120,
+            "env_refs": ["CI", "BUILD_ID"],
+            "provenance": { "kind": "project-config", "source": ".specrew/verify.yml" },
+            "label": "custom shell script"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty-plan-is-verification-not-configured",
+      "expected_valid": true,
+      "expected_command_count": 0,
+      "expected_state": "verification-not-configured",
+      "why": "an empty commands array is STRUCTURALLY valid but is the EXPLICIT verification-not-configured state — never a silent success.",
+      "plan": { "schema_version": "1.0", "plan_id": "plan-empty-001", "commands": [] }
+    },
+    {
+      "name": "bad-provenance-kind-invalid",
+      "expected_valid": false,
+      "expected_command_count": 1,
+      "expected_state": "verification-not-configured",
+      "why": "provenance.kind must be one of the four values; a made-up kind fails the command, and as the only command leaves the plan not-configured.",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "plan-badprov-001",
+        "commands": [
+          { "command_id": "c1", "executable": "pytest", "provenance": { "kind": "guessed-from-nowhere", "source": "?" } }
+        ]
+      }
+    },
+    {
+      "name": "path-escape-rejected",
+      "expected_valid": false,
+      "expected_command_count": 1,
+      "expected_state": "verification-not-configured",
+      "why": "a working_directory that escapes the repo root via '..' is path-unsafe; the command is invalid and the plan is not-configured.",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "plan-escape-001",
+        "commands": [
+          { "command_id": "c1", "executable": "bash", "arguments": ["-lc", "echo hi"], "working_directory": "../outside-repo", "provenance": { "kind": "project-config", "source": ".specrew/verify.yml" } }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-command-id-rejected",
+      "expected_valid": false,
+      "expected_command_count": 2,
+      "expected_state": "configured",
+      "why": "both commands are INDIVIDUALLY valid (so there IS runnable verification -> state configured), but the duplicate command_id makes the PLAN structurally invalid; the duplicate is also refused at the T019 evidence-join.",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "plan-dup-001",
+        "commands": [
+          { "command_id": "dup", "executable": "pytest", "provenance": { "kind": "project-detected", "source": "pyproject.toml" } },
+          { "command_id": "dup", "executable": "cargo", "arguments": ["test"], "provenance": { "kind": "profile-selected", "source": "prof", "profile": "rust-ci" } }
+        ]
+      }
+    }
+  ],
+
+  "command_cases": [
+    { "name": "pytest-project-detected-valid", "expected_valid": true,
+      "command": { "command_id": "c", "executable": "pytest", "arguments": ["-q"], "provenance": { "kind": "project-detected", "source": "pyproject.toml" } } },
+    { "name": "cargo-profile-selected-valid", "expected_valid": true,
+      "command": { "command_id": "c", "executable": "cargo", "arguments": ["test", "--all"], "provenance": { "kind": "profile-selected", "source": "verify-profile", "profile": "rust-ci" } } },
+    { "name": "dotnet-provider-gated-valid", "expected_valid": true,
+      "command": { "command_id": "c", "executable": "dotnet", "arguments": ["test"], "provenance": { "kind": "provider-gated", "source": "provider-registry", "provider": "dotnet-sdk" } } },
+    { "name": "shell-project-config-with-env-refs-valid", "expected_valid": true,
+      "command": { "command_id": "c", "executable": "bash", "arguments": ["-lc", "make test"], "working_directory": "verification", "env_refs": ["CI", "BUILD_ID"], "provenance": { "kind": "project-config", "source": ".specrew/verify.yml" } } },
+    { "name": "missing-command-id-invalid", "expected_valid": false,
+      "command": { "executable": "pytest", "provenance": { "kind": "project-detected", "source": "x" } } },
+    { "name": "empty-executable-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "", "provenance": { "kind": "project-config", "source": "x" } } },
+    { "name": "bad-provenance-kind-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "pytest", "provenance": { "kind": "nope", "source": "x" } } },
+    { "name": "bare-string-provenance-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "pytest", "provenance": "project-detected" } },
+    { "name": "provenance-missing-source-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "pytest", "provenance": { "kind": "project-detected" } } },
+    { "name": "provider-gated-missing-provider-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "dotnet", "provenance": { "kind": "provider-gated", "source": "x" } } },
+    { "name": "profile-selected-missing-profile-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "cargo", "provenance": { "kind": "profile-selected", "source": "x" } } },
+    { "name": "arguments-as-shell-string-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "bash", "arguments": "echo hi && rm -rf /", "provenance": { "kind": "project-config", "source": "x" } } },
+    { "name": "env-literal-map-forbidden-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "pytest", "provenance": { "kind": "project-detected", "source": "x" }, "env": { "API_TOKEN": "example-not-a-real-secret" } } },
+    { "name": "env-refs-names-only-valid", "expected_valid": true,
+      "command": { "command_id": "c", "executable": "pytest", "provenance": { "kind": "project-detected", "source": "x" }, "env_refs": ["CI", "SOME_TOKEN_NAME"] } },
+    { "name": "env-refs-with-literal-value-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "pytest", "provenance": { "kind": "project-detected", "source": "x" }, "env_refs": ["FOO=example-not-a-real-secret"] } },
+    { "name": "working-directory-escape-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "bash", "arguments": ["-lc", "echo hi"], "working_directory": "../evil", "provenance": { "kind": "project-config", "source": "x" } } },
+    { "name": "result-path-rooted-invalid", "expected_valid": false,
+      "command": { "command_id": "c", "executable": "dotnet", "arguments": ["test"], "result_path": "/etc/passwd", "provenance": { "kind": "provider-gated", "source": "x", "provider": "dotnet-sdk" } } }
+  ],
+
+  "evidence_join": {
+    "note": "Drives the T019 evidence-join validator Test-ContinuousCoReviewPlanEvidenceInjectable against a fixed plan + current digest.",
+    "current_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "plan": {
+      "schema_version": "1.0",
+      "plan_id": "plan-join-001",
+      "commands": [
+        { "command_id": "c1", "executable": "pytest", "provenance": { "kind": "project-detected", "source": "pyproject.toml" } },
+        { "command_id": "c2", "executable": "cargo", "arguments": ["test"], "provenance": { "kind": "profile-selected", "source": "prof", "profile": "rust-ci" } }
+      ]
+    },
+    "cases": [
+      { "name": "exact-digest-command-joined",
+        "records": [ { "command_id": "c1", "reviewed_digest_tree_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } ],
+        "expected": [ { "command_id": "c1", "injectable": true, "classification": "exact-digest-command-joined" } ] },
+      { "name": "digest-mismatch-not-injected",
+        "records": [ { "command_id": "c1", "reviewed_digest_tree_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } ],
+        "expected": [ { "command_id": "c1", "injectable": false, "classification": "digest-mismatch-not-injected" } ] },
+      { "name": "unjoinable-no-matching-command",
+        "records": [ { "command_id": "cX", "reviewed_digest_tree_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } ],
+        "expected": [ { "command_id": "cX", "injectable": false, "classification": "unjoinable-no-matching-command" } ] },
+      { "name": "duplicate-command-id-surfaced",
+        "records": [
+          { "command_id": "c1", "reviewed_digest_tree_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+          { "command_id": "c1", "reviewed_digest_tree_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+        ],
+        "expected": [
+          { "command_id": "c1", "injectable": false, "classification": "duplicate-command-id-surfaced" },
+          { "command_id": "c1", "injectable": false, "classification": "duplicate-command-id-surfaced" }
+        ] }
+    ]
+  }
+}

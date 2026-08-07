@@ -111,6 +111,10 @@ foreach ($quartetFlag in @('--ack-degraded', '--ack-reason', '--remediate', '--s
     Assert-Contains -Text $result.Output -Substring 'requires a value' -Message ("specrew review {0} reaches the missing-value validation (whitelist did not reject it)" -f $quartetFlag)
 }
 
+$result = Invoke-Specrew -CommandArgs @('review', '--reconcile-run')
+Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --reconcile-run passes the whitelist'
+Assert-Contains -Text $result.Output -Substring 'requires a value' -Message 'specrew review --reconcile-run reaches missing-value validation'
+
 # --- Test 7: live review args are accepted by the whitelist ---
 Write-Host ''
 Write-Host '--- Test 7: review accepts live-mode arguments ---'

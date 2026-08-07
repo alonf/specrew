@@ -125,6 +125,9 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 $null = New-Item -Path $moduleRoot -ItemType Directory -Force
 $null = New-Item -Path $projectRoot -ItemType Directory -Force
+& git -C $projectRoot init --quiet
+& git -C $projectRoot config user.name 'Specrew Distribution Test'
+& git -C $projectRoot config user.email 'specrew-distribution@example.invalid'
 
 $missingTools = @()
 if (-not (Get-Command -Name 'specify' -ErrorAction SilentlyContinue)) {
@@ -140,7 +143,9 @@ if ($missingTools.Count -gt 0) {
 }
 
 Copy-PackagedModuleSurface -SourceRoot $repoRoot -DestinationRoot $moduleRoot -RequiredEntries @(
-    'templates/github/agents/squad.agent.md'
+    'templates/github/agents/squad.agent.md',
+    'templates/github/workflows/specrew-methodology-gate.yml',
+    'templates/github/workflows/specrew-work-kind.yml'
 )
 $null = New-Item -Path (Join-Path -Path $moduleRoot -ChildPath '.git') -ItemType Directory -Force
 
@@ -167,7 +172,8 @@ $requiredPaths = @(
     '.squad\decisions.md',
     '.squad\identity\now.md',
     '.github\agents\squad.agent.md',
-    '.github\workflows\specrew-ci.yml',
+    '.github\workflows\specrew-methodology-gate.yml',
+    '.github\workflows\specrew-work-kind.yml',
     '.specrew\config.yml'
 )
 
@@ -185,16 +191,31 @@ if ($missingPaths.Count -gt 0) {
 }
 
 $workflowRoot = Join-Path -Path $projectRoot -ChildPath '.github\workflows'
-$workflowCount = @(Get-ChildItem -LiteralPath $workflowRoot -File -ErrorAction SilentlyContinue).Count
-if ($workflowCount -lt 1) {
-    Write-Fail 'Distribution bootstrap did not install any GitHub workflows.'
+$workflowNames = @(Get-ChildItem -LiteralPath $workflowRoot -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object Name)
+$expectedWorkflowNames = @('specrew-methodology-gate.yml', 'specrew-work-kind.yml')
+$specrewManagedWorkflowNames = @($workflowNames | Where-Object { $_ -like 'specrew-*' })
+if (($specrewManagedWorkflowNames -join '|') -cne ($expectedWorkflowNames -join '|')) {
+    Write-Fail ("Specrew-managed distribution workflow allowlist mismatch. Expected [{0}], got [{1}]. Squad-owned workflows are outside this assertion." -f ($expectedWorkflowNames -join ', '), ($specrewManagedWorkflowNames -join ', '))
+    exit 1
+}
+if ($firstRunOutput -notmatch 'Created bootstrap commit [0-9a-f]{40}: chore\(specrew\): bootstrap scaffold') {
+    Write-Fail ("Greenfield module bootstrap did not announce the exact bootstrap commit. Output:`n{0}" -f $firstRunOutput)
+    exit 1
+}
+$bootstrapSubject = (& git -C $projectRoot show -s --format=%s HEAD 2>&1 | Select-Object -First 1)
+if ($LASTEXITCODE -ne 0 -or $bootstrapSubject -ne 'chore(specrew): bootstrap scaffold') {
+    Write-Fail ("Greenfield module bootstrap did not create the exact required commit; observed subject '{0}'." -f $bootstrapSubject)
+    exit 1
+}
+if (@(& git -C $projectRoot status --porcelain=v1 --untracked-files=all 2>&1).Count -ne 0) {
+    Write-Fail 'Greenfield module bootstrap did not leave a clean committed baseline.'
     exit 1
 }
 
 $trackedFiles = @(
     (Join-Path -Path $projectRoot -ChildPath '.specify\templates\spec-template.md'),
     (Join-Path -Path $projectRoot -ChildPath '.squad\identity\now.md'),
-    (Join-Path -Path $projectRoot -ChildPath '.github\workflows\specrew-ci.yml')
+    (Join-Path -Path $projectRoot -ChildPath '.github\workflows\specrew-methodology-gate.yml')
 )
 $baselineHashes = @{}
 foreach ($trackedFile in $trackedFiles) {
@@ -202,6 +223,7 @@ foreach ($trackedFile in $trackedFiles) {
 }
 
 Write-Pass 'Module bootstrap copied bundled templates and preserved per-project artifacts.'
+Write-Pass 'Module bootstrap created and announced the exact greenfield baseline commit.'
 Write-Pass 'Module proxy preserved module mode and cleared SPECREW_INVOKED_FROM_MODULE after execution.'
 
 $secondRun = Invoke-ModuleBootstrap -ModuleManifestPath $moduleManifestPath -ProjectPath $projectRoot

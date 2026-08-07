@@ -1,0 +1,24 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "co_design": true,
+  "selected": [
+    "architecture-core",
+    "security-compliance",
+    "component-design",
+    "integration-api",
+    "devops-operations",
+    "requirements-nfr",
+    "data-storage",
+    "observability-resilience",
+    "code-implementation"
+  ],
+  "skipped": {
+    "ui-ux": "No screens in iteration 001; user-facing behavior is lint output and CLI wording, covered by requirements-nfr and observability-resilience."
+  },
+  "design_analysis": {
+    "decision": "Option B - data-driven lint + evidence-first bumps (manifest-derived scan surface; blocking self-host lane; versioned JSON deny-list; single tested pins with scratch-dir probe evidence)",
+    "human_agreed": true,
+    "source": "specs/198-beta2-hardening/iterations/001/design-analysis.md"
+  }
+}

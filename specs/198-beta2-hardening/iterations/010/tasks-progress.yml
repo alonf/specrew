@@ -1,0 +1,48 @@
+schema: "v1"
+feature: "198-beta2-hardening"
+iteration: "010"
+updated_at: "2026-08-03T05:10:00Z"
+# Populated by hand 2026-08-03 (DRIFT-198-I010-010). This file was auto-created
+# all-pending on 2026-08-03T04:57Z for an iteration already at `reviewing`, and the
+# state.md summary writer then propagated those defaults over the honest record —
+# asserting "not-started / 0 complete / 6 pending" for work that is delivered and was
+# certified against. Statuses below match plan.md and state.md, which are authoritative.
+# completed_at is left empty rather than back-filled with invented timestamps; the
+# summary writer falls back to file order, which yields T084 correctly.
+tasks:
+  T080:
+    title: "Link-state fixtures for the volume-differential harness, proven RED first"
+    status: "done"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T081:
+    title: "Mutation gate for link containment; prove it fails against a link-blind primitive"
+    status: "done"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T082:
+    title: "DRIFT-198-I009-041 — authority-store containment against reparse points"
+    status: "needs-rework"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: "PARTIAL - path resolution is contained, enumeration is not (DRIFT-198-I010-004, blocking)"
+  T083:
+    title: "~~DRIFT-198-I009-042 — link-aware directory-entry lookup in the case probe~~"
+    status: "deferred"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: "WITHDRAWN 2026-07-31 - no reachable defect (DRIFT-198-I010-002)"
+  T084:
+    title: "DRIFT-198-I009-043 — case-distinct consumer-firewall fixture"
+    status: "done"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T085:
+    title: "Integrated verification and capped certification"
+    status: "deferred"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: "Terminal as DEFERRED - verification PASSED, certification did NOT; termination rule fired at round 1 of 3"

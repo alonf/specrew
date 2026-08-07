@@ -68,7 +68,7 @@ DETERMINISTIC (scripts, hooks, artifacts)
 
 ### Stop Processing
 
-At every host Stop event, the deployed hook path runs the Stop dispatcher. The Stop dispatcher runs only the Stop-registered providers:
+At every hook-capable CLI host's Stop event, the deployed hook path runs the Stop dispatcher. The Stop dispatcher runs only the Stop-registered providers:
 
 ```text
 agent ends turn
@@ -80,6 +80,8 @@ agent ends turn
 ```
 
 The handover provider is capture for the next session. The conformance provider is enforcement for the current stop. A nudge is best-effort context; a host-native block keeps the turn open and injects the correction directive. Blocks are capped so a stubborn agent cannot hang the session.
+
+This hook-gated enforcement is a **CLI-surface** guarantee — it holds on the hook-capable CLI hosts whose Stop contract is exercised (the CLI is the authoritative supported surface). Editor / IDE surfaces (for example GitHub Copilot in VS Code), desktop apps, and cloud agents are **not** hook-gated by this path: they do **not** receive CLI Stop-hook enforcement and must not be assumed to. On those surfaces the boundary discipline is cooperative and prose-based only. Richer desktop / IDE certification is Beta3 follow-up work (issue #3084); cloud agents remain unsupported.
 
 ### Stop Taxonomy
 

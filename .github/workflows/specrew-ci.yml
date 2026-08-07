@@ -1,8 +1,8 @@
 name: Specrew CI
 
 env:
-  SPEC_KIT_VERSION: '0.8.4'
-  SQUAD_VERSION: '0.9.1'
+  SPEC_KIT_VERSION: '0.12.9'
+  SQUAD_VERSION: '0.11.0'
 
 on:
   push:
@@ -11,6 +11,21 @@ on:
     branches: [ main, 001-specrew-product ]
 
 jobs:
+  self-leak-lint:
+    name: Self-leak firewall (deploy surface)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Lint the consumer-deployed surface against the deny-list
+        shell: pwsh
+        # Blocking in the self-host repo (F-198 FR-033): a deny-listed
+        # Specrew-self fact without a specrew-self-ok annotation is a red
+        # build. Exit 2 (unreadable rule surface) also fails loud.
+        run: pwsh -NoProfile -File scripts/internal/lint-self-leak.ps1 -ProjectRoot .
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -187,6 +202,15 @@ jobs:
 
       - name: Install squad CLI
         run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+
+      - name: F-198 honesty regression suite (NFR-007)
+        # The 0.40.0-beta2 hardening honesty bar - an EXPLICIT, bounded registry (never a glob) of
+        # the ratchet / spend-allowance / containment / tracker-honesty / co-review regressions, each
+        # run with a per-test timeout and clear failure output. These paired tests must not merge as
+        # manual-only; this lane is their CI enforcement.
+        shell: pwsh
+        timeout-minutes: 15
+        run: pwsh -NoProfile -File ./tests/f198-regression-suite.ps1
 
       - name: Integration - bootstrap to iteration
         shell: pwsh

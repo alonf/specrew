@@ -848,7 +848,7 @@ if ($warnings.Contains('soft-warning.hidden-blocker-or-risk')) {
 }
 
 if ($warnings.Contains('soft-warning.review-file-reference-format')) {
-    $summaryLines.Add('Include a file:/// URI with the absolute Windows path when requesting local file review.') | Out-Null
+    $summaryLines.Add("Include a file:/// URI resolved from the current project's absolute path when requesting local file review.") | Out-Null
 }
 
 if ($warnings.Contains('soft-warning.opaque-numeric-references')) {

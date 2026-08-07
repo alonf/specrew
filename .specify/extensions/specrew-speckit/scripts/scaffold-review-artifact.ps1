@@ -17,6 +17,63 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function ConvertTo-LintCleanMarkdown {
+    <#
+    DRIFT-198-I011-011. Governed writers must emit markdown that passes the repository's OWN required
+    lint — the same `markdownlint` step templates/lifecycle/docs-only-lifecycle.md instructs CONSUMERS
+    to run. Emitting non-conformant markdown hands every downstream project a red Lint out of the box,
+    and it reached the beta2 release gate as a failing REQUIRED check on files nobody hand-wrote.
+
+    Normalizes exactly the three rules the generator violated, at the ONE choke point both write paths
+    funnel through — patching individual emit sites would leave whichever one was missed, which is this
+    iteration's recurring lesson.
+
+      MD009 no-trailing-spaces      - strip trailing whitespace (the generator never intends hard breaks)
+      MD032 blanks-around-lists     - blank line before the first and after the last item of a list run,
+                                      blockquote-aware so `> - item` is handled with a `>` spacer
+      MD047 single-trailing-newline - exactly one terminating newline
+
+    Pinned by tests/integration/generator-markdown-parity.tests.ps1, which runs the repo's own
+    .markdownlint.json over freshly-generated output.
+    #>
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Content)
+
+    if ([string]::IsNullOrEmpty($Content)) { return "`n" }
+
+    $lines = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in ($Content -split "`r?`n")) { $lines.Add(($line -replace '[ \t]+$', '')) | Out-Null }
+
+    $isListLine = { param([string]$l) $l -match '^\s*>?\s*([-*+]|\d+[.)])\s+' }
+    $isBlankish = { param([string]$l) $l -match '^\s*>?\s*$' }
+    $isQuoted = { param([string]$l) $l -match '^\s*>' }
+
+    $out = [System.Collections.Generic.List[string]]::new()
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $cur = $lines[$i]
+        if ((& $isListLine $cur)) {
+            $prev = if ($out.Count -gt 0) { $out[$out.Count - 1] } else { $null }
+            # Opening a list run that is not already separated, and not a continuation of one.
+            if ($null -ne $prev -and -not (& $isBlankish $prev) -and -not (& $isListLine $prev)) {
+                $out.Add($(if ((& $isQuoted $cur)) { '>' } else { '' })) | Out-Null
+            }
+            $out.Add($cur) | Out-Null
+            # Closing the run: look ahead past further list lines and their indented continuations.
+            $j = $i + 1
+            while ($j -lt $lines.Count -and ((& $isListLine $lines[$j]) -or $lines[$j] -match '^\s{2,}\S')) { $j++ }
+            for ($k = $i + 1; $k -lt $j; $k++) { $out.Add($lines[$k]) | Out-Null }
+            if ($j -lt $lines.Count -and -not (& $isBlankish $lines[$j])) {
+                $out.Add($(if ((& $isQuoted $lines[$j])) { '>' } else { '' })) | Out-Null
+            }
+            $i = $j - 1
+            continue
+        }
+        $out.Add($cur) | Out-Null
+    }
+
+    $joined = ($out -join "`n").TrimEnd("`r", "`n", ' ', "`t")
+    return ($joined + "`n")
+}
+
 function Add-ScaffoldAction {
     param(
         [AllowEmptyCollection()]
@@ -102,7 +159,7 @@ function Write-MissingFile {
             New-Item -ItemType Directory -Path $parent -Force | Out-Null
         }
 
-        [System.IO.File]::WriteAllText($finalPath, $Content, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText($finalPath, (ConvertTo-LintCleanMarkdown -Content $Content), [System.Text.UTF8Encoding]::new($false))
     }
 }
 

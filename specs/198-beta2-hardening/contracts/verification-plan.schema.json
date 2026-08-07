@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "verification-plan.schema.json",
+  "title": "VerificationPlan",
+  "description": "The framework-NEUTRAL ordered verification plan a downstream command-plan SUPPLIER produces and T018 executes (FR-048); T018/T019 never discover or invent commands; an empty plan is the explicit verification-not-configured state. Commands run in DECLARED order (never sorted); each carries a stable command_id (unique within the plan) that binds its recorded evidence to the reviewed-tree digest. Arguments are a strict string ARRAY (shell behaviour must be an explicit interpreter invocation); working_directory/result_path must be repository-relative and are rejected if rooted or escaping via '..' or a symlink; timeout_seconds is bounded by engine policy (0/absent -> engine default, over-max clamped, never unlimited); provenance is an auditable object; and NO secret env values may appear (only env_refs NAMES).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "commands"],
+  "properties": {
+    "schema_version": {
+      "description": "Contract version. Exactly '1.0' for this schema; a future shape bumps this.",
+      "const": "1.0"
+    },
+    "plan_id": {
+      "description": "Stable identity of this plan.",
+      "type": "string",
+      "minLength": 1
+    },
+    "commands": {
+      "description": "The ORDERED verification commands. Executed in declared order and NEVER sorted. An EMPTY array is the explicit verification-not-configured state (never a silent success). command_id values MUST be unique across the array.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "executable", "provenance"],
+        "properties": {
+          "command_id": {
+            "description": "Stable id, UNIQUE within the plan; recorded evidence joins on command_id + reviewed-tree digest.",
+            "type": "string",
+            "minLength": 1
+          },
+          "executable": {
+            "description": "The program to run (resolved via PATH by the recorded-run runner). Framework-neutral: pytest, cargo, dotnet, bash, pwsh, or anything else.",
+            "type": "string",
+            "minLength": 1
+          },
+          "arguments": {
+            "description": "A strict string ARRAY (default []). NEVER a single shell string — shell behaviour is an explicit interpreter invocation, e.g. executable 'pwsh' arguments ['-File', 'verify.ps1'] or executable 'bash' arguments ['-lc', 'make test'].",
+            "type": "array",
+            "items": { "type": "string" },
+            "default": []
+          },
+          "working_directory": {
+            "description": "OPTIONAL. Repository-RELATIVE + canonical. Rejected if rooted/absolute, if it escapes via '..', or if a symlink/junction resolves outside the repository root.",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "description": "OPTIONAL per-command budget (default 0). Bounded by engine policy: 0/absent resolves to the engine DEFAULT (never unlimited); a value over the engine MAX is clamped. A supplier can never buy an unlimited run.",
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          },
+          "result_path": {
+            "description": "OPTIONAL. Repository-RELATIVE + canonical (same path-safety rules as working_directory). Where the command WRITES its SpecrewTestResult during the run so its counts gain evidence standing.",
+            "type": "string"
+          },
+          "require_result": {
+            "description": "OPTIONAL (default false). When true the command MUST produce a schema-valid SpecrewTestResult at result_path; an absent/invalid result is a VERIFICATION FAILURE for that command (command_succeeded=false), never a richer clean claim.",
+            "type": "boolean",
+            "default": false
+          },
+          "provenance": {
+            "description": "AUDITABLE provenance object naming HOW the command entered the plan — not a bare enum.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "source"],
+            "properties": {
+              "kind": {
+                "description": "One of the four provenance kinds.",
+                "enum": ["project-config", "project-detected", "profile-selected", "provider-gated"]
+              },
+              "source": {
+                "description": "The config path / detection signal / profile name / provider id that produced this command.",
+                "type": "string",
+                "minLength": 1
+              },
+              "provider": {
+                "description": "REQUIRED when kind='provider-gated' — the gating provider id.",
+                "type": "string"
+              },
+              "profile": {
+                "description": "REQUIRED when kind='profile-selected' — the selected profile name.",
+                "type": "string"
+              }
+            },
+            "allOf": [
+              {
+                "if": { "properties": { "kind": { "const": "provider-gated" } } },
+                "then": { "required": ["provider"] }
+              },
+              {
+                "if": { "properties": { "kind": { "const": "profile-selected" } } },
+                "then": { "required": ["profile"] }
+              }
+            ]
+          },
+          "env_refs": {
+            "description": "OPTIONAL allowlist of env var NAMES to pass through. NAMES ONLY — a literal 'env'/'environment' value map is forbidden (no secret values may appear in a plan or its recorded evidence). AUTHORITATIVE (2026-07-14): the child environment is constructed from an EMPTY map + the engine's normative platform baseline (Get-ContinuousCoReviewVerificationEngineBaseline — currently EMPTY on Windows and Linux, every entry requiring paired runtime-evidence tests) + exactly these declared names, resolved from the ambient environment at spawn. HOME/USERPROFILE/APPDATA/LOCALAPPDATA are never implicit; PSModulePath/locale/terminal/tool variables must be declared here. The executable is resolved to a full path BEFORE the environment is constructed, so PATH is not implicitly required.",
+            "type": "array",
+            "items": { "type": "string", "minLength": 1, "pattern": "^[^=]+$" }
+          },
+          "label": {
+            "description": "OPTIONAL human-readable label for the command.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

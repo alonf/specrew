@@ -178,7 +178,7 @@ function Test-CopilotInstructionsChangeType {
     $sectionNames = @(
         $beforeSectionNames +
         $afterSectionNames
-    ) | Sort-Object -Unique
+    ) | Sort-Object -Unique   # specrew-dedup-not-a-path
 
     foreach ($sectionName in $sectionNames) {
         $beforeProperty = $beforeParts.Sections.PSObject.Properties[$sectionName]

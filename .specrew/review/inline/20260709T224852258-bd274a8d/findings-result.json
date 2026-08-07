@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260709T224852258-bd274a8d",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260709T224852258-bd274a8d",
+      "location": {
+        "path": "install.sh",
+        "line_start": 1,
+        "line_end": 1
+      },
+      "severity": "blocking",
+      "kind": "unix-executable-permissions",
+      "design_reference": "devops-operations lens / README install.sh native shell entrypoint / proposals/153 AC1-AC2",
+      "comment": "The diff changes install.sh and every bin/specrew* shell wrapper from mode 100755 to 100644. These are documented and packaged as native macOS/Linux entrypoints, and existing runtime tests exercise ./bin/specrew directly; shipping them non-executable breaks direct invocation and installed wrapper behavior on Unix. Preserve executable bits for install.sh and the committed bin/* shell wrappers; do not let a Windows checkout normalize them to 100644.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260709T224852258-bd274a8d",
+      "location": {
+        "path": "bin/specrew",
+        "line_start": null,
+        "line_end": null
+      },
+      "severity": "blocking",
+      "kind": "unix-executable-mode-regression",
+      "design_reference": "process-context no unplanned scope; specs/198-beta2-hardening/tasks.md Iteration 001 owns no bin/install shell mode changes; README.md native install command surface; CHANGELOG.md wrapper execute bit regression guard",
+      "comment": "The change-set removes the executable bit from bin/specrew, the other bin/specrew-* launchers, install.sh, and shell integration tests (100755 -> 100644) without any task or drift record covering this surface. These files are the documented macOS/Linux native command/install surface; shipping them non-executable can reintroduce the Permission denied class and is outside the approved iteration-001 planning/toolchain/firewall scope.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-09T22:52:18Z"
+}

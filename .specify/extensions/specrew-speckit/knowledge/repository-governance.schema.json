@@ -2,14 +2,26 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specrew.dev/schemas/repository-governance.schema.json",
   "title": "Repository Governance Capture",
-  "description": "Validates the project-level .specrew/repository-governance.yml captured by the DevOps lens (branch_model + review_gate + multi_repo). Forge-neutral: the provider/enforcement_mode carry forge specificity, the schema does not bind to one forge.",
+  "description": "Validates project-level repository governance and the recorded release model. Forge-neutral: provider/enforcement_mode carry forge specificity; release_model controls only applicable closeout delivery steps.",
   "type": "object",
-  "required": ["repository_governance"],
+  "anyOf": [
+    { "required": ["repository_governance"] },
+    { "required": ["release_model", "release_model_provenance"] }
+  ],
   "additionalProperties": false,
   "properties": {
     "repository_governance": { "$ref": "#/$defs/repositoryGovernance" },
+    "release_model": { "type": "string", "enum": ["local-only", "push-only", "pr-flow", "beta-stable"] },
+    "release_model_provenance": { "type": "string", "enum": ["recorded", "inferred"] },
+    "publish_target": { "type": ["string", "null"], "minLength": 1 },
     "multi_repo": { "$ref": "#/$defs/multiRepo" }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "release_model": { "const": "beta-stable" } }, "required": ["release_model"] },
+      "then": { "required": ["publish_target"], "properties": { "publish_target": { "type": "string", "minLength": 1 } } }
+    }
+  ],
   "$defs": {
     "repositoryGovernance": {
       "type": "object",

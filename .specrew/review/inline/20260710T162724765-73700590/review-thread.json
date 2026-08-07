@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "thread_id": "thread-20260710T162724765-73700590",
+  "run_id": "20260710T162724765-73700590",
+  "checkpoint_id": "nav-20260710T162724765-73700590",
+  "findings": [
+    "f1"
+  ],
+  "dispositions": [
+    {
+      "disposition_id": "disposition-f1-open",
+      "finding_id": "f1",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-10T18:21:17Z"
+    },
+    {
+      "disposition_id": "disposition-f1-resolved-duplicate",
+      "finding_id": "f1",
+      "state": "resolved",
+      "rationale": "Stale queued round (fired 16:27, surfaced after the fix): duplicate of run 7b55bbc8 finding. Fixed in d06e3c78 - Test-SelfLeakAnnotated returns the human reason, records carry AnnotationReason, the [annotated] output prints it per hit, Test 3 asserts the actual reason strings. Confirmed by the clean independent pass a07ff4ec on the exact current tree.",
+      "fix_evidence_ref": "commit d06e3c78; run 20260710T181853407-a07ff4ec (0 findings, promoted gate evidence)",
+      "review_round": 14,
+      "actor_role": "editor",
+      "recorded_at": "2026-07-10T18:21:37Z"
+    }
+  ],
+  "resolution_summary": "Inline reviewer returned 1 finding(s); disposition trail persisted by orchestrator.",
+  "escalation_ref": "",
+  "created_at": "2026-07-10T18:21:17Z",
+  "updated_at": "2026-07-10T18:21:37Z"
+}

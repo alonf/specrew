@@ -23,6 +23,7 @@ If you run `specrew update` when the installed module itself is stale, you only 
 | You want the cleanest recovery path after repeated drift | Mixed module versions or stale local assets | Go to [Clean reinstall flow](#clean-reinstall-flow). |
 | `specrew init` says Node is too old right after a `brew` upgrade (macOS) | `nvm` shadows the Homebrew Node on `PATH`; `pwsh` uses the same old Node | Go to [macOS: Node version shadowed by nvm](#macos-node-version-shadowed-by-nvm). |
 | `specrew init` says Spec Kit is missing or too old | `specify-cli` is absent or below the supported floor | Go to [Spec Kit missing or too old](#spec-kit-missing-or-too-old). |
+| You are unsure which hosts/surfaces Specrew actually governs, or Codex governance is silently skipped in a headless run | Support is CLI-first; Copilot VS Code and cloud are unsupported; Codex needs a one-time interactive trust approval | Go to [Host support tiers and hook governance compatibility](#host-support-tiers-and-hook-governance-compatibility). |
 | You launch your host but no Specrew orientation banner appears; the agent acts ungoverned | The SessionStart hook is not installed for that host, or the banner did not reach the session | Go to [No orientation banner when you launch your host](#no-orientation-banner-when-you-launch-your-host). |
 | On restart the agent asks "what do you want to build?" instead of resuming | No valid handover or anchor surfaced; or the deployed providers are stale | Go to [Resume starts blind instead of welcoming you back](#resume-starts-blind-instead-of-welcoming-you-back). |
 | Resume reopens "`=== AWAITING YOUR VERDICT ===`" at a boundary you thought was done | A committed boundary is not an authorized boundary | Go to [Resume re-asks for a verdict you already gave](#resume-re-asks-for-a-verdict-you-already-gave). |
@@ -123,6 +124,48 @@ specrew start
 ```
 
 Do not re-add those files to git to make the state feel durable. They are host-session scratch state, not authoritative delivery artifacts.
+
+## Host support tiers and hook governance compatibility
+
+Specrew is **CLI-first**. The command-line host is the authoritative governed surface; **cloud agents and cloud-gated development are unsupported** in this release. Every host + surface carries exactly one support tier, and the tier is a claim about *evidence*, never about a file being present:
+
+| Tier | Meaning |
+| --- | --- |
+| `verified` | Exercised end-to-end on that surface — a real conformance probe passed. |
+| `configuration-compatible` | Documented **shared configuration** with a verified surface; the lifecycle is not independently exercised there, so it is not `verified`. |
+| `unsupported` | No reliable gated integration — governance must never be implied on that surface. |
+| `unverified` | Support may be intended, but no conformance probe has passed yet (the honest default — never a fabricated `verified`). |
+
+Where each host + surface stands today:
+
+| Host | Surface | Tier | Notes |
+| --- | --- | --- | --- |
+| Claude | CLI | `verified` | The authoritative gated surface — the Stop / SessionStart hook contract is exercised end-to-end. |
+| Claude | VS Code | `configuration-compatible` | Shares Claude settings/hooks with the CLI; the lifecycle is not independently exercised there. |
+| Codex | CLI | `verified` | The Stop `decision:block` gate is confirmed against the installed CLI; the interactive trust prompt and hook execution were confirmed on a real session. See [the Codex one-time trust step](#codex-cli-approve-the-hook-trust-prompt-once) below. |
+| Codex | IDE / desktop | `configuration-compatible` | Shares Codex config layers with the CLI; the lifecycle is not independently exercised there. |
+| Copilot | CLI | `verified` | User-level `sessionStart` / `agentStop` hooks fire in both `copilot -p` and interactive mode, and are not trust-gated — Specrew governance rides that user-level hook. |
+| Copilot | VS Code | `unsupported` | Copilot VS Code does **not** receive CLI Stop-hook enforcement — its hooks are a different surface. Do not expect governance there. |
+| Cursor | desktop | `unverified` | Support is intended, but no conformance probe has passed yet. |
+| any | cloud | `unsupported` | No cloud-agent Stop-hook enforcement or governance in this release. |
+
+`specrew hooks status` reports whether the hook is *installed*; it does not by itself prove the host actually *loaded and fired* it. The durable proof is a **hook-health receipt** — a sanitized record (host; surface; event; observed host version; timestamp; adapter contract version — no prompts, arguments, environment values, or secrets) written the first time a real SessionStart or Stop hook fires. Missing, stale, conflicting, or malformed evidence reads as `unverified` / `degraded` and is **never** reported as healthy.
+
+Richer desktop / IDE / cloud certification (host capability negotiation, multi-version and desktop/IDE certification, and plugin packaging) is tracked for a future release in issue [#3084](https://github.com/alonf/specrew/issues/3084) — it is out of scope for this release.
+
+### Codex CLI: approve the hook trust prompt once
+
+Codex gates every hook behind a trust decision that **Codex itself owns**. Specrew never writes `~/.codex`, never seeds a `trusted_hash`, and never passes `--dangerously-bypass-hook-trust` as a standing workaround. Because a headless `codex exec` cannot show a prompt, an **untrusted** hook is silently skipped there — so a headless run must not be treated as governed until trust exists.
+
+The one-time supported flow:
+
+1. Install the hook if needed: `specrew hooks install --host codex`.
+2. Start Codex **interactively** once in the project: run `codex`.
+3. When Codex shows its **native** trust request for the Specrew hook, approve it.
+4. Let a SessionStart or Stop hook fire (that real fire records a hook-health receipt).
+5. From then on, governed and headless Codex runs proceed as expected.
+
+Until that receipt exists, Specrew reports Codex headless governance as **not ready** with this same instruction rather than silently continuing ungoverned.
 
 ## No orientation banner when you launch your host
 
@@ -302,13 +345,13 @@ The last line is the one that matters: always verify `node -v` **inside `pwsh`**
 `specrew init` validates the bundled Spec Kit (`specify-cli`) against Specrew's supported baseline and fails closed if it is missing or below the floor:
 
 ```text
-Specrew requires Spec Kit >= 0.8.4 but found 0.0.22.
+Specrew requires Spec Kit >= 0.12.9 but found 0.0.22.
 ```
 
-The supported floor and the latest tested version are declared in `scripts/internal/supported-versions.yml` (`speckit.min` / `speckit.max_tested`) — currently floor **0.8.4**, tested up to **0.9.0**. `specrew init` prints the exact remediation command for the floor; run it (add `--force` to replace an existing tool install):
+The supported floor and the latest tested version are declared in `scripts/internal/supported-versions.yml` (`speckit.min` / `speckit.max_tested`) — currently floor **0.12.9**, tested up to **0.12.9**. `specrew init` prints the exact remediation command for the floor; run it (add `--force` to replace an existing tool install):
 
 ```sh
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.4 --force
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.12.9 --force
 ```
 
 Then re-run `specrew init`. (`uv` is required — see [getting-started](getting-started.md#1-check-dependencies).) The `@v…` tag tracks Specrew's supported floor; if the command `specrew init` prints names a different version, prefer the printed one — it is generated from the runtime baseline, not from this doc.
@@ -337,6 +380,22 @@ You passed an explicit `--host` that is not installed, not authorized, or has no
 the reviewer-host catalog. Specrew honours your request or fails — it never substitutes a different
 harness silently. Either authorize/install that harness or re-run without `--host` to let selection
 pick the strongest authorized independent reviewer.
+
+### `review-campaign-target-root-unavailable` or `review-campaign-target-root-unusable`
+
+The campaign could not create a writable snapshot root outside the Git repository. The default is
+the sibling `<repository-parent>/.specrew-targets/`; Windows falls back to `%USERPROFILE%\.sr\<repo-token>`, while POSIX
+falls back under the user temp directory. These repo-token namespace directories are deliberately
+retained, including when directory creation succeeds but the file probe fails, because deleting an
+empty-looking shared root can race a concurrent run. Individual `rt-*` worktrees are removed after
+each run. Supply a short writable external location with
+`specrew review --live --run-root <absolute-path> ...`; a path inside the repository is rejected
+before provider spend.
+
+Intermediate Iteration 007 builds may have left empty legacy namespaces at
+`%TEMP%/specrew-review-targets/<20-hex>/` or `%USERPROFILE%\.sr\<20-hex>`. They are no longer read and
+may be deleted after confirming that no review is running; do not remove a populated `rt-*`
+workspace until its recovery evidence has been reconciled.
 
 ### `no-parseable-findings-json` (reviewer returned nothing)
 

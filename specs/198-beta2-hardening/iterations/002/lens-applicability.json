@@ -1,0 +1,24 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "co_design": true,
+  "selected": [
+    "architecture-core",
+    "security-compliance",
+    "component-design",
+    "integration-api",
+    "devops-operations",
+    "requirements-nfr",
+    "data-storage",
+    "observability-resilience",
+    "code-implementation"
+  ],
+  "skipped": {
+    "ui-ux": "No screens in iteration 002; the consumer-facing surfaces are the ratchet refusal, the announced bypass, the W14 warning, and the timeout teaching - console texts owned as requirements (FR-018/FR-022 as amended) with message-content tests."
+  },
+  "design_analysis": {
+    "decision": "Option B - one pure authorization primitive consumed by the A2 covering set (sync ratchet, validator, resume re-confirm, hard gates); first-class recorded reconciliation (kind=retroactive entries; revert behind explicit confirm); fail-closed TrackerHonestyCheck feeding the announced gate-level bypass; catalog default_timeout_seconds rows (antigravity 900, claude 600, codex 600, copilot 300 - self-host field timings accepted as measurement evidence); W14 resolved-value warning; teaching texts per the amended approve/deny UX; live-door env cascade + independence_source",
+    "human_agreed": true,
+    "source": "specs/198-beta2-hardening/iterations/002/design-analysis.md"
+  }
+}

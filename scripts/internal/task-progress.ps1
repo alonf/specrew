@@ -448,6 +448,56 @@ function Set-TaskProgressMarkdownSection {
     return $Content.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $replacement
 }
 
+function Set-TaskProgressManagedSummary {
+    # NON-DESTRUCTIVE Execution Summary refresh (state-narrative destruction root-cause fix, 2026-07-14 —
+    # DRIFT-198-I003-009): the previous Set-TaskProgressMarkdownSection call replaced the ENTIRE
+    # '## Execution Summary' section up to the next '## ' heading, silently destroying any hand-authored
+    # execution narrative recorded there (the observed iteration-003/005 committed-state truncations: a rich
+    # 600-line execution record collapsed to three generated bullets on any task-progress sync). The generated
+    # digest now lives in an explicit marker-bounded MANAGED block; everything else in the section is USER
+    # content and is preserved. Migration: a section whose every non-empty line is a recognized machinery
+    # bullet (the legacy generated digest or the scaffold placeholder) is machinery-owned and is replaced in
+    # full; any other content keeps its narrative below the refreshed managed block.
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][string]$SummaryBlock
+    )
+    $nl = [Environment]::NewLine
+    $begin = '<!-- specrew:task-progress-summary:begin -->'
+    $end = '<!-- specrew:task-progress-summary:end -->'
+    $managed = $begin + $nl + $SummaryBlock.Trim() + $nl + $end
+    $evaluator = { param($m) $managed }.GetNewClosure()
+
+    # 1) An existing managed block refreshes IN PLACE (idempotent; never grows a second block).
+    $markerPattern = '(?ms)' + [regex]::Escape($begin) + '.*?' + [regex]::Escape($end)
+    if ([regex]::IsMatch($Content, $markerPattern)) {
+        return [regex]::Replace($Content, $markerPattern, $evaluator)
+    }
+
+    # 2) No section yet -> append a fresh one carrying only the managed block.
+    $sectionMatch = [regex]::Match($Content, '(?ms)^##\s+Execution Summary\s*\r?\n(?<body>.*?)(?=^##\s+|\z)')
+    if (-not $sectionMatch.Success) {
+        return $Content.TrimEnd() + $nl + $nl + '## Execution Summary' + $nl + $nl + $managed + $nl
+    }
+
+    # 3) Section exists without markers: machinery-owned bodies (legacy digest / scaffold placeholder) migrate
+    #    to the managed block wholesale; ANYTHING else is user narrative and is PRESERVED below the block.
+    $body = [string]$sectionMatch.Groups['body'].Value
+    $machineryLinePattern = '^\s*-\s+(Execution has not started yet\.|Execution is in progress\.|Execution is blocked on one or more tasks\.|Implementation tasks are complete; review-signoff is next\.|Task progress:\s+\d+\s+complete.*|Latest completed task:.*|This artifact was scaffolded before task execution.*)\s*$'
+    $machineryOwned = $true
+    foreach ($line in ($body -split "\r?\n")) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if (-not [regex]::IsMatch($line, $machineryLinePattern)) { $machineryOwned = $false; break }
+    }
+    $newSection = if ($machineryOwned) {
+        '## Execution Summary' + $nl + $nl + $managed + $nl
+    }
+    else {
+        '## Execution Summary' + $nl + $nl + $managed + $nl + $nl + $body.Trim() + $nl
+    }
+    return $Content.Substring(0, $sectionMatch.Index) + $newSection + $Content.Substring($sectionMatch.Index + $sectionMatch.Length)
+}
+
 function Update-IterationStateFromTaskProgress {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -520,9 +570,33 @@ function Update-IterationStateFromTaskProgress {
     else {
         'not-started'
     }
-    $currentPhaseValue = if ($iterationStatus -eq 'not-started') { 'before-implement' } else { 'implement' }
-
     $lines = @(Get-Content -LiteralPath $statePath -Encoding UTF8)
+    $existingPhase = ''
+    foreach ($line in $lines) {
+        if ($line -match '^\*\*Current Phase\*\*:\s*(.+?)\s*$') {
+            $existingPhase = ([string]$Matches[1]).Trim().ToLowerInvariant()
+            break
+        }
+    }
+    # Task progress is evidence, not lifecycle authority. Never regress an
+    # already-authorized canonical phase (the dogfood release iteration was
+    # incorrectly rewritten from review-signoff to the non-canonical
+    # "implement"). When old/missing state has no canonical phase, heal it to
+    # the nearest valid working position without inventing a boundary verdict.
+    $canonicalPhases = @(
+        'specify', 'clarify', 'plan', 'tasks', 'before-implement',
+        'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout'
+    )
+    $currentPhaseValue = if ($existingPhase -in $canonicalPhases) {
+        $existingPhase
+    }
+    elseif ($iterationStatus -eq 'ready-for-review') {
+        'review-signoff'
+    }
+    else {
+        'before-implement'
+    }
+
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Current Phase' -Value $currentPhaseValue -AfterLabel 'Schema'
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Iteration Status' -Value $iterationStatus -AfterLabel 'Current Phase'
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Last Completed Task' -Value $lastCompletedValue -AfterLabel 'Iteration Status'
@@ -544,7 +618,9 @@ function Update-IterationStateFromTaskProgress {
     ) -join [Environment]::NewLine
 
     $content = $lines -join [Environment]::NewLine
-    $content = Set-TaskProgressMarkdownSection -Content $content -Heading 'Execution Summary' -SectionContent $summaryBlock
+    # NON-DESTRUCTIVE (DRIFT-198-I003-009): the generated digest refreshes a marker-bounded managed block;
+    # hand-authored narrative in the Execution Summary section is never machinery-replaced again.
+    $content = Set-TaskProgressManagedSummary -Content $content -SummaryBlock $summaryBlock
     Write-Utf8FileAtomic -Path $statePath -Content ($content.TrimEnd() + [Environment]::NewLine)
 
     return [pscustomobject]@{

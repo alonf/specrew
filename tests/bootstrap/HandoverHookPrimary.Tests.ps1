@@ -132,18 +132,17 @@ try {
     $rq = Update-SpecrewRollingHandover -ProjectRoot $proj -HostKind claude -Source 'PostToolUse' -NowUtc '2026-06-12T00:01:00Z'
     Assert-True (-not $rq.wrote) 'a clean tree + unchanged boundary is gated out (the per-tool-call cheapness guarantee)'
 
-    # (e) [retargeted f184] Claude's refocus binding is manifest-driven and follows the APPROVED TG-004a
-    #     model (iteration-001 review-signoff): BoundTriggers b1/b2 delivered via SessionStart, and B3 rides
-    #     channel 1 (the boundary-sync wrapper stdout) rather than a per-tool-call hook - the PostToolUse
-    #     spawn measured ~920ms/call vs the 150ms bar. So PostToolUse is UNREGISTERED as a refocus event and
-    #     the OLD hardcoded per-host `'PostToolUse' = [pscustomobject]` registration in deploy-refocus-hooks
-    #     is gone. These assertions positively pin that model AND stay a real regression guard: they FAIL if
-    #     PostToolUse is re-registered (added to Events / re-bound as b3) or re-hardcoded in deploy.
+    # (e) T070 superseded the TG-004a B3 gap by wiring Claude's genuine UserPromptSubmit event. B1/B2 remain
+    #     on SessionStart, B3 now rides UserPromptSubmit, and the expensive per-tool-call PostToolUse spawn
+    #     remains UNREGISTERED. These assertions pin the approved exact turn-start adapter without reopening
+    #     the measured ~920ms/call PostToolUse path.
     $claudeBindings = (Import-PowerShellDataFile (Resolve-Path "$PSScriptRoot/../../hosts/claude/host.psd1").Path).RefocusHookBindings
     Assert-True (($claudeBindings.BoundTriggers -contains 'b1') -and ($claudeBindings.BoundTriggers -contains 'b2')) 'Claude binds b1+b2 via the refocus hook (the approved model)'
-    Assert-True (-not ($claudeBindings.BoundTriggers -contains 'b3')) 'b3 is NOT bound to a Claude hook - it rides channel 1 (TG-004a); guards against re-binding b3'
+    Assert-True ($claudeBindings.BoundTriggers -contains 'b3') 'Claude binds b3 through the T070 UserPromptSubmit adapter'
     Assert-True ($claudeBindings.Events -contains 'SessionStart') 'Claude registers the SessionStart refocus event (b1/b2 delivery)'
-    Assert-True (-not ($claudeBindings.Events -contains 'PostToolUse')) 'Claude PostToolUse is UNREGISTERED as a refocus event (TG-004a); guards against re-registering it'
+    Assert-True ($claudeBindings.Events -contains 'UserPromptSubmit') 'Claude registers UserPromptSubmit for exact turn-start capture and b3 delivery'
+    Assert-True ([string]$claudeBindings.TurnStartCapability.Mode -eq 'exact') 'Claude declares exact turn-start capability'
+    Assert-True (-not ($claudeBindings.Events -contains 'PostToolUse')) 'Claude PostToolUse remains UNREGISTERED; guards against the measured per-tool-call regression'
     $deploy = (Resolve-Path "$PSScriptRoot/../../scripts/internal/deploy-refocus-hooks.ps1").Path
     Assert-True ((Get-Content -LiteralPath $deploy -Raw) -notmatch "'PostToolUse'\s*=\s*\[pscustomobject\]") 'deploy-refocus-hooks does NOT re-hardcode a per-host PostToolUse registration (manifest-driven); guards against re-hardcoding'
 

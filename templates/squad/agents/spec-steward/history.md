@@ -28,7 +28,7 @@ Foundational patterns from May 8-11 established the spec steward discipline for 
 
 The approval recording involved:
 
-1. **plan.md Implementation Approval section**: Updated from pending to authorized with explicit approval evidence, approving human (Alon Fliess), and recorded date.
+1. **plan.md Implementation Approval section**: Updated from pending to authorized with explicit approval evidence, approving human (the maintainer), and recorded date.
 2. **state.md lifecycle state**: Updated Current Phase from 'planning' to 'approved' and Iteration Status to reflect implementation-approved but not yet executed state.
 3. **hardening-gate.md approval fields**: Updated Overall Verdict, Reviewed By, Reviewed At, and added Hardening-Gate Sign-Off section.
 4. **Hardening concern status vocabulary repair**: Five feature-specific concerns required Status correction from `requires-evidence` to `addressed` and Runtime Evidence Status correction to `pending-post-implementation`.

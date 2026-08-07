@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.0",
+  "catalog_id": "specrew-verification-plan-catalog.v1",
+  "project_metadata": [
+    {
+      "entry_id": "metadata.package-json.scripts-test.v1",
+      "detector_id": "package-json.scripts-test.v1",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "verification.package-json.scripts-test.v1",
+        "commands": [
+          {
+            "command_id": "package-json-test",
+            "executable": "npm",
+            "arguments": ["test"],
+            "timeout_seconds": 1800,
+            "provenance": {
+              "kind": "project-detected",
+              "source": "package-json.scripts-test.v1"
+            },
+            "label": "Project-declared package.json test script"
+          }
+        ]
+      }
+    }
+  ],
+  "quality_profiles": [
+    {
+      "entry_id": "profile.node-public-ws-service.v1",
+      "profile_id": "quality-profile.node-public-ws-service.v1",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "verification.profile.node-public-ws-service.v1",
+        "commands": [{
+          "command_id": "profile-node-test",
+          "executable": "npm",
+          "arguments": ["test"],
+          "timeout_seconds": 1800,
+          "provenance": { "kind": "profile-selected", "source": "quality-profile.node-public-ws-service.v1", "profile": "quality-profile.node-public-ws-service.v1" },
+          "label": "Explicit Node.js quality-profile test command"
+        }]
+      }
+    },
+    {
+      "entry_id": "profile.react-spa-public.v1",
+      "profile_id": "quality-profile.react-spa-public.v1",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "verification.profile.react-spa-public.v1",
+        "commands": [{
+          "command_id": "profile-node-test",
+          "executable": "npm",
+          "arguments": ["test"],
+          "timeout_seconds": 1800,
+          "provenance": { "kind": "profile-selected", "source": "quality-profile.react-spa-public.v1", "profile": "quality-profile.react-spa-public.v1" },
+          "label": "Explicit React quality-profile test command"
+        }]
+      }
+    },
+    {
+      "entry_id": "profile.node-rest-with-postgres.v1",
+      "profile_id": "quality-profile.node-rest-with-postgres.v1",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "verification.profile.node-rest-with-postgres.v1",
+        "commands": [{
+          "command_id": "profile-node-test",
+          "executable": "npm",
+          "arguments": ["test"],
+          "timeout_seconds": 1800,
+          "provenance": { "kind": "profile-selected", "source": "quality-profile.node-rest-with-postgres.v1", "profile": "quality-profile.node-rest-with-postgres.v1" },
+          "label": "Explicit Node.js quality-profile test command"
+        }]
+      }
+    },
+    {
+      "entry_id": "profile.python-fastapi-service.v1",
+      "profile_id": "quality-profile.python-fastapi-service.v1",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "verification.profile.python-fastapi-service.v1",
+        "commands": [{
+          "command_id": "profile-python-test",
+          "executable": "python",
+          "arguments": ["-m", "pytest"],
+          "timeout_seconds": 1800,
+          "provenance": { "kind": "profile-selected", "source": "quality-profile.python-fastapi-service.v1", "profile": "quality-profile.python-fastapi-service.v1" },
+          "label": "Explicit Python quality-profile test command"
+        }]
+      }
+    },
+    {
+      "entry_id": "profile.dotnet-aspnet-api.v1",
+      "profile_id": "quality-profile.dotnet-aspnet-api.v1",
+      "plan": {
+        "schema_version": "1.0",
+        "plan_id": "verification.profile.dotnet-aspnet-api.v1",
+        "commands": [{
+          "command_id": "profile-dotnet-test",
+          "executable": "dotnet",
+          "arguments": ["test"],
+          "timeout_seconds": 1800,
+          "provenance": { "kind": "profile-selected", "source": "quality-profile.dotnet-aspnet-api.v1", "profile": "quality-profile.dotnet-aspnet-api.v1" },
+          "label": "Explicit .NET quality-profile test command"
+        }]
+      }
+    }
+  ],
+  "providers": []
+}

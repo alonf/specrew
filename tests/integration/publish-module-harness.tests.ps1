@@ -115,6 +115,47 @@ if ($workflowContent -notmatch 'Dockerfile\.publish-test|test-publish-harness') 
 }
 Write-Pass "publish-module.yml wires the Docker harness."
 
+# Test 8: the historical bootstrap and current candidate must have separate,
+# exact toolchain identities. A single pin made the v0.27.6 baseline invoke its
+# removed `--ai` surface against Spec Kit 0.12.9 and silently broke publication.
+$dockerfileContent = Get-Content -LiteralPath $dockerfilePath -Raw -Encoding UTF8
+$twoPhaseDockerAssertions = [ordered]@{
+    'baseline Spec Kit pin' = 'ARG BASELINE_SPEC_KIT_VERSION=0\.8\.4'
+    'baseline Squad pin' = 'ARG BASELINE_SQUAD_VERSION=0\.9\.1'
+    'target Spec Kit pin' = 'ARG SPEC_KIT_VERSION=0\.12\.9'
+    'target Squad pin' = 'ARG SQUAD_VERSION=0\.11\.0'
+    'baseline Spec Kit install' = 'specify-cli[\s\\]+--from "git\+https://github\.com/github/spec-kit\.git@v\$\{BASELINE_SPEC_KIT_VERSION\}"'
+    'baseline Squad install' = '@bradygaster/squad-cli@\$\{BASELINE_SQUAD_VERSION\}'
+    'target identity export' = 'SPECREW_HARNESS_TARGET_SPEC_KIT_VERSION="\$\{SPEC_KIT_VERSION\}"'
+}
+foreach ($assertion in $twoPhaseDockerAssertions.GetEnumerator()) {
+    if ($dockerfileContent -notmatch $assertion.Value) {
+        Write-Fail ("Docker harness is missing the two-phase contract: {0}." -f $assertion.Key)
+        exit 1
+    }
+}
+Write-Pass 'Docker harness keeps exact baseline-era and candidate toolchain identities separate.'
+
+# Test 9: Phase 4 remains real, and Phase 5 delegates the tool upgrade to the
+# candidate's production update path instead of a harness-owned uv/npm shortcut.
+if ($harnessContent -notmatch 'Initialize-Specrew\s+--force') {
+    Write-Fail 'Publish harness no longer executes the real v0.27.6 Phase 4 initialization.'
+    exit 1
+}
+if ($harnessContent -notmatch 'Update-Specrew\s+-All\s+-SkipUpdateCheck') {
+    Write-Fail 'Publish harness does not exercise the production all-scope update path.'
+    exit 1
+}
+if ($harnessContent -notmatch 'Assert-HarnessToolchain' -or $harnessContent -notmatch "-Phase 'Baseline'" -or $harnessContent -notmatch "-Phase 'Candidate'") {
+    Write-Fail 'Publish harness does not prove exact toolchain identity before and after update.'
+    exit 1
+}
+if ($harnessContent -match '(?m)^\s*&\s+(uv|npm)\s+') {
+    Write-Fail 'Publish harness bypasses specrew update with a direct toolchain installer.'
+    exit 1
+}
+Write-Pass 'Publish harness preserves Phase 4 and uses the production update path with exact pre/post assertions.'
+
 Write-Host ''
 Write-Host 'All publish-module harness assertions passed!' -ForegroundColor Green
 exit 0

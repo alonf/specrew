@@ -47,6 +47,7 @@ This skill is part of the `/specrew-*` command surface. It coexists with `/speck
                  [--run-root <path>] [--timeout-seconds <N>]
                  [--fallback-policy <none|one-authorized-availability-fallback>]
                  [--preserve-debug]
+/specrew-review --reconcile-run <run-id> [--project-path <path>]
 ```
 
 Backed by: `specrew review` / `scripts/specrew-review.ps1`
@@ -81,6 +82,7 @@ Backed by: `specrew review` / `scripts/specrew-review.ps1`
 | `--timeout-seconds` | number | No | Live reviewer host timeout |
 | `--fallback-policy` | string | No | Host fallback policy (`none` or `one-authorized-availability-fallback`) |
 | `--preserve-debug` | flag | No | Preserve debug artifacts from the live review run |
+| `--reconcile-run` | string | No | Resume one interrupted campaign run without invoking or retrying a provider |
 
 ## Outputs
 

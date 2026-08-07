@@ -51,9 +51,9 @@ effort_unit: "story_points"
 # chose to keep as ONE coherent closing iteration (D2 "include T099+T100 too", 2026-07-01) rather
 # than split. Made INFORMED of the split-not-raise position above. Applied only AFTER iteration 009
 # was closed (2026-07-02) so it is grandfathered at 20; iterations 001-009 validate against their own
-# plan capacity. Same REVERSIBLE terms: the f197-i010-cap-revert-obligation restores this to the
-# global default 20 at iter-010 closeout.
-capacity_per_iteration: 26
+# plan capacity. CLOSED 2026-07-26 at F-198 iteration 009 closeout: the
+# f197-i010-cap-revert-obligation restored the global default.
+capacity_per_iteration: 20
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)

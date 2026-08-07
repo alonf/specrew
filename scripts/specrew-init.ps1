@@ -6,14 +6,22 @@ param(
     [switch]$DryRun,
     [switch]$Force,
     [Alias('speckit-version')]
-    [string]$SpecKitVersion = '0.8.4',
+    [string]$SpecKitVersion = '0.12.9',
     [Alias('squad-version')]
-    [string]$SquadVersion = '0.9.1',
+    [string]$SquadVersion = '0.11.0',
     [string]$Agents = 'copilot',
     [Alias('no-agents')]
     [switch]$NoAgents,
     [Alias('spec-kit-extension-only')]
     [switch]$SpecKitExtensionOnly,
+    [Alias('brownfield-bootstrap-commit')]
+    [ValidateSet('offer', 'decline')]
+    [string]$BrownfieldBootstrapCommit = 'offer',
+    [Alias('release-model')]
+    [ValidateSet('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')]
+    [string]$ReleaseModel = 'auto',
+    [Alias('publish-target')]
+    [string]$PublishTarget,
     [switch]$SkipUpdateCheck,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -263,6 +271,48 @@ for ($cliIndex = 0; $cliIndex -lt $cliArguments.Count; $cliIndex++) {
             $SpecKitExtensionOnly = $true
             continue
         }
+        '^--brownfield-bootstrap-commit=(offer|decline)$' {
+            $BrownfieldBootstrapCommit = $Matches[1]
+            continue
+        }
+        '^--brownfield-bootstrap-commit$' {
+            if (($cliIndex + 1) -ge $cliArguments.Count -or $cliArguments[$cliIndex + 1] -notin @('offer', 'decline')) {
+                Write-Error '--brownfield-bootstrap-commit requires offer or decline.'
+                exit 3
+            }
+
+            $cliIndex++
+            $BrownfieldBootstrapCommit = $cliArguments[$cliIndex]
+            continue
+        }
+        '^--release-model=(auto|local-only|push-only|pr-flow|beta-stable)$' {
+            $ReleaseModel = $Matches[1]
+            continue
+        }
+        '^--release-model$' {
+            if (($cliIndex + 1) -ge $cliArguments.Count -or $cliArguments[$cliIndex + 1] -notin @('auto', 'local-only', 'push-only', 'pr-flow', 'beta-stable')) {
+                Write-Error '--release-model requires auto, local-only, push-only, pr-flow, or beta-stable.'
+                exit 3
+            }
+
+            $cliIndex++
+            $ReleaseModel = $cliArguments[$cliIndex]
+            continue
+        }
+        '^--publish-target=(.+)$' {
+            $PublishTarget = $Matches[1]
+            continue
+        }
+        '^--publish-target$' {
+            if (($cliIndex + 1) -ge $cliArguments.Count -or [string]::IsNullOrWhiteSpace($cliArguments[$cliIndex + 1])) {
+                Write-Error '--publish-target requires a value.'
+                exit 3
+            }
+
+            $cliIndex++
+            $PublishTarget = $cliArguments[$cliIndex]
+            continue
+        }
         '^--skip-update-check$' {
             $SkipUpdateCheck = $true
             continue
@@ -364,11 +414,16 @@ $hadGitHubContent = $hadGitHub -and ((@(
             Get-ChildItem -LiteralPath (Join-Path $resolvedProjectPath '.github') -Force -ErrorAction SilentlyContinue
         ).Count) -gt 0)
 $hasSpecrewConfig = Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specrew\config.yml')
+$initialGitHasHead = $false
+if (Test-Path -LiteralPath $resolvedProjectPath -PathType Container) {
+    $null = & git -C $resolvedProjectPath rev-parse --verify HEAD 2>$null
+    $initialGitHasHead = ($LASTEXITCODE -eq 0)
+}
 $alreadyBootstrapped = $hadSpecify -and $hasSpecrewConfig
 if (-not $SpecKitExtensionOnly) {
     $alreadyBootstrapped = $alreadyBootstrapped -and $hadSquad -and $hadGitHub
 }
-$bootstrapMode = if ($hadSpecify -or $hadSquad) { 'brownfield' } else { 'greenfield' }
+$bootstrapMode = if ($blockingEntries.Count -gt 0 -or $initialGitHasHead) { 'brownfield' } else { 'greenfield' }
 $shouldInitializeSpecify = -not $hadSpecify
 $shouldInitializeSquad = -not $hadSquad
 $shouldForceSpecifyInit = $Force -or ($blockingEntries.Count -eq 0)
@@ -441,6 +496,12 @@ if ($alreadyBootstrapped -and -not $Force) {
         }
     }
 
+    Invoke-SpecrewBootstrapBaseline `
+        -ProjectPath $resolvedProjectPath `
+        -BootstrapMode 'brownfield' `
+        -BrownfieldDecision $BrownfieldBootstrapCommit `
+        -Actions $actions `
+        -PreviewOnly:$DryRun | Out-Null
     Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:$false
     exit 0
 }
@@ -614,11 +675,13 @@ Write-Step 'Detecting Copilot runtime and delegated agents'
 if ($shouldInitializeSpecify) {
     Write-Step 'Running specify init'
     if ($DryRun) {
-        Write-Host ("[dry-run] specify init --here --ai copilot --script ps --ignore-agent-tools{0}" -f $(if ($shouldForceSpecifyInit) { ' --force' } else { '' })) -ForegroundColor Yellow
+        Write-Host ("[dry-run] specify init --here --integration copilot --script ps --ignore-agent-tools{0}" -f $(if ($shouldForceSpecifyInit) { ' --force' } else { '' })) -ForegroundColor Yellow
         Add-Action -Actions $actions -Step 'specify-init' -Outcome 'would initialize .specify'
     }
     else {
-        $specifyArguments = @('init', '--here', '--ai', 'copilot', '--script', 'ps', '--ignore-agent-tools')
+        # Spec Kit >=0.10.0 removed the --ai flag family; --integration <key> is the surface
+        # (verified against 0.12.9 - F-198 T001 probe evidence).
+        $specifyArguments = @('init', '--here', '--integration', 'copilot', '--script', 'ps', '--ignore-agent-tools')
         if ($shouldForceSpecifyInit) {
             $specifyArguments += '--force'
         }
@@ -653,28 +716,27 @@ if ($shouldInitializeSpecify) {
         # (copilot, the default). Palette-hosts that declare a slash-command surface (Claude,
         # Antigravity) need their OWN native surface, or they are told to use commands they do not
         # have (#2884 4th face — Claude got CLAUDE.md telling it to use /speckit.* with nothing
-        # deployed). Spec Kit's claude integration deploys `.claude/skills/speckit-*`; install it
-        # (and agy) alongside copilot via `integration install <key>`. NOTE (D-197-I009-011): Spec Kit 0.8.4 (the
-        # pinned + min-supported version) is SINGLE-INTEGRATION: `specify init --ai copilot` installs copilot, and a
-        # later `integration install claude` is refused with "Integration 'copilot' is already installed." Its
-        # `integration install` takes only [--script | --integration-options] KEY -- there is NO --force flag to
-        # override that (passing one earlier made Spec Kit reject the call with a usage error instead). So on 0.8.4
-        # the palette-host native surfaces genuinely CANNOT be added beside copilot -- a Spec Kit capability limit,
-        # not a Specrew failure: the palette host uses the governed-scripts fallback the coordinator guard already
-        # blesses, so the "already installed" outcome is an expected SKIP (logged info, not an alarming warning).
+        # deployed). HISTORY (D-197-I009-011): Spec Kit 0.8.4 was hard single-integration — a later
+        # `integration install claude` was refused outright and no --force existed, so palette hosts
+        # used the governed-scripts fallback. Spec Kit >=0.10.0 lifted that: a bare install beside
+        # copilot is still refused ("Installing multiple integrations is only automatic when all
+        # involved integrations are declared multi-install safe"), but --force installs alongside and
+        # keeps copilot the default ("Default integration remains: copilot" — F-198 T001 probe,
+        # 0.12.9). So install the palette surfaces WITH --force; the refusal branch remains only as a
+        # defensive skip if a future Spec Kit narrows --force again.
         foreach ($paletteIntegration in @('claude', 'agy')) {
             Write-Step ("Installing Spec Kit native commands for {0}" -f $paletteIntegration)
-            $integResult = Invoke-NativeCommandForOutput -FilePath 'specify' -ArgumentList @('integration', 'install', $paletteIntegration) -WorkingDirectory $resolvedProjectPath
+            $integResult = Invoke-NativeCommandForOutput -FilePath 'specify' -ArgumentList @('integration', 'install', $paletteIntegration, '--force') -WorkingDirectory $resolvedProjectPath
             $integFailure = Get-FirstNonEmptyOutputLine -OutputLines $integResult.Output
             if ($integResult.ExitCode -eq 0) {
                 Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("installed native commands: {0}" -f $paletteIntegration)
             }
-            elseif ($integFailure -match '(?i)already installed') {
-                # Spec Kit single-integration limit (see note above): copilot is already the project's one integration,
-                # so the palette host cannot get a native surface here. EXPECTED on 0.8.4 -> a clean SKIP + the
-                # governed-scripts fallback, NOT an alarming failure. (D-197-I009-011)
-                Write-Host ("[info] Spec Kit native commands for {0} skipped: Spec Kit {1} installs one integration per project (copilot); {0} uses the governed-scripts fallback." -f $paletteIntegration, $SpecKitVersion) -ForegroundColor DarkGray
-                Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("skipped {0}: Spec Kit single-integration; governed-scripts fallback" -f $paletteIntegration)
+            elseif ($integFailure -match '(?i)already installed|multi-install safe|only automatic') {
+                # Defensive skip: Spec Kit declined the side-by-side install (a future version may
+                # re-narrow --force). The palette host uses the governed-scripts fallback the
+                # coordinator guard already blesses — a clean SKIP, not an alarming failure.
+                Write-Host ("[info] Spec Kit native commands for {0} skipped: Spec Kit {1} declined a side-by-side install; {0} uses the governed-scripts fallback." -f $paletteIntegration, $SpecKitVersion) -ForegroundColor DarkGray
+                Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("skipped {0}: side-by-side install declined; governed-scripts fallback" -f $paletteIntegration)
             }
             else {
                 Write-Host ("[warn] specify integration install {0} failed (non-fatal; host uses the governed-scripts fallback): {1}" -f $paletteIntegration, $integFailure) -ForegroundColor Yellow
@@ -701,7 +763,13 @@ if (-not $SpecKitExtensionOnly -and $shouldInitializeSquad) {
             Add-Action -Actions $actions -Step 'squad-init' -Outcome 'would initialize .squad via squad init --non-interactive'
         }
         else {
-            Invoke-NativeCommand -FilePath 'squad' -ArgumentList $squadInitPlan.ArgumentList -WorkingDirectory $resolvedProjectPath
+            $squadInitResult = Invoke-NativeCommandWithClosedInput -FilePath 'squad' -ArgumentList $squadInitPlan.ArgumentList -WorkingDirectory $resolvedProjectPath -TimeoutSeconds 120
+            foreach ($line in $squadInitResult.Output) {
+                Write-Host $line
+            }
+            if ($squadInitResult.ExitCode -ne 0) {
+                throw ("Command failed: squad {0}" -f ($squadInitPlan.ArgumentList -join ' '))
+            }
             Add-Action -Actions $actions -Step 'squad-init' -Outcome 'initialized .squad via squad init --non-interactive'
         }
     }
@@ -748,6 +816,14 @@ if ($specifySurfaceReady) {
 else {
     Add-Action -Actions $actions -Step 'spec-kit-extension' -Outcome 'skipped: .specify is absent in brownfield workspace'
 }
+
+Write-Step 'Recording the repository release model'
+$releaseModelSetup = Initialize-SpecrewReleaseModelRecord `
+    -ProjectRoot $resolvedProjectPath `
+    -RequestedModel $ReleaseModel `
+    -PublishTarget $PublishTarget `
+    -PreviewOnly:$DryRun
+Add-Action -Actions $actions -Step 'release-model' -Outcome ("{0}: {1} ({2}; source={3})" -f $releaseModelSetup.Action, $releaseModelSetup.Record.Model, $releaseModelSetup.Record.Provenance, $releaseModelSetup.Record.Source)
 
 Write-Step 'Deploying bundled project templates'
 Invoke-BundledTemplateDeployment `
@@ -839,6 +915,11 @@ if (-not $SpecKitExtensionOnly) {
     else {
         Add-Action -Actions $actions -Step 'squad-runtime' -Outcome 'skipped: .squad is absent in brownfield workspace'
     }
+
+    Write-Step 'Selecting the downstream verification plan'
+    . (Join-Path $repoRoot 'scripts\internal\continuous-co-review\verification-plan-materializer.ps1')
+    $verificationPlanSetup = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $resolvedProjectPath -PreviewOnly:$DryRun
+    Add-Action -Actions $actions -Step 'verification-plan' -Outcome ("{0}: {1}" -f $verificationPlanSetup.Action, $(if ($verificationPlanSetup.Warning) { $verificationPlanSetup.Warning } else { $verificationPlanSetup.State }))
 }
 
 Write-Step 'Seeding canonical Crew team at .specrew/team/'
@@ -977,6 +1058,13 @@ else {
         Add-Action -Actions $actions -Step 'skill-catalog' -Outcome 'validated .claude/skills, .github/skills, and .agents/skills'
     }
 }
+
+Invoke-SpecrewBootstrapBaseline `
+    -ProjectPath $resolvedProjectPath `
+    -BootstrapMode $bootstrapMode `
+    -BrownfieldDecision $BrownfieldBootstrapCommit `
+    -Actions $actions `
+    -PreviewOnly:$DryRun | Out-Null
 
 Write-BootstrapSummary -Actions $actions -DryRunMode:$DryRun -ProjectPath $resolvedProjectPath -ShowGuidance:(-not $SpecKitExtensionOnly -and $squadSurfaceReady)
 

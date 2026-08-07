@@ -68,3 +68,5 @@ Thumbs.db
 .specrew/workshop-visuals/
 # Antigravity project hook config contains per-developer launcher paths.
 .agents/hooks.json
+# Machine-local Pester/NUnit report: discloses origin paths and machine identity.
+testResults.xml

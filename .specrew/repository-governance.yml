@@ -13,6 +13,10 @@
 # pre-publish Docker harness (`prepublish-validation` in publish-module.yml) is a TAG-TIME release
 # gate, not a PR check — listing it here as a merge requirement would deadlock all merges.
 
+release_model: beta-stable
+release_model_provenance: recorded
+publish_target: "PowerShell Gallery"
+
 repository_governance:
   provider: github
   branch_model:

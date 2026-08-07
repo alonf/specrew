@@ -790,8 +790,6 @@ $promptChecks = @(
     @{ Pattern = 'Do not stop at the .*after-tasks boundary to ask the human to manually trigger hardening review'; Failure = 'Prompt still allows the coordinator to stop at after-tasks for a manual hardening-review request.' },
     @{ Pattern = 'If speckit\.specrew-speckit\.before-implement blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action'; Failure = 'Prompt does not require proactive blocker explanation before stopping.' },
     @{ Pattern = '`--allow-all` controls tool-call approval only and does not bypass lifecycle boundary approval'; Failure = 'Prompt does not carve --allow-all away from lifecycle boundary approval.' },
-    @{ Pattern = 'Windows shell rule'; Failure = 'Prompt is missing the Windows shell meta-rule.' },
-    @{ Pattern = 'PowerShell-native commands with quoted `-LiteralPath` values'; Failure = 'Prompt does not require PowerShell-native file operations on Windows.' },
     @{ Pattern = 'developer-facing implementation briefing'; Failure = 'Prompt does not require the end-of-feature implementation briefing.' },
     @{ Pattern = 'implemented, enforced, observable, and documented'; Failure = 'Prompt does not require critical evidence-driven review dimensions.' },
     @{ Pattern = 'If review finds an ambiguity, contradiction, or missing decision in the governing spec'; Failure = 'Prompt does not require spec clarification when review finds unknowns.' },
@@ -801,6 +799,26 @@ $promptChecks = @(
 foreach ($check in $promptChecks) {
     if (-not (Assert-Contains -Content $promptContent -Pattern $check.Pattern -FailureMessage $check.Failure)) {
         exit 1
+    }
+}
+
+$windowsShellPromptChecks = @(
+    @{ Pattern = 'Windows shell rule'; Failure = 'Prompt is missing the Windows shell meta-rule on Windows.' },
+    @{ Pattern = 'PowerShell-native commands with quoted `-LiteralPath` values'; Failure = 'Prompt does not require PowerShell-native file operations on Windows.' }
+)
+if ($IsWindows) {
+    foreach ($check in $windowsShellPromptChecks) {
+        if (-not (Assert-Contains -Content $promptContent -Pattern $check.Pattern -FailureMessage $check.Failure)) {
+            exit 1
+        }
+    }
+}
+else {
+    foreach ($check in $windowsShellPromptChecks) {
+        if ($promptContent -match $check.Pattern) {
+            Write-Fail 'Prompt includes Windows-only shell guidance on a non-Windows host.'
+            exit 1
+        }
     }
 }
 if ($startContext.approval_mode -ne 'allow-all') {

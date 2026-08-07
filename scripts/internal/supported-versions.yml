@@ -17,11 +17,11 @@
 schema: v1
 
 speckit:
-  min: "0.8.4"
-  max_tested: "0.9.0"
-  notes: "0.9.0 extracted agent-context updates into a bundled agent-context extension (after_specify/after_plan hooks) and changed the .specify/extensions.yml installed: list to bare strings. Validated 2026-06-02 (feature 090, spike-speckit-090): Specrew before-plan/after-tasks/before-implement hooks coexist via `specify extension add`; existing object-format projects + stale init-options.json tolerated; agent-context marker upsert runs. Shipped alongside: format-aware Ensure-ExtensionRegistration (deploy-speckit-extension.ps1) so `specrew update` no longer corrupts 0.9.0 string-format installed: lists. Upstream compatibility fallback deprecated (removal in 0.12.0) does not affect Specrew. 0.8.14-0.8.18 all additive."
+  min: "0.12.9"
+  max_tested: "0.12.9"
+  notes: "Single tested pin (F-198 I2 decision). BREAKING at 0.10.0: the --ai/--ai-commands-dir/--ai-skills flags were removed; init uses --integration <key>. Validated 2026-07-10 (F-198 T001 probe on v0.12.9, commit 80ac47e2): --script ps and --ignore-agent-tools survive; multi-integration installs work behind `integration install <key> --force` (default integration preserved); git extension stays un-installed (its auto-commit conflicts with Specrew boundary-commit discipline); agent-context extension fully opt-in and unused; specrew-speckit extension.yml hooks schema loads (12 commands / 4 hooks, Enabled)."
 
 squad:
-  min: "0.9.1"
-  max_tested: "0.9.4"
-  notes: ""
+  min: "0.11.0"
+  max_tested: "0.11.0"
+  notes: "Single tested pin (F-198 I2). No breaking release notes 0.9.1->0.11.0 (v0.11.0 adds 'squad registry'; renames '.NET Aspire'->'Aspire' in help text). Probe + .squad layout suites validated 2026-07-10 (F-198 T003)."

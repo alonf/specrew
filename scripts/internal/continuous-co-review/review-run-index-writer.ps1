@@ -496,42 +496,32 @@ function Get-ContinuousCoReviewMergeBaseAnchor {
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [string] $TrunkName = 'main',
+        # An OPTIONAL explicit trunk override (the CLI --trunk / config co_review_trunk). Empty ('') lets the
+        # shared resolver auto-detect via its 6-level precedence; a non-empty value is the explicit level-1 override.
+        [AllowEmptyString()][string] $TrunkName = '',
 
         [string] $HeadRef = 'HEAD'
     )
 
-    # F5 (145 review): the trunk may exist only as a remote ref on a fresh checkout, so try
-    # the local name first then `origin/<trunk>` before giving up (a $null anchor fails the
-    # gate closed). The caller may pass an already-qualified ref (e.g. 'origin/main'); we
-    # never double-prefix.
-    $trunkCandidates = New-Object System.Collections.Generic.List[string]
-    [void] $trunkCandidates.Add($TrunkName)
-    if ($TrunkName -notmatch '/') {
-        [void] $trunkCandidates.Add("origin/$TrunkName")
+    # The trunk is resolved by the ONE shared repository capability (co-review-trunk-resolver.ps1) - origin/HEAD,
+    # branch upstream, conventional refs, a single local pre-feature branch, else fail. It replaces this function's
+    # former inline candidate loop (bare/origin/<trunk> + origin/HEAD detection) and NEVER creates/renames/moves a
+    # branch. An ambiguous or unresolvable trunk yields a $null anchor here, which fails the gate CLOSED (coverage
+    # cannot be proven). Dot-source the resolver if a standalone caller loaded only this writer.
+    if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewTrunkRef' -ErrorAction SilentlyContinue)) {
+        $resolverPath = Join-Path $PSScriptRoot 'co-review-trunk-resolver.ps1'
+        if (Test-Path -LiteralPath $resolverPath -PathType Leaf) { . $resolverPath }
+    }
+    $resolvedTrunk = Resolve-ContinuousCoReviewTrunkRef -RepoRoot $RepoRoot -Trunk $TrunkName
+    if (-not $resolvedTrunk.ok -or [string]::IsNullOrWhiteSpace([string] $resolvedTrunk.trunk_ref)) {
+        return $null
     }
 
-    # iter-007 real-host dogfood fix: the trunk is NOT always 'main'. A real repo's default branch was 'dev'
-    # (origin/HEAD -> origin/dev), so 'main' + 'origin/main' BOTH failed to resolve -> $null anchor ->
-    # 'no-reviewable-checkpoint' -> the navigator silently no-op'd at EVERY implement checkpoint (no review
-    # ever fired). Detect the repo's CONFIGURED default branch and try it before giving up.
-    $detectedHead = Invoke-ContinuousCoReviewResolverGit -RepoRoot $RepoRoot -Arguments @('symbolic-ref', '--short', 'refs/remotes/origin/HEAD')
-    if ($detectedHead.ExitCode -eq 0 -and @($detectedHead.Output).Count -gt 0) {
-        $detectedTrunk = ([string] $detectedHead.Output[0]).Trim()
-        if (-not [string]::IsNullOrWhiteSpace($detectedTrunk)) {
-            if (-not $trunkCandidates.Contains($detectedTrunk)) { [void] $trunkCandidates.Add($detectedTrunk) }
-            $bareTrunk = $detectedTrunk -replace '^origin/', ''
-            if ($bareTrunk -ne $detectedTrunk -and -not $trunkCandidates.Contains($bareTrunk)) { [void] $trunkCandidates.Add($bareTrunk) }
-        }
-    }
-
-    foreach ($trunk in $trunkCandidates) {
-        $result = Invoke-ContinuousCoReviewResolverGit -RepoRoot $RepoRoot -Arguments @('merge-base', $trunk, $HeadRef)
-        if ($result.ExitCode -eq 0 -and @($result.Output).Count -gt 0) {
-            $anchor = ([string] $result.Output[0]).Trim()
-            if ($anchor -match '^[0-9a-f]{40}$') {
-                return $anchor
-            }
+    $result = Invoke-ContinuousCoReviewResolverGit -RepoRoot $RepoRoot -Arguments @('merge-base', $resolvedTrunk.trunk_ref, $HeadRef)
+    if ($result.ExitCode -eq 0 -and @($result.Output).Count -gt 0) {
+        $anchor = ([string] $result.Output[0]).Trim()
+        if ($anchor -match '^[0-9a-f]{40}$') {
+            return $anchor
         }
     }
 

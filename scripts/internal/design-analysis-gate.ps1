@@ -4,6 +4,10 @@ $ErrorActionPreference = 'Stop'
 $script:SpecrewDesignAnalysisGateMinimumVersion = [version]'0.30.0'
 $script:SpecrewDesignAnalysisDefaultIterationNumber = '001'
 
+if (-not (Get-Command -Name 'Test-SpecrewWorkshopDecisionBindings' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'bootstrap/ProjectMetadataAccessor.ps1')
+}
+
 function Normalize-SpecrewDesignAnalysisFeatureRef {
     param([AllowNull()][string]$FeatureRef)
 
@@ -467,6 +471,17 @@ function Test-SpecrewLensWorkshopRecords {
                     $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope (SC-026, #2212): set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
                 }
             }
+        }
+    }
+
+    $bindingValidation = Test-SpecrewWorkshopDecisionBindings -Applicability $doc
+    if (-not $bindingValidation.valid) {
+        $conflict = $bindingValidation.conflict
+        if ([string]$bindingValidation.reason -eq 'workshop-decision-binding-conflict') {
+            $errors.Add(("workshop decision binding '{0}' conflicts between lens '{1}' ('{2}') and lens '{3}' ('{4}'). Reconcile the durable lens records before the specify boundary." -f $conflict.binding, $conflict.prior_lens, $conflict.prior_value, $conflict.lens, $conflict.value)) | Out-Null
+        }
+        else {
+            $errors.Add('workshop decision bindings are malformed. Use lowercase stable binding keys and lowercase token values before the specify boundary.') | Out-Null
         }
     }
 

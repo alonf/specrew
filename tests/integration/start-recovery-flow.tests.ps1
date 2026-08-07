@@ -208,7 +208,7 @@ if /I "%~1"=="--version" (
 if /I "%~1"=="version" (
   echo GitHub Spec Kit - Spec-Driven Development Toolkit
   echo CLI Version    1.0.0
-  echo Template Version    0.8.4
+  echo Template Version    0.12.9
   exit /b 0
 )
 exit /b 0
@@ -216,7 +216,7 @@ exit /b 0
 New-CliShim -DirectoryPath $shimRoot -CommandName 'squad' -Content @'
 @echo off
 if /I "%~1"=="--version" (
-  echo 0.9.1
+  echo 0.11.0
   exit /b 0
 )
 exit /b 0

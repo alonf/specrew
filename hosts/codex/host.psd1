@@ -35,6 +35,7 @@
     RefocusHookBindings = @{
         BoundTriggers  = @('b1', 'b2', 'b3')
         Events         = @('SessionStart', 'UserPromptSubmit')
+        TurnStartCapability = @{ Mode = 'exact'; NativeEvent = 'UserPromptSubmit'; DispatcherEvent = 'UserPromptSubmit' }
         SettingsFile   = '~/.codex/hooks.json'   # user-level; dispatcher self-gates per project
         OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-codex'
         DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'

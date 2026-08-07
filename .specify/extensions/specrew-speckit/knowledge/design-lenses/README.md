@@ -5,6 +5,7 @@ small, reusable knowledge file that tells the Crew when an architectural area
 is relevant, which questions to ask, which alternatives to compare, and what
 planning obligations must be recorded before implementation.
 
+<!-- specrew-self-ok: catalog source attribution - the lens corpus is distilled from the credited book/course -->
 The initial catalog is distilled from Alon Fliess' architecture book markdown
 and Software Architecture course material. It is deliberately paraphrased into
 Specrew-operational questions instead of copying source text.

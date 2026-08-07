@@ -139,8 +139,8 @@ function Invoke-ScaffoldGovernance {
     $arguments = @{
         ProjectPath    = $ProjectPath
         SpecrewVersion = '0.1.0-dev'
-        SpecKitVersion = '0.8.4'
-        SquadVersion   = '0.9.1'
+        SpecKitVersion = '0.12.9'
+        SquadVersion   = '0.11.0'
         PassThru       = $true
     }
     if ($DryRun) {

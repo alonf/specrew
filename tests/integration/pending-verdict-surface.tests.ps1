@@ -21,11 +21,60 @@ if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurs
 
 function New-Proj {
     param([string]$Working, [string]$LastAuth)
+
+    # FIXTURE REPAIR, T092 rework 3/3 (2026-08-06). This fixture used to write start-context.json into
+    # a bare directory: no git repo, no feature, no crossing. That was sufficient while the
+    # stage-evidence gate failed OPEN — an unverifiable stage was waved through and the awaiting-verdict
+    # message survived. DRIFT-198-I011-003/-005 converted the gate to read evidence from the tree the
+    # crossing is BOUND to, and to fail CLOSED when it cannot. Against the repaired gate this fixture
+    # measured its own emptiness: no bound tree -> unverifiable -> the demand is suppressed and the
+    # message becomes "BOUNDARY EVIDENCE COULD NOT BE VERIFIED", so `AWAITING YOUR VERDICT` was absent.
+    #
+    # THE FAILURE WAS THE FIX WORKING, NOT A DEFECT. The fixture now stands up a REAL COMMITTED feature
+    # and a REAL crossing bound to that commit's tree, so the cases measure their actual subject
+    # (committed != authorized) instead of the gate's unverifiable path.
     $proj = Join-Path $scratch ([guid]::NewGuid().ToString('N'))
+    $featureDir = Join-Path $proj 'specs\046-test'
+    $iterDir = Join-Path $featureDir 'iterations\001'
     New-Item -ItemType Directory -Path (Join-Path $proj '.specrew') -Force | Out-Null
+    New-Item -ItemType Directory -Path $iterDir -Force | Out-Null
+
+    # The evidence each exercised boundary owes: spec.md for `specify`, iterations/001/plan.md for
+    # `plan` and `tasks`. spec.md carries a dated Clarifications session so the strict clarify row
+    # (DRIFT-198-I011-006) is satisfied by structure rather than by a placeholder heading.
+    Set-Content -LiteralPath (Join-Path $featureDir 'spec.md') -Encoding UTF8 `
+        -Value "# Feature Specification: Test Feature`n`n## Clarifications`n`n### Session 2026-01-01 (clarify)`n`n- Q: Is the scope as written? -> A (human): yes.`n`n## Requirements`n`n- **FR-001**: System MUST do the thing."
+    # The Tasks table carries the REAL columns the in-flight scan reads
+    # (task-progress.ps1:181-187 projects Task/Title/Requirement/Story/Effort). A minimal two-column
+    # table throws under StrictMode inside the bootstrap provider, which then fails OPEN and emits
+    # nothing — presenting as "the awaiting block is missing" rather than as a broken fixture.
+    Set-Content -LiteralPath (Join-Path $iterDir 'plan.md') -Encoding UTF8 `
+        -Value "# Iteration Plan: 001`n`n**Status**: implementing`n`n## Tasks`n`n| Task | Title | Requirement | Story | Effort | Owner | Status |`n| --- | --- | --- | --- | --- | --- | --- |`n| T001 | Do the thing | FR-001 | US-1 | 2 | Implementer | pending |"
+
+    $null = & git -C $proj init --quiet
+    if ($LASTEXITCODE -ne 0) { Fail 'fixture git init failed' }
+    $null = & git -C $proj config core.autocrlf false
+    $null = & git -C $proj add -A
+    $null = & git -C $proj -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture feature'
+    if ($LASTEXITCODE -ne 0) { Fail 'fixture baseline commit failed' }
+    $commit = (@(& git -C $proj rev-parse HEAD) -join '').Trim()
+    $tree = Get-SpecrewGitArtifactStateId -ProjectRoot $proj -BoundaryCommitHash $commit
+
+    # A crossing exists ONLY when the working boundary is genuinely ahead of the authorized one — the
+    # same condition this file's subject reports on. Built through the REAL identity helper: the
+    # crossing_id is a hash over the crossing's fields and the artifact_state_id is re-derived from
+    # the commit, so a hand-written record would be rejected as an integrity mismatch.
+    $crossing = $null
+    if ($Working -ne $LastAuth) {
+        $crossing = New-SpecrewBoundaryCrossingIdentity `
+            -FromBoundary $(if ([string]::IsNullOrWhiteSpace($LastAuth)) { 'intake' } else { $LastAuth }) `
+            -ToBoundary $Working -WorkingBoundary $Working `
+            -BoundaryCommitHash $commit -ArtifactStateId $tree -RecordedAt '2026-01-01T00:00:00Z'
+    }
+
     $ctx = [ordered]@{
         schema           = 'v2'
-        feature_path     = (Join-Path $proj 'specs\046-test')
+        feature_path     = $featureDir
         session_state    = [ordered]@{
             active           = $true
             boundary_type    = $Working
@@ -37,6 +86,7 @@ function New-Proj {
             enabled                  = $true
             last_authorized_boundary = $LastAuth
             pending_next_boundary    = $null
+            pending_crossing         = $crossing
             verdict_history          = @()
             bypass_history           = @()
         }
@@ -54,7 +104,14 @@ try {
     if ($r1.LastAuthorizedBoundary -ne 'plan') { Fail "LastAuthorizedBoundary expected 'plan', got '$($r1.LastAuthorizedBoundary)'" }
     if ($r1.PendingFromMarkerBoundary -ne 'plan' -or $r1.PendingToMarkerBoundary -ne 'tasks') { Fail "pending crossing expected plan -> tasks, got '$($r1.PendingFromMarkerBoundary)' -> '$($r1.PendingToMarkerBoundary)'" }
     if ($r1.Message -notmatch 'AWAITING YOUR VERDICT') { Fail "pending message must say AWAITING YOUR VERDICT" }
-    if ($r1.Message -notmatch 'committed') { Fail "pending message must say the boundary is committed (not approved)" }
+    # The fixture now carries a REAL crossing, so this takes the SCOPED branch, whose message names the
+    # crossing, its commit and its tree and says the crossing is "NOT human-authorized" — where the
+    # legacy-unscoped branch said "is committed / in-progress but NOT human-authorized". The original
+    # assertion matched the literal word "committed" and so was branch-specific, not intent-specific.
+    # The INTENT is what must hold on both: the message states the boundary is NOT authorized and never
+    # implies approval. Asserted across both wordings rather than relaxed to "any message".
+    if ($r1.Message -notmatch 'NOT human-authorized') { Fail "pending message must state the boundary is NOT human-authorized (committed != approved)" }
+    if ($r1.Message -match '(?i)\bapproved for tasks\b(?!'')' -and $r1.Message -notmatch "verdict 'approved for tasks'") { Fail "pending message must not read as though the boundary were already approved" }
     Write-Pass "working ahead of authorized -> HasPendingVerdict + honest message ('tasks' committed, 'plan' authorized)"
 
     # Case 2: working EQUALS authorized -> NOT pending (no false alarm on a properly-authorized boundary).
@@ -111,13 +168,19 @@ try {
     # emitted directive surfaces (or omits) the AWAITING block — this catches a regression that broke the provider's
     # call to Get-SpecrewPendingVerdictState or the pass-through into Format-BootstrapDirective (which cases 5-6 miss).
     $provider = Join-Path $repoRoot 'scripts\internal\specrew-bootstrap-provider.ps1'
+    # stderr is CAPTURED, not discarded. The provider fails OPEN by design: on an internal fault it
+    # warns and emits nothing. With `2>$null` that fault was indistinguishable from a correct decision
+    # to stay silent, so a broken provider read as "the awaiting block is missing" — the same
+    # two-outcome conflation the fr066/fr068 harnesses guard against with INCONCLUSIVE. A fault is now
+    # reported as a fault.
     $p7 = New-Proj -Working 'tasks' -LastAuth 'plan'
-    $out7 = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --event-json '{"source":"startup","session_id":"pv-real-7"}' --project-root $p7 2>$null) -join "`n"
+    $out7 = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --event-json '{"source":"startup","session_id":"pv-real-7"}' --project-root $p7 2>&1) -join "`n"
+    if ($out7 -match 'PROVIDER_FAILED') { Fail "the provider FAULTED rather than deciding — this measures nothing about the awaiting surface: $(($out7 -replace '\s+', ' ').Trim())" }
     if ($out7 -notmatch 'AWAITING YOUR VERDICT \(committed != authorized') { Fail "real provider must surface the AWAITING block when committed != authorized (working 'tasks' > authorized 'plan')" }
     Write-Pass "real provider end-to-end: committed != authorized surfaces the AWAITING block (compute->render integration, not the isolated renderer)"
 
     $p8 = New-Proj -Working 'plan' -LastAuth 'plan'
-    $out8 = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --event-json '{"source":"startup","session_id":"pv-real-8"}' --project-root $p8 2>$null) -join "`n"
+    $out8 = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --event-json '{"source":"startup","session_id":"pv-real-8"}' --project-root $p8 2>&1) -join "`n"
     if ($out8 -match 'AWAITING YOUR VERDICT \(committed != authorized') { Fail "real provider must NOT surface the AWAITING block when working == authorized (no false alarm)" }
     Write-Pass "real provider end-to-end: working == authorized does NOT surface the AWAITING block (no false alarm)"
 

@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0",
+  "thread_id": "thread-20260711T180944668-8d3f5a6b",
+  "run_id": "20260711T180944668-8d3f5a6b",
+  "checkpoint_id": "nav-20260711T180944668-8d3f5a6b",
+  "findings": [
+    "f1",
+    "f1"
+  ],
+  "dispositions": [
+    {
+      "disposition_id": "disposition-f1-open",
+      "finding_id": "f1",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-11T18:28:43Z"
+    },
+    {
+      "disposition_id": "disposition-f1-open",
+      "finding_id": "f1",
+      "state": "open",
+      "rationale": null,
+      "fix_evidence_ref": null,
+      "review_round": 0,
+      "actor_role": "reviewer",
+      "recorded_at": "2026-07-11T18:28:43Z"
+    }
+  ],
+  "resolution_summary": "Inline reviewer returned 2 finding(s); disposition trail persisted by orchestrator.",
+  "escalation_ref": "",
+  "created_at": "2026-07-11T18:28:43Z",
+  "updated_at": "2026-07-11T18:28:43Z"
+}

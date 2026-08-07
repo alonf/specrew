@@ -14,94 +14,49 @@ function ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp {
     return $Timestamp.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
-function Resolve-ContinuousCoReviewTrunkName {
-    param([Parameter(Mandatory)][string]$GitRoot)
-    $head = (& git -C $GitRoot symbolic-ref --quiet refs/remotes/origin/HEAD 2>$null)
-    if ($head) { return ($head.Trim() -replace '^refs/remotes/', '') }
-    foreach ($t in @('origin/main', 'origin/dev', 'main', 'dev', 'master')) {
-        & git -C $GitRoot rev-parse --verify --quiet "$t^{commit}" 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) { return $t }
-    }
-    return $null
-}
-
 function Resolve-ContinuousCoReviewWorktreeBaseline {
     # The review baseline = merge-base with trunk (the user's INCREMENT since branching, not the inception).
+    # Trunk resolution is delegated to the ONE shared resolver (6-level precedence). It NEVER creates/renames/moves
+    # a branch. FAIL-LOUD contract: EVERY ok=false resolver result throws with the human-facing config instruction
+    # (never silently guess a branch or review everything). The empty-tree baseline is reserved for exactly ONE
+    # case - the explicit successful greenfield result (a repo whose only branch is the feature branch).
     param([Parameter(Mandatory)][string]$RepoRoot, [string]$Trunk)
     $gitRoot = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null).Trim()
     if ([string]::IsNullOrWhiteSpace($gitRoot)) { return $null }
-    if (-not $Trunk) { $Trunk = Resolve-ContinuousCoReviewTrunkName -GitRoot $gitRoot }
-    $mb = $null
-    if ($Trunk) { $mb = (& git -C $gitRoot merge-base HEAD $Trunk 2>$null); if ($LASTEXITCODE -ne 0) { $mb = $null } }
-    if ([string]::IsNullOrWhiteSpace($mb)) {
-        # No trunk (a GREENFIELD: `specrew init` creates ONLY the feature branch - no main/master/remote) OR no
-        # merge-base (unrelated histories): fall back to the EMPTY TREE so the co-review reviews the whole feature's
-        # source instead of failing 'baseline-unresolved' and never running. This was the root cause of the first real
-        # e2e producing zero co-review evidence. The strip/digest list still excludes .specrew/.specify machinery from
-        # what the reviewer sees, so the empty-tree baseline reviews source only, not scaffolding.
+
+    if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewTrunkRef' -ErrorAction SilentlyContinue)) {
+        $resolverPath = Join-Path $PSScriptRoot 'co-review-trunk-resolver.ps1'
+        if (Test-Path -LiteralPath $resolverPath -PathType Leaf) { . $resolverPath }
+    }
+    $resolvedTrunk = Resolve-ContinuousCoReviewTrunkRef -RepoRoot $gitRoot -Trunk $Trunk
+
+    # FAIL-LOUD on EVERY ok=false (ambiguous, explicit-trunk-unresolvable, no-commit-repo): surface the resolver's
+    # configuration instruction rather than silently guessing or reviewing everything.
+    if (-not $resolvedTrunk.ok) {
+        throw ("[continuous-co-review] {0}" -f $resolvedTrunk.message)
+    }
+
+    # The ONLY empty-tree path: the explicit successful GREENFIELD result - source='greenfield' AND a null
+    # trunk_ref TOGETHER (exactly the documented one case). Reviews the whole feature's source instead of failing
+    # to run - the root cause of the first real e2e producing zero co-review evidence. The strip/digest list still
+    # excludes .specrew/.specify machinery, so the empty-tree baseline reviews source only, not scaffolding.
+    if ($resolvedTrunk.source -eq 'greenfield' -and [string]::IsNullOrWhiteSpace([string]$resolvedTrunk.trunk_ref)) {
         return '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
     }
-    return ([string]$mb).Trim()
-}
 
-function Resolve-ContinuousCoReviewWorktreeDesignContext {
-    # Auto-resolve the design context: the feature's spec.md + the latest iteration's design-analysis.md.
-    # Sources, in order (f1 fix, codex finding 2026-07-08): (1) .specify/feature.json (fast, but
-    # GITIGNORED machine-local state - a fresh clone lacks it), (2) .specrew/start-context.json
-    # session_state (the durable lifecycle pointer), (3) a single specs/*/spec.md directory when
-    # unambiguous. Returns project-relative paths (or @() if genuinely unresolved - the CALLER now
-    # records + degrades an empty resolution instead of silently reviewing blind).
-    param([Parameter(Mandatory)][string]$RepoRoot)
-    $out = New-Object System.Collections.Generic.List[string]
-    $featureDir = $null
-    $fj = Join-Path $RepoRoot '.specify/feature.json'
-    if (Test-Path -LiteralPath $fj -PathType Leaf) {
-        try { $featureDir = ([string]((Get-Content $fj -Raw -Encoding UTF8 | ConvertFrom-Json).feature_directory)).Replace('\', '/').TrimEnd('/') } catch { $featureDir = $null }
+    # Any OTHER ok=true result with an empty trunk_ref is a resolver invariant break (a non-greenfield ok result
+    # must carry a ref): fail loudly rather than silently empty-tree or merge-base against nothing.
+    if ([string]::IsNullOrWhiteSpace([string]$resolvedTrunk.trunk_ref)) {
+        throw ("[continuous-co-review] The trunk resolver returned an empty trunk under source '{0}' (a non-greenfield ok result must carry a ref); refusing to guess a review baseline. Set 'co_review_trunk: <branch>' in .specrew/config.yml." -f $resolvedTrunk.source)
     }
-    if ([string]::IsNullOrWhiteSpace($featureDir)) {
-        # Durable fallback: the lifecycle start-context names the active feature.
-        try {
-            $scPath = Join-Path $RepoRoot '.specrew/start-context.json'
-            if (Test-Path -LiteralPath $scPath -PathType Leaf) {
-                $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
-                if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state) {
-                    $ref = if ($sc.session_state.PSObject.Properties['feature_ref']) { [string]$sc.session_state.feature_ref } else { '' }
-                    if (-not [string]::IsNullOrWhiteSpace($ref) -and (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path 'specs' $ref)) -PathType Container)) {
-                        $featureDir = ('specs/' + $ref)
-                    }
-                }
-            }
-        }
-        catch { $null = $_ }
+
+    $mb = (& git -C $gitRoot merge-base HEAD $resolvedTrunk.trunk_ref 2>$null)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($mb)) {
+        # A trunk resolved but shares NO history with HEAD (unrelated/grafted histories): fail loudly rather than
+        # silently reviewing everything against an unrelated trunk. Empty-tree is reserved for greenfield only.
+        throw ("[continuous-co-review] The resolved trunk '{0}' shares no history with HEAD (unrelated histories); a review baseline cannot be computed. Set 'co_review_trunk: <branch>' in .specrew/config.yml to the correct base branch." -f $resolvedTrunk.trunk_ref)
     }
-    if ([string]::IsNullOrWhiteSpace($featureDir)) {
-        # Last resort: a SINGLE unambiguous specs/*/spec.md (multi-feature repos stay unresolved).
-        try {
-            $specDirs = @(Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'specs') -Directory -ErrorAction Stop | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'spec.md') -PathType Leaf })
-            if ($specDirs.Count -eq 1) { $featureDir = ('specs/' + $specDirs[0].Name) }
-        }
-        catch { $null = $_ }
-    }
-    if ([string]::IsNullOrWhiteSpace($featureDir)) { return @() }
-    if (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path $featureDir 'spec.md')) -PathType Leaf) { [void]$out.Add("$featureDir/spec.md") }
-    $iterRoot = Join-Path $RepoRoot (Join-Path $featureDir 'iterations')
-    if (Test-Path -LiteralPath $iterRoot -PathType Container) {
-        $latest = @(Get-ChildItem -LiteralPath $iterRoot -Directory -EA SilentlyContinue | Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } -Descending | Select-Object -First 1)
-        if ($latest -and (Test-Path -LiteralPath (Join-Path $latest[0].FullName 'design-analysis.md') -PathType Leaf)) {
-            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, (Join-Path $latest[0].FullName 'design-analysis.md')).Replace('\', '/')))
-        }
-    }
-    # Surface the FORMAL contracts (JSON Schema / OpenAPI / proto / Avro / GraphQL) - the AUTHORITY for machine
-    # formats (casing, field names, types, enums). spec.md + design-analysis are PROSE and describe intent
-    # informally; without the contract the reviewer would rule conformance from the narrative and can confidently
-    # contradict the real schema (the curation-steers-the-reviewer failure the worktree pivot was meant to escape).
-    $contractsDir = Join-Path $RepoRoot (Join-Path $featureDir 'contracts')
-    if (Test-Path -LiteralPath $contractsDir -PathType Container) {
-        foreach ($cf in @(Get-ChildItem -LiteralPath $contractsDir -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '(?i)^\.(json|ya?ml|proto|graphql|avsc|xsd)$' })) {
-            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, $cf.FullName)).Replace('\', '/'))
-        }
-    }
-    return @($out)
+    return ([string]$mb).Trim()
 }
 
 function Resolve-ContinuousCoReviewReviewerHost {
@@ -111,6 +66,15 @@ function Resolve-ContinuousCoReviewReviewerHost {
     # dot-sources only the orchestrator). This is what makes the worktree reviewer host-NEUTRAL + authorized, not
     # claude-pinned.
     param([Parameter(Mandatory)][string]$RepoRoot, [string]$CodeWriterHost, [string]$RequestedHost)
+    # F-198 FR-023: when no explicit code-writer host was passed, resolve it from the session
+    # env the same way --list-hosts does (SPECREW_HOST -> SPECREW_ACTIVE_HOST) and RECORD the
+    # provenance: an env-derived independence label is the session's own declaration, not a
+    # human assertion, and the audit trail must distinguish them (independence_source:
+    # flag | env | unverified; the fail-closed treatment of 'unverified' is unchanged).
+    $codeWriterSource = 'unverified'
+    if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $codeWriterSource = 'flag' }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:SPECREW_HOST)) { $CodeWriterHost = $env:SPECREW_HOST; $codeWriterSource = 'env' }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:SPECREW_ACTIVE_HOST)) { $CodeWriterHost = $env:SPECREW_ACTIVE_HOST; $codeWriterSource = 'env' }
     if (-not (Get-Command 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) {
         $loadPath = Join-Path $PSScriptRoot '_load.ps1'
         if (Test-Path -LiteralPath $loadPath -PathType Leaf) { try { . $loadPath } catch { $null = $_ } }
@@ -131,7 +95,7 @@ function Resolve-ContinuousCoReviewReviewerHost {
         if ($null -eq $cand -or [string]::IsNullOrWhiteSpace([string]$cand.host)) { return $null }
         $indep = if ($cand.PSObject.Properties['independence']) { [string]$cand.independence } else { 'unverified' }
         $selReason = if ($cand.PSObject.Properties['selection_reason']) { [string]$cand.selection_reason } else { '' }
-        return [pscustomobject]@{ host = [string]$cand.host; model = [string]$cand.model; independence = $indep; selection_reason = $selReason }
+        return [pscustomobject]@{ host = [string]$cand.host; model = [string]$cand.model; independence = $indep; selection_reason = $selReason; independence_source = $codeWriterSource }
     }
     catch { return $null }
 }
@@ -163,18 +127,180 @@ function Set-ContinuousCoReviewRoundState {
     try {
         $dir = Split-Path -Parent $p; if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         # T096/FR-038: PRESERVE an un-consumed remediation choice across the per-run rewrite (the
-        # human may record it between runs; only the consumer clears it).
+        # human may record it between runs; only the consumer clears it). T020/FR-019: likewise
+        # PRESERVE the resolved-against-disk disposition trail - it is the durable record the halt
+        # text reads to show resolved-vs-open, and it must not be wiped by a per-run status write.
         $remediation = $null
+        $dispositions = @()
         try {
             if (Test-Path -LiteralPath $p -PathType Leaf) {
                 $prior = Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json
                 if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'remediation')) { $remediation = $prior.remediation }
+                if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
             }
         }
-        catch { $remediation = $null }
-        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings; remediation = $remediation } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+        catch { $remediation = $null; $dispositions = @() }
+        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings; remediation = $remediation; dispositions = $dispositions } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
     }
     catch { $null = $_ }
+}
+
+function Add-ContinuousCoReviewRoundDisposition {
+    # T020 (FR-019): append a disposition (e.g. a failed-invocation record) to the round-state trail
+    # WITHOUT disturbing the round/blocking/findings fields. The trail is the durable accounting record
+    # the halt text and audits read - a failed invocation never disappears from it.
+    param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][object]$Disposition)
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+    $state = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+    if ($null -eq $state) { $state = [pscustomobject]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null; remediation = $null; dispositions = @() } }
+    $disp = @()
+    if (($state.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $state.dispositions) { $disp = @($state.dispositions) }
+    $disp += $Disposition
+    $state | Add-Member -NotePropertyName 'dispositions' -NotePropertyValue $disp -Force
+    ($state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    return $Disposition
+}
+
+function Get-ContinuousCoReviewRoundSpendClass {
+    # T020 (F-198 FR-018/FR-019, before-implement send-back): separate the TWO budgets a review run
+    # touches - PROVIDER SPEND (actual model/API cost) and the REVIEW-ROUND ALLOWANCE (the autonomous
+    # ceiling). Classifies one run outcome:
+    #   'preflight-failed'   -> a required input (e.g. .review/changes.diff) was missing BEFORE the
+    #                           model was invoked: an INFRASTRUCTURE failure that consumes NEITHER
+    #                           provider budget NOR a round-allowance slot (it prevented the wasteful
+    #                           invocation the field da2bc5cc round suffered).
+    #   'invoked-reviewed'   -> the model was invoked and produced a review: provider spend recorded,
+    #                           the round counts.
+    #   'invoked-failed'     -> the model WAS invoked but produced no valid review: provider spend IS
+    #                           recorded (real cost), AND the round counts with a failed-invocation
+    #                           disposition - it never disappears from accounting.
+    # Returns @{ class; consumes_round; records_provider_spend; reason }.
+    param(
+        [Parameter(Mandatory)][bool]$InputMaterialized,
+        [Parameter(Mandatory)][bool]$ModelInvoked,
+        [Parameter(Mandatory)][bool]$ProducedReview
+    )
+    if (-not $InputMaterialized -and -not $ModelInvoked) {
+        return [pscustomobject]@{ class = 'preflight-failed'; consumes_round = $false; records_provider_spend = $false; reason = 'required review input was not materialized; the model was never invoked (infrastructure failure)' }
+    }
+    if ($ModelInvoked -and $ProducedReview) {
+        return [pscustomobject]@{ class = 'invoked-reviewed'; consumes_round = $true; records_provider_spend = $true; reason = 'the reviewer was invoked and produced a review' }
+    }
+    if ($ModelInvoked -and -not $ProducedReview) {
+        return [pscustomobject]@{ class = 'invoked-failed'; consumes_round = $true; records_provider_spend = $true; reason = 'the reviewer was invoked but produced no valid review (provider spend still incurred; the round is counted with a failed-invocation disposition)' }
+    }
+    # Input materialized but the model was (intentionally) not invoked, and no review: treat as a
+    # preflight-class no-op that consumes neither (defensive; no spend occurred).
+    return [pscustomobject]@{ class = 'preflight-failed'; consumes_round = $false; records_provider_spend = $false; reason = 'the model was not invoked; no provider spend or round consumed' }
+}
+
+function Set-ContinuousCoReviewFindingResolvedAgainstDisk {
+    # T020 (F-198 FR-018/FR-019; SPLIT per maintainer ruling 2026-07-12, DRIFT-198-I003-005): a
+    # RESOLVED-AGAINST-DISK disposition. When a held blocking finding has been FIXED and the fix is
+    # committed IN THE REVIEWED LINEAGE (an ancestor of HEAD), this records the resolution and CLEARS
+    # the sticky blocking FINDING + change-set lineage - so the finding can NEITHER re-escalate NOR keep
+    # climbing the ceiling on its file overlap. It DELIBERATELY PRESERVES the number of rounds already
+    # spent: the ceiling is an AI-usage SPEND allowance where EVERY round counts (spec FR-019), so
+    # resolving a finding NEVER implicitly replenishes review allowance. Replenishing/extending the
+    # allowance is a SEPARATE, explicit human-approved action (Set-ContinuousCoReviewAllowanceReset).
+    # (Earlier this reset round=0 and unintentionally replenished allowance - DRIFT-198-I003-005.) This is
+    # NOT override-block (which waves a DEGRADED block through): the finding is genuinely resolved, so a
+    # fix-evidence commit that is an ANCESTOR OF HEAD is REQUIRED - an unverifiable/absent ref is refused,
+    # so a bare 'resolved' claim can never clear the latch (no false-green door). The rounds already spent
+    # stay recorded in the round-state AND the disposition trail.
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$FixEvidenceRef,
+        [string]$AuthorizedBy,
+        [datetime]$Now = [datetime]::UtcNow
+    )
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $commit = (& git -C $resolved rev-parse --verify "$FixEvidenceRef^{commit}" 2>$null)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($commit)) {
+        throw "resolved-against-disk needs a real fix-evidence commit; '$FixEvidenceRef' does not resolve to a commit (a bare 'resolved' claim cannot clear the review latch)."
+    }
+    $commit = $commit.Trim()
+    & git -C $resolved merge-base --is-ancestor $commit HEAD 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "resolved-against-disk fix evidence '$FixEvidenceRef' is not an ancestor of HEAD: the fix is not in the reviewed tree, so the finding is NOT resolved-against-disk."
+    }
+    $prior = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+    if ($null -eq $prior) { return $null }   # nothing latched to resolve
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy)) {
+        $AuthorizedBy = (& git -C $resolved config user.name 2>$null)
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = 'human' }
+    }
+    $findingId = ''
+    try { $findingId = [string](($prior.findings | ConvertFrom-Json).findings[0].finding_id) } catch { $findingId = '' }
+    $disposition = [pscustomobject][ordered]@{
+        state                          = 'resolved-against-disk'
+        finding_id                     = $findingId
+        fix_evidence_ref               = $commit
+        authorized_by                  = ([string]$AuthorizedBy).Trim()
+        recorded_at                    = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+        rounds_spent_before_resolution = [int]$prior.round
+    }
+    $dispositions = @()
+    if (($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
+    $dispositions += $disposition
+    # Clear the FINDING lineage: blocking=false, findings=null, changed_paths reset - the resolved
+    # finding no longer climbs the ceiling nor re-surfaces. PRESERVE round: the spent allowance is NOT
+    # replenished here (that is Set-ContinuousCoReviewAllowanceReset's job). The remediation carrier and
+    # the (now-appended) disposition trail are preserved.
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+    $remediation = if (($prior.PSObject.Properties.Name -contains 'remediation')) { $prior.remediation } else { $null }
+    ([pscustomobject][ordered]@{ changed_paths = @(); round = [int]$prior.round; blocking = $false; findings = $null; remediation = $remediation; dispositions = $dispositions } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    return $disposition
+}
+
+function Set-ContinuousCoReviewAllowanceReset {
+    # T020 SPLIT (maintainer ruling 2026-07-12, DRIFT-198-I003-005): the SEPARATE, explicit human-approved
+    # action that REPLENISHES the review-round SPEND ALLOWANCE. The ceiling is an AI-usage spend allowance
+    # (spec FR-019); resolving a finding NEVER replenishes it - only THIS does, and only on a deliberate
+    # human decision. It resets the spent round count to 0, records WHO authorized it, WHEN, and WHY, and
+    # LEAVES the resolved-finding evidence (dispositions) + any open finding/blocking lineage INTACT (it
+    # grants budget, it does not resolve findings). TRUST BOUNDARY: construct only from a genuinely
+    # human-typed/approved command. (A ceiling EXTENSION was removed: the runtime ceiling reads ONLY the
+    # configured .specrew/config.yml, so a round-state max_rounds override would be a DEAD, misleading audit
+    # claim - advisory f1, authoritative review 20260712T215431762. allowance-reset only does the ENFORCED
+    # round=0 replenish.)
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$AuthorizedBy,
+        [string]$Reason,
+        [datetime]$Now = [datetime]::UtcNow
+    )
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy)) {
+        $AuthorizedBy = (& git -C $resolved config user.name 2>$null)
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = [string]$env:USERNAME }
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = 'human' }
+    }
+    $prior = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+    if ($null -eq $prior) { $prior = [pscustomobject]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null } }
+    $priorRound = [int]$prior.round
+    $disposition = [pscustomobject][ordered]@{
+        state          = 'allowance-reset'
+        authorized_by  = ([string]$AuthorizedBy).Trim()
+        recorded_at    = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+        reason         = if ([string]::IsNullOrWhiteSpace($Reason)) { $null } else { ([string]$Reason).Trim() }
+        previous_round = $priorRound
+        new_round      = 0
+    }
+    $dispositions = @()
+    if (($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
+    $dispositions += $disposition
+    # REPLENISH: round=0. PRESERVE the finding lineage (blocking/findings/changed_paths) + all evidence -
+    # granting budget is orthogonal to resolving findings.
+    $priorBlocking = ($prior.PSObject.Properties['blocking'] -and [bool]$prior.blocking)
+    $priorFindings = if ($prior.PSObject.Properties['findings']) { [string]$prior.findings } else { $null }
+    $priorChanged = if ($prior.PSObject.Properties['changed_paths']) { @($prior.changed_paths) } else { @() }
+    $remediation = if (($prior.PSObject.Properties.Name -contains 'remediation')) { $prior.remediation } else { $null }
+    $state = [ordered]@{ changed_paths = $priorChanged; round = 0; blocking = $priorBlocking; findings = $priorFindings; remediation = $remediation; dispositions = $dispositions }
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+    ([pscustomobject]$state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    return $disposition
 }
 
 function Set-ContinuousCoReviewRemediationChoice {
@@ -189,12 +315,13 @@ function Set-ContinuousCoReviewRemediationChoice {
     #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block')][string]$Choice,
+        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block', 'resolved-against-disk', 'allowance-reset')][string]$Choice,
         [int]$TimeoutSeconds = 0,
         [string]$HostName,
         [string]$Scope,
         [string]$RunId,
         [string]$Reason,
+        [string]$FixEvidenceRef,
         [string]$AuthorizedBy,
         [datetime]$Now = [datetime]::UtcNow
     )
@@ -252,6 +379,21 @@ function Set-ContinuousCoReviewRemediationChoice {
             if ($null -ne $prior) {
                 Set-ContinuousCoReviewRoundState -RepoRoot $resolved -ChangedPaths @($prior.changed_paths) -Round ([int]$prior.round) -Blocking $false -Findings ([string]$prior.findings)
             }
+        }
+        'resolved-against-disk' {
+            # T020: the held blocking finding has been FIXED and the fix is committed IN HEAD's
+            # lineage. Distinct from override-block (which waves a DEGRADED block through): this
+            # requires committed fix evidence (an ancestor of HEAD) and clears the latch + resets the
+            # round so the resolved finding can neither re-escalate nor keep consuming the allowance.
+            if ([string]::IsNullOrWhiteSpace($FixEvidenceRef)) { throw "remediation 'resolved-against-disk' needs --fix-evidence-ref <commit> (the commit that resolves the finding)." }
+            $null = Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $resolved -FixEvidenceRef $FixEvidenceRef -AuthorizedBy $AuthorizedBy -Now $Now
+        }
+        'allowance-reset' {
+            # T020 SPLIT (DRIFT-198-I003-005): the SEPARATE, explicit human-approved REPLENISH of the
+            # review-round spend allowance (resolved-against-disk no longer does this implicitly). Requires
+            # --ack-reason so the audit records WHY the human granted more review budget.
+            if ([string]::IsNullOrWhiteSpace($Reason)) { throw "remediation 'allowance-reset' needs --ack-reason '<why>' (records the human-approved allowance reset)." }
+            $null = Set-ContinuousCoReviewAllowanceReset -RepoRoot $resolved -AuthorizedBy $AuthorizedBy -Reason $Reason -Now $Now
         }
     }
 
@@ -437,13 +579,20 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         if ([string]::IsNullOrWhiteSpace($BaselineRef)) { & $writeStatus 'failed' @{ failure_reason = 'baseline-unresolved' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
         $currentPhase = 'design-context-resolution'
         & $recordPhaseStart $currentPhase
-        if (-not $DesignContextFiles -or @($DesignContextFiles).Count -eq 0) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
+        # T034b: legacy worktree review and the production campaign path share this exact
+        # fail-before-selection decision and component-wise physical-containment primitive.
+        $designContextSelection = Resolve-ContinuousCoReviewDesignContextSelection -RepoRoot $RepoRoot -DesignContextFiles $DesignContextFiles
+        if (-not $designContextSelection.valid) {
+            & $writeStatus 'failed' @{ failure_reason = $designContextSelection.reason; unresolved_design_context = @($designContextSelection.unresolved_refs) }
+            return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+        }
+        $DesignContextFiles = @($designContextSelection.resolved_refs)
         # f1 (codex 2026-07-08): an EMPTY design context is RECORDED + DEGRADES the run - never a
         # silent blind review. The reviewer is told (prompt note), status.json carries it, and the
         # done-write forces completeness=partial so the T094 tier demands a human ack for the
         # evidence. Not a terminal failure: a genuinely spec-less repo (greenfield empty-tree
         # baseline) may legitimately review code-only.
-        $designContextEmpty = (@($DesignContextFiles).Count -eq 0)
+        $designContextEmpty = [bool]$designContextSelection.design_context_empty
         if ($designContextEmpty) {
             [Console]::Error.WriteLine('[co-review] WARN DESIGN_CONTEXT_EMPTY no spec/design-analysis resolved (.review/design will be empty); the run is labelled partial and the reviewer is told to flag it.')
         }
@@ -464,6 +613,13 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             else { 'no-authorized-reviewer-host' }
             & $writeStatus 'failed' @{ failure_reason = $selFailure; requested_reviewer_host = $RequestedHost }
             return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+        }
+        # Defensive normalization (regression guard): the status writes below read
+        # $reviewerHost.independence_source (added by the T012 live-door provenance). A host object
+        # that omits it - a legacy/stubbed selector - must NOT crash the orchestrator under
+        # StrictMode; default the provenance to 'unverified' (the SEC-004 fail-closed sense).
+        if (-not ($reviewerHost.PSObject.Properties.Name -contains 'independence_source')) {
+            $reviewerHost | Add-Member -NotePropertyName 'independence_source' -NotePropertyValue 'unverified' -Force
         }
 
         # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
@@ -487,7 +643,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
 
         $currentPhase = 'worktree-materialization'
         & $recordPhaseStart $currentPhase
-        & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; reviewer_selection_reason = $reviewerHost.selection_reason; requested_reviewer_host = $RequestedHost }
+        & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewer_selection_reason = $reviewerHost.selection_reason; requested_reviewer_host = $RequestedHost }
         $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles -SourceTreeId $reviewedDigestId
         & $recordPhaseEnd 'worktree-materialization'
         # T092 pre-flight generous-budget bump REVERTED (Issue 1): a 30-min AUTO checkpoint review is wrong - the
@@ -505,7 +661,19 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         $implementerEvidencePresent = $false
         try {
             if (Get-Command -Name 'Copy-ContinuousCoReviewImplementerEvidence' -ErrorAction SilentlyContinue) {
-                $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId)
+                # THE ACTUAL SELECTED PLAN into the injection boundary (maintainer wiring directive 2026-07-15):
+                # resolved via the one production seam (the FR-049 supplier's canonical output), NEVER derived
+                # from the evidence. Unavailable/invalid -> $null, and the copy then withholds plan-identified
+                # runs fail-closed as selected-plan-unavailable.
+                $selectedPlan = $null
+                try {
+                    if (Get-Command -Name 'Get-ContinuousCoReviewSelectedVerificationPlan' -ErrorAction SilentlyContinue) {
+                        $selRes = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $RepoRoot
+                        if ($null -ne $selRes -and [bool]$selRes.available) { $selectedPlan = $selRes.plan }
+                    }
+                }
+                catch { $selectedPlan = $null }
+                $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId -Plan $selectedPlan)
             }
         } catch { $implementerEvidencePresent = $false }
         # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix
@@ -538,32 +706,174 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 # status.json knows the increment was NOT reviewed. (F-197 iter-009 Option A #2 + D-010 hardening.)
                 $currentPhase = 'ceiling-halt'
                 & $recordPhaseStart $currentPhase
-                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $round -MaxRounds $maxRounds))
-                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $true -Findings $priorFindings
+                $resolvedCount = 0
+                if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) {
+                    $resolvedCount = @($prior.dispositions | Where-Object { [string]$_.state -eq 'resolved-against-disk' }).Count
+                }
+                # HONEST SPEND COUNT (finding 9e3a44f1): $round here is the PROSPECTIVE round (prior.round+1)
+                # whose invocation the ceiling PREVENTS - it never reviewed. FR-019/T020 count only rounds that
+                # ACTUALLY reviewed, so the halt message and the persisted state report $maxRounds (the rounds
+                # that ran and hit the limit), never the +1 attempt. Persisting $maxRounds (not $round) keeps the
+                # sticky latch working - the next overlapping checkpoint still computes maxRounds+1 > maxRounds.
+                $spentRounds = [Math]::Min([int]$round, [int]$maxRounds)
+                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $spentRounds -MaxRounds $maxRounds -ResolvedAgainstDiskCount $resolvedCount))
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $spentRounds -Blocking $true -Findings $priorFindings
                 & $recordPhaseEnd 'ceiling-halt'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $spentRounds; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
+            # T020 PREFLIGHT (FR-019 two-budget accounting): the review INPUT must be materialized
+            # BEFORE the model is invoked. A missing .review/changes.diff is an INFRASTRUCTURE failure
+            # (the field da2bc5cc class where the engine did not materialize its own input) - it must
+            # consume NEITHER provider budget NOR a round-allowance slot, so we fail HERE without
+            # invoking the reviewer and without touching the round-state. Distinct from an invoked
+            # failure below (which DID spend and DOES count).
+            $changesDiffPath = Join-Path $wt.worktree_path '.review/changes.diff'
+            if (-not (Test-Path -LiteralPath $changesDiffPath -PathType Leaf)) {
+                $preflightSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $false -ModelInvoked $false -ProducedReview $false
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'input-not-materialized'; spend_class = $preflightSpend.class; provider_spend = $preflightSpend.records_provider_spend; round_consumed = $preflightSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
+            # T015 (FR-010) SIMPLIFIED (maintainer option-1 decision, 2026-07-11): the orchestrator does
+            # NOT auto-run declared verification, copy a sandbox, or re-run commands per review. Automatic
+            # reruns were removed because they could not be confined in-process - the copy was not an OS
+            # boundary (ambient-authority escape, finding 4b124d0e), Copy-Item raced concurrent host churn
+            # (c9abe16d), unbounded output had to be capped (bfc7b5c5), and the mechanism fought T111's
+            # anti-budget-death design. Those cases survive as regression evidence in
+            # bounded-verification.Tests.ps1, documenting WHY. Runner-observed verification is now T018's
+            # job: verification runs ONCE through the recorded-run wrapper and the digest-bound evidence is
+            # injected as .review/implementer-evidence.json (above) for the reviewer to READ + spot-check.
+            # Invoke-ContinuousCoReviewBoundedVerification remains an EXPLICIT opt-in API only.
+            #
+            # REVIEWER-INVOCATION INTEGRITY: the reviewer is itself an agentic host with ambient authority.
+            # Hash the source + authoritative reviewer inputs (.review/changes.diff, design/, process/,
+            # implementer-evidence) immediately BEFORE and AFTER the reviewer runs; the ONLY permitted write
+            # is the reviewer's own output (.review/findings.jsonl). Any other mutation FAILS the review -
+            # the reviewer must inspect, never edit, the certified fire-time tree. This is MONITORED
+            # confinement, not OS-enforced filesystem isolation (a dedicated process identity + worktree-only
+            # ACL isolation is recorded as a separate future proposal, not T015 scope).
+            $reviewerOutputAllow = @('.review/findings.jsonl')
+            $reviewerPreHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
+            # T016 (FR-011/SC-003) MONITORED containment: the origin roots the reviewer tree must NOT reach - the
+            # SAME two T013 guards against (the governance RepoRoot + the git top-level). Violations accumulate
+            # PASSIVELY across heartbeats (NEVER a mid-flight kill); the loud origin-side fail is applied at the
+            # reviewer's natural end (below). child_pid rides the existing reviewer telemetry.
+            $containmentOriginRoots = @($RepoRoot)
+            try { $cgt = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null); if (-not [string]::IsNullOrWhiteSpace($cgt)) { $containmentOriginRoots += ([string]$cgt).Trim() } } catch { $null = $_ }
+            $containmentViolations = [System.Collections.Generic.List[object]]::new()
+            $containmentSeen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+            # FR-011 amended (maintainer review 2026-07-12): the monitor records its own HEALTH so weak visibility is
+            # never silent inactivity. A hashtable (reference type) so the heartbeat closure's mutations persist.
+            $samplerHealth = @{ attempts = 0; successful_samples = 0; failures = 0; last_reason = ''; final_sample_taken = $false; cadence_seconds = 5 }
             $currentPhase = 'reviewer-execution'
-            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
+            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
             & $recordPhaseStart $currentPhase
             $reviewerHeartbeat = {
                 param($Telemetry)
-                & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
+                # T016: ride the heartbeat to SAMPLE the reviewer tree (read-only) and accumulate any origin-access
+                # violation. Strictly monitoring - it never mutates or kills the reviewer; the loud fail is applied
+                # after the reviewer's natural end. Assign the `, (...)`-returning helpers to vars (never @()/inline
+                # foreach) so a single sample/violation is not double-wrapped.
+                if ($null -ne $Telemetry -and $Telemetry.PSObject.Properties['child_pid'] -and $Telemetry.child_pid -and $containmentOriginRoots.Count -gt 0) {
+                    # A running=false telemetry is the FINAL post-exit sample: its vanished tree is EXPECTED, so it is
+                    # recorded as taken but its emptiness is NOT counted as a sampler failure.
+                    $isFinal = ($Telemetry.PSObject.Properties['running'] -and (-not $Telemetry.running))
+                    $samplerHealth.attempts++
+                    try {
+                        # DRIFT-198-I003-004: STRUCTURED argv (single-arg prompt is not a path; quoted/relative/option
+                        # forms covered best-effort). -Health returns the monitor's own visibility so it is never silent.
+                        $cvHealth = $null
+                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid) -WorktreeCwd $wt.worktree_path -Health ([ref]$cvHealth)
+                        $cvNew = Test-ContinuousCoReviewContainmentViolations -Samples $cvSamples -OriginRoots $containmentOriginRoots -RunId $RunId
+                        foreach ($cv in $cvNew) {
+                            $cvKey = ('{0}|{1}|{2}' -f $cv.process, $cv.source, $cv.path)
+                            if ($containmentSeen.Add($cvKey)) { [void]$containmentViolations.Add($cv) }
+                        }
+                        if ($isFinal) { $samplerHealth.final_sample_taken = $true }
+                        elseif ($null -ne $cvHealth -and $cvHealth.degraded) { $samplerHealth.failures++; $samplerHealth.last_reason = [string]$cvHealth.reason }
+                        else { $samplerHealth.successful_samples++ }
+                    }
+                    catch { if (-not $isFinal) { $samplerHealth.failures++; $samplerHealth.last_reason = 'sampler-exception' } }
+                }
+                & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
             $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent
             & $recordPhaseEnd 'reviewer-execution'
+            # INTEGRITY CHECK: did the reviewer mutate the certified tree beyond its allowed output? The
+            # model WAS invoked (provider spend real), so a violation is the invoked-failed class (spend +
+            # round consumed, distinct disposition) and the findings are DISCARDED - a reviewer that edited
+            # the tree it certifies cannot be trusted.
+            $reviewerPostHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
+            $reviewerTamperedPaths = New-Object System.Collections.Generic.List[string]
+            # MODIFIED or DELETED pre-existing file (source, .review authority, OR tracked config under a
+            # host dir) -> tampering, unless it is the reviewer's own findings output.
+            foreach ($k in $reviewerPreHashes.Keys) { if ((-not $reviewerPostHashes.ContainsKey($k) -or $reviewerPostHashes[$k] -ne $reviewerPreHashes[$k]) -and ($reviewerOutputAllow -notcontains $k)) { [void]$reviewerTamperedPaths.Add($k) } }
+            # NEW file -> tampering, UNLESS it is the reviewer's findings output OR legitimate host session
+            # state (a NEW file under a volatile host-runtime dir). A new file anywhere else is planted.
+            foreach ($k in $reviewerPostHashes.Keys) { if ((-not $reviewerPreHashes.ContainsKey($k)) -and ($reviewerOutputAllow -notcontains $k) -and -not (Test-ContinuousCoReviewIsHostChurnPath -RelativePath $k)) { [void]$reviewerTamperedPaths.Add($k) } }
+            if ($reviewerTamperedPaths.Count -gt 0) {
+                $currentPhase = 'reviewer-tamper'
+                $tamperSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
+                [System.IO.File]::WriteAllText($resultOut, '')
+                $priorBlockingT = ($null -ne $prior) -and [bool]$prior.blocking
+                $priorFindingsT = if ($null -ne $prior) { [string]$prior.findings } else { $null }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $priorBlockingT -Findings $priorFindingsT
+                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'reviewer-tampered-tree'; run_id = $RunId; round = $round; provider_spend = $true; tampered_paths = @($reviewerTamperedPaths | Select-Object -First 10); recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'reviewer-tampered-tree'; message = ('the reviewer altered the certified tree beyond its allowed output (.review/findings.jsonl): ' + (@($reviewerTamperedPaths | Select-Object -First 10) -join ', ')); spend_class = $tamperSpend.class; provider_spend = $tamperSpend.records_provider_spend; round_consumed = $tamperSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
+            # T016 (FR-011/SC-003): CONTAINMENT VIOLATION. If the reviewer tree was observed reaching origin during
+            # the run (accumulated PASSIVELY across heartbeats - never a mid-flight kill), fail the run LOUDLY with
+            # an origin-side record. The model WAS invoked (provider spend real) -> invoked-failed class + a distinct
+            # disposition; the findings are DISCARDED (a reviewer that reached origin cannot be trusted). Records
+            # carry ONLY bounded/redacted path/process metadata (never the raw cmdline/prompt/env/creds), and only
+            # in these ORIGIN-SIDE writes (status.json + disposition), never the reviewer worktree.
+            # FR-011 AMENDED (maintainer review 2026-07-12): partition observed origin access by SIGNAL STRENGTH. A
+            # STRONG signal (a reviewer-tree process whose cwd or exe resolves under origin) hard-fails LOUDLY and
+            # DISCARDS findings. A command-line ARGUMENT under origin is a best-effort DIAGNOSTIC WARNING (argv matching
+            # is inherently incomplete) - recorded, but it NEVER by itself discards an otherwise valid review. The
+            # STRUCTURAL guarantee is FR-008/T013.
+            $strongViolations = @($containmentViolations | Where-Object { $_.source -in @('cwd', 'exe') })
+            $containmentArgWarnings = @($containmentViolations | Where-Object { $_.source -eq 'arg' } | Select-Object -First 20)
+            if ($strongViolations.Count -gt 0) {
+                $currentPhase = 'containment-violated'
+                $cvSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
+                [System.IO.File]::WriteAllText($resultOut, '')
+                $priorBlockingCv = ($null -ne $prior) -and [bool]$prior.blocking
+                $priorFindingsCv = if ($null -ne $prior) { [string]$prior.findings } else { $null }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $priorBlockingCv -Findings $priorFindingsCv
+                $cvRecords = @($strongViolations | Select-Object -First 10)
+                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'containment-violated'; run_id = $RunId; round = $round; provider_spend = $true; violations = $cvRecords; arg_warnings = $containmentArgWarnings; sampler_health = $samplerHealth; recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'containment-violated'; message = ('the reviewer process tree accessed origin via a STRONG signal (cwd/exe under origin): ' + (@($cvRecords | ForEach-Object { $_.path } | Select-Object -First 5) -join ', ')); containment_violations = $cvRecords; containment_warnings = $containmentArgWarnings; sampler_health = $samplerHealth; spend_class = $cvSpend.class; provider_spend = $cvSpend.records_provider_spend; round_consumed = $cvSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
-            $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
-            $completeness = 'full'
-            if ([string]::IsNullOrWhiteSpace($json)) {
-                # T090/R1: the final blob is empty/unparseable (a timeout / cut-short run). HARVEST the incremental
-                # .review/findings.jsonl prefix (or prose-salvage) so a degraded review still surfaces findings
-                # (any review > nothing), instead of discarding the whole run as 'no-parseable-findings-json'.
-                $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $wt.worktree_path -RawStdout $raw -RunId $RunId
-                if (-not [string]::IsNullOrWhiteSpace($json)) { $completeness = 'partial' }
+            $resultSource = 'stdout'
+            # FILE-PRIMARY (2026-07-12): the wrapper already FULLY contract-validated a clean-exit, current-run,
+            # schema-valid .review/findings.jsonl delivered by a host that writes the file and exits with EMPTY
+            # stdout (codex). Integrity has ALREADY passed (the tamper check above returned on any violation), so
+            # this is a COMPLETE review - completeness='full', NOT the empty-stdout -> lenient-harvest -> 'partial'
+            # path. A genuinely empty result carries no file_primary_result and falls through to stdout + harvest.
+            if (($r.PSObject.Properties['file_primary_result']) -and -not [string]::IsNullOrWhiteSpace([string]$r.file_primary_result)) {
+                $json = [string]$r.file_primary_result
+                $completeness = 'full'
+                $resultSource = 'file-primary'
+            }
+            else {
+                $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
+                $completeness = 'full'
+                if ([string]::IsNullOrWhiteSpace($json)) {
+                    # T090/R1: the final blob is empty/unparseable (a timeout / cut-short run). HARVEST the incremental
+                    # .review/findings.jsonl prefix (or prose-salvage) so a degraded review still surfaces findings
+                    # (any review > nothing), instead of discarding the whole run as 'no-parseable-findings-json'.
+                    $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $wt.worktree_path -RawStdout $raw -RunId $RunId
+                    if (-not [string]::IsNullOrWhiteSpace($json)) { $completeness = 'partial' }
+                }
             }
             # T096: a human-SCOPED review covered a SUBSET of the increment - its evidence is honestly
             # PARTIAL (the T094 tiered gate then requires the recorded ack, never a silent full pass).
@@ -582,7 +892,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-result'
                 $currentPhase = 'complete'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; result_source = $resultSource; implementer_evidence = $implementerEvidencePresent; reviewer_telemetry = $reviewerTelemetry; containment_warnings = $containmentArgWarnings; sampler_health = $samplerHealth }
             }
             else {
                 $currentPhase = 'write-failure'
@@ -591,10 +901,20 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 # STATE the reason: capture exit code + a stderr tail so an unparseable/empty verdict is diagnosable
                 # (the agent invocation otherwise drops stderr and the failure is invisible).
                 $stderrTail = if (-not [string]::IsNullOrWhiteSpace([string]$r.stderr)) { (([string]$r.stderr) -split "`n" | Where-Object { $_ } | Select-Object -Last 3) -join ' | ' } else { '' }
+                # T020 (FR-019): the model WAS invoked (provider spend incurred) but produced no valid
+                # review. Two-budget accounting: record provider spend AND consume a round-allowance slot
+                # with a distinct failed-invocation disposition - it never disappears from accounting.
+                # The prior blocking/findings are PRESERVED (a failed invocation reviewed nothing, so it
+                # resolves nothing); the round is recorded as consumed.
+                $failedSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
+                $priorBlocking = ($null -ne $prior) -and [bool]$prior.blocking
+                $priorFindingsStr = if ($null -ne $prior) { [string]$prior.findings } else { $null }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $priorBlocking -Findings $priorFindingsStr
+                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'failed-invocation'; run_id = $RunId; round = $round; provider_spend = $true; recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
                 & $recordPhaseEnd 'write-failure'
                 $currentPhase = 'failed'
                 $runTimer.Stop()
-                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; spend_class = $failedSpend.class; provider_spend = $failedSpend.records_provider_spend; round_consumed = $failedSpend.consumes_round; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewer_telemetry = $reviewerTelemetry }
             }
         }
         finally {
