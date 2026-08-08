@@ -642,6 +642,43 @@ function Invoke-SpecrewBoundaryVerdictCapture {
         $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
 
         if ([bool]$pendingCrossing.HasPendingVerdict -and $actualFrom -eq $expectedFrom -and $actualTo -eq $expectedTo) {
+            # Pre-tag slice #4 (stale-marker-captures-before-refusal, run-f198-beta2-4e7d002c-certify):
+            # a crossing whose stage evidence is CHECKED-AND-ABSENT must not be authorizable — the
+            # human is replying to a packet that should never have offered approval, and capture runs
+            # BEFORE the conformance refusal (order 30 vs 40, and alone on prompt-submit). Refuse
+            # LOUDLY — stderr WARN plus a journal record carrying the verdict text — so nothing is
+            # silently lost and the human is re-prompted once the evidence exists. Lose-no-verdict
+            # applies to legitimate boundaries, not evidence-less ones. Only a POSITIVE
+            # evidence-absent reading refuses; unreadable or unavailable state keeps today's capture
+            # behavior (the same fail direction as the demand side's unverifiable-suppresses rule).
+            $stageEvidenceAbsentForCapture = $false
+            $stageEvidenceMissingForCapture = @()
+            if (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue) {
+                try {
+                    $pvForCapture = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+                    # CHECKED-AND-ABSENT only: an UNVERIFIABLE evidence read (no bound tree id, tree
+                    # unreadable) must not refuse — "could not verify" is not "verified absent", and
+                    # the legacy-unscoped branch is unverifiable by shape.
+                    if ($null -ne $pvForCapture -and ($pvForCapture.PSObject.Properties.Name -contains 'StageEvidenceAbsent') -and [bool]$pvForCapture.StageEvidenceAbsent -and
+                        -not (($pvForCapture.PSObject.Properties.Name -contains 'StageEvidenceUnverifiable') -and [bool]$pvForCapture.StageEvidenceUnverifiable)) {
+                        $stageEvidenceAbsentForCapture = $true
+                        $stageEvidenceMissingForCapture = @($pvForCapture.StageEvidenceMissing)
+                    }
+                }
+                catch { $stageEvidenceAbsentForCapture = $false }
+            }
+            if ($stageEvidenceAbsentForCapture) {
+                [Console]::Error.WriteLine(("[specrew-handover] WARN VERDICT_REFUSED_STAGE_EVIDENCE_ABSENT captured '{0}' for '{1}->{2}' but the stage's evidence is absent from the bound tree ({3}); NOT authorizing. Produce the evidence, re-run the boundary sync, and ask the human again." -f [string]$captured.VerdictText, $actualFrom, $actualTo, (@($stageEvidenceMissingForCapture) -join ', ')))
+                try {
+                    $evJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                    $evDir = Split-Path -Parent $evJournal
+                    if ($evDir -and -not (Test-Path -LiteralPath $evDir)) { New-Item -ItemType Directory -Path $evDir -Force | Out-Null }
+                    (([pscustomobject]@{ event = 'verdict-refused-stage-evidence-absent'; recorded_at = $NowUtc; verdict_text = [string]$captured.VerdictText; from = $actualFrom; to = $actualTo; missing = @($stageEvidenceMissingForCapture); source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $evJournal -Encoding UTF8
+                }
+                catch { $null = $_ }
+                $result.reason = 'stage-evidence-absent-refused'
+                return $result
+            }
             $evidenceSource = if ([string]$captured.Reason -eq 'captured-pending-artifact-fallback') { 'hook-captured-from-transcript-pending-artifact' } else { 'hook-captured-from-transcript' }
             # F-198 FR-005: an authorization for a boundary BEHIND the working crossing is a
             # reconciliation of already-done work - record it distinctly as retroactive.

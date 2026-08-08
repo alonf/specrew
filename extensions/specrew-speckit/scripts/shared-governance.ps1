@@ -1945,13 +1945,27 @@ function Get-SpecrewBoundaryStageEvidence {
 
         $root = Resolve-ProjectPath -Path $ProjectRoot
         # TREE-RELATIVE, derived from the project root — never the persisted absolute feature path.
+        # certify slice #4 (feature-path-prefix-false-containment, run-f198-beta2-4e7d002c-certify):
+        # in-project resolution is CANONICAL RELATIVE containment with a separator boundary, not a
+        # string prefix — the prefix check accepted a prefix sibling (repo-other vs repo) and, on a
+        # case-sensitive volume, a case-distinct sibling checkout (/tmp/Repo vs /tmp/repo), mapping a
+        # foreign feature onto this tree's paths. GetRelativePath compares with the platform's own
+        # path semantics — the volume-correct identity for same-root containment — and an escape
+        # leaves $featureRel null, which reads as UNVERIFIABLE below (fail-closed, never foreign).
         $featureRel = $null
         if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
-            $fp = ($FeaturePath -replace '\\', '/').TrimEnd('/')
-            $rp = ($root -replace '\\', '/').TrimEnd('/')
-            if ($fp.StartsWith($rp, [System.StringComparison]::OrdinalIgnoreCase) -and $fp.Length -gt $rp.Length) {
-                $featureRel = $fp.Substring($rp.Length).TrimStart('/')
+            try {
+                $featureFull = [System.IO.Path]::GetFullPath($FeaturePath)
+                $rootFull = [System.IO.Path]::GetFullPath($root)
+                $relCandidate = [System.IO.Path]::GetRelativePath($rootFull, $featureFull)
+                if (-not [System.IO.Path]::IsPathRooted($relCandidate) -and
+                    $relCandidate -ne '.' -and $relCandidate -ne '..' -and
+                    -not $relCandidate.StartsWith('..' + [System.IO.Path]::DirectorySeparatorChar) -and
+                    -not $relCandidate.StartsWith('../')) {
+                    $featureRel = ($relCandidate -replace '\\', '/')
+                }
             }
+            catch { $featureRel = $null }
         }
         if ([string]::IsNullOrWhiteSpace($featureRel)) {
             return (& $unverifiable 'the active feature could not be resolved inside this project, so its evidence cannot be verified')
@@ -2059,6 +2073,11 @@ function Set-SpecrewStageEvidenceGate {
         if ($null -eq $ev -or -not [bool]$ev.Checked -or [bool]$ev.Satisfied) { return $Result }
 
         $Result.StageEvidenceAbsent = $true
+        # Pre-tag slice #4: the three-outcome distinction travels. Both outcomes SUPPRESS the demand
+        # (unchanged), but only CHECKED-AND-ABSENT may refuse a verdict capture — "could not verify"
+        # is not "verified absent", and refusing capture on an unverifiable read would drop
+        # legitimate verdicts on a component hiccup (the exact loss T090's design forbids).
+        $Result.StageEvidenceUnverifiable = [bool]$ev.Unverifiable
         $Result.StageEvidenceMissing = @($ev.Missing)
         $Result.Message = if ([bool]$ev.Unverifiable) {
             # Suppress, and say why. "Could not verify" must never read as "verified".
@@ -2105,6 +2124,7 @@ function Get-SpecrewPendingVerdictState {
         # would be silently dropped. That converts an over-demanding gate into a lost authorization —
         # worse than the defect. The crossing stays pending; only the DEMAND is suppressed.
         StageEvidenceAbsent    = $false
+        StageEvidenceUnverifiable = $false
         StageEvidenceMissing   = @()
         Message                = $null
     }

@@ -104,7 +104,10 @@ reparse-point fixtures. The volume is a sound oracle for what it is asked; it wa
 links. Limitation 2 was believed to sit inside this blind spot; extending the fixtures is what
 established that it is not a defect at all. The blind spot was real — the fixtures were genuinely
 missing — but what they found on being written was the absence of the reported defect rather than its
-presence.
+presence. The same link class reaches the quality-profile resolver's feature binding: its containment
+validation is lexical, so a directory link inside the project can still bind a foreign feature's
+planning inputs (found by certification `run-f198-beta2-4e7d002c-certify`, 2026-08-09; routed to
+beta3 with this link cluster — planning input, not authorization integrity).
 
 **4. The consumer applicability firewall's case-distinct behaviour is unproven by test.** The scanner
 now dedupes file identities ordinally, but no fixture runs it over two case-distinct files and asserts

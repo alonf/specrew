@@ -1797,3 +1797,39 @@ were diagnosed from the provider's own journal and corrected before any fix land
   vocabulary to record the acceptance.
 - **f5 (major) — the atomic writer reports success onto a directory destination.**
   DRIFT-198-I011-009, already routed to beta3, re-observed unchanged.
+
+## PRE-TAG SLICE #4 — the re-certify's findings (run-f198-beta2-4e7d002c-certify, verdict `findings`)
+
+Five findings: the two expected residuals re-reported exactly as predicted (recorded above), plus
+two new blocking and one new major. Maintainer verdict 2026-08-09: fix the blocking pair RED-first
+through the SHIPPED paths; route the link-escape major to the documented link class.
+
+### Fixed, instance-pinned RED first (suite `pretag-slice4-capture-containment`)
+
+| Finding | Instance pinned RED (shipped path) | Fix |
+| --- | --- | --- |
+| stale-marker-captures-before-refusal (blocking) | marker rendered FIRST, then the human's approval as the prompt-submit message, through the real handover provider, with the scoped crossing's evidence checked-and-absent → capture AUTHORIZED (cursor advanced, entry written) | `Invoke-SpecrewBoundaryVerdictCapture` refuses on a POSITIVE evidence-absent reading — no authorization, stderr WARN, and a journal record carrying the verdict text (`verdict-refused-stage-evidence-absent`) so the human is re-prompted once evidence exists; unreadable state keeps today's behavior (the demand side's fail direction) |
+| feature-path-prefix-false-containment (blocking) | prefix sibling `repo-other` accepted as in-project (`unverifiable=False`); case-distinct leg recorded as not constructible on the case-folding volume and covered on the case-sensitive CI leg | canonical relative containment with a separator boundary (`GetRelativePath` + escape rejection) replaces the case-insensitive string prefix; an escape reads as UNVERIFIABLE, never as a foreign feature |
+
+The in-project control stays verifiable under the fix — the containment change refuses siblings
+without refusing the legitimate shape.
+
+The capture fix surfaced a pre-existing conflation the registry then caught (HookVerdictCapture's
+legitimate contiguous case refused): `Set-SpecrewStageEvidenceGate` set ONE flag —
+`StageEvidenceAbsent` — for both the CHECKED-AND-ABSENT and the UNVERIFIABLE outcomes, because the
+demand side suppresses on both and the distinction never previously mattered downstream. For
+capture it is everything: refusing on an unverifiable read (the legacy-unscoped branch is
+unverifiable by shape — no bound tree id) would drop legitimate verdicts on a component hiccup,
+the exact loss T090's design forbids. The three-outcome distinction now travels
+(`StageEvidenceUnverifiable` beside the absent flag; demand behavior unchanged), and capture
+refuses only checked-and-absent. The HookVerdictCapture fixtures also now commit each crossing's
+stage evidence — the pre-ruling builder constructed crossings whose evidence never existed, which
+the ratified contract no longer reads as legitimate.
+
+### Routed to the documented link class, per the same verdict
+
+**quality-profile-link-escape (major)**: the slice-3 containment fix is lexical, so a directory
+link inside the project can still bind a foreign feature's planning inputs. Routed to release-claim
+limitations 1/3's link family with a claim sentence added — link-hardening is beta3, the quality
+profile is planning input rather than authorization integrity, and pretending link coverage shipped
+is what the claim exists to prevent.
