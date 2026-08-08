@@ -1961,7 +1961,11 @@ function Get-SpecrewBoundaryStageEvidence {
         if ($LASTEXITCODE -ne 0 -or $lsTree.Count -eq 0) {
             return (& $unverifiable ("the bound tree {0} could not be read, so the evidence cannot be verified" -f $ArtifactStateId.Substring(0, [Math]::Min(12, $ArtifactStateId.Length))))
         }
-        $tracked = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        # certify f4 (run-f198-beta2-c0c3cda6-certify): git tree entry names are CASE-SENSITIVE, and
+        # for file-only rows this set membership is the only check — an OrdinalIgnoreCase comparer
+        # let a committed Review.md satisfy the canonical review.md while the canonical artifact was
+        # genuinely absent from the bound tree. Ordinal, matching the medium being read.
+        $tracked = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($line in $lsTree) { $null = $tracked.Add((($line -replace '\\', '/').Trim())) }
 
         $missing = New-Object System.Collections.Generic.List[string]

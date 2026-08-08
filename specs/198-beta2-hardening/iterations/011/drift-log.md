@@ -1765,3 +1765,35 @@ were registered; recorded with credit.
 After this slice: the maintainer resumes testbeta3 (the scaffold is intact — the standing block
 should simply go quiet), then the certify re-run under a fresh reference, then `v0.40.0-beta2`.
 The tag waits on both.
+
+## PRE-TAG SLICE #3 — the certify run's findings (run-f198-beta2-c0c3cda6-certify, verdict `findings`)
+
+The certification of the tag candidate at `c0c3cda6` returned seven validated findings (4 blocking,
+2 major, 1 minor), every one verified at source before acceptance. Maintainer verdict 2026-08-09:
+fix f2/f3/f4/f6/f7 RED-first with instance-pinned cases; record f1 and f5 as residuals.
+
+### Fixed in this slice, instance-pinned RED first (suite `pretag-slice3-certify-findings`)
+
+| Finding | Instance pinned RED | Fix |
+| --- | --- | --- |
+| f2 (blocking) — a pre-rendered matching marker bypassed the stage-evidence refusal | scoped crossing bound to the real tree, evidence checked-and-absent, full packet + matching marker in the transcript → provider emitted NOTHING | the `boundary-evidence-absent` kind keys on `$hasPending` directly, not `$boundaryBlock` — the refusal composes regardless of any marker already rendered |
+| f3 (blocking) — capped refused boundaries were instructed to emit a marker | 4 stops each for evidence-absent and unrecordable (distinct messages — the fire-identity dedup swallows identical re-fires) → cap fallback demanded the exact marker | own advance keys per refused surface; capped degradation texts refuse without naming or demanding any marker |
+| f4 (blocking) — case-insensitive evidence matching over git trees | committed `Review.md` satisfied the `review.md` file-only row (`satisfied=True`) | the tracked-name set is `Ordinal` — matching the medium being read; the probe now reads `satisfied=False, missing=review.md` |
+| f6 (major) — the feature.json fallback bound out-of-project features | absolute and `..`-traversing `feature_directory` values both bound a foreign feature dir | containment, not existence: absolute rejected outright; relative must resolve inside the project root; rejection falls through to unbound |
+| f7 (minor) — the launch contract still claimed a ready gate | `already emits a ready gate` present in the run-hardening-gate row | the row now states the blocked-by-default gate and the fill-then-flip obligation |
+
+The suite's own build re-taught the instance rule twice before it measured anything: the first f2
+fixture landed in the UNVERIFIABLE arm (legacy-unscoped context — the class, not the instance) and
+produced a false pass; the first f3 fixtures re-fired identical messages and were swallowed by the
+fire-identity dedup (863,0,0,0 — silence read as INCONCLUSIVE, not as a pass). Both fixture defects
+were diagnosed from the provider's own journal and corrected before any fix landed.
+
+### Recorded residuals, per the maintainer's verdict
+
+- **f1 (blocking) — bootstrap can convert an unrecorded boundary into authorization.** The
+  known-open FR-066 mint guard, named in the tag basis and carried to beta3; the reviewer's own
+  description cites the workspace record. Release-claim limitation 7 predicted exactly this
+  rediscovery shape — a fresh reviewer re-reports an accepted known defect because the gate has no
+  vocabulary to record the acceptance.
+- **f5 (major) — the atomic writer reports success onto a directory destination.**
+  DRIFT-198-I011-009, already routed to beta3, re-observed unchanged.
