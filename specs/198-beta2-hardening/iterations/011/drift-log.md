@@ -1719,6 +1719,25 @@ true extent: the frozen article-amplifier round-15 replay plus every self-hosted
 run since i009 exercised file-primary delivery, candidate composition, and exclusion honoring on
 the fixed engine. The gap is named here so the tag rests on stated coverage, not implied coverage.
 
+### Found by the quarantine: two fixtures were green by borrowing the installed module
+
+The maintainer's module quarantine (bit-pinning) removed the installed Specrew modules mid-slice,
+and the full gate promptly went red on the fr066/fr068 fixtures — not from either slice's changes
+(both bisected clean at the file level, and the engine's `boundary-unrecordable` read verified
+correct at HEAD) but because those fixtures' provider children resolved
+`ConversationCaptureAccessor` through the `Get-Module -ListAvailable` fallback: an AMBIENT
+installed 0.39.0 module, not the tree under test. The registry exported `SPECREW_MODULE_PATH`
+only to pester-kind suites; script-kind suites ran bare, so their governed children leaned on
+whatever install happened to exist. With the accessor gone, `$canAssess` stayed false and the
+provider fell silent — the exact silence T089 exists to prevent, produced by the harness instead
+of the product.
+
+Fixed at the harness choke point: the registry runner pins `SPECREW_MODULE_PATH` to the repo for
+every child suite. Both fixtures verified green under the pin. The class lesson is the -012 lesson
+inverted: **the tested path must be the shipped path — including the bits it LOADS.** The
+quarantine was the instrument that caught a borrowed-bits green that had held since the fixtures
+were registered; recorded with credit.
+
 ### Verification path to the tag
 
 After this slice: the maintainer resumes testbeta3 (the scaffold is intact — the standing block

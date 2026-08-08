@@ -25,6 +25,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+# Pin the ENGINE UNDER TEST for every child suite (script-kind suites inherit this environment;
+# pester-kind suites also set it explicitly in their -Command). Without it, script suites that
+# spawn governed children (the conformance provider, the sync wrapper) resolved the bootstrap
+# accessors through the Get-Module -ListAvailable fallback — an AMBIENT INSTALLED module, not the
+# tree under test. The maintainer's module quarantine (bit-pinning, pre-tag slice #2) removed the
+# installed modules and exposed it: fr066/fr068 had been green by borrowing 0.39.0's accessor.
+# The tested path must be the shipped path — including the bits it loads.
+$env:SPECREW_MODULE_PATH = $repoRoot
 
 function Get-CallerRepositorySnapshot {
     $head = @(& git -C $repoRoot rev-parse --verify HEAD 2>$null)
