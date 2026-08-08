@@ -1288,10 +1288,11 @@ editing a closed retrospective:
 | --- | ---: |
 | Generator parity test (RED-first, 4 harness corrections) + both-writer fix + registry row + full gate | **~1.0** |
 | DRIFT-198-I011-012 orchestration-path slice: honest-RED fixture through the shipped skill's own blocks, consequence-graph walk in writing, gate first-crossing translation, nine-skill reorder (+ before-implement's missing arrival sync), marker-invention retirement, FR-066 reconciliation, secondary findings with named writers, registry row + full gate | **~2.5** |
+| Pre-tag slice #2 (testbeta3): navigator pre-implement quiet-no-op edge (RED-first, five cases) + the three priced smalls (packet-as-handoff-evidence, resolver feature binding, unconditional quality scaffold + claim correction) + beta3 routing + coverage-gap record | **~1.4** |
 
 Feature-level total therefore reads **~29.0 (iteration 011, retro'd and closed to edits) + ~1.0 +
-~2.5 (release slices)**, not a restated total — the scopes are different and the record keeps them
-apart.
+~2.5 + ~1.4 (release slices)**, not a restated total — the scopes are different and the record
+keeps them apart.
 
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
@@ -1663,3 +1664,63 @@ gate-before-sync. The cure is the orchestration-path fixture class — execute t
 OWN blocks against a real project — now instantiated once
 (`shipped-orchestration-arrival.tests.ps1`) and routed to beta3 as a per-shipped-skill release-gate
 requirement, alongside the second-feature reset edge named by the walk.
+
+## PRE-TAG SLICE #2 — the testbeta3 re-test (maintainer manual test, frozen at `C:\Temp\testbeta3-842854746`)
+
+### The navigator pre-implement contradiction — FIXED (commit f2c2c7d8)
+
+Fully characterized at source: `Get-ReviewCampaignNavigatorScopeApplicability` turned applicability
+ON at bare iteration-directory existence while the auto-fire path stays implement-only — so every
+consumer at design-analysis received a standing review-required Stop block that nothing could ever
+satisfy. The testbeta3 journal is the evidence: `campaign-not-applicable:no-active-iteration`
+flipped to `no-authoritative-campaign-result` at 2026-08-08T01:13:28Z when
+scaffold-iteration-artifacts created `iterations/NNN`, four standing stops followed, and the
+maintainer freed the session by hand at 01:21.
+
+The fix is the i009 quiet-no-op family's missing edge: at the design-analysis cursors (`plan`,
+`tasks`) applicability returns quiet not-applicable and the packet gate is never consulted;
+auto-fire stays implement-only; pre-code reviews remain human-CLI-initiated. The WORKING position
+decides (session cursor, then the pending crossing's working boundary, then the authorized
+cursor) — the first fix draft used the authorized cursor and the pre-existing v2
+missing-iteration fail-closed case caught it: a pending crossing INTO `before-implement` is the
+implement window's edge, not design-analysis. RED-first: five new cases (standing-block
+reproduction at plan/tasks, the journal-flip sequence, the v2 cursor shape, and two
+gate-still-consulted guards at before-implement/review-signoff); suite 29/29 after.
+
+### The three priced smalls — together ~0.9 SP, under the ~1 SP cap, so FIXED (commit fad2a8ee)
+
+| Small | Defect | Fix |
+| --- | --- | --- |
+| (a) handoff WARN | the trust-hardening check recognized only the legacy `=== SPECREW HANDOFF ===` block — WARN at every healthy stop on hosts where Rule 46 forbids duplicating it | the six-section packet (three anchored headings) counts as handoff evidence; legacy stays recognized; prose still fails |
+| (b) resolver binding | a bare `resolve-quality-profile.ps1` invocation resolved feature-blind (never consulted feature.json) | defaults the feature from `.specify/feature.json`, fail-open |
+| (c) quality scaffold | the quality/ subtree was Phase-2/contract-gated while the launch contract claims it unconditionally | claimed set emitted unconditionally; `trap-reapplication.md` stays Phase-2-gated |
+
+(c) carried a second mismatch cutting the OTHER way: the launch contract promised
+`Overall Verdict: ready` by default while the generator correctly defaults to `blocked` with
+placeholder rows. A ready-by-default gate would wave hardening through unreviewed — the CLAIM was
+corrected (`scripts/internal/launch-contract.ps1`), the gate was not weakened.
+
+### Routed to beta3, no pre-tag action (maintainer ruling 2026-08-08)
+
+- F9 numeric-label acceptance — vocabulary work.
+- The ceremony-bypassed reviewer-authorization writer (the 3e finding above) — reaffirmed.
+- The composition/priority interleaving — the maintainer-observed instance is recorded with the
+  SC-025 composition row above.
+- The campaign directory-vs-content activation design question — with the iteration-N+1
+  cycle-reset adjacency named by the consequence-graph walk as the same family: activation keyed
+  on directory existence is what this slice's navigator defect and the -012 arrival defect share.
+
+### RELEASE RECORD — the consumer review-touch coverage gap, named not papered
+
+The consumer review-touch on the fixed review-engine bits was NOT obtained: the test
+environment's module quarantine (bit-pinning) made the CLI door unreachable, and the navigator
+door carried the pre-implement defect above until this slice. Coverage claimed instead, at its
+true extent: the frozen article-amplifier round-15 replay plus every self-hosted certification
+run since i009 exercised file-primary delivery, candidate composition, and exclusion honoring on
+the fixed engine. The gap is named here so the tag rests on stated coverage, not implied coverage.
+
+### Verification path to the tag
+
+After this slice: the maintainer resumes testbeta3 (the scaffold is intact — the standing block
+should simply go quiet), then the certify re-run under a fresh reference, then `v0.40.0-beta2`.
+The tag waits on both.
