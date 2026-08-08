@@ -260,7 +260,35 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'campaign pre-implement INSTANCE (testbeta3 dry-run): cursor=clarify with the iteration already scaffolded is quiet — before-plan scaffolds BEFORE any plan sync advances the cursor' {
+        # The exact journal state at 2026-08-08T01:13:28Z, reviewer-verified: working boundary still
+        # 'clarify', iterations/NNN freshly scaffolded by before-plan, feature resolved through the
+        # SESSION-scoped feature_path. The first fix quieted only plan/tasks — the pattern, not this
+        # instance — and cursor=clarify + iteration-present stayed campaign-applicable, so the
+        # standing block returned at the design-analysis retry. Reproduce the instance first, always.
+        $root = script:New-NavigatorProject -BoundaryType 'clarify' -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+            ([ordered]@{ session_state = [ordered]@{ boundary_type = 'clarify'; feature_path = $featureRoot } } | ConvertTo-Json -Depth 6) |
+                Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be 'campaign-not-applicable:pre-implement-stage (clarify)'
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'campaign pre-implement: a scaffolded iteration at the <Boundary> stage is a QUIET no-op, never a standing block (testbeta3 defect)' -TestCases @(
+        @{ Boundary = 'specify' }
+        @{ Boundary = 'clarify' }
         @{ Boundary = 'plan' }
         @{ Boundary = 'tasks' }
     ) {
@@ -309,12 +337,12 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             $before = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
             $before.reason | Should -Be 'campaign-not-applicable:no-active-iteration'
 
-            ([ordered]@{ session_state = [ordered]@{ boundary_type = 'plan' } } | ConvertTo-Json -Depth 6) |
-                Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
+            # The instance, not the pattern (dry-run correction): the cursor does NOT advance —
+            # before-plan scaffolds iterations/NNN while the working boundary is still 'clarify'.
             New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
             $after = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
             $after.action | Should -Be 'no-op'
-            $after.reason | Should -Be 'campaign-not-applicable:pre-implement-stage (plan)'
+            $after.reason | Should -Be 'campaign-not-applicable:pre-implement-stage (clarify)'
             $after.stop_block | Should -BeNullOrEmpty
             Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
         }

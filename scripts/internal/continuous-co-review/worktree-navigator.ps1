@@ -130,33 +130,6 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
         catch { return [pscustomobject]@{ applicable = $true; reason = 'active-session-state-invalid' } }
     }
 
-    # DRIFT pre-tag slice #2 (testbeta3, journal 2026-08-08T01:13:28Z): applicability turned ON at
-    # iteration-directory existence while the auto-fire path stays implement-only, so a consumer at
-    # design-analysis received a standing review-required block nothing could ever satisfy — the
-    # i009 quiet-no-op family's missing edge. At the design-analysis cursors (plan, tasks) there is
-    # no implementation to review yet: quiet not-applicable, the packet gate is never consulted,
-    # auto-fire stays implement-only, and pre-code reviews remain human-CLI-initiated. The intake
-    # arms (specify/clarify/no-feature) keep their existing quiet reasons; from 'before-implement'
-    # onward behavior is unchanged — the campaign result is live evidence there. Only a RESOLVED
-    # canonical design-analysis cursor goes quiet: unreadable or unrecognized state stays applicable
-    # so the packet gate fails closed with the authoritative reason (this function's standing
-    # philosophy). The WORKING position decides, in precedence order: session_state.boundary_type,
-    # then pending_crossing.working_boundary, then last_authorized_boundary — a pending crossing
-    # INTO before-implement is the implement window's edge, not design-analysis, even while the
-    # authorized cursor still reads 'tasks' (the v2 missing-iteration fail-closed case pins this).
-    $effectiveCursor = $sessionBoundaryCursor
-    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $crossingWorkingBoundary }
-    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $authorizedBoundaryCursor }
-    if (-not [string]::IsNullOrWhiteSpace($effectiveCursor)) {
-        $cursorNorm = $effectiveCursor.Trim().ToLowerInvariant()
-        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
-            try { $cursorNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $effectiveCursor } catch { $cursorNorm = $null }
-        }
-        if ($cursorNorm -in @('plan', 'tasks')) {
-            return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
-        }
-    }
-
     if ($null -eq $featureRoot) {
         $branch = @(& git -C $RepoRoot branch --show-current 2>$null)
         if ($LASTEXITCODE -eq 0 -and $branch.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace([string]$branch[0])) {
@@ -180,6 +153,44 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
     if ($iterations.Count -eq 0) {
         if ($activeIterationSignal) { return [pscustomobject]@{ applicable = $true; reason = 'active-iteration-unresolved' } }
         return [pscustomobject]@{ applicable = $false; reason = 'campaign-not-applicable:no-active-iteration' }
+    }
+
+    # DRIFT pre-tag slice #2 (testbeta3, journal 2026-08-08T01:13:28Z; dry-run correction
+    # 2026-08-08): applicability turned ON at iteration-directory existence while the auto-fire
+    # path stays implement-only, so a consumer at design-analysis received a standing
+    # review-required block nothing could ever satisfy — the i009 quiet-no-op family's missing
+    # edge. The first fix quieted only plan/tasks — the PATTERN, not the INSTANCE: testbeta3's
+    # actual cursor at the flip was 'clarify', because before-plan scaffolds the iteration BEFORE
+    # any plan sync advances the cursor. Stated as the INVERSION so no future cursor rejoins the
+    # gap: with an iteration present, the campaign surface is LIVE from 'before-implement' onward
+    # (plus the legacy 'implement' alias) — there is implementation to review and the block is
+    # satisfiable by a human CLI review; every EARLIER resolved canonical cursor is quiet
+    # not-applicable (nothing reviewable exists yet; auto-fire stays implement-only; pre-code
+    # reviews remain human-CLI-initiated). The WORKING position decides, in precedence order:
+    # session_state.boundary_type, then pending_crossing.working_boundary, then
+    # last_authorized_boundary — a pending crossing INTO before-implement is the implement
+    # window's edge (the v2 missing-iteration fail-closed case pins this). Unresolved or
+    # non-canonical cursors stay applicable so the packet gate fails closed with the
+    # authoritative reason (this function's standing philosophy).
+    $effectiveCursor = $sessionBoundaryCursor
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $crossingWorkingBoundary }
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $authorizedBoundaryCursor }
+    if (-not [string]::IsNullOrWhiteSpace($effectiveCursor)) {
+        $cursorNorm = $effectiveCursor.Trim().ToLowerInvariant()
+        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
+            try { $cursorNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $effectiveCursor } catch { $cursorNorm = $null }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($cursorNorm) -and $cursorNorm -ne 'implement') {
+            $boundaryOrder = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
+            if (Get-Command -Name 'Get-SpecrewBoundaryOrder' -ErrorAction SilentlyContinue) {
+                try { $boundaryOrder = @(Get-SpecrewBoundaryOrder) } catch { $null = $_ }
+            }
+            $cursorIdx = [Array]::IndexOf($boundaryOrder, $cursorNorm)
+            $liveIdx = [Array]::IndexOf($boundaryOrder, 'before-implement')
+            if ($cursorIdx -ge 0 -and $liveIdx -ge 0 -and $cursorIdx -lt $liveIdx) {
+                return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
+            }
+        }
     }
     return [pscustomobject]@{ applicable = $true; reason = 'campaign-applicable' }
 }

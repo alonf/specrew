@@ -1719,6 +1719,28 @@ true extent: the frozen article-amplifier round-15 replay plus every self-hosted
 run since i009 exercised file-primary delivery, candidate composition, and exclusion honoring on
 the fixed engine. The gap is named here so the tag rests on stated coverage, not implied coverage.
 
+### Dry-run correction: the first fix quieted the PATTERN, not the INSTANCE
+
+Reviewer-verified against scratch reproductions of testbeta3's state: at 01:13:28 the working
+boundary was still **clarify** — before-plan scaffolds the iteration BEFORE any plan sync advances
+the cursor — and cursor=clarify + iteration-present still returned `campaign-applicable`, so the
+standing block returned at the design-analysis retry. The five RED cases had reproduced the
+pattern (a plan/tasks cursor) rather than the journal's exact state; the flip fixture even
+ADVANCED the cursor to plan before scaffolding — modeling the defect as I imagined it, not as it
+happened.
+
+Corrected under the same ruling framework: an instance-pinning RED first (cursor=clarify,
+iteration present, session-scoped feature_path — RED proven, `campaign-packet-gate-failed` where
+quiet was owed), then the quiet window stated as the INVERSION so no future cursor rejoins the
+gap: with an iteration present, the campaign surface is LIVE from `before-implement` onward (plus
+the legacy `implement` alias); every earlier resolved canonical working cursor is quiet
+not-applicable; unresolved cursors stay fail-closed applicable. Suite 32/32.
+
+**Method rule recorded, alongside the fixture-discipline rules this iteration already produced:
+reproduce the INSTANCE first, always — generalize to the class only after the exact observed
+state is pinned red.** A fixture that reproduces the imagined shape of a defect can go green while
+the defect stands.
+
 ### Found by the quarantine: two fixtures were green by borrowing the installed module
 
 The maintainer's module quarantine (bit-pinning) removed the installed Specrew modules mid-slice,
