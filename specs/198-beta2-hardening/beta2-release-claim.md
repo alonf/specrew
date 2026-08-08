@@ -175,6 +175,28 @@ in the reviewer, with the only rank map in a third file), and the digest strip l
 as a shortcut because that file documents exclusion as a false-allow vector. (F17; FR-067 specified,
 unimplemented; beta3.)
 
+**10. At the design-analysis stop, the human decision is transcribed by the agent, not
+hook-captured.** *Added 2026-08-09 at the tag, from the maintainer's known-issues review (B3-003).*
+
+The design-analysis stop asks the human to choose an option BEFORE any boundary crossing exists to
+bind the verdict to — the crossing cannot mint until the decision it authorizes exists. The verdict
+is therefore agent-transcribed into the committed Human Decision record, with disclosure, rather
+than captured by the verdict hook from the human's typed reply. Consumers should verify the
+committed Human Decision text against what they actually chose before approving the plan boundary.
+Beta3 vehicle: the crossing-vocabulary cluster (a decision-pending state or a design-option
+crossing kind).
+
+**11. After feature-closeout, the next feature's first boundary cannot mint its crossing.** *Added
+2026-08-09 at the tag — promoted from the drift log to this claim.*
+
+The crossing detector has exactly one reset edge (`iteration-closeout -> plan`). A project whose
+cursor sits at `feature-closeout` has no edge into the NEXT feature's `specify`, so a SECOND
+feature in the same project gets no first-boundary approval demand — the prompt simply never
+appears. This feature's own ledger began cleanly only because the work ran in a fresh worktree.
+Workaround: start the next feature from a fresh checkout/worktree, which re-initializes the
+project's boundary ledger. Beta3 vehicle: the same crossing-vocabulary cluster (the feature-cycle
+reset edge).
+
 ## Who is affected, and what to do
 
 | If you | Then |
@@ -185,6 +207,8 @@ unimplemented; beta3.)
 | Rely on the consumer applicability firewall for governance advisories | Limitation 4 applies: a case-distinct duplicate of a policy file may not be scanned. Avoid case-only filename distinctions in `docs/`, `specs/`, `.github/`. |
 | Run a lifecycle that produces review findings at **two or more checkpoints** | Limitations 8 and 8b apply, and they compound. Your rounds are charged against one shared budget, so you will reach the ceiling sooner than the per-checkpoint arithmetic suggests — possibly on every run. **When you halt, do NOT follow the halt message's instruction to run `specrew review --remediate more-time`: that command throws in the shipped campaign mode.** The working escape is a **new explicitly authorized review run** — supply a fresh `--authorization-ref <ref>`, which mints a new grant with a review slot. The reference must be one you have not used before; re-using an earlier reference resolves to the same grant and grants no new slot. This is a human decision by design: the allowance guards real AI spend, and only a person may extend it. |
 | Reach a closeout or finality check with findings outstanding | Limitation 9 applies. Findings below the blocking bar do not close the check on their own — they route to a human turn rather than terminating with recorded residuals. If the closeout writes `state.md`, `plan.md` or `tasks.md`, expect the check to re-arm on its own writes. Budget a human decision at closeout rather than expecting it to converge unattended. |
+| Approve a design-analysis option | Limitation 10 applies: the committed Human Decision record is agent-transcribed with disclosure. Read it back and confirm it says what you actually chose before approving the plan boundary. |
+| Start a SECOND feature in a project that closed its first | Limitation 11 applies: the first-boundary approval demand cannot mint in place. Start the new feature from a fresh checkout/worktree (fresh project state) so the boundary ledger initializes clean. |
 
 ### Detecting reparse points in your project
 

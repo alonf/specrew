@@ -6,6 +6,11 @@ not a stable promotion.
 
 ## Highlights
 
+- Boundary authorization integrity works end to end on a brand-new project: the first lifecycle
+  boundary is recorded before any approval is demanded, every approval prompt is generated from
+  recorded state (never inferred by the agent), and every recorded approval binds to a crossing
+  that actually exists. One approval advances exactly one boundary, captured from your actual
+  typed reply.
 - Repository-owned verification plans run against a frozen disposable target and join evidence only at an exact
   commit and canonical reviewed-state digest.
 - Claude, Codex, Copilot, Cursor, and Antigravity reviewer adapters share a strict file-primary JSON contract,
@@ -14,6 +19,9 @@ not a stable promotion.
   greenfield/brownfield behavior.
 - Stop/capture ownership is isolated across concurrent sessions, and material-change reporting compares live Git
   and content fingerprints instead of treating all existing worktree dirt as work from the current turn.
+- Cross-platform path identity derives case sensitivity from the actual volume, verified in CI on
+  three real filesystems (NTFS, APFS, ext4), behind a single shared primitive and a differential
+  harness whose oracle is the filesystem itself.
 
 ## Review Proof
 
@@ -24,7 +32,56 @@ evidence under verified containment and termination. The controller-owned six-fi
 commit `3fb3a1fc4640b1e2a468a56d8dbad91a8cc67466`, whose exact CI run `29785802064` passed all
 eight jobs. Review signoff was then recorded in commit `923b16b4fb03db7eea0f61ad1538504e387cc605`.
 
-## Known Beta Limitations
+## Known issues in this beta
+
+Each item lists the impact and the working way around it. The full technical record — detection
+commands, the threat model, and who exactly is affected — lives in the release claim inside the
+repository (`specs/198-beta2-hardening/beta2-release-claim.md` on this tag).
+
+1. **The review evidence store can follow filesystem links during enumeration.** Impact: entries
+   reached through a link (symlink, junction, or cloud placeholder) beneath the review evidence
+   store can be read as evidence even when they point outside it — and a branch you check out can
+   carry such links in its commits. Workaround: keep the project tree, especially
+   `.specrew/review/`, free of links and junctions; check with `git ls-files -s | grep 120000`
+   (POSIX) or `dir /AL /S` (Windows); avoid checking out untrusted branches into governed projects.
+2. **Filesystem-link states are not covered by the path test harness.** Impact: behavior around
+   symlinks and dangling links rests on untested paths, so link-heavy trees carry extra risk.
+   Workaround: the same as issue 1 — avoid links inside the project tree.
+3. **Files whose names differ only by letter case may be scanned as one.** Impact: the governance
+   advisor may miss a case-distinct duplicate of a policy file. Workaround: avoid case-only
+   filename distinctions, especially under `docs/`, `specs/`, and `.github/`.
+4. **A configured reviewer model is recorded, not enforced.** Impact: the reviewer host may run a
+   different model than the one recorded in your configuration. Workaround: when the model matters,
+   verify it in the review run's own report.
+5. **A defect you already accepted cannot be marked "known" for a fresh reviewer.** Impact: a new
+   review round may re-report a defect you have deliberately accepted, and the review gate has no
+   way to record that acceptance. Workaround: keep the acceptance note in your project record and
+   expect the re-report until this gains first-class support.
+6. **Review rounds share one budget across all checkpoints.** Impact: a lifecycle that produces
+   findings at two or more checkpoints spends every round from one shared allowance, so you can
+   reach the ceiling sooner than per-checkpoint arithmetic suggests — possibly on every run.
+   Workaround: see issue 7 for the working escape when you halt.
+7. **The ceiling-halt message suggests a command that fails in the shipped mode.** Impact: at the
+   review ceiling, the suggested `specrew review --remediate more-time` throws; six of the seven
+   advertised remediation choices fail in the shipped campaign mode. Workaround: start a new
+   explicitly authorized review run with a fresh `--authorization-ref <your-new-reference>` — a
+   reference you have not used before mints a new grant with a review slot. This is deliberately a
+   human decision, because the allowance guards real AI spend.
+8. **Closeout checks may not converge unattended.** Impact: findings below the blocking bar route
+   to a human turn instead of closing with recorded residuals, and a closeout that writes state
+   files can re-trigger its own check. Workaround: budget a human decision at closeout rather than
+   expecting it to finish on its own.
+9. **Design-decision approvals are transcribed, not hook-captured.** Impact: at the design-analysis
+   stop, the approval record is written by the agent (with disclosure) rather than captured from
+   your typed reply, because the crossing cannot be created before your decision exists.
+   Workaround: read the committed Human Decision text back and confirm it says what you actually
+   chose before approving the plan boundary.
+10. **A second feature in the same project gets no first-boundary approval prompt.** Impact: after
+    a feature closes, the next feature's first boundary cannot create its approval demand, so the
+    prompt never appears. Workaround: start the next feature from a fresh checkout or worktree —
+    fresh project state initializes the boundary ledger cleanly.
+
+## Beta posture
 
 - **Copilot and Cursor turn attribution is degraded.** Beta2 uses session-baseline semantics over a baseline
   refreshed from live Git state at SessionStart. Degraded output says **currently dirty in the worktree**, never
