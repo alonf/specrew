@@ -58,6 +58,9 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
     $featureRoot = $null
     $activeFeatureSignal = $false
     $activeIterationSignal = $false
+    $sessionBoundaryCursor = $null
+    $crossingWorkingBoundary = $null
+    $authorizedBoundaryCursor = $null
     $featureJsonPath = Join-Path $RepoRoot '.specify/feature.json'
     if (Test-Path -LiteralPath $featureJsonPath -PathType Leaf) {
         $activeFeatureSignal = $true
@@ -89,6 +92,7 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
                 if ($startContext.session_state.PSObject.Properties['boundary_type'] -and
                     -not [string]::IsNullOrWhiteSpace([string]$startContext.session_state.boundary_type)) {
                     $activeFeatureSignal = $true
+                    $sessionBoundaryCursor = [string]$startContext.session_state.boundary_type
                     if (Test-ReviewCampaignBoundaryRequiresIteration -BoundaryCursor $startContext.session_state.boundary_type) {
                         $activeIterationSignal = $true
                     }
@@ -103,6 +107,14 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
                         $null -ne $startContext.boundary_enforcement.$cursorName -and
                         -not [string]::IsNullOrWhiteSpace([string]$startContext.boundary_enforcement.$cursorName)) {
                         $activeFeatureSignal = $true
+                        if ($cursorName -eq 'last_authorized_boundary' -and [string]::IsNullOrWhiteSpace($authorizedBoundaryCursor)) {
+                            $authorizedBoundaryCursor = [string]$startContext.boundary_enforcement.$cursorName
+                        }
+                        if ($cursorName -eq 'pending_crossing' -and $startContext.boundary_enforcement.pending_crossing -is [object] -and
+                            $startContext.boundary_enforcement.pending_crossing.PSObject.Properties['working_boundary'] -and
+                            -not [string]::IsNullOrWhiteSpace([string]$startContext.boundary_enforcement.pending_crossing.working_boundary)) {
+                            $crossingWorkingBoundary = [string]$startContext.boundary_enforcement.pending_crossing.working_boundary
+                        }
                         if (Test-ReviewCampaignBoundaryRequiresIteration -BoundaryCursor $startContext.boundary_enforcement.$cursorName) {
                             $activeIterationSignal = $true
                         }
@@ -116,6 +128,33 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
             }
         }
         catch { return [pscustomobject]@{ applicable = $true; reason = 'active-session-state-invalid' } }
+    }
+
+    # DRIFT pre-tag slice #2 (testbeta3, journal 2026-08-08T01:13:28Z): applicability turned ON at
+    # iteration-directory existence while the auto-fire path stays implement-only, so a consumer at
+    # design-analysis received a standing review-required block nothing could ever satisfy — the
+    # i009 quiet-no-op family's missing edge. At the design-analysis cursors (plan, tasks) there is
+    # no implementation to review yet: quiet not-applicable, the packet gate is never consulted,
+    # auto-fire stays implement-only, and pre-code reviews remain human-CLI-initiated. The intake
+    # arms (specify/clarify/no-feature) keep their existing quiet reasons; from 'before-implement'
+    # onward behavior is unchanged — the campaign result is live evidence there. Only a RESOLVED
+    # canonical design-analysis cursor goes quiet: unreadable or unrecognized state stays applicable
+    # so the packet gate fails closed with the authoritative reason (this function's standing
+    # philosophy). The WORKING position decides, in precedence order: session_state.boundary_type,
+    # then pending_crossing.working_boundary, then last_authorized_boundary — a pending crossing
+    # INTO before-implement is the implement window's edge, not design-analysis, even while the
+    # authorized cursor still reads 'tasks' (the v2 missing-iteration fail-closed case pins this).
+    $effectiveCursor = $sessionBoundaryCursor
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $crossingWorkingBoundary }
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $authorizedBoundaryCursor }
+    if (-not [string]::IsNullOrWhiteSpace($effectiveCursor)) {
+        $cursorNorm = $effectiveCursor.Trim().ToLowerInvariant()
+        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
+            try { $cursorNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $effectiveCursor } catch { $cursorNorm = $null }
+        }
+        if ($cursorNorm -in @('plan', 'tasks')) {
+            return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
+        }
     }
 
     if ($null -eq $featureRoot) {

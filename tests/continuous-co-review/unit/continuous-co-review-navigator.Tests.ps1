@@ -260,6 +260,123 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'campaign pre-implement: a scaffolded iteration at the <Boundary> stage is a QUIET no-op, never a standing block (testbeta3 defect)' -TestCases @(
+        @{ Boundary = 'plan' }
+        @{ Boundary = 'tasks' }
+    ) {
+        param($Boundary)
+        # DRIFT pre-tag slice #2 (testbeta3, journal 2026-08-08T01:13:28Z): applicability turned ON at
+        # iteration-directory existence while auto-fire stays implement-only, so design-analysis got a
+        # standing review-required block nothing could satisfy. The i009 quiet-no-op family's missing
+        # edge: pre-implement stages are quiet not-applicable; the packet gate is never consulted.
+        $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be ("campaign-not-applicable:pre-implement-stage ($Boundary)")
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign pre-implement: the testbeta3 journal flip ends quiet — advancing to design-analysis must NOT convert no-active-iteration into a standing block' {
+        # The observed sequence (testbeta3 journal, 2026-08-08): at a feature-level cursor the reason
+        # was 'no-active-iteration' (quiet); when the session advanced to plan and
+        # scaffold-iteration-artifacts created iterations/NNN, the reason flipped to
+        # 'no-authoritative-campaign-result' and the standing block appeared. The fixed edge stays
+        # quiet at the design-analysis cursors.
+        $root = script:New-NavigatorProject -BoundaryType 'clarify' -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path $featureRoot -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $before = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $before.reason | Should -Be 'campaign-not-applicable:no-active-iteration'
+
+            ([ordered]@{ session_state = [ordered]@{ boundary_type = 'plan' } } | ConvertTo-Json -Depth 6) |
+                Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
+            New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+            $after = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $after.action | Should -Be 'no-op'
+            $after.reason | Should -Be 'campaign-not-applicable:pre-implement-stage (plan)'
+            $after.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign pre-implement: the v2 cursor shape (blank session boundary, last_authorized_boundary pre-implement) is also quiet' {
+        # The iter-007 lesson inverted: the edge must read the v2 cursor too, not only the legacy
+        # session_state.boundary_type field.
+        $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            ([ordered]@{
+                    schema = 'v2'
+                    boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = 'plan'; pending_next_boundary = $null; pending_crossing = $null }
+                    session_state = [ordered]@{ active = $true; boundary_type = ''; feature_ref = '001-demo'; feature_path = $featureRoot; iteration_number = '' }
+                } | ConvertTo-Json -Depth 8) |
+                Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be 'campaign-not-applicable:pre-implement-stage (plan)'
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'campaign <Boundary>: the packet gate is STILL consulted from the implement window onward (the fix must not silence live stages)' -TestCases @(
+        @{ Boundary = 'before-implement' }
+        @{ Boundary = 'review-signoff' }
+    ) {
+        param($Boundary)
+        $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith {
+                [pscustomobject]@{ reason = 'no-authoritative-campaign-result'; render_boundary_packet = $false; route = 'review-required'; run_id = $null }
+            }
+            Mock -CommandName Build-ReviewCampaignNavigatorStopBlock -MockWith { 'CAMPAIGN-BLOCK' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.reason | Should -Be 'no-authoritative-campaign-result'
+            $decision.stop_block | Should -Be 'CAMPAIGN-BLOCK'
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 1 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'campaign intake: malformed active feature state still fails closed through the packet gate' {
         $root = script:New-NavigatorProject -BoundaryType '' -FileContent 'base'
         try {
