@@ -4971,6 +4971,14 @@ function Test-SpecrewHandoffBlockPresent {
         if ($candidateText -match '(?ms)===\s*SPECREW HANDOFF\s*===.+?===\s*END SPECREW HANDOFF\s*===') {
             return $true
         }
+        # Pre-tag slice #2 (testbeta3): the Rule 46 six-section packet (and the 46A five-section
+        # variant) IS the primary stop contract — on packet hosts the legacy block above is
+        # explicitly forbidden as a duplicate, so demanding it produced a WARN at every healthy
+        # boundary stop. Three anchored headings in order keep the recognizer from going vacuous
+        # on ordinary prose.
+        if ($candidateText -match '(?ms)^##\s+What I Just Did\b.+^##\s+Why I Stopped\b.+^##\s+What I Need From You\b') {
+            return $true
+        }
     }
 
     return $false

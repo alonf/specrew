@@ -1346,10 +1346,10 @@ function Test-HandoffEvidenceGovernance {
         }
 
         if ($hasCompactionMarker) {
-            Write-TrustHardeningWarning -Category 'post-compaction-handoff-drop' -Detail ("Boundary commit {0} has compaction metadata but no preceding SPECREW HANDOFF block." -f $label)
+            Write-TrustHardeningWarning -Category 'post-compaction-handoff-drop' -Detail ("Boundary commit {0} has compaction metadata but no preceding handoff evidence (six-section packet or legacy SPECREW HANDOFF block)." -f $label)
         }
         else {
-            Write-TrustHardeningWarning -Category 'handoff-block-missing' -Detail ("Boundary commit {0} has no preceding SPECREW HANDOFF block in session evidence." -f $label)
+            Write-TrustHardeningWarning -Category 'handoff-block-missing' -Detail ("Boundary commit {0} has no preceding handoff evidence (six-section packet or legacy SPECREW HANDOFF block) in session evidence." -f $label)
         }
     }
 

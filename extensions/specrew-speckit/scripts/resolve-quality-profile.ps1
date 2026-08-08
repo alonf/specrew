@@ -1007,6 +1007,28 @@ if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
 elseif (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
     $resolvedFeaturePath = Split-Path -Parent (Resolve-ProjectPath -Path $SpecPath)
 }
+if ([string]::IsNullOrWhiteSpace($resolvedFeaturePath)) {
+    # Pre-tag slice #2 (testbeta3): a bare invocation resolved the profile feature-blind — the
+    # resolver never consulted .specify/feature.json, the canonical active-feature source every
+    # other Specrew script uses. Fail-open: unreadable state leaves the feature unbound as before.
+    $activeFeatureJsonPath = Join-Path $resolvedProjectPath '.specify\feature.json'
+    if (Test-Path -LiteralPath $activeFeatureJsonPath -PathType Leaf) {
+        try {
+            $activeFeatureJson = Get-Content -LiteralPath $activeFeatureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if (($activeFeatureJson.PSObject.Properties.Name -contains 'feature_directory') -and
+                -not [string]::IsNullOrWhiteSpace([string]$activeFeatureJson.feature_directory)) {
+                $activeFeatureCandidate = [string]$activeFeatureJson.feature_directory
+                if (-not [System.IO.Path]::IsPathRooted($activeFeatureCandidate)) {
+                    $activeFeatureCandidate = Join-Path $resolvedProjectPath $activeFeatureCandidate
+                }
+                if (Test-Path -LiteralPath $activeFeatureCandidate -PathType Container) {
+                    $resolvedFeaturePath = (Resolve-Path -LiteralPath $activeFeatureCandidate).Path
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+}
 
 $resolvedSpecPath = $null
 if (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
