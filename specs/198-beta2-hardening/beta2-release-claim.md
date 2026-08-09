@@ -200,6 +200,30 @@ Workaround: start the next feature from a fresh checkout/worktree, which re-init
 project's boundary ledger. Beta3 vehicle: the same crossing-vocabulary cluster (the feature-cycle
 reset edge).
 
+**12. Verdict capture refuses evidence-less crossings only when the evidence is CHECKED and
+absent; unverifiable states keep legacy capture.** *Added 2026-08-09 at the tag, from
+certification `run-f198-beta2-0fa26271-certify` under the maintainer's trajectory ruling.*
+
+The capture-refusal hardening added pre-tag refuses authorization when a crossing's stage evidence
+is checked against its bound tree and genuinely absent — everywhere. When the evidence CANNOT be
+checked (no bound tree identity, unreadable tree, unresolvable feature path, or an evidence-check
+error), capture retains its legacy behavior and a matching marker plus human approval still
+records authorization. This is the capture-order class's third layer in one certification
+lineage; per the trajectory ruling it moves to a **beta3 design owner** — authority advances only
+on positively verified evidence, a capture-pipeline redesign rather than another guard — instead
+of a fourth patch.
+
+**13. Containment case comparison follows the platform default, not the volume.** *Added
+2026-08-09 at the tag, from the same certification and ruling.*
+
+The evidence gate's project containment refuses prefix siblings, traversal, and absolute escapes
+on every platform. Its case comparison, however, is the platform default (case-insensitive on
+Windows and macOS): on a volume whose case sensitivity disagrees with the platform default — a
+case-sensitive NTFS directory, case-sensitive APFS — case-distinct sibling checkouts fold
+together and a foreign sibling can be read as in-project. The containment class's third layer;
+per the same ruling it moves to a **beta3 design owner** — all containment routes through the
+release's volume-derived path-identity primitive — instead of a fourth patch.
+
 ## Who is affected, and what to do
 
 | If you | Then |
@@ -212,6 +236,8 @@ reset edge).
 | Reach a closeout or finality check with findings outstanding | Limitation 9 applies. Findings below the blocking bar do not close the check on their own — they route to a human turn rather than terminating with recorded residuals. If the closeout writes `state.md`, `plan.md` or `tasks.md`, expect the check to re-arm on its own writes. Budget a human decision at closeout rather than expecting it to converge unattended. |
 | Approve a design-analysis option | Limitation 10 applies: the committed Human Decision record is agent-transcribed with disclosure. Read it back and confirm it says what you actually chose before approving the plan boundary. |
 | Start a SECOND feature in a project that closed its first | Limitation 11 applies: the first-boundary approval demand cannot mint in place. Start the new feature from a fresh checkout/worktree (fresh project state) so the boundary ledger initializes clean. |
+| Approve a boundary while the project's state is degraded (missing or unreadable crossing records) | Limitation 12 applies: the evidence-absent refusal covers checked-and-absent states; an UNVERIFIABLE evidence state still captures your approval. Before approving, confirm the boundary packet cites a bound tree and that the stage's artifacts exist in it — an approval given while evidence "could not be checked" is an approval you could not have verified either. |
+| Run governed projects on volumes whose case sensitivity disagrees with the platform default (case-sensitive NTFS directories, case-sensitive APFS) | Limitation 13 applies: case-distinct sibling checkouts can fold together in containment checks. Avoid case-distinct sibling directory names beside governed projects on such volumes. |
 
 ### Detecting reparse points in your project
 

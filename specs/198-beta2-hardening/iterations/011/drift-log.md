@@ -1833,3 +1833,47 @@ link inside the project can still bind a foreign feature's planning inputs. Rout
 limitations 1/3's link family with a claim sentence added — link-hardening is beta3, the quality
 profile is planning input rather than authorization integrity, and pretending link coverage shipped
 is what the claim exists to prevent.
+
+## THE THIRD CERTIFY TERMINAL — adjudicated by the maintainer's trajectory ruling (2026-08-09)
+
+`run-f198-beta2-0fa26271-certify`: verdict `findings`, completion `complete`, currentness
+`current`, digest `4928a36f`, five findings. The maintainer's trajectory rule — a third new layer
+in the capture-order or containment classes stops even at major, because that pattern means the
+class needs a beta3 DESIGN OWNER, not another patch — fired on both new blockings. **Ruling:
+proceed on this terminal, no fourth certify; both classes move to beta3 design owners; the closure
+is records-only.**
+
+### The five findings, with their adjudicated dispositions
+
+| Finding | Severity | Disposition (this ruling) |
+| --- | --- | --- |
+| bootstrap-mints-authorization | blocking | EXPECTED RESIDUAL — the known-open FR-066 mint guard named in the tag basis (limitation 7's predicted rediscovery, third consecutive re-report) |
+| atomic-write-directory-success | major | EXPECTED RESIDUAL — DRIFT-198-I011-009, beta3-routed, third consecutive re-report |
+| quality-profile-link-escape | major | ROUTED — re-reported against the documented link class (claim limitation 3's family), as the prior ruling directed |
+| unverifiable-evidence-authorizes | blocking | BETA3 DESIGN OWNER — capture-order class, claim limitation 12 |
+| relative-path-os-case-bypass | blocking | BETA3 DESIGN OWNER — containment class, claim limitation 13 |
+
+### The four-layer histories — the design-owner rationale
+
+**Capture-order class** (each layer found by the certification lineage after the previous layer's
+patch): (1) a pre-rendered marker bypassed the provider's evidence refusal via `$boundaryBlock`
+(slice #3 f2); (2) the block-cap fallback demanded markers for refused boundaries (slice #3 f3);
+(3) capture ran before the refusal and authorized evidence-less crossings on prompt-submit
+(slice #4); (4) the checked-and-absent-only guard leaves every UNVERIFIABLE state authorizable.
+Four layers in one lineage is the pattern the trajectory rule exists for: the design question —
+*authority advances only on positively verified evidence* — is a capture-pipeline ordering
+redesign, and patching layer four would predictably mint layer five.
+
+**Containment class**: (1) a case-insensitive separator-less string prefix accepted prefix and
+case siblings (slice #4); (2) git-tree evidence matching folded case over case-sensitive trees
+(slice #3 f4); (3) lexical containment followed directory links (routed to the link class); (4)
+`GetRelativePath` compares with the PLATFORM default, not the volume — the fix's own comment
+claimed volume-correctness it does not have, on the exact axis (volume-derived case semantics)
+this release's path-identity primitive exists for. The design owner routes ALL containment through
+that primitive instead of per-site checks.
+
+### Tag-basis proof obligation
+
+The ruling's guard: the release record must show `git diff 0fa26271..<tag basis>` is
+DOCUMENTATION-ONLY. If any closure commit touches a non-documentation file, the sequence STOPS and
+a fourth certify becomes mandatory. The diff is recorded with the Review Proof commit below.
