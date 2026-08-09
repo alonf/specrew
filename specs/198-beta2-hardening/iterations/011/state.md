@@ -137,6 +137,39 @@ recorded here as the tamper-evidence.
 exact delta is recoverable from that session's transcript — carry-ledger item G). The archive
 freezes the directory as-is, annotation and all.
 
+### Closeout notes (2026-08-10)
+
+Recorded under the maintainer's instruction-bearing retro approval (2026-08-10):
+
+- **Fresh stop-surface evidence from this closure session** (F5/stop-surface family; recorded
+  here per instruction, the committed carry ledger unedited): (1) the first iteration-closeout
+  sync, invoked without an iteration identity, minted the pending `review-signoff -> retro`
+  crossing but wrote no pending-verdict artifact; (2) a retro-boundary sync was then refused by
+  the ratchet naming `iteration-closeout` as the waiting step while the authorization store held
+  `review-signoff -> retro` pending — a dual-governor surface, adjudicated by the authorization
+  store; (3) the FR-068 evidence gate refused the boundary stop because the crossing carried no
+  iteration identity — the fail-closed unverifiable path this iteration shipped, validated live
+  against its own crossing; re-syncing with `-IterationNumber 011` re-established the record and
+  produced the authoritative stop artifact. Archaeology: the handover journal's
+  `marker-cursor-mismatch` events (2026-08-06T15:30Z) show the reversal-era retro/closeout
+  approvals bounced at capture (`retro -> iteration-closeout` against an authorized cursor of
+  `review-signoff`) — which is why this closure re-registers them. Mid-turn after the 2026-08-10
+  verdict reply, the durable store still read `review-signoff`: verdict capture is Stop-gated on
+  this host — a watch item for the capture-ordering class.
+- **Chore carried to the beta3 window** (maintainer instruction 2026-08-10; this note is the
+  carry record, the ledger file unedited): install `markdownlint-cli` on the Specrew CI runner
+  (`npm install -g markdownlint-cli` in the workflow) so
+  `tests/integration/generator-markdown-parity.tests.ps1` stops reporting INCONCLUSIVE — the
+  standing main red, failing on main since 2026-08-07 including the release merge commit.
+- **Alignment PR #3503** (the Review Proof line in `docs/release-notes-v0.40.0-beta2.md`
+  corrected to the measured 15-file statement; the tag-pinned copy predates the correction by
+  design): all checks green except the standing main red; maintainer-approved to merge over it.
+  Normal and admin merges are refused by base-branch policy (one approving review required; the
+  failing required `Deterministic gate`; `enforce_admins` on), so the release-precedent
+  lower-restore window awaits the maintainer's own execution; PR state at recording: OPEN,
+  MERGEABLE.
+- Stray empty root file `clarify` deleted per the same instruction.
+
 ### Superseded closure attempt (retained for the record)
 
 **Closed 2026-08-06T13:19:56Z, then REVERSED the same day.** Closed on an explicit
