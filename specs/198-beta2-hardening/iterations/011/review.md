@@ -65,6 +65,36 @@ at which point FR-066 is whole and T092's certification claim can be re-made aga
 it. Until then the iteration is honestly open, and **the beta2 tag proceeds on the named-limitation
 basis, which never claimed 011's certification.**
 
+## Release Certification — the beta2 tag lineage (2026-08-09)
+
+Three consecutive independent certification rounds (codex, file-primary, independent of the code
+writer) ran against the tag candidate under maintainer-confirmed authorization references
+(FR-058), each verified at source before adjudication:
+
+| Run | Head | Verdict | Findings | Adjudication |
+| --- | --- | --- | --- | --- |
+| `run-f198-beta2-c0c3cda6-certify` | `c0c3cda6` | `findings` | 4 blocking / 2 major / 1 minor | f2/f3/f4/f6/f7 fixed instance-first in pre-tag slice #3; f1/f5 recorded residual (maintainer verdict) |
+| `run-f198-beta2-4e7d002c-certify` | `4e7d002c` | `findings` | 2 blocking new / 1 major new / 2 expected residuals | the blocking pair fixed in pre-tag slice #4; the link-escape routed to the documented link class (maintainer verdict) |
+| `run-f198-beta2-0fa26271-certify` | `0fa26271` | `findings` | 2 blocking new / 2 expected residuals / 1 routed re-report | the maintainer's TRAJECTORY RULING: proceed on this terminal, no fourth certify; both new blockings to beta3 design owners (release-claim limitations 12/13) — a third new layer in the capture-order and containment classes means the class needs a design owner, not another patch |
+
+The terminals are immutable in the authority store under
+file:///C:/Dev/specrew-beta2-hardening/.specrew/review/authority/campaigns/cmp-198-beta2-hardening-i011/
+(runs `run-f198-beta2-c0c3cda6-certify`, `run-f198-beta2-4e7d002c-certify`,
+`run-f198-beta2-0fa26271-certify`). The tag basis `67a5d7bc` differs from the certified head
+`0fa26271` by 15 files, zero of them code (the documentation-only closure plus main-side records
+carried by the merge target's own reviewed history) — the measured delta is recorded in the drift
+log and on PR #3318. The expected residuals across all three rounds are the two long-known defects
+this iteration's record already carries: the FR-066 mint guard (limitation 7's predicted
+rediscovery, three consecutive re-reports) and DRIFT-198-I011-009 (the atomic writer).
+
+## Pending evidence — T067 (completes this review; closure waits on it)
+
+**PENDING.** Consumer validation on the PUBLISHED bits: install `Specrew 0.40.0-beta2` from the
+PowerShell Gallery (no pinning, no module-path override — the real consumer path), exercise the
+governed lifecycle, and record the result here. This slot is deliberately explicit: the review of
+the release is not complete until the published package — not the repository tree — has been
+exercised by a consumer. The iteration-closeout crossing re-mints only after this slot is filled.
+
 ## Notes
 
 - Every task verdict above is drawn from measured evidence recorded in

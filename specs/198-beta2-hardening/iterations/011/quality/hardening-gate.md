@@ -39,3 +39,36 @@ Two concerns carry defects that are real but do not block the beta2 tag under th
 basis, and both are carried to beta3 with their evidence attached rather than closed by assertion:
 `DRIFT-198-I011-009` (atomic writer, MAJOR) and the concurrency design constraint on any future refusal
 latch.
+
+## Tag-time addendum (2026-08-09) — the posture at v0.40.0-beta2
+
+The four pre-tag release-gate slices moved the hardening posture beyond the 2026-08-06 record,
+each RED-first through the shipped paths:
+
+- **SHIPPED**: first-boundary arrival recorded before the advancement gate through all nine
+  shipped sync skills; the authorization gate represents the first crossing (marker vocabulary);
+  marker invention retired from the gate-stop fallback and from the block-cap degradation texts;
+  the stage-evidence refusal holds against pre-rendered markers at the provider AND at verdict
+  capture (checked-and-absent refuses everywhere, journaled loudly); git-tree evidence matching is
+  case-sensitive (Ordinal); the evidence gate's feature resolution and the quality-profile
+  resolver's feature binding both enforce containment (separator boundary; absolute/traversal
+  rejected).
+- **RESIDUAL (unchanged, maintainer-adjudicated in all three certification rounds)**: the FR-066
+  mint guard (the `security-surface` deferral above — three consecutive independent re-reports,
+  exactly as release-claim limitation 7 predicts) and DRIFT-198-I011-009 (the atomic writer onto a
+  directory destination).
+- **BETA3 DESIGN-OWNED (the trajectory ruling, release-claim limitations 12/13)**: the
+  capture-order class (authority advances only on positively verified evidence — unverifiable
+  states currently keep legacy capture) and the containment class (all containment through the
+  volume-derived path-identity primitive — case comparison currently follows the platform
+  default). Four-layer histories for both are in the drift log as the design-owner rationale.
+
+The gate's verdict stays `deferred-with-approval` under the same approval reference; this addendum
+changes the evidence inventory, not the posture's honesty.
+
+## Pending evidence — T067 (completes this gate; closure waits on it)
+
+**PENDING.** The published-bits consumer validation: `Specrew 0.40.0-beta2` installed from the
+Gallery with no pinning, the governed lifecycle exercised on the real consumer path, and the
+outcome recorded here. Until this slot is filled, the gate's evidence is repository-tree evidence
+only — the exact distinction T067 exists to close.

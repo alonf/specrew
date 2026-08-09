@@ -9,10 +9,10 @@ same day** when the release gate (`validate-governance.ps1 -IncludeClosed`) reje
 The verdict was real; the artifacts were not. **The status was reversed rather than the evidence
 backfilled under it**, so the record never shows closure preceding its evidence.
 **Last Completed Task**: T090 (T092 ran to its cap and is terminal as `deferred`)
-**Tasks Remaining**: (none — T091, T093 and T092 are all terminal)
+**Tasks Remaining**: T067 — consumer validation on published bits (the single open task; closure waits on it)
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
-**Updated**: 2026-08-06T20:15:10.3996504Z
+**Updated**: 2026-08-09T01:05:00.0000000Z
 
 ## Execution Summary
 
@@ -50,6 +50,38 @@ regression floor, not a certification.
 arrival state; FR-066's mint guard ships as a named known defect carried to beta3. Iteration 011 **records**
 at **~29.0/20 uncompressed with FR-066 partial** and is held open — see the closure trigger below. The beta3 carry list is consolidated in
 file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/drift-log.md
+
+## Release Sequence — v0.40.0-beta2 SHIPPED (2026-08-09)
+
+The beta2 tag was cut and published after four pre-tag release-gate slices, each recorded on its own
+cost line in the drift log's release-slice table, **separate from the retro'd ~29.0/20** which does
+not reopen:
+
+| Pre-tag slice | Scope | SP |
+| --- | --- | ---: |
+| DRIFT-198-I011-012 | first-boundary arrival reachable through all nine shipped skills; gate first-crossing translation; marker-invention retirement; FR-066 reconciled | ~2.5 |
+| Slice #2 (testbeta3) | navigator pre-implement quiet edge (inversion); three priced smalls; engine-under-test registry pin | ~1.4 |
+| Slice #3 (certify findings) | marker cannot bypass the evidence refusal; capped refused boundaries never demand a marker; Ordinal git-tree evidence matching; feature.json containment; launch-contract claim | ~1.2 |
+| Slice #4 (certify findings) | capture refuses checked-and-absent crossings loudly; separator-boundary containment; three-outcome distinction travels | ~1.0 |
+
+**Release outcome, measured**: merge commit `67a5d7bc` (PR #3318) inside a 35-second lower-restore
+window (2026-08-09T00:44:39Z–00:45:14Z, both settings restored and read back — the durable record
+is the PR comment); annotated tag `v0.40.0-beta2` at the merge commit naming the release claim as
+the position of record; publish workflow green including the tag-time prepublish gate; Gallery
+listing live 2026-08-09T00:48:33Z with the Prerelease flag; GitHub release carrying the
+twelve-item known-issues body. **Tag-basis correction, disclosed**: the certified head is
+`0fa26271`; the tag basis differs by 15 files, zero of them code — the three documentation-only
+closure commits plus main-side records predating this branch's base (proposals, methodology docs,
+and the 2026-07-17 repository-governance reconciliation record), carried by the merge target's own
+reviewed history. Certification lineage: `run-f198-beta2-c0c3cda6-certify`,
+`run-f198-beta2-4e7d002c-certify`, `run-f198-beta2-0fa26271-certify` — the third adjudicated by the
+maintainer's trajectory ruling (two expected residuals; one link-class routing; two beta3 design
+owners, release-claim limitations 12/13).
+
+**T067 is the single remaining open task**: install `0.40.0-beta2` from the Gallery (no pinning),
+exercise the real consumer path, record the result into the prepared `review.md` and
+`quality/hardening-gate.md` pending-evidence slots. The iteration-closeout crossing re-mints only
+after that record exists.
 
 ## Closure Trigger — why 011 is honestly OPEN
 

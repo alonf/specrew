@@ -1289,10 +1289,12 @@ editing a closed retrospective:
 | Generator parity test (RED-first, 4 harness corrections) + both-writer fix + registry row + full gate | **~1.0** |
 | DRIFT-198-I011-012 orchestration-path slice: honest-RED fixture through the shipped skill's own blocks, consequence-graph walk in writing, gate first-crossing translation, nine-skill reorder (+ before-implement's missing arrival sync), marker-invention retirement, FR-066 reconciliation, secondary findings with named writers, registry row + full gate | **~2.5** |
 | Pre-tag slice #2 (testbeta3): navigator pre-implement quiet-no-op edge (RED-first, five cases) + the three priced smalls (packet-as-handoff-evidence, resolver feature binding, unconditional quality scaffold + claim correction) + beta3 routing + coverage-gap record | **~1.4** |
+| Pre-tag slice #3 (certify findings f2/f3/f4/f6/f7): instance-pinned REDs, provider evidence-refusal + cap texts, Ordinal tree matching, feature.json containment, launch-contract claim | **~1.2** |
+| Pre-tag slice #4 (certify findings): capture refuses checked-and-absent crossings, separator-boundary containment, three-outcome distinction, evidence-carrying capture fixtures | **~1.0** |
 
 Feature-level total therefore reads **~29.0 (iteration 011, retro'd and closed to edits) + ~1.0 +
-~2.5 + ~1.4 (release slices)**, not a restated total — the scopes are different and the record
-keeps them apart.
+~2.5 + ~1.4 + ~1.2 + ~1.0 (release slices)**, not a restated total — the scopes are different and
+the record keeps them apart.
 
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
@@ -1884,3 +1886,18 @@ and this drift log — 91 insertions, all documentation. This proof-recording co
 drift-log-only edit, preserving the property. The tag basis is the merge commit of this branch
 head into `main`; a merge commit introduces no tree changes beyond the branch, so the
 documentation-only property carries to the tag.
+
+**CORRECTED post-tag, on measurement**: the sentence above about the merge commit was written
+BEFORE the merge and is wrong — the merge united main-side content this branch's base predates.
+Measured at the tag: `git diff 0fa26271..67a5d7bc` is 15 files, **zero of them code** — the three
+closure commits (documentation) plus 13 markdown files and `.specrew/repository-governance.yml`
+(the 2026-07-17 protection-reconciliation record) from `main`'s own reviewed history. The guard's
+stop trigger — a CLOSURE COMMIT touching a non-documentation file — did not fire; the durable
+correction lives on PR #3318 and in the GitHub release's tag-basis note; the tag-pinned copies of
+the narrower sentence predate this correction.
+
+**METHOD RULE, promoted by this miss**: proof lines are TRANSCRIBED FROM MEASUREMENTS, never
+written ahead of them. A proof sentence authored before its measurement is a prediction wearing a
+proof's clothes — this iteration now holds three instances of the same lesson (the fixture that
+reproduced the imagined defect, the borrowed-bits green, and this merge-tree prediction), and the
+rule joins reproduce-the-instance-first in the shipped method guidance candidates.
