@@ -1,8 +1,9 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: complete
+**Iteration Status**: complete
+**Closed**: 2026-08-09T22:21:33Z (registry entry via `Add-SpecrewClosedIterationEntry`) on the hook-captured `approved for iteration-closeout` — see the Closeout notes; the accepted-verdict finding is waived scoped (decision `f198-i011-waive-accepted-verdict-finding-iteration-closeout-gate`) and `review.md` keeps `needs-rework`
 **Closure Attempt (REVERSED)**: closed 2026-08-06T13:19:56Z on an approved verdict, then **un-closed the
 same day** when the release gate (`validate-governance.ps1 -IncludeClosed`) rejected the closure as
 `over-claim`: the status claimed closure while `review.md` and `quality/hardening-gate.md` did not exist.
@@ -169,6 +170,32 @@ Recorded under the maintainer's instruction-bearing retro approval (2026-08-10):
   lower-restore window awaits the maintainer's own execution; PR state at recording: OPEN,
   MERGEABLE.
 - Stray empty root file `clarify` deleted per the same instruction.
+- **Closure registered (2026-08-10)**: `approved for retro` (2026-08-09T23:10:30Z) and
+  `approved for iteration-closeout` (2026-08-09T23:14:59Z) both hook-captured into the durable
+  verdict history (crossings `crossing-97351dea…` and `crossing-7b96a185…`, bound tree `7852b277`
+  at commit `48be8825`); iteration 011 appended to the closed-iteration index via
+  `Add-SpecrewClosedIterationEntry` (closed_at anchored to the closeout sync,
+  2026-08-09T22:21:33Z); the accepted-verdict finding waived scoped by decision
+  `f198-i011-waive-accepted-verdict-finding-iteration-closeout-gate`; `review.md`'s overall
+  verdict stays `needs-rework` — no word bent. The dashboard auto-render at the closeout sync is
+  verified (F-040 Fix B working live).
+- **Two capture defects root-caused live during this closure** (beta3 findings; reproductions in
+  the session transcript): (1) an instruction-bearing approval whose instruction text contains
+  the word "prompt" is classified `Action=discuss` and silently fails to capture — a legitimate
+  approve-with-instructions verdict never recorded, with no journal event; (2) capture tests only
+  the FIRST human turn after each marker, so a non-verdict turn (an accidental bash-input)
+  permanently shadows a later genuine approval of the same marker. Both verified by running
+  `Get-SpecrewCapturedBoundaryVerdict` read-only against the live transcript
+  (`not-approval:none` → `Reason=captured` after a clean re-ask). Also observed: `'clarify'`
+  inside quoted filename prose parsed as a NAMED BOUNDARY by the verdict classifier — a
+  vocabulary hazard. Joins the capture-order and stop-surface clusters.
+- **Limitation 11 observed live at closure**: after the closeout authorization, the crossing
+  detector auto-minted its single reset edge (`iteration-closeout -> plan`) though no next
+  iteration exists; the feature-closeout boundary is reached by explicit sync instead —
+  carry-ledger cluster D evidence (the feature-cycle edge).
+- Campaign `review-stale` fired five times across this closure session, each on a records-only
+  delta, each adjudicated against the standing trajectory ruling with no spend — the F5 count is
+  part of this record.
 
 ### Superseded closure attempt (retained for the record)
 

@@ -28820,3 +28820,71 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 943e455f7042bc16944c1df31c457775909c4285
 - **Recorded At**: 2026-08-02T13:21:48Z
+
+## 2026-08-09T22:10:34Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: clarify
+- **Recorded At**: 2026-08-09T22:10:34Z
+- **Warning**: Expected next boundary 'plan' but received 'iteration-closeout'.
+
+## 2026-08-09T22:10:35Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 48be88253cf61f7c1f7143e33540808336798b9d
+- **Recorded At**: 2026-08-09T22:10:34Z
+
+## 2026-08-09T22:17:05Z — Boundary enforcement: retro
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: retro
+- **Current Boundary**: iteration-closeout
+- **Requested Boundary**: retro
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Ratchet refusal: 'iteration-closeout' is recorded but not human-approved; a second advance to 'retro' is refused until it is reconciled.
+
+## 2026-08-09T22:21:31Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-08-09T22:21:31Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-08-09T22:21:32Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 011
+- **Task ID**: (none)
+- **Auth Commit Hash**: 48be88253cf61f7c1f7143e33540808336798b9d
+- **Recorded At**: 2026-08-09T22:21:32Z
+
+## 2026-08-10 — Verdict: WAIVE the accepted-verdict finding on iteration 011 for the iteration-closeout gate
+
+- **Decision ID**: f198-i011-waive-accepted-verdict-finding-iteration-closeout-gate
+- **Type**: defer
+- **Affected Requirement**: FR-018
+- **Affected Iteration**: specs\198-beta2-hardening\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-09T23:20:00Z
+- **Disposition**: The single `validate-governance.ps1` finding on iteration 011 —
+  *"Complete iterations require review.md overall verdict 'accepted' (found 'needs-rework')"* — is
+  **formally WAIVED for the iteration-011 iteration-closeout gate only.** Ruled fresh at the closeout
+  packet per the maintainer's 2026-08-10 instruction ("rule fresh at the closeout packet") and adopted
+  through the packet's stated prompt-#1 default by the maintainer's explicit hook-captured verdict
+  `approved for iteration-closeout` (crossing-7b96a185331a5f384ce0d741177a4be450c75ba8e02e772c01cb1c30eaa84607,
+  commit 48be8825). Every field in the record states disk truth: verification PASS (90/90),
+  certification attempted to the 3-round cap and NOT achieved, T092 `needs-work`, T067 published-bits
+  validation complete with its coverage gap named. The word `accepted` is not written anywhere.
+- **Scope limit**: one named finding, one iteration, this closeout gate only. It does not travel to
+  feature-closeout or to beta3, where the vocabulary cluster (carry ledger cluster D / the -044 wall)
+  delivers the real fix.
+- **Evidence**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/review.md
+  (Overall Verdict + Task Verdicts + the T067 record);
+  file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/state.md (closure
+  addendum + closeout notes); the hook-captured verdict in `.specrew/start-context.json` verdict_history.
