@@ -747,46 +747,48 @@ $qualityContractPath = Join-Path $resolvedSpecDirectory 'contracts\quality-gover
 $qualityGateRows = @(Get-MarkdownSectionTable -Lines $planLines -Heading 'Required Quality Gates')
 $hasQualityEvidenceContract = $qualityGateRows.Count -gt 0 -or (Test-Path -LiteralPath $qualityContractPath -PathType Leaf)
 $phaseTwoQualityArtifactsRequired = Test-PhaseTwoQualityArtifactScaffold -PlanLines $planLines -QualityContractPath $qualityContractPath
-if ($hasQualityEvidenceContract -or $phaseTwoQualityArtifactsRequired) {
-    $qualityDirectory = Join-Path $iterationDirectory 'quality'
-    $featureId = Split-Path -Leaf $resolvedSpecDirectory
-    $featureRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath (Join-Path $resolvedSpecDirectory 'spec.md')
-    $iterationRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $iterationDirectory
-    $hardeningGatePath = Join-Path $qualityDirectory 'hardening-gate.md'
-    $lensesDirectory = Join-Path $qualityDirectory 'lenses'
-    $trapReapplicationPath = Join-Path $qualityDirectory 'trap-reapplication.md'
-    $qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
-    $mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
-    $qualityEvidenceRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $qualityEvidencePath
-    $mechanicalFindingsRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $mechanicalFindingsPath
 
-    Ensure-Directory -Path $qualityDirectory -Actions $actions
-    if ($phaseTwoQualityArtifactsRequired) {
-        Ensure-Directory -Path $lensesDirectory -Actions $actions
-        Write-MissingFile -TargetPath $hardeningGatePath -Content (Get-HardeningGateContent `
-                -FeatureRef $featureRef `
-                -IterationRef $iterationRef `
-                -IterationNumber $IterationNumber `
-                -ReviewedAt $timestamp) -Actions $actions
-        Write-MissingFile -TargetPath $trapReapplicationPath -Content (Get-TrapReapplicationContent `
-                -IterationNumber $IterationNumber `
-                -RecordedAt $timestamp) -Actions $actions
-    }
+# Pre-tag slice #2 (testbeta3): the quality/ subtree was emitted only behind Phase-2/contract
+# gating, while the launch-contract quick-reference claims the scaffold "already carries" a ready
+# hardening-gate.md — consumers trusted the claim and met a missing file at before-implement. The
+# claimed set (hardening-gate.md, quality-evidence.md, mechanical-findings.json, lenses/) is now
+# unconditional; only trap-reapplication.md remains genuinely Phase-2-scoped.
+$qualityDirectory = Join-Path $iterationDirectory 'quality'
+$featureId = Split-Path -Leaf $resolvedSpecDirectory
+$featureRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath (Join-Path $resolvedSpecDirectory 'spec.md')
+$iterationRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $iterationDirectory
+$hardeningGatePath = Join-Path $qualityDirectory 'hardening-gate.md'
+$lensesDirectory = Join-Path $qualityDirectory 'lenses'
+$trapReapplicationPath = Join-Path $qualityDirectory 'trap-reapplication.md'
+$qualityEvidencePath = Join-Path $qualityDirectory 'quality-evidence.md'
+$mechanicalFindingsPath = Join-Path $qualityDirectory 'mechanical-findings.json'
+$qualityEvidenceRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $qualityEvidencePath
+$mechanicalFindingsRef = Convert-ToRepoRelativePath -BasePath $projectRoot -TargetPath $mechanicalFindingsPath
 
-    if ($hasQualityEvidenceContract) {
-        Write-MissingFile -TargetPath $qualityEvidencePath -Content (Get-QualityEvidenceContent `
-                -PlanPath $planPath `
-                -FeatureId $featureId `
-                -IterationNumber $IterationNumber `
-                -FindingsRef $mechanicalFindingsRef `
-                -EvidenceRef $qualityEvidenceRef `
-                -ReviewedAt $timestamp) -Actions $actions
-        Write-MissingFile -TargetPath $mechanicalFindingsPath -Content (Get-MechanicalFindingsScaffoldJson `
-                -FeatureRef $featureRef `
-                -IterationRef $iterationRef `
-                -GeneratedAt $timestamp) -Actions $actions
-    }
+Ensure-Directory -Path $qualityDirectory -Actions $actions
+Ensure-Directory -Path $lensesDirectory -Actions $actions
+Write-MissingFile -TargetPath $hardeningGatePath -Content (Get-HardeningGateContent `
+        -FeatureRef $featureRef `
+        -IterationRef $iterationRef `
+        -IterationNumber $IterationNumber `
+        -ReviewedAt $timestamp) -Actions $actions
+if ($phaseTwoQualityArtifactsRequired) {
+    Write-MissingFile -TargetPath $trapReapplicationPath -Content (Get-TrapReapplicationContent `
+            -IterationNumber $IterationNumber `
+            -RecordedAt $timestamp) -Actions $actions
 }
+
+Write-MissingFile -TargetPath $qualityEvidencePath -Content (Get-QualityEvidenceContent `
+        -PlanPath $planPath `
+        -FeatureId $featureId `
+        -IterationNumber $IterationNumber `
+        -FindingsRef $mechanicalFindingsRef `
+        -EvidenceRef $qualityEvidenceRef `
+        -ReviewedAt $timestamp) -Actions $actions
+Write-MissingFile -TargetPath $mechanicalFindingsPath -Content (Get-MechanicalFindingsScaffoldJson `
+        -FeatureRef $featureRef `
+        -IterationRef $iterationRef `
+        -GeneratedAt $timestamp) -Actions $actions
 
 if ($PassThru) {
     $actions

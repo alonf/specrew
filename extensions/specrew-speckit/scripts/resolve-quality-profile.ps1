@@ -1007,6 +1007,38 @@ if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
 elseif (-not [string]::IsNullOrWhiteSpace($SpecPath)) {
     $resolvedFeaturePath = Split-Path -Parent (Resolve-ProjectPath -Path $SpecPath)
 }
+if ([string]::IsNullOrWhiteSpace($resolvedFeaturePath)) {
+    # Pre-tag slice #2 (testbeta3): a bare invocation resolved the profile feature-blind — the
+    # resolver never consulted .specify/feature.json, the canonical active-feature source every
+    # other Specrew script uses. Fail-open: unreadable state leaves the feature unbound as before.
+    $activeFeatureJsonPath = Join-Path $resolvedProjectPath '.specify\feature.json'
+    if (Test-Path -LiteralPath $activeFeatureJsonPath -PathType Leaf) {
+        try {
+            $activeFeatureJson = Get-Content -LiteralPath $activeFeatureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if (($activeFeatureJson.PSObject.Properties.Name -contains 'feature_directory') -and
+                -not [string]::IsNullOrWhiteSpace([string]$activeFeatureJson.feature_directory)) {
+                # certify f6 (run-f198-beta2-c0c3cda6-certify): containment, not existence. An
+                # absolute value is rejected outright (canonical feature.json is repo-relative), and
+                # a relative value must RESOLVE inside the project root — a ..-traversing or crafted
+                # feature_directory must not bind the profile to a foreign checkout. Rejection falls
+                # through to the unbound state, exactly as before the fallback existed.
+                $activeFeatureCandidate = [string]$activeFeatureJson.feature_directory
+                if (-not [System.IO.Path]::IsPathRooted($activeFeatureCandidate)) {
+                    $activeFeatureFull = [System.IO.Path]::GetFullPath((Join-Path $resolvedProjectPath $activeFeatureCandidate))
+                    $activeFeatureRel = [System.IO.Path]::GetRelativePath($resolvedProjectPath, $activeFeatureFull)
+                    $escapes = [System.IO.Path]::IsPathRooted($activeFeatureRel) -or
+                        $activeFeatureRel -eq '..' -or
+                        $activeFeatureRel.StartsWith('..' + [System.IO.Path]::DirectorySeparatorChar) -or
+                        $activeFeatureRel.StartsWith('../')
+                    if (-not $escapes -and (Test-Path -LiteralPath $activeFeatureFull -PathType Container)) {
+                        $resolvedFeaturePath = $activeFeatureFull
+                    }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+}
 
 $resolvedSpecPath = $null
 if (-not [string]::IsNullOrWhiteSpace($SpecPath)) {

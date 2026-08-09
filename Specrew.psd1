@@ -437,7 +437,7 @@
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
-            ReleaseNotes = 'https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
+            ReleaseNotes = 'Specrew 0.40.0-beta2 hardens the governance core: boundary authorization integrity (a project''s first boundary is recorded before any approval is demanded, and every approval binds to a recorded crossing), verdict capture from the human''s actual typed reply, review-campaign candidate fidelity, design-workshop and host-integration fixes, and cross-platform path identity verified on three real volumes (NTFS, APFS, ext4). Known limitations are documented at https://github.com/alonf/specrew/releases/tag/v0.40.0-beta2 and the full changelog at https://github.com/alonf/specrew/blob/main/CHANGELOG.md'
         }
     }
 }

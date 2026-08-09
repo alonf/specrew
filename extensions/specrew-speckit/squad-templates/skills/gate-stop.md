@@ -60,13 +60,16 @@ boundary:
 ```
 
 If `.specrew/runtime/pending-verdict-stop.md` exists, copy its `Marker last line exactly` value; that artifact
-wins over phase inference, especially after a multi-boundary over-advance. Otherwise replace `<from> -> <to>`
-with the **canonical** boundary you are gating (the from→to for this stop — e.g.
-`tasks -> before-implement`, `plan -> tasks`, `review-signoff -> retro`). This marker is how the hook records
-the human's ACTUAL typed verdict as the authorization (evidence-source `hook-captured-from-transcript`),
-instead of anything inventing one. Without it the gate stays un-authorized and the next session surfaces the
-boundary as "awaiting your verdict" so the human must re-confirm — so always include it, with the correct
-canonical boundary names. (It does not change what the human sees; it is a comment.)
+wins over phase inference, especially after a multi-boundary over-advance. If the artifact does NOT exist,
+there is NO controller truth for this stop: state that plainly — "no pending-verdict artifact exists, so no
+boundary crossing has been recorded for this stop" — and STOP WITHOUT a marker. Do NOT infer or invent a
+`<from> -> <to>` from the phase you are in: an invented marker captures the human's verdict against a
+crossing the controller never recorded (DRIFT-198-I011-012 — the July F1 `specify -> specify` signature was
+exactly this instruction firing at a first boundary). The recovery is to run the boundary's own sync skill so
+the arrival is recorded and the artifact exists, then render this stop again FROM the artifact. The marker is
+how the hook records the human's ACTUAL typed verdict as the authorization (evidence-source
+`hook-captured-from-transcript`); with no recorded crossing there is nothing a verdict could legitimately
+authorize. (The marker does not change what the human sees; it is a comment.)
 
 Then **STOP** — end your turn and wait for the human to type their choice (a number, or free text).
 

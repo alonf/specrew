@@ -1945,13 +1945,27 @@ function Get-SpecrewBoundaryStageEvidence {
 
         $root = Resolve-ProjectPath -Path $ProjectRoot
         # TREE-RELATIVE, derived from the project root — never the persisted absolute feature path.
+        # certify slice #4 (feature-path-prefix-false-containment, run-f198-beta2-4e7d002c-certify):
+        # in-project resolution is CANONICAL RELATIVE containment with a separator boundary, not a
+        # string prefix — the prefix check accepted a prefix sibling (repo-other vs repo) and, on a
+        # case-sensitive volume, a case-distinct sibling checkout (/tmp/Repo vs /tmp/repo), mapping a
+        # foreign feature onto this tree's paths. GetRelativePath compares with the platform's own
+        # path semantics — the volume-correct identity for same-root containment — and an escape
+        # leaves $featureRel null, which reads as UNVERIFIABLE below (fail-closed, never foreign).
         $featureRel = $null
         if (-not [string]::IsNullOrWhiteSpace($FeaturePath)) {
-            $fp = ($FeaturePath -replace '\\', '/').TrimEnd('/')
-            $rp = ($root -replace '\\', '/').TrimEnd('/')
-            if ($fp.StartsWith($rp, [System.StringComparison]::OrdinalIgnoreCase) -and $fp.Length -gt $rp.Length) {
-                $featureRel = $fp.Substring($rp.Length).TrimStart('/')
+            try {
+                $featureFull = [System.IO.Path]::GetFullPath($FeaturePath)
+                $rootFull = [System.IO.Path]::GetFullPath($root)
+                $relCandidate = [System.IO.Path]::GetRelativePath($rootFull, $featureFull)
+                if (-not [System.IO.Path]::IsPathRooted($relCandidate) -and
+                    $relCandidate -ne '.' -and $relCandidate -ne '..' -and
+                    -not $relCandidate.StartsWith('..' + [System.IO.Path]::DirectorySeparatorChar) -and
+                    -not $relCandidate.StartsWith('../')) {
+                    $featureRel = ($relCandidate -replace '\\', '/')
+                }
             }
+            catch { $featureRel = $null }
         }
         if ([string]::IsNullOrWhiteSpace($featureRel)) {
             return (& $unverifiable 'the active feature could not be resolved inside this project, so its evidence cannot be verified')
@@ -1961,7 +1975,11 @@ function Get-SpecrewBoundaryStageEvidence {
         if ($LASTEXITCODE -ne 0 -or $lsTree.Count -eq 0) {
             return (& $unverifiable ("the bound tree {0} could not be read, so the evidence cannot be verified" -f $ArtifactStateId.Substring(0, [Math]::Min(12, $ArtifactStateId.Length))))
         }
-        $tracked = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        # certify f4 (run-f198-beta2-c0c3cda6-certify): git tree entry names are CASE-SENSITIVE, and
+        # for file-only rows this set membership is the only check — an OrdinalIgnoreCase comparer
+        # let a committed Review.md satisfy the canonical review.md while the canonical artifact was
+        # genuinely absent from the bound tree. Ordinal, matching the medium being read.
+        $tracked = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($line in $lsTree) { $null = $tracked.Add((($line -replace '\\', '/').Trim())) }
 
         $missing = New-Object System.Collections.Generic.List[string]
@@ -2055,6 +2073,11 @@ function Set-SpecrewStageEvidenceGate {
         if ($null -eq $ev -or -not [bool]$ev.Checked -or [bool]$ev.Satisfied) { return $Result }
 
         $Result.StageEvidenceAbsent = $true
+        # Pre-tag slice #4: the three-outcome distinction travels. Both outcomes SUPPRESS the demand
+        # (unchanged), but only CHECKED-AND-ABSENT may refuse a verdict capture — "could not verify"
+        # is not "verified absent", and refusing capture on an unverifiable read would drop
+        # legitimate verdicts on a component hiccup (the exact loss T090's design forbids).
+        $Result.StageEvidenceUnverifiable = [bool]$ev.Unverifiable
         $Result.StageEvidenceMissing = @($ev.Missing)
         $Result.Message = if ([bool]$ev.Unverifiable) {
             # Suppress, and say why. "Could not verify" must never read as "verified".
@@ -2101,6 +2124,7 @@ function Get-SpecrewPendingVerdictState {
         # would be silently dropped. That converts an over-demanding gate into a lost authorization —
         # worse than the defect. The crossing stays pending; only the DEMAND is suppressed.
         StageEvidenceAbsent    = $false
+        StageEvidenceUnverifiable = $false
         StageEvidenceMissing   = @()
         Message                = $null
     }
@@ -2802,12 +2826,30 @@ function Test-SpecrewBoundaryAuthorization {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
     }
 
+    # DRIFT-198-I011-012 (first-crossing translation): the first crossing is representable
+    # everywhere except this gate — the detector emits marker-from 'intake'
+    # (Get-SpecrewPendingBoundaryCrossing), the capture writer mints {from: null, to: order[0]}
+    # (Invoke-SpecrewBoundaryVerdictCapture -> Add-SpecrewBoundaryAuthorization), and the
+    # unreconciled primitive already matches with NO from-side (the matcher's null-targetFrom arm,
+    # its existing convention). The only call shape a first boundary can produce here is the
+    # self-transition ask (current == requested == the first canonical boundary): no writer ever
+    # mints a self-edge entry for it, so without translation the ask is unsatisfiable even AFTER
+    # the human approves. In exactly that shape, match on the to-side alone — the cycle-scoped
+    # walk stays the sole authority on which entries are reachable — and report the crossing in
+    # marker vocabulary ('intake -> <first>'). 'intake' is never accepted as an input boundary
+    # here and is never written to verdict_history; ordering enforcement stays in the sync
+    # ratchet, which this gate defers to.
+    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+    $isFirstCrossingAsk = ($requestedCanonical -eq $boundaryOrder[0] -and $currentCanonical -eq $boundaryOrder[0])
+    $matchFromBoundary = if ($isFirstCrossingAsk) { $null } else { $currentCanonical }
+    $displayCurrentBoundary = if ($isFirstCrossingAsk) { 'intake' } else { $currentCanonical }
+
     if ($EmergencyBypassActive) {
-        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'bypassed' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Emergency bypass is active for this session.'
+        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'bypassed' -CurrentBoundary $displayCurrentBoundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Emergency bypass is active for this session.'
         return [pscustomobject]@{
             Authorized            = $true
             Decision              = 'bypassed'
-            CurrentBoundary       = $currentCanonical
+            CurrentBoundary       = $displayCurrentBoundary
             RequestedBoundary     = $requestedCanonical
             MatchedVerdict        = $null
             DirectiveSentinel     = 'SPECREW_BOUNDARY_BYPASS_ACTIVE'
@@ -2822,14 +2864,14 @@ function Test-SpecrewBoundaryAuthorization {
     # would otherwise authorize the current cycle's same-named crossing with zero human
     # involvement. It consumes THE shared cycle-scoped matcher the unreconciled primitive
     # uses - one read, no per-site copy to drift.
-    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.EffectiveState['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $currentCanonical -LastAuthorizedBoundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
+    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.EffectiveState['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $matchFromBoundary -LastAuthorizedBoundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
 
     if ($null -ne $matchedVerdict) {
-        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
+        Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $displayCurrentBoundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
         return [pscustomobject]@{
             Authorized            = $true
             Decision              = 'authorized'
-            CurrentBoundary       = $currentCanonical
+            CurrentBoundary       = $displayCurrentBoundary
             RequestedBoundary     = $requestedCanonical
             MatchedVerdict        = [pscustomobject]$matchedVerdict
             DirectiveSentinel     = 'SPECREW_BOUNDARY_AUTHORIZED'
@@ -2849,16 +2891,16 @@ function Test-SpecrewBoundaryAuthorization {
         bypass_history           = @($enforcementState.State['bypass_history'])
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $mutableState -Context $enforcementState.Context | Out-Null
-    Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'blocked' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason "No persisted authorization matched $currentCanonical -> $requestedCanonical."
+    Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'blocked' -CurrentBoundary $displayCurrentBoundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason "No persisted authorization matched $displayCurrentBoundary -> $requestedCanonical."
     return [pscustomobject]@{
         Authorized            = $false
         Decision              = 'blocked'
-        CurrentBoundary       = $currentCanonical
+        CurrentBoundary       = $displayCurrentBoundary
         RequestedBoundary     = $requestedCanonical
         MatchedVerdict        = $null
         DirectiveSentinel     = 'SPECREW_BOUNDARY_BLOCKED'
         BypassAttemptDetected = $bypassAttemptDetected
-        Reason                = "No persisted authorization matched $currentCanonical -> $requestedCanonical."
+        Reason                = "No persisted authorization matched $displayCurrentBoundary -> $requestedCanonical."
         PolicyClass           = $policyClass
     }
 }
@@ -3222,7 +3264,11 @@ function Write-SpecrewBoundaryAuthorizationDirective {
         [string]$BypassReason
     )
 
-    $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
+    # DRIFT-198-I011-012: the gate reports first crossings in marker vocabulary, so the from-side
+    # may be the marker-only 'intake' — the same tolerance New-SpecrewBoundaryCrossingIdentity
+    # already has. 'intake' is display vocabulary here; it is never a canonical boundary.
+    $normalizedCurrent = Normalize-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary
+    $currentCanonical = if ($normalizedCurrent -eq 'intake') { 'intake' } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary' }
     $requestedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
     $sentinel = $DirectiveSentinel.Trim()
     if ($sentinel -notin @('SPECREW_BOUNDARY_BLOCKED', 'SPECREW_BOUNDARY_AUTHORIZED', 'SPECREW_BOUNDARY_BYPASS_ACTIVE', 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED')) {
@@ -3233,7 +3279,7 @@ function Write-SpecrewBoundaryAuthorizationDirective {
         'SPECREW_BOUNDARY_AUTHORIZED' {
             return @(
                 'SPECREW_BOUNDARY_AUTHORIZED'
-                "Boundary `$currentCanonical -> $requestedCanonical` is authorized."
+                ('Boundary `{0} -> {1}` is authorized.' -f $currentCanonical, $requestedCanonical)
             ) -join [Environment]::NewLine
         }
         'SPECREW_BOUNDARY_BYPASS_ACTIVE' {
@@ -3246,14 +3292,14 @@ function Write-SpecrewBoundaryAuthorizationDirective {
         'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED' {
             return @(
                 'SPECREW_BOUNDARY_VERDICT_UNRECOGNIZED'
-                "Boundary `$currentCanonical -> $requestedCanonical` still requires explicit human authorization."
+                ('Boundary `{0} -> {1}` still requires explicit human authorization.' -f $currentCanonical, $requestedCanonical)
                 'Recognized verdicts:'
             ) + @(Get-SpecrewBoundaryEnforcementRecognizedVerdicts -RequestedBoundary $requestedCanonical | ForEach-Object { "- $_" }) -join [Environment]::NewLine
         }
         default {
             return @(
                 'SPECREW_BOUNDARY_BLOCKED'
-                "Boundary `$currentCanonical -> $requestedCanonical` requires explicit human authorization."
+                ('Boundary `{0} -> {1}` requires explicit human authorization.' -f $currentCanonical, $requestedCanonical)
                 'Recognized verdicts:'
             ) + @(Get-SpecrewBoundaryEnforcementRecognizedVerdicts -RequestedBoundary $requestedCanonical | ForEach-Object { "- $_" }) -join [Environment]::NewLine
         }
@@ -4947,6 +4993,14 @@ function Test-SpecrewHandoffBlockPresent {
 
     foreach ($candidateText in $candidateTexts) {
         if ($candidateText -match '(?ms)===\s*SPECREW HANDOFF\s*===.+?===\s*END SPECREW HANDOFF\s*===') {
+            return $true
+        }
+        # Pre-tag slice #2 (testbeta3): the Rule 46 six-section packet (and the 46A five-section
+        # variant) IS the primary stop contract — on packet hosts the legacy block above is
+        # explicitly forbidden as a duplicate, so demanding it produced a WARN at every healthy
+        # boundary stop. Three anchored headings in order keep the recognizer from going vacuous
+        # on ordinary prose.
+        if ($candidateText -match '(?ms)^##\s+What I Just Did\b.+^##\s+Why I Stopped\b.+^##\s+What I Need From You\b') {
             return $true
         }
     }

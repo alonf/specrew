@@ -17,9 +17,17 @@ function New-CaptureProject {
     param([string]$LastAuth = 'tasks', [string]$WorkingBoundary = 'before-implement', [object[]]$Turns)
     $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-vcap-" + [guid]::NewGuid().ToString('N'))
     $proj = Join-Path $tmp 'proj'
-    New-Item -ItemType Directory -Path (Join-Path $proj 'specs/001-feat') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $proj 'specs/001-feat/iterations/001/quality') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $proj '.specrew') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $proj '.gitignore') -Value ".specrew/`n" -Encoding UTF8
+    # Pre-tag slice #4: verdict capture now REFUSES a crossing whose stage evidence is
+    # checked-and-absent (stale-marker-captures-before-refusal). These cases assert the CONTIGUITY
+    # contract on LEGITIMATE crossings, so each crossing carries its stage's contract evidence —
+    # spec.md for specify, plan.md + quality/hardening-gate.md for before-implement (the
+    # evidence-less shapes are pinned separately in pretag-slice4-capture-containment).
+    Set-Content -LiteralPath (Join-Path $proj 'specs/001-feat/spec.md') -Value "# Feature Specification: Feat`n`nBody." -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $proj 'specs/001-feat/iterations/001/plan.md') -Value "# Iteration Plan: 001`n`n**Status**: implementing" -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $proj 'specs/001-feat/iterations/001/quality/hardening-gate.md') -Value "# Hardening Gate`n`n**Overall Verdict**: ready" -Encoding UTF8
     git -C $proj init -q -b main 2>$null; git -C $proj config user.email 't@t' 2>$null; git -C $proj config user.name 't' 2>$null
     git -C $proj add -A 2>$null; git -C $proj commit -q -m init 2>$null
     git -C $proj checkout -q -b '001-feat' 2>$null

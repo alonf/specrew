@@ -25,6 +25,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+# Pin the ENGINE UNDER TEST for every child suite (script-kind suites inherit this environment;
+# pester-kind suites also set it explicitly in their -Command). Without it, script suites that
+# spawn governed children (the conformance provider, the sync wrapper) resolved the bootstrap
+# accessors through the Get-Module -ListAvailable fallback — an AMBIENT INSTALLED module, not the
+# tree under test. The maintainer's module quarantine (bit-pinning, pre-tag slice #2) removed the
+# installed modules and exposed it: fr066/fr068 had been green by borrowing 0.39.0's accessor.
+# The tested path must be the shipped path — including the bits it loads.
+$env:SPECREW_MODULE_PATH = $repoRoot
 
 function Get-CallerRepositorySnapshot {
     $head = @(& git -C $repoRoot rev-parse --verify HEAD 2>$null)
@@ -167,6 +175,10 @@ $registry = @(
     @{ area = 'FR-068 verdict-demand reproduction - a demand against a stage with no evidence (half 1, GREEN after T090) plus the emit/do-not-emit marker contradiction (half 2, CHARACTERIZED for beta3)'; path = 'tests/integration/fr068-verdict-demand-reproduction.tests.ps1'; kind = 'script' }
     @{ area = 'DRIFT-198-I011-011 generator parity - governed writers must emit markdown that passes the repository''s OWN required lint, the same markdownlint step consumers are instructed to run'; path = 'tests/integration/generator-markdown-parity.tests.ps1'; kind = 'script' }
     @{ area = 'FR-066 first-boundary arrival - an unrecordable crossing is a branchable state, not a silent success, and the surface names what is missing'; path = 'tests/integration/fr066-first-boundary-arrival.tests.ps1'; kind = 'script' }
+    @{ area = 'DRIFT-198-I011-012 shipped orchestration arrival - the skill''s OWN blocks executed in stated order: arrival recorded before the advancement gate, stop carries controller truth, and the gate authorizes the capture-minted first crossing (registered GREEN at slice close, discharging the drift-log obligation)'; path = 'tests/integration/shipped-orchestration-arrival.tests.ps1'; kind = 'script' }
+    @{ area = 'Pre-tag slice #2 smalls (testbeta3) - six-section packet counts as handoff evidence; bare resolver invocation binds the feature via feature.json; iteration scaffold emits the claimed quality/ subtree unconditionally'; path = 'tests/unit/pretag-slice2-smalls.tests.ps1'; kind = 'script' }
+    @{ area = 'Pre-tag slice #3 certify findings - a pre-rendered marker cannot bypass the stage-evidence refusal; capped refused boundaries are never instructed to emit a marker; git-tree evidence matching is case-sensitive; feature.json containment holds; the launch contract stopped claiming a ready gate'; path = 'tests/unit/pretag-slice3-certify-findings.tests.ps1'; kind = 'script' }
+    @{ area = 'Pre-tag slice #4 certify findings - prompt-submit verdict capture refuses an evidence-less crossing loudly (marker-first, approval-reply, journaled refusal); the evidence gate resolves the feature via canonical relative containment with a separator boundary'; path = 'tests/unit/pretag-slice4-capture-containment.tests.ps1'; kind = 'script' }
     @{ area = 'FR-055 Stop-packet classification honesty - session-baseline turn-delta, long-turn lane, PostToolUse pre-arrangement nudge, boundary contract untouched, maintainer fixtures (a)-(f)'; path = 'tests/integration/conformance-detection.tests.ps1'; kind = 'script'; timeout_seconds = 420 }
     @{ area = 'FR-056/SC-016 workshop question delivery - shared conduct with deterministic host-specific capability materialization'; path = 'tests/integration/code-rules-skill-multihost.tests.ps1'; kind = 'script' }
     @{ area = 'Beta2 manual-test blocker - Claude workshop cannot call AskUserQuestion and swallow the rendered agenda; other hosts retain structured questions'; path = 'tests/integration/design-workshop-claude-tool-safety.tests.ps1'; kind = 'script' }

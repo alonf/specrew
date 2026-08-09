@@ -104,7 +104,10 @@ reparse-point fixtures. The volume is a sound oracle for what it is asked; it wa
 links. Limitation 2 was believed to sit inside this blind spot; extending the fixtures is what
 established that it is not a defect at all. The blind spot was real — the fixtures were genuinely
 missing — but what they found on being written was the absence of the reported defect rather than its
-presence.
+presence. The same link class reaches the quality-profile resolver's feature binding: its containment
+validation is lexical, so a directory link inside the project can still bind a foreign feature's
+planning inputs (found by certification `run-f198-beta2-4e7d002c-certify`, 2026-08-09; routed to
+beta3 with this link cluster — planning input, not authorization integrity).
 
 **4. The consumer applicability firewall's case-distinct behaviour is unproven by test.** The scanner
 now dedupes file identities ordinally, but no fixture runs it over two case-distinct files and asserts
@@ -175,6 +178,52 @@ in the reviewer, with the only rank map in a third file), and the digest strip l
 as a shortcut because that file documents exclusion as a false-allow vector. (F17; FR-067 specified,
 unimplemented; beta3.)
 
+**10. At the design-analysis stop, the human decision is transcribed by the agent, not
+hook-captured.** *Added 2026-08-09 at the tag, from the maintainer's known-issues review (B3-003).*
+
+The design-analysis stop asks the human to choose an option BEFORE any boundary crossing exists to
+bind the verdict to — the crossing cannot mint until the decision it authorizes exists. The verdict
+is therefore agent-transcribed into the committed Human Decision record, with disclosure, rather
+than captured by the verdict hook from the human's typed reply. Consumers should verify the
+committed Human Decision text against what they actually chose before approving the plan boundary.
+Beta3 vehicle: the crossing-vocabulary cluster (a decision-pending state or a design-option
+crossing kind).
+
+**11. After feature-closeout, the next feature's first boundary cannot mint its crossing.** *Added
+2026-08-09 at the tag — promoted from the drift log to this claim.*
+
+The crossing detector has exactly one reset edge (`iteration-closeout -> plan`). A project whose
+cursor sits at `feature-closeout` has no edge into the NEXT feature's `specify`, so a SECOND
+feature in the same project gets no first-boundary approval demand — the prompt simply never
+appears. This feature's own ledger began cleanly only because the work ran in a fresh worktree.
+Workaround: start the next feature from a fresh checkout/worktree, which re-initializes the
+project's boundary ledger. Beta3 vehicle: the same crossing-vocabulary cluster (the feature-cycle
+reset edge).
+
+**12. Verdict capture refuses evidence-less crossings only when the evidence is CHECKED and
+absent; unverifiable states keep legacy capture.** *Added 2026-08-09 at the tag, from
+certification `run-f198-beta2-0fa26271-certify` under the maintainer's trajectory ruling.*
+
+The capture-refusal hardening added pre-tag refuses authorization when a crossing's stage evidence
+is checked against its bound tree and genuinely absent — everywhere. When the evidence CANNOT be
+checked (no bound tree identity, unreadable tree, unresolvable feature path, or an evidence-check
+error), capture retains its legacy behavior and a matching marker plus human approval still
+records authorization. This is the capture-order class's third layer in one certification
+lineage; per the trajectory ruling it moves to a **beta3 design owner** — authority advances only
+on positively verified evidence, a capture-pipeline redesign rather than another guard — instead
+of a fourth patch.
+
+**13. Containment case comparison follows the platform default, not the volume.** *Added
+2026-08-09 at the tag, from the same certification and ruling.*
+
+The evidence gate's project containment refuses prefix siblings, traversal, and absolute escapes
+on every platform. Its case comparison, however, is the platform default (case-insensitive on
+Windows and macOS): on a volume whose case sensitivity disagrees with the platform default — a
+case-sensitive NTFS directory, case-sensitive APFS — case-distinct sibling checkouts fold
+together and a foreign sibling can be read as in-project. The containment class's third layer;
+per the same ruling it moves to a **beta3 design owner** — all containment routes through the
+release's volume-derived path-identity primitive — instead of a fourth patch.
+
 ## Who is affected, and what to do
 
 | If you | Then |
@@ -185,6 +234,10 @@ unimplemented; beta3.)
 | Rely on the consumer applicability firewall for governance advisories | Limitation 4 applies: a case-distinct duplicate of a policy file may not be scanned. Avoid case-only filename distinctions in `docs/`, `specs/`, `.github/`. |
 | Run a lifecycle that produces review findings at **two or more checkpoints** | Limitations 8 and 8b apply, and they compound. Your rounds are charged against one shared budget, so you will reach the ceiling sooner than the per-checkpoint arithmetic suggests — possibly on every run. **When you halt, do NOT follow the halt message's instruction to run `specrew review --remediate more-time`: that command throws in the shipped campaign mode.** The working escape is a **new explicitly authorized review run** — supply a fresh `--authorization-ref <ref>`, which mints a new grant with a review slot. The reference must be one you have not used before; re-using an earlier reference resolves to the same grant and grants no new slot. This is a human decision by design: the allowance guards real AI spend, and only a person may extend it. |
 | Reach a closeout or finality check with findings outstanding | Limitation 9 applies. Findings below the blocking bar do not close the check on their own — they route to a human turn rather than terminating with recorded residuals. If the closeout writes `state.md`, `plan.md` or `tasks.md`, expect the check to re-arm on its own writes. Budget a human decision at closeout rather than expecting it to converge unattended. |
+| Approve a design-analysis option | Limitation 10 applies: the committed Human Decision record is agent-transcribed with disclosure. Read it back and confirm it says what you actually chose before approving the plan boundary. |
+| Start a SECOND feature in a project that closed its first | Limitation 11 applies: the first-boundary approval demand cannot mint in place. Start the new feature from a fresh checkout/worktree (fresh project state) so the boundary ledger initializes clean. |
+| Approve a boundary while the project's state is degraded (missing or unreadable crossing records) | Limitation 12 applies: the evidence-absent refusal covers checked-and-absent states; an UNVERIFIABLE evidence state still captures your approval. Before approving, confirm the boundary packet cites a bound tree and that the stage's artifacts exist in it — an approval given while evidence "could not be checked" is an approval you could not have verified either. |
+| Run governed projects on volumes whose case sensitivity disagrees with the platform default (case-sensitive NTFS directories, case-sensitive APFS) | Limitation 13 applies: case-distinct sibling checkouts can fold together in containment checks. Avoid case-distinct sibling directory names beside governed projects on such volumes. |
 
 ### Detecting reparse points in your project
 

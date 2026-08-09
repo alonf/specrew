@@ -940,7 +940,7 @@ hazard this iteration, after Git-Bash `tar` and the directory-swallowing atomic 
 
 | FR-066 half | State | Evidence |
 | --- | --- | --- |
-| **Arrival state** — an unrecordable first crossing is a distinguishable, branchable state that reports failure rather than success, and a surface that speaks and names what is missing | **DELIVERED** | T088/T089; `fr066` CASES 1–2 green; round 2 did not fault it |
+| **Arrival state** — an unrecordable first crossing is a distinguishable, branchable state that reports failure rather than success, and a surface that speaks and names what is missing | **DELIVERED — later found UNREACHABLE through the shipped path** (reconciled 2026-08-08, below) | T088/T089; `fr066` CASES 1–2 green; round 2 did not fault it. Engine-direct evidence only: the shipped orchestration aborted pre-sync at a first boundary (DRIFT-198-I011-012) |
 | **Mint guard** — a failed crossing must not be convertible into an authorized cursor by any bootstrap path | **NOT DELIVERED** | two attempts, both faulted (round 2: double-failure window; round 3: concurrent clear). Reverted. |
 
 **The mint hole is therefore OPEN and known**, at its measured extent: three bootstrap sites funnel
@@ -987,6 +987,30 @@ Recorded precisely, because the difference between these two lines is the whole 
 
 The reverted attempts are gone rather than shipped, so nothing goes out in a half-trusted state — the
 same distinction that rejected Option 4 on 2026-08-06.
+
+### RECONCILED 2026-08-08 (DRIFT-198-I011-012): the arrival state was delivered-but-unreachable
+
+The 2026-08-06 ruling gated the tag on "FR-066's arrival state" while every green behind that claim
+drove the sync FUNCTION directly. The maintainer's pre-tag fresh-project test then showed the
+shipped orchestration never reaches that code at the exact moment it exists for: the skills gated
+before they synced, so at a first boundary the skill aborted pre-sync. **The honest delivery claim
+for the 2026-08-06 ruling is therefore "delivered-but-unreachable-until-the--012-slice"** — the
+engine half was true, the reachability half was untested, and the tested path was not the shipped
+path.
+
+As of the -012 slice the arrival state is REACHABLE through the shipped path and proven there:
+gate first-crossing translation (79533264), nine-skill reorder with before-implement gaining its
+missing arrival sync (68242247), marker-invention fallback retired (3ccd7f60), all pinned by
+`tests/integration/shipped-orchestration-arrival.tests.ps1` executing the shipped skill's own
+blocks — exit 0, engine result `boundary_record_status: "established"` at
+`is_first_boundary: true`, stop rendered from controller truth, post-verdict authorization
+matching.
+
+**The tag basis therefore reads, corrected**: FR-068's evidence half plus FR-066's arrival state
+*reachable through the shipped path via the -012 slice*. The mint guard stays a named open defect
+carried to beta3, unchanged. The reachability claim awaits the maintainer's fresh-project re-test
+before the tag moves — a shipped-path fixture is necessary evidence, and the manual first-boundary
+check that found this finding is the confirming instrument.
 
 ### Carried to beta3, consolidated
 
@@ -1263,9 +1287,12 @@ editing a closed retrospective:
 | Release-gate slice | SP |
 | --- | ---: |
 | Generator parity test (RED-first, 4 harness corrections) + both-writer fix + registry row + full gate | **~1.0** |
+| DRIFT-198-I011-012 orchestration-path slice: honest-RED fixture through the shipped skill's own blocks, consequence-graph walk in writing, gate first-crossing translation, nine-skill reorder (+ before-implement's missing arrival sync), marker-invention retirement, FR-066 reconciliation, secondary findings with named writers, registry row + full gate | **~2.5** |
+| Pre-tag slice #2 (testbeta3): navigator pre-implement quiet-no-op edge (RED-first, five cases) + the three priced smalls (packet-as-handoff-evidence, resolver feature binding, unconditional quality scaffold + claim correction) + beta3 routing + coverage-gap record | **~1.4** |
 
-Feature-level total therefore reads **~29.0 (iteration 011, retro'd and closed to edits) + ~1.0
-(release slice)**, not a restated 30.0 — the two are different scopes and the record keeps them apart.
+Feature-level total therefore reads **~29.0 (iteration 011, retro'd and closed to edits) + ~1.0 +
+~2.5 + ~1.4 (release slices)**, not a restated total — the scopes are different and the record
+keeps them apart.
 
 ## RETRO — the consequence-graph practice must become a design-gate STEP, not a virtue
 
@@ -1346,3 +1373,514 @@ The same applies to T087's harness
 RED by design until T088/T089 land. **Both harnesses are registered together at T092, and neither
 closes the iteration while unregistered.** The maintainer's ruling of 2026-08-03 stands as written:
 a deliberate RED must never quietly become a skipped test.
+
+## DRIFT-198-I011-012 (BLOCKING, pre-tag) — the shipped orchestration gates BEFORE it syncs; FR-066's arrival state is unreachable through the shipped path
+
+**Found by the maintainer's pre-tag manual test on a fresh consumer project (`C:\Temp\testbeta2`,
+frozen as evidence) — not by any engine test.** The tag is held; `main` carries this as a known
+standing red until the slice closes. Requirement: FR-066 (first-boundary arrival state).
+
+### The mechanism, verified at source
+
+In `extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-specify.md`:
+
+| Order | Line | What runs | At a FIRST boundary |
+| --- | --- | --- | --- |
+| block 1 | 28 | `Test-SpecrewBoundaryAuthorization` | **throws** — no authorization can exist yet — aborting the skill |
+| block 2 | 40 | `sync-boundary-state.ps1` (the arrival sync) | **never reached** |
+
+So no crossing is recorded, no `pending-verdict-stop.md` is written, and the gate-stop skill's
+no-artifact fallback then instructs the agent to INVENT a marker (observed: `specify -> specify`,
+July's F1 signature). FR-066's arrival-state code is delivered and correct — and unreachable at the
+exact moment it exists for.
+
+### Why every engine test missed it
+
+The existing suites invoke the sync FUNCTION directly. That proves the engine records an arrival
+correctly — and it does. It cannot prove the shipped ORCHESTRATION ever calls it. **The tested path
+was not the shipped path.** This is the third instance of the reachability class (T089's unreachable
+branch; finding 2's three-mint-site funnel; this), and the sharpest: it survived two releases
+because every green pointed at the engine.
+
+### Evidence status at this commit — recorded honestly, nothing banked
+
+`tests/integration/shipped-orchestration-arrival.tests.ps1` is committed WITH this entry, in exactly
+this state:
+
+**Ordering RED: honest and recorded.** The fixture reads the shipped skill itself — not a copy —
+and measures the authorization gate (line 28) preceding the arrival sync (line 40).
+
+**Behavioral RED: explicitly UNPROVEN.** Two probe runs produced REDs that could not be attributed
+to the product refusing — probe contamination, refused rather than banked:
+
+1. `-CurrentBoundary ''` — parameter-binding failure: the probe failing, not the product refusing.
+2. `-CurrentBoundary 'intake'` — the RED could not be attributed to the product's first-boundary
+   refusal rather than canonical-vocabulary rejection of `'intake'` itself. Whether the
+   authorization surface can represent a first crossing AT ALL — the `intake -> specify` crossing
+   that `Get-SpecrewPendingBoundaryCrossing` emits vs the vocabulary
+   `Resolve-SpecrewCanonicalBoundaryType` accepts — is an open question under evidence-only
+   investigation, and its answer decides the fix's shape.
+
+A third gap, seen at source while committing: the shipped block computes its own `$currentBoundary`
+(defaulting to `'specify'` when `session_state.boundary_type` is missing or blank), so a probe
+passing `'intake'` does not replicate the shipped computation it claims to test. **A RED that fires
+for the wrong reason is refused, not banked** — it is the mirror image of the green that measures
+nothing.
+
+### Scope
+
+Release-gate scope, pre-tag; iteration 011's retro'd ~29.0/20 does not reopen. Cost lands on the
+release-slice cost line when the slice closes. Orchestration-path fixtures as a class are the
+structural cure for the reachability class and belong in the release gate — the beta3 row carries
+them. The fixture is deliberately NOT registered in `tests/f198-regression-suite.ps1` while RED (a
+red workflow is a stop); registering it green is an obligation of the slice's close, under the same
+ruling as T092: a deliberate RED must never quietly become a skipped test.
+
+## DRIFT-198-I011-012 — the consequence-graph walk, in writing, before the reorder
+
+Maintainer verdict 2026-08-08: Option 1 (gate-internal first-crossing translation), with the
+implementation lead "derive targetFrom as null and let the matcher's dormant arm do the work", and
+the constraint that ordering enforcement stays where it lives. This walk is the named design-gate
+step the retro promoted: every consumer of every surface the change touches, walked before building.
+
+### The honest RED, banked first (commit 74594c35)
+
+The repaired probe executes the shipped skill's own fenced blocks against a bootstrapped fresh
+consumer project. Four REDs, zero INCONCLUSIVE, each firing for the product's reason — including the
+runtime kill-shot: after writing the exact entry the capture writer mints (`{from: null, to:
+specify}`), the gate still answers `blocked: No persisted authorization matched specify -> specify`.
+The detector measured live: `pending=True, from=null, markerFrom=intake`.
+
+### What the arrival sync writes, and who consumes each write
+
+| Sync write | Consumers (verified at source) |
+| --- | --- |
+| `session_state.boundary_type` (the working cursor) | pending-crossing detector; unreconciled read's legacy arm; conformance provider; the skills' own `$currentBoundary` computation |
+| `pending_crossing` scope (`intake -> specify` at first arrival) | `Get-SpecrewPendingVerdictState` scoped read (integrity + re-derive cross-check); verdict capture's expected-marker derivation; unreconciled read's working-boundary arm; ratchet |
+| `pending_next_boundary` | state validator (canonical-only field); informational readers |
+| `.specrew/runtime/pending-verdict-stop.md` | the gate-stop skill (controller truth for the marker); Stop-hook packet renderer; retired/refreshed post-capture by `Sync-SpecrewPendingVerdictArtifactAfterAuthorization` |
+| ledger + `.squad` claims + lint pass + dashboards | decision ledger readers; unchanged by this slice |
+
+### Ordering authority: the ratchet owns it; the gate defers
+
+`Invoke-SpecrewBoundaryStateSync` calls `Invoke-SpecrewBoundaryRatchetGate` before recording
+(`scripts/internal/sync-boundary-state.ps1:1556`). The ratchet's contract states the design intent
+verbatim: **"the FIRST unapproved crossing still records mechanically … a SECOND advance while that
+crossing is unapproved is refused … re-syncing the SAME boundary stays allowed."** Sync-then-gate is
+therefore not a new policy — it is the ratchet's own contract, currently unreachable through the
+skills because the advancement gate aborts the skill before the sync runs. The gate translation
+adds no ordering logic; skipped-boundary refusal stays in the ratchet (verified: an unauthorized
+skip is refused at the SYNC, before any recording).
+
+### The dormant-arm lead: CONFIRMED, with in-repo precedent
+
+`Get-SpecrewUnreconciledBoundary` already calls the shared matcher with **no `-FromBoundary`**
+(shared-governance.ps1:3004) — the null-targetFrom arm (2916) is the unreconciled primitive's
+existing convention for exactly this question. The gate fix aligns the live gate with that
+convention in first-crossing mode only: when the effective `last_authorized_boundary` is null and
+the requested boundary is the first canonical boundary, pass targetFrom null. It matches recorded
+reality (`{from: null}` entries are all any writer mints — `Add-SpecrewBoundaryAuthorization`
+resolves a non-null from-side canonically, so `intake` can never be written into history), and it
+cannot loosen later crossings (trigger requires a null cursor AND requested == order[0]).
+
+### The walk's biggest finding: the marker-invention fallback is LOAD-BEARING for boundaries 2..N
+
+Three facts compose:
+
+1. Post-capture, `Sync-SpecrewPendingVerdictArtifactAfterAuthorization` re-derives pending state,
+   gets none (cursor == working), and REMOVES `pending-verdict-stop.md`.
+2. The next ask is minted only by a SYNC: the next boundary's own sync (arrival ask), or a re-sync
+   of the authorized boundary via `-OpenNextCrossingWhenBoundaryAuthorized`
+   (sync-boundary-state.ps1:1680) — nothing mints at capture time.
+3. Under gate-first ordering, every skill's first pass aborts BEFORE its sync.
+
+So at every boundary after capture there is a window with NO artifact and NO pending ask, and the
+gate-first skill aborts inside it — which is precisely when the gate-stop skill's no-artifact
+fallback tells the agent to infer a marker. **The shipped flow for boundaries 2..N has been standing
+on the invention crutch the whole time**: linearly the invented marker happens to be correct, so it
+looked like working machinery; at the first boundary the inference produced `specify -> specify`
+(July's F1), and at over-advances it names the wrong crossing. Consequence, binding on sequencing:
+**all nine gate-carrying skills reorder BEFORE the fallback clause is replaced** — retiring the
+crutch first would strand every boundary after specify. The audit below records per-skill verdicts,
+but the reorder is not optional per skill.
+
+### The reordered flow, walked end-to-end
+
+- **First boundary**: work → sync records arrival (ratchet passes: nothing unreconciled), mints
+  `intake -> specify` + artifact → gate refuses (no entry yet) → stop WITH controller truth →
+  capture writes `{null -> specify}`, cursor moves, artifact retired → flow proceeds; any re-run of
+  the skill re-syncs idempotently (ratchet allows same-boundary), `OpenNext` mints the advance ask,
+  and the translated gate now matches the recorded entry (probe leg D turns green).
+- **Normal boundary X**: work → sync mints `prev -> X` + artifact → gate refuses → stop with truth →
+  capture `{prev -> X}` → proceed. The ask is machinery-minted at every stop; no inference remains.
+- **Over-advance recovery**: working jumped ahead on a fresh project → sync still mints the FIRST
+  unpaid crossing (`intake -> specify`, IsMultiBoundaryGap) → the stop demands the earliest
+  boundary, one approval at a time — conformance Cases 11b/11c behavior preserved.
+- **Unauthorized skip**: sync for a later boundary while an earlier crossing is unapproved → the
+  RATCHET refuses before recording — ordering enforcement untouched by the gate change.
+
+### Gate-result consumers under the translation
+
+- The nine skills consume `.Authorized`, `.Reason` (thrown), and pass `.CurrentBoundary` /
+  `.RequestedBoundary` / `.DirectiveSentinel` to `Write-SpecrewBoundaryAuthorizationDirective`. In
+  first-crossing mode the result reports the crossing in marker vocabulary (`intake`), so the
+  directive writer learns the same from-side tolerance the crossing-identity minting already has
+  (shared-governance.ps1:1443 pattern). `verdict_history` vocabulary is untouched.
+- The 3a run surfaced a latent directive bug fixed in the same touch: the blocked/authorized
+  directive text backtick-escapes `$currentCanonical`, rendering the VARIABLE NAME literally to the
+  human ("Boundary $currentCanonical -> specify requires…") — measured in the probe's block-1
+  output.
+- The enforcement decision-ledger entry's `Current Boundary` line is a free-text field (only the
+  `Boundary` title field resolves canonically) — safe to carry `intake`.
+
+### Named, not solved here: the second-feature arrival edge
+
+The crossing detector has exactly one reset edge (`iteration-closeout -> plan`). A SECOND feature in
+the same project leaves the cursor at `feature-closeout`, from which no `-> specify` crossing can be
+minted. Feature 198's own ledger began `{null -> specify}` only because this worktree was fresh.
+Same reachability class, adjacent scope — recorded for the beta3 vocabulary/reset cluster, not
+expanded into this release slice.
+
+### Killed by the walk
+
+- Capture-side `from: 'specify'` self-edges (Option 3) — falsified before the verdict; stays
+  never-offerable.
+- Ordering checks inside the gate — rejected; the ratchet owns ordering and already refuses skips.
+- 3c before the reorder — would strand boundaries 2..N (the crutch discovery above); sequencing
+  locked as: gate fix → nine-skill reorder → fallback replacement.
+
+### The nine-skill audit and reorder (3b executed)
+
+Every gate-carrying skill audited at source; every one carried the gate-first pattern; all nine
+reordered (arrival sync before the advancement gate, gate last with the controller-truth render
+instruction). Mirrors under `.specify/` synced and hash-verified.
+
+| Skill | Gate-first | From-side (kept) | Arrival sync before the fix | Action |
+| --- | --- | --- | --- | --- |
+| sync-specify | yes (gate 28 / sync 40) | computed, `'specify'` fallback | present, unreachable | reordered; workshop gate stays pre-work |
+| sync-clarify | yes | `'specify'` | present, post-gate | reordered |
+| sync-plan | yes | `'clarify'` | present, post-gate | reordered |
+| sync-tasks | yes | `'plan'` | present, post-gate | reordered |
+| before-implement | yes | `'tasks'` | **ABSENT — no sync in the skill at all** | reordered + arrival sync ADDED |
+| sync-review-signoff | yes | `'before-implement'` | present, post-gate | reordered |
+| sync-retro | yes | `'review-signoff'` | present, post-gate | reordered |
+| sync-iteration-closeout | yes | `'retro'` | present, post-gate | reordered |
+| sync-feature-closeout | yes | `'iteration-closeout'` | present, post-gate | reordered |
+
+The hard-coded from-sides are retained: for non-first crossings they are the exact vocabulary the
+capture writer mints (`{cursor -> X}`), so the gate matches recorded reality. `before-implement`
+was the sharpest audit find after sync-specify: it gated with NO arrival sync anywhere in the
+skill, so its pending ask depended entirely on off-skill machinery.
+
+Semantics note, recorded as a deliberate trade: work-before-authorization at each skill's own
+boundary is the ratchet's stated contract ("the FIRST unapproved crossing still records
+mechanically; a SECOND advance is refused"). A skill invoked out of order now performs its work
+before the ratchet refuses at the sync — governance holds (nothing advances, nothing records), and
+the refusal is consumer-legible; the wasted work is visible instead of a silent gate-abort with no
+artifact.
+
+### GREEN through the shipped path (the fixture's full contract)
+
+After gate fix + reorder, `tests/integration/shipped-orchestration-arrival.tests.ps1` exits 0 with
+every leg measured live: ordering (sync 32 < gate 53); block 2's engine result
+`boundary_record_status: "established", is_first_boundary: true`; `pending_crossing`
+`intake -> specify`; `pending-verdict-stop.md` present with the `intake -> specify` marker; the
+advancement gate blocking with `` Boundary `intake -> specify` requires explicit human
+authorization ``; and the gate authorizing after the capture-minted `{from: null, to: specify}`
+entry. The orchestration was the subject under test, end to end.
+
+## DRIFT-198-I011-012 — secondary findings (3e), each with its writer named
+
+### (1) MOST SERIOUS — a reviewer authorization written outside the 028 ceremony, by version-skewed 0.39.0 machinery
+
+The evidence chain, from the frozen `C:\Temp\testbeta2`:
+
+- Bootstrapped 2026-08-07 23:17 local under `specrew_version: "0.40.0"` — which exists ONLY as the
+  dev tree (installed modules: 0.39.0, 0.38.0, 0.37.0, 0.32.0 — no 0.40.0).
+- `reviewer-hosts.json` was created 2026-08-08 00:49:33 — 92 minutes AFTER bootstrap, mid-session,
+  by runtime machinery, not by project scaffolding.
+- Its codex row: `allowed: true`, `authorization_ref: "workshop-001-linkcheck"`,
+  `model_source: "human-entered"`, `model: "chatgpt"`. All other rows carry the contract-clean
+  defaults (`allowed: false`, `authorization_ref: null`).
+- The workshop record EXISTS and is human-confirmed: 001-linkcheck's code-implementation lens
+  (`confirmation: human-confirmed`, `confirmation_scope: lens-question`) records "Reviewer: codex,
+  human-selected (intake brief + strongest independent host), authorization-ref
+  workshop-001-linkcheck".
+- `workshop-001-linkcheck` appears NOWHERE in the 0.40.0 tree nor in any installed module — the
+  row was synthesized at runtime from the workshop answer.
+- With `SPECREW_MODULE_PATH` unset and no 0.40.0 module installed, the deployed wrapper's path-2
+  resolution dispatches to the INSTALLED newest module — 0.39.0 — whose reviewer-hosts writers
+  (`specrew-review.ps1`, `worktree-review-orchestrator.ps1`) carry NO stale-install guard; that
+  refusal exists only in the sync wrapper.
+
+**Verdict against the 028-fixed shape** (`docs/data-contracts.md:131`: the authorization writer is
+`specrew review --host <h> --authorization-ref <ref>` — human authorization — plus installed-state
+refresh): structurally conformant; non-codex defaults clean; the codex authorization is
+**human-real but ceremony-bypassed** — workshop machinery converted a lens answer into registry
+authorization rows the contract reserves for the explicit ceremony — with **provenance
+overclaimed** (`model_source: "human-entered"` for a model value the human never entered) and the
+write **executed by version-skewed 0.39.0 code inside a 0.40.0-governed project**. Correcting this
+slice's own earlier framing, honestly: this is NOT fabricated-from-nothing (the first reading);
+the human decision is real and recorded — the defect is the bypassed ceremony, the overclaimed
+provenance fields, and the skewed writer the 0.40.0 tree cannot vouch for. The write also violates
+the DRIFT-198-I009-028 write-scope contract pinned by
+`tests/continuous-co-review/unit/reviewer-host-grant-write-scope.Tests.ps1` — a grant writes ONE
+field of ONE row; this write set `allowed`, `authorization_ref`, `model_source`, and `model`
+together.
+
+Routed to beta3: (a) review-side writers gain the sync wrapper's stale-install refusal; (b) a
+workshop-lens reviewer selection flows INTO the 028 ceremony (minted via `specrew review --host`)
+instead of writing registry rows directly; (c) `model_source` records its true source.
+
+### (2) The state.md re-revert — third strike, writer NAMED
+
+- The write pair at 2026-08-07T22:36:31Z: `tasks-progress.yml` `updated_at` at `.017Z`, `state.md`
+  `Updated` at `.078Z` — one writer pass, 60ms apart.
+- `.specrew/runtime/hook-bootstrap-render-8d74ccea-…-clear.json` is stamped the SAME second —
+  **the writer is THIS session's SessionStart (/clear) bootstrap**: its task-progress refresh
+  (`scripts/internal/task-progress.ps1`, loaded by `specrew-start.ps1` /
+  `coordinator-resume.ps1`) regenerated state.md's managed block from `tasks-progress.yml`.
+- Root cause, which the third strike finally surfaces: the closure correction lives ONLY in
+  state.md's narrative; `tasks-progress.yml` still records T091/T093/T092 as pending. The
+  generator faithfully re-asserts yml-truth over narrative-truth at every session start — so
+  restoring state.md alone re-reverts at the NEXT start. The durable fix is reconciling the yml's
+  terminal statuses (needs a maintainer ruling on the exact statuses) or teaching the generator
+  the recorded closure attempt. Until one lands, every restore is temporary and this entry is the
+  standing explanation.
+- state.md and tasks-progress.yml are restored to the committed corrected record with this entry.
+
+### (3) The timestampless pending_next_boundary mutation (-010 family)
+
+`Test-SpecrewBoundaryAuthorization`'s blocked path writes state (`pending_next_boundary` set to
+the requested boundary) through `Set-SpecrewBoundaryEnforcementState`, which stamps
+`generated_at_utc` only when the field is absent — an existing stamp is preserved stale, so the
+mutation is invisible in the file's own dating. The -010 family shape: machinery mutating records
+without honest self-dating. Recorded, not fixed in this slice.
+
+### (4) The reachability class, third instance — structural cure named
+
+Consolidated: T089's unreachable branch; finding 2's three-mint-site funnel; -012's
+gate-before-sync. The cure is the orchestration-path fixture class — execute the shipped skill's
+OWN blocks against a real project — now instantiated once
+(`shipped-orchestration-arrival.tests.ps1`) and routed to beta3 as a per-shipped-skill release-gate
+requirement, alongside the second-feature reset edge named by the walk.
+
+## PRE-TAG SLICE #2 — the testbeta3 re-test (maintainer manual test, frozen at `C:\Temp\testbeta3-842854746`)
+
+### The navigator pre-implement contradiction — FIXED (commit f2c2c7d8)
+
+Fully characterized at source: `Get-ReviewCampaignNavigatorScopeApplicability` turned applicability
+ON at bare iteration-directory existence while the auto-fire path stays implement-only — so every
+consumer at design-analysis received a standing review-required Stop block that nothing could ever
+satisfy. The testbeta3 journal is the evidence: `campaign-not-applicable:no-active-iteration`
+flipped to `no-authoritative-campaign-result` at 2026-08-08T01:13:28Z when
+scaffold-iteration-artifacts created `iterations/NNN`, four standing stops followed, and the
+maintainer freed the session by hand at 01:21.
+
+The fix is the i009 quiet-no-op family's missing edge: at the design-analysis cursors (`plan`,
+`tasks`) applicability returns quiet not-applicable and the packet gate is never consulted;
+auto-fire stays implement-only; pre-code reviews remain human-CLI-initiated. The WORKING position
+decides (session cursor, then the pending crossing's working boundary, then the authorized
+cursor) — the first fix draft used the authorized cursor and the pre-existing v2
+missing-iteration fail-closed case caught it: a pending crossing INTO `before-implement` is the
+implement window's edge, not design-analysis. RED-first: five new cases (standing-block
+reproduction at plan/tasks, the journal-flip sequence, the v2 cursor shape, and two
+gate-still-consulted guards at before-implement/review-signoff); suite 29/29 after.
+
+### The three priced smalls — together ~0.9 SP, under the ~1 SP cap, so FIXED (commit fad2a8ee)
+
+| Small | Defect | Fix |
+| --- | --- | --- |
+| (a) handoff WARN | the trust-hardening check recognized only the legacy `=== SPECREW HANDOFF ===` block — WARN at every healthy stop on hosts where Rule 46 forbids duplicating it | the six-section packet (three anchored headings) counts as handoff evidence; legacy stays recognized; prose still fails |
+| (b) resolver binding | a bare `resolve-quality-profile.ps1` invocation resolved feature-blind (never consulted feature.json) | defaults the feature from `.specify/feature.json`, fail-open |
+| (c) quality scaffold | the quality/ subtree was Phase-2/contract-gated while the launch contract claims it unconditionally | claimed set emitted unconditionally; `trap-reapplication.md` stays Phase-2-gated |
+
+(c) carried a second mismatch cutting the OTHER way: the launch contract promised
+`Overall Verdict: ready` by default while the generator correctly defaults to `blocked` with
+placeholder rows. A ready-by-default gate would wave hardening through unreviewed — the CLAIM was
+corrected (`scripts/internal/launch-contract.ps1`), the gate was not weakened.
+
+### Routed to beta3, no pre-tag action (maintainer ruling 2026-08-08)
+
+- F9 numeric-label acceptance — vocabulary work.
+- The ceremony-bypassed reviewer-authorization writer (the 3e finding above) — reaffirmed.
+- The composition/priority interleaving — the maintainer-observed instance is recorded with the
+  SC-025 composition row above.
+- The campaign directory-vs-content activation design question — with the iteration-N+1
+  cycle-reset adjacency named by the consequence-graph walk as the same family: activation keyed
+  on directory existence is what this slice's navigator defect and the -012 arrival defect share.
+
+### RELEASE RECORD — the consumer review-touch coverage gap, named not papered
+
+The consumer review-touch on the fixed review-engine bits was NOT obtained: the test
+environment's module quarantine (bit-pinning) made the CLI door unreachable, and the navigator
+door carried the pre-implement defect above until this slice. Coverage claimed instead, at its
+true extent: the frozen article-amplifier round-15 replay plus every self-hosted certification
+run since i009 exercised file-primary delivery, candidate composition, and exclusion honoring on
+the fixed engine. The gap is named here so the tag rests on stated coverage, not implied coverage.
+
+### Dry-run correction: the first fix quieted the PATTERN, not the INSTANCE
+
+Reviewer-verified against scratch reproductions of testbeta3's state: at 01:13:28 the working
+boundary was still **clarify** — before-plan scaffolds the iteration BEFORE any plan sync advances
+the cursor — and cursor=clarify + iteration-present still returned `campaign-applicable`, so the
+standing block returned at the design-analysis retry. The five RED cases had reproduced the
+pattern (a plan/tasks cursor) rather than the journal's exact state; the flip fixture even
+ADVANCED the cursor to plan before scaffolding — modeling the defect as I imagined it, not as it
+happened.
+
+Corrected under the same ruling framework: an instance-pinning RED first (cursor=clarify,
+iteration present, session-scoped feature_path — RED proven, `campaign-packet-gate-failed` where
+quiet was owed), then the quiet window stated as the INVERSION so no future cursor rejoins the
+gap: with an iteration present, the campaign surface is LIVE from `before-implement` onward (plus
+the legacy `implement` alias); every earlier resolved canonical working cursor is quiet
+not-applicable; unresolved cursors stay fail-closed applicable. Suite 32/32.
+
+**Method rule recorded, alongside the fixture-discipline rules this iteration already produced:
+reproduce the INSTANCE first, always — generalize to the class only after the exact observed
+state is pinned red.** A fixture that reproduces the imagined shape of a defect can go green while
+the defect stands.
+
+### Found by the quarantine: two fixtures were green by borrowing the installed module
+
+The maintainer's module quarantine (bit-pinning) removed the installed Specrew modules mid-slice,
+and the full gate promptly went red on the fr066/fr068 fixtures — not from either slice's changes
+(both bisected clean at the file level, and the engine's `boundary-unrecordable` read verified
+correct at HEAD) but because those fixtures' provider children resolved
+`ConversationCaptureAccessor` through the `Get-Module -ListAvailable` fallback: an AMBIENT
+installed 0.39.0 module, not the tree under test. The registry exported `SPECREW_MODULE_PATH`
+only to pester-kind suites; script-kind suites ran bare, so their governed children leaned on
+whatever install happened to exist. With the accessor gone, `$canAssess` stayed false and the
+provider fell silent — the exact silence T089 exists to prevent, produced by the harness instead
+of the product.
+
+Fixed at the harness choke point: the registry runner pins `SPECREW_MODULE_PATH` to the repo for
+every child suite. Both fixtures verified green under the pin. The class lesson is the -012 lesson
+inverted: **the tested path must be the shipped path — including the bits it LOADS.** The
+quarantine was the instrument that caught a borrowed-bits green that had held since the fixtures
+were registered; recorded with credit.
+
+### Verification path to the tag
+
+After this slice: the maintainer resumes testbeta3 (the scaffold is intact — the standing block
+should simply go quiet), then the certify re-run under a fresh reference, then `v0.40.0-beta2`.
+The tag waits on both.
+
+## PRE-TAG SLICE #3 — the certify run's findings (run-f198-beta2-c0c3cda6-certify, verdict `findings`)
+
+The certification of the tag candidate at `c0c3cda6` returned seven validated findings (4 blocking,
+2 major, 1 minor), every one verified at source before acceptance. Maintainer verdict 2026-08-09:
+fix f2/f3/f4/f6/f7 RED-first with instance-pinned cases; record f1 and f5 as residuals.
+
+### Fixed in this slice, instance-pinned RED first (suite `pretag-slice3-certify-findings`)
+
+| Finding | Instance pinned RED | Fix |
+| --- | --- | --- |
+| f2 (blocking) — a pre-rendered matching marker bypassed the stage-evidence refusal | scoped crossing bound to the real tree, evidence checked-and-absent, full packet + matching marker in the transcript → provider emitted NOTHING | the `boundary-evidence-absent` kind keys on `$hasPending` directly, not `$boundaryBlock` — the refusal composes regardless of any marker already rendered |
+| f3 (blocking) — capped refused boundaries were instructed to emit a marker | 4 stops each for evidence-absent and unrecordable (distinct messages — the fire-identity dedup swallows identical re-fires) → cap fallback demanded the exact marker | own advance keys per refused surface; capped degradation texts refuse without naming or demanding any marker |
+| f4 (blocking) — case-insensitive evidence matching over git trees | committed `Review.md` satisfied the `review.md` file-only row (`satisfied=True`) | the tracked-name set is `Ordinal` — matching the medium being read; the probe now reads `satisfied=False, missing=review.md` |
+| f6 (major) — the feature.json fallback bound out-of-project features | absolute and `..`-traversing `feature_directory` values both bound a foreign feature dir | containment, not existence: absolute rejected outright; relative must resolve inside the project root; rejection falls through to unbound |
+| f7 (minor) — the launch contract still claimed a ready gate | `already emits a ready gate` present in the run-hardening-gate row | the row now states the blocked-by-default gate and the fill-then-flip obligation |
+
+The suite's own build re-taught the instance rule twice before it measured anything: the first f2
+fixture landed in the UNVERIFIABLE arm (legacy-unscoped context — the class, not the instance) and
+produced a false pass; the first f3 fixtures re-fired identical messages and were swallowed by the
+fire-identity dedup (863,0,0,0 — silence read as INCONCLUSIVE, not as a pass). Both fixture defects
+were diagnosed from the provider's own journal and corrected before any fix landed.
+
+### Recorded residuals, per the maintainer's verdict
+
+- **f1 (blocking) — bootstrap can convert an unrecorded boundary into authorization.** The
+  known-open FR-066 mint guard, named in the tag basis and carried to beta3; the reviewer's own
+  description cites the workspace record. Release-claim limitation 7 predicted exactly this
+  rediscovery shape — a fresh reviewer re-reports an accepted known defect because the gate has no
+  vocabulary to record the acceptance.
+- **f5 (major) — the atomic writer reports success onto a directory destination.**
+  DRIFT-198-I011-009, already routed to beta3, re-observed unchanged.
+
+## PRE-TAG SLICE #4 — the re-certify's findings (run-f198-beta2-4e7d002c-certify, verdict `findings`)
+
+Five findings: the two expected residuals re-reported exactly as predicted (recorded above), plus
+two new blocking and one new major. Maintainer verdict 2026-08-09: fix the blocking pair RED-first
+through the SHIPPED paths; route the link-escape major to the documented link class.
+
+### Fixed, instance-pinned RED first (suite `pretag-slice4-capture-containment`)
+
+| Finding | Instance pinned RED (shipped path) | Fix |
+| --- | --- | --- |
+| stale-marker-captures-before-refusal (blocking) | marker rendered FIRST, then the human's approval as the prompt-submit message, through the real handover provider, with the scoped crossing's evidence checked-and-absent → capture AUTHORIZED (cursor advanced, entry written) | `Invoke-SpecrewBoundaryVerdictCapture` refuses on a POSITIVE evidence-absent reading — no authorization, stderr WARN, and a journal record carrying the verdict text (`verdict-refused-stage-evidence-absent`) so the human is re-prompted once evidence exists; unreadable state keeps today's behavior (the demand side's fail direction) |
+| feature-path-prefix-false-containment (blocking) | prefix sibling `repo-other` accepted as in-project (`unverifiable=False`); case-distinct leg recorded as not constructible on the case-folding volume and covered on the case-sensitive CI leg | canonical relative containment with a separator boundary (`GetRelativePath` + escape rejection) replaces the case-insensitive string prefix; an escape reads as UNVERIFIABLE, never as a foreign feature |
+
+The in-project control stays verifiable under the fix — the containment change refuses siblings
+without refusing the legitimate shape.
+
+The capture fix surfaced a pre-existing conflation the registry then caught (HookVerdictCapture's
+legitimate contiguous case refused): `Set-SpecrewStageEvidenceGate` set ONE flag —
+`StageEvidenceAbsent` — for both the CHECKED-AND-ABSENT and the UNVERIFIABLE outcomes, because the
+demand side suppresses on both and the distinction never previously mattered downstream. For
+capture it is everything: refusing on an unverifiable read (the legacy-unscoped branch is
+unverifiable by shape — no bound tree id) would drop legitimate verdicts on a component hiccup,
+the exact loss T090's design forbids. The three-outcome distinction now travels
+(`StageEvidenceUnverifiable` beside the absent flag; demand behavior unchanged), and capture
+refuses only checked-and-absent. The HookVerdictCapture fixtures also now commit each crossing's
+stage evidence — the pre-ruling builder constructed crossings whose evidence never existed, which
+the ratified contract no longer reads as legitimate.
+
+### Routed to the documented link class, per the same verdict
+
+**quality-profile-link-escape (major)**: the slice-3 containment fix is lexical, so a directory
+link inside the project can still bind a foreign feature's planning inputs. Routed to release-claim
+limitations 1/3's link family with a claim sentence added — link-hardening is beta3, the quality
+profile is planning input rather than authorization integrity, and pretending link coverage shipped
+is what the claim exists to prevent.
+
+## THE THIRD CERTIFY TERMINAL — adjudicated by the maintainer's trajectory ruling (2026-08-09)
+
+`run-f198-beta2-0fa26271-certify`: verdict `findings`, completion `complete`, currentness
+`current`, digest `4928a36f`, five findings. The maintainer's trajectory rule — a third new layer
+in the capture-order or containment classes stops even at major, because that pattern means the
+class needs a beta3 DESIGN OWNER, not another patch — fired on both new blockings. **Ruling:
+proceed on this terminal, no fourth certify; both classes move to beta3 design owners; the closure
+is records-only.**
+
+### The five findings, with their adjudicated dispositions
+
+| Finding | Severity | Disposition (this ruling) |
+| --- | --- | --- |
+| bootstrap-mints-authorization | blocking | EXPECTED RESIDUAL — the known-open FR-066 mint guard named in the tag basis (limitation 7's predicted rediscovery, third consecutive re-report) |
+| atomic-write-directory-success | major | EXPECTED RESIDUAL — DRIFT-198-I011-009, beta3-routed, third consecutive re-report |
+| quality-profile-link-escape | major | ROUTED — re-reported against the documented link class (claim limitation 3's family), as the prior ruling directed |
+| unverifiable-evidence-authorizes | blocking | BETA3 DESIGN OWNER — capture-order class, claim limitation 12 |
+| relative-path-os-case-bypass | blocking | BETA3 DESIGN OWNER — containment class, claim limitation 13 |
+
+### The four-layer histories — the design-owner rationale
+
+**Capture-order class** (each layer found by the certification lineage after the previous layer's
+patch): (1) a pre-rendered marker bypassed the provider's evidence refusal via `$boundaryBlock`
+(slice #3 f2); (2) the block-cap fallback demanded markers for refused boundaries (slice #3 f3);
+(3) capture ran before the refusal and authorized evidence-less crossings on prompt-submit
+(slice #4); (4) the checked-and-absent-only guard leaves every UNVERIFIABLE state authorizable.
+Four layers in one lineage is the pattern the trajectory rule exists for: the design question —
+*authority advances only on positively verified evidence* — is a capture-pipeline ordering
+redesign, and patching layer four would predictably mint layer five.
+
+**Containment class**: (1) a case-insensitive separator-less string prefix accepted prefix and
+case siblings (slice #4); (2) git-tree evidence matching folded case over case-sensitive trees
+(slice #3 f4); (3) lexical containment followed directory links (routed to the link class); (4)
+`GetRelativePath` compares with the PLATFORM default, not the volume — the fix's own comment
+claimed volume-correctness it does not have, on the exact axis (volume-derived case semantics)
+this release's path-identity primitive exists for. The design owner routes ALL containment through
+that primitive instead of per-site checks.
+
+### Tag-basis proof obligation
+
+The ruling's guard: the release record must show `git diff 0fa26271..<tag basis>` is
+DOCUMENTATION-ONLY. If any closure commit touches a non-documentation file, the sequence STOPS and
+a fourth certify becomes mandatory.
+
+**PROVEN, measured at closure**: `git diff --stat 0fa26271..311e9506` touches exactly three
+files — `docs/release-notes-v0.40.0-beta2.md`, `specs/198-beta2-hardening/beta2-release-claim.md`,
+and this drift log — 91 insertions, all documentation. This proof-recording commit is itself a
+drift-log-only edit, preserving the property. The tag basis is the merge commit of this branch
+head into `main`; a merge commit introduces no tree changes beyond the branch, so the
+documentation-only property carries to the tag.

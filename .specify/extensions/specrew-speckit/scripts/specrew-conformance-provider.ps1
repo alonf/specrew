@@ -984,7 +984,13 @@ try {
     $materialBlock = $materialInitialBlock -or $materialRetryBlock
     # FR-068 (T090): stage-evidence absence PRE-EMPTS the ordinary boundary block, so the demand and
     # its marker instruction are never composed. It deliberately does NOT clear $hasPending.
-    $blockKind = if ($boundaryBlock -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
+    # certify f2 (run-f198-beta2-c0c3cda6-certify): the evidence-absent refusal must NOT be
+    # defeated by a pre-rendered marker. Keying the first arm on $boundaryBlock let
+    # StageEvidenceAbsent=true plus a guessed/stale matching marker fall through to 'none' — no
+    # refusal composed, and the stale marker could feed verdict capture. The refusal now keys on
+    # $hasPending directly: while the stage owes evidence it has not produced, the missing-evidence
+    # block composes regardless of any marker already in the transcript.
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1065,6 +1071,14 @@ try {
         $conflict = $workshopQuestion.binding_conflict
         ("workshop-conflict|{0}|{1}|{2}|{3}" -f [string]$workshopQuestion.feature_ref, [string]$conflict.binding, [string]$conflict.prior_value, [string]$conflict.value)
     }
+    # certify f3: boundary-evidence-absent and boundary-unrecordable get their OWN advance keys so
+    # the cap tracks each refused surface distinctly instead of pooling them under 'na'.
+    elseif ($blockKind -eq 'boundary-evidence-absent' -and $null -ne $pending) {
+        ("evidence-absent|{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary)
+    }
+    elseif ($blockKind -eq 'boundary-unrecordable' -and $null -ne $pending) {
+        ("unrecordable|{0}" -f [string]$pending.WorkingBoundary)
+    }
     else { 'na' }
 
     if ($stopIntentContinue) {
@@ -1085,7 +1099,7 @@ try {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
             $cappedKind = $blockKind
-            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } else { 'verdict marker' }
+            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } else { 'verdict marker' }
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
@@ -1168,6 +1182,15 @@ try {
         if ($capped) {
             if ($cappedKind -eq 'material') {
                 $corrections.Add('[specrew-conformance] MATERIAL-WORK STOP packet still missing (FR-015) - render the five-part context packet with file:/// references before handing control back.') | Out-Null
+            }
+            # certify f3: a REFUSED boundary must never be instructed to emit a marker, capped or
+            # not — for missing evidence that reintroduces the marker FR-068 suppresses, and for an
+            # unrecordable crossing it invents a marker for a crossing that does not exist (FR-066).
+            elseif ($cappedKind -eq 'boundary-evidence-absent') {
+                $corrections.Add('[specrew-conformance] STAGE EVIDENCE still missing (FR-068) - do NOT render approval options and do NOT include any boundary approval comment; there is nothing to approve until the stage produces its evidence in the bound tree. Produce the missing artifacts, commit them, re-run the boundary sync, then stop again.') | Out-Null
+            }
+            elseif ($cappedKind -eq 'boundary-unrecordable') {
+                $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE (FR-066) - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
             }
             else {
                 $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong (FR-011/FR-015) - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
