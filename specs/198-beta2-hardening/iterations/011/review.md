@@ -2,6 +2,7 @@
 
 **Schema**: v1
 **Reviewed**: 2026-08-06
+**Updated**: 2026-08-10 — the T067 published-bits record folded into its reserved slot; closure-position addendum added
 **Overall Verdict**: needs-rework
 **Feature**: 198-beta2-hardening
 **Phase**: review — **NOT concluded at iteration-closeout**; see "Why this iteration does not close"
@@ -39,6 +40,7 @@ verification and capped certification*; certification was attempted to the cap a
 | T091 | FR-068 | needs-work | Deferred to beta3's hook-machinery cluster by recorded human decision (2026-08-03, `.squad\decisions.md`). SC-025's composition clause is scoped out by name, not left uncovered. |
 | T093 | FR-018 | needs-work | Deferred to beta3's first row when T090's re-estimate fired the pre-agreed relief valve. |
 | T092 | FR-066, FR-068, FR-018 | needs-work | Verification PASS (90/90). **Certification NOT ACHIEVED** across the full 3-round cap. FR-066's mint guard was attempted twice, faulted twice, and reverted. |
+| T067 | SC-014, NFR-002 | pass | Published-bits consumer validation concluded 2026-08-10: Gallery install (no pinning), full governed lifecycle on a blind consumer project, six boundary verdicts faithfully captured, build + signoff with recorded residuals through the identity-bound disposition route. Retro/iteration-closeout not exercised — recorded coverage gap. Findings consolidated in the beta3 carry ledger; validate-not-promote boundary held (no stable promotion). |
 
 ## Gap Ledger
 
@@ -65,6 +67,15 @@ at which point FR-066 is whole and T092's certification claim can be re-made aga
 it. Until then the iteration is honestly open, and **the beta2 tag proceeds on the named-limitation
 basis, which never claimed 011's certification.**
 
+**Closure position addendum (2026-08-10)**: the trigger above predates the release and the
+beta3/beta4 split ruling (2026-08-09), which moved the FR-066 mint-guard design spike into
+beta4's tail — under that split the trigger would hold 011 open across two whole betas. With the
+T067 record complete, the maintainer directed that the iteration-closeout crossing be presented
+on this record: T092 stays `needs-work`/`deferred` exactly as written — no word is bent — the
+mint-guard debt carries in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta3-carry-ledger.md, and the
+human verdict at that crossing is the ruling of record that supersedes the trigger.
+
 ## Release Certification — the beta2 tag lineage (2026-08-09)
 
 Three consecutive independent certification rounds (codex, file-primary, independent of the code
@@ -87,13 +98,46 @@ log and on PR #3318. The expected residuals across all three rounds are the two 
 this iteration's record already carries: the FR-066 mint guard (limitation 7's predicted
 rediscovery, three consecutive re-reports) and DRIFT-198-I011-009 (the atomic writer).
 
-## Pending evidence — T067 (completes this review; closure waits on it)
+## T067 — published-bits consumer validation (recorded 2026-08-10; the dogfood evidence)
 
-**PENDING.** Consumer validation on the PUBLISHED bits: install `Specrew 0.40.0-beta2` from the
-PowerShell Gallery (no pinning, no module-path override — the real consumer path), exercise the
-governed lifecycle, and record the result here. This slot is deliberately explicit: the review of
-the release is not complete until the published package — not the repository tree — has been
-exercised by a consumer. The iteration-closeout crossing re-mints only after this slot is filled.
+**RECORDED — this is the slot reserved above, now filled.** `Specrew 0.40.0-beta2` was installed
+from the PowerShell Gallery (no pinning, no module-path override) and the governed lifecycle was
+exercised end to end on a blind consumer project at file:///C:/Temp/t067-linkcheck/ (frozen
+evidence, mechanically archived — hash table in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/state.md).
+
+- **Install, the real consumer path**: the default corporate `-Scope CurrentUser` location under
+  OneDrive Known Folder Move was refused by the review engine's integrity check
+  (cloud-placeholder reparse points); the run proceeded on a byte-identical local copy with
+  hashes verified (carry-ledger T067-F1). The refusal is the shipped reparse posture working;
+  the unusable default path is the finding.
+- **Six boundary verdicts faithfully captured** across the lifecycle — hook-captured verbatim
+  where the crossing existed, the design-analysis decision transcribed with disclosure (the
+  documented limitation-10 path), and the signoff verdict through the identity-bound disposition
+  route. No marker invention anywhere.
+- **The product was built and signed off with recorded residuals**: the implement phase ran
+  end-to-end clean on published bits (nine tasks, a boundary commit each, 212 tests at
+  warnings-as-errors, live-external dogfood exit 0); the bounded verification run
+  (`run-review-signoff-10`) re-raised zero of 35 prior findings, and its three new findings were
+  accepted through `override-block --ack-reason` → `boundary-human-disposition` — the
+  residual-acceptance vocabulary works end to end on published bits.
+- **The tag basis held on published bits**: the FR-068 stage-evidence gate refused an
+  evidence-less crossing live (no approval options, no marker, recovery named — "produce,
+  COMMIT, stop again so the crossing rebinds"), and the sync ratchet cleanly refused a duplicate
+  boundary sync. None of the run's findings regresses the authorization-integrity basis the tag
+  gates on.
+- **Coverage gap, recorded**: retro and iteration-closeout were NOT exercised on the consumer
+  project — the run ended at review-signoff with the product signed off.
+- **Findings**: eight findings (T067-F1..F8; headline F8 — the campaign has review quality but
+  no review economics, with the settled pause/decision-surface design and instrument panel) and
+  eight observations (obs-1..obs-8), all NEW — none among the release's twelve known issues —
+  consolidated with the maintainer's beta3/beta4 split ruling in
+  file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta3-carry-ledger.md.
+
+Task verdict: **pass** — T067's deliverable was to exercise the published package on the real
+consumer path and record the result faithfully; both halves are done. The findings are product
+findings recorded against beta3/beta4, not failures of this task, and the validate-not-promote
+boundary held: no stable promotion occurred or is implied by this record.
 
 ## Notes
 

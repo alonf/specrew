@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "198-beta2-hardening"
 iteration: "011"
-updated_at: "2026-08-09T01:05:00.0000000Z"
+updated_at: "2026-08-09T22:04:13.0000000Z"
 tasks:
   T086:
     title: "FR-068 reproduction harness — reproduce BOTH halves of the 2026-07-25T17:40:45Z shape"
@@ -53,7 +53,7 @@ tasks:
     blocked_reason: ""
   T067:
     title: "Consumer validation on PUBLISHED bits — install 0.40.0-beta2 from the Gallery (no pinning), exercise the real consumer path, record the result into review.md and quality/hardening-gate.md"
-    status: "planned"
+    status: "done"
     started_at: ""
-    completed_at: ""
+    completed_at: "2026-08-09T22:04:13.0000000Z"
     blocked_reason: ""

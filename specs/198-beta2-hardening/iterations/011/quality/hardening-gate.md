@@ -66,9 +66,23 @@ each RED-first through the shipped paths:
 The gate's verdict stays `deferred-with-approval` under the same approval reference; this addendum
 changes the evidence inventory, not the posture's honesty.
 
-## Pending evidence — T067 (completes this gate; closure waits on it)
+## T067 — published-bits evidence (recorded 2026-08-10; completes this gate)
 
-**PENDING.** The published-bits consumer validation: `Specrew 0.40.0-beta2` installed from the
-Gallery with no pinning, the governed lifecycle exercised on the real consumer path, and the
-outcome recorded here. Until this slot is filled, the gate's evidence is repository-tree evidence
-only — the exact distinction T067 exists to close.
+**RECORDED.** `Specrew 0.40.0-beta2` was installed from the PowerShell Gallery with no pinning;
+the default OneDrive-placed `CurrentUser` path was refused by the review engine's integrity check
+(cloud-placeholder reparse points) and the run proceeded on a byte-identical, hash-verified local
+copy (carry-ledger T067-F1). The governed lifecycle ran end to end on a blind consumer project at
+file:///C:/Temp/t067-linkcheck/: six boundary verdicts faithfully captured, the implement phase
+clean on published bits (nine tasks, a boundary commit each, 212 tests at warnings-as-errors),
+review-signoff reached through the identity-bound disposition route with recorded residuals.
+Retro and iteration-closeout were not exercised — a recorded coverage gap. **The gate's evidence
+is no longer repository-tree-only: the published package has been exercised by a consumer**,
+which is the distinction this slot existed to close.
+
+The run's eight findings and eight observations (consolidated in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta3-carry-ledger.md) are
+consumer-experience and engine-economics classes, all new; none regresses the tag's
+authorization-integrity basis. The `security-surface` deferral above is unchanged by the run:
+the FR-068 stage-evidence refusal held live against an evidence-less crossing, and no
+consumer-reachable authorization failure appeared. **Posture unchanged — `deferred-with-approval`
+under the same approval reference.** This entry completes the gate's evidence inventory.

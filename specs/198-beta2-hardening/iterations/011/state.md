@@ -8,18 +8,18 @@ same day** when the release gate (`validate-governance.ps1 -IncludeClosed`) reje
 `over-claim`: the status claimed closure while `review.md` and `quality/hardening-gate.md` did not exist.
 The verdict was real; the artifacts were not. **The status was reversed rather than the evidence
 backfilled under it**, so the record never shows closure preceding its evidence.
-**Last Completed Task**: T090 (T092 ran to its cap and is terminal as `deferred`)
-**Tasks Remaining**: T067 — consumer validation on published bits (the single open task; closure waits on it)
+**Last Completed Task**: T067 — the published-bits consumer validation (concluded 2026-08-10)
+**Tasks Remaining**: (none — T091/T093 deferred to beta3 by recorded decision; T092 terminal `deferred` at its cap)
 **In Progress**: (none)
 **Baseline Ref**: d7f27f6a
-**Updated**: 2026-08-09T01:05:00.0000000Z
+**Updated**: 2026-08-09T22:04:13.0000000Z
 
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Execution is in progress.
-- Task progress: 5 complete, 0 in-progress, 3 pending, 0 blocked.
-- Latest completed task: T090
+- Execution is complete; the iteration awaits its closeout crossing.
+- Task progress: 6 complete, 0 in-progress, 3 deferred (beta3), 0 blocked.
+- Latest completed task: T067
 <!-- specrew:task-progress-summary:end -->
 
 | Task | Status | Evidence |
@@ -32,6 +32,7 @@ backfilled under it**, so the record never shows closure preceding its evidence.
 | T091 | deferred | Composition half → beta3 hook-machinery cluster |
 | T093 | deferred | Relief valve fired at T090's re-estimate → beta3 first row |
 | T092 | deferred (ran to the cap; did NOT certify) | 3 of 3 rounds spent. R1: 4 findings. R2: validated findings 1/3/4, 1 blocking on the finding-2 fix. R3 (current digest): 1 blocking + 1 major. Finding-2 attempts reverted per the pre-committed ruling; gate green 90/90 |
+| T067 | done | Published-bits consumer validation, concluded 2026-08-10: Gallery install (no pinning), full governed lifecycle on a blind consumer project, six boundary verdicts faithfully captured, product built and signed off with recorded residuals. Retro/iteration-closeout not exercised — recorded coverage gap. Findings consolidated in the beta3 carry ledger |
 
 ## Delivery Position — FR-066 PARTIAL, FR-068 evidence half DELIVERED
 
@@ -78,10 +79,18 @@ reviewed history. Certification lineage: `run-f198-beta2-c0c3cda6-certify`,
 maintainer's trajectory ruling (two expected residuals; one link-class routing; two beta3 design
 owners, release-claim limitations 12/13).
 
-**T067 is the single remaining open task**: install `0.40.0-beta2` from the Gallery (no pinning),
-exercise the real consumer path, record the result into the prepared `review.md` and
-`quality/hardening-gate.md` pending-evidence slots. The iteration-closeout crossing re-mints only
-after that record exists.
+**T067 COMPLETE (2026-08-10)** — the published-bits consumer validation concluded: `0.40.0-beta2`
+installed from the Gallery (no pinning; the OneDrive cloud-placeholder refusal met the documented
+workaround — byte-identical local copy, hashes verified), the full governed lifecycle exercised on
+a blind consumer project at file:///C:/Temp/t067-linkcheck/, six boundary verdicts faithfully
+captured, the product built and signed off with recorded residuals through the identity-bound
+disposition route. Retro and iteration-closeout were NOT exercised there — a recorded coverage
+gap. Eight findings (T067-F1..F8) and eight observations — all NEW, none among the release's
+twelve known issues, none regressing the tag's authorization-integrity basis — are consolidated
+with the maintainer's beta3/beta4 split ruling in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta3-carry-ledger.md. The full
+outcome record fills the pending-evidence slots this paragraph reserved in `review.md` and
+`quality/hardening-gate.md`.
 
 ## Closure Trigger — why 011 is honestly OPEN
 
@@ -100,6 +109,33 @@ carries it.
 **The beta2 tag proceeds with 011 honestly open.** The named-limitation basis never claimed 011's
 certification, so nothing downstream depends on this closure. An open iteration with true artifacts beats
 a closed one with false words.
+
+### Closure position addendum (2026-08-10) — T067 complete; maintainer-directed closeout crossing
+
+The trigger above was written 2026-08-06, before the release and before the beta3/beta4 split
+ruling (2026-08-09) moved the FR-066 mint-guard design spike into beta4's small-fix tail — under
+that split, the recorded trigger would hold 011 open across two whole betas. With the T067 record
+complete (the last pending-evidence slot filled), the maintainer directed on 2026-08-10 that the
+iteration-closeout crossing be presented on this record: T092 remains `needs-rework`/`deferred`
+exactly as recorded — no word is bent — the mint-guard debt carries in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/beta3-carry-ledger.md, and the
+human verdict at that crossing is the ruling of record that supersedes the trigger.
+
+### Evidence mechanical freeze (2026-08-10)
+
+Policy-freeze became mechanical-freeze (carry-ledger item G): both frozen evidence directories are
+archived as read-only zips, zip entry counts verified equal to source file counts, SHA-256
+recorded here as the tamper-evidence.
+
+| Source (frozen) | Archive (read-only) | SHA-256 | Size | Entries |
+| --- | --- | --- | --- | --- |
+| file:///C:/Temp/testbeta3-842854746/ | file:///C:/Temp/testbeta3-842854746-frozen-20260810.zip | `8FB791F895C3A3172E7E8340041316F74E776E522E0439EC7B63D49175CFF151` | 4,411,777 B | 1,646 = source |
+| file:///C:/Temp/t067-linkcheck/ | file:///C:/Temp/t067-linkcheck-frozen-20260810.zip | `F6B737B5AEACFA983F84072CF3835A3D30ED1BC52F85DFC76AC66B79E4B78713` | 10,596,204 B | 2,936 = source |
+
+`testbeta3-842854746` carries its recorded integrity annotation (accidental resumed session
+`659f661d` touched four files 2026-08-09 00:00–00:48; the canonical record is unaffected and the
+exact delta is recoverable from that session's transcript — carry-ledger item G). The archive
+freezes the directory as-is, annotation and all.
 
 ### Superseded closure attempt (retained for the record)
 
