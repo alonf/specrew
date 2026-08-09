@@ -284,3 +284,11 @@ narrower and truthful claim, and it is the claim the evidence supports.
 - Final round: `run-f198-i009-3d74f123-final`, digest `85bdfe01`, containment verified, validation
   valid, currentness current, completion complete, both controller verification commands green,
   `can_approve_current: false`.
+- Beta2 tag certification: `run-f198-beta2-0fa26271-certify` (digest `4928a36f`), adjudicated
+  2026-08-09 under the maintainer's trajectory ruling. **Measured tag-basis statement, correcting
+  the pre-merge phrasing**: `git diff 0fa26271..67a5d7bc` (certified head → tag commit
+  `v0.40.0-beta2`) is 15 files — the three documentation-only closure commits plus proposals,
+  methodology documents, and the repository-governance record carried by `main`'s own reviewed
+  history — **zero code files**; no engine, script, or test file differs between the certified
+  head and the tag. The copy of this document pinned at the tag, and the release-notes Review
+  Proof there, predate this correction.
