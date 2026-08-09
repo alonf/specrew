@@ -1876,4 +1876,11 @@ that primitive instead of per-site checks.
 
 The ruling's guard: the release record must show `git diff 0fa26271..<tag basis>` is
 DOCUMENTATION-ONLY. If any closure commit touches a non-documentation file, the sequence STOPS and
-a fourth certify becomes mandatory. The diff is recorded with the Review Proof commit below.
+a fourth certify becomes mandatory.
+
+**PROVEN, measured at closure**: `git diff --stat 0fa26271..311e9506` touches exactly three
+files — `docs/release-notes-v0.40.0-beta2.md`, `specs/198-beta2-hardening/beta2-release-claim.md`,
+and this drift log — 91 insertions, all documentation. This proof-recording commit is itself a
+drift-log-only edit, preserving the property. The tag basis is the merge commit of this branch
+head into `main`; a merge commit introduces no tree changes beyond the branch, so the
+documentation-only property carries to the tag.
