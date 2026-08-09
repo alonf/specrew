@@ -39,7 +39,13 @@ maintainer's 2026-08-09 trajectory ruling: two long-known documented residuals, 
 against the documented link limitation, and two routed to beta3 design owners as release-claim
 limitations 12 and 13. Findings from the two prior rounds (`run-f198-beta2-c0c3cda6-certify`,
 `run-f198-beta2-4e7d002c-certify`) were fixed in-tree with instance-pinned regression suites
-before this terminal. The tree from `0fa26271` to the tag basis differs by documentation only.
+before this terminal. The tree from certified head `0fa26271` to tag commit `67a5d7bc` differs by
+15 files, zero of them code — all documentation plus the repository-governance record
+(`.specrew/repository-governance.yml`) carried by the merge target's own reviewed history.
+
+*Correction, 2026-08-10: the sentence above is the measured statement, transcribed from the
+post-merge measurement recorded on PR #3318. The copy of these notes pinned at tag
+`v0.40.0-beta2` predates the correction and reads "differs by documentation only".*
 
 ## Known issues in this beta
 
