@@ -28888,3 +28888,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   (Overall Verdict + Task Verdicts + the T067 record);
   file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/011/state.md (closure
   addendum + closeout notes); the hook-captured verdict in `.specrew/start-context.json` verdict_history.
+
+## 2026-08-09T23:20:47Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 011
+- **Task ID**: (none)
+- **Auth Commit Hash**: 17c218cb6cd2b84f4b660dc525f23c3af827c63f
+- **Recorded At**: 2026-08-09T23:20:46Z
