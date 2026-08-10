@@ -1,4 +1,4 @@
-# Drift Log: Iteration 001
+﻿# Drift Log: Iteration 001
 
 **Schema**: v1
 
@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 18 (DRIFT-199-I001-001 through -018)
+**Total drift events**: 19 (DRIFT-199-I001-001 through -019)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -488,6 +488,36 @@ The invariant that actually matters is the one the 1200-versus-900 defect violat
 (DRIFT-199-I001-012): the **SUM of ceilings must fit inside the round window**, or a slow day dies at
 the window with a sealed failure. Currently 600 s of 900 — satisfied, with the class-guard lane
 measured at 10.3 s against its 120 s ceiling.
+
+### DRIFT-199-I001-019 — `hooks status` reported a drifted wiring as installed (resolved)
+
+- **Observed**: 2026-08-10 (the live diagnosis T004 names), reproduced as a fixture before the fix. On
+  an EVENT-MAP host, `Get-SpecrewHooksStatus` asked one question — "is the dispatcher mentioned
+  anywhere in this file?" A settings file registering Specrew for `SessionStart` and `Stop`, written
+  before the manifest grew `UserPromptSubmit` and `PostToolUse`, answered YES. Measured against the
+  pre-fix probe:
+
+  > `drifted config reported 'installed'` (detail: `dispatcher via manifest project placeholder (cwd-robust)`)
+
+- **Cause**: event names were folded into the required-token set only for `named-definition` config
+  shapes. Event-map hosts — Claude among them — never had their registered events checked at all.
+- **Why it matters more than an inaccurate status line**: verdict capture rides `UserPromptSubmit`. A
+  drifted config silently downgrades capture to the Stop path alone, and the consumer sees a green
+  status while a verdict goes unwritten. The surface whose job is to report wiring reported the
+  wiring it was not checking.
+- **What was NOT broken, stated so the fix is not over-claimed**: DEPLOY already reconciled. Its
+  assertion passes against the pre-fix tree too, because the deploy strips Specrew entries and
+  re-appends every manifest-declared event. The defect was entirely in the status surface.
+- **Resolution**: FIXED. Registered events are now checked STRUCTURALLY per event, and a config that
+  is wired but incomplete reports `stale` — already the "run install" state — with the missing events
+  NAMED, so the consumer sees what was not firing rather than being told to re-run and hope.
+  Structural rather than a search for the event NAME on purpose: a user's own unrelated hook on that
+  event would satisfy a name search and report wired while Specrew is absent. The fixture pins exactly
+  that case. One shared inspection helper now serves the whole-file and per-event probes, including
+  `-EncodedCommand` payloads, so the two cannot disagree about what a Specrew entry is.
+- **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
+  nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
+  and `stopblock-deployed-binding`.
 
 ### Measured proof line — T003's two-governor fix, transcribed from a live stop (2026-08-10)
 

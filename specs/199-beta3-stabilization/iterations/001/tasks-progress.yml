@@ -1,4 +1,4 @@
-schema: "v1"
+﻿schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "001"
 updated_at: "2026-08-10T11:17:45.2208530Z"
@@ -23,9 +23,9 @@ tasks:
     blocked_reason: ""
   T004:
     title: "Verdict capture contract + wiring reconciliation"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "complete"
+    started_at: "2026-08-10"
+    completed_at: "2026-08-10"
     blocked_reason: ""
   T005:
     title: "Verdict-goal reviewer prompt contract"

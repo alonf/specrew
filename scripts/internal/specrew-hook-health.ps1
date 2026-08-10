@@ -135,6 +135,65 @@ function Get-SpecrewHostOptOutMarkerPath {
     return (Resolve-SpecrewHookHealthPath -PathFromManifest ([string](Get-ManifestValue -Map $bindings -Key 'OptOutMarkerFile')) -ProjectPath $ProjectPath -UserHome $resolvedUserHome)
 }
 
+function Get-SpecrewHookInspectionText {
+    # ONE definition of "the searchable text of a hook config or one of its subtrees", so the whole-file
+    # ownership probe and the per-event coverage probe below can never disagree about what counts as a
+    # Specrew entry. A launcher registration can carry its payload as `-EncodedCommand <base64>`, so a
+    # probe that reads only the literal text would miss every encoded host and report drift that is not
+    # there - or, worse, miss drift that is.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][AllowNull()]$Value)
+
+    if ($null -eq $Value) { return '' }
+    $text = if ($Value -is [string]) { [string]$Value } else { $Value | ConvertTo-Json -Depth 16 }
+    if ([string]::IsNullOrWhiteSpace($text)) { return '' }
+    $decoded = New-Object System.Collections.Generic.List[string]
+    foreach ($match in [regex]::Matches($text, '(?i)(?:^|\s)-EncodedCommand\s+([A-Za-z0-9+/=]+)')) {
+        try { $decoded.Add([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($match.Groups[1].Value))) | Out-Null }
+        catch { $null = $_ }
+    }
+    return ($text + "`n" + ($decoded.ToArray() -join "`n"))
+}
+
+function Get-SpecrewHookMissingEventRegistrations {
+    # T004 / FR-010 - THE WIRING-DRIFT CHECK, and the gap it closes was diagnosed live on 2026-08-10.
+    #
+    # Event names were folded into the required-token set only for `named-definition` config shapes. On an
+    # EVENT-MAP host (Claude) the probe asked one question - "is the dispatcher mentioned anywhere in this
+    # file?" - and a file registering Specrew for SessionStart and Stop answered yes even after the manifest
+    # grew UserPromptSubmit. `specrew hooks status` reported `installed` while a newly registered event was
+    # not wired at all, which is precisely the condition a status surface exists to catch: the config was
+    # written by an older Specrew and nothing told the consumer it had drifted.
+    #
+    # Checked STRUCTURALLY, per event, rather than by searching the whole file for the event NAME: a user's
+    # own unrelated hook on that event would satisfy a name search and report wired when Specrew is absent.
+    # Returns the declared events that have NO Specrew-owned entry; empty means fully wired.
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory)][AllowNull()]$ParsedConfig,
+        [Parameter(Mandatory)][AllowNull()]$Bindings
+    )
+
+    $missing = New-Object System.Collections.Generic.List[string]
+    if ($null -eq $ParsedConfig -or $null -eq $Bindings) { return $missing.ToArray() }
+    $eventMap = $null
+    if ($ParsedConfig.PSObject.Properties['hooks'] -and $null -ne $ParsedConfig.hooks -and -not ($ParsedConfig.hooks -is [System.Array])) {
+        $eventMap = $ParsedConfig.hooks
+    }
+
+    foreach ($registration in @(Get-ManifestValue -Map $Bindings -Key 'Registrations')) {
+        $eventName = [string](Get-ManifestValue -Map $registration -Key 'Event')
+        if ([string]::IsNullOrWhiteSpace($eventName)) { continue }
+        $entry = $null
+        if ($null -ne $eventMap -and $eventMap.PSObject.Properties[$eventName]) { $entry = $eventMap.PSObject.Properties[$eventName].Value }
+        $entryText = Get-SpecrewHookInspectionText -Value $entry
+        if (-not ($entryText.Contains('specrew-hook-dispatcher.ps1') -or $entryText.Contains('specrew-hook-launch.ps1'))) {
+            $missing.Add($eventName) | Out-Null
+        }
+    }
+    return $missing.ToArray()
+}
+
 function Get-SpecrewHooksStatus {
     # Per hook-capable host: installed | missing | stale | opted-out | failed. Fail-open (never throws).
     # State precedence: opted-out (marker present) > missing (no config file) > failed (config unparsable) >
@@ -173,19 +232,13 @@ function Get-SpecrewHooksStatus {
             }
             else {
                 $parseOk = $true
-                try { $null = $raw | ConvertFrom-Json } catch { $parseOk = $false }
+                $parsedConfig = $null
+                try { $parsedConfig = $raw | ConvertFrom-Json } catch { $parseOk = $false }
                 if (-not $parseOk) {
                     $state = 'failed'; $detail = 'config is not valid JSON (left untouched; specrew hooks cannot repair a hand-broken file)'
                 }
                 else {
-                    $decodedCommands = New-Object System.Collections.Generic.List[string]
-                    foreach ($match in [regex]::Matches($raw, '(?i)(?:^|\s)-EncodedCommand\s+([A-Za-z0-9+/=]+)')) {
-                        try {
-                            $decodedCommands.Add([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($match.Groups[1].Value))) | Out-Null
-                        }
-                        catch { $null = $_ }
-                    }
-                    $inspectionText = $raw + "`n" + ($decodedCommands.ToArray() -join "`n")
+                    $inspectionText = Get-SpecrewHookInspectionText -Value $raw
                     $hasDispatcher = $inspectionText.Contains('specrew-hook-dispatcher.ps1')
                     $hasLauncher = $inspectionText.Contains('specrew-hook-launch.ps1')
                     $bindings = Get-SpecrewHookHealthBindings -HostKind $hostKind
@@ -218,7 +271,22 @@ function Get-SpecrewHooksStatus {
 
                     if ($state -ne 'failed') {
                         $missingRequired = @($requiredTokens.ToArray() | Where-Object { -not $inspectionText.Contains($_) })
-                        if ($missingRequired.Count -eq 0 -and $requiredTokens.Count -gt 0) {
+                        # Wiring drift: every event the manifest REGISTERS must actually carry a Specrew entry.
+                        # Only event-map shapes need this extra pass - named-definition shapes already fold their
+                        # event names into $requiredTokens above, and their events live inside one owned block.
+                        $missingEvents = @()
+                        if ($configShape -eq 'event-map') {
+                            $missingEvents = @(Get-SpecrewHookMissingEventRegistrations -ParsedConfig $parsedConfig -Bindings $bindings)
+                        }
+                        if ($missingRequired.Count -eq 0 -and $requiredTokens.Count -gt 0 -and $missingEvents.Count -gt 0) {
+                            # The dispatcher IS wired, just not for everything the manifest now registers - the
+                            # exact shape a config written by an older Specrew takes. Reported as `stale`, which
+                            # is already the "run install" state, and the missing events are NAMED so the
+                            # consumer can see what was not firing rather than being told to re-run and hope.
+                            $state = 'stale'
+                            $detail = ("Specrew is wired, but these registered events have no Specrew entry: {0} (run: specrew hooks install --host {1})" -f (@($missingEvents) -join ', '), $hostKind)
+                        }
+                        elseif ($missingRequired.Count -eq 0 -and $requiredTokens.Count -gt 0) {
                             $state = 'installed'
                             if ($commandMode -eq 'project-placeholder') {
                                 $detail = 'dispatcher via manifest project placeholder (cwd-robust)'
