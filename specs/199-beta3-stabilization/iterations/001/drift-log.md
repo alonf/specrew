@@ -476,6 +476,46 @@ then released, with the failure reason recorded. Stated as a measurement, not a 
 about F4 generally — T008's RED fixture must therefore pin the specific failure classes
 that do NOT release, rather than assume every infrastructure failure charges a round.
 
+### THE BRANCH TEST BASELINE IS SEVENTEEN (restated 2026-08-10 by maintainer ruling)
+
+A future measurement reading 17 must not treat it as a fresh regression. The branch baseline is:
+
+> **16 inherited failures at `acbb4366`** (named individually below) **+ 1 T109 flush-race
+> analyzer failure**, firing on a preserved real signature dispositioned to beta4.
+> Measured total on this branch: **17 failed / 989 passed** across
+> `tests/continuous-co-review/unit`.
+
+**Rule recorded with it — a detector that goes green because its evidence was deleted has not
+been fixed.** The T109 analyzer reads machine-local journal state
+(`.specrew/runtime/conformance-journal.jsonl`). If that corpus rolls over, the test passes again
+while the defect is untouched. The DURABLE evidence is the verbatim signature captured below, and
+that is what beta4 inherits. A later green is not resolution.
+
+### Flush-race routing ruling (maintainer, 2026-08-10) — beta4
+
+DRIFT-199-I001-015 routes to beta4. Reasoning recorded so the routing stays honest:
+
+- **Not a wedge.** A spurious packet block costs one extra turn and then passes. That is what
+  separates it from every defect ruled in scope today, each of which made a state unreachable or
+  a requirement false.
+- **New territory.** It lives in the conformance provider, a subsystem this feature has not
+  touched; taking it would open a fifth exception into new code on the strength of one signature.
+- **Cheap in lines, not in risk.** The remedy the analyzer names (a cheap re-read variant) changes
+  READ SEMANTICS IN THE STOP PATH — the most safety-critical hook path in the product. Beta4 does
+  that deliberately rather than as a fifth in-flight exception.
+
+### Path-identity: what the guard proves (recorded 2026-08-10, maintainer framing)
+
+The counter-story to "vigilance failed". The guard that caught DRIFT-199-I001-014 was written for
+a PREVIOUS incident of the same class (DRIFT-198-I009-027). It caught today's defect after both
+the reviewer session and the implementer's own attention had missed the class TWICE in one day —
+once using the wrong comparison, once using the right one unsafely.
+
+**What this sharpens for beta4's path-identity consolidation**: the target is not "use the
+comparer". It is to make the comparer the ONLY REACHABLE PATH. A primitive that can be bypassed by
+forgetting a dot-source will be bypassed again — today is the proof, from someone who had just
+finished writing the lesson down.
+
 ### Named test baseline — inherited failures, measured 2026-08-10 (not this feature's)
 
 Measured at the maintainer's instruction so this feature never inherits credit or blame
