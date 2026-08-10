@@ -27,6 +27,37 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
+## METHOD RULES TO CARRY — staged for the ledger's method-rules section (maintainer ruling, 2026-08-10)
+
+**Ruling**: both homes, differently. The INSTANCES stay in this drift log as evidence — they are what
+make the rules credible. The RULES themselves go to the carry ledger's method-rules section, because
+they apply to every feature and the ledger is what beta4 inherits. **A rule that lives only in one
+iteration's drift log dies with that iteration.**
+
+**NOT WRITTEN TO THE LEDGER FROM HERE, and that is deliberate.** `spec.md` declares
+`C:\Dev\specrew-beta2-hardening\specs\198-beta2-hardening\beta3-carry-ledger.md` a **read-only input**
+committed on another branch. Writing into another feature's records from this one would be exactly the
+kind of unauthorized cross-boundary edit the governance model exists to prevent. They are staged here,
+verbatim and ready to paste, for the closeout leg (T012 / FR-021) or the maintainer to carry across.
+
+> **RULE — a fixture can only prove the shape it invents.** When a function consumes data produced
+> ELSEWHERE — a filesystem, another builder, an external system — synthesised inputs test the AUTHOR'S
+> MODEL of that data, not the data. Either feed it a real artifact once before the fixture is believed,
+> or read every field defensively and pin the partial case explicitly. A green suite over invented
+> inputs is evidence about the author, not about the world.
+>
+> *Evidence: DRIFT-199-I001-023, -024, -025 — three instances in a single day, the second inside the fix
+> for the first, and the third inside the fix for the second.*
+
+> **RULE — comments record intent; they do not enforce it. Where a comment states a rule that matters,
+> add a guard that asserts it.** The author who writes the rationale is not thereby protected by it.
+>
+> *Evidence: twice in one day the same author wrote a rationale and then built the exact failure it
+> warned against — the starter plan scaffolding a command that could not run, minutes after commenting
+> that this was the thing to avoid; and the `@()` array-nesting bug, documented in a comment ~300 lines
+> above the line written, and read that same day. The countermeasure that DID work is the structural
+> fixture asserting the diagnosis composer's body never mentions `stdout`/`stderr`/`ReadAllText`.*
+
 ## BETA4 LIST — everything this feature routed out, collected in one place
 
 Scattered "routes to beta4" clauses are easy to lose at closeout, so they are collected here with the

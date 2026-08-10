@@ -730,6 +730,56 @@ the round is charged. The four genuinely pre-invocation paths pass `@()`, so the
 `Get-ContinuousCoReviewRoundSpendClass` encodes and `review-spend-allowance.Tests.ps1:132-151` already
 pins: `preflight-failed` consumes NEITHER budget.
 
+### F4 IS ABOUT THE GRANT LEDGER, NOT THE RESERVATION LEDGER (maintainer, 2026-08-10) — and the inferred defect is NOT in the code
+
+**The correction that matters**: the five-path enumeration below measures the RESERVATION ledger, which
+is real and already works. **F4 is about the GRANT.** Release restores a reservation; the question is
+whether it makes the AUTHORIZATION reusable. Written as planned, the characterization fixture would have
+gone green and certified "F4 already worked" while the defect sat one ledger over — the
+wrong-thing-certified risk, arriving from a direction neither party had named.
+
+**The maintainer's counts from the T067 store**: grants 26 (each `slots: 1`), reservations 26 (1:1),
+releases 4, spends 25, runs 30. Their inferred hypothesis: the release path resolves the reservation
+without restoring the grant's slot, so every infrastructure failure cost a fresh authorization.
+
+**VERIFIED IN CODE as instructed, rather than accepted — and the hypothesis does not hold. Grant reuse
+is implemented, and it is wired.** Three independent reads:
+
+1. `Get-ReviewCampaignAllowanceState` (`review-authority-core.ps1:913-925`). For a slot with a matching
+   reservation: a SPENT reservation goes to `$spent`; an unreleased one goes to `$unreleased` -> `$active`;
+   **a released, unspent reservation goes to NEITHER**, so both counts are zero and line 925's `else`
+   branch adds the slot back to `available`. A released slot IS available again.
+2. **The caller supplies releases.** `review-authority-store.ps1:245-246` reads the `releases` facts and
+   passes `-Releases $releases` into `Resolve-ReviewCampaignReservationDecision`. The wiring gap that
+   would have made the pure function moot is not present.
+3. **Reuse is explicitly designed for.** `review-authority-store.ps1:249-256` carries the comment *"A
+   pre-invocation release restores an allowance slot. Each reuse appends an immutable generation"* and
+   computes `$generation = $slotReservations.Count + 1` precisely so a slot can be reserved again.
+
+**So the code says a released slot is reusable.** That is a measurement of the CODE, not of T067's
+behaviour, and it does not by itself explain the 26:26 ratio.
+
+**AN ARITHMETIC SIGNAL IN THE RELAYED COUNTS, raised rather than resolved**: 25 spends + 4 releases = 29
+dispositions across 26 reservations. Those cannot all be distinct 1:1 resolutions, and the validator
+treats a reservation that is BOTH spent and released as an error
+(`reservation-both-spent-and-released`). Either some facts do not map 1:1 to reservations, or the store
+holds a state the validator would reject. **Neither the maintainer's inference nor this code read is a
+measurement of what T067 actually did**, so the end-to-end reproduction is what settles it — and it
+should also reconcile those counts rather than assume them.
+
+**THE FIXTURE MEASURES THREE THINGS, each named so no assertion inherits F4's ambiguity**: does the
+RESERVATION release (already true), does the SPEND fire (already correctly false pre-invocation), and —
+the one that matters — **is the GRANT reusable afterwards**. Assert the third explicitly, on a real
+sequence, and let it decide.
+
+**The single-use grant is BY DESIGN and must not change**: cap = policy ceiling, slot = per-round human
+grant. FR-014 asks something narrower — a run that never invoked a reviewer did not consume a round, so
+it must leave its grant reusable.
+
+**THE ECONOMICS NUMBER, recorded in the unit the human actually pays in**: **twenty-six human
+authorizations for one feature's reviews, twenty-five of them spent.** That is F8's cost stated properly,
+and it belongs in the release-notes/economics story rather than only in a ledger.
+
 **SO T008 IS LARGELY "THIS ALREADY WORKED", and must be reported that way** — the honest framing was
 committed in advance precisely for this outcome. What genuinely remains open is narrow: the
 `invalid-reservation` path, and whether F4's T067 evidence was the SLOT being held by a reservation
