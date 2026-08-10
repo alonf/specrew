@@ -41,7 +41,7 @@ without manual gate untangling.
    frozen-tree verification, identity-bound residual acceptance, and gate
    synchronization complete as one action with no signoff-gate collision left for the
    human to resolve by hand.
-4. **Given** the digest's round budget (default 4) is exhausted, **When** any
+4. **Given** the campaign's round budget (default 4) is exhausted, **When** any
    continuation is attempted, **Then** the engine refuses until the human explicitly
    resets the allowance.
 5. **Given** only minor findings remain, **When** the round completes, **Then** the
@@ -241,6 +241,31 @@ timeout-message fixture asserts the message names `co_review_timeout_seconds`.
 - An approval reply that itself contains the word "prompt" or "clarify" inside the
   instruction tail: captures as approve-with-instructions (US3 scenario 1/3 compose).
 
+## Clarifications
+
+### Session 2026-08-10 (clarify stage, after the specify verdict)
+
+- **Q: What does the default round budget of 4 count against?** → **A (human ruling):
+  per campaign.** The fuse counts reviewer-invoked rounds across the whole campaign
+  for the artifact under review, regardless of tree-state movement; a literal
+  per-tree-state budget would reset on every fix round and never bind against the
+  F8-style runaway. FR-003, US1 scenario 4, and Key Entities updated accordingly.
+- **Resolved by recorded default — stop-surface consult with no recorded gate
+  decision**: when the signoff-gate decision store holds no decision for the current
+  state, the stop surface evaluates as it does today; the consult rule (FR-007)
+  applies only when a recorded decision exists.
+- **Resolved by recorded default — hydration unavailable**: when a cloud placeholder
+  cannot hydrate (for example, offline), the integrity check refuses in the consumer
+  message shape, naming the file and the next step (bring it online / mark "Always
+  keep on this device"); this refusal is distinct from the hash-mismatch corruption
+  refusal (FR-011).
+- **Resolved by recorded default — capture scan window**: the verdict scan runs from
+  the boundary marker forward; the first verdict-bearing human turn wins and
+  intervening non-verdict turns are skipped, never misclassified (FR-010).
+- **Resolved by recorded default — abandon semantics**: choosing abandon closes the
+  campaign as abandoned; sign-off remains un-passed; recorded findings persist; a
+  later campaign starts fresh with a fresh budget (FR-002's third option).
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -258,8 +283,10 @@ contract is durable):
   text, plus the explicit nothing-spends-until-you-answer line.
 - **FR-003**: Continuation MUST always be an explicit human choice consuming a
   single-run grant; agents MUST NOT mint continuation authorizations from a prior
-  grant; a default round budget of 4 per digest MUST force refusal of further rounds
-  once exhausted until the human explicitly resets the allowance.
+  grant; a default round budget of 4 per campaign MUST force refusal of further
+  rounds once exhausted until the human explicitly resets the allowance (the budget
+  counts reviewer-invoked rounds across the whole campaign regardless of tree-state
+  movement — Clarifications, 2026-08-10).
 - **FR-004**: Minor findings MUST never gate sign-off; they are auto-carried as
   recorded follow-ups.
 - **FR-005**: The stop-here option MUST compose the full landing as one action:
@@ -382,8 +409,9 @@ Method (binding on every fix):
 
 - **Decision surface**: the per-round pause rendering — findings by severity,
   non-gating minors, cost, budget position, recommendation, numbered options.
-- **Round allowance / budget**: per-digest spend state; default 4; consumed only by
-  reviewer-invoked rounds; reset only by explicit human action.
+- **Round allowance / budget**: per-campaign spend state; default 4; consumed only by
+  reviewer-invoked rounds regardless of tree-state movement; reset only by explicit
+  human action.
 - **Signoff-gate decision store**: the recorded allow/block decisions the stop surface
   must consult (`.specrew/review/signoff-gate/latest.json` + history).
 - **Pending pause decision**: sanctioned quiet state — round complete on current tree,
