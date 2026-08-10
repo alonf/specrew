@@ -168,6 +168,40 @@
   (the guard green from the start), 4/4 green after; 61/61 green across the campaign
   orchestrator and public-command suites.
 
+### DRIFT-199-I001-010 — the verification definition is per-machine, not in the repository (sharpens ledger F2)
+
+**Measured 2026-08-10** against `C:\Dev\specrew-beta2-hardening\.specrew\verification-plan.json`
+(commands run in that worktree; results transcribed):
+
+| Property | Measurement |
+| --- | --- |
+| Tracked by git | NO — `git ls-files --error-unmatch` errors; `git status` reports `??` |
+| Ignored by git | NO — `git check-ignore -v` returns nothing (it could have been committed) |
+| Created / last modified | 2026-07-19 16:02:54 / 2026-07-19 18:54:29 |
+| Feature/iteration binding | hardcoded: `plan_id: f198.i008.signoff.v5`, and `-IterationPath specs/198-beta2-hardening/iterations/008` |
+
+Consequences, stated as facts: the definition survives neither a clone, nor a new
+worktree, nor a new feature. It is hand-authored and per-machine. This feature's own
+worktree had none, which is why the first authorized campaign round terminated
+`preflight-failed` (DRIFT-199-I001-008).
+
+**Honest-claims item against the release record**: the three certification rounds that
+gated the v0.40.0-beta2 tag verified against a definition that is absent from the
+repository. The runs and their results are recorded in the review authority store and
+stand as recorded; the verification DECLARATION they executed is not reconstructible from
+the repository at any commit. This is a recorded gap in the evidence chain, not a
+reopening of the certification and not a claim about the runs' outcomes.
+
+**Resolution for this feature**: `.specrew/verification-plan.json` is authored for
+feature 199 and COMMITTED (maintainer ruling: the verification definition must live in
+the tree the reviewer reads, not beside it). It carries the deterministic registry lane
+plus governance validation pointed at `specs/199-beta3-stabilization/iterations/001`, and
+the N4 env_refs list including TMPDIR. One disclosed addition beyond N4: `PSModulePath`,
+because this repository's verification commands are PowerShell and resolve modules
+through it — exactly the project-specific one-line addition the N4 default anticipates.
+Validated through the shipped contract before use (`Test-ContinuousCoReviewVerificationPlan`
+returned valid).
+
 ### DRIFT-199-I001-009 — the campaign command does not resolve the feature id (deferred)
 
 - **Observed**: 2026-08-10, immediately behind the run-id defect. With `--run-id` supplied

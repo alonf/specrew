@@ -205,6 +205,28 @@ reviewable product content, and the conservative direction is the one that keeps
 consulted. Every unresolved input (trunk, resolver, git call) also keeps the surface live,
 so quiet is reachable only from a fully resolved, genuinely records-only delta.
 
+### T007 design record — verification-plan scaffolding (maintainer input, 2026-08-10)
+
+Three constraints, recorded from the maintainer's ruling after DRIFT-199-I001-008/-010
+showed the beta2 definition was per-machine and unreconstructible from the repository:
+
+1. **Tracked by default.** The scaffolded plan is committed to the tree the reviewer
+   reads, or the design rules otherwise and records why. A verification definition that
+   survives neither a clone nor a new worktree is not a definition the evidence chain can
+   cite.
+2. **References must not rot silently.** Feature and iteration references are derived, or
+   staleness is detectable. The beta2 plan hardcoded `f198.i008` in both its `plan_id` and
+   its `-IterationPath`; nothing surfaced that it no longer matched the active work.
+3. **Provenance — the intended end state.** The validation lane is ALREADY decided at the
+   devops-operations lens and recorded there in prose, then re-invented by hand as
+   configuration. The intended shape is that `verification-plan.json` becomes the devops
+   lens's machine-readable output exactly as `implementation-rules.yml` is the
+   code-implementation lens's: the workshop decides, the artifact carries, the engine
+   reads. **For beta3**: scaffold the stack-default plan as FR-012 specifies and record
+   this derivation-from-lens shape as the intended design. Implement the derivation only
+   if reading an existing lens record proves to be a few lines; otherwise route it to
+   beta4 with the `implementation-rules.yml` symmetry named as the precedent.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):

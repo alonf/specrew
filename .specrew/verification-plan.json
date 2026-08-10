@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "plan_id": "f199.i001.slice.v1",
+  "commands": [
+    {
+      "command_id": "f199-deterministic-registry",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-File",
+        "tests/f198-regression-suite.ps1",
+        "-PerTestTimeoutSeconds",
+        "300"
+      ],
+      "timeout_seconds": 1200,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Deterministic honesty regression registry (the repository's shipped registry lane)"
+    },
+    {
+      "command_id": "iteration-001-governance",
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-File",
+        "extensions/specrew-speckit/scripts/validate-governance.ps1",
+        "-ProjectPath",
+        ".",
+        "-IterationPath",
+        "specs/199-beta3-stabilization/iterations/001",
+        "-NoCacheRead",
+        "-NoParallel"
+      ],
+      "timeout_seconds": 300,
+      "env_refs": [
+        "PATH",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "COMSPEC",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "APPDATA",
+        "LOCALAPPDATA",
+        "PROGRAMFILES",
+        "PROGRAMFILES(X86)",
+        "PROGRAMDATA",
+        "PSModulePath"
+      ],
+      "provenance": {
+        "kind": "project-config",
+        "source": ".specrew/verification-plan.json"
+      },
+      "label": "Iteration 001 explicit governance validation"
+    }
+  ]
+}
