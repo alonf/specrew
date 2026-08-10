@@ -532,6 +532,33 @@ WITHOUT `PSModulePath` — `pwsh` reconstitutes a full default module path when 
 the env_ref is not load-bearing (transcribed in the drift log against the maintainer's standing
 instruction).
 
+**The integration point already exists, measured 2026-08-10**: `specrew-init.ps1:919-922` ALREADY calls
+`Invoke-ContinuousCoReviewVerificationPlanMaterialization`, and `specrew-update.ps1:1482` does too. Init
+is not missing a step — it runs the materializer and is handed `verification-not-configured`, because
+nothing in the catalog matches. So the change belongs in the MATERIALIZER, not in the init flow: both
+entry points then inherit it, and it stays unit-testable without standing up a full init.
+
+**The shape that follows from the selector's own precedence**: when the state is
+`verification-not-configured` AND no plan file exists, write the starter as an EXPLICIT plan with NO
+generated-marker. On every later run it is then found by the `$planExists` branch and preserved as
+`preserved-explicit-plan` — the consumer owns it, and no refresh can silently overwrite or remove it.
+Writing it as a MARKED generated plan would be wrong: the materializer removes a generated plan when
+selection turns unconfigured, so the starter would delete itself on the next run.
+
+**NEXT UNKNOWN — MEASURE BEFORE WRITING THE STARTER.** This repository's plan invokes the validator as
+`extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath
+specs/<feature>/iterations/<NNN> -NoCacheRead -NoParallel`. Two things must be established rather than
+assumed:
+
+1. **The downstream path differs** — a deployed project carries
+   `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1`, not `extensions/...`. The
+   starter must name the path that exists in a CONSUMER's tree, not this source repo's.
+2. **`-IterationPath` is feature/iteration-specific, and a starter plan cannot know it.** Whether the
+   validator runs usefully WITHOUT it decides the starter's shape: if it does, the starter ships a
+   generic command; if it does not, the starter needs either a placeholder the consumer edits or a
+   resolver that finds the active iteration at run time. Run it both ways in a scratch project and let
+   the result decide — the same discipline as the PSModulePath question, and for the same reason.
+
 **Still to decide when T007 resumes**: whether the timeout-versus-window consistency check from
 DRIFT-199-I001-012 lands here. The maintainer's ruling is conditional — take it only if it is a few
 lines, else beta4 — so it is a measurement against the validator's shape, not a design choice.
