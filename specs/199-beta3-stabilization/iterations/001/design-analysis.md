@@ -223,6 +223,22 @@ showed the beta2 definition was per-machine and unreconstructible from the repos
    once under a scrubbed environment WITHOUT `PSModulePath` and lets the result decide
    whether the PowerShell stack default carries it. The measurement is recorded; the
    reasoning is not a substitute for it.
+1b. **Per-context verification scope** (maintainer, 2026-08-10). The full deterministic
+   registry is the RELEASE GATE lane, not the slice lane. A slice review points its
+   verification command at the suites the slice actually touches; the full registry is
+   kept for the certification round. The plan legitimately DIFFERS between those
+   contexts, and T007's scaffolding should express that distinction rather than emit one
+   lane for every purpose.
+1c. **Timeout-fits-window consistency check** (maintainer, 2026-08-10). Per-command
+   `timeout_seconds` and the round window are currently unrelated numbers with no
+   consistency check, so a plan that cannot possibly pass is accepted, burns the full
+   window, and reports a sealed failure (DRIFT-199-I001-012 is the reproduction: a
+   1200 s command inside a 900 s round). The cheap half — validate at PLAN-VALIDATION
+   time that command timeouts fit the configured window, with a message naming BOTH
+   numbers — belongs here because T007 scaffolds plans anyway. Implement it only if it
+   is a few lines; otherwise route it to beta4. Sizing guidance to carry: verification
+   consuming more than roughly half the round window is the wrong shape, because the
+   reviewer needs the remainder.
 3. **Provenance — the intended end state.** The validation lane is ALREADY decided at the
    devops-operations lens and recorded there in prose, then re-invented by hand as
    configuration. The intended shape is that `verification-plan.json` becomes the devops

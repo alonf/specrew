@@ -41,6 +41,18 @@ cross-referencing. The verdict history would otherwise show a jump from `tasks` 
 Hashes verified against `git log` before recording: all three resolve to the commits
 named above.
 
+## Post-boundary spec amendments (surface at review-signoff as a diff-to-approve)
+
+Recorded per the 198 obs-7 lesson: amendments landing after a boundary verdict are
+surfaced explicitly at the next boundary, never absorbed silently.
+
+- **2026-08-10, maintainer ruling** — FR-012 and SC-007 amended: acceptance for the
+  campaign bootstrap is a fresh project completing a FULL ROUND, not merely passing
+  preflight. Rationale recorded in the spec: getting one round to run during this
+  feature required clearing seven distinct defects, so the first-run path has never
+  been exercised end to end, and a preflight-only criterion would pass while the path
+  stayed broken. US5 scenario 1 aligned to the same wording.
+
 ## Standing instructions carried from the same verdict
 
 - **T003 fixture case (two-governor collision)**: when T003 resumes, add a fixture
@@ -227,9 +239,21 @@ pass inside the honesty regression lane as well as in isolation.
   (`diagnostics-require-command-scoped-disclosure`) — the consumer cannot see why their
   verification failed without a human-authorized diagnostic disclosure. FR-013 is the fix;
   this is a live reproduction on the maintainer's own repository.
-- **Resolution**: pending maintainer ruling on window-versus-scope. Options recorded:
-  raise the round window above signoff-grade verification; or give slice reviews a scoped
-  command set and keep the full registry lane for review-signoff.
+- **Ruled 2026-08-10 (maintainer)**: no unsealing — the local clock already answered it.
+  The registry passes (95/95, 627.7 s), so the sealed failure was the window, not a red
+  suite; spending a diagnostic authorization would buy nothing. Resizing rule: size
+  verification to fit COMFORTABLY inside the round — more than roughly half the window is
+  the wrong shape, since the reviewer needs the remainder (627.7 s of 900 s was 70%).
+  Scope rule: the full deterministic registry is the RELEASE GATE lane; a slice review
+  points at the suites the slice touches, and the plan legitimately differs between those
+  contexts. Both rules recorded in T007's design record.
+- **Underlying defect, recorded separately as the durable half**: per-command
+  `timeout_seconds` and the round window are unrelated numbers with NO consistency check,
+  so the engine accepted a plan that could not possibly pass, ran it for the full window,
+  and reported a sealed failure. A consumer authoring their first plan will do exactly
+  the same thing with no way to see why. The cheap fix — validate at plan-validation time
+  that command timeouts fit the configured window, naming BOTH numbers in the message —
+  is recorded in T007's design record; implement only if it is a few lines, else beta4.
 
 ### DRIFT-199-I001-011 — ledger F5 (in-flight blindness) reproduced with store evidence (open)
 
@@ -241,6 +265,11 @@ pass inside the honesty regression lane as well as in isolation.
   - `run-20260810-074723936-616f0b0e` — `requested.json`, `reserved.json`, and NO
     `result.json`: reserved and in flight, not terminal.
   - `run-t003-activation-slice-1` — the earlier terminal `preflight-failed` run.
+- **Maintainer ruling 2026-08-10 — this narrows FR-008's work**: the task is NOT "add
+  in-flight awareness" but "make the EXISTING `review-running` route recognize a
+  reserved, non-terminal run". T003's fixture pins exactly that shape — a run holding
+  `requested.json` + `reserved.json` with no `result.json` must suppress the block and
+  route to `poll-existing-run` — and it writes itself from the evidence below.
 - **Sharper than the ledger's statement**: the classifier already HAS an in-flight route
   (`review-running` / `current-review-in-flight` / `poll-existing-run`,
   `review-signoff-evidence-gate.ps1:366`). The defect is not a missing concept — the

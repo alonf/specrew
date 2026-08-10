@@ -160,7 +160,8 @@ format) and verify each error names it.
    `.specrew/verification-plan.json` exists with the governance validator, dotnet/npm
    build-test templates, and the default env_refs allowlist (PATH, PATHEXT,
    SYSTEMROOT, COMSPEC, TEMP, TMP, TMPDIR, HOME, USERPROFILE, APPDATA, LOCALAPPDATA,
-   PROGRAMFILES, PROGRAMFILES(X86), PROGRAMDATA), and campaign preflight passes.
+   PROGRAMFILES, PROGRAMFILES(X86), PROGRAMDATA), and a full campaign round completes
+   end to end (amended 2026-08-10 — preflight alone is not acceptance).
 2. **Given** a verification command failing because a needed environment variable is
    not in env_refs, **When** the error renders, **Then** it names `env_refs` and shows
    the exact line to add.
@@ -352,7 +353,8 @@ Campaign bootstrap (durable):
 
 - **FR-012**: `specrew init` MUST scaffold a starter verification-plan.json
   (governance validator + dotnet/npm build-test templates) with the default env_refs
-  allowlist (N4 list including TMPDIR).
+  allowlist (N4 list including TMPDIR). Acceptance is a fresh project completing a FULL
+  campaign round, not merely passing preflight (amended 2026-08-10; see SC-007).
 - **FR-013**: Verification failures MUST name the missing piece (env_refs, plan
   schema, defer-record format) in the error with the exact next step, not seal it
   behind diagnostics.
@@ -462,7 +464,11 @@ Each criterion is proven by a RED-first fixture through the shipped entry point
   as plain English never flip classification (iteration 011 reproductions).
 - **SC-006**: Cloud-placeholder install hydrates and verifies; junction/symlink still
   refuses; refusal message is consumer-shaped.
-- **SC-007**: Fresh project + `specrew init` passes campaign preflight.
+- **SC-007**: Fresh project + `specrew init` completes a FULL campaign round — not
+  merely preflight. (Amended 2026-08-10 by maintainer ruling: getting a single round to
+  run during this feature required clearing seven distinct defects, which means the
+  first-run path has never been exercised end to end. Preflight-only acceptance would
+  have passed while the path stayed broken.)
 - **SC-008**: Infrastructure failures leave the allowance intact.
 - **SC-009**: Zero machinery nouns and zero unglossed IDs in rendered consumer
   surfaces.
