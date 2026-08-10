@@ -81,6 +81,61 @@ Describe 'Composed stop-here landing (T002)' {
         $landing.message | Should -Match 'diagnostics-require-command-scoped-disclosure' -Because 'the disclosure pointer is preserved, never replaced - the seal is untouched'
     }
 
+    # Maintainer ruling 2026-08-10, on the starter plan shadowing auto-detection. The direction stays
+    # (never leave a project unable to verify), but the degradation must be VISIBLE: a project whose
+    # reviews check only governance while its tests never run is being told "verification passed".
+    #
+    # MEASURED first, as instructed: a completed verification did NOT name its commands to a consumer -
+    # the success path reported a COUNT, in reviewer-facing text only. So this is owed, and it is the
+    # honest-reporting answer rather than shadow-detection.
+    It 'the success message NAMES what the final check actually ran' {
+        $log = [Collections.Generic.List[string]]::new()
+        $ports = script:New-LandingPorts -Log $log
+        $ports.VerifyPort = {
+            param($ctx)
+            $Log.Add('verify') | Out-Null
+            [pscustomobject]@{
+                ok = $true; reason = 'verification-evidence-ready'
+                command_labels = @('Specrew governance validation')
+            }
+        }.GetNewClosure()
+
+        $landing = script:Invoke-Landing -Ports $ports
+
+        $landing.landed | Should -BeTrue
+        $landing.message | Should -Match 'Specrew governance validation' -Because 'a consumer whose tests never run must be able to SEE that only governance was checked'
+        $landing.message | Should -Match '1 command'
+    }
+
+    It 'the success message pluralises honestly and lists every command' {
+        $log = [Collections.Generic.List[string]]::new()
+        $ports = script:New-LandingPorts -Log $log
+        $ports.VerifyPort = {
+            param($ctx)
+            $Log.Add('verify') | Out-Null
+            [pscustomobject]@{
+                ok = $true; reason = 'verification-evidence-ready'
+                command_labels = @('Specrew governance validation', 'Build and test')
+            }
+        }.GetNewClosure()
+
+        $landing = script:Invoke-Landing -Ports $ports
+        $landing.message | Should -Match '2 commands'
+        $landing.message | Should -Match 'Build and test'
+    }
+
+    It 'a verify port that reports no command labels still renders a clean success message' {
+        # Every other port in the codebase returns {ok, reason}. The success sentence must not grow a
+        # dangling fragment when nothing was supplied.
+        $log = [Collections.Generic.List[string]]::new()
+        $landing = script:Invoke-Landing -Ports (script:New-LandingPorts -Log $log)
+
+        $landing.landed | Should -BeTrue
+        $landing.message | Should -Match '(?i)signed off'
+        $landing.message | Should -Not -Match '\(\s*\)'
+        $landing.message | Should -Not -Match '(?i)0 commands'
+    }
+
     It 'FR-013: a step with NO diagnosis renders no empty section' {
         # Most failures are not command failures and carry nothing derived. A message that always makes
         # room for a diagnosis teaches the reader to skip the place where one appears.

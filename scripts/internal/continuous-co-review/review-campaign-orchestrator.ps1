@@ -506,9 +506,18 @@ approval-blocking evidence; never turn a configured verification failure into a 
 $supportScope
 "@
     $preparationComplete = $true
+    # The human-readable name of each command that actually ran, for the success message. A plan's
+    # `label` is written for a person; the command_id is not, so the id is only a fallback.
+    $commandLabels = @(
+        foreach ($command in @($selected.plan.commands)) {
+            $label = [string](Get-ReviewAuthorityProperty -Object $command -Name 'label')
+            if ([string]::IsNullOrWhiteSpace($label)) { $label = [string](Get-ReviewAuthorityProperty -Object $command -Name 'command_id') }
+            if (-not [string]::IsNullOrWhiteSpace($label)) { $label }
+        }
+    )
     return [pscustomobject]@{
         ok = $true; reason = 'verification-evidence-ready'; state = 'configured'; review_scope_suffix = $scopeSuffix
-        command_count = $planIds.Count; evidence_count = $evidence.Count
+        command_count = $planIds.Count; evidence_count = $evidence.Count; command_labels = @($commandLabels)
     }
     }
     finally {
@@ -736,6 +745,7 @@ function Invoke-ReviewCampaignStopHereLanding {
             return [pscustomobject]@{
                 ok = [bool]$verification.ok; reason = [string]$verification.reason
                 diagnosis = [string](Get-ReviewAuthorityProperty -Object $verification -Name 'diagnosis')
+                command_labels = (Get-ReviewAuthorityProperty -Object $verification -Name 'command_labels')
             }
         }
     }
@@ -766,12 +776,21 @@ function Invoke-ReviewCampaignStopHereLanding {
     $failedStep = $null
     $failureReason = $null
     $failureDiagnosis = ''
+    $verificationLabels = @()
     foreach ($step in $ordered) {
         $outcome = $null
         try { $outcome = & $step.port $context }
         catch { $outcome = [pscustomobject]@{ ok = $false; reason = [string]$_.Exception.Message } }
         $ok = ($null -ne $outcome -and [bool]$outcome.ok)
         $steps.Add([pscustomobject]@{ name = [string]$step.name; ok = $ok; reason = [string]$outcome.reason })
+        if ($ok -and [string]$step.name -ceq 'verification') {
+            # Read defensively: a port returning the ordinary {ok, reason} shape must not throw here.
+            # DIRECT ASSIGNMENT, never @(...): the accessor preserves arrays with a unary-comma
+            # -NoEnumerate return, so wrapping nests the whole list as ONE element and the message
+            # renders "1 command: System.Object[]". The same trap is documented at the evidence join
+            # above; it caught this line too.
+            $verificationLabels = Get-ReviewAuthorityProperty -Object $outcome -Name 'command_labels'
+        }
         if (-not $ok) {
             $failedStep = [string]$step.name
             $failureReason = [string]$outcome.reason
@@ -784,7 +803,22 @@ function Invoke-ReviewCampaignStopHereLanding {
 
     $landed = ($null -eq $failedStep)
     $message = if ($landed) {
-        'Review is signed off. Any remaining minor findings are saved as follow-ups, and the final check ran on your files exactly as they were.'
+        # Maintainer ruling 2026-08-10. The starter plan means a project is never left unable to verify,
+        # but it can now be verifying ONLY governance while its own tests never run - and being told
+        # "verification passed". That is a degradation the consumer cannot SEE, the same class as a
+        # silent demotion.
+        #
+        # The answer is honest reporting, not shadow-detection: name what actually ran, here, in the one
+        # sentence that tells a human the check happened. A project reading "1 command: Specrew
+        # governance validation" can act on it; a count alone, in reviewer-facing text, tells them
+        # nothing. Rendered only when the verification step supplied labels, so a port that returns the
+        # ordinary {ok, reason} shape produces no dangling fragment.
+        $labels = @(@($verificationLabels) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        $ran = if ($labels.Count -gt 0) {
+            ' ({0} command{1}: {2})' -f $labels.Count, $(if ($labels.Count -eq 1) { '' } else { 's' }), ($labels -join ', ')
+        }
+        else { '' }
+        ('Review is signed off. Any remaining minor findings are saved as follow-ups, and the final check ran on your files exactly as they were{0}.' -f $ran)
     }
     else {
         $whatFailed = switch ($failedStep) {

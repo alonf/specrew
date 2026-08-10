@@ -725,6 +725,23 @@ above.
 2. The `invalid-reservation` path, and every call site that could reach the failure path WITHOUT
    passing its reservation. That is where a real charge can still hide.
 
+**THERE ARE TWO COUNTERS, AND CONFLATING THEM IS THE LIKELIEST SOURCE OF F4'S AMBIGUITY** (read from
+source 2026-08-10, before any fixture):
+
+| Counter | How it is computed | Does a pre-invocation failure count against it? |
+| --- | --- | --- |
+| **The pause ROUND BUDGET** (`Get-ReviewCampaignRoundBudgetTotal`, default 4) | `$roundsUsed = $priorRunIds.Count + 1`, where `$priorRunIds` counts runs holding a `pending-pause.json` | **NO.** `Complete-ReviewPreInvocationFailure` returns `Invoke-ReviewResultIngress` DIRECTLY and never calls `Add-ReviewCampaignRoundPause`, so no pending-pause file is written and the run is invisible to this count. |
+| **The provider slot ALLOWANCE** (grants -> reservations -> spends/releases) | a reservation HOLDS a slot until a spend or a release resolves it | **Depends entirely on the release firing** — which is the predicate table above. |
+
+**So "the allowance" in F4 is ambiguous, and the two readings give opposite answers.** The pause budget
+demonstrably does not charge for infrastructure failures. The slot allowance charges only if the release
+does not fire. **That is very likely what the maintainer's hypothesis names**: T067's runs may have
+looked like they consumed the allowance because the RESERVATION held the slot, not because the failure
+charged a round — and if the release then fired, the slot came back.
+
+The fixture must therefore state WHICH counter it measures at every assertion. An assertion that says
+only "the allowance is intact" would inherit the exact ambiguity that made F4 hard to pin.
+
 **THE QUESTION THE FIXTURE MUST ANSWER, not assume (maintainer, 2026-08-10): was F4 correctly diagnosed
 in the first place?** Its evidence was T067's runs 1-3 consuming the allowance, yet this feature's own
 `preflight-failed` run released cleanly. Both cannot be generally true. **Reproduce the T067
