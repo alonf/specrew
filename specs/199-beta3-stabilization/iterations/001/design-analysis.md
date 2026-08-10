@@ -615,6 +615,45 @@ against the validator's shape rather than a design choice. Note it pairs natural
 both concern a consumer being unable to see why a round failed. The maintainer's ruling is conditional — take it only if it is a few
 lines, else beta4 — so it is a measurement against the validator's shape, not a design choice.
 
+### T008 design record — which failure classes actually charge, READ FROM SOURCE (2026-08-10)
+
+The drift log's evidence note is explicit that this must be measured, not assumed: *"T008's RED fixture
+must pin the specific failure classes that do NOT release, rather than assume every infrastructure
+failure charges a round."* Ledger F4 says infrastructure failures consume the allowance; the one
+observed `preflight-failed` run released correctly. Both cannot be generally true, so the question is
+which classes fall on which side.
+
+**Read from `review-authority-core.ps1:1001` (`Resolve-ReviewCampaignReleaseDecision`) — release is
+refused in EXACTLY three cases, and only one of them is a candidate defect:**
+
+| Refusal | Meaning | Verdict |
+| --- | --- | --- |
+| `invoked-slot-remains-spent` | a spend fact exists for this reservation, so the reviewer WAS invoked | **CORRECT** — this is the rule T008 is protecting, not breaking. A round that reached a reviewer is charged. |
+| `reservation-already-released` | a release fact already exists | **CORRECT** — idempotence, not a charge. |
+| `invalid-reservation` | the reservation fact fails contract validation | **THE CANDIDATE.** A malformed reservation means the slot is never released and the allowance stays consumed, with no reviewer ever invoked. It fails toward CHARGING, which is the F4 direction. |
+
+**And the structural one, above the predicate**: `Complete-ReviewPreInvocationFailure`
+(`review-campaign-orchestrator.ps1:581`) only attempts a release `if ($null -ne $Reservation)`. A
+failure path that holds a reservation but does not pass it here would charge silently — the predicate
+would never be consulted at all. **That is a WIRING question, not a decision question, and this session
+has been bitten by exactly that shape three times.** Enumerate the call sites before trusting the table
+above.
+
+**So the RED fixture has two halves, and only the second is new work:**
+
+1. The three declared outcomes (`preflight-failed`, `claim-contended`, `launch-failed`) with a valid
+   reservation and no spend must each release, and the T067 three-failure SEQUENCE must leave the
+   allowance intact. Expect much of this to pass ALREADY — the `preflight-failed` case was measured
+   releasing correctly in this feature's own run (`run-t003-activation-slice-1`, release fact
+   `releases/res-c7aec2d1e10f88a63c15.json`). **Passing cases are not wasted**: they convert an
+   observation into a guard, and the honest framing is "this already worked", not "this was repaired".
+2. The `invalid-reservation` path, and every call site that could reach the failure path WITHOUT
+   passing its reservation. That is where a real charge can still hide.
+
+**Do NOT claim T008 repaired F4 unless a fixture goes RED first.** The distinction between "what my
+change fixed" and "what already worked" is a standing method rule here, and this task is the most
+likely place in the feature to blur it.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):
