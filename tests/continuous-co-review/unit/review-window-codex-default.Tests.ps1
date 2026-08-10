@@ -73,6 +73,28 @@ Describe 'Codex review-window default and timeout message (T009 / FR-018)' {
         finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    # Round-1 finding (major): the consumer-shaped text reached the signoff-gate route but NOT the
+    # public `specrew review --live` branch a consumer actually runs, and --help advertised a
+    # 120-second default that no code path uses.
+    It 'the PUBLIC campaign branch names the setting on a timed-out result' {
+        $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
+        $campaignRender = [regex]::Match($cli, "(?ms)SPECREW CAMPAIGN REVIEW.*?Authority store").Value
+
+        $campaignRender | Should -Not -BeNullOrEmpty
+        $campaignRender | Should -Match "runtime_outcome.*timed-out"
+        $campaignRender | Should -Match 'co_review_timeout_seconds'
+        $campaignRender | Should -Match '--timeout-seconds'
+    }
+
+    It 'the --help text states the real default resolution, not a fictional 120 seconds' {
+        $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
+        $helpLine = [regex]::Match($cli, '(?m)^\s*--timeout-seconds.*(?:\r?\n\s{20,}.*)*').Value
+
+        $helpLine | Should -Not -BeNullOrEmpty
+        $helpLine | Should -Not -Match 'default:\s*120'
+        $helpLine | Should -Match 'co_review_timeout_seconds'
+    }
+
     It 'the timeout message names the setting a consumer must change' {
         $result = script:New-TimedOutResult
         $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $result.campaign_id `

@@ -100,6 +100,51 @@ Describe 'Campaign activation matches its implementation premise (DRIFT-199-I001
         $scope.applicable | Should -BeTrue
     }
 
+    # Round-1 finding (major): the first implementation compared changed paths to the machinery and
+    # `specs` roots with a HARDCODED OrdinalIgnoreCase, while this repository derives path case
+    # semantics from the target volume. On a case-sensitive filesystem a case-distinct root is a
+    # genuine reviewable path, so classifying it as records-only silences the gate. This is the
+    # beta2 certify-round-3 path-identity class recurring.
+    It 'derives its path comparison from the volume, never a hardcoded case rule' {
+        $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-navigator.ps1') -Raw
+        $predicate = [regex]::Match($source, '(?ms)^function Test-ReviewCampaignCoverageDeltaHasImplementation \{.*?^\}').Value
+
+        $predicate | Should -Not -BeNullOrEmpty
+        # The single source (path-identity.ps1) owns the case rule; the predicate must ask it.
+        $predicate | Should -Match 'Get-ContinuousCoReviewPathComparison|Get-ContinuousCoReviewPathComparer'
+        $predicate | Should -Match "WhenUndetermined\s+'?distinct'?"
+        # No hand-rolled case decision may remain inside the predicate.
+        $predicate | Should -Not -Match 'OrdinalIgnoreCase'
+    }
+
+    It 'classifies a case-distinct records root exactly as the volume oracle says it should' {
+        script:Add-ActivationPlanningRecords -Repo $script:Repo
+        # A case-distinct spelling of the records root. On a case-sensitive volume this is a
+        # DIFFERENT directory and therefore reviewable; on a case-insensitive volume it is the
+        # same directory and stays records-only.
+        $distinct = Join-Path $script:Repo 'Specs/199-activation-fixture'
+        New-Item -ItemType Directory -Path $distinct -Force -ErrorAction SilentlyContinue | Out-Null
+        [IO.File]::WriteAllText((Join-Path $distinct 'note.md'), "case-distinct`n")
+        & git -C $script:Repo -c user.name=a199 -c user.email=a199@example.invalid add -A 2>&1 | Out-Null
+        & git -C $script:Repo -c user.name=a199 -c user.email=a199@example.invalid commit -qm 'case-distinct root' 2>&1 | Out-Null
+
+        $caseSensitive = Get-ContinuousCoReviewPathCaseSensitive -Path $script:Repo
+        $scope = Get-ReviewCampaignNavigatorScopeApplicability -RepoRoot $script:Repo
+
+        if ($caseSensitive -eq $true) {
+            # Reviewable content exists under a distinct root: the surface must stay live.
+            $scope.applicable | Should -BeTrue
+        }
+        else {
+            # Same directory (or undetermined-but-folded): still records-only.
+            # NOTE (honest evidence label): on a case-INSENSITIVE volume this assertion cannot
+            # distinguish the fixed predicate from the hardcoded one - the source guard above is
+            # what fails on this machine. The behavioural half is what fails on a case-sensitive
+            # volume, which is why both exist.
+            $scope.applicable | Should -BeFalse
+        }
+    }
+
     It 'stays LIVE (fails closed) when the coverage anchor cannot be resolved' {
         script:Add-ActivationPlanningRecords -Repo $script:Repo
         # Remove the only pre-feature branch so the trunk resolver cannot anchor the delta.

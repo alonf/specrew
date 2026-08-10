@@ -126,7 +126,10 @@ Options:
   --reviewer-config      JSON host catalog override for live review
   --schema-root          Reviewer contract schema directory override
   --run-root             External temporary workspace-root override (campaign snapshots must stay outside the repository)
-  --timeout-seconds      Reviewer host timeout in seconds (default: 120)
+  --timeout-seconds      Reviewer host timeout in seconds. Default: resolved per run -
+                         co_review_timeout_seconds in .specrew\config.yml, else the
+                         reviewer host's catalog default (codex/antigravity 900,
+                         claude 600, copilot 300), else a 600-second floor
   --preserve-debug       Keep temporary request-bundle workspaces after live review
   --reconcile-run        Resume one interrupted campaign run without invoking a provider
   --quiet                Emit only the stable machine-parseable digest line
@@ -909,6 +912,14 @@ if ($Live) {
                 if ($null -ne $campaignRun.result) {
                     Write-Host ("Verdict: {0}  Completion: {1}  Currentness: {2}  Can approve current: {3}" -f $campaignRun.result.verdict, $campaignRun.result.completion, $campaignRun.result.currentness, $campaignRun.result.can_approve_current)
                     if (-not [string]::IsNullOrWhiteSpace([string]$campaignRun.result.failure_reason)) { Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow }
+                    # FR-018 (round-1 finding): a consumer losing a review to the budget must be told
+                    # which setting to change ON THE PATH THEY ACTUALLY RAN. The signoff-gate route
+                    # carries this text for the boundary surface; the public CLI needs it too, or the
+                    # timeout stays sealed exactly where the consumer is standing.
+                    if ([string]$campaignRun.result.runtime_outcome -ceq 'timed-out') {
+                        $windowText = if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) { [string]$campaignRun.resolved_timeout_seconds } else { [string]$tos }
+                        Write-Host ("The review ran out of time after {0} seconds, so it produced no usable result. Reviews of this size often need a longer window: raise co_review_timeout_seconds in .specrew/config.yml, or pass --timeout-seconds on the next run, then run the review again." -f $windowText) -ForegroundColor Yellow
+                    }
                     foreach ($finding in @($campaignRun.result.findings)) { Write-Host ("  [{0}] {1}: {2}" -f $finding.severity, $finding.title, $finding.description) }
                 }
                 else { Write-Host ("Reason: {0}" -f $campaignRun.reason) -ForegroundColor Yellow }

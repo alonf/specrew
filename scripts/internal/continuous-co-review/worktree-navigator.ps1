@@ -264,14 +264,24 @@ function Test-ReviewCampaignCoverageDeltaHasImplementation {
     # implementation either - it is the planning digest this alignment exists to stop demanding.
     $recordsRoots = @($machinery) + @('specs')
 
+    # Round-1 review finding (major), and the beta2 certify-round-3 path-identity class recurring:
+    # a hardcoded case rule here is silently unsafe. On a case-SENSITIVE volume `Specs/` is a
+    # DIFFERENT directory from `specs/` - genuinely reviewable content - and folding the case
+    # classified it as records-only, which quiets the campaign surface and skips the review
+    # entirely. The case rule belongs to the ONE volume-derived source (path-identity.ps1); this
+    # predicate asks it rather than deciding for itself. -WhenUndetermined 'distinct' keeps the
+    # fail-closed direction: an undetermined volume treats the spellings as different, so the
+    # surface stays LIVE rather than going quiet on an assumption.
+    $pathComparison = Get-ContinuousCoReviewPathComparison -Path $RepoRoot -WhenUndetermined 'distinct'
+
     foreach ($raw in $changed) {
         $path = ([string]$raw -replace '\\', '/').Trim().Trim('/')
         if ([string]::IsNullOrWhiteSpace($path)) { continue }
         $isRecords = $false
         foreach ($root in $recordsRoots) {
             if ([string]::IsNullOrWhiteSpace($root)) { continue }
-            if ($path.Equals($root, [StringComparison]::OrdinalIgnoreCase) -or
-                $path.StartsWith(($root + '/'), [StringComparison]::OrdinalIgnoreCase)) {
+            if ($path.Equals($root, $pathComparison) -or
+                $path.StartsWith(($root + '/'), $pathComparison)) {
                 $isRecords = $true
                 break
             }

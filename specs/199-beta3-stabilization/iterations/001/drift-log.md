@@ -245,6 +245,34 @@ clearing, in order: the pre-code activation demand (DRIFT-199-I001-006), the run
   is under the feature's own `specs/<feature>/` records tree must leave a reviewed result
   current.
 
+### Round-1 fix ruling and the two method lessons (maintainer, 2026-08-10)
+
+**Why all three were fixed rather than carried** — recorded because it models the rule this
+feature is building, not a fix-everything default: each clears the severity floor with a
+concrete failure scenario in a SHIPPED surface of this feature. One silences a review gate;
+two leaves a consumer requirement unfinished on the path a consumer actually runs; three
+makes an acceptance criterion falsely green. Polish would have ridden as a recorded residual.
+
+**Path-identity lesson (finding 1)**: this is the beta2 certify-round-3 path-identity class
+RECURRING. The single-source comparer (`path-identity.ps1`) already existed, and it appears in
+`reviewed-state-digest.ps1` — a file read while writing the defective fix. The reviewer session
+endorsed the predicate without catching it. Vigilance did not catch this class even freshly
+named and freshly read; the mechanical comparer would have. That is evidence for beta4's
+path-identity consolidation: the fix is routing every containment comparison through the one
+primitive, not asking reviewers to remember.
+Fixed by routing through `Get-ContinuousCoReviewPathComparison` (the sibling the comparer
+wraps, and the shape a `StartsWith`/`Equals` call needs) with `-WhenUndetermined 'distinct'`,
+so an undetermined volume keeps the surface LIVE.
+
+**Test-design lesson (finding 3)**: a test that derives its expectation from the same source as
+the code under test cannot detect that the source is wrong — it verifies plumbing, not the
+requirement. The T011 fixture derived the expected version from the manifest the provider reads
+and asserted only that some suffix existed, so it passed while the manifest said `beta2` and
+SC-010 (`0.40.0-beta3`) was false. **Rule**: acceptance criteria that fix a LITERAL value get
+LITERAL assertions; derived assertions are for invariants only. The manifest prerelease is now
+`beta3` (psd1 field only, `extension.yml` left bare per the beta2 precedent;
+`validate-versions` re-run clean: Spec Kit 0.12.9, Squad 0.11.0, compatible, exit 0).
+
 ### Round-1 findings (held for the maintainer; no fix round started)
 
 Three findings, all severity `major`, recorded in the authority store under the run above:

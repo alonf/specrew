@@ -8,22 +8,23 @@ $ErrorActionPreference = 'Stop'
 # exists in scripts/specrew-start.ps1 (Get-ManifestSpecrewVersionText).
 #
 # Driven through the REAL event entry point (FR-023): the provider is invoked as the dispatcher
-# invokes it, with --event-json, and the assertion reads its emitted directive. The expected text
-# is COMPUTED from the manifest at test time, so this keeps holding after the release bumps the
-# prerelease tag.
+# invokes it, with --event-json, and the assertion reads its emitted directive.
+#
+# METHOD RULE, learned from the round-1 finding that caught this suite (major): the first version
+# of this file DERIVED its expectation from the same manifest the code under test reads, and only
+# checked that SOME prerelease suffix existed. It therefore passed while the manifest still said
+# beta2 and SC-010 (0.40.0-beta3) was false - it verified plumbing, not the requirement.
+# An acceptance criterion that fixes a LITERAL value gets a LITERAL assertion; derived assertions
+# are for invariants only.
 Describe 'Orientation banner renders the full prerelease version (T011 / FR-019)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
         $script:Provider = Join-Path $script:RepoRoot 'scripts/internal/specrew-bootstrap-provider.ps1'
+        # SC-010 names this value. It is asserted LITERALLY, independent of the manifest under test.
+        $script:ExpectedVersion = '0.40.0-beta3'
+        $script:ModuleVersion = '0.40.0'
         $manifest = Import-PowerShellDataFile -Path (Join-Path $script:RepoRoot 'Specrew.psd1')
-        $script:ModuleVersion = [string]$manifest.ModuleVersion
-        $script:Prerelease = [string]$manifest.PrivateData.PSData.Prerelease
-        $script:ExpectedVersion = if ([string]::IsNullOrWhiteSpace($script:Prerelease)) {
-            $script:ModuleVersion
-        }
-        else {
-            '{0}-{1}' -f $script:ModuleVersion, $script:Prerelease.Trim()
-        }
+        $script:ManifestVersionText = '{0}-{1}' -f [string]$manifest.ModuleVersion, ([string]$manifest.PrivateData.PSData.Prerelease).Trim()
 
         function script:Invoke-BootstrapProvider {
             param([Parameter(Mandatory)][string]$ProjectRoot)
@@ -47,9 +48,10 @@ Describe 'Orientation banner renders the full prerelease version (T011 / FR-019)
         }
     }
 
-    It 'the manifest under test actually carries a prerelease tag (otherwise this suite proves nothing)' {
-        $script:Prerelease | Should -Not -BeNullOrEmpty
-        $script:ExpectedVersion | Should -Match '^\d+\.\d+\.\d+-\w+'
+    It 'the shipped manifest declares the version SC-010 requires' {
+        # The literal check the derived version could not make: the source identity itself must be
+        # beta3, or every build from this tree tells a consumer they are on the previous channel.
+        $script:ManifestVersionText | Should -Be $script:ExpectedVersion
     }
 
     It 'the rendered directive carries the FULL prerelease version' {
