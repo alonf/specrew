@@ -195,6 +195,16 @@ walked and agreed; Option B chosen ("Option B — the pending-pause fact").
 - CI workflow — markdownlint-cli install (198-carried chore). [chore]
 - records — 009/010 wording fix; release notes with the beta4 claim sentence. [records-only]
 
+### Activation-premise alignment (added 2026-08-10, maintainer-ruled during execution)
+
+The campaign surface activates only when the coverage delta contains implementation. The
+non-implementation classes are exactly two: the methodology machinery (via the single
+FR-012 resolver) and the `specs/` lifecycle records tree. **A docs-only delta therefore
+keeps the surface LIVE — deliberately** (maintainer ruling, 2026-08-10): documentation is
+reviewable product content, and the conservative direction is the one that keeps the gate
+consulted. Every unresolved input (trunk, resolver, git call) also keeps the surface live,
+so quiet is reachable only from a fully resolved, genuinely records-only delta.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):
