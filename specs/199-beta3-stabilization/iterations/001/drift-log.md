@@ -198,6 +198,39 @@ named above.
   (the guard green from the start), 4/4 green after; 61/61 green across the campaign
   orchestrator and public-command suites.
 
+### Measured proof line — deterministic registry at the ratified slice
+
+Transcribed from the measurement, not drafted ahead of it (198 method rule). Run locally
+at HEAD after the three ratified exception commits:
+
+> `F-198 honesty regression suite: all 95 suites green in 627.685s.` (exit 0; measured
+> elapsed 628.5 s, `-PerTestTimeoutSeconds 300`)
+
+This includes `tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1`
+(34.560 s) — the file whose 2026-08-08 guarantee was sharpened — so the amended assertions
+pass inside the honesty regression lane as well as in isolation.
+
+### DRIFT-199-I001-012 — the slice review's verification budget cannot fit its window (open; authoring error owned)
+
+- **Observed**: 2026-08-10, run `run-20260810-074723936-616f0b0e`. Terminal after 894.6 s
+  of a 900 s window: `verification-command-failed:f199-deterministic-registry:
+  diagnostics-require-command-scoped-disclosure`. `Invoked: False` — the reviewer was
+  never started, so no provider spend; roughly 15 minutes of wall clock was consumed.
+- **Cause, established by measurement rather than by unsealing**: the registry command
+  needs ~628 s and is fully green (proof line above). The round's total budget was 900 s,
+  and the verification command's own `timeout_seconds` was authored at 1200 s — larger
+  than the window containing it. The plan could not pass by construction.
+- **Authoring error owned**: the 1200 s figure was copied from the beta2 plan, which
+  governed SIGNOFF-grade verification where a long window is appropriate. Reusing it for
+  a mid-implementation slice review under a 900 s window was the mistake.
+- **Second finding, ledger F3 reproduced**: the failure reason was SEALED
+  (`diagnostics-require-command-scoped-disclosure`) — the consumer cannot see why their
+  verification failed without a human-authorized diagnostic disclosure. FR-013 is the fix;
+  this is a live reproduction on the maintainer's own repository.
+- **Resolution**: pending maintainer ruling on window-versus-scope. Options recorded:
+  raise the round window above signoff-grade verification; or give slice reviews a scoped
+  command set and keep the full registry lane for review-signoff.
+
 ### DRIFT-199-I001-011 — ledger F5 (in-flight blindness) reproduced with store evidence (open)
 
 - **Observed**: 2026-08-10, while the authorized round was executing. The campaign stop
