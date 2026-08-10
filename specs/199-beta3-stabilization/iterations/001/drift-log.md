@@ -185,7 +185,36 @@ surfaced explicitly at the next boundary, never absorbed silently.
   ffeea775 with the iteration identity present; the stop re-rendered and the plan
   verdict was given over the verifiable state.
 
-### DRIFT-199-I001-005 — F1 (OneDrive) reproduced live on the maintainer's install (open)
+### DRIFT-199-I001-005 — F1 (OneDrive) reproduced live on the maintainer's install (CLOSED 2026-08-10)
+
+**CLOSED on a measurement, not on a green suite.** All three real OneDrive states are now admitted and
+hashed end to end through `Get-SpecrewReviewRuntimeManagedTextSha256` — the exact function whose refusal
+opened this entry — against the INSTALLED module. Transcribed from the run at commit `dda0e660`:
+
+> `start (pinned)           attrs 0x80420   hydrate-cloud     7b3249f4...d40e`
+> `evicted (dehydrated)     attrs 0x501620  hydrate-cloud     7b3249f4...d40e`
+> `hydrated-unpinned        attrs 0x420     admit-nonlinking  7b3249f4...d40e`
+> `0x420 admitted AND bytes verified against half 1: True`
+> `RESTORED (pinned)        attrs 0x80420   hydrate-cloud     7b3249f4...d40e`
+
+Every hash is identical to the value half 1 recorded before any eviction, so the bytes survived a real
+round trip through the cloud in both directions. The pin state was restored and confirmed; the
+maintainer's module is as it was found.
+
+**What closes it, stated as the three separate claims it actually took**: a dehydrated placeholder is
+classified as cloud and READING IT HYDRATES (half 2); a hydrated file is not silently refused once its
+transient markers clear (the pinned case, DRIFT-199-I001-023); and the hydrated-UNPINNED state that
+Storage Sense leaves behind is admitted rather than refused (the non-linking ruling,
+DRIFT-199-I001-024). The first fix satisfied none of these on a real install; the second satisfied one;
+only all three together close the defect.
+
+**Three attempts, and each was declared done before it was.** Recorded plainly because that is the
+useful part of this entry's history: attempt one passed its fixtures while refusing every file on the
+machine; attempt two passed its fixtures and the real pinned files while still refusing the state a
+consumer reaches after Storage Sense runs; attempt three was measured in all three states before anyone
+said the word closed.
+
+### DRIFT-199-I001-005 — the original reproduction (kept for the record)
 
 - **Observed**: 2026-08-10, running `specrew review --remediate override-block` through the
   INSTALLED module. Exit 1 with

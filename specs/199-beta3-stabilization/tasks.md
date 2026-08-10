@@ -82,7 +82,7 @@ The phase headings below keep their authoring order; this execution order govern
 
 ## Iteration 001 — Phase 3: install + bootstrap (2.75 SP)
 
-- [ ] T006 [owner: Implementer] [sp: 1.75] **Reparse-tag discrimination** — the
+- [x] T006 [owner: Implementer] [sp: 1.75] **Reparse-tag discrimination** — the
   integrity check discriminates tags: cloud-files family hydrate-then-hash-verify;
   junction/symlink refusal untouched with fixtures green; unknown tags fail closed
   (allowlist); symmetric across module install, authority store, frozen snapshot;

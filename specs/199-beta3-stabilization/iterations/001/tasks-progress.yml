@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "001"
-updated_at: "2026-08-10T16:03:34.5934270Z"
+updated_at: "2026-08-10T17:41:21.0010763Z"
 tasks:
   T001:
     title: "Pause core (round terminal + pause facts + decision surface + per-campaign budget)"
@@ -35,9 +35,9 @@ tasks:
     blocked_reason: ""
   T006:
     title: "Reparse-tag discrimination + refusal messages + docs"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-08-10T16:03:03.7425108Z"
-    completed_at: ""
+    completed_at: "2026-08-10T17:41:07.8580914Z"
     blocked_reason: ""
   T007:
     title: "Init verification-plan bootstrap + named errors"
