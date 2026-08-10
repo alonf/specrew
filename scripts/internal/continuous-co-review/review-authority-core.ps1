@@ -108,19 +108,20 @@ function Resolve-ReviewCampaignPauseDecision {
 
     $blocking = 0; $major = 0; $minor = 0
     $gatingLocations = [Collections.Generic.List[string]]::new()
+    $gatingFindings = [Collections.Generic.List[object]]::new()
     foreach ($finding in @($Findings)) {
         $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
-        switch ($severity) {
-            'blocking' {
-                $blocking++
-                $gatingLocations.Add([string](Get-ReviewAuthorityProperty -Object $finding -Name 'location'))
-            }
-            'major' {
-                $major++
-                $gatingLocations.Add([string](Get-ReviewAuthorityProperty -Object $finding -Name 'location'))
-            }
-            default { $minor++ }
+        if ($severity -ceq 'blocking' -or $severity -ceq 'major') {
+            if ($severity -ceq 'blocking') { $blocking++ } else { $major++ }
+            $location = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'location')
+            $gatingLocations.Add($location)
+            $gatingFindings.Add([pscustomobject]@{
+                    severity = $severity
+                    title    = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'title')
+                    location = $location
+                })
         }
+        else { $minor++ }
     }
 
     $gating = ($blocking + $major) -gt 0
@@ -169,6 +170,7 @@ function Resolve-ReviewCampaignPauseDecision {
         carried_followups      = $minor
         gating                 = $gating
         gating_locations       = @($gatingLocations | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        gating_findings        = @($gatingFindings)
         rounds_used            = $RoundsUsed
         budget_total           = $BudgetTotal
         budget_exhausted       = $budgetExhausted

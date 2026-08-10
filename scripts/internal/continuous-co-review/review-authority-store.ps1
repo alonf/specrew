@@ -116,7 +116,7 @@ function Write-ReviewAuthorityImmutableFact {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact'
         )][string]$ContractName,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
@@ -155,7 +155,7 @@ function Read-ReviewAuthorityFactFile {
         [ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact'
         )][string]$ContractName,
         [int]$MaxBytes = 1048576
     )
@@ -282,6 +282,48 @@ function Write-ReviewRunAuthorityFact {
     if ([string](Get-ReviewAuthorityProperty -Object $Fact -Name 'state') -cne $Stage) { throw "review-store-contract-invalid:run-stage-mismatch:$Stage" }
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/runs/$RunId/$Stage.json"
     return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName ReviewRun -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId
+}
+
+function Write-ReviewCampaignPendingPauseFact {
+    # T001 / Option B. The pause is recorded as an immutable fact beside its run, so the surface can
+    # be re-rendered VERBATIM on resume and the stop governor can read the state instead of guessing.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/runs/$runId/pending-pause.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName PendingPauseFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId
+}
+
+function Write-ReviewCampaignPauseDecisionFact {
+    # The human's numbered reply. Immutable by the same rule as every other authority fact: one reply
+    # per round, and a conflicting second answer is corruption rather than a correction, so a
+    # continuation can never be manufactured by re-answering a pause.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/runs/$runId/pause-decision.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName PauseDecisionFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId
+}
+
+function Get-ReviewCampaignPendingPause {
+    # The newest pause that has NOT been answered. An answered pause is history, not a pending
+    # decision, so it neither renders nor confers quiet.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs'
+    $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($runsRoot)) { return $null }
+    $pending = $null
+    foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot) | Sort-Object) {
+        $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
+        if (-not [IO.File]::Exists($pausePath)) { continue }
+        if ([IO.File]::Exists([IO.Path]::Combine($runDirectory, 'pause-decision.json'))) { continue }
+        try { $pending = Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json }
+        catch { continue }
+    }
+    return $pending
 }
 
 function Publish-ReviewRunResultFact {

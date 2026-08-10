@@ -14,6 +14,8 @@ Describe 'Campaign pause core (T001)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        # Rendering lives in the navigator layer (the D1 binding), which _load does not dot-source.
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
         function script:New-Finding {
             param([string]$Severity, [string]$Title = 'a finding', [string]$Location = 'src/x.ps1:1')
@@ -114,6 +116,59 @@ Describe 'Campaign pause core (T001)' {
         }
     }
 
+    Context 'the rendered decision surface (what the human actually reads)' {
+        BeforeAll {
+            $script:Surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
+                Resolve-ReviewCampaignPauseDecision -Findings @(
+                    (script:New-Finding -Severity 'blocking' -Title 'SQL injection in the export endpoint' -Location 'src/export.ps1:88'),
+                    (script:New-Finding -Severity 'major' -Title 'retry loop never backs off' -Location 'src/poll.ps1:41'),
+                    (script:New-Finding -Severity 'minor'), (script:New-Finding -Severity 'minor'), (script:New-Finding -Severity 'minor')
+                ) -RoundsUsed 3 -BudgetTotal 4 -ElapsedMinutes 41
+            )
+        }
+
+        It 'names the project and what was found, with locations' {
+            $script:Surface | Should -Match 'linkcheck'
+            $script:Surface | Should -Match 'SQL injection in the export endpoint'
+            $script:Surface | Should -Match 'src/export\.ps1:88'
+        }
+
+        It 'shows the minors as saved follow-ups that do not block' {
+            $script:Surface | Should -Match '3 minor'
+            $script:Surface | Should -Match 'follow-up'
+        }
+
+        It 'shows the cost and the budget position' {
+            $script:Surface | Should -Match '3 rounds'
+            $script:Surface | Should -Match '41 minutes'
+            $script:Surface | Should -Match '3 of 4'
+        }
+
+        It 'offers numbered options and states that nothing spends until the human answers' {
+            $script:Surface | Should -Match '(?m)^\s*1\.'
+            $script:Surface | Should -Match '(?m)^\s*2\.'
+            $script:Surface | Should -Match '(?m)^\s*3\.'
+            $script:Surface | Should -Match '[Nn]othing runs and nothing is spent until you answer'
+        }
+
+        It 'FR-015: carries no internal machinery vocabulary' {
+            foreach ($banned in @('crossing', 'mint', 'digest', 'boundary sync', 'verdict capture', 'ratchet', 'terminalize', 'claim-ordered')) {
+                $script:Surface | Should -Not -Match ([regex]::Escape($banned))
+            }
+        }
+
+        It 'renders the exhausted-budget refusal as prose with only two numbered options' {
+            $exhausted = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
+                Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
+            )
+            $exhausted | Should -Match '4 of 4'
+            $exhausted | Should -Match 'allowance-reset'
+            $exhausted | Should -Not -Match '(?m)^\s*1\.'
+            $exhausted | Should -Match '(?m)^\s*2\.'
+            $exhausted | Should -Match '(?m)^\s*3\.'
+        }
+    }
+
     Context 'the pause facts (Option B: the pause is recorded, never inferred)' {
         It 'a pending-pause fact validates against its contract' {
             $fact = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
@@ -190,6 +245,61 @@ Describe 'Campaign pause core (T001)' {
 
         It 'an absent or unreadable pause confers no quiet (fail closed)' {
             (Test-ReviewCampaignPendingPauseQuiet -PendingPause $null -CurrentDigest ('a' * 40)).confers_quiet | Should -BeFalse
+        }
+
+        It 'the facts persist and read back through the immutable store' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-pause-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $digest = 'c' * 40
+                $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-store' `
+                    -TargetDigest $digest -Decision (Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 2 -BudgetTotal 4 -ElapsedMinutes 12) `
+                    -ObservedAt '2026-08-10T10:00:00Z'
+
+                $write = Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $pending
+                $write.created | Should -BeTrue
+
+                $readBack = Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001'
+                $readBack | Should -Not -BeNullOrEmpty
+                $readBack.run_id | Should -Be 'run-t001-store'
+                $readBack.target_digest | Should -Be $digest
+                # Resume renders the surface VERBATIM from the fact, so its content must survive.
+                $readBack.recommendation | Should -Be $pending.recommendation
+                $readBack.rounds_used | Should -Be 2
+            }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'an answered pause is no longer pending' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-pause-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-answered' `
+                    -TargetDigest ('d' * 40) -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 3) `
+                    -ObservedAt '2026-08-10T10:00:00Z'
+                Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact $pending | Out-Null
+
+                (Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -Not -BeNullOrEmpty
+
+                $answer = New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-answered' `
+                    -Choice 'stop-here' -ObservedAt '2026-08-10T10:05:00Z'
+                Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact $answer | Out-Null
+
+                (Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -BeNullOrEmpty
+            }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'a second answer for the same round is refused (one reply, one round)' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-pause-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $answer = New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-dup' `
+                    -Choice 'fix-and-continue' -ObservedAt '2026-08-10T10:05:00Z'
+                Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact $answer | Out-Null
+
+                $conflicting = New-ReviewCampaignPauseDecisionFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-dup' `
+                    -Choice 'abandon' -ObservedAt '2026-08-10T10:06:00Z'
+                { Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact $conflicting } | Should -Throw '*conflicting-immutable-fact*'
+            }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
         }
 
         It 'stop-here and abandon never authorize another round' {

@@ -1080,6 +1080,56 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
     catch { $null = $_; return $null }
 }
 
+function Format-ReviewCampaignPauseSurface {
+    # T001 / FR-002, FR-015. The one thing the human actually reads after a round. Every sentence is
+    # about THEIR project and THEIR decision: what was found and where, what it cost, what is on
+    # offer, and the promise that nothing moves until they answer. Internal vocabulary belongs in the
+    # records, never here.
+    #
+    # The last line is load-bearing. Ledger F8 recorded the console being held while spend continued,
+    # so the surface states plainly that the loop has stopped and is waiting.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectName,
+        [Parameter(Mandatory)]$Decision
+    )
+    $lines = [Collections.Generic.List[string]]::new()
+    $roundWord = if ([int]$Decision.rounds_used -eq 1) { 'round' } else { 'rounds' }
+    $lines.Add(('Review round {0} of {1} complete.' -f $Decision.rounds_used, $ProjectName))
+    $lines.Add('')
+
+    $gatingTotal = [int]$Decision.blocking_count + [int]$Decision.major_count
+    if ($gatingTotal -gt 0) {
+        $lines.Add(('Findings that need your attention ({0}):' -f $gatingTotal))
+        foreach ($finding in @($Decision.gating_findings)) {
+            $lines.Add(('  {0}  {1}  ({2})' -f ([string]$finding.severity).ToUpperInvariant(), $finding.title, $finding.location))
+        }
+    }
+    else {
+        $lines.Add('Nothing found that needs your attention.')
+    }
+
+    if ([int]$Decision.minor_count -gt 0) {
+        $lines.Add(('  Also recorded: {0} minor finding{1} - saved as follow-ups, they never block your sign-off.' -f $Decision.minor_count, $(if ([int]$Decision.minor_count -eq 1) { '' } else { 's' })))
+    }
+    $lines.Add('')
+    $lines.Add(('Cost so far: {0} {1}, {2} minutes. Round budget: {3} of {4} used.' -f $Decision.rounds_used, $roundWord, $Decision.elapsed_minutes, $Decision.rounds_used, $Decision.budget_total))
+    $lines.Add('')
+    $lines.Add(('Recommendation: {0}' -f $Decision.recommendation))
+    if (-not [string]::IsNullOrWhiteSpace([string]$Decision.budget_refusal)) {
+        $lines.Add('')
+        $lines.Add([string]$Decision.budget_refusal)
+    }
+    $lines.Add('')
+    $lines.Add('What would you like to do?')
+    foreach ($option in @($Decision.options)) {
+        $lines.Add(('  {0}. {1}' -f $option.id, $option.text))
+    }
+    $lines.Add('')
+    $lines.Add('Reply with a number. Nothing runs and nothing is spent until you answer.')
+    return ($lines -join [Environment]::NewLine)
+}
+
 function Build-ContinuousCoReviewNavigatorStopBlock {
     # The directive body a blocking co-review verdict force-continues the turn with (the dispatcher
     # wraps it in the host's stop-block envelope). Names the finding so the human/agent acts on it.
