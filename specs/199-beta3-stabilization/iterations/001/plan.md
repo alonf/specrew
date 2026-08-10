@@ -106,6 +106,10 @@
 
 ## Notes
 
+- Execution order (maintainer instruction at the tasks verdict, 2026-08-10): T009,
+  T011, T013 first (cheap durable wins — the CI lane goes green before heavy work and
+  the codex review window is in place before codex reviews this feature), then the
+  economics core T001, T002, T003, then T004, T005, T006, T007, T008, T010, T012.
 - Planned task effort: 13.1 SP of the 20 SP capacity (threshold 20 x 1.0 not
   exceeded; the maintainer's ~10–12 target is overshot by ~1.1 SP, surfaced at the
   tasks boundary for ruling — trim candidates named there).

@@ -12,6 +12,17 @@ instruction). Every task lands RED-first through the shipped entry point (FR-023
 method rule binds every task); mirror parity and psd1 FileList ride every commit
 (inherited custom rules).
 
+## Execution order (maintainer instruction at the tasks verdict, 2026-08-10)
+
+**Cheap durable wins land FIRST**: T009 (codex review window), T011 (banner prerelease
+version), T013 (markdownlint CI install) — then the economics core T001, T002, T003,
+then the remainder as listed (T004, T005, T006, T007, T008, T010, T012).
+
+**Recorded rationale (maintainer)**: the CI lane goes green before heavy work, and the
+codex review window is in place before codex reviews this feature.
+
+The phase headings below keep their authoring order; this execution order governs.
+
 ## Iteration 001 — Phase 1: review-loop economics (bridge, 5.0 SP)
 
 - [ ] T001 [owner: Implementer] [sp: 3.0] **Pause core** — the round terminal becomes
