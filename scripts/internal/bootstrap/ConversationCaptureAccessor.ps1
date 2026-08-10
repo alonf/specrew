@@ -508,10 +508,31 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $mFrom = $mm.Groups[1].Value.ToLowerInvariant()
         $mTo = $mm.Groups[2].Value.ToLowerInvariant()
 
-        # The FIRST human turn AFTER that packet (the response to it; before it = the request, not the verdict).
+        # T004 / FR-010: the first VERDICT-BEARING human turn after that packet wins, and non-verdict turns in
+        # between are scanned PAST rather than treated as the answer.
+        #
+        # Taking the first human turn whatever it said was wrong for the commonest real shape there is: packet
+        # rendered -> human asks a clarifying question -> agent answers -> human approves. The question
+        # classified as 'none', the capture abandoned this marker, and a genuine approval two turns later was
+        # never read. The human's verdict was in the transcript and the ledger recorded the crossing
+        # un-authorized.
+        #
+        # SKIPPING IS ONLY FOR TURNS THAT CARRY NO VERDICT AT ALL. A send-back or a discuss request IS
+        # verdict-bearing, so it wins the window and blocks exactly as before - this can never scan PAST a
+        # refusal to find an approval behind it.
+        #
+        # The window is bounded by the NEXT packet: once another marker is rendered, later turns are answering
+        # that packet, not this one. Without the bound a forward scan could attribute a newer packet's approval
+        # to an older crossing, which is the fabrication direction.
         $humanText = $null
         for ($j = $i + 1; $j -lt $turns.Count; $j++) {
-            if (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turns[$j]) { $humanText = [string]$turns[$j].text; break }
+            if ([string]$turns[$j].role -eq 'assistant' -and $markerRx.IsMatch([string]$turns[$j].text)) { break }
+            if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turns[$j])) { continue }
+            $candidateText = [string]$turns[$j].text
+            $candidate = Test-SpecrewHumanVerdictToken -Text $candidateText
+            if (-not $candidate.IsApproval -and -not $candidate.IsSendBack -and -not $candidate.IsDiscuss) { continue }
+            $humanText = $candidateText
+            break
         }
         if ([string]::IsNullOrWhiteSpace($humanText)) { $sawAwaiting = $true; continue }
 

@@ -133,4 +133,67 @@ $capturedDirect = Get-SpecrewCapturedVerdictText -HumanText 'approved for before
 Assert-True ($capturedDirect.StartsWith('approved for before-implement')) 'FR-010 captured text: canonical prefix preserved for the writer'
 Assert-True ($capturedDirect.Contains('discuss prompt 2')) 'FR-010 captured text: the instructions survive byte-for-byte'
 
+# --- T004 / FR-010: marker-FORWARD capture. The first VERDICT-BEARING human turn after the packet
+#     wins, and non-verdict turns in between are scanned PAST rather than taken as the answer.
+#
+#     The shape that motivated it is the commonest one there is: packet rendered -> human asks a
+#     clarifying question -> agent answers -> human approves. Taking the first human turn whatever it
+#     said classified the QUESTION as the verdict ('none'), abandoned the marker, and never read the
+#     approval two turns later - so a verdict sitting in the transcript recorded as un-authorized.
+#
+#     The two safety properties are asserted alongside it, because both are directions this could
+#     have failed in: a send-back or discuss request IS verdict-bearing and can never be scanned past
+#     to reach an approval behind it, and the window ENDS at the next packet so one crossing's
+#     approval is never attributed to another. ---
+function New-CaptureTurn { param([string]$Role, [string]$Text) '{"role":"' + $Role + '","message":{"content":[{"type":"text","text":' + ($Text | ConvertTo-Json) + '}]}}' }
+function Get-CaptureVerdictFor {
+    param([string[]]$Lines)
+    $p = Join-Path ([IO.Path]::GetTempPath()) ("capfwd-" + [guid]::NewGuid().ToString('N') + '.jsonl')
+    Set-Content -LiteralPath $p -Value $Lines -Encoding UTF8
+    try { return Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $p }
+    finally { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
+}
+$packetOne = 'Packet body. <!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->'
+
+$fwd = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'what about the antigravity case?')
+    (New-CaptureTurn assistant 'It is covered by T006.')
+    (New-CaptureTurn user 'approved for before-implement')
+)
+Assert-True ([bool]$fwd.Found) 'FR-010 marker-forward: an approval AFTER a clarifying question is captured'
+Assert-True ($fwd.ToBoundary -eq 'before-implement') 'FR-010 marker-forward: captured against the marker''s own crossing'
+
+$blocked = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'send back - the plan needs a security section')
+    (New-CaptureTurn assistant 'Understood.')
+    (New-CaptureTurn user 'approved for before-implement')
+)
+Assert-True (-not [bool]$blocked.Found) 'FR-010 marker-forward SAFETY: a send-back is never scanned past to reach an approval behind it'
+
+$discussed = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'discuss prompt 2')
+    (New-CaptureTurn assistant 'Here is prompt 2.')
+    (New-CaptureTurn user 'approved for before-implement')
+)
+Assert-True (-not [bool]$discussed.Found) 'FR-010 marker-forward SAFETY: a discuss request is never scanned past either'
+
+$bounded = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'what about the antigravity case?')
+    (New-CaptureTurn assistant 'Second packet. <!-- SPECREW-VERDICT-BOUNDARY: before-implement -> review-signoff -->')
+    (New-CaptureTurn user 'approved for review-signoff')
+)
+Assert-True ($bounded.ToBoundary -eq 'review-signoff') 'FR-010 marker-forward SAFETY: the window ends at the next packet, so no approval is attributed across crossings'
+
+$awaiting = Get-CaptureVerdictFor @(
+    (New-CaptureTurn assistant $packetOne)
+    (New-CaptureTurn user 'what about the antigravity case?')
+    (New-CaptureTurn assistant 'It is covered by T006.')
+    (New-CaptureTurn user 'and the OneDrive one?')
+)
+Assert-True (-not [bool]$awaiting.Found) 'FR-010 marker-forward: a window of only non-verdict turns stays awaiting, never captured'
+
 Write-Host "`n=== ConversationCapture.Tests.ps1: all assertions passed ===" -ForegroundColor Green

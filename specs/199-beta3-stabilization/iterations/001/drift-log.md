@@ -452,6 +452,34 @@ though the file is records. Left broad pending a ruling, because FR-009 says "go
 files" without qualification and the design record classifies `specs/` as records; narrowing it to the
 iteration records tree is a one-line change.
 
+### Measured proof line — T003's two-governor fix, transcribed from a live stop (2026-08-10)
+
+Not drafted ahead of the run. The FIRST stop after `9d93c91c` landed rendered the scoped clause on
+the maintainer's own session, on the same collision that had been adjudicated by an agent three times
+earlier in this feature:
+
+> `Specrew campaign review — review-stale.`
+> `The latest campaign result remains useful evidence but targets a moved or earlier snapshot and`
+> `cannot authorize the current tree.`
+> `Run: run-20260810-085753967-af5bef76`
+> `Implementer action: request-current-digest-review`
+> `(This is a campaign review block, not a lifecycle verdict. It does not govern the recorded`
+> `crossing crossing-fdfd08331c434810bfb008886e73a3476306c1bf484c84813463914ae4ba0605`
+> `(before-implement -> review-signoff), which is still pending your decision: that crossing's`
+> `verdict marker applies as normal, and this block does not suppress it.)`
+
+**What it demonstrates, stated narrowly**: the block kept its review position (`review-stale`, and
+the same implementer action), stopped claiming authority over the lifecycle marker, and named the
+exact crossing it defers to — read from controller truth, not inferred. The adjudication a consumer
+could not previously make is now stated ON the surface (FR-007 / SC-003).
+
+**What it does NOT demonstrate, recorded so the evidence is not over-read**: deferring on the marker
+is not a marker being OWED. At this stop the crossing's destination is `review-signoff`, whose
+evidence (`review.md`) does not exist in the bound tree, so the boundary evidence gate is the governor
+that decides — and it has been refusing correctly. The two governors now say compatible things:
+"this block does not suppress the crossing's marker" and "that crossing has no evidence to approve
+yet" can both be true at once, which is precisely what they could not do before.
+
 ### Measured proof line — first successful end-to-end campaign round
 
 Transcribed from the run output, not drafted ahead of it:
