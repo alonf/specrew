@@ -150,6 +150,124 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
         }
     }
 
+    # Trace: T008 / FR-014 / SC-008.
+    #
+    # CHARACTERIZATION, NOT A REPAIR - and the label is load-bearing. Measured across all five authority
+    # stores in existence (T067's, 198-i008/i009/i010/i011, and this feature's own): reuses == releases
+    # in every one. GRANT REUSE WAS NEVER BROKEN. F4 was real but is a DISCLOSURE gap, not a ledger
+    # defect: a restored slot is never surfaced, so a human mints an authorization they did not need.
+    #
+    # These cases exist so the behaviour cannot regress silently, and so no future analysis re-derives
+    # the false identity that produced a retracted defect claim (DRIFT-199-I001-026).
+    Context 'T008 allowance ledger - characterization of behaviour that already works' {
+        BeforeAll {
+            function script:New-Grant {
+                param([string]$Id, [int]$Slots = 1, [string]$Campaign = 'cmp-t008-x-i001')
+                [pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'grant'; campaign_id = $Campaign; grant_id = $Id
+                    slots = $Slots; authority_kind = 'human'; authorization_ref = 'human-verdict'
+                    observed_at = '2026-08-10T00:00:00Z'
+                }
+            }
+            function script:New-Reservation {
+                param([string]$Id, [string]$Grant, [int]$Slot = 1, [string]$Run, [string]$Campaign = 'cmp-t008-x-i001')
+                [pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'reservation'; campaign_id = $Campaign
+                    reservation_id = $Id; grant_id = $Grant; slot = $Slot; run_id = $Run
+                    observed_at = '2026-08-10T00:00:01Z'
+                }
+            }
+            function script:New-Release {
+                param([string]$Reservation, [string]$Run, [string]$Campaign = 'cmp-t008-x-i001')
+                [pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'release'; campaign_id = $Campaign
+                    reservation_id = $Reservation; run_id = $Run; reason = 'preflight-failed'
+                    observed_at = '2026-08-10T00:00:02Z'
+                }
+            }
+            function script:New-Spend {
+                param([string]$Reservation, [string]$Run, [string]$Campaign = 'cmp-t008-x-i001')
+                [pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'spend'; campaign_id = $Campaign
+                    reservation_id = $Reservation; run_id = $Run; invocation_started_at = '2026-08-10T00:00:03Z'
+                }
+            }
+        }
+
+        It '1. a pre-invocation failure RELEASES its reservation (no spend exists)' {
+            $decision = Resolve-ReviewCampaignReleaseDecision `
+                -Reservation (script:New-Reservation -Id 'res-t008a' -Grant 'grant-t008a' -Run 'run-t008a') `
+                -Reason 'preflight-failed:verification' -ObservedAt '2026-08-10T00:00:02Z' -Spends @()
+
+            $decision.permitted | Should -BeTrue
+            $decision.reason | Should -Be 'proven-pre-invocation-release'
+        }
+
+        It '2. an INVOKED run keeps its charge - the release is refused when a spend exists' {
+            # The other direction, so case 1 cannot be satisfied by releasing everything. Only the
+            # launch-failed call site passes real spends, and this is why that matters.
+            $reservation = script:New-Reservation -Id 'res-t008b' -Grant 'grant-t008b' -Run 'run-t008b'
+            $decision = Resolve-ReviewCampaignReleaseDecision -Reservation $reservation `
+                -Reason 'launch-failed' -ObservedAt '2026-08-10T00:00:02Z' `
+                -Spends @((script:New-Spend -Reservation 'res-t008b' -Run 'run-t008b'))
+
+            $decision.permitted | Should -BeFalse
+            $decision.reason | Should -Be 'invoked-slot-remains-spent' -Because 'a round that reached a reviewer is charged; that is the rule T008 protects, not one it breaks'
+        }
+
+        It '3. THE ONE THAT MATTERS: a grant is REUSABLE after its slot is released' {
+            # Measured 12 times across the five real stores. Pinned here so it cannot regress quietly.
+            $grant = script:New-Grant -Id 'grant-t008c'
+            $reservation = script:New-Reservation -Id 'res-t008c' -Grant 'grant-t008c' -Run 'run-t008c'
+
+            $held = Get-ReviewCampaignAllowanceState -CampaignId 'cmp-t008-x-i001' -Grants @($grant) `
+                -Reservations @($reservation) -Spends @() -Releases @()
+            $held.available.Count | Should -Be 0 -Because 'an unreleased reservation holds the slot'
+            $held.active.Count | Should -Be 1
+
+            $restored = Get-ReviewCampaignAllowanceState -CampaignId 'cmp-t008-x-i001' -Grants @($grant) `
+                -Reservations @($reservation) -Spends @() `
+                -Releases @((script:New-Release -Reservation 'res-t008c' -Run 'run-t008c'))
+
+            $restored.valid | Should -BeTrue
+            $restored.available.Count | Should -Be 1 -Because 'a released, unspent slot returns to the pool - the human does not owe a fresh authorization'
+            $restored.active.Count | Should -Be 0
+            $restored.spent.Count | Should -Be 0
+        }
+
+        It '3b. a SPENT slot never returns, however many releases are recorded elsewhere' {
+            $grant = script:New-Grant -Id 'grant-t008d'
+            $state = Get-ReviewCampaignAllowanceState -CampaignId 'cmp-t008-x-i001' -Grants @($grant) `
+                -Reservations @((script:New-Reservation -Id 'res-t008d' -Grant 'grant-t008d' -Run 'run-t008d')) `
+                -Spends @((script:New-Spend -Reservation 'res-t008d' -Run 'run-t008d')) -Releases @()
+
+            $state.available.Count | Should -Be 0
+            $state.spent.Count | Should -Be 1 -Because 'the cap is a policy ceiling and a spent slot is genuinely gone'
+        }
+
+        It '4. a grant MINTED BUT NEVER RESERVED is available - the shape that broke the aggregate reasoning' {
+            # THE RETRACTED-FINDING GUARD (DRIFT-199-I001-026). Deriving reuses as
+            # `reservations - grants` assumes every grant is reserved against. In the real i008 store 25
+            # grants had only 21 reservation containers, so that identity reported 1 reuse where there
+            # were 5 - and produced a committed, FALSE defect claim.
+            #
+            # This case pins the shape that breaks it, so a future analysis meets a fixture rather than
+            # re-deriving the same wrong number.
+            $state = Get-ReviewCampaignAllowanceState -CampaignId 'cmp-t008-x-i001' `
+                -Grants @((script:New-Grant -Id 'grant-used'), (script:New-Grant -Id 'grant-never-used')) `
+                -Reservations @((script:New-Reservation -Id 'res-used' -Grant 'grant-used' -Run 'run-used')) `
+                -Spends @() -Releases @()
+
+            $state.valid | Should -BeTrue -Because 'a grant nobody reserved against is an ordinary state, not a corrupt store'
+            $state.granted_slots | Should -Be 2
+            $state.available.Count | Should -Be 1
+            @($state.available)[0].grant_id | Should -Be 'grant-never-used'
+            # The identity that produced the retracted claim, asserted to be WRONG on this shape.
+            $reservations = 1; $grants = 2; $releases = 0
+            ($reservations - $grants) | Should -Not -Be $releases -Because 'COUNT THE LEAF FACTS: an aggregate over container counts silently assumes every grant was reserved against, and is wrong exactly when one was not'
+        }
+    }
+
     Context 'consumer-legible halt message (FR-018)' {
         It 'has zero internal identifiers, states N-of-M, names the reset command, and shows resolved-vs-open' {
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
