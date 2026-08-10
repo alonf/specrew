@@ -1,18 +1,16 @@
 {
   "schema_version": "1.0",
-  "plan_id": "f199.i001.slice.v1",
+  "plan_id": "f199.i001.slice.v2",
   "commands": [
     {
-      "command_id": "f199-deterministic-registry",
+      "command_id": "f199-slice-suites",
       "executable": "pwsh",
       "arguments": [
         "-NoProfile",
-        "-File",
-        "tests/f198-regression-suite.ps1",
-        "-PerTestTimeoutSeconds",
-        "300"
+        "-Command",
+        "$r = Invoke-Pester -Path tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1,tests/continuous-co-review/unit/campaign-default-run-id-mint.Tests.ps1,tests/continuous-co-review/unit/review-window-codex-default.Tests.ps1,tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1,tests/bootstrap/BannerPrereleaseVersion.Tests.ps1,tests/integration/ci-registry-lane-tooling.Tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0) { exit 1 } else { exit 0 }"
       ],
-      "timeout_seconds": 1200,
+      "timeout_seconds": 300,
       "env_refs": [
         "PATH",
         "PATHEXT",
@@ -34,7 +32,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Deterministic honesty regression registry (the repository's shipped registry lane)"
+      "label": "SLICE lane: the suites this slice touches. The full deterministic registry is the RELEASE GATE lane and runs at the certification round, not on every slice (maintainer ruling 2026-08-10). Sized well under half the round window so the reviewer keeps the remainder."
     },
     {
       "command_id": "iteration-001-governance",
@@ -50,7 +48,7 @@
         "-NoCacheRead",
         "-NoParallel"
       ],
-      "timeout_seconds": 300,
+      "timeout_seconds": 180,
       "env_refs": [
         "PATH",
         "PATHEXT",
