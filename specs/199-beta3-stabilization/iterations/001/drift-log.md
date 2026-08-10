@@ -1205,6 +1205,31 @@ proves admission, the second proves the property the whole branch exists for.
 fails for an ordinary reason, which shows the message is produced and shaped, not that a sync client
 actually declined to fetch a file.
 
+### Measured proof line — T010's stale-block message, transcribed from a live stop (2026-08-11)
+
+Not drafted ahead of the run. The FIRST stop after `5b62b02f` landed rendered both new clauses on the
+maintainer's own session, on the same block that had been adjudicated at every stop of this session:
+
+> `Specrew campaign review — review-stale.`
+> `The latest campaign result remains useful evidence but targets a moved or earlier snapshot and`
+> `cannot authorize the current tree. That result belongs to this review`
+> `(cmp-199-beta3-stabilization-i001) - whatever its run name suggests - so it is about your own`
+> `earlier snapshot, not another project. If you are not the person running reviews for this project,`
+> `this is advisory: there is nothing here for you to run, and it does not block your work.`
+> `Run: run-20260810-085753967-af5bef76`
+> `Implementer action: request-current-digest-review`
+
+**What it demonstrates, stated narrowly**: the block keeps its review position and its implementer
+action unchanged, and adds the two facts a reader needed to act — WHOSE result it is, and whether the
+instruction is theirs to execute. The ownership clause names the campaign beside the run id, which is
+what stops a run name from implying another project.
+
+**What it does NOT demonstrate, recorded so the evidence is not over-read**: this run id
+(`run-20260810-...`) does not look foreign, so the live stop does not exercise the misleading-run-id
+case that motivated the clause — that case is covered by the fixture, not by this transcription. And the
+block still RE-FIRES at every stop; the message half is fixed, the suppression is a behaviour change
+and remains the maintainer's scope call.
+
 ### Measured proof line — T003's two-governor fix, transcribed from a live stop (2026-08-10)
 
 Not drafted ahead of the run. The FIRST stop after `9d93c91c` landed rendered the scoped clause on
