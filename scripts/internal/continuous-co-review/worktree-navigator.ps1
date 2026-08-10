@@ -9,6 +9,12 @@ Set-StrictMode -Version Latest
 # cutover (the tracked must-happen final step), so the two paths do not ossify.
 
 . (Join-Path $PSScriptRoot 'co-review-service.ps1')   # brings the legacy navigator (reap/stage/dedup) + the service (fire/identity)
+# HARD dependency: the ONE path-identity primitive, loaded at FILE SCOPE. The implementation-presence
+# predicate below asks it for the volume's case rule, and a Get-Command-guarded CALL that substitutes
+# a different comparison would be the same defect as an $IsWindows shortcut - it answers, it answers
+# wrongly, and nothing reports it. Guarded on a name unique to this module so a same-named duplicate
+# cannot satisfy the check (DRIFT-198-I009-027).
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function Test-ReviewCampaignBoundaryRequiresIteration {
     # Feature-level intake legitimately has an active lifecycle cursor before any iteration exists.

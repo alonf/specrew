@@ -210,6 +210,46 @@ surfaced explicitly at the next boundary, never absorbed silently.
   (the guard green from the start), 4/4 green after; 61/61 green across the campaign
   orchestrator and public-command suites.
 
+### DRIFT-199-I001-014 — my path-identity consumer never loaded the primitive (resolved)
+
+- **Observed**: 2026-08-10, wider-suite regression. `path identity primitive: lets no consumer fall
+  back to a case rule the volume did not choose (DRIFT-198-I009-018)` failed.
+- **Cause**: the round-1 fix routed the activation predicate through
+  `Get-ContinuousCoReviewPathComparison`, but `worktree-navigator.ps1` never dot-sourced
+  `path-identity.ps1` at file scope, so the call depended on ambient load order. That is the
+  SHADOWING class the guard exists to stop — a duplicate primitive loaded later silently
+  answers with the OS-family rule, invisibly, at every call site.
+- **Significance**: this is the SECOND path-identity defect I introduced in the same day, on the
+  same code, immediately after recording that the class recurs. The first was using the wrong
+  comparison; this was using the right one unsafely. The guard caught what the review and my own
+  attention did not — further evidence for beta4's consolidation.
+- **Resolution**: FIXED — file-scope guarded dot-source added, guarded on a name unique to the
+  module (DRIFT-198-I009-027). `path-identity.Tests.ps1` and the activation fixture green.
+
+### DRIFT-199-I001-015 — the flush-race analyzer reopened on a signature captured TODAY (open)
+
+- **Observed**: 2026-08-10, wider-suite regression. `T109 flush-race forensic analyzer
+  (D-197-I009-003 refuted; reopens on a real signature)` failed with the captured record:
+
+  > `10/08/2026 9:11:11: blocked on a PARTIAL header read (dx_lat_hits=2 of 6, dx_lat_len=3321)
+  > - possible mid-flush truncation`
+
+- **What it means**: the suspicion was a flush/read race in the conformance Stop-provider — a
+  valid packet on disk read as absent, producing a spurious block or double render. The July
+  forensic REFUTED it on the then-corpus, and this analyzer was left in place to reopen the
+  question if a real signature ever appeared on any machine. The signature above was captured
+  during THIS session, in this repository's own conformance journal.
+- **Not a regression of this feature**: the analyzer reads machine-local runtime state
+  (`.specrew/runtime/conformance-journal.jsonl`), not code. It shows as "new" against the trunk
+  baseline only because the baseline worktree carries a different corpus. No change in this
+  feature caused the signature; the session's own stop traffic captured it.
+- **Standing consequence**: the suite will keep reporting this while the corpus holds the record,
+  so it needs a disposition rather than silence.
+- **Resolution**: pending maintainer ruling. The analyzer's own note names the remedy (a cheap
+  re-read variant, per the iteration-009 revert note), which is conformance-provider work outside
+  this feature's ten items — so the default routing is beta4, unless the spurious-block behaviour
+  is judged to hit the acceptance bar's wedged-gate clause.
+
 ### Measured proof line — first successful end-to-end campaign round
 
 Transcribed from the run output, not drafted ahead of it:
