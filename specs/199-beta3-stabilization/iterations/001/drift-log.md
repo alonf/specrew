@@ -54,6 +54,34 @@
   lineage (marker must come from controller truth, never phase inference).
 - **Resolution**: deferred — routes to the ledger's beta4 list unless it recurs and
   blocks a boundary (scope-closed feature; the crossing record sufficed here).
+  **Human instruction (plan verdict, 2026-08-10)**: if it recurs at the tasks
+  boundary, diagnose the root cause and record it here before implementation starts —
+  diagnosis only; the fix stays deferred to beta4 unless the diagnosis shows it lands
+  inside files this feature already touches.
+
+### DRIFT-199-I001-003 — plan sync recorded without iteration identity (resolved)
+
+- **Observed**: 2026-08-10. The first plan boundary sync omitted `-IterationNumber`;
+  the crossing recorded with an empty iteration identity, and the Stop-side evidence
+  gate refused the boundary stop (stage evidence not locatable in the bound tree) —
+  the FR-068-lineage gate behaving as shipped. No verdict was offered against the
+  unverifiable state.
+- **Citation**: the beta2 release claim's stage-evidence gate; 199 spec FR-023
+  (evidence tools verified before trusted).
+- **Resolution**: implementation-reverted (process form) — re-synced with
+  `-IterationNumber 001`; fresh crossing `crossing-fd27261c` bound to commit
+  ffeea775 with the iteration identity present; the stop re-rendered and the plan
+  verdict was given over the verifiable state.
+
+### DRIFT-199-I001-004 — plan total arithmetic error (resolved, records-only)
+
+- **Observed**: 2026-08-10, at tasks decomposition. plan.md stated "12.1 SP planned"
+  while the W1–W13 table sums to 13.1 SP. The approved table itself was correct and
+  is unchanged; only the stated total was wrong.
+- **Citation**: honest-state rule (count-claims must match artifacts).
+- **Resolution**: spec-updated (records-only) — the total line corrected to 13.1 SP
+  with the overcommit against the ~10–12 target made visible; surfaced prominently
+  at the tasks boundary stop for the maintainer's ruling.
 
 ### Resolution Strategies (Unused)
 

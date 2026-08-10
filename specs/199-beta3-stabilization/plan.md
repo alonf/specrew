@@ -35,8 +35,12 @@ Component-to-file anchors:
 
 ## Work breakdown, effort, and FR-to-test mapping
 
-20 SP iteration convention; **12.1 SP planned** (~10–12 target) — the unplanned
-remainder is deliberate slack for review rounds and release ceremony. Each work item
+20 SP iteration convention; **13.1 SP planned** (correction 2026-08-10: the table has
+always summed to 13.1; the previously stated 12.1 was an arithmetic error found at
+tasks decomposition — the approved table is unchanged, only this total line is
+corrected; drift event DRIFT-199-I001-004). Against the ~10–12 target this is a
+visible overcommit of ~1.1 SP; the unplanned remainder is deliberate slack for review
+rounds and release ceremony. Each work item
 lands RED-first (FR-023): the fixture reproduces the defect through the shipped entry
 point, then the fix turns it green.
 
