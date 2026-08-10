@@ -435,8 +435,26 @@ try {
     # Resolve the Specrew version from the module manifest ($moduleRoot came from the same 3-tier chain) so the
     # mandatory orientation banner renders the REAL version, not "Specrew: unknown" (the surgery defaults to
     # "unknown" with no version). Fail-soft: an unreadable manifest leaves it null (banner falls back to unknown).
+    # F-199 T011 (FR-019): compose ModuleVersion WITH PrivateData.PSData.Prerelease. Reading
+    # ModuleVersion alone rendered "0.40.0" on a beta build, so a consumer could not tell which
+    # channel they were on (ledger obs-2). Reference implementation:
+    # scripts/specrew-start.ps1 :: Get-ManifestSpecrewVersionText. Fail-soft as before: an
+    # unreadable manifest leaves this null and the banner falls back to unknown.
     $specrewVersion = $null
-    try { $specrewVersion = [string]((Import-PowerShellDataFile -Path (Join-Path $moduleRoot 'Specrew.psd1')).ModuleVersion) } catch { $specrewVersion = $null }
+    try {
+        $manifestData = Import-PowerShellDataFile -Path (Join-Path $moduleRoot 'Specrew.psd1')
+        $specrewVersion = [string]$manifestData.ModuleVersion
+        $prereleaseTag = ''
+        if ($manifestData.ContainsKey('PrivateData') -and $null -ne $manifestData.PrivateData -and
+            $manifestData.PrivateData.ContainsKey('PSData') -and $null -ne $manifestData.PrivateData.PSData -and
+            $manifestData.PrivateData.PSData.ContainsKey('Prerelease') -and $null -ne $manifestData.PrivateData.PSData.Prerelease) {
+            $prereleaseTag = ([string]$manifestData.PrivateData.PSData.Prerelease).Trim()
+        }
+        if (-not [string]::IsNullOrWhiteSpace($specrewVersion) -and -not [string]::IsNullOrWhiteSpace($prereleaseTag)) {
+            $specrewVersion = '{0}-{1}' -f $specrewVersion, $prereleaseTag
+        }
+    }
+    catch { $specrewVersion = $null }
     # F-174 iter-11 (T009, DF-2): resolve the branch HERE (in the fallible-work region, BEFORE the atomic render
     # claim below) so the directive can embed the literal version + branch for pointer-mode hosts. Must NOT run
     # after the claim (the claim->emit window must stay pure string building - a git call could fail/hang).
