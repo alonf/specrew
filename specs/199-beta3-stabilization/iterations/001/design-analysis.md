@@ -169,6 +169,14 @@ ingest -> core computes pause verdict -> store writes pending-pause fact
 
 ## Human Decision
 
-Pending the design-gate verdict ("approved for plan with Option <X>"). To be recorded
-with the verdict text and the commit containing it (transcribed with disclosure per
-the established design-verdict path).
+**Verdict (verbatim)**: `approved for plan with Option B`
+**Given**: 2026-08-10, by the maintainer, at the design-gate stop rendered over the
+committed draft `aa50fc94`.
+**Chosen option**: B — the first-class pending-pause fact in the review authority
+store. No modifications or added instructions accompanied the verdict; the one
+discussion prompt (a second sanctioned writer for the pause fact) was approved at its
+default: human-reply-only, no expiry.
+**Transcription disclosure**: this decision is agent-transcribed from the maintainer's
+typed reply in the governing session (the established design-verdict transcription
+path); the commit containing this record is the decision commit, cited in the durable
+gate packet under `gates/`.
