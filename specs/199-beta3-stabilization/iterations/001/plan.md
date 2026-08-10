@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/20 story_points
+**Capacity**: 13.1/20 story_points
 **Started**: 2026-08-10
 **Completed**:
 
