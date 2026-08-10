@@ -467,6 +467,82 @@ No open prompts.
         -ExpectedApprovalPhrase 'approved for iteration-closeout'
     Write-Pass "T032 exact fabrication fixtures: no ledger entry and no pending-artifact consumption"
 
+    # ---- T004 part 3: BOTH capture paths, ONE authorization ------------------------------------------------
+    # One human verdict reaches the write path TWICE by design - the UserPromptSubmit/PreInvocation hook and
+    # again Stop at end-of-turn, both reading the same transcript. Two failure directions, both pinned here:
+    #
+    #   DOUBLE-capture: one verdict becomes two authorizations. The FABRICATION direction, and the
+    #                   unrecoverable one - two ledger entries are indistinguishable from two real approvals.
+    #   ZERO-capture:   neither path fires and the verdict is lost. Recoverable, because the human re-states.
+    #
+    # These drive the REAL entry point (Invoke-SpecrewBoundaryVerdictCapture) against a real project, not the
+    # classifier in isolation - the wiring is what drifts, so the wiring is what is measured.
+    function New-CaptureTranscript {
+        param([string]$Path, [string]$HumanText)
+        $lines = @(
+            ('{"role":"assistant","message":{"content":[{"type":"text","text":' + (("Packet body.`n`n<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->") | ConvertTo-Json) + '}]}}')
+            ('{"role":"user","message":{"content":[{"type":"text","text":' + ($HumanText | ConvertTo-Json) + '}]}}')
+        )
+        Set-Content -LiteralPath $Path -Value $lines -Encoding UTF8
+        return $Path
+    }
+    function Get-CaptureLedger {
+        param([string]$ProjectRoot)
+        $ctx = Get-Content -LiteralPath (Join-Path $ProjectRoot '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+        return @($ctx.boundary_enforcement.verdict_history)
+    }
+
+    $captureVerdictText = 'approved for before-implement'
+
+    # (1) Prompt-submit is PRIMARY: it fires, and the Stop re-fire does NOT double-write.
+    $p1 = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $t1 = New-CaptureTranscript -Path (Join-Path $scratch 'cap-primary.jsonl') -HumanText $captureVerdictText
+    $promptCapture = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $p1 -TranscriptPath $t1 `
+        -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-10T12:00:00Z'
+    if (-not $promptCapture.authorized) { Fail "prompt-submit primary did not authorize (reason=$($promptCapture.reason))" }
+    if (@(Get-CaptureLedger -ProjectRoot $p1).Count -ne 1) { Fail "prompt-submit primary wrote $(@(Get-CaptureLedger -ProjectRoot $p1).Count) entries, expected 1" }
+    Write-Pass 'T004 part 3 (1): prompt-submit is primary and authorizes on the human turn'
+
+    # The SAME verdict, re-read at Stop. recorded_at differs, so any id-based dedup would miss it.
+    $stopRefire = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $p1 -TranscriptPath $t1 `
+        -LastAuthorizedBoundary 'before-implement' -Source 'stop' -NowUtc '2026-08-10T12:05:00Z'
+    $ledger1 = @(Get-CaptureLedger -ProjectRoot $p1)
+    if ($ledger1.Count -ne 1) { Fail "DOUBLE-CAPTURE: the Stop re-fire produced $($ledger1.Count) authorizations for ONE verdict" }
+    Write-Pass "T004 part 3 (1): the Stop re-fire does NOT double-write (still 1 entry; refire reason=$($stopRefire.reason))"
+
+    # (2) Prompt-submit ABSENT - the real stale-wiring condition, not a hypothetical. Stop still captures.
+    $p2 = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $t2 = New-CaptureTranscript -Path (Join-Path $scratch 'cap-fallback.jsonl') -HumanText $captureVerdictText
+    $stopOnly = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $p2 -TranscriptPath $t2 `
+        -LastAuthorizedBoundary 'tasks' -Source 'stop' -NowUtc '2026-08-10T12:00:00Z'
+    if (-not $stopOnly.authorized) { Fail "ZERO-CAPTURE: with prompt-submit unwired, Stop did not capture (reason=$($stopOnly.reason))" }
+    if (@(Get-CaptureLedger -ProjectRoot $p2).Count -ne 1) { Fail "Stop fallback wrote the wrong number of entries" }
+    Write-Pass 'T004 part 3 (2): with prompt-submit ABSENT, the Stop fallback still captures'
+
+    # (3) Both wired: exactly ONE authorization fact exists for one verdict.
+    $p3 = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $t3 = New-CaptureTranscript -Path (Join-Path $scratch 'cap-both.jsonl') -HumanText $captureVerdictText
+    $null = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $p3 -TranscriptPath $t3 -LastAuthorizedBoundary 'tasks' -Source 'PreInvocation' -NowUtc '2026-08-10T12:00:00Z'
+    $null = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $p3 -TranscriptPath $t3 -LastAuthorizedBoundary 'before-implement' -Source 'stop' -NowUtc '2026-08-10T12:00:30Z'
+    $null = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $p3 -TranscriptPath $t3 -LastAuthorizedBoundary 'before-implement' -Source 'stop' -NowUtc '2026-08-10T12:01:00Z'
+    $ledger3 = @(Get-CaptureLedger -ProjectRoot $p3)
+    if ($ledger3.Count -ne 1) { Fail "DOUBLE-CAPTURE: both paths wired produced $($ledger3.Count) authorizations for ONE verdict" }
+    if ([string]$ledger3[0].to_boundary -ne 'before-implement') { Fail "the single entry names the wrong boundary: $($ledger3[0].to_boundary)" }
+    Write-Pass 'T004 part 3 (3): both paths wired, and three write attempts leave exactly ONE authorization fact'
+
+    # The guard is narrower than what it replaced: a DIFFERENT verdict is not a duplicate. Keyed on the
+    # cursor alone, a second verdict for the same boundary was swallowed whatever it said.
+    $p4 = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $p4 -CurrentBoundary 'tasks' -AuthorizedBoundary 'before-implement' `
+        -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement' -RecordedAt '2026-08-10T12:00:00Z' -EvidenceSource 'hook-captured-from-transcript'
+    $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $p4 -CurrentBoundary 'before-implement' -AuthorizedBoundary 'before-implement' `
+        -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement' -RecordedAt '2026-08-10T12:00:30Z' -EvidenceSource 'hook-captured-from-transcript'
+    if (@(Get-CaptureLedger -ProjectRoot $p4).Count -ne 1) { Fail 'the writer is not idempotent on an identical verdict' }
+    $null = Add-SpecrewBoundaryAuthorization -ProjectRoot $p4 -CurrentBoundary 'before-implement' -AuthorizedBoundary 'before-implement' `
+        -AuthorizingHuman 'unattributed' -VerdictText 'approved for before-implement - and also raise the codex window' -RecordedAt '2026-08-10T12:01:00Z' -EvidenceSource 'hook-captured-from-transcript'
+    if (@(Get-CaptureLedger -ProjectRoot $p4).Count -ne 2) { Fail 'a DIFFERENT verdict for the same boundary was swallowed as a duplicate (zero-capture)' }
+    Write-Pass 'T004 part 3: the writer is idempotent on crossing + verdict text, and a DIFFERENT verdict still appends'
+
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }

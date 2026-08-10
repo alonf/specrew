@@ -1,4 +1,4 @@
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Resolve-ProjectPath {
@@ -3159,17 +3159,39 @@ function Add-SpecrewBoundaryAuthorization {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
     }
 
-    # Idempotence (FR-005): a re-fired authorization for the boundary the cursor ALREADY sits on
-    # (same to_boundary as the newest entry) is a duplicate capture of the same verdict - a
-    # no-op, never a duplicate history entry. Narrow by design: in a new iteration cycle the
-    # cursor is 'iteration-closeout', so re-authorizing 'plan' for the NEXT iteration still
-    # appends (the cursor differs).
+    # IDEMPOTENCE ON (CROSSING + VERDICT TEXT) - T004/FR-010, maintainer constraint 2026-08-10.
+    #
+    # ONE human verdict reaches this writer TWICE BY DESIGN: Invoke-SpecrewBoundaryVerdictCapture is
+    # called from the UserPromptSubmit/PreInvocation hook AND again from Stop at end-of-turn, and both
+    # read the same transcript. Two history entries for one verdict is the FABRICATION direction and
+    # the unrecoverable one - in the ledger, two authorizations are indistinguishable from two real
+    # approvals.
+    #
+    # The key is the crossing's DESTINATION plus the VERDICT TEXT, matched against the NEWEST entry.
+    # Three things about that, each load-bearing:
+    #
+    #   * NOT keyed on the cursor. The previous form required the cursor to ALREADY sit on the
+    #     authorized boundary, so it was only correct once the first write had landed and moved it -
+    #     it relied on the two paths never overlapping, which is precisely the wiring that drifts.
+    #   * NOT keyed on from_boundary. The second write arrives AFTER the cursor advanced, so its
+    #     from_boundary is the destination itself (a self-transition); comparing it would miss every
+    #     real duplicate.
+    #   * NOT the authorization entry id. Get-SpecrewBoundaryAuthorizationEntryId hashes recorded_at,
+    #     which necessarily differs between a prompt-submit write and a Stop write of the same
+    #     verdict, so it can never recognise the duplicate it would need to catch.
+    #
+    # Comparing the VERDICT TEXT is what makes this narrower than what it replaces: a genuinely
+    # different verdict for the same boundary is no longer swallowed as a duplicate.
+    #
+    # NEWEST-ENTRY-ONLY is what keeps it from eating a legitimate repeat: a later iteration cycle
+    # re-approving the same boundary with byte-identical text has other entries appended in between,
+    # so it appends normally. Only a verdict that is its own immediate predecessor is a duplicate.
     $existingHistory = @($enforcementState.EffectiveState['verdict_history'])
-    $cursorBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.EffectiveState['last_authorized_boundary'])
-    if ($cursorBoundary -eq $authorizedCanonical -and $existingHistory.Count -gt 0) {
+    if ($existingHistory.Count -gt 0) {
         $newestEntry = $existingHistory[-1]
         $newestMap = if ($newestEntry -is [System.Collections.IDictionary]) { $newestEntry } else { $newestEntry | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
-        if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$newestMap['to_boundary'])) -eq $authorizedCanonical) {
+        if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$newestMap['to_boundary'])) -eq $authorizedCanonical -and
+            [string]$newestMap['verdict_text'] -ceq [string]$VerdictText) {
             return [pscustomobject]@{
                 AuthorizedBoundary = $authorizedCanonical
                 StoredVerdict      = [string]$newestMap['verdict_text']

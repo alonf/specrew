@@ -373,12 +373,56 @@ of this part, and both were measured before any code was written:
   trees (`extensions/...` and `.specify/extensions/...`); both must move together, and the deployed
   mirror has its own structural parity guard.
 
+**WHAT THE IDEMPOTENCY CHANGE ACTUALLY BOUGHT — measured, and it CORRECTS the reading above
+(2026-08-10).** The first draft of this record said the cursor-keyed guard was wrong in both
+directions. Only one half survived measurement, and the record is corrected rather than left to read
+as if both were confirmed:
+
+- **ZERO-capture — CONFIRMED and FIXED.** Driven against the pre-patch writer, a genuinely DIFFERENT
+  verdict for the same boundary was swallowed as a duplicate. That is the assertion that fails RED
+  before the change and passes after it, so it is the measured behaviour change.
+- **DOUBLE-capture — NOT reachable through the hooks today, and the guard is a true BACKSTOP.** The
+  three double-capture fixtures pass with OR without the change, because protection currently comes
+  from a layer above: the capture consumes the pending crossing, so the Stop re-fire returns
+  `not-pending` and never reaches the writer at all. Claiming the writer guard fixed a live
+  double-write would be false.
+
+That is exactly the shape the maintainer's constraint asked for — "belt and braces at the STORE,
+because the wiring is precisely what drifts". The protection that exists today lives in the wiring;
+the writer guard is what still holds when the wiring moves. It is recorded as a backstop, not as a
+repair, so a later reader does not mistake a passing fixture for a defect that was caught.
+
+A first attempt keyed on `from_boundary` as well was written and DISCARDED before commit: the second
+write arrives after the cursor has advanced, so its `from_boundary` is the destination itself, and the
+guard could never have matched a real duplicate. Recorded because unreachable code that looks like a
+safety mechanism is worse than none.
+
 **Sequencing note carried from the session that recorded this**: the classifier (FR-010
 leading-approval precedence) and the marker-forward reader are both DONE and green, so part 3 is pure
 wiring and ordering. Its two suites — `tests/bootstrap/ConversationCapture.Tests.ps1` and
 `tests/integration/verdict-capture-blocks.tests.ps1`, the latter carrying 23 not-approve cases and the
 T032 fabrication fixtures — are now in the permanent class-guard lane and must be read before either
 file is touched.
+
+### T010 addition — a handback packet must NAME the action that resumes the work (maintainer, from a live observation)
+
+Folded into T010's packet-template work alongside the consumer-language and one-message-stop rules.
+
+**The rule**: "What I Need From You: Nothing" is honest ONLY when the work genuinely continues without
+the human. A session that stopped because it ran out of context needs a fresh session started — and
+that is an action only the human can take, so "nothing" there is FALSE, and it is the last line they
+read.
+
+**Why it belongs with the consumer-language work rather than beside it**: it is the same defect class.
+The other rules stop a packet using vocabulary the consumer does not share; this one stops a packet
+being *inertly* honest — every individual sentence true, while the one thing the human must do goes
+unsaid. Both leave a consumer unable to act on a surface that looks complete.
+
+**How it should land**: the packet's closing section names the resuming action whenever the stop was
+not self-resuming — "start a fresh session and point it at the handover" for a context-exhausted stop,
+"reply with the approval phrase" at a verdict boundary, "nothing — the next step runs automatically"
+only when that is literally true. The template should make the no-action case the one that has to be
+justified, not the default.
 
 ### Agreed flows
 
