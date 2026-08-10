@@ -185,6 +185,28 @@ surfaced explicitly at the next boundary, never absorbed silently.
   family was widened to the pinned/unpinned retention markers and re-measured against these exact files;
   `_load.ps1` now classifies `hydrate-cloud`. Recorded rather than quietly amended, because a green suite
   reported this fixed while it was not.
+  **HALF 1 — ADMISSION: MEASURED AND PASSED 2026-08-10** (commit `599c15cb`). Transcribed from the run,
+  not drafted ahead of it. The committed `reparse-tag-policy.ps1` and `review-engine-resolution.ps1` were
+  dot-sourced from the beta3 tree and `Get-SpecrewReviewRuntimeManagedTextSha256` — the exact function
+  whose refusal opened this entry — was called against the INSTALLED module at
+  `...\OneDrive - Zionet LTD\Documents\PowerShell\Modules\Specrew\0.40.0`, which carries **396 real
+  cloud-backed files**:
+
+  > `_load.ps1     attrs 0x80420  hydrate-cloud  b39636f90458bf6a4f5cf55117c78ba81801063749e7fe6b86b527053f6941fb`
+  > `CHANGELOG.md  attrs 0x80420  hydrate-cloud  9d57a9f71160c3ea5ed786df4c57fed9b352b37ac362201c2bc1e9910c71a640`
+  > `install.sh    attrs 0x80420  hydrate-cloud  7fced5a8f18dc24fe93c45190f21924df625722c61cb57880f0bea8968ba5a9c`
+  > `LICENSE       attrs 0x80420  hydrate-cloud  7b3249f4035970ca7bbf8574f09499b76707a650eb42a3fad8484fba6c3dd40e`
+
+  A hash, not `review-runtime-managed-file-link-unsupported`. **What this proves, stated narrowly**:
+  admission — a real cloud-backed file is classified as cloud and read rather than refused, on the
+  machine and the install that produced the original defect. **What it does NOT prove**: that reading
+  HYDRATES anything. Every file above was already local, so the fetch path is still unexercised.
+
+  **HALF 2 — HYDRATION: NOT YET RUN.** It requires evicting a file first (`attrib -p +u`) so
+  `RECALL_ON_DATA_ACCESS` is genuinely set. That mutates state in the maintainer's installed module,
+  outside this repository, so it is held for their explicit go-ahead rather than run on an inferred one.
+  **This entry closes on half 2, not on half 1.**
+
   **CODE LANDED 2026-08-10, MEASUREMENT STILL OWED.** All three integrity checks now route through the
   one reparse-tag policy: a symlink or junction still refuses, an unrecognised tag fails closed, and a
   cloud placeholder is read rather than refused — `Get-SpecrewReviewRuntimeManagedTextSha256` is the
