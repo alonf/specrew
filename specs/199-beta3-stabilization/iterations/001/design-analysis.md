@@ -577,8 +577,42 @@ assumed:
    resolver that finds the active iteration at run time. Run it both ways in a scratch project and let
    the result decide — the same discipline as the PSModulePath question, and for the same reason.
 
+### T007 PART 2 — what is already named, and what is genuinely sealed (measured 2026-08-10)
+
+Part 1 (the starter plan) is committed and green. Part 2 is "verification failures name the missing
+piece instead of a sealed generic failure", and the first job was to establish what is ALREADY named
+rather than rewriting messages that are fine. Read from source:
+
+**Already specific — leave alone.** `verification-plan-contract.ps1` names the element and the rule:
+`plan schema_version is required (exactly '1.0' for this contract)`; `env_refs must be an ARRAY of env
+var NAMES`; `env_refs entry 'X' looks like a literal 'NAME=value' - only NAMES are allowed (no secret
+values)`; `command carries unknown property 'X' (the schema is CLOSED; no secret values can ride an
+unrecognized field)`. `verification-plan-runner.ps1` likewise names executable-resolution failures
+precisely (`does not exist`, `resolves outside the repository root`, `is not resolvable on the engine's
+PATH`), and propagates the contract's own reason for a schema-invalid plan.
+
+**Still owed, in priority order:**
+
+1. **The not-configured message does not name its fix.** `verification-plan-runner.ps1:170` says
+   `no supplier output at .specrew/verification-plan.json (FR-049 supplier not configured)` — it names
+   the file and the requirement id, and tells the consumer nothing about what to do. Part 1 makes this
+   state much rarer (a governed project now gets a starter), which is exactly why the remaining cases
+   are the confusing ones: a plan deleted by hand, or a non-governed directory. Cheap, self-contained.
+2. **The env_refs "exact line to add" case, which does NOT exist yet.** The runner scrubs the
+   environment to the declared names, so a command needing an UNDECLARED variable fails for a reason
+   that never mentions environment at all. Naming the missing variable requires knowing which one was
+   missing, which the current design cannot know — so this needs a decision about how much to infer,
+   not just a better string. **Do not implement it as a guess.**
+3. **The genuinely SEALED failure — FR-013's real target.** DRIFT-199-I001-012 recorded a verification
+   failure surfacing as `diagnostics-require-command-scoped-disclosure`, where the consumer cannot see
+   why their verification failed without a human-authorized diagnostic disclosure. This is the one that
+   matters most and the one to treat carefully: it is a GOVERNANCE surface, and loosening it is not a
+   message change. Give it fresh context and a design record of its own before touching it.
+
 **Still to decide when T007 resumes**: whether the timeout-versus-window consistency check from
-DRIFT-199-I001-012 lands here. The maintainer's ruling is conditional — take it only if it is a few
+DRIFT-199-I001-012 lands here. Its ruling is conditional on being a few lines, which is a measurement
+against the validator's shape rather than a design choice. Note it pairs naturally with item 3, since
+both concern a consumer being unable to see why a round failed. The maintainer's ruling is conditional — take it only if it is a few
 lines, else beta4 — so it is a measurement against the validator's shape, not a design choice.
 
 ### Agreed flows
