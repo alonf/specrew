@@ -711,8 +711,31 @@ refused in EXACTLY three cases, and only one of them is a candidate defect:**
 (`review-campaign-orchestrator.ps1:581`) only attempts a release `if ($null -ne $Reservation)`. A
 failure path that holds a reservation but does not pass it here would charge silently — the predicate
 would never be consulted at all. **That is a WIRING question, not a decision question, and this session
-has been bitten by exactly that shape three times.** Enumerate the call sites before trusting the table
-above.
+has been bitten by exactly that shape three times.**
+
+**ENUMERATED 2026-08-10, and the gap does NOT exist.** All five call sites pass `-Reservation`:
+
+| Line | Path | RuntimeOutcome | Spends passed |
+| --- | --- | --- | --- |
+| 1288 | frozen verification failed | `preflight-failed` | `@()` |
+| 1316 | preflight gate failed (target / protection / harness / runtime) | `preflight-failed` | `@()` |
+| 1324 | catch-all around preparation | `preflight-failed` | `@()` |
+| 1346 | claim not acquired | `claim-contended` | `@()` |
+| 1392 | launch failed before invocation | `launch-failed` | **real `$spends`** |
+
+**The `$spends` split is the part worth noticing.** Only the launch-failed site passes real spend facts,
+so if the reviewer HAD been invoked the release is correctly refused (`invoked-slot-remains-spent`) and
+the round is charged. The four genuinely pre-invocation paths pass `@()`, so their slots are returned.
+**The campaign path therefore already implements the legacy spend-class rule** that
+`Get-ContinuousCoReviewRoundSpendClass` encodes and `review-spend-allowance.Tests.ps1:132-151` already
+pins: `preflight-failed` consumes NEITHER budget.
+
+**SO T008 IS LARGELY "THIS ALREADY WORKED", and must be reported that way** — the honest framing was
+committed in advance precisely for this outcome. What genuinely remains open is narrow: the
+`invalid-reservation` path, and whether F4's T067 evidence was the SLOT being held by a reservation
+rather than a failure charging a round. A fixture over these five paths is still worth writing, because
+it converts an enumeration read from source today into a guard that survives the next edit — but it is a
+CHARACTERIZATION of existing behaviour, not a repair.
 
 **So the RED fixture has two halves, and only the second is new work:**
 
