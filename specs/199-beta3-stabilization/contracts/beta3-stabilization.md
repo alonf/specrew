@@ -8,6 +8,7 @@
 New immutable fact types published under the campaign's run tree.
 
 ### Exported API
+
 | Symbol | Signature | Purpose | Errors |
 | --- | --- | --- | --- |
 | `Write-ReviewCampaignPendingPauseFact` | `(campaign, run, treeState, findingsSummary, cost, budget, recommendation) -> fact` | atomic CreateNew pause fact at round terminal | conflicting existing fact = corruption, fail closed |
@@ -15,6 +16,7 @@ New immutable fact types published under the campaign's run tree.
 | `Get-ReviewCampaignPendingPause` | `(campaign) -> fact or $null` | read for re-render + the stop governor's quiet check | never throws on absence |
 
 ### Invariants
+
 - A pending pause with no decision blocks all spend (nothing runs until answered).
 - `fix-and-continue` authorizes exactly one round; agents cannot mint continuation.
 - Budget: reviewer-invoked rounds only; per campaign; default 4; explicit human reset.

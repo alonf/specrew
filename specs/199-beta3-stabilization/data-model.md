@@ -12,6 +12,7 @@ surface was rendered, the human has not yet answered." Read by the renderer (ver
 re-render on resume) and by the stop governor (the sanctioned quiet state).
 
 ### Attributes
+
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | schema_version | string | yes | known version | additive evolution marker |
@@ -25,6 +26,7 @@ re-render on resume) and by the stop governor (the sanctioned quiet state).
 | created_at | string | yes | ISO-8601 UTC | pause creation time |
 
 ### Lifecycle / Relationships
+
 Created atomically (FileMode.CreateNew) by the orchestrator's round terminal; never
 mutated. Answered by exactly one PauseDecisionFact (human-reply-only, no expiry — the
 clarified default). An unanswered PendingPauseFact coexisting with a running round is
@@ -35,6 +37,7 @@ an impossible state (object-invariant guard).
 **Purpose**: The human's numbered answer to a pause — the only continuation authority.
 
 ### Attributes
+
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | schema_version | string | yes | known version | evolution marker |
@@ -43,6 +46,7 @@ an impossible state (object-invariant guard).
 | decided_at | string | yes | ISO-8601 UTC | decision time |
 
 ### Lifecycle / Relationships
+
 Written once when the human replies; `fix-and-continue` authorizes exactly ONE further
 round (single-run grant); `stop-here` triggers the composed landing; `abandon` closes
 the campaign as abandoned with findings persisted.

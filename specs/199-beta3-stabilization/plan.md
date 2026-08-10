@@ -5,6 +5,7 @@
 **Date**: 2026-08-10
 **Inputs**: spec.md (approved for specify + clarify), iterations/001/design-analysis.md
 (approved for plan with Option B, gate Valid), implementation-rules.yml (inherited 198
+
 + three 199 deltas), resolved quality profile (security-baseline, robustness-baseline,
 test-integrity required; strongest-available routing).
 
@@ -71,24 +72,24 @@ rules). Mechanical checks + SelfLeakLintLane on touched templates/skills.
 
 ## Quality plan (embedded from the resolved profile)
 
-- security-baseline (required): W5 is the security-sensitive surface — the reparse
++ security-baseline (required): W5 is the security-sensitive surface — the reparse
   policy must not weaken the beta2 link refusal; denial-path fixtures are the
   evidence. W4's capture changes keep authorization provenance human-only.
-- robustness-baseline (required): W1/W3/W7 failure semantics — structured terminal
++ robustness-baseline (required): W1/W3/W7 failure semantics — structured terminal
   outcomes, fail-closed authority contradictions, no silent retries.
-- test-integrity (required): RED-first ordering enforced per work item; fixtures pin
++ test-integrity (required): RED-first ordering enforced per work item; fixtures pin
   instances, not descriptions; evidence tools verified before trust (FR-023).
-- Routing: strongest-available reviewer (codex, human-authorized) reviews the
++ Routing: strongest-available reviewer (codex, human-authorized) reviews the
   implementation; any downgrade needs an approved override record.
 
 ## Risks and watch items
 
-- Codex file-delivery quirk (findings via file, empty stdout) may mislabel runs
++ Codex file-delivery quirk (findings via file, empty stdout) may mislabel runs
   "partial" during OUR review-signoff — recorded beta4 watch item; harvest recovers.
-- Prompt-submit capture in THIS session: wiring repaired on disk but the host
++ Prompt-submit capture in THIS session: wiring repaired on disk but the host
   snapshots hook config at session start — Stop-fallback + the sync defense rule
   cover until the next session.
-- The pending-pause fact is bridge: beta4 replacement notes recorded in
++ The pending-pause fact is bridge: beta4 replacement notes recorded in
   design-analysis.md; keep the schema minimal (no speculative fields).
 
 ## Beta4 replacement notes (bridge items, mandated)
