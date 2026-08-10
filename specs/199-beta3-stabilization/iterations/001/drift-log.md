@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 25 (DRIFT-199-I001-001 through -025)
+**Total drift events**: 26 (DRIFT-199-I001-001 through -026)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -57,6 +57,17 @@ against — the starter plan scaffolding a command that could not run, minutes a
 was the thing to avoid; and the `@()` array-nesting bug, documented in a comment ~300 lines above the
 line written, and read that same day. The countermeasure that DID work is the structural fixture
 asserting the diagnosis composer's body never mentions `stdout`/`stderr`/`ReadAllText`.*
+
+> **RULE — in a ledger with nested identity paths, COUNT THE LEAF FACTS.** Any aggregate identity
+> computed over CONTAINER counts silently encodes an occupancy assumption — that every container is
+> populated — and it will be wrong precisely when something was minted and never used, which is the
+> state you are usually investigating. Derive nothing from `A - B` across two ledgers when you can count
+> the thing itself.
+
+*Evidence: DRIFT-199-I001-026 — both parties made this error in mirror image on the same store within an
+hour. One derived reuses as `reservations - grants` and produced a committed, false defect claim; the
+other counted grant subdirectories as reservations and produced arithmetic that would not close. The
+stores were clean throughout; only the counting was wrong.*
 
 ## BETA4 LIST — everything this feature routed out, collected in one place
 
@@ -733,6 +744,48 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-026 — TWO aggregate-over-containers errors, one each side, and a retracted finding (resolved)
+
+**A recorded finding was WRONG and is retracted.** Commit `0424ab6e` asserted that i008 left "four
+released slots never reused and four fresh authorizations minted instead". Measurement disproves it:
+**i008 reused every slot it released — five releases, five reuses**, across four grants (one carried
+generations 001-003, three carried 001-002). Verified independently before recording this retraction,
+counting generation leaf files and treating a reuse as any generation beyond the first on a grant/slot:
+
+| Store | grants | res containers | res LEAF | releases | REUSES | reuses = releases? |
+| --- | --- | --- | --- | --- | --- | --- |
+| `cmp-198-beta2-hardening-i008` | 25 | **21** | 26 | 5 | **5** | yes |
+| `cmp-198-beta2-hardening-i009` | 8 | 8 | 11 | 3 | 3 | yes |
+| `cmp-198-beta2-hardening-i010` | 1 | 1 | 1 | 0 | 0 | yes |
+| `cmp-198-beta2-hardening-i011` | 6 | 6 | 7 | 1 | 1 | yes |
+| `cmp-199-beta3-stabilization-i001` | 1 | 1 | 3 | 2 | 2 | yes |
+
+**BOTH SIDES MADE THE SAME CLASS OF ERROR, in mirror image, and that is why it is one entry:**
+
+- **The implementer's**: computed reuses as `reservations - grants`, an identity valid only if EVERY
+  grant is reserved against. In i008 four grants were minted and never reserved (25 grants, 21
+  containers), so the identity reported 1 reuse where there were 5 — and produced a confident,
+  committed, FALSE defect claim.
+- **The maintainer's**: counted the 26 grant SUBDIRECTORIES under `reservations/` and relayed them as 26
+  reservations; the true leaf count is 29 generation files. That is why the relayed arithmetic
+  (25 spends + 4 releases = 29 over "26" reservations) refused to close.
+
+**Zero spent-and-released overlaps, zero duplicate dispositions, every reservation resolved exactly
+once, in all five stores. The stores were clean the whole time**; only the counting was wrong.
+
+**THE RULE — in a ledger with nested identity paths, COUNT THE LEAF FACTS.** Any aggregate identity
+computed over CONTAINER counts silently encodes an occupancy assumption, and it will be wrong precisely
+when something was minted and never used — **which is the state you are usually investigating.** Staged
+for the carry ledger with the other method rules.
+
+**Also corrected by this measurement**: grant reuse was NEVER broken, so the bisect proposed for "which
+change fixed it" is scratched — there is no regression, and searching for the cause of an event that did
+not happen is pure cost. F4's real residue is a DISCLOSURE gap, recorded in the design record.
+
+**Worth stating plainly**: this was the third unverified claim relayed to the implementer in one day, and
+the implementer's own false finding was committed to the record. The recovery in both cases was the same
+act — measure the artifact rather than reason about it.
 
 ### DRIFT-199-I001-025 — the synthesis trap, THIRD instance in one day, inside the fix for the second (resolved)
 

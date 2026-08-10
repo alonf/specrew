@@ -759,7 +759,60 @@ is implemented, and it is wired.** Three independent reads:
 **So the code says a released slot is reusable.** That is a measurement of the CODE, not of T067's
 behaviour, and it does not by itself explain the 26:26 ratio.
 
-### F4 ANSWERED BY MEASUREMENT — it was correctly OBSERVED on i008, and it is already FIXED (2026-08-10)
+### RETRACTED — the i008 finding below is WRONG, disproved by measurement (2026-08-10)
+
+**Read this before the section it corrects.** The claim below that i008 left "four released slots never
+reused and four fresh authorizations minted instead" is FALSE. **i008 reused every slot it released:
+five releases, five reuses**, spread across four grants (one carried generations 001-003, three carried
+001-002).
+
+**The error was an identity that silently encodes an assumption.** I computed reuses as
+`reservations - grants`, which is only valid if EVERY grant is reserved against. In i008 it is not:
+25 grants but only **21 reservation containers**, so four grants were minted and never reserved at all,
+and the identity reported 1 reuse where the truth is 5.
+
+**Re-measured directly, counting generation leaf files and true reuses (a reuse being any generation
+beyond the first on a grant/slot) rather than deriving them:**
+
+| Store | grants | res containers | res LEAF | releases | spends | REUSES | reuses = releases? |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `cmp-198-beta2-hardening-i008` | 25 | **21** | 26 | 5 | 21 | **5** | **yes** |
+| `cmp-198-beta2-hardening-i009` | 8 | 8 | 11 | 3 | 8 | 3 | yes |
+| `cmp-198-beta2-hardening-i010` | 1 | 1 | 1 | 0 | 1 | 0 | yes |
+| `cmp-198-beta2-hardening-i011` | 6 | 6 | 7 | 1 | 6 | 1 | yes |
+| `cmp-199-beta3-stabilization-i001` | 1 | 1 | 3 | 2 | 1 | 2 | yes |
+
+**GRANT REUSE WAS NEVER BROKEN.** It works in all five stores, including the earliest, and reuse
+generations exist in T067's own store — the campaign where F4 was observed. **NO BISECT**: there is no
+regression, so searching for the change that fixed it would be searching for the cause of an event that
+did not happen.
+
+**A record asserting a defect the ledger disproves is worse than no record**, which is why this
+retraction sits above the section it corrects rather than replacing it — the reasoning is left visible
+so the error is legible, not erased.
+
+### F4's REAL residue — a DISCLOSURE gap, not an authority-ledger defect (2026-08-10)
+
+The T067 residue is ONE release with no reuse, and the timeline explains it:
+
+> `21:16:31  grant minted     ref: review-signoff-code-verification-final`
+> `21:16:31  run-review-signoff-9 starts`
+> `21:17:07  release          res-914d85be... verification-command-failed:governance-validator`
+> **-- NO RUN in this window. NO refusal event. The slot sat available. --**
+> `21:20:19  grant minted     ref: review-signoff-code-verification-final-2`
+> `21:20:54  run-review-signoff-10 spends`
+
+Nothing attempted to reuse the restored slot and got refused. **The slot WAS available, and a fresh
+human authorization was minted three minutes later anyway.** So F4 is not a plumbing defect: **when a
+pre-invocation release restores a slot, nothing surfaces that the slot is available**, so the human
+issues an authorization they did not need. That is a MESSAGE, squarely on the beta3 acceptance bar
+("needless friction a consumer cannot see through"), and cheap.
+
+**THE LIMIT, stated rather than closed past**: these facts show no refusal event. They cannot
+distinguish *"the tooling asked for a fresh reference"* from *"the human supplied one unprompted."* Do
+not assert which. What is provable is that **the slot was available and was not offered.**
+
+### F4 ANSWERED BY MEASUREMENT — it was correctly OBSERVED on i008, and it is already FIXED (2026-08-10) — **SEE RETRACTION ABOVE**
 
 Counted directly from the authority stores rather than reasoned about or relayed. Every campaign that
 exists, both worktrees:
