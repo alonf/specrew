@@ -249,6 +249,27 @@ showed the beta2 definition was per-machine and unreconstructible from the repos
    if reading an existing lens record proves to be a few lines; otherwise route it to
    beta4 with the `implementation-rules.yml` symmetry named as the precedent.
 
+### Pause-state rulings (maintainer, 2026-08-10, during T001)
+
+**A superseded pause confers no quiet.** A pending pause is recorded AGAINST a tree state,
+and the human answers it by changing that tree. If the quiet check did not compare the
+pause's target against the current tree, a stale pause would quiet a tree it never
+described. That is the review-stale class in a new place and in its dangerous direction: a
+stale RESULT merely nags for a fresh review, whereas a stale PAUSE would SILENCE the
+surface. **Ruling**: a pause whose target no longer matches the current tree is
+SUPERSEDED — it stops conferring quiet and the surface returns to its ordinary route.
+Absent or unresolved input fails closed (no quiet). Pinned by
+`Test-ReviewCampaignPendingPauseQuiet` and its fixtures.
+
+**The allowance reset is prose, never a numbered option.** A refusal must name its exact
+next step (the U4 rule, and today's wedge lesson: an unsatisfiable, undeclinable surface
+is the acceptance bar failing). But a sanctioned bypass rendered as a numbered choice
+becomes one keystroke inside the very flow the budget exists to interrupt, and the
+budget's whole value is that exhaustion FEELS different from an ordinary continuation.
+**Ruling**: on exhaustion the numbered list carries only stop-here and abandon; the reset
+command is stated in prose within the refusal. The structural removal of the continue
+option stands, and the fixture pins that continue is ABSENT rather than discouraged.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):

@@ -142,14 +142,24 @@ function Resolve-ReviewCampaignPauseDecision {
 
     # Option ids are stable: 1 fix-and-continue, 2 stop-here, 3 abandon. Option 1 disappears when the
     # budget is spent - the refusal is structural, not a warning the human can talk past.
+    #
+    # The allowance reset is deliberately NOT a numbered option (maintainer ruling 2026-08-10). A
+    # refusal must name its exact next step, so the reset command is stated in prose; but a
+    # sanctioned bypass rendered as a numbered choice becomes one keystroke inside the very flow the
+    # budget exists to interrupt. Exhaustion has to feel different from an ordinary continuation.
     $options = [Collections.Generic.List[object]]::new()
     if ($continuationAvailable) {
         $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Fix these and run another review round' })
     }
     $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' })
     $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' })
-    if (-not $continuationAvailable) {
-        $options.Add([pscustomobject]@{ id = 4; choice = 'reset-allowance'; text = 'Reset the round allowance yourself, then choose again' })
+
+    $budgetRefusal = $null
+    if ($budgetExhausted) {
+        $budgetRefusal = (
+            'The round budget for this review is spent ({0} of {1} rounds used), so another round is not on offer. ' -f $RoundsUsed, $BudgetTotal
+        ) + 'That limit exists because repeated rounds keep costing you time and money long after they stop finding much. ' +
+        'If this review genuinely needs more rounds, you can top the allowance up yourself with: specrew review --remediate allowance-reset'
     }
 
     return [pscustomobject][ordered]@{
@@ -165,8 +175,36 @@ function Resolve-ReviewCampaignPauseDecision {
         continuation_available = $continuationAvailable
         elapsed_minutes        = $ElapsedMinutes
         recommendation         = $recommendation
+        budget_refusal         = $budgetRefusal
         options                = @($options)
     }
+}
+
+function Test-ReviewCampaignPendingPauseQuiet {
+    # Maintainer ruling 2026-08-10. A pending pause is recorded AGAINST a tree state, and the human
+    # answers it by changing that tree. So quiet must be checked, never assumed: a pause whose target
+    # no longer matches the current tree is SUPERSEDED - it describes work that has moved on, stops
+    # conferring quiet, and the surface returns to its ordinary route.
+    #
+    # This is the review-stale class in a new place, and the dangerous direction: a stale RESULT only
+    # nags for a fresh review, while a stale PAUSE would SILENCE the surface on a tree it never
+    # described. Absent or unreadable input therefore fails closed (no quiet).
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$PendingPause,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest
+    )
+    if ($null -eq $PendingPause) {
+        return [pscustomobject]@{ confers_quiet = $false; reason = 'no-pending-pause' }
+    }
+    $pauseDigest = [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'target_digest')
+    if ([string]::IsNullOrWhiteSpace($pauseDigest) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) {
+        return [pscustomobject]@{ confers_quiet = $false; reason = 'pause-target-unresolved' }
+    }
+    if ($pauseDigest -cne $CurrentDigest) {
+        return [pscustomobject]@{ confers_quiet = $false; reason = 'pause-superseded-by-moved-tree' }
+    }
+    return [pscustomobject]@{ confers_quiet = $true; reason = 'pause-pending-on-current-tree' }
 }
 
 function New-ReviewCampaignPendingPauseFact {

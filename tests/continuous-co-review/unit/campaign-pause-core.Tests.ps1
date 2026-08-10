@@ -78,6 +78,33 @@ Describe 'Campaign pause core (T001)' {
             $decision.options | Where-Object { $_.id -eq 1 } | Should -BeNullOrEmpty
         }
 
+        It 'SC-002: continue is ABSENT when the budget is spent, never merely discouraged' {
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) `
+                -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
+
+            @($decision.options | Where-Object { $_.choice -ceq 'fix-and-continue' }).Count | Should -Be 0
+            # The reset is NOT a numbered choice: a sanctioned bypass rendered as an option becomes
+            # one keystroke inside the flow it exists to interrupt, and exhaustion must feel
+            # different from an ordinary continuation.
+            @($decision.options | Where-Object { $_.choice -ceq 'reset-allowance' }).Count | Should -Be 0
+            @($decision.options).Count | Should -Be 2
+            @($decision.options | ForEach-Object { $_.choice }) | Should -Be @('stop-here', 'abandon')
+        }
+
+        It 'the refusal names what happened and the exact command to reset (U4 shape)' {
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) `
+                -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
+
+            $decision.budget_refusal | Should -Not -BeNullOrEmpty
+            $decision.budget_refusal | Should -Match '4 of 4'
+            $decision.budget_refusal | Should -Match 'allowance-reset'
+        }
+
+        It 'no refusal text is rendered while budget remains' {
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 3
+            $decision.budget_refusal | Should -BeNullOrEmpty
+        }
+
         It 'continuation stays available while budget remains' {
             $decision = Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) `
                 -RoundsUsed 2 -BudgetTotal 4 -ElapsedMinutes 20
@@ -135,6 +162,34 @@ Describe 'Campaign pause core (T001)' {
             $second = Test-ReviewCampaignContinuationAuthorized -PendingPause $pending -PauseDecisions @($answer) -RoundsSinceDecision 1
             $second.authorized | Should -BeFalse
             $second.reason | Should -Match 'single-run'
+        }
+
+        # Maintainer ruling 2026-08-10. A pause is recorded AGAINST a tree state. The human then
+        # fixes things and the tree moves. If quiet did not check that, a stale pause would silence
+        # a tree it never described - the review-stale class in a new place, and worse than the
+        # original because this one SILENCES the surface instead of nagging it.
+        It 'a pause whose tree state still matches confers quiet' {
+            $digest = 'a' * 40
+            $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
+                -TargetDigest $digest -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 2) `
+                -ObservedAt '2026-08-10T10:00:00Z'
+
+            $quiet = Test-ReviewCampaignPendingPauseQuiet -PendingPause $pending -CurrentDigest $digest
+            $quiet.confers_quiet | Should -BeTrue
+        }
+
+        It 'a pause whose tree state has moved is SUPERSEDED and confers no quiet' {
+            $pending = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `
+                -TargetDigest ('a' * 40) -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 2) `
+                -ObservedAt '2026-08-10T10:00:00Z'
+
+            $quiet = Test-ReviewCampaignPendingPauseQuiet -PendingPause $pending -CurrentDigest ('b' * 40)
+            $quiet.confers_quiet | Should -BeFalse
+            $quiet.reason | Should -Match 'superseded'
+        }
+
+        It 'an absent or unreadable pause confers no quiet (fail closed)' {
+            (Test-ReviewCampaignPendingPauseQuiet -PendingPause $null -CurrentDigest ('a' * 40)).confers_quiet | Should -BeFalse
         }
 
         It 'stop-here and abandon never authorize another round' {
