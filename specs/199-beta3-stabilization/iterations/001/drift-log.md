@@ -127,6 +127,33 @@
   `tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1` and
   `tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1`.
 
+### DRIFT-199-I001-007 — the campaign engine rejects the run id it just minted (open)
+
+- **Observed**: 2026-08-10, first authorized campaign round
+  (`authorization-ref: beta3-t003-activation-slice-1`). Exit 1 with
+  `review-campaign-invalid-run-id:run-20260810T072512585-18f6c6e4`.
+- **Root cause (read from source, not inferred from the message)**:
+  `review-campaign-orchestrator.ps1:751-752` mints an auto run id from the timestamp
+  format `yyyyMMddTHHmmssfff`, which contains a literal UPPERCASE `T`.
+  `review-authority-core.ps1:89` validates identifiers with
+  `-cmatch '^run-[a-z0-9][a-z0-9-]{0,63}$'` — case-SENSITIVE, lowercase only. The minted
+  id can therefore never satisfy the validator, so **every campaign run that does not
+  receive an explicit `--run-id` fails before a reviewer is invoked**.
+- **Cost**: none. The failure precedes any store write — no campaign facts existed
+  afterwards, no allowance consumed, no provider spend.
+- **Provenance**: the timestamp format arrived with `cbd7b615`
+  ("feat(review): wire campaign command authority").
+- **Workaround used (no product change)**: supply an explicit lowercase run id
+  (`--run-id run-t003-activation-slice-1`). A second validation gap surfaced immediately
+  behind it: `FeatureId` does not auto-resolve for the campaign path, so `--feature` and
+  `--iteration` must also be passed explicitly.
+- **Consumer impact**: a consumer following the block's own instruction
+  ("request-authorized-review") cannot run one from the documented CLI surface without
+  discovering two undocumented flags.
+- **Resolution**: pending maintainer ruling — recorded, not fixed. Candidate scope call:
+  it blocks the acceptance bar (the review the gate demands cannot be run), which by the
+  closed-scope rule would put a one-line fix in scope; otherwise it routes to beta4.
+
 ### Named test baseline — inherited failures, measured 2026-08-10 (not this feature's)
 
 Measured at the maintainer's instruction so this feature never inherits credit or blame
