@@ -1,4 +1,4 @@
-﻿# Drift Log: Iteration 001
+# Drift Log: Iteration 001
 
 **Schema**: v1
 
@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 23 (DRIFT-199-I001-001 through -023)
+**Total drift events**: 24 (DRIFT-199-I001-001 through -024)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -202,10 +202,31 @@ surfaced explicitly at the next boundary, never absorbed silently.
   machine and the install that produced the original defect. **What it does NOT prove**: that reading
   HYDRATES anything. Every file above was already local, so the fetch path is still unexercised.
 
-  **HALF 2 — HYDRATION: NOT YET RUN.** It requires evicting a file first (`attrib -p +u`) so
-  `RECALL_ON_DATA_ACCESS` is genuinely set. That mutates state in the maintainer's installed module,
-  outside this repository, so it is held for their explicit go-ahead rather than run on an inferred one.
-  **This entry closes on half 2, not on half 1.**
+  **HALF 2 — HYDRATION: RUN 2026-08-10 under the maintainer's explicit go-ahead, on `LICENSE`. The
+  three-point claim PASSED. The entry does NOT close.** Transcribed from the run:
+
+  > `before     attrs 0x80420  [PINNED]  -> hydrate-cloud`
+  > `attrib exit=0  (exit code NOT trusted; the attribute is re-read below)`
+  > `evicted    attrs 0x501620 [UNPINNED RECALL_ON_DATA_ACCESS OFFLINE]  -> hydrate-cloud`
+  > `hash actual   : 7b3249f4035970ca7bbf8574f09499b76707a650eb42a3fad8484fba6c3dd40e`
+  > `hash expected : 7b3249f4035970ca7bbf8574f09499b76707a650eb42a3fad8484fba6c3dd40e  (HALF 1, before eviction)`
+  > `hash match    : True`
+  > `hydrated   attrs 0x420  []  -> refuse-unknown`
+  > `recall bit cleared by the read: True`
+  > `RESULT: PROVEN - dehydrated placeholder classified as cloud, reading hydrated it, bytes verified identical.`
+
+  The eviction was VERIFIED rather than assumed — `RECALL_ON_DATA_ACCESS` (`0x00400000`) was polled for
+  and observed set before the probe ran, so a silently-skipped eviction could not have produced a passing
+  probe. **PIN STATE RESTORED** and confirmed: `restored attrs 0x80420 [PINNED]`, identical to the
+  `before` value. The maintainer's module is as it was found.
+
+  **WHY THIS ENTRY STAYS OPEN DESPITE THE PROOF.** Step 4 of the same run shows the hydrated file at
+  `attrs 0x420` classifying as `refuse-unknown`, and a follow-up measurement confirmed that is a STABLE
+  state rather than a momentary one. A OneDrive file that has been freed up and re-opened is therefore
+  still refused. The fix closes this defect for PINNED files and reproduces it for hydrated-unpinned
+  ones, and the two cannot be separated from an AppExecLink by any signal the classifier reads. That is
+  DRIFT-199-I001-024, and it needs a maintainer ruling. **Closing here on "half 2 passed" would have been
+  exactly the false-green this feature exists to prevent.**
 
   **CODE LANDED 2026-08-10, MEASUREMENT STILL OWED.** All three integrity checks now route through the
   one reparse-tag policy: a symlink or junction still refuses, an unrecognised tag fails closed, and a
@@ -604,6 +625,51 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-024 — a HYDRATED-UNPINNED cloud file is indistinguishable from an AppExecLink, and the fix does not cover it (OPEN — needs a maintainer ruling)
+
+**Found by half 2 of the hydration proof, at its own step 4** — the measurement the maintainer designed to
+confirm the fix is what showed the fix is incomplete. Recorded as a finding in its own right rather than
+as a caveat on the proof.
+
+**Measured, twice, on the maintainer's install** (`LICENSE`, evicted and re-hydrated, then polled):
+
+> `start (pinned)         attrs 0x80420  -> hydrate-cloud`
+> `evicted (unpinned)     attrs 0x501620 -> hydrate-cloud`
+> `immediately after read attrs 0x420    -> refuse-unknown`
+> `after +2s              attrs 0x420    -> refuse-unknown`
+> `after +5s              attrs 0x420    -> refuse-unknown`
+> `after +10s             attrs 0x420    -> refuse-unknown`
+
+**It is a STABLE state, not a momentary artifact.** A OneDrive file that has been freed up and then
+re-opened settles at `0x420` — ReparsePoint + Archive, **no cloud marker of any kind** — and the
+classifier refuses it. So DRIFT-199-I001-005 is fixed for PINNED files and reproduces for
+hydrated-unpinned ones.
+
+**Why this cannot be fixed by widening the allowlist again.** The maintainer's AppExecLink measurement
+and this one are the SAME on every signal the classifier can see:
+
+| | attrs | LinkType | LinkTarget | required disposition |
+| --- | --- | --- | --- | --- |
+| hydrated-unpinned OneDrive file | `0x420` | empty | absent | **admit** |
+| AppExecLink (`winget.exe`) | `0x420` | empty | absent | **refuse** |
+
+Admitting `0x420` would admit AppExecLinks — the exact containment hole the maintainer explicitly ruled
+must stay closed. Refusing it leaves real cloud files unreadable. **Attributes plus `LinkType`/`LinkTarget`
+cannot separate these two; only the real reparse tag can** (`IO_REPARSE_TAG_CLOUD*` vs
+`IO_REPARSE_TAG_APPEXECLINK`), and reading it needs P/Invoke or `fsutil` — a subprocess on a per-component
+path walk, which T006's design record rejected on the evidence of a prior CI hang.
+
+**This is a genuine fork and it is the maintainer's to take**, not the implementer's, because both
+branches trade a containment guarantee against a usability one. Not decided here.
+
+**AND THE FIXTURES ARE WRONG IN THE SAME WAY AS BEFORE.** The four-state case added in
+DRIFT-199-I001-023 synthesises "unpinned + hydrated" as `ReparsePoint|Archive|UNPINNED` (`0x100420`).
+Measurement says that shape is not what a hydrated-unpinned file reports — it reports `0x420` with no
+marker at all. So the fix for the synthesis trap contained a fresh instance of the synthesis trap: an
+invented shape asserted as if it were the world. The fixture is green about a state that may not exist,
+while the state that does exist is unmodelled. **Recorded rather than quietly corrected**, because the
+correct behaviour for `0x420` is exactly what is undecided above.
 
 ### DRIFT-199-I001-023 — the reparse classifier detected only DEHYDRATED placeholders, so T006 did not fix the bug it was written for (resolved)
 
