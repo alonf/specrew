@@ -217,6 +217,12 @@ showed the beta2 definition was per-machine and unreconstructible from the repos
 2. **References must not rot silently.** Feature and iteration references are derived, or
    staleness is detectable. The beta2 plan hardcoded `f198.i008` in both its `plan_id` and
    its `-IterationPath`; nothing surfaced that it no longer matched the active work.
+1a. **`PSModulePath` is a measured question, not a judged one** (maintainer, 2026-08-10).
+   Every governed project's plan carries at least one PowerShell-invoked command (the
+   governance validator), so this is a stack-default question. T007 runs the validator
+   once under a scrubbed environment WITHOUT `PSModulePath` and lets the result decide
+   whether the PowerShell stack default carries it. The measurement is recorded; the
+   reasoning is not a substitute for it.
 3. **Provenance — the intended end state.** The validation lane is ALREADY decided at the
    devops-operations lens and recorded there in prose, then re-invented by hand as
    configuration. The intended shape is that `verification-plan.json` becomes the devops

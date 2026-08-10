@@ -26,6 +26,36 @@
 **Resolution rate**: 50% (1/2 resolved)
 **Specification drift**: None detected (both events are process observations)
 
+## Before-implement verdict — ratification clause (maintainer, 2026-08-10)
+
+Recorded verbatim in intent alongside the verdict, so the ledger explains itself without
+cross-referencing. The verdict history would otherwise show a jump from `tasks` to
+`before-implement` with three implement-labelled commits in between.
+
+> This verdict authorizes ordinary implementation from here forward AND ratifies the
+> three exception commits that preceded it — `afe1dd1e` (the activation-premise repair),
+> `99860254` (the run-id minter fix), and `477a649c` (the committed verification plan) —
+> each ruled in scope by the maintainer individually under the closed-scope exception,
+> with its bounded instruction recorded in this drift log.
+
+Hashes verified against `git log` before recording: all three resolve to the commits
+named above.
+
+## Standing instructions carried from the same verdict
+
+- **T003 fixture case (two-governor collision)**: when T003 resumes, add a fixture
+  pinning the adjudication rule the maintainer confirmed — a recorded crossing in
+  controller truth WINS over the campaign block's self-describing no-marker clause.
+  Evidence: the 2026-08-10 before-implement stop, where the boundary evidence gate
+  demanded the verdict marker for `crossing-9b3d255e` while the campaign block
+  simultaneously instructed that no marker be emitted.
+- **T007 PSModulePath question — measure, do not judge**: every governed project's plan
+  carries at least one PowerShell-invoked command (the governance validator), so whether
+  the PowerShell stack default carries `PSModulePath` is a stack-default question, not a
+  project-specific one. In T007, run the governance validator once under a scrubbed
+  environment WITHOUT `PSModulePath` and let the result decide. Record the measurement,
+  not the reasoning.
+
 ## Events
 
 ### DRIFT-199-I001-001 — two-message decision stop at the co-design ask (resolved)
