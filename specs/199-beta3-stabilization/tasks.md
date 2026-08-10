@@ -93,7 +93,7 @@ The phase headings below keep their authoring order; this execution order govern
   and scoped (Trace: FR-011, FR-023, SC-006; owns: `review-authority-store.ps1`
   link checks, refusal messages, install docs,
   `tests/continuous-co-review/unit/reparse-tag-policy.Tests.ps1`)
-- [ ] T007 [owner: Implementer] [sp: 1.0] **Init verification-plan bootstrap** —
+- [x] T007 [owner: Implementer] [sp: 1.0] **Init verification-plan bootstrap** —
   `specrew init` scaffolds the starter verification-plan.json (governance validator +
   dotnet/npm build-test templates) with the default env_refs allowlist (N4 list
   including TMPDIR); verification failures name the missing piece (env_refs with the

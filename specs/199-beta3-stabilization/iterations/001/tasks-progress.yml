@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "001"
-updated_at: "2026-08-10T20:27:03.5664858Z"
+updated_at: "2026-08-10T22:57:44.3157434Z"
 tasks:
   T001:
     title: "Pause core (round terminal + pause facts + decision surface + per-campaign budget)"
@@ -41,9 +41,9 @@ tasks:
     blocked_reason: ""
   T007:
     title: "Init verification-plan bootstrap + named errors"
-    status: "in-progress"
+    status: "complete"
     started_at: "2026-08-10T20:27:03.5606798Z"
-    completed_at: ""
+    completed_at: "2026-08-10T22:57:44.3126054Z"
     blocked_reason: ""
   T008:
     title: "Reviewer-invoked-only spend accounting"
