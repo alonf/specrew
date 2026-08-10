@@ -169,6 +169,40 @@ Describe 'Single-authority stop surface (T003)' {
             $decision.implementer_action | Should -Be 'await-human-pause-decision'
         }
 
+        It 'a pause NEVER suppresses a clean pass on the same tree (the packet is how the human answers)' {
+            # A wedge caught live by T051's fixture, not by reasoning. T001 makes EVERY round end in a
+            # pause, so after any completed round a pending pause and that round's clean pass describe
+            # the SAME tree at the same moment. Quieting there leaves the human holding a decision with
+            # nothing to answer it through - the boundary packet IS the answering surface.
+            #
+            # The pause legitimately suppresses a DEMAND (do not nag for another review or disposition
+            # while one is already with them). Releasing what they need in order to answer is not one.
+            $result = script:New-TerminalResult -RunId 'run-paused-clean'
+            $pause = [pscustomobject]@{ run_id = 'run-paused-clean'; target_digest = $script:Digest }
+
+            $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
+                -CurrentDigest $script:Digest -OrderedRunIds @('run-paused-clean') -Results @($result) `
+                -RepoRoot $script:RepoRoot -PendingPause $pause
+
+            $decision.route | Should -Be 'boundary-clean'
+            $decision.render_boundary_packet | Should -BeTrue
+        }
+
+        It 'a pause DOES quiet when the same round produced findings rather than a pass' {
+            # The paired sibling, so the case above can never be read as "a pause is ignorable". With
+            # nothing to release, the pause is the sanctioned quiet state it was designed to be.
+            $result = script:New-TerminalResult -RunId 'run-paused-findings'
+            $result.verdict = 'findings'
+            $result.can_approve_current = $false
+            $pause = [pscustomobject]@{ run_id = 'run-paused-findings'; target_digest = $script:Digest }
+
+            $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
+                -CurrentDigest $script:Digest -OrderedRunIds @('run-paused-findings') -Results @($result) `
+                -RepoRoot $script:RepoRoot -PendingPause $pause
+
+            $decision.route | Should -Be 'pause-pending'
+        }
+
         It 'a SUPERSEDED pause confers nothing (it describes a tree that moved on)' {
             $pause = [pscustomobject]@{ run_id = 'run-paused-b'; target_digest = ('e' * 40) }
             $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `

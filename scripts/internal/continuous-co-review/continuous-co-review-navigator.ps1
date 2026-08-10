@@ -1174,15 +1174,62 @@ function Build-ReviewCampaignNavigatorStopBlock {
     # T051 / FR-045: campaign outcomes can block lifecycle progress, but only a clean or explicitly
     # human-dispositioned exact-digest result may release the ordinary boundary packet. This block is
     # deliberately marker-free so it cannot be captured as lifecycle authorization evidence.
-    param([Parameter(Mandatory)]$PacketDecision)
+    #
+    # T003 / FR-007 - THE TWO-GOVERNOR ADJUDICATION. The no-marker clause below used to be emitted
+    # unconditionally, with no knowledge of whether a lifecycle crossing was pending. When one is, the
+    # stop carries two contradictory instructions at the same moment: the boundary evidence gate needs
+    # the crossing's verdict marker or the human's answer cannot be captured at all, while this block
+    # says emit no marker. That collision was captured live three times during this feature, and each
+    # time an AGENT adjudicated it - which is precisely ledger F5, because a consumer could not.
+    #
+    # Maintainer ruling: the recorded crossing WINS. Controller truth naming an exact pending
+    # authorization outranks this clause, which governs ITSELF - it describes what this block is, not
+    # what the lifecycle owes. Under the other reading a recorded crossing becomes unanswerable and
+    # the lifecycle wedges on a review the human may not even owe yet.
+    #
+    # Deferring the MARKER is not withdrawing the BLOCK: the review position above is unchanged, and
+    # only a well-formed crossing - one naming its destination - outranks the clause.
+    param(
+        [Parameter(Mandatory)]$PacketDecision,
+        [AllowNull()]$PendingCrossing
+    )
     $sb = [Text.StringBuilder]::new()
     [void]$sb.AppendLine(('Specrew campaign review — {0}.' -f ([string]$PacketDecision.route)))
     [void]$sb.AppendLine([string]$PacketDecision.message)
     if (-not [string]::IsNullOrWhiteSpace([string]$PacketDecision.run_id)) { [void]$sb.AppendLine(('Run: {0}' -f [string]$PacketDecision.run_id)) }
     [void]$sb.AppendLine(('Implementer action: {0}' -f [string]$PacketDecision.implementer_action))
     if ([bool]$PacketDecision.ask_narrow_question) { [void]$sb.AppendLine('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') }
-    [void]$sb.AppendLine('(Campaign review block, not a lifecycle verdict — do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)')
+
+    $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
+    $crossingFrom = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'from_boundary')
+    $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'to_boundary')
+    if ([string]::IsNullOrWhiteSpace($crossingTo)) {
+        $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'working_boundary')
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($crossingTo) -and -not [string]::IsNullOrWhiteSpace($crossingId)) {
+        # Scoped, and it STATES the adjudication rather than leaving it to be inferred.
+        [void]$sb.AppendLine((
+            '(This is a campaign review block, not a lifecycle verdict. It does not govern the recorded crossing {0} ({1} -> {2}), which is still pending your decision: that crossing''s verdict marker applies as normal, and this block does not suppress it.)' -f `
+                $crossingId, $(if ([string]::IsNullOrWhiteSpace($crossingFrom)) { 'unrecorded' } else { $crossingFrom }), $crossingTo
+        ))
+    }
+    else {
+        [void]$sb.AppendLine('(Campaign review block, not a lifecycle verdict — do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)')
+    }
     return $sb.ToString().TrimEnd()
+}
+
+function Get-ReviewCampaignCrossingField {
+    # StrictMode-safe read of a recorded crossing field. The crossing arrives as parsed JSON from
+    # .specrew/start-context.json, where any field may be absent on an older or partly-written record,
+    # and under StrictMode touching an absent property THROWS - inside the Stop path, which is the one
+    # place a throw is most expensive. Absent reads as empty, and empty fails closed at the caller.
+    param([AllowNull()]$Crossing, [Parameter(Mandatory)][string]$Name)
+    if ($null -eq $Crossing) { return '' }
+    $property = $Crossing.PSObject.Properties[$Name]
+    if ($null -eq $property -or $null -eq $property.Value) { return '' }
+    return [string]$property.Value
 }
 
 function Get-ContinuousCoReviewNavigatorImplementStage {

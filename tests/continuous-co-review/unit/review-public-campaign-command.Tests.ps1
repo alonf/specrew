@@ -809,12 +809,30 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
     }
 
     It 'denies every non-review-evidence finalization path without publishing a fact' -ForEach @(
-        @{ name = 'script'; path = 'scripts/change.ps1' },
-        @{ name = 'test'; path = 'tests/change.Tests.ps1' },
-        @{ name = 'spec'; path = 'specs/001-demo/spec.md' },
-        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md' },
-        @{ name = 'state'; path = 'specs/001-demo/iterations/007/state.md' }
+        @{ name = 'script'; path = 'scripts/change.ps1'; expected = 'review-stale' },
+        @{ name = 'test'; path = 'tests/change.Tests.ps1'; expected = 'review-stale' },
+        @{ name = 'spec'; path = 'specs/001-demo/spec.md'; expected = 'review-current' },
+        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md'; expected = 'review-current' },
+        @{ name = 'state'; path = 'specs/001-demo/iterations/007/state.md'; expected = 'review-current' }
     ) {
+        # ROUTE EXPECTATIONS MOVED 2026-08-10 by FR-009, and the guarantee this case exists to hold
+        # did NOT move. Recorded here rather than only in the drift log, because a reader meeting this
+        # -ForEach table needs to see why three rows differ from the other two.
+        #
+        #   spec / contract / state:  'review-stale'  ->  'review-current'
+        #   script / test:            'review-stale'  ->  unchanged
+        #
+        # FR-009: "commits touching only governance/records files MUST NOT stale a reviewed digest."
+        # A change under specs/ is records, not implementation, so it cannot invalidate the review that
+        # produced it (DRIFT-199-I001-013 - a commit whose entire content was the drift log flipped
+        # this surface to review-stale, which made currency unachievable by construction). A change
+        # under scripts/ or tests/ IS reviewable content in this repository and still stales.
+        #
+        # THE DENIAL THIS CASE NAMES IS UNCHANGED IN EVERY ROW: no boundary packet is released and no
+        # finalization fact is published. Those two are asserted explicitly below rather than left to
+        # be implied by the route name - the route says whether the review still covers the tree, the
+        # assertions say whether anything was authorized, and only the first of those was ever the
+        # thing FR-009 speaks to.
         $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive "finalization-denied-$name")
         $store = Join-Path $TestDrive "finalization-denied-$name-store"
         $null = Add-CleanCampaignResult -Root $root -Store $store -RunId "run-denied-$name"
@@ -822,8 +840,9 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
             -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
-        $decision.route | Should -Be 'review-stale'
-        $decision.render_boundary_packet | Should -BeFalse
+        $decision.route | Should -Be $expected
+        $decision.render_boundary_packet | Should -BeFalse -Because 'no non-review-evidence path may release the boundary packet, whatever the route'
+        $decision.render_verdict_marker | Should -BeFalse -Because 'nor may it produce a capturable lifecycle authorization'
         Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
     }
 
@@ -834,10 +853,17 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/review.md' -Content '# First envelope'
         $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/coverage-evidence.md' -Content '# Chained envelope'
 
+        # ROUTE EXPECTATION MOVED 2026-08-10 by FR-009:  'review-stale'  ->  'review-current'.
+        # Both commits above are under the iteration records tree, so the delta is records-only and
+        # cannot stale the reviewed digest. What this case is ACTUALLY about - that a finalization
+        # whose parent is not the reviewed commit is refused, with no fact published - is unchanged and
+        # is what the assertions below hold. The single-hop envelope still finalizes (the case above
+        # this one), so the chain refusal is still doing its work.
         $decision = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $root -CampaignId 'cmp-demo-i007' -TargetLineage 'lin-demo' `
             -StoreRoot $store -FeatureId '001-demo' -IterationNumber '007'
-        $decision.route | Should -Be 'review-stale'
-        $decision.render_boundary_packet | Should -BeFalse
+        $decision.route | Should -Be 'review-current'
+        $decision.render_boundary_packet | Should -BeFalse -Because 'a two-hop chain never releases the boundary packet, whatever the route says about currency'
+        $decision.render_verdict_marker | Should -BeFalse
         Get-ReviewCampaignFinalizationFact -StoreRoot $store -CampaignId 'cmp-demo-i007' | Should -BeNullOrEmpty
     }
 

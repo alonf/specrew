@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 17 (DRIFT-199-I001-001 through -017)
+**Total drift events**: 18 (DRIFT-199-I001-001 through -018)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -41,6 +41,31 @@ cross-referencing. The verdict history would otherwise show a jump from `tasks` 
 
 Hashes verified against `git log` before recording: all three resolve to the commits
 named above.
+
+## METHOD RULE — a relayed diagnostic is evidence only if the relayer measured it
+
+Recorded 2026-08-10 at the maintainer's instruction, as a rule in its own right rather than as a
+footnote to the defect that produced it.
+
+> A diagnostic handed to the next session carries the authority of a MEASUREMENT only when the
+> relayer actually measured it. Reading a function's head and its comment and reporting the result
+> as verified is INFERENCE, and inference from a comment inherits whatever that comment gets wrong.
+
+**The instance**: the session-opening brief stated that `Get-ContinuousCoReviewMachineryPaths` called
+without `-RepoRoot` "returns the core list only" and ruled the previous session's hypothesis out on
+that basis. The claim came from the function's own comment (`omit for the core-only list`). The
+comment was false — the bare call returns THIRTEEN entries, three of them the co-review engine
+itself — and the false clause was the whole defect (DRIFT-199-I001-016). Re-measuring found in one
+probe what the relayed diagnostic had ruled out.
+
+**Why it is worth a rule and not just a correction**: the two other hypotheses in the same brief WERE
+measured and were correctly excluded, so the brief was right about everything it had actually run.
+The failure mode is specific — a comment read as a result — and it is invisible at the receiving end,
+because a relayed conclusion arrives stripped of how it was obtained.
+
+**How to apply**: state the method alongside the claim when relaying a diagnostic ("measured, probe
+output below" versus "read from the comment, unverified"), and re-measure anything that arrives
+without one before letting it narrow a search.
 
 ## Post-boundary spec amendments (surface at review-signoff as a diff-to-approve)
 
@@ -285,6 +310,20 @@ surfaced explicitly at the next boundary, never absorbed silently.
   default CurrentUser install those are routinely different volumes (DRIFT-199-I001-005 is that exact
   split: engine under OneDrive, project on a local disk). Asking the engine's volume for the
   project's case rule is the same wrong-source mistake as an `$IsWindows` shortcut.
+- **The comment was the trap, and it is now removed at the FUNCTION** (maintainer ruling
+  2026-08-10): fixing only the caller would have left `Get-ContinuousCoReviewMachineryPaths`
+  documented as safe to call bare, waiting for the next caller. There is no honest core-only answer
+  to return — parts (a) and (b) of the resolver disagree about exactly those three paths depending on
+  which repository is being described — so a bare call now REFUSES
+  (`review-machinery-paths-requires-repo-root`) instead of guessing a branch, and the false comment
+  is replaced by the reason. Verified safe first: every call site in the tree already passes
+  `-RepoRoot`, so nothing relied on the removed behaviour. Pinned by a new case in
+  `tests/continuous-co-review/unit/worktree-reviewer-machinery-paths.Tests.ps1`.
+- **A brittle guard found while pinning it, fixed rather than padded**: that suite's structural case
+  sliced a fixed 6000-character window from the function start, so adding a comment silently
+  truncated the block and the assertions failed for a reason unrelated to what they guard. It now
+  slices to the next top-level function. A structural test that reports the wrong defect is worse
+  than none.
 - **Citation**: FR-009 (records deltas must not stale a reviewed digest); FR-012 (the one machinery
   resolver); the path-identity volume rule (DRIFT-198-I009-018).
 - **Resolution**: FIXED. `-RepoRoot` threaded through `Resolve-ReviewCampaignVerdictPacketDecision`
@@ -331,15 +370,87 @@ previous session added the call and then ran only the T003 fixture, so a red gua
 was committed inside `c14a063f`. The failure was authored, detected, and unobserved. Consequences
 recorded as facts:
 
-- The branch total at `c14a063f` was **EIGHTEEN**, not seventeen — seventeen inherited plus this
-  self-inflicted guard failure. This entry is the reason a reader will find that number in the
-  history; the restated SEVENTEEN baseline is correct for the branch point, not for that commit.
-- **The beta4 sharpening changes shape.** The lesson is NOT "make the guard scan more files". It is
-  that a guard only guards code whose author runs it, and a per-file edit does not know which guard
-  it just broke. That is one more argument for the consolidation target already recorded — making the
-  primitive the ONLY REACHABLE path rather than the recommended one — and a second, cheaper one for
-  beta4: the class-guard suites belong in whatever runs on every edit to the co-review engine, not in
-  a suite chosen by the person who just changed it.
+- **SEVENTEEN is correct for the branch point; EIGHTEEN for commit `c14a063f`, which carried a red
+  guard.** Both numbers are right about different trees, and a reader who finds eighteen in the
+  history should find this entry rather than suspect the baseline. Confirmed by measurement after the
+  fix: **17 failed / 1000 passed** across `tests/continuous-co-review/unit`, failure set identical
+  name for name to the recorded seventeen.
+- **The lesson, and it is not the one first assumed.** The working assumption was a coverage gap in
+  the guard; the maintainer retracted that after the measurement above. The durable lesson is that
+  **a guard only guards code whose author runs it** — a per-file edit does not know which class guard
+  it just broke, and selection-by-what-the-task-touches will always trail the code.
+- **Acted on immediately rather than deferred (maintainer ruling)**: the class-guard suites are now a
+  PERMANENT lane in `.specrew/verification-plan.json` (`f199-class-guards`: the path-identity guard,
+  the volume differential, and the machinery-path policy), never selected by what a task happens to
+  touch. That converts the lesson into a mechanism inside work this feature already owns, and it
+  means the next engine edit cannot commit a red guard unnoticed. Roughly 10 s combined, validated
+  through the shipped contract (`Test-ContinuousCoReviewVerificationPlan` → valid).
+- **Still one more argument for the beta4 consolidation target** already recorded — making the
+  primitive the ONLY REACHABLE path rather than the recommended one. The lane catches a red guard
+  fast; only unreachability stops the defect being written.
+
+### DRIFT-199-I001-018 — making the pause consult live turned a latent ordering bug into a wedge (resolved)
+
+- **Observed**: 2026-08-10, immediately on wiring the four T003 consults into
+  `Get-ReviewCampaignVerdictPacketDecision`. T051's own fixture (`delegates one public operation
+  through campaign ports and preserves the exact origin state`) went red: the signoff gate returned
+  `block` where it had returned `allow`, with
+  `reason=human-pause-decision-outstanding`.
+- **Cause, and it is mine**: `Resolve-ReviewCampaignVerdictPacketDecision` evaluated the pending-pause
+  quiet BEFORE the latest-result evaluation. That ordering was harmless while nothing supplied
+  `-PendingPause`; the wiring made it live. **T001 makes every round end in a pause**, so after any
+  completed round a pending pause and that round's clean pass describe the SAME tree at the same
+  moment — and the pause short-circuited `boundary-clean`.
+- **Why it is a wedge rather than noise**: the boundary packet IS how the human answers a pause.
+  Quieting it left them holding a decision with no surface to answer it through, on a tree whose
+  review had already passed cleanly. That is the wedge class this feature exists to remove, arriving
+  from the direction the pause rule was written to protect.
+- **The rule that resolves it**: a pending pause suppresses a DEMAND — do not nag for another review
+  or another disposition while one is already sitting with the human — and releasing what they need
+  in order to answer is not a demand. So the pause never suppresses a boundary-releasing result.
+- **Resolution**: FIXED. The "would this reach a boundary route" question is now ONE predicate,
+  `Test-ReviewCampaignResultReleasesBoundary`, consumed by both the pause guard and the
+  `boundary-clean` return so the two cannot drift apart; the sequential gates between them stay
+  sequential because each owes the consumer a different message. Pinned by a paired fixture — a clean
+  pass plus a pause on the same tree returns `boundary-clean`, while the same pause over a findings
+  result still returns `pause-pending`, so the fix can never be read as "a pause is ignorable".
+- **Method note worth keeping**: this was caught by an EXISTING fixture in a suite I had not changed,
+  not by reasoning about my own edit — the same shape as DRIFT-199-I001-014. The wiring's own new
+  fixtures were all green while this was broken.
+
+### FR-009 — the expectations it moved, old and new side by side (recorded 2026-08-10 at the maintainer's instruction)
+
+Recorded so a later reader sees a guarantee SHARPENED BY A REQUIREMENT rather than a test bent to fit
+new code. All four live in `tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1`.
+
+**The requirement that moved them** — FR-009: *commits touching only governance/records files MUST NOT
+stale a reviewed digest.* Its live evidence is DRIFT-199-I001-013, where a commit whose entire content
+was this drift log flipped the surface to `review-stale`: writing down what a review found invalidated
+that review, so currency was unachievable by construction.
+
+| Case | Delta | Old assertion | New assertion |
+| --- | --- | --- | --- |
+| `denies every non-review-evidence finalization path` (spec) | `specs/001-demo/spec.md` | `route = review-stale` | `route = review-current` |
+| same (contract) | `specs/001-demo/iterations/007/plan.md` | `route = review-stale` | `route = review-current` |
+| same (state) | `specs/001-demo/iterations/007/state.md` | `route = review-stale` | `route = review-current` |
+| same (script) | `scripts/change.ps1` | `route = review-stale` | **unchanged** — reviewable content still stales |
+| same (test) | `tests/change.Tests.ps1` | `route = review-stale` | **unchanged** |
+| `denies an allowlisted envelope chain whose finalization parent is not the reviewed commit` | two commits, both under `specs/001-demo/iterations/007/` | `route = review-stale` | `route = review-current` |
+
+**What did NOT move, in any row**: no boundary packet is released and no finalization fact is
+published. Those were previously implied by the route name; they are now asserted EXPLICITLY
+(`render_boundary_packet`, `render_verdict_marker`, and the absent finalization fact), which leaves
+each case stating its own guarantee instead of borrowing one. The route answers "does the review still
+cover this tree"; the assertions answer "was anything authorized". Only the first is what FR-009
+speaks to, and separating them is what makes this a sharpening rather than a relaxation.
+
+**Open scope question carried to the maintainer**: the predicate treats ALL of `specs/` as records,
+while the recorded requirement in DRIFT-199-I001-013 was narrower — "under the FEATURE'S OWN
+`specs/<feature>/` records tree". The difference is visible in row one: a spec change is a
+requirements change, and it is arguable that moving the requirements should stale a code review even
+though the file is records. Left broad pending a ruling, because FR-009 says "governance/records
+files" without qualification and the design record classifies `specs/` as records; narrowing it to the
+iteration records tree is a one-line change.
 
 ### Measured proof line — first successful end-to-end campaign round
 

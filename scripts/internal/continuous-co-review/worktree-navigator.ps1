@@ -298,6 +298,27 @@ function Test-ReviewCampaignCoverageDeltaHasImplementation {
     return & $mk $false 'coverage-delta-is-records-only'
 }
 
+function Get-ReviewCampaignRecordedPendingCrossing {
+    # Controller truth: the crossing the lifecycle is currently waiting on, read from
+    # .specrew/start-context.json. Returns $null when there is none, when the file is unreadable, or
+    # when the record does not name a destination - all three are "no crossing to defer to", and the
+    # campaign block keeps its unconditional no-marker clause. Fail-closed direction: only a crossing
+    # that genuinely exists may relax that clause.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    $startContextPath = Join-Path $RepoRoot '.specrew/start-context.json'
+    if (-not (Test-Path -LiteralPath $startContextPath -PathType Leaf)) { return $null }
+    try { $startContext = Get-Content -LiteralPath $startContextPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return $null }
+    if ($null -eq $startContext) { return $null }
+    $enforcement = $startContext.PSObject.Properties['boundary_enforcement']
+    if ($null -eq $enforcement -or $null -eq $enforcement.Value) { return $null }
+    $crossing = $enforcement.Value.PSObject.Properties['pending_crossing']
+    if ($null -eq $crossing -or $null -eq $crossing.Value) { return $null }
+    return $crossing.Value
+}
+
 function Invoke-ContinuousCoReviewWorktreeNavigator {
     # Param shape MATCHES the legacy Invoke-ContinuousCoReviewNavigator so the provider config-selects between
     # the two by name with the SAME @navParams. -SessionStart = the cross-session sweep. -CodeWriterHost threads
@@ -340,7 +361,16 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
         elseif ([string]$packet.route -eq 'review-running') {
             $decision.inject_notes = @(("[co-review] campaign run {0} is still reviewing the current digest; no decision is required." -f $packet.run_id))
         }
-        else { $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet }
+        else {
+            # T003 / FR-007: hand the block the recorded crossing so it can scope itself instead of
+            # blanket-suppressing a marker the lifecycle may genuinely owe. Reading controller truth
+            # must never be able to break the stop, so an unreadable record yields $null and the block
+            # falls back to its original unconditional clause.
+            $pendingCrossing = $null
+            try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved }
+            catch { $pendingCrossing = $null }
+            $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet -PendingCrossing $pendingCrossing
+        }
         return $decision
     }
 

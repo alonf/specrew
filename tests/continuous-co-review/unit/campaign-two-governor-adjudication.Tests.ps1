@@ -27,6 +27,8 @@ Describe 'Two-governor adjudication: a recorded crossing outranks the campaign n
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        # The stop-block builder lives in the legacy navigator module, which `_load.ps1` does not carry.
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
         $script:BlockedPacket = New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' `
             -Reason 'latest-result-not-current' `

@@ -403,6 +403,94 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     return $true
 }
 
+function Get-ContinuousCoReviewRecordedSignoffGateDecision {
+    # FR-007's consult, as a READ of the signoff-gate decision store - never a live gate call.
+    #
+    # A live call would recurse without terminating: when campaign authority is enabled,
+    # Get-ContinuousCoReviewSignoffGateDecision is a thin wrapper that calls
+    # Get-ReviewCampaignVerdictPacketDecision, which is the very function consulting it. The spec
+    # names the store, not the gate ("the campaign stop surface MUST consult the signoff-gate
+    # decision store"), and resolves the empty case explicitly: with no recorded decision the surface
+    # evaluates as it does today.
+    #
+    # The stored record wraps the decision and spells the tree `current_tree_id`; the decision logic
+    # asks for `reviewed_digest`. Normalizing here keeps Resolve- a pure function over plain shapes,
+    # which is what lets its fixtures stay store-free. Anything absent, unreadable or malformed
+    # returns $null and confers NOTHING - this consult can only ever quiet the surface, so an
+    # unreadable store must never be the reason it goes quiet.
+    [CmdletBinding()]
+    param([AllowNull()][AllowEmptyString()][string]$RepoRoot)
+
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $null }
+    $latestPath = Join-Path $RepoRoot '.specrew/review/signoff-gate/latest.json'
+    if (-not (Test-Path -LiteralPath $latestPath -PathType Leaf)) { return $null }
+    try { $record = Get-Content -LiteralPath $latestPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return $null }
+    if ($null -eq $record) { return $null }
+    $decision = Get-ReviewAuthorityProperty -Object $record -Name 'decision'
+    if ($null -eq $decision) { return $null }
+    $verdict = [string](Get-ReviewAuthorityProperty -Object $decision -Name 'decision')
+    $treeId = [string](Get-ReviewAuthorityProperty -Object $decision -Name 'current_tree_id')
+    if ([string]::IsNullOrWhiteSpace($verdict) -or [string]::IsNullOrWhiteSpace($treeId)) { return $null }
+    return [pscustomobject][ordered]@{
+        decision        = $verdict
+        reviewed_digest = $treeId
+        reason          = [string](Get-ReviewAuthorityProperty -Object $decision -Name 'reason')
+        boundary_type   = [string](Get-ReviewAuthorityProperty -Object $record -Name 'boundary_type')
+        recorded_at     = [string](Get-ReviewAuthorityProperty -Object $record -Name 'recorded_at')
+    }
+}
+
+function Get-ReviewCampaignChangedPathsSinceResult {
+    # FR-009's evidence: what actually changed between the reviewed tree and the current one. Both
+    # arguments are reviewed-state digests, which ARE git tree objects, so git answers this directly
+    # rather than anything reconstructing a diff by hand.
+    #
+    # $null means UNKNOWN and stales; @() means genuinely nothing changed. The distinction is
+    # load-bearing downstream - Test-ReviewCampaignDeltaIsRecordsOnly fails closed on both, but only
+    # $null should ever arise from a git failure. Every failure path here returns $null so an
+    # unresolvable tree can never be mistaken for a clean delta.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [AllowNull()][AllowEmptyString()][string]$ReviewedDigest,
+        [AllowNull()][AllowEmptyString()][string]$CurrentDigest
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ReviewedDigest) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) { return $null }
+    if ($ReviewedDigest -ceq $CurrentDigest) { return @() }
+    try { $root = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction Stop).Path }
+    catch { return $null }
+
+    foreach ($digest in @($ReviewedDigest, $CurrentDigest)) {
+        & git -C $root cat-file -e ("{0}^{{tree}}" -f $digest) 2>$null
+        if ($LASTEXITCODE -ne 0) { return $null }
+    }
+    $paths = @(& git -C $root -c core.quotepath=false diff --name-only --no-renames $ReviewedDigest $CurrentDigest 2>$null)
+    if ($LASTEXITCODE -ne 0) { return $null }
+    return @($paths | ForEach-Object { ([string]$_).Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function Test-ReviewCampaignResultReleasesBoundary {
+    # "Would this result reach a boundary-releasing route?" - ONE definition, consumed twice below, so
+    # the pause guard and the boundary-clean return can never answer it differently. The sequential
+    # gates between them stay sequential on purpose: each one owes the consumer a DIFFERENT message
+    # about why their review does not release the boundary, which a single predicate cannot give.
+    [CmdletBinding()]
+    param([AllowNull()]$Result, [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest)
+
+    if ($null -eq $Result) { return $false }
+    return (
+        [string]$Result.target_digest -ceq $CurrentDigest -and
+        [string]$Result.currentness -ceq 'current' -and
+        [string]$Result.completion -ceq 'complete' -and
+        [string]$Result.validation -ceq 'valid' -and
+        [string]$Result.runtime_outcome -cne 'timed-out' -and
+        [string]$Result.verdict -ceq 'pass' -and
+        [bool]$Result.can_approve_current
+    )
+}
+
 function Resolve-ReviewCampaignVerdictPacketDecision {
     [CmdletBinding()]
     param(
@@ -470,7 +558,30 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
 
     # A pause recorded against the CURRENT tree is a decision already sitting with the human. Nagging
     # for a review there would ask them to spend on a question they are mid-answer to.
-    if ($null -ne $PendingPause -and [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'target_digest') -ceq $CurrentDigest) {
+    #
+    # The quiet rule comes from Test-ReviewCampaignPendingPauseQuiet rather than being re-decided
+    # here. An inline copy of the comparison was the shadowing class in miniature: two
+    # implementations of one rule, and the SILENCING direction is where a divergence does real harm -
+    # a stale pause that still confers quiet suppresses the surface on a tree it never described.
+    #
+    # ...AND A PAUSE NEVER SUPPRESSES A BOUNDARY-RELEASING RESULT. This ordering was latent while the
+    # consult was inert and became a wedge the moment it went live: T001 makes EVERY round end in a
+    # pause, so after any completed round a pending pause and that round's clean pass describe the
+    # same tree simultaneously. Quieting there left the human holding a decision with no packet to
+    # answer it through - the boundary packet IS how they answer - which is the wedge class this
+    # feature exists to remove, arriving from the direction the pause rule was meant to protect.
+    # What the pause legitimately suppresses is a DEMAND: do not nag for another review or
+    # disposition while one is already sitting with them. Releasing what they need in order to answer
+    # is not a demand. Caught by T051's own fixture rather than by reasoning.
+    $pauseQuiets = (Test-ReviewCampaignPendingPauseQuiet -PendingPause $PendingPause -CurrentDigest $CurrentDigest).confers_quiet
+    if ($pauseQuiets -and $ordered.Count -gt 0) {
+        $newestRunId = $ordered[$ordered.Count - 1]
+        if ($byRun.ContainsKey($newestRunId) -and
+            (Test-ReviewCampaignResultReleasesBoundary -Result $byRun[$newestRunId] -CurrentDigest $CurrentDigest)) {
+            $pauseQuiets = $false
+        }
+    }
+    if ($pauseQuiets) {
         return New-ReviewCampaignVerdictPacketDecision -Route 'pause-pending' -Reason 'human-pause-decision-outstanding' -Message 'This review is waiting for your decision; nothing is running and nothing is being spent.' -CampaignId $CampaignId -RunId ([string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'run_id')) -TargetDigest $CurrentDigest -ImplementerAction 'await-human-pause-decision'
     }
 
@@ -517,7 +628,10 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     if ([string]$latest.validation -cne 'valid' -or [string]$latest.currentness -cne 'current') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
     }
-    if ([bool]$latest.can_approve_current -and [string]$latest.verdict -ceq 'pass') {
+    # The SAME predicate the pause guard above consults. Reaching here means the sequential gates have
+    # already excluded every other shape, so this is equivalent to the conjunction it replaces - and
+    # sharing one definition is what stops the pause guard and this return drifting apart.
+    if (Test-ReviewCampaignResultReleasesBoundary -Result $latest -CurrentDigest $CurrentDigest) {
         return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'The authoritative campaign result is a complete valid pass for the exact current digest.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
     }
     if ([string]$latest.verdict -ceq 'findings') {
@@ -637,7 +751,31 @@ function Get-ReviewCampaignVerdictPacketDecision {
         }
     }
     $decisionDigest = if ($null -ne $finalizationEnvelope) { [string]$finalizationEnvelope.reviewed_digest } else { [string]$digest.tree_id }
-    $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun -HumanDispositions $dispositions
+
+    # T003: the four consults, resolved HERE because this is the only place that holds the store, the
+    # repository and the digests at once. They were accepted by Resolve- but never supplied, so every
+    # rule they carry was inert on the path a consumer actually runs - the stop surface kept demanding
+    # reviews it had the evidence to skip. Each resolves to $null on any failure, and $null is the
+    # fail-closed value for all four: the surface stays LIVE rather than going quiet on a bad read.
+    $pendingPause = $null
+    try { $pendingPause = Get-ReviewCampaignPendingPause -StoreRoot $StoreRoot -CampaignId $CampaignId }
+    catch { $pendingPause = $null }
+
+    $recordedGateDecision = Get-ContinuousCoReviewRecordedSignoffGateDecision -RepoRoot $root
+
+    # FR-009 evidence, computed only when there IS a latest result to have moved away from. Note this
+    # deliberately uses the LATEST RESULT's digest rather than $decisionDigest's history: the question
+    # is "what changed since the thing that reviewed you", not "what changed recently".
+    $changedSinceResult = $null
+    if ($null -ne $latestResult) {
+        $changedSinceResult = Get-ReviewCampaignChangedPathsSinceResult -RepoRoot $root `
+            -ReviewedDigest ([string]$latestResult.target_digest) -CurrentDigest $decisionDigest
+    }
+
+    $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest `
+        -RepoRoot $root -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun `
+        -HumanDispositions $dispositions -PendingPause $pendingPause `
+        -SignoffGateDecision $recordedGateDecision -ChangedPathsSinceResult $changedSinceResult
     if ($null -eq $finalizationEnvelope) { return $packet }
     if ([string]$packet.route -cne 'boundary-clean') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-not-clean' -Message 'The finalization envelope is valid but its bound result is not an authorizing clean result; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'

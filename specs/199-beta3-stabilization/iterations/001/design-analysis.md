@@ -270,6 +270,39 @@ budget's whole value is that exhaustion FEELS different from an ordinary continu
 command is stated in prose within the refusal. The structural removal of the continue
 option stands, and the fixture pins that continue is ABSENT rather than discouraged.
 
+### T003 design record — the two governors, and why FR-007 READS a store (maintainer-confirmed, 2026-08-10)
+
+**FR-007's consult is a READ of the signoff-gate decision store, never a live gate call, and the
+reason is structural rather than stylistic.** When campaign authority is enabled,
+`Get-ContinuousCoReviewSignoffGateDecision` is a thin wrapper that calls
+`Get-ReviewCampaignVerdictPacketDecision` — the very function doing the consulting. A live consult
+would therefore have the packet decision ask the gate while the gate asks the packet decision, and
+neither terminates. The spec already names the store rather than the gate ("the campaign stop surface
+MUST consult the signoff-gate decision store") and resolves the empty case explicitly: with no
+recorded decision the surface evaluates as it does today.
+
+**Store-reading is not a staleness hole, and this is the sentence to read if that worry arises.** A
+recorded ALLOW confers `review-current` only when its `reviewed_digest` equals the CURRENT digest —
+which is the superseded-pause discipline of the ruling above, applied to the gate decision instead of
+to a pause. A gate decision describing a tree that has moved on confers nothing, exactly as a
+superseded pause confers nothing. Both are the same rule: evidence is bound to the tree it describes,
+and the dangerous direction for both is SILENCING, so both fail closed. The store record spells the
+tree `current_tree_id` while the decision logic asks for `reviewed_digest`; normalization happens in
+the reader so the decision function stays a pure function over plain shapes and its fixtures stay
+store-free.
+
+**The two-governor adjudication, ruled after the collision fired three times live.** The boundary
+evidence gate and the campaign block can instruct opposite things in the same stop: the gate needs a
+recorded crossing's verdict marker or the human's answer cannot be captured at all, while the
+campaign block said, unconditionally, to emit no marker. **Ruling**: the recorded crossing WINS.
+Controller truth naming an exact pending authorization outranks the campaign block's clause, which
+governs ITSELF — it describes what that block is, not what the lifecycle owes. Under the other
+reading a recorded crossing becomes unanswerable and the lifecycle wedges on a review the human may
+not even owe yet. Two constraints came with it: deferring on the MARKER is not withdrawing the
+BLOCK (the review position is unchanged and still stated), and only a well-formed crossing — one
+naming its destination — outranks the clause. The block now STATES the adjudication and names the
+crossing, because the failure this fixes is that a consumer could not have made the call.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):

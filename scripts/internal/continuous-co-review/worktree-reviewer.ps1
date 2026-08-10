@@ -78,8 +78,20 @@ function Get-ContinuousCoReviewMachineryPaths {
     #       skill/rule/agent dirs (.github/skills/specrew-*, .claude/skills/specrew-*, .cursor/rules/specrew-*, ...)
     #       across every host WITHOUT enumerating them. Ordinary user config stays reviewable; the one exception is
     #       `.claude/settings.local.json`, the canonical machine-local/per-session hook config that init untracks and
-    #       ignores. Returns project-relative paths. -RepoRoot enables (b); omit for the core-only list.
+    #       ignores. Returns project-relative paths.
+    #
+    # -RepoRoot is REQUIRED, and a bare call REFUSES rather than guessing (DRIFT-199-I001-016). This
+    # comment previously read "omit for the core-only list", which was false and cost a real defect: a
+    # rootless call cannot run Test-ContinuousCoReviewSpecrewSourceRepo, so it silently took the
+    # DEPLOYED branch below and returned the core list PLUS the three source-repo paths - naming the
+    # co-review engine itself as machinery. The caller that believed the comment classified an engine
+    # change as records-only and let a stale review read as current. There is no honest core-only
+    # answer to give: (a) and (b) both depend on which repository is being described, so the question
+    # is unanswerable without a root and refusing is the only non-guessing reply.
     param([string]$RepoRoot)
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+        throw 'review-machinery-paths-requires-repo-root: the machinery list differs between the Specrew source repo and a deployed project, so it cannot be resolved without -RepoRoot.'
+    }
     $core = @(
         '.specrew', '.specify', '.squad', '.agents', '.antigravitycli', '.git', '.claude/settings.local.json',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
@@ -123,7 +135,8 @@ function Get-ContinuousCoReviewMachineryPaths {
         $core += 'scripts/internal/agent-tasks'
         $core += 'scripts/internal/atomic-write.ps1'
     }
-    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $core }
+    # (No rootless early return here any more - the refusal at the top of the function makes an empty
+    # root unreachable, and the branch above has already consumed the root to decide source-vs-deployed.)
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $marked = @(Get-ChildItem -LiteralPath $resolved -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |
         ForEach-Object { [System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $_.FullName)).Replace('\', '/') })
