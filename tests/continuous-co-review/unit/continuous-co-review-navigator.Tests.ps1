@@ -378,7 +378,20 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'campaign <Boundary>: the packet gate is STILL consulted from the implement window onward (the fix must not silence live stages)' -TestCases @(
+    # Provenance (2026-08-08, testbeta3 dry-run correction): the pre-implement quiet edge must NOT
+    # silence the live stages — from the implement window onward the packet gate stays consulted.
+    #
+    # SHARPENED 2026-08-10 by maintainer ruling (DRIFT-199-I001-006, feature 199 T003 landing early).
+    # The shipped assertion was stage-UNCONDITIONAL: it fired the gate at these cursors even when the
+    # coverage delta held nothing but planning records. The rule it protects is premise-CONDITIONAL —
+    # the navigator goes live from before-implement onward because "there is implementation to
+    # review". The two readings diverge on exactly one state: an EMPTY stage (cursor advanced, no
+    # implementation yet), where the consumer met a review-required block for the PLANNING digest that
+    # no disposition could decline (every --remediate choice binds to a run id; zero runs existed).
+    # The guarantee is therefore made STRONGER, not looser: these cases now assert the live direction
+    # against GENUINE committed work, and the paired cases below pin quiet for a FULLY-RESOLVED empty
+    # delta only. Unresolved inputs stay pinned fail-closed (live) by the case after them.
+    It 'campaign <Boundary>: the packet gate is STILL consulted from the implement window onward on genuine work (the fix must not silence live stages)' -TestCases @(
         @{ Boundary = 'before-implement' }
         @{ Boundary = 'review-signoff' }
     ) {
@@ -389,6 +402,76 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
             '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            # Genuine implementation in the coverage delta: a source change committed on the feature
+            # branch, which is what "there is implementation to review" means.
+            Set-Content -LiteralPath (Join-Path $root 'src/feature.txt') -Value 'implemented' -Encoding UTF8 -NoNewline
+            & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' add src/feature.txt 2>&1 | Out-Null
+            & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' commit -q -m 'boundary(implement): feature work' 2>&1 | Out-Null
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith {
+                [pscustomobject]@{ reason = 'no-authoritative-campaign-result'; render_boundary_packet = $false; route = 'review-required'; run_id = $null }
+            }
+            Mock -CommandName Build-ReviewCampaignNavigatorStopBlock -MockWith { 'CAMPAIGN-BLOCK' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.reason | Should -Be 'no-authoritative-campaign-result'
+            $decision.stop_block | Should -Be 'CAMPAIGN-BLOCK'
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 1 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    # Paired sibling of the case above (2026-08-10 sharpening): quiet is available ONLY for a
+    # fully-resolved delta that contains no implementation. The gate is never consulted there, so the
+    # consumer cannot meet an undeclinable pre-code review demand.
+    It 'campaign <Boundary>: an empty stage (fully-resolved records-only delta) is quiet, never an undeclinable block' -TestCases @(
+        @{ Boundary = 'before-implement' }
+        @{ Boundary = 'review-signoff' }
+    ) {
+        param($Boundary)
+        $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            # Planning records only — committed, so the delta is fully resolved and genuinely empty
+            # of implementation.
+            Set-Content -LiteralPath (Join-Path $featureRoot 'plan.md') -Value '# Plan' -Encoding UTF8 -NoNewline
+            & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' add -A 2>&1 | Out-Null
+            & git -C $root -c user.name='nav-test' -c user.email='nav@test.local' commit -q -m 'boundary(plan): planning records only' 2>&1 | Out-Null
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
+            }
+            Mock -CommandName Get-ReviewCampaignVerdictPacketDecision -MockWith { throw 'packet-gate-must-not-run' }
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Match 'no-implementation-yet'
+            $decision.stop_block | Should -BeNullOrEmpty
+            Assert-MockCalled -CommandName Get-ReviewCampaignVerdictPacketDecision -Times 0 -Exactly
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    # Fail-closed pinning for the 2026-08-10 sharpening: quiet requires a RESOLVED delta. When the
+    # coverage anchor cannot be resolved the gate stays consulted, so a broken repository shape can
+    # never silence the campaign surface.
+    It 'campaign <Boundary>: an unresolvable coverage anchor keeps the gate consulted (fail closed)' -TestCases @(
+        @{ Boundary = 'before-implement' }
+        @{ Boundary = 'review-signoff' }
+    ) {
+        param($Boundary)
+        $root = script:New-NavigatorProject -BoundaryType $Boundary -FileContent 'base'
+        try {
+            $featureRoot = Join-Path $root 'specs/001-demo'
+            New-Item -ItemType Directory -Path (Join-Path $featureRoot 'iterations/001') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specify') -Force | Out-Null
+            '{ "feature_directory": "specs/001-demo" }' | Set-Content -LiteralPath (Join-Path $root '.specify/feature.json') -Encoding UTF8
+            # Remove the only pre-feature branch: the trunk resolver can no longer anchor the delta.
+            & git -C $root branch -D main 2>&1 | Out-Null
             Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
                 [pscustomobject]@{ mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false; campaign_authority_enabled = $true; reason = 'authority-mode-campaign' }
             }

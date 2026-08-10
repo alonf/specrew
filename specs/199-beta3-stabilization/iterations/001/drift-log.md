@@ -109,7 +109,23 @@
   sanctioned-quiet-state semantics the maintainer added at the architecture lens (D3).
 - **Citation**: FR-007, FR-008 (single-authority stop surface, sanctioned quiet states);
   ledger F8, F5.
-- **Resolution**: pending maintainer ruling — recorded as a decision surfaced, not taken.
+- **Resolution**: human-decision, 2026-08-10 — ruled IN SCOPE under the closed-scope exception
+  (an unsatisfiable, undeclinable stop surface is clause two of the acceptance bar failing
+  live) with a bounded repair: align activation with the rule's own stated premise, RED-first,
+  no gate weakened, no bypass added, nothing broader. Delivered as T003 work landing early,
+  not new scope.
+  **Amended shipped guarantee (maintainer permission, 2026-08-10)**: the 2026-08-08 cases
+  `campaign <before-implement|review-signoff>: the packet gate is STILL consulted from the
+  implement window onward` asserted the gate stage-UNCONDITIONALLY, while the rule they protect
+  is premise-CONDITIONAL ("there is implementation to review"). The two readings diverge on
+  exactly one state — an empty stage. Under the maintainer's conditions the guarantee was made
+  STRONGER, not looser: each original case keeps its provenance comment plus the recorded
+  sharpening rationale and now asserts the live direction against GENUINE committed work; each
+  gained a paired sibling asserting quiet ONLY for a fully-resolved records-only delta; and a
+  third pair pins fail-closed behaviour (an unresolvable coverage anchor keeps the gate
+  consulted). Evidence: 39/39 green across
+  `tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1` and
+  `tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1`.
 
 ### DRIFT-199-I001-004 — plan total arithmetic error (resolved, records-only)
 

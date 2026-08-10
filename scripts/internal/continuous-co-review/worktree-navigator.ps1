@@ -192,7 +192,94 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
             }
         }
     }
+
+    # DRIFT-199-I001-006 (FR-007/FR-008; T003 landing early under the maintainer's 2026-08-10
+    # in-scope ruling). The cursor rule above states the premise for going live: "there is
+    # implementation to review". At the before-implement edge that premise can be FALSE - the
+    # cursor has advanced but the coverage delta still holds only planning records. The consumer
+    # then meets a review-required block for the PLANNING digest that no disposition can decline,
+    # because every --remediate choice binds to a run id and no run exists. Align activation with
+    # the premise the rule already states: quiet while nothing reviewable has been implemented.
+    # This REMOVES NO GATE - the surface goes live the moment implementation appears, and every
+    # unresolvable input fails CLOSED (applicable), so a broken anchor can never quiet the block.
+    $implementation = Test-ReviewCampaignCoverageDeltaHasImplementation -RepoRoot $RepoRoot
+    if (-not $implementation.has_implementation) {
+        return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:no-implementation-yet ({0})' -f $implementation.reason) }
+    }
     return [pscustomobject]@{ applicable = $true; reason = 'campaign-applicable' }
+}
+
+function Test-ReviewCampaignCoverageDeltaHasImplementation {
+    # Does the coverage delta (merge-base anchor -> HEAD, plus the working tree) contain anything
+    # a reviewer would review as IMPLEMENTATION? Non-implementation is exactly two classes: the
+    # methodology machinery (the ONE FR-012 resolver, so this can never drift from the digest and
+    # worktree strips) and the lifecycle records tree `specs/`. Everything else - source, tests,
+    # docs, CI - counts as implementation.
+    #
+    # FAIL CLOSED in every uncertain case: an unresolvable trunk/anchor, an unavailable machinery
+    # resolver, or a failing git call all return has_implementation = $true, which keeps the
+    # campaign surface LIVE. The quiet answer is only ever returned from a fully resolved delta.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    $mk = { param($has, $reason) [pscustomobject]@{ has_implementation = [bool]$has; reason = [string]$reason } }
+
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $reviewerModule = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $reviewerModule -PathType Leaf) { try { . $reviewerModule } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        return & $mk $true 'machinery-resolver-unavailable'
+    }
+
+    $anchor = $null
+    try { $anchor = Get-ContinuousCoReviewMergeBaseAnchor -RepoRoot $RepoRoot -TrunkName '' } catch { $anchor = $null }
+    if ([string]::IsNullOrWhiteSpace($anchor)) { return & $mk $true 'coverage-anchor-unresolved' }
+
+    $changed = New-Object System.Collections.Generic.List[string]
+    $committed = @(& git -C $RepoRoot diff --name-only ($anchor + '..HEAD') 2>$null)
+    if ($LASTEXITCODE -ne 0) { return & $mk $true 'coverage-delta-unreadable' }
+    foreach ($path in $committed) { if (-not [string]::IsNullOrWhiteSpace($path)) { $changed.Add([string]$path) } }
+
+    # The working tree counts too: uncommitted implementation must keep the surface live.
+    $porcelain = @(& git -C $RepoRoot status --porcelain 2>$null)
+    if ($LASTEXITCODE -ne 0) { return & $mk $true 'working-tree-unreadable' }
+    foreach ($entry in $porcelain) {
+        if ([string]::IsNullOrWhiteSpace($entry) -or $entry.Length -le 3) { continue }
+        $path = $entry.Substring(3).Trim().Trim('"')
+        # Rename entries read `old -> new`; the destination is the reviewable path.
+        $arrow = $path.IndexOf(' -> ', [StringComparison]::Ordinal)
+        if ($arrow -ge 0) { $path = $path.Substring($arrow + 4).Trim().Trim('"') }
+        if (-not [string]::IsNullOrWhiteSpace($path)) { $changed.Add($path) }
+    }
+
+    $machinery = @()
+    try {
+        foreach ($m in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $RepoRoot)) {
+            if ([string]::IsNullOrWhiteSpace($m)) { continue }
+            $machinery += (([string]$m -replace '\\', '/').Trim('/'))
+        }
+    }
+    catch { return & $mk $true 'machinery-resolver-failed' }
+    # The lifecycle records tree is not machinery (a reviewer DOES read it) but it is not
+    # implementation either - it is the planning digest this alignment exists to stop demanding.
+    $recordsRoots = @($machinery) + @('specs')
+
+    foreach ($raw in $changed) {
+        $path = ([string]$raw -replace '\\', '/').Trim().Trim('/')
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $isRecords = $false
+        foreach ($root in $recordsRoots) {
+            if ([string]::IsNullOrWhiteSpace($root)) { continue }
+            if ($path.Equals($root, [StringComparison]::OrdinalIgnoreCase) -or
+                $path.StartsWith(($root + '/'), [StringComparison]::OrdinalIgnoreCase)) {
+                $isRecords = $true
+                break
+            }
+        }
+        if (-not $isRecords) { return & $mk $true ('implementation-present:' + $path) }
+    }
+
+    return & $mk $false 'coverage-delta-is-records-only'
 }
 
 function Invoke-ContinuousCoReviewWorktreeNavigator {
