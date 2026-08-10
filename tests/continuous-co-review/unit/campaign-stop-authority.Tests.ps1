@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 # Trace: T003 / FR-007, FR-008, FR-009 / SC-003.
 #
@@ -75,7 +75,7 @@ Describe 'Single-authority stop surface (T003)' {
             # The tree moved, but only under the lifecycle records tree.
             $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
                 -CurrentDigest ('c' * 40) -OrderedRunIds @('run-reviewed-a') -Results @($result) `
-                -RepoRoot $script:RepoRoot `
+                -RepoRoot $script:RepoRoot -FeatureId '199-beta3-stabilization' `
                 -ChangedPathsSinceResult @('specs/199-beta3-stabilization/iterations/001/drift-log.md')
 
             $decision.route | Should -Not -Be 'review-stale'
@@ -85,7 +85,7 @@ Describe 'Single-authority stop surface (T003)' {
             $result = script:New-TerminalResult -RunId 'run-reviewed-b'
             $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
                 -CurrentDigest ('c' * 40) -OrderedRunIds @('run-reviewed-b') -Results @($result) `
-                -RepoRoot $script:RepoRoot `
+                -RepoRoot $script:RepoRoot -FeatureId '199-beta3-stabilization' `
                 -ChangedPathsSinceResult @('specs/199-beta3-stabilization/iterations/001/drift-log.md', 'scripts/internal/continuous-co-review/worktree-navigator.ps1')
 
             $decision.route | Should -Be 'review-stale'
@@ -98,6 +98,66 @@ Describe 'Single-authority stop surface (T003)' {
                 -RepoRoot $script:RepoRoot
 
             $decision.route | Should -Be 'review-stale'
+        }
+
+        It 'INPUT to a review stales it; OUTPUT of a review does not (maintainer ruling 2026-08-10)' {
+            # The distinction is NOT the directory. An artifact is either INPUT TO a review - the standard the
+            # code was judged against - or OUTPUT OF one. Changing an input changes what the review CONCLUDED
+            # even though no code moved, so it must stale. Changing an output cannot invalidate the review that
+            # produced it; saying otherwise is circular, and that circularity is DRIFT-199-I001-013 itself.
+            $feature = '199-beta3-stabilization'
+            $root = "specs/$feature"
+
+            $reviewOutputs = @(
+                "$root/iterations/001/drift-log.md"
+                "$root/iterations/001/state.md"
+                "$root/iterations/001/tasks-progress.yml"
+                "$root/iterations/001/review.md"
+                "$root/iterations/001/coverage-evidence.md"
+                "$root/iterations/001/retro.md"
+                "$root/iterations/001/quality/hardening-gate.md"
+                "$root/iterations/001/checklists/security.md"
+                "$root/workshop/architecture-core.md"
+            )
+            foreach ($path in $reviewOutputs) {
+                Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths @($path) -RepoRoot $script:RepoRoot -FeatureId $feature |
+                    Should -BeTrue -Because "$path is a record of the process, not the standard the code was judged against"
+            }
+
+            $reviewInputs = @(
+                "$root/spec.md"
+                "$root/plan.md"
+                "$root/tasks.md"
+                "$root/iterations/001/plan.md"
+                "$root/iterations/001/design-analysis.md"
+                "$root/contracts/api.md"
+                "$root/data-model.md"
+                "$root/quickstart.md"
+                "$root/iterations/001/research/t007-notes.md"
+            )
+            foreach ($path in $reviewInputs) {
+                Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths @($path) -RepoRoot $script:RepoRoot -FeatureId $feature |
+                    Should -BeFalse -Because "$path is the standard the code was judged against; moving it changes what the review concluded"
+            }
+        }
+
+        It 'another feature''s records tree is ordinary content to THIS campaign' {
+            # The narrowing the recorded requirement already named. Only the ACTIVE feature's process records
+            # are exempt; a different feature's tree has no special standing here.
+            Test-ReviewCampaignDeltaIsRecordsOnly -RepoRoot $script:RepoRoot -FeatureId '199-beta3-stabilization' `
+                -ChangedPaths @('specs/198-beta2-hardening/iterations/009/drift-log.md') | Should -BeFalse
+
+            # ...and with no active feature resolved, nothing under specs/ qualifies (fail closed).
+            Test-ReviewCampaignDeltaIsRecordsOnly -RepoRoot $script:RepoRoot -FeatureId '' `
+                -ChangedPaths @('specs/199-beta3-stabilization/iterations/001/drift-log.md') | Should -BeFalse
+        }
+
+        It 'an unlisted artifact stales - the allowlist fails toward NAGGING, never toward silence' {
+            # Why an enumeration is acceptable HERE and was rejected for the class guards: an allowlist's
+            # omission asks for a review that may not be owed, while a blocklist's omission lets a real change
+            # slip past one. Only the first is recoverable, so an unknown artifact must stale.
+            Test-ReviewCampaignDeltaIsRecordsOnly -RepoRoot $script:RepoRoot -FeatureId '199-beta3-stabilization' `
+                -ChangedPaths @('specs/199-beta3-stabilization/iterations/001/some-new-artifact.md') | Should -BeFalse
         }
 
         It 'an unresolvable repo root stales too (a machinery list is never guessed)' {
@@ -199,6 +259,58 @@ Describe 'Single-authority stop surface (T003)' {
             $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
                 -CurrentDigest $script:Digest -OrderedRunIds @('run-paused-findings') -Results @($result) `
                 -RepoRoot $script:RepoRoot -PendingPause $pause
+
+            $decision.route | Should -Be 'pause-pending'
+        }
+
+        It 'a pause does not survive a human ACCEPTANCE of the same result either' {
+            # The residual the maintainer told me to check rather than assume, and it was a second form of the
+            # same wedge. Exempting only a CLEAN pass left this wedged: the human dispositions the findings -
+            # which IS answering the pause, through a different instrument - and the surface kept reporting a
+            # decision outstanding. Nothing in the tree retires a pause fact (Write-ReviewCampaignPauseDecisionFact
+            # has no caller), so the pause cannot answer itself; the release must recognise the answer.
+            $result = script:New-TerminalResult -RunId 'run-paused-accepted'
+            $result.verdict = 'findings'
+            $result.can_approve_current = $false
+            $result.findings = @([pscustomobject]@{
+                    finding_id = 'finding-x'; source_local_id = 'local-x'; lineage_id = 'lin-x'
+                    severity = 'minor'; title = 'Advisory note'; description = 'An advisory finding.'
+                    location = 'app.ps1:1'; relevance = 'current'; resolution = 'open'
+                })
+            $disposition = [pscustomobject]@{
+                schema_version = '1.0'; fact_type = 'human-disposition'; disposition_id = 'disposition-accept-a'
+                campaign_id = 'cmp-199-x-i001'; run_id = 'run-paused-accepted'; target_digest = $script:Digest
+                decision = 'accept-current'; authority_kind = 'human'; authorized_by = 'maintainer'
+                authorization_ref = 'beta3-pause-accept'; rationale = 'advisory only'
+                observed_at = '2026-08-10T12:00:00Z'
+            }
+            $pause = [pscustomobject]@{ run_id = 'run-paused-accepted'; target_digest = $script:Digest }
+
+            $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
+                -CurrentDigest $script:Digest -OrderedRunIds @('run-paused-accepted') -Results @($result) `
+                -RepoRoot $script:RepoRoot -PendingPause $pause -HumanDispositions @($disposition)
+
+            $decision.route | Should -Not -Be 'pause-pending'
+        }
+
+        It 'a require-correction disposition is NOT an acceptance, so the pause still quiets' {
+            # The paired sibling. A human who asked for a fix has not accepted, whatever else they also said -
+            # so there is still a decision outstanding and the pause is still the honest surface.
+            $result = script:New-TerminalResult -RunId 'run-paused-correct'
+            $result.verdict = 'findings'
+            $result.can_approve_current = $false
+            $disposition = [pscustomobject]@{
+                schema_version = '1.0'; fact_type = 'human-disposition'; disposition_id = 'disposition-correct-a'
+                campaign_id = 'cmp-199-x-i001'; run_id = 'run-paused-correct'; target_digest = $script:Digest
+                decision = 'require-correction'; authority_kind = 'human'; authorized_by = 'maintainer'
+                authorization_ref = 'beta3-pause-correct'; rationale = 'fix the finding'
+                observed_at = '2026-08-10T12:00:00Z'
+            }
+            $pause = [pscustomobject]@{ run_id = 'run-paused-correct'; target_digest = $script:Digest }
+
+            $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
+                -CurrentDigest $script:Digest -OrderedRunIds @('run-paused-correct') -Results @($result) `
+                -RepoRoot $script:RepoRoot -PendingPause $pause -HumanDispositions @($disposition)
 
             $decision.route | Should -Be 'pause-pending'
         }

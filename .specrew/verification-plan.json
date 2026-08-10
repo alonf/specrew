@@ -8,9 +8,9 @@
       "arguments": [
         "-NoProfile",
         "-Command",
-        "$r = Invoke-Pester -Path tests/continuous-co-review/unit/path-identity.Tests.ps1,tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1,tests/continuous-co-review/unit/worktree-reviewer-machinery-paths.Tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0) { exit 1 } else { exit 0 }"
+        "$fail = 0; foreach ($s in @('tests/integration/verdict-capture-blocks.tests.ps1','tests/bootstrap/ConversationCapture.Tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"class-guard FAILED: $s\" } }; $r = Invoke-Pester -Path tests/continuous-co-review/unit/path-identity.Tests.ps1,tests/continuous-co-review/unit/path-identity-volume-differential.Tests.ps1,tests/continuous-co-review/unit/worktree-reviewer-machinery-paths.Tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0) { $fail = 1 }; exit $fail"
       ],
-      "timeout_seconds": 60,
+      "timeout_seconds": 120,
       "env_refs": [
         "PATH",
         "PATHEXT",
@@ -32,7 +32,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "CLASS-GUARD lane: PERMANENT, never selected by what a task happens to touch (maintainer ruling 2026-08-10, DRIFT-199-I001-017). These suites guard defect CLASSES structurally across the whole engine - the one path-identity primitive, the volume-derived case rule, and the machinery-path policy - so the file that breaks them is rarely the file being edited. The path-identity guard DID catch the third instance of its class the moment the call was written; it was simply never run, and a red guard was committed unnoticed. A guard only guards code whose author runs it, so it is pinned here rather than left to selection. Roughly 10 s combined - cheap enough that omitting it can never be justified by budget."
+      "label": "CLASS-GUARD lane: PERMANENT, never selected by what a task happens to touch (maintainer ruling 2026-08-10, DRIFT-199-I001-017). VERDICT-CAPTURE RUNS FIRST and is the reason this lane is not optional: of the four defects existing fixtures caught in one session, three failed toward silencing or nagging, but the over-broad approval rule failed toward FABRICATION - capture inventing an authorization the human never gave. That is the one direction where a miss is unrecoverable, because a false authorization in the ledger is indistinguishable from a real one, so the T032 fabrication fixtures and the 23 not-approve cases must not be guarded only when someone happens to edit capture. The rest guard defect CLASSES structurally across the engine - the one path-identity primitive, the volume-derived case rule, and the machinery-path policy - where the file that breaks them is rarely the file being edited. The path-identity guard DID catch the third instance of its class the moment the call was written; it was simply never run, and a red guard was committed unnoticed. A guard only guards code whose author runs it. Roughly 20 s combined - cheap enough that omitting it can never be justified by budget."
     },
     {
       "command_id": "f199-slice-suites",

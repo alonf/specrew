@@ -811,22 +811,24 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
     It 'denies every non-review-evidence finalization path without publishing a fact' -ForEach @(
         @{ name = 'script'; path = 'scripts/change.ps1'; expected = 'review-stale' },
         @{ name = 'test'; path = 'tests/change.Tests.ps1'; expected = 'review-stale' },
-        @{ name = 'spec'; path = 'specs/001-demo/spec.md'; expected = 'review-current' },
-        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md'; expected = 'review-current' },
+        @{ name = 'spec'; path = 'specs/001-demo/spec.md'; expected = 'review-stale' },
+        @{ name = 'contract'; path = 'specs/001-demo/iterations/007/plan.md'; expected = 'review-stale' },
         @{ name = 'state'; path = 'specs/001-demo/iterations/007/state.md'; expected = 'review-current' }
     ) {
-        # ROUTE EXPECTATIONS MOVED 2026-08-10 by FR-009, and the guarantee this case exists to hold
-        # did NOT move. Recorded here rather than only in the drift log, because a reader meeting this
-        # -ForEach table needs to see why three rows differ from the other two.
+        # ROUTE EXPECTATIONS, FR-009 as ruled 2026-08-10. Exactly ONE row moved, and the guarantee this
+        # case exists to hold did NOT move at all. Recorded here rather than only in the drift log,
+        # because a reader meeting this -ForEach table needs to see why one row differs from the rest.
         #
-        #   spec / contract / state:  'review-stale'  ->  'review-current'
+        #   state:                    'review-stale'  ->  'review-current'
+        #   spec / contract:          'review-stale'  ->  unchanged
         #   script / test:            'review-stale'  ->  unchanged
         #
-        # FR-009: "commits touching only governance/records files MUST NOT stale a reviewed digest."
-        # A change under specs/ is records, not implementation, so it cannot invalidate the review that
-        # produced it (DRIFT-199-I001-013 - a commit whose entire content was the drift log flipped
-        # this surface to review-stale, which made currency unachievable by construction). A change
-        # under scripts/ or tests/ IS reviewable content in this repository and still stales.
+        # The rule is NOT "specs/ is records". It is whether an artifact is INPUT TO a review or OUTPUT
+        # OF one. `state.md` is a record of the process - it cannot invalidate the review that produced
+        # it, and that circularity is DRIFT-199-I001-013, where a commit whose entire content was the
+        # drift log staled the review that wrote it. `spec.md` and `plan.md` are the STANDARD the code
+        # was judged against: change one and what the review concluded changes even though no code
+        # moved, so they still stale. `scripts/` and `tests/` are reviewable content and always did.
         #
         # THE DENIAL THIS CASE NAMES IS UNCHANGED IN EVERY ROW: no boundary packet is released and no
         # finalization fact is published. Those two are asserted explicitly below rather than left to
@@ -854,8 +856,9 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $null = Add-PublicCampaignCommit -Root $root -RelativePath 'specs/001-demo/iterations/007/coverage-evidence.md' -Content '# Chained envelope'
 
         # ROUTE EXPECTATION MOVED 2026-08-10 by FR-009:  'review-stale'  ->  'review-current'.
-        # Both commits above are under the iteration records tree, so the delta is records-only and
-        # cannot stale the reviewed digest. What this case is ACTUALLY about - that a finalization
+        # Both commits above are review EVIDENCE (`review.md`, `coverage-evidence.md`) - output of a
+        # review, and the same six names this engine already allowlists for a finalization envelope -
+        # so they cannot stale the review that produced them. What this case is ACTUALLY about - that a finalization
         # whose parent is not the reviewed commit is refused, with no fact published - is unchanged and
         # is what the assertions below hold. The single-hop envelope still finalizes (the case above
         # this one), so the chain refusal is still doing its work.

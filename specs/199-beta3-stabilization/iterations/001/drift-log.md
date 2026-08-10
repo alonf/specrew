@@ -444,13 +444,50 @@ each case stating its own guarantee instead of borrowing one. The route answers 
 cover this tree"; the assertions answer "was anything authorized". Only the first is what FR-009
 speaks to, and separating them is what makes this a sharpening rather than a relaxation.
 
-**Open scope question carried to the maintainer**: the predicate treats ALL of `specs/` as records,
-while the recorded requirement in DRIFT-199-I001-013 was narrower — "under the FEATURE'S OWN
-`specs/<feature>/` records tree". The difference is visible in row one: a spec change is a
-requirements change, and it is arguable that moving the requirements should stale a code review even
-though the file is records. Left broad pending a ruling, because FR-009 says "governance/records
-files" without qualification and the design record classifies `specs/` as records; narrowing it to the
-iteration records tree is a one-line change.
+**RULED 2026-08-10 — narrowed, on a principle rather than an enumeration of directories.** The
+distinction is not where a file lives; it is whether the artifact is **INPUT TO** a review or
+**OUTPUT OF** one:
+
+- **Output** — a record of what a review found, or of the process around it. It cannot invalidate the
+  review that produced it. Saying otherwise is circular, and that circularity is exactly the absurdity
+  DRIFT-199-I001-013 caught.
+- **Input** — `spec.md`, `plan.md`, `tasks.md`, contracts, data-model, quickstart, design-analysis,
+  research. These are the STANDARD the code was judged against. Change one and what the review
+  concluded changes, even though the code did not move, so they must stale.
+
+Implemented as an **allowlist** of process-record artifacts with everything else staling, scoped to
+the **ACTIVE** feature's records tree. The allowlist direction is load-bearing and is the reason an
+enumeration is acceptable here when it was rejected for the class guards: an allowlist fails toward
+NAGGING (an unlisted artifact stales, and the human is asked for a review they may not owe), while a
+blocklist fails toward SILENCING (an unlisted artifact goes quiet, and a real change slips past a
+review). An omission here is therefore SAFE.
+
+**The table above is superseded by this ruling.** Restated with the same old/new discipline — exactly
+ONE row moves, not four:
+
+| Case | Delta | Old assertion | New assertion | Why |
+| --- | --- | --- | --- | --- |
+| `denies every non-review-evidence finalization path` (state) | `specs/001-demo/iterations/007/state.md` | `route = review-stale` | `route = review-current` | process record — output |
+| same (spec) | `specs/001-demo/spec.md` | `route = review-stale` | **unchanged** | the standard the code was judged against |
+| same (contract) | `specs/001-demo/iterations/007/plan.md` | `route = review-stale` | **unchanged** | same — input |
+| same (script) | `scripts/change.ps1` | `route = review-stale` | **unchanged** | reviewable content |
+| same (test) | `tests/change.Tests.ps1` | `route = review-stale` | **unchanged** | reviewable content |
+| `denies an allowlisted envelope chain…` | `review.md` + `coverage-evidence.md` | `route = review-stale` | `route = review-current` | review EVIDENCE — the same six names this engine already allowlists for a finalization envelope |
+
+Both directions pinned in `campaign-stop-authority.Tests.ps1`: nine review-output paths stay records,
+nine review-input paths stale, another feature's records tree is ordinary content, an absent feature
+id fails closed, and an unlisted artifact stales.
+
+### Verification-plan sizing — the principle, recorded so the question does not recur (maintainer, 2026-08-10)
+
+The two pre-existing commands stay as they are. The half-window rule governs **MEASURED consumption**,
+not declared ceilings: the successful round spent 245 s of 900 on preflight including verification —
+27%, and the right shape. **A ceiling is a hang-catcher, not a duration estimate.**
+
+The invariant that actually matters is the one the 1200-versus-900 defect violated
+(DRIFT-199-I001-012): the **SUM of ceilings must fit inside the round window**, or a slow day dies at
+the window with a sealed failure. Currently 600 s of 900 — satisfied, with the class-guard lane
+measured at 10.3 s against its 120 s ceiling.
 
 ### Measured proof line — T003's two-governor fix, transcribed from a live stop (2026-08-10)
 

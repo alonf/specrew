@@ -261,6 +261,26 @@ SUPERSEDED — it stops conferring quiet and the surface returns to its ordinary
 Absent or unresolved input fails closed (no quiet). Pinned by
 `Test-ReviewCampaignPendingPauseQuiet` and its fixtures.
 
+**A pause never suppresses a boundary-releasing result** (maintainer ruling 2026-08-10, accepted after
+DRIFT-199-I001-018). A pause over a clean result has no demand to suppress: its own recommendation is
+that stopping here completes the sign-off, so withholding the release withholds something already
+earned. What a pause legitimately suppresses is a DEMAND — do not nag for another review or another
+disposition while one is already sitting with the human — and releasing what they need in order to
+answer is not a demand.
+
+**The residual, CHECKED rather than assumed, and it was a second form of the same wedge.** Nothing in
+the tree retires a pause fact: `Write-ReviewCampaignPauseDecisionFact` exists in the store and has NO
+caller anywhere in `scripts/`, so a pause lingers until the tree moves and supersedes it. That is
+benign for a clean pass (the release exemption covers it) and benign after any tree change (a
+superseded pause confers nothing), but it was NOT benign for a findings result the human had
+explicitly ACCEPTED: the acceptance is an answer to the pause recorded through a different instrument,
+and exempting only the clean pass left that case wedged in exactly the way the clean case had been.
+**Ruling recorded as a deliberate choice**: a pause does not survive a human acceptance of the same
+result either, while a `require-correction` disposition is NOT an acceptance and the pause still
+quiets — a human who asked for a fix has not accepted, whatever else they also said. Both directions
+are pinned. Retiring the pause fact itself stays unbuilt and routes to beta4; the release recognising
+the answer is what makes the lingering fact harmless, and that is the property the fixtures hold.
+
 **The allowance reset is prose, never a numbered option.** A refusal must name its exact
 next step (the U4 rule, and today's wedge lesson: an unsatisfiable, undeclinable surface
 is the acceptance bar failing). But a sanctioned bypass rendered as a numbered choice
@@ -302,6 +322,37 @@ not even owe yet. Two constraints came with it: deferring on the MARKER is not w
 BLOCK (the review position is unchanged and still stated), and only a well-formed crossing — one
 naming its destination — outranks the clause. The block now STATES the adjudication and names the
 crossing, because the failure this fixes is that a consumer could not have made the call.
+
+### T004 part 3 design constraints — verdict capture wiring (maintainer, 2026-08-10, WRITTEN BEFORE THE CODE)
+
+Recorded ahead of implementation deliberately: this part changes **when** a verdict is written while
+touching the wiring that drifts, so the constraints must bind whoever implements it.
+
+**TWO failure directions get pinned, not one.**
+
+- **DOUBLE-capture** — both paths fire and one verdict becomes two authorizations. This is the
+  FABRICATION direction, and it is the unrecoverable one: a false authorization in the ledger is
+  indistinguishable from a real one.
+- **ZERO-capture** — neither path fires and the verdict is lost. Already lived through; recoverable,
+  because the human re-states.
+
+**Required fixtures**, all three:
+
+1. Prompt-submit is PRIMARY: it fires, and Stop does **not** double-write.
+2. Prompt-submit is ABSENT — the real stale-wiring condition from T067, not a hypothetical — and the
+   Stop-time fallback still captures.
+3. Both wired: exactly **ONE** authorization fact exists for one verdict.
+
+**The writer is IDEMPOTENT on (crossing + verdict text)**, rather than relying on the two paths never
+overlapping. Belt and braces at the STORE, because the wiring is precisely what drifts — the same
+reasoning that put the class guards in a permanent lane rather than trusting selection.
+
+**Sequencing note carried from the session that recorded this**: the classifier (FR-010
+leading-approval precedence) and the marker-forward reader are both DONE and green, so part 3 is pure
+wiring and ordering. Its two suites — `tests/bootstrap/ConversationCapture.Tests.ps1` and
+`tests/integration/verdict-capture-blocks.tests.ps1`, the latter carrying 23 not-approve cases and the
+T032 fabrication fixtures — are now in the permanent class-guard lane and must be read before either
+file is touched.
 
 ### Agreed flows
 

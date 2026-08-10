@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 # T067 / FR-025: the deterministic co-review gate-floor decision (re-architected).
@@ -359,7 +359,10 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     [CmdletBinding()]
     param(
         [AllowNull()][object[]]$ChangedPaths,
-        [AllowNull()][AllowEmptyString()][string]$RepoRoot
+        [AllowNull()][AllowEmptyString()][string]$RepoRoot,
+        # The ACTIVE feature. Only ITS records tree can be records-only; another feature's tree is
+        # ordinary content. Absent, no specs/ path counts as records - fail closed.
+        [AllowNull()][AllowEmptyString()][string]$FeatureId
     )
 
     if ($null -eq $ChangedPaths -or @($ChangedPaths).Count -eq 0) { return $false }
@@ -372,7 +375,7 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     }
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) { return $false }
 
-    $recordsRoots = @('specs')
+    $recordsRoots = @()
     try {
         foreach ($machinery in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRoot)) {
             if (-not [string]::IsNullOrWhiteSpace($machinery)) { $recordsRoots += (([string]$machinery -replace '\\', '/').Trim('/')) }
@@ -398,9 +401,67 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
                 break
             }
         }
+        if (-not $isRecords -and (Test-ReviewCampaignPathIsFeatureProcessRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
+            $isRecords = $true
+        }
         if (-not $isRecords) { return $false }
     }
     return $true
+}
+
+function Test-ReviewCampaignPathIsFeatureProcessRecord {
+    # FR-009 as the maintainer ruled it (2026-08-10): the distinction is NOT the directory, it is whether an
+    # artifact is INPUT TO a review or OUTPUT OF one.
+    #
+    #   OUTPUT - a record of what a review found, or of the process around it. It cannot invalidate the review
+    #            that produced it; saying otherwise is circular, and that absurdity is DRIFT-199-I001-013: a
+    #            commit whose entire content was the drift log staled the review that wrote it.
+    #   INPUT  - spec, plan, tasks, design, contracts, data-model, quickstart, research. These are the STANDARD
+    #            the code was judged against. Change one and what the review concluded changes, even though no
+    #            code moved. They must stale.
+    #
+    # ALLOWLIST, deliberately, and this is the one place an enumeration is acceptable in this feature: an
+    # allowlist fails toward NAGGING (an artifact nobody listed stales, and the human is asked for a review they
+    # may not owe), while a blocklist fails toward SILENCING (an artifact nobody listed goes quiet, and a real
+    # change slips past review). An omission here is therefore SAFE - which is exactly what was NOT true of the
+    # class guards, where enumeration was rejected for the opposite reason.
+    #
+    # Scoped to the ACTIVE feature, the narrowing the recorded requirement already named: another feature's
+    # records tree is ordinary content to this campaign. No feature id -> nothing qualifies (fail closed).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Path,
+        [AllowNull()][AllowEmptyString()][string]$FeatureId,
+        [Parameter(Mandatory)][StringComparison]$Comparison
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($FeatureId)) { return $false }
+    $featurePrefix = 'specs/' + $FeatureId.Trim().Trim('/') + '/'
+    if (-not $Path.StartsWith($featurePrefix, $Comparison)) { return $false }
+
+    # Everything after specs/<feature>/, with a leading iterations/<n>/ removed so one allowlist covers both the
+    # feature-level and iteration-level copies of the same artifact.
+    $relative = $Path.Substring($featurePrefix.Length)
+    $iteration = [regex]::Match($relative, '^iterations/[^/]+/(?<rest>.*)$')
+    if ($iteration.Success) { $relative = [string]$iteration.Groups['rest'].Value }
+    if ([string]::IsNullOrWhiteSpace($relative)) { return $false }
+
+    # Process records and review OUTPUT. The six review-evidence names are the SAME set this file already
+    # allowlists for a finalization envelope, so the two cannot disagree about what counts as review evidence.
+    $recordFiles = @(
+        'drift-log.md', 'state.md', 'tasks-progress.yml',
+        'review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md',
+        'review-signoff.md', 'retro.md'
+    )
+    foreach ($name in $recordFiles) {
+        if ($relative.Equals($name, $Comparison)) { return $true }
+    }
+    if ($relative.StartsWith('closeout', $Comparison) -and $relative -notmatch '/') { return $true }
+
+    foreach ($directory in @('quality/', 'checklists/', 'workshop/', 'dashboards/', 'gates/')) {
+        if ($relative.StartsWith($directory, $Comparison)) { return $true }
+    }
+    return $false
 }
 
 function Get-ContinuousCoReviewRecordedSignoffGateDecision {
@@ -481,14 +542,49 @@ function Test-ReviewCampaignResultReleasesBoundary {
 
     if ($null -eq $Result) { return $false }
     return (
+        (Test-ReviewCampaignResultIsCompleteCurrent -Result $Result -CurrentDigest $CurrentDigest) -and
+        [string]$Result.verdict -ceq 'pass' -and
+        [bool]$Result.can_approve_current
+    )
+}
+
+function Test-ReviewCampaignResultIsCompleteCurrent {
+    # Everything a result needs before its VERDICT is even worth reading. Split out because a clean pass is not
+    # the only boundary-releasing shape: a findings result with a recorded human acceptance releases too, and
+    # both need this same conjunction first.
+    [CmdletBinding()]
+    param([AllowNull()]$Result, [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest)
+
+    if ($null -eq $Result) { return $false }
+    return (
         [string]$Result.target_digest -ceq $CurrentDigest -and
         [string]$Result.currentness -ceq 'current' -and
         [string]$Result.completion -ceq 'complete' -and
         [string]$Result.validation -ceq 'valid' -and
-        [string]$Result.runtime_outcome -cne 'timed-out' -and
-        [string]$Result.verdict -ceq 'pass' -and
-        [bool]$Result.can_approve_current
+        [string]$Result.runtime_outcome -cne 'timed-out'
     )
+}
+
+function Test-ReviewCampaignDispositionAcceptsResult {
+    # ONE definition of "the human has explicitly accepted this exact result", consumed by the pause guard and
+    # by the boundary-human-disposition return, so the two cannot disagree about whether a decision was made.
+    # A require-correction anywhere in the matching set wins over an acceptance - a human who asked for a fix
+    # has not accepted, whatever else they also said.
+    [CmdletBinding()]
+    param(
+        [AllowNull()][object[]]$HumanDispositions,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$RunId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest
+    )
+
+    if ($null -eq $HumanDispositions -or @($HumanDispositions).Count -eq 0) { return $false }
+    $matching = @($HumanDispositions | Where-Object {
+            (Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ `
+                    -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId -ExpectedTargetDigest $CurrentDigest).valid
+        })
+    if (@($matching | Where-Object { [string]$_.decision -ceq 'require-correction' }).Count -gt 0) { return $false }
+    return (@($matching | Where-Object { [string]$_.decision -ceq 'accept-current' }).Count -gt 0)
 }
 
 function Resolve-ReviewCampaignVerdictPacketDecision {
@@ -499,6 +595,10 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         # The project root the delta below belongs to. Absent, the records-only classification fails
         # CLOSED (stales) rather than guessing a machinery list - see Test-ReviewCampaignDeltaIsRecordsOnly.
         [AllowNull()][AllowEmptyString()][string]$RepoRoot,
+        # The ACTIVE feature, so its PROCESS RECORDS can be told apart from its requirement- and
+        # design-bearing artifacts, and from another feature's tree entirely. Absent -> nothing under
+        # specs/ counts as records (fail closed).
+        [AllowNull()][AllowEmptyString()][string]$FeatureId,
         [AllowEmptyCollection()][string[]]$OrderedRunIds = @(),
         [AllowEmptyCollection()][object[]]$Results = @(),
         [AllowNull()]$ActiveRun,
@@ -576,9 +676,20 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     $pauseQuiets = (Test-ReviewCampaignPendingPauseQuiet -PendingPause $PendingPause -CurrentDigest $CurrentDigest).confers_quiet
     if ($pauseQuiets -and $ordered.Count -gt 0) {
         $newestRunId = $ordered[$ordered.Count - 1]
-        if ($byRun.ContainsKey($newestRunId) -and
-            (Test-ReviewCampaignResultReleasesBoundary -Result $byRun[$newestRunId] -CurrentDigest $CurrentDigest)) {
-            $pauseQuiets = $false
+        if ($byRun.ContainsKey($newestRunId)) {
+            $newest = $byRun[$newestRunId]
+            # A CLEAN pass is not the only boundary-releasing shape. A findings result the human has explicitly
+            # ACCEPTED releases too - and an acceptance IS an answer to the pause, recorded through a different
+            # instrument. Exempting only the clean pass left that case wedged in exactly the way the clean case
+            # was: the human answers, and the surface keeps telling them a decision is outstanding.
+            if (Test-ReviewCampaignResultReleasesBoundary -Result $newest -CurrentDigest $CurrentDigest) {
+                $pauseQuiets = $false
+            }
+            elseif ((Test-ReviewCampaignResultIsCompleteCurrent -Result $newest -CurrentDigest $CurrentDigest) -and
+                [string]$newest.verdict -ceq 'findings' -and
+                (Test-ReviewCampaignDispositionAcceptsResult -HumanDispositions $HumanDispositions -CampaignId $CampaignId -RunId $newestRunId -CurrentDigest $CurrentDigest)) {
+                $pauseQuiets = $false
+            }
         }
     }
     if ($pauseQuiets) {
@@ -608,7 +719,7 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         # FR-009: only reviewable content stales a review. Machinery and the lifecycle records tree
         # are not reviewable content, so recording what a review found cannot invalidate it.
         if ($null -ne $ChangedPathsSinceResult -and
-            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult -RepoRoot $RepoRoot)) {
+            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult -RepoRoot $RepoRoot -FeatureId $FeatureId)) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'proceed'
         }
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
@@ -640,8 +751,9 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             $v.valid
         })
         $requiresCorrection = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'require-correction' }).Count -gt 0
-        $accepted = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'accept-current' }).Count -gt 0
-        if ($accepted -and -not $requiresCorrection) {
+        # The SAME predicate the pause guard consults, so a disposition can never answer the pause and fail to
+        # release here, or the reverse.
+        if (Test-ReviewCampaignDispositionAcceptsResult -HumanDispositions $HumanDispositions -CampaignId $CampaignId -RunId $latestRunId -CurrentDigest $CurrentDigest) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-human-disposition' -Reason 'complete-current-findings-human-accepted' -Message 'The exact current result has an explicit identity-bound human disposition accepting its findings.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
         }
         $actionable = @($latest.findings | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
@@ -774,7 +886,7 @@ function Get-ReviewCampaignVerdictPacketDecision {
 
     $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest `
         -RepoRoot $root -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun `
-        -HumanDispositions $dispositions -PendingPause $pendingPause `
+        -FeatureId $FeatureId -HumanDispositions $dispositions -PendingPause $pendingPause `
         -SignoffGateDecision $recordedGateDecision -ChangedPathsSinceResult $changedSinceResult
     if ($null -eq $finalizationEnvelope) { return $packet }
     if ([string]$packet.route -cne 'boundary-clean') {
