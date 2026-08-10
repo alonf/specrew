@@ -210,7 +210,42 @@ surfaced explicitly at the next boundary, never absorbed silently.
   (the guard green from the start), 4/4 green after; 61/61 green across the campaign
   orchestrator and public-command suites.
 
-### Measured proof line — deterministic registry at the ratified slice
+### Measured proof line — first successful end-to-end campaign round
+
+Transcribed from the run output, not drafted ahead of it:
+
+> `review terminal elapsed=687.8s remaining<=212.2s tree=dead output=observed
+> validated-findings=3 - terminal-result-published`
+> Run `run-20260810-085753967-af5bef76`; `Invoked: True`; `Verdict: findings`;
+> `Completion: complete`; `Currentness: current`; heartbeats 87.
+
+Shape after the resize: preflight (including the slice verification lane) completed at
+245.0 s, leaving ~430 s of the 900 s window for the reviewer — the reviewer received the
+majority of the budget, which is the shape the maintainer's sizing rule asks for.
+
+This is the first round in this feature to reach a reviewer at all. Reaching it required
+clearing, in order: the pre-code activation demand (DRIFT-199-I001-006), the run-id minter
+(-007), the feature-id non-resolution (-009, worked around), the missing verification plan
+(-008/-010), and the window/scope mismatch (-012).
+
+### Round-1 findings (held for the maintainer; no fix round started)
+
+Three findings, all severity `major`, recorded in the authority store under the run above:
+
+1. **Case-insensitive path matching can suppress a real review** — the implementation-presence
+   classifier added by `afe1dd1e` compares changed paths to the machinery and `specs` roots
+   with `OrdinalIgnoreCase`, while this repository derives path case semantics from the target
+   volume. On a case-sensitive filesystem a change under a case-distinct root is a genuine
+   reviewable path but classifies as records-only; if it is the only delta the navigator
+   returns `campaign-not-applicable` and never consults the gate.
+2. **The public campaign timeout output still omits the next step** — the consumer-shaped
+   text added by T009 sits on the signoff-gate decision route only. The `specrew review
+   --live` campaign branch prints the raw failure reason and exits without naming
+   `co_review_timeout_seconds`, and `--help` still advertises a 120-second default.
+3. **The banner acceptance test blesses the stale manifest** — the manifest still declares
+   `Prerelease = 'beta2'`, so the fixed provider renders `0.40.0-beta2`. The T011 fixture
+   derives its expectation from that same manifest and only checks that some suffix exists,
+   so it passes while SC-010 (`0.40.0-beta3`) is false.
 
 Transcribed from the measurement, not drafted ahead of it (198 method rule). Run locally
 at HEAD after the three ratified exception commits:
