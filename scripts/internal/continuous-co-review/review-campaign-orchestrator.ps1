@@ -684,6 +684,112 @@ function Add-ReviewCampaignRoundPause {
     return [pscustomobject]@{ recorded = $recorded; decision = $decision; fact = $fact; surface = $surface }
 }
 
+function Invoke-ReviewCampaignStopHereLanding {
+    # T002 / FR-005. The "stop here" choice, landed as ONE action.
+    #
+    # T067's endgame is why this exists: a bare stop ruling wedged against the signoff gate, because
+    # accepted-residuals-on-an-unreviewed-tree was inexpressible. The session correctly refused to
+    # bypass, and the human was left adjudicating between two governors by hand - which a consumer
+    # cannot do. Composing the three sanctioned steps removes the collision instead of documenting it.
+    #
+    # The ORDER is a safety property, not sequencing convenience:
+    #   1. verify the frozen tree            - so acceptance describes a tree that was just checked
+    #   2. record the identity-bound accept  - so the gate has something real to consult
+    #   3. sync the gate                     - which now finds the evidence it demands
+    # A failed step STOPS the chain. Accepting residuals against an unverified tree is precisely the
+    # state this feature exists to make impossible, so it must not be reachable by falling forward.
+    #
+    # Each step is an injectable port with a real default, matching this module's existing port
+    # style, so the composition is testable without a live reviewer.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][string]$AuthorizedBy,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [Parameter(Mandatory)][string]$Rationale,
+        [scriptblock]$VerifyPort,
+        [scriptblock]$AcceptPort,
+        [scriptblock]$GateSyncPort
+    )
+
+    $context = [pscustomobject]@{
+        project_root = $ProjectRoot; store_root = $StoreRoot; campaign_id = $CampaignId; run_id = $RunId
+        authorized_by = $AuthorizedBy; authorization_ref = $AuthorizationRef; rationale = $Rationale
+    }
+
+    if ($null -eq $VerifyPort) {
+        $VerifyPort = {
+            param($ctx)
+            $snapshot = New-GitReviewTargetSnapshot -RepoRoot $ctx.project_root
+            $verification = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
+            return [pscustomobject]@{ ok = [bool]$verification.ok; reason = [string]$verification.reason }
+        }
+    }
+    if ($null -eq $AcceptPort) {
+        $AcceptPort = {
+            param($ctx)
+            $disposition = Add-ReviewCampaignHumanDisposition -StoreRoot $ctx.store_root -CampaignId $ctx.campaign_id `
+                -RunId $ctx.run_id -Decision accept-current -AuthorizedBy $ctx.authorized_by `
+                -AuthorizationRef $ctx.authorization_ref -Rationale $ctx.rationale
+            return [pscustomobject]@{ ok = ($null -ne $disposition); reason = 'residuals-accepted' }
+        }
+    }
+    if ($null -eq $GateSyncPort) {
+        $GateSyncPort = {
+            param($ctx)
+            Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $ctx.project_root -BoundaryType 'review-signoff'
+            return [pscustomobject]@{ ok = $true; reason = 'signoff-gate-allow' }
+        }
+    }
+
+    $steps = [Collections.Generic.List[object]]::new()
+    $ordered = @(
+        @{ name = 'verification'; port = $VerifyPort },
+        @{ name = 'residual-acceptance'; port = $AcceptPort },
+        @{ name = 'gate-sync'; port = $GateSyncPort }
+    )
+
+    $failedStep = $null
+    $failureReason = $null
+    foreach ($step in $ordered) {
+        $outcome = $null
+        try { $outcome = & $step.port $context }
+        catch { $outcome = [pscustomobject]@{ ok = $false; reason = [string]$_.Exception.Message } }
+        $ok = ($null -ne $outcome -and [bool]$outcome.ok)
+        $steps.Add([pscustomobject]@{ name = [string]$step.name; ok = $ok; reason = [string]$outcome.reason })
+        if (-not $ok) {
+            $failedStep = [string]$step.name
+            $failureReason = [string]$outcome.reason
+            break
+        }
+    }
+
+    $landed = ($null -eq $failedStep)
+    $message = if ($landed) {
+        'Review is signed off. Any remaining minor findings are saved as follow-ups, and the final check ran on your files exactly as they were.'
+    }
+    else {
+        $whatFailed = switch ($failedStep) {
+            'verification' { 'the final check on your files did not pass' }
+            'residual-acceptance' { 'the remaining findings could not be recorded as accepted' }
+            default { 'sign-off could not be completed' }
+        }
+        ('Stopping here did not finish: {0} ({1}). Nothing was signed off, and your review findings are unchanged. ' -f $whatFailed, $failureReason) +
+        'What to do next: fix what the message above names, then choose "stop here" again - the whole landing runs as one step, so there is nothing else for you to reconcile by hand.'
+    }
+
+    return [pscustomobject]@{
+        landed      = $landed
+        steps       = @($steps)
+        failed_step = $failedStep
+        reason      = $failureReason
+        message     = $message
+    }
+}
+
 function Get-ReviewCampaignStableToken {
     param([Parameter(Mandatory)][string]$Value, [ValidateRange(8, 32)][int]$Length = 16)
     $bytes = [Text.Encoding]::UTF8.GetBytes($Value)
