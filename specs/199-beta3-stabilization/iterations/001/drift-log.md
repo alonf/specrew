@@ -228,6 +228,23 @@ clearing, in order: the pre-code activation demand (DRIFT-199-I001-006), the run
 (-007), the feature-id non-resolution (-009, worked around), the missing verification plan
 (-008/-010), and the window/scope mismatch (-012).
 
+### DRIFT-199-I001-013 — a records-only commit staled the review that produced those records (open)
+
+- **Observed**: 2026-08-10, immediately after commit `9a23da56`, whose ENTIRE content is this
+  drift log — a records file. The campaign stop surface flipped from `review-required` to
+  `review-stale` / `latest-result-not-current`, naming run
+  `run-20260810-085753967-af5bef76` and demanding `request-current-digest-review`.
+- **The shape**: writing down what the review found is what invalidated the review. The
+  ledger's F5 sharpening names this exactly — satisfying the gate moves the target, so
+  currency is unachievable by construction.
+- **Why the digest moved**: the machinery strip excludes `.specrew`, `.specify`, `.squad`
+  and host-mirror dirs, but `specs/` is reviewable content and therefore digest-significant.
+  A lifecycle-records commit consequently reads as a source change.
+- **Direct evidence for FR-009** ("commits touching only governance/records files MUST NOT
+  stale a reviewed digest"): this instance is the T003 fixture — a commit whose entire delta
+  is under the feature's own `specs/<feature>/` records tree must leave a reviewed result
+  current.
+
 ### Round-1 findings (held for the maintainer; no fix round started)
 
 Three findings, all severity `major`, recorded in the authority store under the run above:
