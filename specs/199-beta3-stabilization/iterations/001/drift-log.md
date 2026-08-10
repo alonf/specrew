@@ -127,6 +127,43 @@
   `tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1` and
   `tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1`.
 
+### Named test baseline — inherited failures, measured 2026-08-10 (not this feature's)
+
+Measured at the maintainer's instruction so this feature never inherits credit or blame
+for failures it did not cause. Both runs used the identical capture script and path
+(`tests/continuous-co-review/unit`).
+
+| Measurement | Commit | Passed | Failed |
+| --- | --- | --- | --- |
+| Trunk baseline (detached worktree) | `acbb4366` (merge-base with origin/main) | 933 | **16** |
+| This branch, after the T003-early repair | `afe1dd1e` | 941 | **16** |
+
+**The two failure sets are IDENTICAL, name for name.** Regressions caused by this
+repair: **zero**. The branch also passes 8 more tests than the baseline (the 7 cases this
+repair added, plus one further test that runs on the branch and not at the baseline — an
+unexplained but non-material delta, recorded rather than smoothed over).
+
+The 16 inherited failures, at `acbb4366`:
+
+1. `T091 inline reviewer spawn - OS-native containment` — the divergent inline `$proc.Kill`
+   fallback is DELETED (one kill mechanism)
+2. `T026 TG-011 non-convergence escalation` — a ceiling-halt emits a VISIBLE escalation
+   finding (false-green guard D-197-I009-010)
+3. `navigator "more time" note on a partial reap (T092/R2)` — partial run -> moreTimeNote
+   present
+4-13. `T067 re-architected co-review signoff gate (FR-025)` — ten cases: blocks with no
+   evidence; ALLOWS on a chained pass; BLOCKS HOLE A (gitignored-source staleness);
+   BLOCKS HOLE B (unchained pass); A1 multi-hop ALLOWS; A1 multi-hop gap BLOCKS; blocks
+   stale after tree drift; blocks when the trunk anchor cannot be resolved (fail-closed);
+   allows under a well-formed human-authorized override; ignores a malformed override
+14-16. `T073/T074 hard co-review signoff-gate wiring (FR-025/SC-019/SC-020)` — three cases
+   on the conditional-Assert seam: (a) no passing run THROWS and persists the block;
+   (b) a fresh passing run does not throw; (b2) the allow path returns nothing
+
+Disposition: inherited, out of this feature's closed scope. Routed to the beta4 list
+unless one of them blocks the acceptance bar. Not a claim about their cause — only a
+measurement of what was already red at the branch point.
+
 ### DRIFT-199-I001-004 — plan total arithmetic error (resolved, records-only)
 
 - **Observed**: 2026-08-10, at tasks decomposition. plan.md stated "12.1 SP planned"
