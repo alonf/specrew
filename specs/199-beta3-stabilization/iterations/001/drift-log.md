@@ -150,9 +150,64 @@
 - **Consumer impact**: a consumer following the block's own instruction
   ("request-authorized-review") cannot run one from the documented CLI surface without
   discovering two undocumented flags.
-- **Resolution**: pending maintainer ruling — recorded, not fixed. Candidate scope call:
-  it blocks the acceptance bar (the review the gate demands cannot be run), which by the
-  closed-scope rule would put a one-line fix in scope; otherwise it routes to beta4.
+- **Resolution**: FIXED in scope 2026-08-10 under the maintainer's closed-scope exception
+  (a default campaign invocation that fails is a wedged gate with an unreadable message,
+  and it lands in files T001/T008 already own).
+  **The MINTER was fixed, never the validator**: run ids become filesystem path segments
+  under the authority store, so the lowercase-only case-sensitive identifier rule is a
+  path-identity containment rule (the beta2 certify-round-3 class) and must not be
+  relaxed. The stamp format became `yyyyMMdd-HHmmssfff` — lowercase-safe, still sortable,
+  still unique per run.
+  **COVERAGE LESSON (maintainer, recorded as instructed)**: this stayed latent from
+  `cbd7b615` until now because every run ever observed supplied an explicit `--run-id`,
+  so no fixture exercised the DEFAULT path. The new fixture
+  `tests/continuous-co-review/unit/campaign-default-run-id-mint.Tests.ps1` pins the
+  default path specifically — identity resolved with NO run id — plus uniqueness and an
+  explicit guard that an UPPERCASE id is still refused, so the containment rule cannot be
+  loosened later in the name of convenience. Evidence: 3 of 4 cases RED before the fix
+  (the guard green from the start), 4/4 green after; 61/61 green across the campaign
+  orchestrator and public-command suites.
+
+### DRIFT-199-I001-009 — the campaign command does not resolve the feature id (deferred)
+
+- **Observed**: 2026-08-10, immediately behind the run-id defect. With `--run-id` supplied
+  but no `--feature`, the campaign path failed with
+  `Cannot validate argument on parameter 'FeatureId'. The argument "" does not match the
+  "^[0-9]+-[a-z0-9][a-z0-9-]*$" pattern.`
+- **Cause**: the campaign command does not consult `.specify/feature.json` the way other
+  Specrew scripts do, so the feature id arrives empty at a validated parameter. (The
+  identity resolver itself has fallbacks — navigator feature root, then branch name — but
+  the empty value is rejected before reaching them.)
+- **Consumer impact**: a consumer running the review the stop surface demands must
+  discover `--feature` and `--iteration` by trial.
+- **Resolution**: DEFERRED per the maintainer's ruling — it is not a one-line fix inside
+  code already being touched (it sits in the CLI's campaign branch parameter contract,
+  not in the identity minter). Routes to the beta4 list.
+
+### DRIFT-199-I001-008 — ledger F2 reproduced: the authorized review cannot run without a verification plan (open)
+
+- **Observed**: 2026-08-10, run `run-t003-activation-slice-1` (codex, 900 s window,
+  `authorization-ref: beta3-t003-activation-slice-1`). Terminal state after 134.2 s:
+  `runtime_outcome: preflight-failed`,
+  `failure_reason: verification-not-configured:no supplier output at
+  .specrew/verification-plan.json (FR-049 supplier not configured)`.
+- **Significance**: this is ledger finding T067-F2 (fresh projects have no verification
+  plan and the campaign preflight cannot proceed) reproducing on the maintainer's own
+  repository, and it produces a BOOTSTRAP DEADLOCK at the gate: the campaign stop surface
+  demands a review, and the review cannot start without an artifact that only
+  `specrew init` scaffolds. Task T007 (FR-012/FR-013) is the fix.
+- **Cost measured, not assumed**: `invoked: null` — the reviewer process was never
+  started, so no provider spend; and a release fact
+  (`releases/res-c7aec2d1e10f88a63c15.json`) returned the reserved slot with the failure
+  reason, so no round allowance was consumed.
+
+### Evidence note — ledger F4 did NOT reproduce on this failure class
+
+Ledger finding F4 records infrastructure failures consuming the round allowance. On this
+`preflight-failed` run the pre-invocation release path worked: the slot was reserved,
+then released, with the failure reason recorded. Stated as a measurement, not a claim
+about F4 generally — T008's RED fixture must therefore pin the specific failure classes
+that do NOT release, rather than assume every infrastructure failure charges a round.
 
 ### Named test baseline — inherited failures, measured 2026-08-10 (not this feature's)
 

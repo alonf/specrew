@@ -748,7 +748,13 @@ function Resolve-ReviewCampaignPublicIdentity {
     $campaignId = "cmp-$featureSlug-i$iteration"
     $lineageId = "lin-$featureSlug"
     if ([string]::IsNullOrWhiteSpace($RunId)) {
-        $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfff')
+        # DRIFT-199-I001-007: the stamp separator must stay LOWERCASE-SAFE. Run ids become
+        # filesystem path segments under the authority store, so the identifier rule's
+        # lowercase-only, case-SENSITIVE match is a path-identity containment rule (the beta2
+        # certify-round-3 class) and is never relaxed to accommodate a minter. The ISO-style
+        # 'T' separator this format used to carry could not satisfy it, so every run without an
+        # explicit --run-id died at identity resolution before a reviewer was invoked.
+        $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmssfff')
         $RunId = "run-$stamp-" + [guid]::NewGuid().ToString('N').Substring(0, 8)
     }
     if (-not (Test-ReviewAuthorityIdentifier -Value $RunId -Kind run)) { throw "review-campaign-invalid-run-id:$RunId" }
