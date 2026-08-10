@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 21 (DRIFT-199-I001-001 through -021)
+**Total drift events**: 22 (DRIFT-199-I001-001 through -022)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -93,6 +93,30 @@ surfaced explicitly at the next boundary, never absorbed silently.
   project-specific one. In T007, run the governance validator once under a scrubbed
   environment WITHOUT `PSModulePath` and let the result decide. Record the measurement,
   not the reasoning.
+  **MEASURED 2026-08-10 — ANSWERED: the PowerShell stack default DOES carry it, so the
+  starter plan does not need the env_ref.** The variable was REMOVED from the child
+  environment (not blanked — an empty string is a value PowerShell may repopulate, and the
+  question is what a plan that does not declare the env_ref actually gets). Transcribed from
+  the probe:
+
+  | Run | `PSModulePath` | Exit | Elapsed | stderr |
+  | --- | --- | --- | --- | --- |
+  | Control (plan as authored) | inherited | **0** | 11.9 s | empty |
+  | Scrubbed | removed from the child env | **0** | 11.2 s | empty |
+
+  The effective value inside a child started WITHOUT it, read back from that child:
+
+  > `C:\Users\alon\OneDrive - Zionet LTD\Documents\PowerShell\Modules;C:\Program Files\`
+  > `PowerShell\Modules;c:\program files\powershell\7\Modules;;C:\Program Files\`
+  > `WindowsPowerShell\Modules;C:\Windows\system32\WindowsPowerShell\v1.0\Modules`
+
+  **What it decides**: `pwsh` reconstitutes a full default module path at startup when the
+  variable is absent, so module resolution does not depend on inheriting it. The disclosed
+  addition recorded in DRIFT-199-I001-010 ("this repository's verification commands are
+  PowerShell and resolve modules through it") was therefore a correct precaution resting on
+  an incorrect premise. T007's starter plan ships the N4 default list WITHOUT `PSModulePath`;
+  this project's own plan keeps it, which is harmless and now documented as unnecessary
+  rather than load-bearing.
 
 ## Events
 
@@ -553,6 +577,35 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-022 — the trust-hardening validator cannot match a verdict it has (observation, routes to beta4)
+
+- **Observed**: 2026-08-10, incidental to the T007 PSModulePath measurement. The governance
+  validator passes (exit 0) but emits:
+
+  > `WARN [trust-hardening] state-advance-without-verdict: Active session boundary advanced to`
+  > `human-judgment gate 'before-implement' (iteration 001) without a matching CURRENT-CYCLE`
+  > `boundary_enforcement.verdict_history entry naming an authorizing human.`
+
+- **The verdict is present.** `.specrew/start-context.json` carries the
+  `tasks -> before-implement` entry with the full text, `auth_commit_hash`
+  `47476f93`, `evidence_source: hook-captured-from-transcript`, and an
+  `authorization_id`. The record is not missing.
+- **Measured cause, stated narrowly**: the persisted entries carry no `cycle_id` field at all,
+  so a check keyed on a CURRENT-CYCLE match cannot succeed for any entry, however well-formed.
+  The warning describes the validator's inability to match, not an unauthorized advance.
+- **Why it still matters**: the surface whose job is to report that a human authorized this
+  boundary reports the opposite while holding the authorization. That is the honest-state class,
+  and on a louder day it would read as a missing verdict.
+- **A method note on how it was nearly misread**: the first probe of `verdict_history` selected
+  `.boundary` and `.cycle_id` and printed blanks, which looked like corroboration that the
+  records were empty. The fields are `from_boundary`/`to_boundary`; the probe was wrong, not the
+  data. Recorded because a wrong probe that agrees with your hypothesis is the most expensive
+  kind.
+- **Disposition**: DEFERRED to the beta4 list. It is a WARN on a passing validator, it advances
+  and blocks nothing, and the fix is in the trust-hardening validator's cycle model rather than
+  in any file this feature touches. Not routed in scope; raised for the maintainer's ruling if
+  they judge it to hit the acceptance bar's honest-state clause.
 
 ### DRIFT-199-I001-020 — the demotion marks never reached the human; found by the maintainer asking for the END-TO-END check (resolved)
 
