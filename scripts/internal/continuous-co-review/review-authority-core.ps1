@@ -89,6 +89,160 @@ function Test-ReviewAuthorityIdentifier {
     return ([string]$Value -cmatch ('^{0}-[a-z0-9][a-z0-9-]{{0,63}}$' -f $prefix))
 }
 
+function Resolve-ReviewCampaignPauseDecision {
+    # T001 / FR-001..FR-004. The PURE decision the pause surface renders from: what the round found,
+    # what it has cost, whether anything actually gates, and which options the human may choose.
+    #
+    # Ledger F8 is the reason this exists: without a pause the loop ran 15 fix rounds on one target
+    # with no sanctioned way to stop. Two rules are load-bearing here. MINORS NEVER GATE - they are
+    # carried as recorded follow-ups, so a documentation nit can never hold sign-off hostage. And the
+    # recommendation is derived from SEVERITY ALONE and never selects for the human: the numbered
+    # options are always offered, because a recommendation that auto-continues rebuilds the loop.
+    [CmdletBinding()]
+    param(
+        [AllowEmptyCollection()][object[]]$Findings = @(),
+        [Parameter(Mandatory)][int]$RoundsUsed,
+        [Parameter(Mandatory)][int]$BudgetTotal,
+        [double]$ElapsedMinutes = 0
+    )
+
+    $blocking = 0; $major = 0; $minor = 0
+    $gatingLocations = [Collections.Generic.List[string]]::new()
+    foreach ($finding in @($Findings)) {
+        $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
+        switch ($severity) {
+            'blocking' {
+                $blocking++
+                $gatingLocations.Add([string](Get-ReviewAuthorityProperty -Object $finding -Name 'location'))
+            }
+            'major' {
+                $major++
+                $gatingLocations.Add([string](Get-ReviewAuthorityProperty -Object $finding -Name 'location'))
+            }
+            default { $minor++ }
+        }
+    }
+
+    $gating = ($blocking + $major) -gt 0
+    $budgetExhausted = $RoundsUsed -ge $BudgetTotal
+    $continuationAvailable = -not $budgetExhausted
+
+    $recommendation = if ($blocking -gt 0) {
+        'Fix the blocking findings before you sign off - they describe behaviour that is wrong or unsafe.'
+    }
+    elseif ($major -gt 0) {
+        'Look at the major findings; fix what matters to you, then stop here.'
+    }
+    elseif ($minor -gt 0) {
+        'Nothing here blocks you. Stopping here saves the minor findings as follow-ups.'
+    }
+    else {
+        'Nothing was found. Stopping here completes your sign-off.'
+    }
+
+    # Option ids are stable: 1 fix-and-continue, 2 stop-here, 3 abandon. Option 1 disappears when the
+    # budget is spent - the refusal is structural, not a warning the human can talk past.
+    $options = [Collections.Generic.List[object]]::new()
+    if ($continuationAvailable) {
+        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Fix these and run another review round' })
+    }
+    $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' })
+    $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' })
+    if (-not $continuationAvailable) {
+        $options.Add([pscustomobject]@{ id = 4; choice = 'reset-allowance'; text = 'Reset the round allowance yourself, then choose again' })
+    }
+
+    return [pscustomobject][ordered]@{
+        blocking_count         = $blocking
+        major_count            = $major
+        minor_count            = $minor
+        carried_followups      = $minor
+        gating                 = $gating
+        gating_locations       = @($gatingLocations | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        rounds_used            = $RoundsUsed
+        budget_total           = $BudgetTotal
+        budget_exhausted       = $budgetExhausted
+        continuation_available = $continuationAvailable
+        elapsed_minutes        = $ElapsedMinutes
+        recommendation         = $recommendation
+        options                = @($options)
+    }
+}
+
+function New-ReviewCampaignPendingPauseFact {
+    # The pause recorded as a FACT (design Option B). A derived pause could only be inferred, which
+    # made the quiet-state read heuristic and lost the surface verbatim on resume.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][string]$TargetDigest,
+        [Parameter(Mandatory)]$Decision,
+        [Parameter(Mandatory)][string]$ObservedAt
+    )
+    return [pscustomobject][ordered]@{
+        schema_version   = '1.0'
+        fact_type        = 'pending-pause'
+        campaign_id      = $CampaignId
+        run_id           = $RunId
+        target_digest    = $TargetDigest
+        blocking_count   = [int]$Decision.blocking_count
+        major_count      = [int]$Decision.major_count
+        minor_count      = [int]$Decision.minor_count
+        rounds_used      = [int]$Decision.rounds_used
+        budget_total     = [int]$Decision.budget_total
+        elapsed_minutes  = [double]$Decision.elapsed_minutes
+        recommendation   = [string]$Decision.recommendation
+        observed_at      = $ObservedAt
+    }
+}
+
+function New-ReviewCampaignPauseDecisionFact {
+    # The human's numbered reply. This fact is the ONLY thing that authorizes another round; an agent
+    # cannot mint one from a prior grant, which is the self-minted-continuation failure ledger obs-6
+    # recorded (one grant stretched across seven rounds).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][ValidateSet('fix-and-continue', 'stop-here', 'abandon')][string]$Choice,
+        [Parameter(Mandatory)][string]$ObservedAt
+    )
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        fact_type      = 'pause-decision'
+        campaign_id    = $CampaignId
+        run_id         = $RunId
+        choice         = $Choice
+        observed_at    = $ObservedAt
+    }
+}
+
+function Test-ReviewCampaignContinuationAuthorized {
+    # FR-003: continuation is always an explicit human choice, and each choice authorizes exactly ONE
+    # round. RoundsSinceDecision is what makes the grant single-run: a decision already spent cannot
+    # be replayed into a second round.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$PendingPause,
+        [AllowEmptyCollection()][object[]]$PauseDecisions = @(),
+        [int]$RoundsSinceDecision = 0
+    )
+    $runId = [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'run_id')
+    $answer = @($PauseDecisions | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -ceq $runId }) | Select-Object -First 1
+    if ($null -eq $answer) {
+        return [pscustomobject]@{ authorized = $false; reason = 'pause-decision-pending'; choice = $null }
+    }
+    $choice = [string](Get-ReviewAuthorityProperty -Object $answer -Name 'choice')
+    if ($choice -cne 'fix-and-continue') {
+        return [pscustomobject]@{ authorized = $false; reason = ('choice-does-not-continue:' + $choice); choice = $choice }
+    }
+    if ($RoundsSinceDecision -ge 1) {
+        return [pscustomobject]@{ authorized = $false; reason = 'single-run-grant-already-spent'; choice = $choice }
+    }
+    return [pscustomobject]@{ authorized = $true; reason = 'human-authorized-single-round'; choice = $choice }
+}
+
 function Test-ReviewCampaignFeatureIdentity {
     param([AllowNull()]$Value)
     return ($Value -is [string] -and [string]$Value -cmatch '^[a-z0-9][a-z0-9-]{0,127}$')
@@ -276,7 +430,7 @@ function Test-ReviewAuthorityContractObject {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -299,6 +453,12 @@ function Test-ReviewAuthorityContractObject {
         'ClaimFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_lineage', 'generation', 'disposition', 'observed_at') }
         'HumanDispositionFact' { @('schema_version', 'fact_type', 'disposition_id', 'campaign_id', 'run_id', 'target_digest', 'decision', 'authority_kind', 'authorized_by', 'authorization_ref', 'rationale', 'observed_at') }
         'ReviewFinalizationFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'reviewed_digest', 'finalization_commit') }
+        'PendingPauseFact' { @(
+            'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'blocking_count',
+            'major_count', 'minor_count', 'rounds_used', 'budget_total', 'elapsed_minutes',
+            'recommendation', 'observed_at'
+        ) }
+        'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at') }
         'RecoveryFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'target_lineage',
             'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',
