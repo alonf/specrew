@@ -345,6 +345,23 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
             [string]$out.result.result.failure_reason | Should -Not -Match '(?i)still available'
         }
 
+        It 'every failed-run return CARRIES the restored-slot fact (source guard)' {
+            # Labelled a source guard, like the pause-terminal one: the behavioural cases above exercise
+            # the helper directly, and this pins that the campaign's four failed-run returns do not DROP
+            # what it reports. A result narrowed at a boundary is where an explanation dies - the
+            # verification diagnosis was lost at exactly this shape - and a unit fixture cannot reach
+            # these returns without standing up the full harness/runtime port set.
+            $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
+            $failedReturns = @([regex]::Matches($source, "status = 'failed'; reason = \`$reason[^}]*}"))
+
+            @($failedReturns).Count | Should -Be 4 -Because 'if a fifth failed-run return appears, it must be checked too rather than silently omitted'
+            foreach ($match in $failedReturns) {
+                $match.Value | Should -Match 'slot_restored' -Because 'a failed run that restored the human''s authorization must say so all the way out'
+                $match.Value | Should -Match 'slot_restored_note'
+                $match.Value | Should -Match 'reason = \$reason' -Because 'the machine reason stays untouched; three fixtures assert it by exact equality'
+            }
+        }
+
         It 'says nothing when no slot was restored (an invoked run keeps its charge)' {
             # A note that appears even when nothing came back would be worse than silence: it would tell
             # the human they still hold an authorization they have in fact spent.

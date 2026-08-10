@@ -866,6 +866,25 @@ inside this function, after the release decision has been resolved.** Never to `
 This is the same seam class as the dropped demotion mark — right idea, lost one layer down — which is
 why it is recorded as a constraint rather than left to be rediscovered.
 
+**THE RENDER SEAM, located (2026-08-11)**: `scripts/specrew-review.ps1:914` prints
+`Failure: <failure_reason>` for a campaign run, and **lines 919-922 are already the exact precedent** —
+T009's FR-018 timeout guidance, carrying the comment *"the public CLI needs it too, or the timeout stays
+sealed exactly where the consumer is standing."* The restored-slot note belongs immediately beside it,
+rendered from `slot_restored_note` when `slot_restored` is true. Same file, same block, same argument;
+nothing new needs inventing.
+
+**Note the shape that made this cheap**: because the note travels as STRUCTURED DATA rather than inside
+`failure_reason`, the CLI can choose its own wording and placement, and the ledger, the returned reason
+and the persisted record all stay byte-identical. Had the sentence been appended to the reason string,
+this render would have been free but every one of those three would have been polluted.
+
+**Carried all the way to this seam and guarded**: `Complete-ReviewPreInvocationFailure` reports the fact,
+all FOUR failed-run returns carry it, and a source guard asserts they do — and asserts there are exactly
+four, so a fifth must be considered rather than silently skipped. **That guard immediately caught two
+returns a bulk edit had missed** because their indentation differed from their siblings', which is the
+staged carry-ledger rule (*where a comment states a rule that matters, add a guard that asserts it*)
+paying for itself inside a single sitting.
+
 ### F4 ANSWERED BY MEASUREMENT — it was correctly OBSERVED on i008, and it is already FIXED (2026-08-10) — **SEE RETRACTION ABOVE**
 
 Counted directly from the authority stores rather than reasoned about or relayed. Every campaign that
