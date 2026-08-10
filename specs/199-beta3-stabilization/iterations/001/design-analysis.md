@@ -489,6 +489,53 @@ unit-testable by attribute synthesis but its END-TO-END hydration is human-measu
 limit-of-evidence discipline recorded for T004's backstop, and it should be recorded as such rather
 than implied by a green suite.
 
+### T007 design record — the bootstrap deadlock's exact cause, MEASURED before any code (2026-08-10)
+
+Same discipline as T006: the unknowns are measured and the shape is decided before the first edit.
+
+**The deadlock is not a missing mechanism — it is an empty catalog.** A materializer already exists
+(`Invoke-ContinuousCoReviewVerificationPlanMaterialization`) driven by
+`extensions/specrew-speckit/data/verification-plan-catalog.json`. Read from that file, not inferred:
+
+| Catalog section | Rows | Selects when |
+| --- | --- | --- |
+| `project_metadata` | 1 | `package.json` declares a REAL `scripts.test` (npm's placeholder is rejected) |
+| `quality_profiles` | 5 | the project EXPLICITLY declares that profile id |
+| `providers` | **0** | never — the section is empty |
+
+So a project with no `package.json` and no declared quality profile matches nothing and falls through to
+`verification-not-configured`. **This repository is exactly that project** — PowerShell, no `package.json` —
+which is why DRIFT-199-I001-008 reproduced here and why the first authorized campaign round died at
+preflight. A fresh project of any non-npm stack hits it identically.
+
+**The selector's precedence, read from `Select-ContinuousCoReviewVerificationPlan`**: project-config
+(explicit `.specrew/verification-plan.json`) -> project-detected -> profile-selected -> provider-gated ->
+`verification-not-configured`.
+
+**Decision: T007 scaffolds TIER ONE, the explicit plan file.** The task says `specrew init` scaffolds the
+starter plan, and that is also the maintainer's DRIFT-199-I001-010 ruling — the verification definition
+must live in the tree the reviewer reads, not beside it. A generated-and-hash-marked plan would be
+invisible to the consumer; a committed starter file is one they can read, edit, and diff. Adding a
+"baseline" tier to the selector instead was rejected for that reason, not for cost.
+
+**Constraint that decides the template shape — the plan schema is CLOSED.** Measured in
+`verification-plan-contract.ps1`: the plan admits `schema_version`, `plan_id`, `commands` and nothing
+else, and each command admits a fixed twelve-name set, both with the explicit rationale that "no secret
+values can ride an unrecognized field". Templates therefore CANNOT live inside the plan as an extra key
+or a disabled-command flag without reopening a containment rule that exists for secrets. The starter
+plan ships the governance-validator command only — one command that genuinely runs and passes in every
+governed project — and the dotnet/npm build-test templates ship BESIDE it as a copy-from example, not as
+plan content.
+
+**The env_refs default is settled by measurement, not judgement**: the N4 list including `TMPDIR`, and
+WITHOUT `PSModulePath` — `pwsh` reconstitutes a full default module path when the variable is absent, so
+the env_ref is not load-bearing (transcribed in the drift log against the maintainer's standing
+instruction).
+
+**Still to decide when T007 resumes**: whether the timeout-versus-window consistency check from
+DRIFT-199-I001-012 lands here. The maintainer's ruling is conditional — take it only if it is a few
+lines, else beta4 — so it is a measurement against the validator's shape, not a design choice.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):
