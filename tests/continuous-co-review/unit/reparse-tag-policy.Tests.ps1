@@ -125,4 +125,109 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
             (Get-SpecrewReparseTagDisposition -Path (Join-Path ([IO.Path]::GetTempPath()) 'no-such-path-xyz')).disposition | Should -Be 'none'
         }
     }
+
+    # A classifier nothing calls changes nothing. These pin that each integrity check ROUTES THROUGH it
+    # rather than keeping its own private attribute test - the failure this feature keeps re-learning is
+    # that the wiring is what drifts, not the primitive.
+    #
+    # The cloud branch is exercised by MOCKING the classifier, because no agent can materialise a real
+    # placeholder on a local volume. That is a genuine limit: these cases prove each site HONOURS a
+    # hydrate-cloud answer, and the live symlink/junction cases above plus the untouched refusal suites
+    # prove the refusing direction on the real filesystem. The end-to-end hydration leg remains the
+    # maintainer's manual measurement on the T067-class install.
+    Context 'every integrity check consults the ONE classifier' {
+        BeforeAll {
+            . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-store.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/review-engine-resolution.ps1')
+        }
+
+        It 'the authority store admits a cloud placeholder root instead of refusing it' {
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'hydrate-cloud'; family = 'cloud-files'; link_type = $null } }
+            $store = Join-Path $TestDrive 'cloud-store'
+            New-Item -ItemType Directory -Path $store -Force | Out-Null
+
+            { Get-ReviewAuthorityStorePath -StoreRoot $store -RelativePath 'campaigns/cmp-x/grant.json' } | Should -Not -Throw
+            Should -Invoke Get-SpecrewReparseDispositionForItem -Times 1 -Scope It -Because 'the site must ASK the classifier, not decide for itself'
+        }
+
+        It 'the module-install containment walk admits a cloud placeholder component' {
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'hydrate-cloud'; family = 'cloud-files'; link_type = $null } }
+            $root = Join-Path $TestDrive 'cloud-runtime'
+            New-Item -ItemType Directory -Path (Join-Path $root 'sub') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root 'sub/f.ps1') -Value 'x' -Encoding UTF8
+
+            { Assert-SpecrewReviewRuntimePathContained -Path (Join-Path $root 'sub/f.ps1') -Root $root } | Should -Not -Throw
+        }
+
+        It 'the managed-file hash READS a cloud placeholder - DRIFT-199-I001-005 is this exact line' {
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'hydrate-cloud'; family = 'cloud-files'; link_type = $null } }
+            $file = Join-Path $TestDrive 'placeholder.ps1'
+            Set-Content -LiteralPath $file -Value 'hello' -Encoding UTF8
+
+            Get-SpecrewReviewRuntimeManagedTextSha256 -Path $file | Should -Match '^[a-f0-9]{64}$' -Because 'opening the file IS the hydration; refusing it is what took the remediation door down'
+        }
+
+        It 'an unrecognised tag still refuses at every site (allowlist, fail closed)' {
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'refuse-unknown'; family = 'unknown'; link_type = $null } }
+            $store = Join-Path $TestDrive 'unknown-store'
+            New-Item -ItemType Directory -Path $store -Force | Out-Null
+            $file = Join-Path $TestDrive 'unknown.ps1'
+            Set-Content -LiteralPath $file -Value 'hello' -Encoding UTF8
+
+            { Get-ReviewAuthorityStorePath -StoreRoot $store -RelativePath 'campaigns/c.json' } | Should -Throw '*review-store-root-link-unsupported*'
+            { Get-SpecrewReviewRuntimeManagedTextSha256 -Path $file } | Should -Throw '*review-runtime-managed-file-link-unsupported*'
+        }
+    }
+
+    Context 'the refusal a consumer reads (FR-011 / FR-015)' {
+        It 'keeps the machine-readable code FIRST and then says what to do about it' {
+            # The code stays because fixtures and callers match on it; a containment refusal is not the
+            # place to break a contract for prose. Everything after it is the part a person can act on.
+            $message = Get-SpecrewReparseRefusalMessage -Code 'review-store-root-link-unsupported' `
+                -Path 'C:\x\store' -Disposition 'refuse-link' -LinkType 'Junction'
+
+            $message | Should -BeLike 'review-store-root-link-unsupported:C:\x\store*'
+            $message | Should -Match '(?i)junction'
+            $message | Should -Match '(?i)run the command again'
+            $message | Should -Match '(?i)OneDrive' -Because 'the consumer whose install this refuses must be told that cloud storage is NOT the problem'
+        }
+
+        It 'names a symbolic link as a symbolic link, not as a junction' {
+            $message = Get-SpecrewReparseRefusalMessage -Code 'review-runtime-managed-file-link-unsupported' `
+                -Path 'C:\x\f.ps1' -Disposition 'refuse-link' -LinkType 'SymbolicLink'
+            $message | Should -Match '(?i)symbolic link'
+            $message | Should -Not -Match '(?i)junction'
+        }
+
+        It 'an unknown tag says so plainly rather than guessing a family' {
+            $message = Get-SpecrewReparseRefusalMessage -Code 'review-store-path-link-unsupported' `
+                -Path 'campaigns/x' -Disposition 'refuse-unknown' -LinkType $null
+            $message | Should -Match '(?i)does not recognise'
+        }
+
+        It 'a placeholder that cannot be downloaded says THAT, not a raw file error' {
+            # The other half of the cloud story: hydration is the read, and the read can fail. Left bare
+            # the consumer gets an IO error about a path inside a module directory they never chose.
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'hydrate-cloud'; family = 'cloud-files'; link_type = $null } }
+            . (Join-Path $script:RepoRoot 'scripts/internal/review-engine-resolution.ps1')
+            $directoryStandingInForAnUnreadablePlaceholder = Join-Path $TestDrive 'unreadable'
+            New-Item -ItemType Directory -Path $directoryStandingInForAnUnreadablePlaceholder -Force | Out-Null
+
+            { Get-SpecrewReviewRuntimeManagedTextSha256 -Path $directoryStandingInForAnUnreadablePlaceholder } |
+                Should -Throw '*review-runtime-managed-file-hydration-unavailable*'
+        }
+
+        It 'the hydration failure tells the consumer what to check' {
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'hydrate-cloud'; family = 'cloud-files'; link_type = $null } }
+            . (Join-Path $script:RepoRoot 'scripts/internal/review-engine-resolution.ps1')
+            $unreadable = Join-Path $TestDrive 'unreadable-2'
+            New-Item -ItemType Directory -Path $unreadable -Force | Out-Null
+
+            $message = ''
+            try { Get-SpecrewReviewRuntimeManagedTextSha256 -Path $unreadable } catch { $message = $_.Exception.Message }
+            $message | Should -Match '(?i)online'
+            $message | Should -Match '(?i)always keep on this device'
+            $message | Should -Match '(?i)underlying error was'
+        }
+    }
 }

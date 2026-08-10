@@ -31,6 +31,20 @@ Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
 
 `-SkipPublisherCheck` tells PowerShellGet to skip the Authenticode publisher check. Specrew modules ship **unsigned** (the OSS PowerShell Gallery norm) since v0.24.1, so the flag keeps the install from failing or prompting on machines that enforce that check. Use it only for the official Specrew Gallery package or a source you trust — see [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context. CA-signed releases for corporate/enterprise consumers are tracked as future work.
 
+**Synced folders (OneDrive, Dropbox, iCloud) are supported.** On Windows the default `CurrentUser`
+scope installs under `Documents\PowerShell\Modules`, which is often redirected into OneDrive; Specrew
+downloads any of its own files that are not yet on disk and carries on. If the download fails you get a
+message saying so and naming what to check, rather than a generic file error. Symbolic links and
+junctions are still refused wherever Specrew verifies its own files or writes review records, because
+those redirect a write somewhere other than where it appears to be going.
+
+If you would rather keep Specrew off a synced folder entirely, install it for every user instead — this
+needs an elevated PowerShell:
+
+```powershell
+Install-Module Specrew -Scope AllUsers -SkipPublisherCheck
+```
+
 > **macOS/Linux module fallback (only if you skip `install.sh`):** `Install-Module` exists only inside PowerShell — run `pwsh` first, then `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck`. Running it in zsh/bash prints `command not found: Install-Module`. The PowerShell Gallery prompt defaults to **`N`** (pressing Enter *declines* the install) — answer **`A` / Yes to All** or pass `-Force`. After the module is installed, run `specrew install-shell-wrappers` to get the native `specrew` command without `pwsh`.
 
 Verify:

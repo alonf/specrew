@@ -74,6 +74,28 @@ function Resolve-SpecrewReparseDisposition {
     return [pscustomobject]@{ disposition = 'refuse-unknown'; family = 'unknown'; link_type = $null }
 }
 
+function Get-SpecrewReparseDispositionForItem {
+    # Classify an ALREADY-READ filesystem item. The containment walks hold a `Get-Item` handle for every
+    # existing component already, so re-reading the path here would double the filesystem cost of the
+    # hot loop these checks live in. More importantly it keeps the LinkType/LinkTarget extraction in ONE
+    # place: a call site that re-derived "is this a link" for itself is precisely how a policy grows a
+    # second, divergent answer.
+    [OutputType([pscustomobject])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Item)
+
+    $linkType = $null
+    # LinkType is absent on older hosts; its absence must not throw under StrictMode and must not be
+    # read as "not a link" without also considering LinkTarget.
+    if ($Item.PSObject.Properties['LinkType']) { $linkType = [string]$Item.LinkType }
+    if ([string]::IsNullOrWhiteSpace($linkType) -and $Item.PSObject.Properties['LinkTarget']) {
+        # A host that exposes a target but not a type still proves the path REDIRECTS. Treated as the
+        # refusing family rather than as unknown, because what matters is that it points elsewhere.
+        if (-not [string]::IsNullOrWhiteSpace([string]$Item.LinkTarget)) { $linkType = 'SymbolicLink' }
+    }
+    return Resolve-SpecrewReparseDisposition -Attributes ([int]$Item.Attributes) -LinkType $linkType
+}
+
 function Get-SpecrewReparseTagDisposition {
     # The thin shell that asks the filesystem, so every caller classifies the same way. A path that does
     # not exist reports 'none': the containment walks skip components that have not been created, and a
@@ -85,15 +107,30 @@ function Get-SpecrewReparseTagDisposition {
     if ([string]::IsNullOrWhiteSpace($Path)) { return [pscustomobject]@{ disposition = 'none'; family = 'ordinary'; link_type = $null } }
     if (-not (Test-Path -LiteralPath $Path)) { return [pscustomobject]@{ disposition = 'none'; family = 'ordinary'; link_type = $null } }
 
-    $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
-    $linkType = $null
-    # LinkType is absent on older hosts; its absence must not throw under StrictMode and must not be
-    # read as "not a link" without also considering LinkTarget.
-    if ($item.PSObject.Properties['LinkType']) { $linkType = [string]$item.LinkType }
-    if ([string]::IsNullOrWhiteSpace($linkType) -and $item.PSObject.Properties['LinkTarget']) {
-        # A host that exposes a target but not a type still proves the path REDIRECTS. Treated as the
-        # refusing family rather than as unknown, because what matters is that it points elsewhere.
-        if (-not [string]::IsNullOrWhiteSpace([string]$item.LinkTarget)) { $linkType = 'SymbolicLink' }
+    return Get-SpecrewReparseDispositionForItem -Item (Get-Item -LiteralPath $Path -Force -ErrorAction Stop)
+}
+
+function Get-SpecrewReparseRefusalMessage {
+    # The consumer half of FR-011, kept beside the policy so the words and the decision cannot drift.
+    #
+    # The MACHINE-READABLE code stays first and unchanged - existing refusal fixtures and callers match
+    # on it, and a containment refusal is not the place to break a contract for prose. What follows is
+    # the part a person can act on: what was found, why it is refused, and what to do instead. The old
+    # message was the code alone, which told a consumer nothing about either.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Code,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Path,
+        [Parameter(Mandatory)][ValidateSet('refuse-link', 'refuse-unknown')][string]$Disposition,
+        [AllowNull()][AllowEmptyString()][string]$LinkType
+    )
+    $what = if ($Disposition -ceq 'refuse-link') {
+        $kind = if ([string]$LinkType -ceq 'Junction') { 'a junction' } else { 'a symbolic link' }
+        "This path is $kind, so writing through it would put your review's records somewhere other than where they appear to be."
     }
-    return Resolve-SpecrewReparseDisposition -Attributes ([int]$item.Attributes) -LinkType $linkType
+    else {
+        'This path is a kind of link this version does not recognise, and it is refused rather than followed blindly.'
+    }
+    return ('{0}:{1} - {2} Move the folder onto ordinary storage, or point the review at a path that is not a link, and run the command again. A cloud-synced folder such as OneDrive is fine; this refusal is specifically about links.' -f $Code, $Path, $what)
 }

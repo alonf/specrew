@@ -10,6 +10,12 @@ $proposal197ReviewerModules = @(
     # FIRST so containment, the digest, and the machinery list all consume it instead of each
     # re-deciding case rules from the OS family.
     'path-identity.ps1'
+    # T006 / FR-011: the ONE reparse-tag policy (refuse the redirecting family, hydrate a cloud
+    # placeholder, fail closed on anything else). Loaded beside path-identity and for the same reason -
+    # both are containment primitives whose whole value is that every integrity check asks the SAME
+    # question. Consumers also carry a guarded dot-source, because a primitive must stay reachable from
+    # a consumer loaded WITHOUT this loader (DRIFT-198-I009-018).
+    'reparse-tag-policy.ps1'
     # F-198 iter-006 / T041: ONE fail-closed terminal-authority cutover seam. It is loaded first so
     # every legacy/new consumer gets the same mutually-exclusive decision.
     'review-authority-cutover.ps1'

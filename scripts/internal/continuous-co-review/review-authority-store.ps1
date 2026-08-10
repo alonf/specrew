@@ -13,6 +13,13 @@ if (-not (Get-Command -Name 'Test-ReviewAuthorityContractObject' -ErrorAction Si
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'path-identity.ps1')
 }
+# HARD dependency (T006/FR-011). Guarded on the EXACT function this file calls rather than on a
+# sibling name: DRIFT-198-I009-027's shadow survived a guard that probed a DIFFERENT name, and
+# DRIFT-199-I001-014/-017 were both this class - a primitive that is merely RECOMMENDED gets bypassed
+# by a forgotten dot-source and then answers from whatever ambient copy loaded last.
+if (-not (Get-Command -Name 'Get-SpecrewReparseDispositionForItem' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'reparse-tag-policy.ps1')
+}
 
 function ConvertTo-ReviewAuthorityCanonicalValue {
     param([AllowNull()]$Value)
@@ -82,10 +89,18 @@ function Get-ReviewAuthorityStorePath {
     # The store root need not exist yet - CreateDirectory below creates the whole chain on a
     # project's first-ever review, and nothing can be maliciously linked before it exists. Where
     # it DOES exist, a reparse point there is refused before anything beneath it is touched.
+    #
+    # T006/FR-011: DISCRIMINATE, do not blanket-refuse. The old test refused EVERY reparse point,
+    # which also refused a cloud placeholder - and a placeholder redirects nothing, it IS the file
+    # with its content not yet local. That blanket refusal is what made the product unusable on the
+    # default CurrentUser install (DRIFT-199-I001-005: the sanctioned remediation door itself was
+    # unreachable from a OneDrive-backed Documents folder). Links and unrecognised tags still refuse.
     if (Test-Path -LiteralPath $root) {
         $rootItem = Get-Item -LiteralPath $root -Force -ErrorAction Stop
-        if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "review-store-root-link-unsupported:$StoreRoot"
+        $disposition = Get-SpecrewReparseDispositionForItem -Item $rootItem
+        if ($disposition.disposition -cin @('refuse-link', 'refuse-unknown')) {
+            throw (Get-SpecrewReparseRefusalMessage -Code 'review-store-root-link-unsupported' -Path $StoreRoot `
+                    -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
     }
 
@@ -100,8 +115,10 @@ function Get-ReviewAuthorityStorePath {
         $current = Join-Path $current $segment
         if (-not (Test-Path -LiteralPath $current)) { continue }
         $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
-        if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "review-store-path-link-unsupported:$RelativePath"
+        $disposition = Get-SpecrewReparseDispositionForItem -Item $item
+        if ($disposition.disposition -cin @('refuse-link', 'refuse-unknown')) {
+            throw (Get-SpecrewReparseRefusalMessage -Code 'review-store-path-link-unsupported' -Path $RelativePath `
+                    -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
     }
     return $full

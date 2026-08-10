@@ -14,6 +14,11 @@ Describe 'review-authority-store link-containment falsifiability (mutation gate,
         $script:StorePath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-store.ps1'
         $script:CorePath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-core.ps1'
         $script:PathIdentityPath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/path-identity.ps1'
+        # T006/FR-011 added a guarded dot-source of the reparse-tag policy to the store, so the mutant
+        # needs this sibling too. Adding it here is the gate working as designed: it fails loudly the
+        # moment the file's dependency shape changes, rather than silently mutating a file that no
+        # longer loads and then reporting a meaningless pass.
+        $script:ReparsePolicyPath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reparse-tag-policy.ps1'
         $script:FixturePath = Join-Path $script:RepoRoot 'tests/continuous-co-review/unit/review-authority-store.Tests.ps1'
         $script:MutantRoots = [System.Collections.Generic.List[string]]::new()
 
@@ -34,6 +39,7 @@ Describe 'review-authority-store link-containment falsifiability (mutation gate,
             # THIS scratch directory once the mutant is dot-sourced from here, not to the real tree.
             Copy-Item -LiteralPath $script:CorePath -Destination (Join-Path $root 'review-authority-core.ps1') -Force
             Copy-Item -LiteralPath $script:PathIdentityPath -Destination (Join-Path $root 'path-identity.ps1') -Force
+            Copy-Item -LiteralPath $script:ReparsePolicyPath -Destination (Join-Path $root 'reparse-tag-policy.ps1') -Force
 
             $pattern = '(?s)(\$comparison = Get-ContinuousCoReviewPathComparison -Path \$root -WhenUndetermined ''same''\r?\n    if \(-not \$full\.StartsWith\(\$prefix, \$comparison\)\) \{ throw "review-store-path-escape:\$RelativePath" \}\r?\n).*?(\r?\n    return \$full\r?\n\})'
             $replacement = '$1' + "`n    return `$full`n}"
@@ -50,6 +56,7 @@ Describe 'review-authority-store link-containment falsifiability (mutation gate,
 `$ErrorActionPreference = 'Stop'
 . '$($script:CorePath)'
 . '$($script:PathIdentityPath)'
+. '$($script:ReparsePolicyPath)'
 . '$mutantPath'
 `$link = '$verifyRoot'
 try { New-Item -ItemType SymbolicLink -Path `$link -Target '$verifyOutside' -ErrorAction Stop | Out-Null } catch { 'SKIP'; exit 0 }
