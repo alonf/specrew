@@ -30,6 +30,134 @@ BeforeAll {
     }
 }
 
+# Trace: T007 / FR-012, FR-013 / SC-007.
+#
+# THE BOOTSTRAP DEADLOCK, and it is not a missing mechanism (measured, T007 design record). The catalog
+# carries ONE metadata detector (package.json with a real scripts.test), five OPT-IN quality profiles,
+# and ZERO providers. A project that is none of those matches nothing and falls to
+# verification-not-configured - so the campaign preflight cannot run, and the stop surface demands a
+# review that cannot start. DRIFT-199-I001-008 is that deadlock on this very repository, which is a
+# PowerShell project with no package.json.
+#
+# The fix scaffolds TIER ONE - the explicit .specrew/verification-plan.json - because the maintainer's
+# DRIFT-199-I001-010 ruling is that the verification definition must live in the tree the reviewer
+# reads. A generated hash-marked plan would be invisible to the consumer AND would delete itself on the
+# next run, since the materializer removes a generated plan when selection turns unconfigured.
+Describe 'T007 starter verification plan - a governed project is never left unable to verify' {
+    BeforeAll {
+        function New-StarterProject {
+            # A realistic consumer tree: governed (it has the deployed validator) but with no
+            # package.json and no quality profile, which is what every non-npm project looks like.
+            param([Parameter(Mandatory)][string]$Name)
+            $path = Join-Path $TestDrive $Name
+            $validator = Join-Path $path '.specify/extensions/specrew-speckit/scripts'
+            New-Item -ItemType Directory -Path $validator -Force | Out-Null
+            [IO.File]::WriteAllText((Join-Path $validator 'validate-governance.ps1'), 'exit 0', [Text.UTF8Encoding]::new($false))
+            return $path
+        }
+    }
+
+    It 'a fresh governed project gets a starter plan instead of verification-not-configured' {
+        $project = New-StarterProject 'starter-fresh'
+        $result = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project
+
+        Test-Path -LiteralPath (Get-MaterializerPlanPath $project) | Should -BeTrue -Because 'DRIFT-199-I001-008: with no plan the campaign preflight cannot run, and the stop surface demands a review that cannot start'
+        $result.state | Should -Be 'selected'
+        $result.action | Should -Be 'created-starter-plan'
+    }
+
+    It 'the starter plan validates through the SHIPPED contract, not merely as JSON' {
+        $project = New-StarterProject 'starter-valid'
+        Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project | Out-Null
+        $plan = Get-Content -LiteralPath (Get-MaterializerPlanPath $project) -Raw | ConvertFrom-Json
+
+        $check = Test-ContinuousCoReviewVerificationPlan -Plan $plan -RepoRoot $project
+        $check.valid | Should -BeTrue -Because "a starter that does not validate is worse than none: $($check.reason)"
+        $check.command_count | Should -BeGreaterThan 0
+    }
+
+    It 'the governance command is GENERIC - deployed path, and no feature or iteration binding' {
+        # MEASURED 2026-08-10: the validator runs without -IterationPath and resolves the active
+        # iteration itself. That is what lets the starter survive a clone, a new worktree AND a new
+        # feature - the three things DRIFT-199-I001-010 recorded the beta2 plan failing.
+        $project = New-StarterProject 'starter-generic'
+        Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project | Out-Null
+        $plan = Get-Content -LiteralPath (Get-MaterializerPlanPath $project) -Raw | ConvertFrom-Json
+        $args = @($plan.commands[0].arguments) -join ' '
+
+        $args | Should -Match '\.specify/extensions/specrew-speckit/scripts/validate-governance\.ps1' -Because 'a consumer tree has the DEPLOYED path, not the source repo''s extensions/...'
+        $args | Should -Not -Match '-IterationPath' -Because 'a starter cannot know the feature, and it does not need to'
+        $plan.plan_id | Should -Not -Match '\bf\d+\b' -Because 'a feature-bound plan_id is what made the beta2 definition unusable anywhere else'
+    }
+
+    It 'env_refs carry the N4 default WITHOUT PSModulePath (measured, not judged)' {
+        $project = New-StarterProject 'starter-envrefs'
+        Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project | Out-Null
+        $plan = Get-Content -LiteralPath (Get-MaterializerPlanPath $project) -Raw | ConvertFrom-Json
+        $envRefs = @($plan.commands[0].env_refs)
+
+        $envRefs | Should -Contain 'TMPDIR'
+        $envRefs | Should -Contain 'PATH'
+        $envRefs | Should -Not -Contain 'PSModulePath' -Because 'measured: pwsh reconstitutes a full default module path when the variable is absent, so the env_ref is not load-bearing'
+    }
+
+    It 'the starter is written WITHOUT a generated marker, so it is the consumer''s file' {
+        $project = New-StarterProject 'starter-unmarked'
+        Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project | Out-Null
+
+        Test-Path -LiteralPath (Get-MaterializerMarkerPath $project) | Should -BeFalse -Because 'a MARKED generated plan deletes itself on the next run - the materializer removes a generated plan when selection turns unconfigured'
+    }
+
+    It 'a second run PRESERVES the starter rather than overwriting the consumer''s edits' {
+        $project = New-StarterProject 'starter-preserved'
+        Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project | Out-Null
+        $planPath = Get-MaterializerPlanPath $project
+        $edited = (Get-Content -LiteralPath $planPath -Raw).Replace('"timeout_seconds": 180', '"timeout_seconds": 240')
+        [IO.File]::WriteAllText($planPath, $edited, [Text.UTF8Encoding]::new($false))
+
+        $second = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project
+        $second.action | Should -Be 'preserved-explicit-plan'
+        (Get-Content -LiteralPath $planPath -Raw) | Should -Be $edited -Because 'the consumer owns this file the moment it exists'
+    }
+
+    It 'the dotnet/npm templates ship BESIDE the plan, never inside its closed schema' {
+        # The plan schema admits schema_version, plan_id and commands only, with the stated rationale
+        # that no secret can ride an unrecognized field. Templates therefore cannot be an extra key or
+        # a disabled-command flag without reopening a containment rule that exists for secrets.
+        $project = New-StarterProject 'starter-templates'
+        Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project | Out-Null
+        $templates = Join-Path $project '.specrew/verification-plan.templates.md'
+
+        Test-Path -LiteralPath $templates | Should -BeTrue
+        $body = Get-Content -LiteralPath $templates -Raw
+        $body | Should -Match '(?i)"executable":\s*"dotnet"'
+        $body | Should -Match '(?i)"executable":\s*"npm"'
+        $body | Should -Match '(?i)env var|by NAME|never by value' -Because 'the no-secrets rule is the one thing a consumer editing this file must not learn the hard way'
+        $plan = Get-Content -LiteralPath (Get-MaterializerPlanPath $project) -Raw | ConvertFrom-Json
+        # Order-independent: the canonical serializer sorts keys. What matters is that NOTHING beyond
+        # the three the schema admits rode along - the closed shape is a no-secrets rule, not a style.
+        @($plan.PSObject.Properties.Name) | Sort-Object | Should -Be @('commands', 'plan_id', 'schema_version')
+    }
+
+    It 'PreviewOnly reports the starter without writing anything' {
+        $project = New-StarterProject 'starter-preview'
+        $result = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project -PreviewOnly
+
+        $result.action | Should -Be 'would-create-starter-plan'
+        $result.mutated | Should -BeFalse
+        Test-Path -LiteralPath (Get-MaterializerPlanPath $project) | Should -BeFalse
+    }
+
+    It 'an npm project still gets its DETECTED plan - the starter is a fallback, not an override' {
+        $project = New-StarterProject 'starter-not-override'
+        Write-PackageTestScript $project 'node test.js'
+        $result = Invoke-ContinuousCoReviewVerificationPlanMaterialization -RepoRoot $project
+
+        $result.selection.source_kind | Should -Be 'project-detected' -Because 'the starter must never shadow a real detected plan'
+        $result.action | Should -Be 'created-generated-plan'
+    }
+}
+
 Describe 'T063 verification-plan materialization and guarded refresh' {
     It 'recognizes only a real package.json scripts.test declaration' {
         $valid = New-MaterializerProject 'detector-valid'
