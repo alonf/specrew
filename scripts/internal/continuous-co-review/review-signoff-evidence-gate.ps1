@@ -19,6 +19,19 @@ Set-StrictMode -Version Latest
 # throw-to-refuse gate stays deferred until the F-185 host-neutral gate-enforcement branch
 # merges; Assert-ContinuousCoReviewSignoffGate is the thin throw-wrapper that wiring will call.
 
+# HARD dependency: the ONE path-identity primitive. Test-ReviewCampaignDeltaIsRecordsOnly asks it for
+# the volume's case rule, and without this load the call depended on whatever ambient load order the
+# caller happened to have - the SHADOWING class where a duplicate loaded later silently answers with
+# the OS-family rule, invisibly, at every call site. Third instance of this class in one day
+# (DRIFT-199-I001-014 in worktree-navigator.ps1 was the second), which is why beta4's target is making
+# the primitive the only REACHABLE path rather than the recommended one.
+# Guarded on the exact function this file calls rather than on a sibling name: DRIFT-198-I009-027's
+# shadow survived a guard that probed a DIFFERENT name, and a stale copy of path-identity.ps1
+# satisfies the older names while lacking anything added since.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'path-identity.ps1')
+}
+
 function New-ContinuousCoReviewSignoffGateDecision {
     param(
         [Parameter(Mandatory)]
@@ -327,11 +340,32 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     # not implementation, which is the distinction that stops a drift-log commit invalidating the
     # review that produced it (DRIFT-199-I001-013).
     #
-    # An EMPTY or unknown delta returns $false - fail closed. Absence of evidence is not evidence.
+    # -RepoRoot is REQUIRED for that no-drift promise to hold, and its absence is what made the first
+    # revision of this predicate fail OPEN. `Get-ContinuousCoReviewMachineryPaths` answers DIFFERENTLY
+    # depending on the root it is given: called bare it cannot run Test-ContinuousCoReviewSpecrewSourceRepo,
+    # so it takes the DEPLOYED-project branch and appends `scripts/internal/continuous-co-review`,
+    # `scripts/internal/agent-tasks` and `scripts/internal/atomic-write.ps1` to the machinery list. In the
+    # Specrew SOURCE repo those paths are the feature under review, not machinery - so a bare call
+    # classified a change to the co-review engine itself as records-only and left a stale review looking
+    # current. Under-staling is the one direction this feature must never fail in, and the digest strip
+    # (Test-ReviewCampaignFinalizationEnvelope) already passes -RepoRoot, so a bare call here was also a
+    # live divergence from the very list this comment promises it can never drift from.
+    #
+    # An EMPTY or unknown delta returns $false - fail closed. Absence of evidence is not evidence. An
+    # absent or unresolvable RepoRoot fails closed the same way rather than guessing a machinery list:
+    # guessing is exactly what produced the defect above. Not [Parameter(Mandatory)] on purpose - this
+    # runs on the Stop path, where a missing mandatory parameter prompts an interactive host and hangs
+    # the hook instead of failing.
     [CmdletBinding()]
-    param([AllowNull()][object[]]$ChangedPaths)
+    param(
+        [AllowNull()][object[]]$ChangedPaths,
+        [AllowNull()][AllowEmptyString()][string]$RepoRoot
+    )
 
     if ($null -eq $ChangedPaths -or @($ChangedPaths).Count -eq 0) { return $false }
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $false }
+    try { $resolvedRoot = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction Stop).Path }
+    catch { return $false }
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
         $reviewerModule = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
         if (Test-Path -LiteralPath $reviewerModule -PathType Leaf) { try { . $reviewerModule } catch { $null = $_ } }
@@ -340,13 +374,19 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
 
     $recordsRoots = @('specs')
     try {
-        foreach ($machinery in @(Get-ContinuousCoReviewMachineryPaths)) {
+        foreach ($machinery in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRoot)) {
             if (-not [string]::IsNullOrWhiteSpace($machinery)) { $recordsRoots += (([string]$machinery -replace '\\', '/').Trim('/')) }
         }
     }
     catch { return $false }
 
-    $comparison = Get-ContinuousCoReviewPathComparison -Path $PSScriptRoot -WhenUndetermined 'distinct'
+    # The volume that decides case here is the one holding the CHANGED PATHS - the project - never the
+    # one holding this script. They are routinely different volumes: on the default CurrentUser install
+    # the engine sits under a OneDrive-backed Modules directory while the project is on a local disk
+    # (DRIFT-199-I001-005), and asking the engine's volume for the project's case rule is the same
+    # wrong-source mistake as an $IsWindows shortcut. 'distinct' keeps an undetermined volume STALING:
+    # this predicate can only ever quiet the surface, so undetermined must never let it.
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $resolvedRoot -WhenUndetermined 'distinct'
     foreach ($raw in @($ChangedPaths)) {
         $path = ([string]$raw -replace '\\', '/').Trim().Trim('/')
         if ([string]::IsNullOrWhiteSpace($path)) { continue }
@@ -368,6 +408,9 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     param(
         [Parameter(Mandatory)][string]$CampaignId,
         [Parameter(Mandatory)][string]$CurrentDigest,
+        # The project root the delta below belongs to. Absent, the records-only classification fails
+        # CLOSED (stales) rather than guessing a machinery list - see Test-ReviewCampaignDeltaIsRecordsOnly.
+        [AllowNull()][AllowEmptyString()][string]$RepoRoot,
         [AllowEmptyCollection()][string[]]$OrderedRunIds = @(),
         [AllowEmptyCollection()][object[]]$Results = @(),
         [AllowNull()]$ActiveRun,
@@ -454,7 +497,7 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         # FR-009: only reviewable content stales a review. Machinery and the lifecycle records tree
         # are not reviewable content, so recording what a review found cannot invalidate it.
         if ($null -ne $ChangedPathsSinceResult -and
-            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult)) {
+            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult -RepoRoot $RepoRoot)) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'proceed'
         }
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'

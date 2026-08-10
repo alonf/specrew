@@ -22,9 +22,10 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 50% (1/2 resolved)
-**Specification drift**: None detected (both events are process observations)
+**Total drift events**: 17 (DRIFT-199-I001-001 through -017)
+**Resolution status**: carried per event in each entry's own heading — several are marked open with a
+recorded maintainer ruling, so a single rate here would misstate them.
+**Specification drift**: None detected; the events are defect and process records.
 
 ## Before-implement verdict — ratification clause (maintainer, 2026-08-10)
 
@@ -249,6 +250,96 @@ surfaced explicitly at the next boundary, never absorbed silently.
   re-read variant, per the iteration-009 revert note), which is conformance-provider work outside
   this feature's ten items — so the default routing is beta4, unless the spurious-block behaviour
   is judged to hit the acceptance bar's wedged-gate clause.
+
+### DRIFT-199-I001-016 — the records-only predicate asked the machinery resolver with no root, and failed OPEN (resolved)
+
+- **Observed**: 2026-08-10. The T003 case `a delta containing implementation DOES stale it`
+  expected `review-stale` and got `review-current`. A delta containing
+  `scripts/internal/continuous-co-review/worktree-navigator.ps1` classified as records-only.
+- **Hypotheses ruled out first, so the record shows what the cause was NOT**: there are no blank
+  entries in the machinery list (a blank root would match every path via `StartsWith`), and the
+  predicate's early return for a non-records path was present and correct.
+- **The measured cause**: `Get-ContinuousCoReviewMachineryPaths` answers DIFFERENTLY depending on
+  the root it is handed, and `Test-ReviewCampaignDeltaIsRecordsOnly` called it BARE. With no root
+  it cannot run `Test-ContinuousCoReviewSpecrewSourceRepo`, so it takes the DEPLOYED-project branch
+  (worktree-reviewer.ps1:116-125) and appends `scripts/internal/continuous-co-review`,
+  `scripts/internal/agent-tasks` and `scripts/internal/atomic-write.ps1` to the machinery list.
+  Measured directly rather than reasoned about — the bare call returns THIRTEEN entries, not the
+  ten-entry core list:
+
+  > `.specrew .specify .squad .agents .antigravitycli .git .claude/settings.local.json CLAUDE.md`
+  > `AGENTS.md GEMINI.md scripts/internal/continuous-co-review scripts/internal/agent-tasks`
+  > `scripts/internal/atomic-write.ps1`
+
+- **Severity — it fails in the one direction this feature must never fail in**: in the Specrew
+  SOURCE repo those three paths are the feature under review, not machinery. A change to the
+  co-review engine itself therefore classified as records-only and left a stale review reading as
+  current. Under-staling means a real code change slips past a review; every other rule in this
+  feature fails toward staling more.
+- **Second defect in the same predicate, found while fixing the first**: the comment above it
+  promises the machinery list "can never drift from the digest and worktree strips". It had already
+  drifted — the digest strip in `Test-ReviewCampaignFinalizationEnvelope` passes `-RepoRoot`, so the
+  two lists were computed from different questions in the same file.
+- **Third, same call site**: the case rule came from `Get-ContinuousCoReviewPathComparison -Path
+  $PSScriptRoot` — the volume holding the ENGINE, not the volume holding the changed paths. On the
+  default CurrentUser install those are routinely different volumes (DRIFT-199-I001-005 is that exact
+  split: engine under OneDrive, project on a local disk). Asking the engine's volume for the
+  project's case rule is the same wrong-source mistake as an `$IsWindows` shortcut.
+- **Citation**: FR-009 (records deltas must not stale a reviewed digest); FR-012 (the one machinery
+  resolver); the path-identity volume rule (DRIFT-198-I009-018).
+- **Resolution**: FIXED. `-RepoRoot` threaded through `Resolve-ReviewCampaignVerdictPacketDecision`
+  into the predicate and on to the resolver, so the answer belongs to the root being classified; the
+  comparison now asks the PROJECT's volume; and an absent or unresolvable root fails CLOSED (stales)
+  rather than guessing a machinery list, since guessing is what produced this. Not made a mandatory
+  parameter on purpose: this runs on the Stop path, where a missing mandatory parameter prompts an
+  interactive host and hangs the hook instead of failing.
+  **Both directions of the same call are now pinned**, because the fix is "consult the resolver for
+  THIS root", not "hardcode the source-repo answer": in the source repo the engine path stales; under
+  a non-source root the identical path is records-only; an unresolvable root stales. Evidence: 11/11
+  green in `tests/continuous-co-review/unit/campaign-stop-authority.Tests.ps1`, and 88/88 green
+  across `review-public-campaign-command`, `review-window-codex-default`,
+  `campaign-activation-implementation-premise` and `continuous-co-review-navigator`.
+
+### DRIFT-199-I001-017 — path-identity, THIRD instance in one day; and what the guard actually did (resolved)
+
+- **Observed**: 2026-08-10. `review-signoff-evidence-gate.ps1` calls
+  `Get-ContinuousCoReviewPathComparison` but carried NO file-scope dot-sources at all, so the call
+  depended on ambient load order — the SHADOWING class where a duplicate primitive loaded later
+  silently answers with the OS-family rule, invisibly, at every call site.
+- **Third instance of this class in a single day**, in the very file T003 was editing: the first used
+  the wrong comparison, the second (DRIFT-199-I001-014, worktree-navigator.ps1) used the right one
+  unsafely, this one repeats the second in a different file.
+- **Resolution**: FIXED the same way — a file-scope guarded dot-source, guarded on
+  `Get-ContinuousCoReviewPathComparison`, the exact function this file calls. Guarding on the exact
+  function rather than a sibling name is the sharper form (`review-engine-resolution.ps1` uses it):
+  DRIFT-198-I009-027's shadow survived a guard that probed a DIFFERENT name, and a stale copy of
+  path-identity.ps1 satisfies the older names while lacking anything added since.
+
+**The guard finding, CORRECTED by measurement — the working assumption was that the guard had missed
+this instance, so it was not scanning every file that calls the primitive. It is, and it did not miss
+it.** Run against the tree before any fix, `path-identity.Tests.ps1` was already RED, naming the file:
+
+> `because review-signoff-evidence-gate.ps1 must load the primitive into its own scope, but it did
+> not match.` (14 passed, 1 failed, 1 skipped)
+
+The guard enumerates its consumers DYNAMICALLY — every `*.ps1` under the co-review directory whose
+source matches the primitive's call spelling — so the new consumer was picked up the moment the call
+was written. Widening its file enumeration would buy nothing; there is nothing to widen.
+
+**What the real gap is, and why it matters more than the assumed one**: the guard was never RUN. The
+previous session added the call and then ran only the T003 fixture, so a red guard sat in the tree and
+was committed inside `c14a063f`. The failure was authored, detected, and unobserved. Consequences
+recorded as facts:
+
+- The branch total at `c14a063f` was **EIGHTEEN**, not seventeen — seventeen inherited plus this
+  self-inflicted guard failure. This entry is the reason a reader will find that number in the
+  history; the restated SEVENTEEN baseline is correct for the branch point, not for that commit.
+- **The beta4 sharpening changes shape.** The lesson is NOT "make the guard scan more files". It is
+  that a guard only guards code whose author runs it, and a per-file edit does not know which guard
+  it just broke. That is one more argument for the consolidation target already recorded — making the
+  primitive the ONLY REACHABLE path rather than the recommended one — and a second, cheaper one for
+  beta4: the class-guard suites belong in whatever runs on every edit to the co-review engine, not in
+  a suite chosen by the person who just changed it.
 
 ### Measured proof line — first successful end-to-end campaign round
 
