@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 22 (DRIFT-199-I001-001 through -022)
+**Total drift events**: 23 (DRIFT-199-I001-001 through -023)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -180,6 +180,11 @@ surfaced explicitly at the next boundary, never absorbed silently.
 - **Resolution**: in scope, covered by task T007 in the harness queue / T006 in tasks.md —
   the reparse-tag work. This instance is added as a second RED reproduction target: the
   remediation door must work from a cloud-placeholder install.
+  **FIRST ATTEMPT DID NOT FIX IT — see DRIFT-199-I001-023.** The classifier committed in `a95a453c`
+  detected only DEHYDRATED placeholders, so on this very install every file still refused. The cloud
+  family was widened to the pinned/unpinned retention markers and re-measured against these exact files;
+  `_load.ps1` now classifies `hydrate-cloud`. Recorded rather than quietly amended, because a green suite
+  reported this fixed while it was not.
   **CODE LANDED 2026-08-10, MEASUREMENT STILL OWED.** All three integrity checks now route through the
   one reparse-tag policy: a symlink or junction still refuses, an unrecognised tag fails closed, and a
   cloud placeholder is read rather than refused — `Get-SpecrewReviewRuntimeManagedTextSha256` is the
@@ -578,6 +583,83 @@ contract a heuristic and therefore not a contract.
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
 
+### DRIFT-199-I001-023 — the reparse classifier detected only DEHYDRATED placeholders, so T006 did not fix the bug it was written for (resolved)
+
+- **Observed**: 2026-08-10, by the MAINTAINER measuring their own installed module at
+  `Documents\PowerShell\Modules\Specrew\0.40.0` through the just-committed classifier (`a95a453c`):
+
+  > `CHANGELOG.md  attrs 0x80420  ->  refuse-unknown`
+  > `install.sh    attrs 0x80420  ->  refuse-unknown`
+  > `LICENSE       attrs 0x80420  ->  refuse-unknown`
+
+  `0x80420` is ReparsePoint + Archive + `FILE_ATTRIBUTE_PINNED` (`0x00080000`) — a HYDRATED,
+  locally-available OneDrive file. None of `OFFLINE`, `RECALL_ON_OPEN` or `RECALL_ON_DATA_ACCESS` is
+  set, so the cloud branch never fired and every file fell through to `refuse-unknown`.
+- **THE DEFECT IS THE PREDICATE'S BASIS, not a missing constant.** All three original markers describe a
+  file that is NOT CURRENTLY DOWNLOADED — a TRANSIENT STATE a file leaves the moment anyone reads it —
+  when the property the predicate means to test is the STABLE one: is this file cloud-backed. This is the
+  snapshot-versus-state family again, in a new place.
+- **And it is exactly why the fixtures passed.** They SYNTHESISED the dehydrated shape, so they could
+  only ever confirm the shape they invented; dehydrated was the only state the predicate could see. The
+  suite was green about a case that does not occur on a working install, while the case that does occur
+  on every working install was refused.
+- **Severity**: T006 as committed did NOT fix DRIFT-199-I001-005 on the machine that produced it. The
+  sanctioned remediation door stayed shut, and the green suite said otherwise.
+- **DO NOT generalise to "any reparse point .NET does not call a link is safe"** (maintainer, measured on
+  the same machine): an AppExecLink at `LOCALAPPDATA\Microsoft\WindowsApps\winget.exe` reports
+  `attrs 0x420` with `LinkType` EMPTY and no `LinkTarget` — attribute-identical to a symbolic link and
+  separable only by `LinkType`. Allow-by-default would admit it. **The allowlist stays.**
+- **Resolution**: FIXED, RED first (5 failing cases before any product edit). The cloud family widened to
+  the four REAL OneDrive states by adding `FILE_ATTRIBUTE_PINNED` (`0x00080000`) and
+  `FILE_ATTRIBUTE_UNPINNED` (`0x00100000`) — the consumer's RETENTION CHOICE, which survives hydration —
+  alongside the three transient markers. The cloud branch now requires `LinkType` AND `LinkTarget` to be
+  BOTH absent, and the item shim passes the raw target through rather than only folding it into the
+  type: widening the markers makes that guard load-bearing rather than theoretical, since a redirect
+  carrying a pinned bit would otherwise be admitted.
+- **Fixtures**: `0x80420` is pinned AS MEASURED DATA with a comment naming where it came from, kept as a
+  literal rather than composed from constants because it is evidence. All four states are synthesised —
+  pinned and unpinned, hydrated and dehydrated — so a future NARROWING fails loudly. The AppExecLink case
+  is pinned too, with the 0x80420-versus-0x420 pair asserted side by side so the one bit separating them
+  cannot be optimised away.
+- **Evidence — measured on the real install, not synthesised**, after the fix:
+
+  > `CHANGELOG.md     attrs 0x80420  ->  hydrate-cloud`
+  > `install.sh       attrs 0x80420  ->  hydrate-cloud`
+  > `LICENSE          attrs 0x80420  ->  hydrate-cloud`
+  > `_load.ps1        attrs 0x80420  ->  hydrate-cloud`   <- the file DRIFT-199-I001-005 died on
+  > `winget.exe       attrs 0x420  LinkType='' LinkTarget=(absent)  ->  refuse-unknown`
+
+  Live symlink and junction refusal fixtures re-run and green, so the refusing direction is untouched.
+- **The class was swept for other instances, and the sweep is clean where it matters.** The cloud
+  attribute constants exist in exactly ONE file (`reparse-tag-policy.ps1`), so no second copy of this
+  predicate can be drifting — the consolidation this feature argued for, working.
+  **One APPARENT instance, measured and found NOT to be one on its own platform — CLOSED, not deferred**
+  (maintainer, 2026-08-10). `scripts/specrew-install-shell-wrappers.ps1:148-149` classifies any reparse
+  point as a link, which read as the same blanket-refusal shape. It is not, because that script never
+  runs where the shape exists:
+
+  - It is **macOS/Linux only** — stated in its synopsis and, checked in CODE rather than taken from the
+    comment (the DRIFT-199-I001-016 trap), enforced at the entry point: `Test-IsUnixPlatform` gates
+    `Invoke-SpecrewInstallShellWrappers` at line 181 and returns before any path is classified. On
+    Windows it is an explained no-op. Default bin directory `$HOME/.local/bin`.
+  - The cloud-placeholder attribute model (`PINNED`, `UNPINNED`, `RECALL_ON_*`, `OFFLINE`) is a **Windows
+    CloudFilter** mechanism. On Unix, .NET sets `ReparsePoint` **only** for symlinks.
+
+  So on the platform that script actually runs on, "any reparse point is a link" is **CORRECT**, and
+  there is no reachable instance of the class there. **Recorded as CLOSED rather than routed to beta4** —
+  a deferral would have left beta4 an open item that does not exist, which is its own kind of false
+  record. **If that script ever gains a Windows path, this note is the reason to revisit it.**
+
+  The sweep's conclusion therefore reads: the constants live in one file, and the one apparent second
+  instance was measured and found not to be one.
+- **THE LESSON, and it is the THIRD time this session that measuring the real artifact contradicted a
+  confident model of it** (after the `Get-ContinuousCoReviewMachineryPaths` comment and the demotion
+  marks). The classifier was designed from the .NET API surface and a table of attribute constants, and
+  it was WRONG about the only case that matters. A fixture can only prove the shape it synthesises; the
+  real value came from measuring the maintainer's install. **When a predicate describes an external
+  system's state, the fixture is a regression guard — it is not the evidence that the predicate is
+  right.** That evidence has to come from the real artifact, once, before the fixture is believed.
+
 ### DRIFT-199-I001-022 — the trust-hardening validator cannot match a verdict it has (observation, routes to beta4)
 
 - **Observed**: 2026-08-10, incidental to the T007 PSModulePath measurement. The governance
@@ -683,14 +765,36 @@ is refused before hashing or deleting"). The store's falsifiability mutation gat
 link-blind store. Each of the three call sites is proven to CONSULT the one classifier and to honour a
 `hydrate-cloud` answer.
 
-**What it does NOT prove.** No agent can materialise a real cloud placeholder on a local volume, so the
-`hydrate-cloud` cases reach the call sites through a MOCKED classifier. That establishes the wiring and
-the decision; it does not establish that a real OneDrive placeholder hydrates on read and hash-verifies
-afterwards. The end-to-end leg remains the maintainer's manual measurement on the T067-class install,
-exactly as the task specifies — and DRIFT-199-I001-005 is its RED reproduction target: `specrew review
---remediate override-block` through the INSTALLED module on the OneDrive-backed Documents folder must
-now open the remediation door instead of exiting 1 with
-`review-runtime-managed-file-link-unsupported`.
+**AMENDED 2026-08-10 after DRIFT-199-I001-023 — the evidence position changed materially, and the
+original wording of this entry was part of the problem.** It treated "the cloud branch is unit-testable
+by attribute synthesis" as an acceptable substitute for measuring the real thing. It was not: the
+synthesised attributes described a state that does not occur on a working install, and the classifier was
+wrong about every file on the maintainer's own machine while this entry called the evidence adequate.
+
+**Now measured on the REAL install** (transcribed in DRIFT-199-I001-023): the four files including
+`_load.ps1` — the exact path the original refusal died on — classify `hydrate-cloud` at `0x80420`, and a
+real AppExecLink still refuses. The CLASSIFIER is therefore no longer seam-only evidence; it has been run
+against the real artifacts it exists to judge.
+
+**What is still NOT proven.** That a DEHYDRATED placeholder actually hydrates on read and hash-verifies
+afterwards — every file measured was already local, so the fetch path itself has not been exercised.
+
+**NO LONGER A DEFERRED HUMAN MEASUREMENT (maintainer ruling, 2026-08-10).** The reviewer session has
+shell access to the same machine and the installed module carries 396 real cloud-backed files, so the
+decisive leg is executable here rather than owed. It runs in TWO HALVES against the committed tree, and
+they prove different things:
+
+1. **ADMISSION** — dot-source the committed `reparse-tag-policy.ps1` and `review-engine-resolution.ps1`
+   from the beta3 tree and call `Get-SpecrewReviewRuntimeManagedTextSha256` against a file under the
+   installed module. That is the exact function whose refusal on `_load.ps1` opened
+   DRIFT-199-I001-005. Expected: a hash, not `review-runtime-managed-file-link-unsupported`.
+2. **HYDRATION** — evict a file FIRST so `RECALL_ON_DATA_ACCESS` is genuinely set (`attrib -p +u`, or the
+   folder's "Free up space"), confirm the attribute actually flipped, then run the same probe. This is
+   the only half that proves the three things no seam test can reach: a dehydrated placeholder
+   classifies as cloud, READING IT HYDRATES, and the hash verifies the bytes that arrived.
+
+Both transcriptions are recorded against DRIFT-199-I001-005. **It closes only on the SECOND** — the first
+proves admission, the second proves the property the whole branch exists for.
 
 **The hydration-FAILURE path is likewise seam-proven**: the wrap is exercised by a path whose read
 fails for an ordinary reason, which shows the message is produced and shaped, not that a sync client

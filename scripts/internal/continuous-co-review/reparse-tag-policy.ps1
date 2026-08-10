@@ -33,6 +33,13 @@ $script:SpecrewAttrReparsePoint = 0x00000400
 $script:SpecrewAttrOffline = 0x00001000
 $script:SpecrewAttrRecallOnOpen = 0x00040000
 $script:SpecrewAttrRecallOnDataAccess = 0x00400000
+# PINNED and UNPINNED are the STABLE half of the cloud family, and leaving them out was the defect
+# (DRIFT-199-I001-023). The three attributes above all describe a file that is NOT CURRENTLY
+# DOWNLOADED - a transient state a file leaves the moment anyone reads it. These two describe the
+# consumer's RETENTION CHOICE for a cloud-backed file and survive hydration, which is the property
+# this predicate actually means to test.
+$script:SpecrewAttrPinned = 0x00080000
+$script:SpecrewAttrUnpinned = 0x00100000
 
 function Resolve-SpecrewReparseDisposition {
     # PURE decision over (attributes, link type). Pure on purpose: no agent can materialise a cloud
@@ -45,7 +52,8 @@ function Resolve-SpecrewReparseDisposition {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][int]$Attributes,
-        [AllowNull()][AllowEmptyString()][string]$LinkType
+        [AllowNull()][AllowEmptyString()][string]$LinkType,
+        [AllowNull()][AllowEmptyString()][string]$LinkTarget
     )
 
     if (($Attributes -band $script:SpecrewAttrReparsePoint) -eq 0) {
@@ -62,8 +70,19 @@ function Resolve-SpecrewReparseDisposition {
         return [pscustomobject]@{ disposition = 'refuse-link'; family = 'redirecting'; link_type = $LinkType }
     }
 
-    $cloudMask = $script:SpecrewAttrRecallOnDataAccess -bor $script:SpecrewAttrRecallOnOpen -bor $script:SpecrewAttrOffline
-    if (($Attributes -band $cloudMask) -ne 0) {
+    # The cloud family is BOTH halves: the retention choice (pinned/unpinned), which is stable and
+    # survives hydration, and the not-yet-local markers, which are transient. Keying on the transient
+    # half alone meant a file stopped being recognised as cloud-backed the moment it was downloaded -
+    # so on a real install, where everything was hydrated, every file fell through to refuse-unknown.
+    $cloudMask = $script:SpecrewAttrRecallOnDataAccess -bor $script:SpecrewAttrRecallOnOpen -bor
+    $script:SpecrewAttrOffline -bor $script:SpecrewAttrPinned -bor $script:SpecrewAttrUnpinned
+    # BOTH link signals must be absent before anything reaches this branch. LinkType is already known
+    # not to be a symlink or junction by the check above, but "not a family we name" is not the same as
+    # "not a link at all", and a host that exposes a TARGET without a TYPE still proves the path
+    # redirects. Widening the cloud markers makes this guard load-bearing rather than theoretical:
+    # without it, a redirect carrying a pinned bit would now be admitted.
+    $redirects = (-not [string]::IsNullOrWhiteSpace($LinkType)) -or (-not [string]::IsNullOrWhiteSpace($LinkTarget))
+    if ((-not $redirects) -and (($Attributes -band $cloudMask) -ne 0)) {
         return [pscustomobject]@{ disposition = 'hydrate-cloud'; family = 'cloud-files'; link_type = $null }
     }
 
@@ -85,15 +104,19 @@ function Get-SpecrewReparseDispositionForItem {
     param([Parameter(Mandatory)]$Item)
 
     $linkType = $null
+    $linkTarget = $null
     # LinkType is absent on older hosts; its absence must not throw under StrictMode and must not be
     # read as "not a link" without also considering LinkTarget.
     if ($Item.PSObject.Properties['LinkType']) { $linkType = [string]$Item.LinkType }
-    if ([string]::IsNullOrWhiteSpace($linkType) -and $Item.PSObject.Properties['LinkTarget']) {
+    if ($Item.PSObject.Properties['LinkTarget']) { $linkTarget = [string]$Item.LinkTarget }
+    if ([string]::IsNullOrWhiteSpace($linkType) -and -not [string]::IsNullOrWhiteSpace($linkTarget)) {
         # A host that exposes a target but not a type still proves the path REDIRECTS. Treated as the
         # refusing family rather than as unknown, because what matters is that it points elsewhere.
-        if (-not [string]::IsNullOrWhiteSpace([string]$Item.LinkTarget)) { $linkType = 'SymbolicLink' }
+        $linkType = 'SymbolicLink'
     }
-    return Resolve-SpecrewReparseDisposition -Attributes ([int]$Item.Attributes) -LinkType $linkType
+    # The raw target is passed through as well, not just folded into the type above: the cloud branch
+    # requires BOTH signals absent, and it should not depend on this shim's inference to stay closed.
+    return Resolve-SpecrewReparseDisposition -Attributes ([int]$Item.Attributes) -LinkType $linkType -LinkTarget $linkTarget
 }
 
 function Get-SpecrewReparseTagDisposition {

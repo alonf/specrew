@@ -38,6 +38,15 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
         $script:AttrOffline = 0x00001000
         $script:AttrRecallOnOpen = 0x00040000
         $script:AttrRecallOnDataAccess = 0x00400000
+        $script:AttrPinned = 0x00080000
+        $script:AttrUnpinned = 0x00100000
+
+        # MEASURED ON THE MAINTAINER'S MACHINE, 2026-08-10, against the installed module at
+        # Documents\PowerShell\Modules\Specrew\0.40.0 - CHANGELOG.md, install.sh and LICENSE all
+        # reported this exact value. Kept as a literal rather than composed from the constants above,
+        # because it is EVIDENCE: it is what a real hydrated OneDrive file looks like, and the first
+        # version of this classifier refused all three as refuse-unknown.
+        $script:MeasuredHydratedOneDriveAttrs = 0x00080420
     }
 
     Context 'the redirecting family still refuses - unchanged behaviour' {
@@ -67,6 +76,69 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
         ) {
             $d = Resolve-SpecrewReparseDisposition -Attributes ($script:AttrArchive -bor $script:AttrReparsePoint -bor $attr) -LinkType $null
             $d.disposition | Should -Be 'hydrate-cloud' -Because "$name marks a placeholder, which redirects nothing"
+        }
+    }
+
+    # THE DEFECT THIS CONTEXT EXISTS FOR (maintainer measurement, 2026-08-10). The first classifier
+    # keyed the cloud family on OFFLINE / RECALL_ON_OPEN / RECALL_ON_DATA_ACCESS - all three of which
+    # describe a file that is NOT CURRENTLY DOWNLOADED. That is a TRANSIENT STATE, not the stable
+    # property the predicate means to test, which is "is this file cloud-backed". A file stops matching
+    # the moment anyone reads it.
+    #
+    # Which is exactly why the original fixtures passed: they SYNTHESISED the dehydrated shape, so they
+    # could only ever confirm the shape they invented. On the real install every file was hydrated and
+    # fell through to refuse-unknown, so T006 did not fix DRIFT-199-I001-005 on the machine that
+    # produced it. Snapshot-versus-state, in a new place.
+    Context 'a cloud file is cloud-backed whether or not it is downloaded RIGHT NOW' {
+        It 'the MEASURED hydrated OneDrive attributes hydrate rather than refuse' {
+            $d = Resolve-SpecrewReparseDisposition -Attributes $script:MeasuredHydratedOneDriveAttrs -LinkType $null
+            $d.disposition | Should -Be 'hydrate-cloud' -Because 'this exact value was measured on three files of the maintainer''s own install, every one of which the first classifier refused'
+            $d.family | Should -Be 'cloud-files'
+        }
+
+        It 'all FOUR real states classify as cloud, not just the two dehydrated ones' -ForEach @(
+            @{ name = 'pinned + hydrated (the measured case)'; attr = 0x00080000 }
+            @{ name = 'unpinned + hydrated'; attr = 0x00100000 }
+            @{ name = 'pinned + dehydrated'; attr = (0x00080000 -bor 0x00400000) }
+            @{ name = 'unpinned + dehydrated'; attr = (0x00100000 -bor 0x00001000) }
+        ) {
+            # Synthesising all four is the guard against a future NARROWING: drop either new marker and
+            # this fails loudly instead of going quiet on hydrated files again.
+            $d = Resolve-SpecrewReparseDisposition -Attributes ($script:AttrArchive -bor $script:AttrReparsePoint -bor $attr) -LinkType $null
+            $d.disposition | Should -Be 'hydrate-cloud' -Because "$name is a cloud-backed file"
+        }
+    }
+
+    # The maintainer's explicit warning, pinned so nobody "simplifies" the allowlist away later.
+    Context 'do NOT generalise to "any reparse point .NET does not call a link is safe"' {
+        It 'an AppExecLink is attribute-identical to a symlink and must still refuse' {
+            # MEASURED on the same machine: LOCALAPPDATA\Microsoft\WindowsApps\winget.exe reports
+            # attrs 0x420 with LinkType EMPTY and no LinkTarget - indistinguishable from a symbolic
+            # link by attributes alone, separable only by LinkType. Allow-by-default would admit it.
+            $d = Resolve-SpecrewReparseDisposition -Attributes 0x00000420 -LinkType $null
+            $d.disposition | Should -Be 'refuse-unknown' -Because 'the allowlist stays; an unrecognised redirect is refused, not admitted'
+        }
+
+        It 'the ONLY thing separating a hydrated cloud file from an AppExecLink is a cloud marker bit' {
+            # 0x80420 vs 0x420. If the cloud test ever widens to "reparse point without a link type",
+            # these two collapse into one answer and the containment class returns.
+            (Resolve-SpecrewReparseDisposition -Attributes 0x00080420 -LinkType $null).disposition | Should -Be 'hydrate-cloud'
+            (Resolve-SpecrewReparseDisposition -Attributes 0x00000420 -LinkType $null).disposition | Should -Be 'refuse-unknown'
+        }
+
+        It 'a link carrying a cloud marker is STILL refused, on both new markers' -ForEach @(
+            @{ name = 'pinned symlink'; attr = 0x00080000; link = 'SymbolicLink' }
+            @{ name = 'unpinned junction'; attr = 0x00100000; link = 'Junction' }
+        ) {
+            $d = Resolve-SpecrewReparseDisposition -Attributes ($script:AttrArchive -bor $script:AttrReparsePoint -bor $attr) -LinkType $link
+            $d.disposition | Should -Be 'refuse-link' -Because 'cloud-ness never promotes a link out of refusal - that would reopen the containment hole through the new branch'
+        }
+
+        It 'a LinkTarget with no LinkType blocks the cloud branch even when a cloud marker is set' {
+            # The requirement is that LinkType and LinkTarget are BOTH absent before anything reaches
+            # the cloud branch. A host that exposes a target but not a type still proves redirection.
+            $d = Resolve-SpecrewReparseDisposition -Attributes 0x00080420 -LinkType $null -LinkTarget 'D:\elsewhere\CHANGELOG.md'
+            $d.disposition | Should -Not -Be 'hydrate-cloud' -Because 'a path that points elsewhere is a redirect whatever its attributes say'
         }
     }
 
@@ -119,6 +191,42 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
                 if ($junctionMade) { (Get-SpecrewReparseTagDisposition -Path $junction).disposition | Should -Be 'refuse-link' }
             }
             finally { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'classifies a REAL cloud-backed file as cloud, on any machine that has one' {
+            # The standing guard for DRIFT-199-I001-023. Every other cloud case in this file synthesises
+            # its attributes, and synthesis is exactly how the original defect survived: the fixtures
+            # invented the dehydrated shape and proved only that. This case invents nothing - it finds a
+            # real cloud-backed file if the machine has one and asks the classifier about it.
+            #
+            # Skips where no such file exists (CI, a local-only volume) rather than failing, because the
+            # environment is the thing under observation here, not the code.
+            $candidates = @(
+                (Join-Path $env:USERPROFILE 'OneDrive - Zionet LTD\Documents\PowerShell\Modules')
+                (Join-Path $env:USERPROFILE 'OneDrive\Documents\PowerShell\Modules')
+                (Join-Path $env:USERPROFILE 'Documents\PowerShell\Modules')
+            ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+
+            $cloudFile = $null
+            foreach ($root in $candidates) {
+                $cloudFile = Get-ChildItem -LiteralPath $root -File -Recurse -Force -ErrorAction SilentlyContinue |
+                    Where-Object {
+                        # A reparse point carrying any cloud marker: pinned, unpinned, or not-yet-local.
+                        ((([int]$_.Attributes) -band 0x00000400) -ne 0) -and
+                        ((([int]$_.Attributes) -band (0x00080000 -bor 0x00100000 -bor 0x00001000 -bor 0x00040000 -bor 0x00400000)) -ne 0)
+                    } | Select-Object -First 1
+                if ($cloudFile) { break }
+            }
+
+            if (-not $cloudFile) {
+                Set-ItResult -Skipped -Because 'this machine has no cloud-backed module file to observe; nothing real to classify here'
+                return
+            }
+
+            $d = Get-SpecrewReparseDispositionForItem -Item $cloudFile
+            $d.disposition | Should -Be 'hydrate-cloud' -Because (
+                'a real cloud-backed file at {0} (attrs 0x{1:X}) must be read, not refused - refusing these is what made the product unusable on the default install' -f $cloudFile.FullName, [int]$cloudFile.Attributes
+            )
         }
 
         It 'a missing path reports none rather than throwing (callers skip what does not exist)' {
