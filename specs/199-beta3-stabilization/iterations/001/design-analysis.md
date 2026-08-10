@@ -474,6 +474,14 @@ classifier: `Get-ReviewAuthorityStorePath` (authority store, root + every compon
 `Assert-SpecrewReviewRuntimePathContained` and `Get-SpecrewReviewRuntimeManagedTextSha256`
 (module install), and the frozen-snapshot check.
 
+**Correction, measured while wiring the sites (2026-08-10)**: the third group above — "the
+frozen-snapshot check" — does not exist. A tree-wide search for reparse handling finds exactly two
+engine files, `review-authority-store.ps1` (2 checks) and `review-engine-resolution.ps1` (3), and the
+frozen-snapshot path (`Test-GitReviewTargetSnapshotIntegrity`) hashes worktree sources with no reparse
+refusal to discriminate. The five checks that exist were moved; no refusal was invented in the snapshot
+path to match this record, since that would have ADDED a refusal under the banner of removing one.
+Recorded as DRIFT-199-I001-021.
+
 **The OneDrive hydration leg is a MANUAL measurement** on the recorded T067-class environment, per the
 task: an agent cannot materialise a cloud placeholder on a local volume, so that proof line is
 transcribed from the maintainer's install and scoped to it. The classifier's cloud branch is therefore

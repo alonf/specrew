@@ -25,7 +25,7 @@ The phase headings below keep their authoring order; this execution order govern
 
 ## Iteration 001 — Phase 1: review-loop economics (bridge, 5.0 SP)
 
-- [ ] T001 [owner: Implementer] [sp: 3.0] **Pause core** — the round terminal becomes
+- [x] T001 [owner: Implementer] [sp: 3.0] **Pause core** — the round terminal becomes
   the pause: orchestrator writes the PendingPauseFact (atomic CreateNew) after every
   ingest and exits; navigator renders the decision surface (severity groups with
   locations, visibly non-gating minors, cost in rounds/minutes, budget position,
@@ -40,13 +40,13 @@ The phase headings below keep their authoring order; this execution order govern
   SC-002; owns: `scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1`,
   `review-authority-core.ps1`, `review-authority-store.ps1`, navigator renderers,
   `tests/continuous-co-review/unit/pause-terminal.Tests.ps1`)
-- [ ] T002 [owner: Implementer] [sp: 1.0] **Composed stop-here landing** — one
+- [x] T002 [owner: Implementer] [sp: 1.0] **Composed stop-here landing** — one
   orchestrator action chains frozen-tree verification -> identity-bound residual
   acceptance -> gate sync; the T067 wedge (accepted-residuals-on-an-unreviewed-tree)
   is the RED reproduction; landing completes sign-off with zero manual gate
   untangling (Trace: FR-005, SC-004; depends: T001; owns: orchestrator landing
   action, `tests/continuous-co-review/unit/stop-here-landing.Tests.ps1`)
-- [ ] T003 [owner: Implementer] [sp: 1.0] **Single-authority stop surface** — the
+- [x] T003 [owner: Implementer] [sp: 1.0] **Single-authority stop surface** — the
   stale classifier consults `.specrew/review/signoff-gate/latest.json` before any
   block and never contradicts a recorded decision; an authorized in-flight run
   suppresses the block; governance/records-only deltas never stale; a pending
@@ -58,7 +58,7 @@ The phase headings below keep their authoring order; this execution order govern
 
 ## Iteration 001 — Phase 2: capture + reviewer contract (2.0 SP)
 
-- [ ] T004 [owner: Implementer] [sp: 1.5] **Verdict capture contract** — leading
+- [x] T004 [owner: Implementer] [sp: 1.5] **Verdict capture contract** — leading
   recognized approval phrase wins over trailing instruction wording
   (approve-with-instructions captures; classifier and response contract agree);
   capture scans marker-forward past non-verdict turns (first verdict-bearing human
@@ -71,7 +71,7 @@ The phase headings below keep their authoring order; this execution order govern
   `scripts/internal/deploy-refocus-hooks.ps1`, hooks status/doctor,
   `tests/bootstrap/ConversationCapture.Tests.ps1`,
   `tests/integration/hooks-reconcile.Tests.ps1`)
-- [ ] T005 [owner: Implementer] [sp: 0.5] **Verdict-goal reviewer prompt contract** —
+- [x] T005 [owner: Implementer] [sp: 0.5] **Verdict-goal reviewer prompt contract** —
   the reviewer determines whether the artifact is safe to proceed on: a justified
   clean verdict naming what was verified is a blessed output; every finding states a
   concrete failure scenario or is not a finding; output ranked by severity and
@@ -114,7 +114,7 @@ The phase headings below keep their authoring order; this execution order govern
   `review-campaign-orchestrator.ps1` `Complete-ReviewPreInvocationFailure` path,
   `review-authority-core.ps1` spend decisions,
   `tests/continuous-co-review/unit/spend-accounting.Tests.ps1`)
-- [ ] T009 [owner: Implementer] [sp: 0.5] **Codex window 900 s** — the catalog row's
+- [x] T009 [owner: Implementer] [sp: 0.5] **Codex window 900 s** — the catalog row's
   default window becomes 900 seconds (other hosts untouched); the timeout message
   follows the consumer shape and names `co_review_timeout_seconds` (Trace: FR-018;
   owns: `reviewer-host-catalog.ps1` codex row, timeout message surfaces,
@@ -132,7 +132,7 @@ The phase headings below keep their authoring order; this execution order govern
   rule land in the instruction layer (Trace: FR-015, FR-016, FR-017, SC-009; owns:
   navigator prose builders, gloss helper, packet templates, `specrew-gate-stop` and
   sync skill instructions, `tests/integration/consumer-language.Tests.ps1`)
-- [ ] T011 [owner: Implementer] [sp: 0.25] **Banner full prerelease version** — the
+- [x] T011 [owner: Implementer] [sp: 0.25] **Banner full prerelease version** — the
   bootstrap provider composes `{ModuleVersion}-{Prerelease}` (reference:
   `Get-ManifestSpecrewVersionText`); `coordinator-prompt-surgery.ps1` likewise; the
   deployed mirror updates in lockstep. RED: banner fixture asserts `0.40.0-beta3`
@@ -145,7 +145,7 @@ The phase headings below keep their authoring order; this execution order govern
   sentence that the evidence-pipeline and path-identity consolidations named in the
   beta2 claim ship in beta4 (Trace: FR-020, FR-021; owns: records + release-notes
   draft; verified by review, no code)
-- [ ] T013 [owner: Implementer] [sp: 0.1] **markdownlint CI install** — the one-line
+- [x] T013 [owner: Implementer] [sp: 0.1] **markdownlint CI install** — the one-line
   markdownlint-cli install in the CI workflow so the Deterministic gate /
   generator-markdown-parity lane stops going INCONCLUSIVE (198-carried chore, ruled
   in scope as release hygiene). Evidence: the lane green on this feature's PR,

@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 19 (DRIFT-199-I001-001 through -019)
+**Total drift events**: 21 (DRIFT-199-I001-001 through -021)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -156,6 +156,12 @@ surfaced explicitly at the next boundary, never absorbed silently.
 - **Resolution**: in scope, covered by task T007 in the harness queue / T006 in tasks.md —
   the reparse-tag work. This instance is added as a second RED reproduction target: the
   remediation door must work from a cloud-placeholder install.
+  **CODE LANDED 2026-08-10, MEASUREMENT STILL OWED.** All three integrity checks now route through the
+  one reparse-tag policy: a symlink or junction still refuses, an unrecognised tag fails closed, and a
+  cloud placeholder is read rather than refused — `Get-SpecrewReviewRuntimeManagedTextSha256` is the
+  exact line that refused `_load.ps1` above. This entry stays OPEN on purpose: the fix is proven at the
+  seam and the live OneDrive leg is the maintainer's manual measurement (see the T006 limit-of-evidence
+  entry). It closes when that proof line is transcribed, not when the suite is green.
 
 ### DRIFT-199-I001-006 — no expressible off-ramp for the pre-code campaign review demand (open)
 
@@ -547,6 +553,95 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-020 — the demotion marks never reached the human; found by the maintainer asking for the END-TO-END check (resolved)
+
+- **Observed**: 2026-08-10, acting on the maintainer's instruction to *verify rather than assume* that
+  at least one T005 fixture drives a scenario-less finding through the REAL ingress entry point rather
+  than only through the pure gating-eligibility function.
+- **No such fixture existed.** Every T005 case called `Resolve-ReviewFindingGatingEligibility` (and one
+  called `Resolve-ReviewCampaignPauseDecision`) directly. All four were green.
+- **And the gap was hiding a live defect.** `Invoke-ReviewResultIngress` rebuilds every finding into the
+  terminal result from an EXPLICIT field list (`review-result-ingestor.ps1`), and `demoted` was not in
+  it. The mark was set on the graded copy and dropped one function later, so end to end a demoted
+  finding reached the store — and the human — as an ordinary `minor` with no trace of the fact that the
+  reviewer had reported it as blocking. The demotion worked; the TELLING did not.
+- **Why the ruling's premise needed correcting, stated plainly**: the instruction to make demotion
+  visible said "the data already exists: the finding carries a demoted flag". It does at the grader,
+  and it did NOT anywhere downstream. Counting `demoted` in the pause resolver as instructed, with no
+  other change, would have produced a counter that read zero forever and a surface that stayed silent —
+  a fix that tests green and changes nothing.
+- **Severity — it fails in this feature's forbidden direction**: a demotion the human cannot see is a
+  SILENCING, which is the direction the whole feature exists to close. The demotion rule was written to
+  stop a scenario-less finding costing a round; without the marks it also stopped the human learning
+  that a reviewer's security finding had been lowered.
+- **Citation**: FR-006 (the failure-scenario contract); FR-002/FR-015 (the decision surface); the
+  maintainer's demotion-visibility ruling, 2026-08-10.
+- **Resolution**: FIXED end to end, RED first (8 failing cases before any product edit).
+  `demoted` and `demoted_from` are carried into the terminal projection and admitted by the terminal
+  finding contract; `Resolve-ReviewCampaignPauseDecision` counts them (`demoted_count`,
+  `demoted_from_blocking`, `demoted_from_major`); `New-ReviewCampaignPendingPauseFact` carries
+  `demoted_count` so the RECORD is not quieter than the screen; and the surface names the demotion, the
+  reviewer's original severity, and where the finding went.
+  **The CANDIDATE finding shape stayed closed at five fields on purpose**: `demoted`/`demoted_from` are
+  the controller's determination ABOUT a reviewer's output, so a reviewer must be unable to supply
+  either — neither to mark itself demoted nor, worse, to declare itself un-demotable and keep a gate it
+  did not earn.
+  **`demoted_from` is structured data rather than a re-parse of our own prose.** The demotion note in
+  the description already named the original severity, and reading it back would have been a string
+  contract between two files — the shape that drifts silently.
+- **Evidence**: 46/46 green across
+  `tests/continuous-co-review/unit/campaign-pause-core.Tests.ps1` and
+  `tests/continuous-co-review/unit/reviewer-prompt-contract.Tests.ps1`; 17 failed / 1042 passed across
+  `tests/continuous-co-review/unit`, failure set identical name for name to the recorded seventeen.
+- **METHOD NOTE, and it is the sixth instance**: this was not found by reasoning about the code. It was
+  found because the maintainer asked for the end-to-end check specifically, on the stated grounds that
+  THE WIRING IS WHAT DRIFTS. Every link in this chain was independently green while the chain was
+  broken. The new fixture drives reviewer output -> ingest -> store -> decision -> rendered words in one
+  case, and reads the result back THROUGH THE CONTRACT rather than from the in-memory object, so a
+  future projection that drops the marks fails loudly instead of silently.
+
+### DRIFT-199-I001-021 — the T006 design record named a third site that does not exist (records-only)
+
+- **Observed**: 2026-08-10, wiring T006's call sites. The design record names the sites to move as
+  `Get-ReviewAuthorityStorePath` (authority store), `Assert-SpecrewReviewRuntimePathContained` and
+  `Get-SpecrewReviewRuntimeManagedTextSha256` (module install), **and the frozen-snapshot check**.
+- **Measured, not assumed** (the relayed-diagnostic method rule): a tree-wide search for reparse
+  handling returns exactly two engine files — `review-authority-store.ps1` (2 checks) and
+  `review-engine-resolution.ps1` (3 checks). The frozen-snapshot path
+  (`Test-GitReviewTargetSnapshotIntegrity`) hashes worktree sources via
+  `Get-ContinuousCoReviewWorktreeSourceHashes` and carries NO reparse refusal to discriminate.
+- **Consequence**: T006's "symmetric across module install, authority store, frozen snapshot" is
+  satisfied by moving the five checks that exist. There was no fourth site to convert, and inventing a
+  refusal in the snapshot path to match the record would have ADDED a new refusal under the banner of
+  removing one.
+- **Resolution**: recorded here rather than silently absorbed; the design record's site list is correct
+  about the two real files and anticipatory about the third.
+
+### T006 LIMIT OF THE EVIDENCE — the cloud branch is proven at the seam, not end to end (2026-08-10)
+
+Recorded in the same discipline as T004's backstop, so a green suite is not read as more than it is.
+
+**What the suite proves.** The refusing direction is proven on the REAL filesystem: live symlink and
+junction fixtures classify as `refuse-link`, and the pre-existing refusal fixtures that this task
+required to stay green were re-run and did — `review-authority-store.Tests.ps1` (store root, campaign
+ancestor, run ancestor) and `tests/unit/review-engine-resolution.tests.ps1` ("a reparse-point ANCESTOR
+is refused before hashing or deleting"). The store's falsifiability mutation gate still catches a
+link-blind store. Each of the three call sites is proven to CONSULT the one classifier and to honour a
+`hydrate-cloud` answer.
+
+**What it does NOT prove.** No agent can materialise a real cloud placeholder on a local volume, so the
+`hydrate-cloud` cases reach the call sites through a MOCKED classifier. That establishes the wiring and
+the decision; it does not establish that a real OneDrive placeholder hydrates on read and hash-verifies
+afterwards. The end-to-end leg remains the maintainer's manual measurement on the T067-class install,
+exactly as the task specifies — and DRIFT-199-I001-005 is its RED reproduction target: `specrew review
+--remediate override-block` through the INSTALLED module on the OneDrive-backed Documents folder must
+now open the remediation door instead of exiting 1 with
+`review-runtime-managed-file-link-unsupported`.
+
+**The hydration-FAILURE path is likewise seam-proven**: the wrap is exercised by a path whose read
+fails for an ordinary reason, which shows the message is produced and shaped, not that a sync client
+actually declined to fetch a file.
 
 ### Measured proof line — T003's two-governor fix, transcribed from a live stop (2026-08-10)
 
