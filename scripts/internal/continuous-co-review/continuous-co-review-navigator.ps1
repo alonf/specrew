@@ -1112,6 +1112,37 @@ function Format-ReviewCampaignPauseSurface {
     if ([int]$Decision.minor_count -gt 0) {
         $lines.Add(('  Also recorded: {0} minor finding{1} - saved as follow-ups, they never block your sign-off.' -f $Decision.minor_count, $(if ([int]$Decision.minor_count -eq 1) { '' } else { 's' })))
     }
+
+    # T005/FR-006 visibility (maintainer ruling 2026-08-10). A demoted finding is sitting in the minor
+    # line above, and from there it is indistinguishable from a typo - so this names it. The reviewer
+    # reported it as gating; the contract lowered it because it stated no concrete failure scenario;
+    # and the human is entitled to know that happened rather than reading "3 minor findings" over a
+    # security finding somebody meant to stop on. A demotion the human cannot see is a silencing.
+    #
+    # Rendered ONLY when there is something to say. A line that appears every round, most often
+    # reading "0 findings were demoted", teaches the reader to skip exactly the sentence that matters
+    # on the round where it is not zero.
+    if ([int]$Decision.demoted_count -gt 0) {
+        $count = [int]$Decision.demoted_count
+        $fromBlocking = [int]$Decision.demoted_from_blocking
+        $fromMajor = [int]$Decision.demoted_from_major
+        # Say which severity the reviewer actually used. Collapsing a mixed round to one of them would
+        # be a small lie in the one sentence whose whole job is to stop a quiet one.
+        $origin = if ($fromBlocking -gt 0 -and $fromMajor -gt 0) { 'blocking or major' }
+        elseif ($fromMajor -gt 0) { 'major' }
+        elseif ($fromBlocking -gt 0) { 'blocking' }
+        else { 'more serious' }
+        $lines.Add((
+            '  {0} finding{1} {2} reported as {3} by the reviewer but demoted because {4} stated no concrete failure scenario - {5} saved with your follow-ups, and {6} not blocking your sign-off.' -f
+                $count,
+                $(if ($count -eq 1) { '' } else { 's' }),
+                $(if ($count -eq 1) { 'was' } else { 'were' }),
+                $origin,
+                $(if ($count -eq 1) { 'it' } else { 'they' }),
+                $(if ($count -eq 1) { 'it is' } else { 'they are' }),
+                $(if ($count -eq 1) { 'it is' } else { 'they are' })
+        ))
+    }
     $lines.Add('')
     $lines.Add(('Cost so far: {0} {1}, {2} minutes. Round budget: {3} of {4} used.' -f $Decision.rounds_used, $roundWord, $Decision.elapsed_minutes, $Decision.rounds_used, $Decision.budget_total))
     $lines.Add('')

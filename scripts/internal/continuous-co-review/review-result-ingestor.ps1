@@ -190,6 +190,11 @@ function Resolve-ReviewFindingGatingEligibility {
             $copy | Add-Member -NotePropertyName 'description' -NotePropertyValue ($note + $description) -Force
         }
         $copy | Add-Member -NotePropertyName 'demoted' -NotePropertyValue $demote -Force
+        # The reviewer's ORIGINAL severity as structured data, not only inside the note above. The
+        # human-facing surface has to say "reported as blocking" rather than a vague "reported higher",
+        # and the alternative is re-parsing our own prose out of the description - a string contract
+        # between two files, which is the shape that drifts silently.
+        $copy | Add-Member -NotePropertyName 'demoted_from' -NotePropertyValue $(if ($demote) { $severity } else { '' }) -Force
         $graded.Add($copy) | Out-Null
     }
     return @($graded)
@@ -243,6 +248,13 @@ function Invoke-ReviewResultIngress {
             severity = [string]$candidateFinding.severity; title = [string]$candidateFinding.title; description = [string]$candidateFinding.description
             location = $(if ($candidateFinding.PSObject.Properties.Name -contains 'location') { $candidateFinding.location } else { $null })
             relevance = $Currentness; resolution = 'open'
+            # T005 / FR-006, maintainer ruling 2026-08-10. These two marks are carried into the TERMINAL
+            # result rather than being left on the in-memory graded copy. A demotion the human cannot see
+            # is a SILENCING - the reviewer meant this to gate, and without the marks it arrives in the
+            # follow-up list indistinguishable from a typo. The projection below is an explicit field
+            # list, so anything not named here is dropped: that is precisely how the marks were lost.
+            demoted = [bool]$candidateFinding.demoted
+            demoted_from = [string]$candidateFinding.demoted_from
         }) | Out-Null
     }
     $validationState = if ($candidateRead.valid) { 'valid' } elseif (-not $candidateRead.present) { 'not-produced' } else { 'invalid' }

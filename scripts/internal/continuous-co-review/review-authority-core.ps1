@@ -107,10 +107,23 @@ function Resolve-ReviewCampaignPauseDecision {
     )
 
     $blocking = 0; $major = 0; $minor = 0
+    $demoted = 0; $demotedFromBlocking = 0; $demotedFromMajor = 0
     $gatingLocations = [Collections.Generic.List[string]]::new()
     $gatingFindings = [Collections.Generic.List[object]]::new()
     foreach ($finding in @($Findings)) {
         $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
+        # T005/FR-006 visibility (maintainer ruling 2026-08-10). A demoted finding IS a minor by now,
+        # so it is counted in the minor bucket like any other; this counts the SUBSET of those minors
+        # the reviewer had actually reported as gating. Without it the surface can only say "3 minor
+        # findings", and the human cannot tell that one of them was a security finding the reviewer
+        # meant to stop on. A demotion the human cannot see is a silencing.
+        if ([bool](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted')) {
+            $demoted++
+            switch (([string](Get-ReviewAuthorityProperty -Object $finding -Name 'demoted_from')).Trim().ToLowerInvariant()) {
+                'blocking' { $demotedFromBlocking++ }
+                'major' { $demotedFromMajor++ }
+            }
+        }
         if ($severity -ceq 'blocking' -or $severity -ceq 'major') {
             if ($severity -ceq 'blocking') { $blocking++ } else { $major++ }
             $location = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'location')
@@ -168,6 +181,9 @@ function Resolve-ReviewCampaignPauseDecision {
         major_count            = $major
         minor_count            = $minor
         carried_followups      = $minor
+        demoted_count          = $demoted
+        demoted_from_blocking  = $demotedFromBlocking
+        demoted_from_major     = $demotedFromMajor
         gating                 = $gating
         gating_locations       = @($gatingLocations | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         gating_findings        = @($gatingFindings)
@@ -229,6 +245,9 @@ function New-ReviewCampaignPendingPauseFact {
         blocking_count   = [int]$Decision.blocking_count
         major_count      = [int]$Decision.major_count
         minor_count      = [int]$Decision.minor_count
+        # Carried into the RECORD, not only onto the surface: otherwise the pause a later reader finds
+        # says "one minor finding" about a round in which the reviewer reported a blocking one.
+        demoted_count    = [int]$Decision.demoted_count
         rounds_used      = [int]$Decision.rounds_used
         budget_total     = [int]$Decision.budget_total
         elapsed_minutes  = [double]$Decision.elapsed_minutes
@@ -436,11 +455,16 @@ function Test-ReviewAuthorityFinding {
     )
     $limits = Get-ReviewAuthorityCandidateLimits
     $prefix = "findings[$Index]"
+    # The CANDIDATE shape stays closed at five fields on purpose (T005/FR-006). `demoted` and
+    # `demoted_from` are the CONTROLLER's determination about a reviewer's output, so a reviewer must
+    # not be able to supply either one - neither to mark itself demoted nor, far worse, to declare
+    # itself un-demotable and keep a gate it did not earn. They exist only on the terminal shape,
+    # which the ingestor alone writes.
     $allowed = if ($Kind -ceq 'candidate') {
         @('local_id', 'severity', 'title', 'description', 'location')
     }
     else {
-        @('finding_id', 'source_local_id', 'lineage_id', 'severity', 'title', 'description', 'location', 'relevance', 'resolution')
+        @('finding_id', 'source_local_id', 'lineage_id', 'severity', 'title', 'description', 'location', 'relevance', 'resolution', 'demoted', 'demoted_from')
     }
     $nested = [System.Collections.Generic.List[string]]::new()
     if (-not (Test-ReviewAuthorityClosedShape -Object $Finding -Allowed $allowed -Errors $nested)) {
@@ -456,6 +480,12 @@ function Test-ReviewAuthorityFinding {
         Test-ReviewAuthorityIdField -Object $Finding -Name 'lineage_id' -Kind lineage -Errors $nested
         Test-ReviewAuthorityStringField -Object $Finding -Name 'relevance' -Errors $nested -MaxLength 32 -Enum @('current', 'snapshot-moved', 'unknown')
         Test-ReviewAuthorityStringField -Object $Finding -Name 'resolution' -Errors $nested -MaxLength 32 -Enum @('open', 'resolved', 'superseded')
+        # Optional so results published before this contract existed still read back. `demoted_from`
+        # carries the reviewer's ORIGINAL severity and is empty exactly when nothing was demoted, so
+        # the enum admits the empty string rather than pretending an un-demoted finding came from
+        # somewhere.
+        Test-ReviewAuthorityBooleanField -Object $Finding -Name 'demoted' -Errors $nested -Optional
+        Test-ReviewAuthorityStringField -Object $Finding -Name 'demoted_from' -Errors $nested -MaxLength 16 -Enum @('blocking', 'major', '') -Optional -AllowEmpty
     }
     Test-ReviewAuthorityStringField -Object $Finding -Name 'severity' -Errors $nested -MaxLength 16 -Enum @('blocking', 'major', 'minor', 'note')
     Test-ReviewAuthorityStringField -Object $Finding -Name 'title' -Errors $nested -MaxLength $limits.max_title_characters
@@ -495,7 +525,7 @@ function Test-ReviewAuthorityContractObject {
         'ReviewFinalizationFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'reviewed_digest', 'finalization_commit') }
         'PendingPauseFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'blocking_count',
-            'major_count', 'minor_count', 'rounds_used', 'budget_total', 'elapsed_minutes',
+            'major_count', 'minor_count', 'demoted_count', 'rounds_used', 'budget_total', 'elapsed_minutes',
             'recommendation', 'observed_at'
         ) }
         'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at') }

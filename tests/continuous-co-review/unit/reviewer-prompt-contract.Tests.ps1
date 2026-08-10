@@ -18,6 +18,8 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+        # Rendering lives in the navigator layer (the D1 binding), which _load does not dot-source.
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
 
         $script:Prompt = Get-ContinuousCoReviewSlimPrompt -RunId 'run-t005-probe' -RoundNumber 1 -MaxRounds 3
     }
@@ -96,6 +98,87 @@ Describe 'Verdict-goal reviewer prompt contract (T005/FR-006)' {
             $graded[0].severity | Should -Be 'minor'
             $graded[0].demoted | Should -BeFalse -Because 'a finding that never gated is not demoted, and its description must not be rewritten'
             $graded[0].description | Should -Be 'A typo in a comment.'
+        }
+    }
+
+    # Maintainer instruction 2026-08-10: verify rather than assume that the contract binds through the
+    # REAL ingress entry point, not only through the pure eligibility function.
+    #
+    # It did not, and only this shape could have shown it. The cases above call
+    # Resolve-ReviewFindingGatingEligibility directly and were green while the terminal projection in
+    # Invoke-ReviewResultIngress rebuilt each finding from an explicit field list that DROPPED the
+    # demotion marks - so end to end the demotion reached the human as an ordinary minor with no trace
+    # of what the reviewer had actually reported. THE WIRING IS WHAT DRIFTS.
+    Context 'the contract binds through the REAL ingress, end to end' {
+        BeforeAll {
+            function script:Invoke-ScenarioIngress {
+                param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Description, [string]$Severity = 'blocking')
+                $store = Join-Path $Root 'store'; $staging = Join-Path $Root 'staging'
+                $paths = Initialize-ReviewRunStaging -StagingRoot $staging -CampaignId 'cmp-demo' -RunId 'run-one'
+                $candidate = [pscustomobject][ordered]@{
+                    schema_version = '1.0'; run_id = 'run-one'; target_digest = 'digest-one'
+                    completion = 'complete'; verdict = 'findings'; summary = 'review complete'
+                    findings = @([pscustomobject][ordered]@{
+                            local_id = 'l1'; severity = $Severity; title = 'unvalidated input reaches the shell'
+                            description = $Description; location = 'src/app.ps1:10'
+                        })
+                }
+                [IO.File]::WriteAllText($paths.candidate_result_path, ($candidate | ConvertTo-Json -Depth 20 -Compress), [Text.UTF8Encoding]::new($false))
+                return Invoke-ReviewResultIngress -StoreRoot $store -StagingRoot $staging -CampaignId 'cmp-demo' -RunId 'run-one' `
+                    -TargetDigest 'digest-one' -HarnessId 'fixture' -RuntimeOutcome 'completed' -Invoked $true `
+                    -TerminationVerified $true -Containment 'verified' -Currentness 'current' `
+                    -StartedAt '2026-08-10T00:00:00Z' -EndedAt '2026-08-10T00:00:01Z' -DurationMs 1000
+            }
+        }
+
+        It 'a scenario-less blocking finding is demoted IN THE PUBLISHED RESULT, with the marks intact' {
+            $root = Join-Path $TestDrive 'e2e-demote'
+            $published = script:Invoke-ScenarioIngress -Root $root -Description 'This function is long and would read better split into smaller helpers.'
+
+            $published.published | Should -BeTrue
+            @($published.result.findings).Count | Should -Be 1 -Because 'demote, NEVER discard'
+            $published.result.findings[0].severity | Should -Be 'minor'
+            $published.result.findings[0].demoted | Should -BeTrue -Because 'the demotion mark must SURVIVE the terminal projection or the human can never be told'
+            $published.result.findings[0].demoted_from | Should -Be 'blocking'
+
+            # Read back through the CONTRACT, not the in-memory object: the terminal finding shape is
+            # closed, so this is what proves the marks are a sanctioned part of the record rather than
+            # properties that happen to survive until the first validator sees them.
+            $persisted = Read-ReviewAuthorityFactFile -Path $published.result_path -ContractName ReviewResult
+            $persisted.findings[0].demoted | Should -BeTrue
+            $persisted.findings[0].demoted_from | Should -Be 'blocking'
+        }
+
+        It 'the human-facing surface names that demotion, from the PERSISTED result' {
+            # The full chain in one case: reviewer output -> ingest -> store -> decision -> the words
+            # the human reads. Each link was green in isolation while the chain was broken.
+            $root = Join-Path $TestDrive 'e2e-surface'
+            $published = script:Invoke-ScenarioIngress -Root $root -Description 'Please rename this variable for clarity.'
+            $persisted = Read-ReviewAuthorityFactFile -Path $published.result_path -ContractName ReviewResult
+
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @($persisted.findings) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+            $decision.gating | Should -BeFalse
+            $decision.demoted_count | Should -Be 1
+
+            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision $decision
+            $surface | Should -Match '(?i)reported as blocking'
+            $surface | Should -Match '(?i)no concrete failure scenario'
+        }
+
+        It 'a finding WITH a scenario keeps its severity and its gate through the same path' {
+            # The other direction, so the case above cannot be satisfied by demoting everything.
+            $root = Join-Path $TestDrive 'e2e-keeps'
+            $published = script:Invoke-ScenarioIngress -Root $root `
+                -Description 'The digest strip drops real source. Failure scenario: on a case-sensitive volume a change under Specs/ is classified records-only, so the review never runs and the change ships unreviewed.'
+
+            $published.result.findings[0].severity | Should -Be 'blocking'
+            $published.result.findings[0].demoted | Should -BeFalse
+            $published.result.findings[0].demoted_from | Should -BeNullOrEmpty
+
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @($published.result.findings) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+            $decision.gating | Should -BeTrue
+            $decision.demoted_count | Should -Be 0
+            (Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision $decision) | Should -Not -Match '(?i)demoted'
         }
     }
 }

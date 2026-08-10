@@ -169,6 +169,101 @@ Describe 'Campaign pause core (T001)' {
         }
     }
 
+    # Maintainer ruling 2026-08-10. T005 demotes a gating finding that states no concrete failure
+    # scenario, and the demotion itself was INVISIBLE: the finding arrived in the follow-up list
+    # looking like any other minor. A human reading "3 minor findings" could not tell that one of them
+    # was a security finding the reviewer meant to gate on - and a demotion the human cannot see is a
+    # SILENCING, which is the exact direction this whole feature exists to close.
+    #
+    # Pinned BOTH WAYS on purpose: a round with demotions names them, and a round without them renders
+    # no such line. A surface that always mentions demotion teaches the reader to skip the sentence.
+    Context 'a demotion is never silent (FR-006 visibility)' {
+        BeforeAll {
+            function script:New-DemotedFinding {
+                # The shape ingest produces: severity already lowered to minor, the reviewer's original
+                # severity preserved beside it. Built here rather than by calling the grader so this
+                # suite keeps testing the SURFACE, not the ingestor.
+                param([string]$From = 'blocking', [string]$Title = 'unvalidated input reaches the shell')
+                return [pscustomobject]@{
+                    severity = 'minor'; title = $Title; description = 'detail'; location = 'src/x.ps1:1'
+                    demoted = $true; demoted_from = $From
+                }
+            }
+        }
+
+        It 'the decision counts the demotions and keeps the reviewer original severity' {
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @(
+                (script:New-DemotedFinding -From 'blocking'),
+                (script:New-DemotedFinding -From 'major'),
+                (script:New-Finding -Severity 'minor')
+            ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+
+            $decision.demoted_count | Should -Be 2
+            $decision.demoted_from_blocking | Should -Be 1
+            $decision.demoted_from_major | Should -Be 1
+            $decision.minor_count | Should -Be 3 -Because 'a demoted finding IS a minor now - the demotion count names a subset, it does not add a bucket'
+            $decision.gating | Should -BeFalse -Because 'the whole point of the demotion is that it cannot cost the human a round'
+        }
+
+        It 'a round with no demotions reports zero' {
+            $decision = Resolve-ReviewCampaignPauseDecision -Findings @(
+                (script:New-Finding -Severity 'blocking'), (script:New-Finding -Severity 'minor')
+            ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+
+            $decision.demoted_count | Should -Be 0
+            $decision.demoted_from_blocking | Should -Be 0
+            $decision.demoted_from_major | Should -Be 0
+        }
+
+        It 'the surface NAMES the demotion, the reviewer original severity, and where it went' {
+            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
+                Resolve-ReviewCampaignPauseDecision -Findings @(
+                    (script:New-DemotedFinding -From 'blocking'), (script:New-Finding -Severity 'minor')
+                ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+            )
+
+            $surface | Should -Match '(?i)reported as blocking' -Because 'the human must be able to see it was NOT the reviewer that called this minor'
+            $surface | Should -Match '(?i)demoted'
+            $surface | Should -Match '(?i)no concrete failure scenario'
+            $surface | Should -Match '(?i)follow-up'
+        }
+
+        It 'a round with NO demotions renders no demotion line at all' {
+            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
+                Resolve-ReviewCampaignPauseDecision -Findings @(
+                    (script:New-Finding -Severity 'blocking'), (script:New-Finding -Severity 'minor')
+                ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+            )
+
+            $surface | Should -Not -Match '(?i)demoted'
+            $surface | Should -Not -Match '(?i)no concrete failure scenario'
+        }
+
+        It 'mixed origins are stated honestly rather than collapsed to one severity' {
+            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
+                Resolve-ReviewCampaignPauseDecision -Findings @(
+                    (script:New-DemotedFinding -From 'blocking'), (script:New-DemotedFinding -From 'major')
+                ) -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+            )
+
+            $surface | Should -Match '(?i)reported as blocking or major'
+            $surface | Should -Match '2 findings'
+        }
+
+        It 'the recorded pause fact carries the demotion count and still validates' {
+            # Without this the SURFACE tells the truth while the RECORD does not, and the record is
+            # what a later reader has.
+            $fact = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-demote' `
+                -TargetDigest ('a' * 40) -Decision (
+                Resolve-ReviewCampaignPauseDecision -Findings @((script:New-DemotedFinding -From 'blocking')) `
+                    -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 9
+            ) -ObservedAt '2026-08-10T10:00:00Z'
+
+            $fact.demoted_count | Should -Be 1
+            (Test-ReviewAuthorityContractObject -ContractName PendingPauseFact -InputObject $fact -ExpectedCampaignId 'cmp-199-x-i001').valid | Should -BeTrue
+        }
+    }
+
     Context 'the round terminal (FR-001: every round ends in a pause, never another round)' {
         BeforeAll {
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1')
