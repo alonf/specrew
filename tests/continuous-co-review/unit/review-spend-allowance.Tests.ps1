@@ -290,6 +290,76 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
         }
     }
 
+    # T008 / F4's REAL residue. Measured in the T067 timeline: a release restored a slot at 21:17:07, no
+    # run and NO REFUSAL EVENT followed, and a fresh human authorization was minted three minutes later
+    # anyway. The slot WAS available and was never offered - so the human paid for an authorization they
+    # did not need. That is a disclosure gap, not a ledger defect.
+    Context 'T008 - a restored slot is SURFACED, and never leaks into the ledger' {
+        BeforeAll {
+            . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1')
+
+            function script:Invoke-PreInvocationFailure {
+                param([object[]]$Spends = @(), [string]$Reason = 'preflight-failed:verification')
+                $root = Join-Path $TestDrive ('f4-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+                $store = Join-Path $root 'store'; $staging = Join-Path $root 'staging'
+                Initialize-ReviewRunStaging -StagingRoot $staging -CampaignId 'cmp-f4-x-i001' -RunId 'run-f4' | Out-Null
+                $reservation = [pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'reservation'; campaign_id = 'cmp-f4-x-i001'
+                    reservation_id = 'res-f4'; grant_id = 'grant-f4'; slot = 1; run_id = 'run-f4'
+                    observed_at = '2026-08-10T00:00:01Z'
+                }
+                $result = Complete-ReviewPreInvocationFailure -StoreRoot $store -StagingRoot $staging `
+                    -CampaignId 'cmp-f4-x-i001' -RunId 'run-f4' -TargetDigest 'digest-f4' -HarnessId 'fixture' `
+                    -Reservation $reservation -Spends $Spends -Reason $Reason `
+                    -ObservedAt '2026-08-10T00:00:02Z' -StartedAt '2026-08-10T00:00:00Z' -DurationMs 500 `
+                    -RuntimeOutcome preflight-failed
+                $releaseFacts = @(Get-ChildItem -LiteralPath $store -Recurse -File -Filter '*.json' -ErrorAction SilentlyContinue |
+                        Where-Object { $_.FullName -match '\\releases\\' } |
+                        ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json })
+                return [pscustomobject]@{ result = $result; releases = $releaseFacts }
+            }
+        }
+
+        It 'reports the restored slot as a FACT, with the sentence a human can act on' {
+            $out = script:Invoke-PreInvocationFailure
+
+            [bool]$out.result.slot_restored | Should -BeTrue -Because 'the engine knows a slot came back; F4 is that it tells nobody'
+            $note = [string]$out.result.slot_restored_note
+            $note | Should -Match '(?i)still available' -Because 'the slot WAS available and was never offered - that is F4'
+            $note | Should -Match '(?i)no round was used|did not start'
+            $note | Should -Not -Match '(?i)ask(ed)? (you )?for a (new|fresh)' -Because 'the T067 facts cannot distinguish "the tooling asked" from "the human supplied one unprompted"; asserting either would exceed the evidence'
+        }
+
+        It 'THE CONSTRAINT: no reason field anywhere carries the sentence' {
+            # Three surfaces would break if this were prose in $Reason. The release fact's reason is
+            # machine-classified, immutable, and the field releases are COUNTED BY - the same counting
+            # this feature's analysis used. And the persisted failure_reason must keep EQUALLING the
+            # campaign's returned reason: an existing fixture pins that, and it is right to, because a
+            # run whose stored record and reported reason differ leaves a reader unable to tell which is
+            # authoritative. The first cut of this change broke exactly that.
+            $out = script:Invoke-PreInvocationFailure
+            @($out.releases).Count | Should -Be 1
+
+            [string]@($out.releases)[0].reason | Should -BeExactly 'preflight-failed:verification' -Because 'prefix classification over this field must keep working forever'
+            [string]$out.result.result.failure_reason | Should -BeExactly 'preflight-failed:verification' -Because 'the stored record and the reported reason must stay the same string'
+            [string]$out.result.result.failure_reason | Should -Not -Match '(?i)still available'
+        }
+
+        It 'says nothing when no slot was restored (an invoked run keeps its charge)' {
+            # A note that appears even when nothing came back would be worse than silence: it would tell
+            # the human they still hold an authorization they have in fact spent.
+            $spend = [pscustomobject][ordered]@{
+                schema_version = '1.0'; fact_type = 'spend'; campaign_id = 'cmp-f4-x-i001'
+                reservation_id = 'res-f4'; run_id = 'run-f4'; invocation_started_at = '2026-08-10T00:00:03Z'
+            }
+            $out = script:Invoke-PreInvocationFailure -Spends @($spend) -Reason 'launch-failed'
+
+            @($out.releases).Count | Should -Be 0 -Because 'a spent slot is not released'
+            [bool]$out.result.slot_restored | Should -BeFalse
+            [string]$out.result.slot_restored_note | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'consumer-legible halt message (FR-018)' {
         It 'has zero internal identifiers, states N-of-M, names the reset command, and shows resolved-vs-open' {
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')

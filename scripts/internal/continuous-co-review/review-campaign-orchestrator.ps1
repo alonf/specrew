@@ -599,11 +599,44 @@ function Complete-ReviewPreInvocationFailure {
         $Reservation, [object[]]$Spends, [string]$Reason, [string]$ObservedAt, [string]$StartedAt, [long]$DurationMs,
         [ValidateSet('preflight-failed', 'claim-contended', 'launch-failed')][string]$RuntimeOutcome, [ValidateSet('verified', 'unknown')][string]$Containment = 'unknown'
     )
+    $slotRestored = $false
     if ($null -ne $Reservation) {
         $releaseDecision = Resolve-ReviewCampaignReleaseDecision -Reservation $Reservation -Reason $Reason -ObservedAt $ObservedAt -Spends $Spends
-        if ($releaseDecision.permitted) { Write-ReviewCampaignReleaseFact -StoreRoot $StoreRoot -Fact $releaseDecision.fact | Out-Null }
+        if ($releaseDecision.permitted) {
+            Write-ReviewCampaignReleaseFact -StoreRoot $StoreRoot -Fact $releaseDecision.fact | Out-Null
+            $slotRestored = $true
+        }
     }
-    return Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -HarnessId $HarnessId -RuntimeOutcome $RuntimeOutcome -Invoked $false -TerminationVerified $true -Containment $Containment -Currentness unknown -StartedAt $StartedAt -EndedAt $ObservedAt -DurationMs $DurationMs -FailureReason $Reason
+
+    # F4's REAL residue, and the fix for it. Measured in the T067 timeline: a release restored a slot,
+    # NO run and NO refusal event followed, and a fresh human authorization was minted three minutes
+    # later anyway. The slot was available and was never OFFERED, so the human paid for an authorization
+    # they did not need. A restored slot that nobody is told about is the same class as a demotion
+    # nobody is told about.
+    #
+    # CARRIED AS STRUCTURED DATA, NEVER APPENDED TO A REASON STRING. Three separate surfaces would break
+    # if this were prose in `$Reason`:
+    #
+    #  - the RELEASE FACT's reason (resolved above) is machine-classified and IMMUTABLE, and it is the
+    #    field releases are counted and classified BY - the same counting this feature's own analysis
+    #    used. Prose there is permanent ledger pollution.
+    #  - the campaign's RETURNED reason is asserted by exact equality in three fixtures.
+    #  - the persisted `failure_reason` must keep EQUALLING that returned reason. An existing fixture
+    #    pins it, and it is right to: a run whose stored record and reported reason differ leaves a
+    #    reader unable to tell which is authoritative. That is the honest-state class this feature is
+    #    about, and the first cut of this change broke it.
+    #
+    # This is the same shape the demotion marks and the verification diagnosis already use: the machine
+    # token stays pure, the human sentence rides beside it as data, and a human-facing surface renders
+    # it. Said ONLY when a slot actually came back - a note that appeared regardless would tell the
+    # human they still hold an authorization they have in fact spent.
+    $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -HarnessId $HarnessId -RuntimeOutcome $RuntimeOutcome -Invoked $false -TerminationVerified $true -Containment $Containment -Currentness unknown -StartedAt $StartedAt -EndedAt $ObservedAt -DurationMs $DurationMs -FailureReason $Reason
+    $ingress | Add-Member -NotePropertyName slot_restored -NotePropertyValue $slotRestored -Force
+    $ingress | Add-Member -NotePropertyName slot_restored_note -NotePropertyValue $(
+        if ($slotRestored) { 'The review did not start, so no round was used and the authorization you already gave is still available. You do not need to issue a new one; fix what this message names and run the review again.' }
+        else { '' }
+    ) -Force
+    return $ingress
 }
 
 function Get-ReviewCampaignRoundBudgetTotal {
