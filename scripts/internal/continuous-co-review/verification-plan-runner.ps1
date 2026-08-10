@@ -167,7 +167,16 @@ function Get-ContinuousCoReviewSelectedVerificationPlan {
     try {
         $path = Join-Path $RepoRoot '.specrew/verification-plan.json'
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-            $result.reason = 'no supplier output at .specrew/verification-plan.json (FR-049 supplier not configured)'
+            # T007 / FR-013. The old text was `no supplier output at .specrew/verification-plan.json
+            # (FR-049 supplier not configured)` - a file path and a requirement id, both true and both
+            # useless to the person holding them. DRIFT-199-I001-008 is this message reaching a
+            # consumer: the campaign preflight died here while the stop surface demanded a review that
+            # could not start, and nothing on either surface said what to do.
+            #
+            # Says the CONSEQUENCE first (nothing was checked - the state a reader most needs to
+            # understand), then the exact command that fixes it, then the manual alternative. The
+            # requirement id is gone: it is a note to us, not an instruction to them.
+            $result.reason = 'no verification plan at .specrew/verification-plan.json, so nothing was checked. Run: specrew init - it creates a starter plan you can edit. You can also write the file yourself.'
             return $result
         }
         $plan = $null

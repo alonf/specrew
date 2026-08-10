@@ -574,11 +574,31 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -Not -BeNullOrEmpty
     }
 
+    It 'T007/FR-013: an absent plan names the NEXT STEP, not just the requirement it violates' {
+        # DRIFT-199-I001-008 is this message reaching a consumer: the campaign preflight died with
+        # `verification-not-configured` and the stop surface demanded a review that could not start.
+        # The old text gave a file path and a requirement id - true, and useless to the person holding
+        # it. T007 part 1 makes this state rare, which is exactly why the cases that survive are the
+        # confusing ones: a hand-deleted plan, or a directory that was never initialised.
+        $repo = New-PlanRunRepo
+        $reason = [string](Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo).reason
+
+        $reason | Should -Match '\.specrew/verification-plan\.json' -Because 'name the file that is missing'
+        $reason | Should -Match '(?i)specrew init' -Because 'name the command that fixes it'
+        $reason | Should -Match '(?i)nothing was (checked|verified)' -Because 'say what the consequence was, not only what is absent'
+        $reason | Should -Not -Match '(?i)FR-0\d\d' -Because 'a requirement id is a note to us, not an instruction to them (FR-015)'
+    }
+
     It 'the selected-plan RESOLVER: absent -> unavailable; schema-invalid -> unavailable (loud, never silently none or silently used); valid -> available (maintainer wiring directive 2026-07-15)' {
         $repo = New-PlanRunRepo
         $r1 = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo
         $r1.available | Should -BeFalse
-        [string]$r1.reason | Should -Match 'supplier'
+        # MOVED 2026-08-10 (T007/FR-013). Was `Should -Match 'supplier'`. The GUARANTEE this case exists
+        # for is "absent -> unavailable, with a stated reason"; the word 'supplier' is internal
+        # vocabulary that happened to be in the string. Pinning the guarantee instead, so the message can
+        # be written for the consumer without the case going quiet.
+        [string]$r1.reason | Should -Not -BeNullOrEmpty
+        [string]$r1.reason | Should -Match '\.specrew/verification-plan\.json'
         New-Item -ItemType Directory -Path (Join-Path $repo '.specrew') -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $repo '.specrew/verification-plan.json') -Value '{ "plan_id": "p" }' -Encoding UTF8
         $r2 = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo

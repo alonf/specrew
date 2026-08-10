@@ -616,6 +616,34 @@ The invariant that actually matters is the one the 1200-versus-900 defect violat
 the window with a sealed failure. Currently 600 s of 900 — satisfied, with the class-guard lane
 measured at 10.3 s against its 120 s ceiling.
 
+### FR-013 — the ONE expectation T007 moved, old and new side by side (recorded 2026-08-10)
+
+Same discipline as the FR-009 and FR-006 tables: a later reader should see a guarantee sharpened by a
+requirement, not a test bent to fit new code. It lives in
+`tests/continuous-co-review/unit/verification-plan-runner.Tests.ps1`.
+
+**The requirement that moved it** — FR-013: a failure must name the missing piece and the next step,
+not a requirement id. Its live evidence is DRIFT-199-I001-008, where the campaign preflight died with
+`verification-not-configured` while the stop surface demanded a review that could not start, and
+neither surface said what to do.
+
+| Case | What changed | Old | New | Why |
+| --- | --- | --- | --- | --- |
+| `the selected-plan RESOLVER: absent -> unavailable ...` | the absent-plan assertion | `reason \| Should -Match 'supplier'` | `reason` is non-empty AND names `.specrew/verification-plan.json` | The GUARANTEE is "absent -> unavailable, with a stated reason". The word `supplier` is INTERNAL VOCABULARY that happened to be in the string, and pinning it would have made the case fail for a rewrite that improved the message. The new assertions pin the guarantee and the one durable fact — which file is missing. |
+
+**What did NOT move**: the case still asserts `available = $false` for an absent plan, still asserts a
+schema-invalid plan is refused loudly, and still asserts a valid plan is available. Only the wording
+probe moved, and it moved from a word to a guarantee.
+
+**The message itself, old and new**, since that is the actual deliverable:
+
+> **Old**: `no supplier output at .specrew/verification-plan.json (FR-049 supplier not configured)`
+> **New**: `no verification plan at .specrew/verification-plan.json, so nothing was checked. Run:`
+> `specrew init - it creates a starter plan you can edit. You can also write the file yourself.`
+
+Consequence first (nothing was checked — the state a reader most needs), then the exact command, then
+the manual alternative. The requirement id is gone: it is a note to us, not an instruction to them.
+
 ### FR-006 — the expectations T005 moved, old and new side by side (recorded 2026-08-10)
 
 Same discipline as the FR-009 table: a later reader should see a guarantee sharpened by a requirement,
