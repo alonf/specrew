@@ -385,7 +385,13 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
     }
     if ([string]$latest.runtime_outcome -ceq 'timed-out') {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-timeout' -Reason 'latest-review-timed-out' -Message ('The review timed out: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+        # FR-018: a consumer who loses a review to the budget must be told which setting to change.
+        # Shape: what happened -> what it means for their project -> the exact next step.
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-timeout' -Reason 'latest-review-timed-out' -Message (
+            'The review ran out of time before it finished (' + [string]$latest.failure_reason + '), so it produced no usable result. ' +
+            'Reviews of this size often need a longer window: raise co_review_timeout_seconds in .specrew/config.yml, ' +
+            'or pass --timeout-seconds on the next run, then run the review again.'
+        ) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
     }
     if ([string]$latest.completion -cne 'complete') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-partial' -Reason 'latest-review-incomplete' -Message 'Validated partial findings remain advisory, but a complete separately authorized run is required.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'use-partial-findings-and-request-rerun-grant'

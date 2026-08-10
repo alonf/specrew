@@ -61,7 +61,12 @@ function Get-ContinuousCoReviewReviewerHostRows {
         # waiting for that trust) plus its sandbox-setup helper resolvable next to the launcher. Bypassing removes BOTH
         # failure modes with zero per-run / per-machine config. (F-197 reviewer robustness; drift D-197-I009-009 / T102.
         # NOTE: reviewing UNTRUSTED third-party code should use the per-run trust-injection mode instead — see T102.)
-        @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85; default_timeout_seconds = 600; production_harness_id = 'codex-cli-file-primary'; production_constructor = 'New-ReviewCodexFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
+        # default_timeout_seconds 600 -> 900 (F-199 T009 / FR-018). T067 measured the 600-second
+        # class failing on a PLANNING-SCALE target: the run died silently at the budget while the
+        # same review produced real findings when given 900. Planning-scale targets are the common
+        # first-feature shape, so the row carries the larger value rather than leaving every
+        # consumer to discover it after losing a review.
+        @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85; default_timeout_seconds = 900; production_harness_id = 'codex-cli-file-primary'; production_constructor = 'New-ReviewCodexFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
         # copilot headless vector probe-validated live 2026-07-10 (F-198 iteration 001; scratch
         # probe answered in 6s and exited): `-p <prompt>` is non-interactive exit-after-completion,
         # --allow-all-tools is REQUIRED for non-interactive mode, --allow-all-paths lets the
