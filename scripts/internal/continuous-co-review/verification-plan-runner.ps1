@@ -175,23 +175,39 @@ function Get-ContinuousCoReviewVerificationFailureDiagnosis {
     [CmdletBinding()]
     param([AllowNull()][object[]]$Evidence)
 
-    $failed = @(@($Evidence) | Where-Object { $null -ne $_ -and -not [bool]$_.command_succeeded })
+    # EVERY read below goes through this, and that is not defensive habit - it is a defect this function
+    # already had. Evidence records come from several builders and do NOT all carry the same fields; the
+    # first version read them directly and threw under StrictMode
+    # (`The property 'failure_reason' cannot be found on this object`) the moment it met a real record.
+    # Its own fixtures passed, because they SYNTHESISED records with every field present. Third instance
+    # of that trap in this feature - a fixture can only prove the shape it invents.
+    $prop = {
+        param($Object, [string]$Name)
+        if ($null -eq $Object) { return $null }
+        $p = $Object.PSObject.Properties[$Name]
+        if ($null -eq $p) { return $null }
+        return $p.Value
+    }
+
+    $failed = @(@($Evidence) | Where-Object { $null -ne $_ -and -not [bool](& $prop $_ 'command_succeeded') })
     if ($failed.Count -eq 0) { return '' }
 
     $lines = [Collections.Generic.List[string]]::new()
     foreach ($record in $failed) {
-        $id = [string]$record.command_id
-        $exit = if ($null -eq $record.exit_code) { 'no exit code (it did not start)' } else { "exit code $([int]$record.exit_code)" }
-        $timing = if ([bool]$record.timed_out) { 'it ran out of time' } else { 'it finished on its own' }
-        $seconds = [double]$record.duration_seconds
+        $id = [string](& $prop $record 'command_id')
+        if ([string]::IsNullOrWhiteSpace($id)) { $id = '(unnamed command)' }
+        $exitValue = & $prop $record 'exit_code'
+        $exit = if ($null -eq $exitValue) { 'no exit code (it did not start)' } else { "exit code $([int]$exitValue)" }
+        $timing = if ([bool](& $prop $record 'timed_out')) { 'it ran out of time' } else { 'it finished on its own' }
+        $seconds = [double](& $prop $record 'duration_seconds')
         $lines.Add(("  {0}: {1}, after {2:N1}s - {3}." -f $id, $exit, $seconds, $timing))
-        $classification = [string]$record.classification
+        $classification = [string](& $prop $record 'classification')
         if (-not [string]::IsNullOrWhiteSpace($classification)) { $lines.Add(("    what happened: {0}" -f $classification)) }
-        $reason = [string]$record.failure_reason
+        $reason = [string](& $prop $record 'failure_reason')
         if (-not [string]::IsNullOrWhiteSpace($reason)) { $lines.Add(("    reported: {0}" -f $reason)) }
 
         # The env_refs line is the one that would have ended T067 in a minute.
-        $names = @(@($record.env_refs) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        $names = @(@(& $prop $record 'env_refs') | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
         if ($names.Count -gt 0) {
             $lines.Add(("    this command could only see these environment variables: {0}" -f ($names -join ', ')))
             $lines.Add('    if it needs another one, add its NAME to that command''s env_refs in .specrew/verification-plan.json (names only, never values).')

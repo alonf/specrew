@@ -55,6 +55,42 @@ Describe 'Composed stop-here landing (T002)' {
         $landing.failed_step | Should -Be 'verification'
     }
 
+    # T007 / FR-013. The landing message tells the human to "fix what the message above names" - so the
+    # message has to name something. A sealed verification failure reaches this prose as
+    # `verification-command-failed:build:diagnostics-require-command-scoped-disclosure`, which names a
+    # machine token and a locked door. The derived diagnosis is composed from facts the engine already
+    # owns (never command output), so it can ride here without touching the seal.
+    It 'FR-013: a failed step''s DIAGNOSIS reaches the human, not just its machine reason' {
+        $log = [Collections.Generic.List[string]]::new()
+        $ports = script:New-LandingPorts -Log $log
+        $ports.VerifyPort = {
+            param($ctx)
+            $Log.Add('verify') | Out-Null
+            [pscustomobject]@{
+                ok = $false
+                reason = 'verification-command-failed:build:diagnostics-require-command-scoped-disclosure'
+                diagnosis = "  build: exit code 1, after 3.5s - it finished on its own.`n    this command could only see these environment variables: PATH, TMPDIR"
+            }
+        }.GetNewClosure()
+
+        $landing = script:Invoke-Landing -Ports $ports
+
+        $landing.landed | Should -BeFalse
+        $landing.message | Should -Match 'exit code 1' -Because 'the human is told to fix what the message names, so it must name something'
+        $landing.message | Should -Match 'PATH, TMPDIR'
+        $landing.message | Should -Match 'diagnostics-require-command-scoped-disclosure' -Because 'the disclosure pointer is preserved, never replaced - the seal is untouched'
+    }
+
+    It 'FR-013: a step with NO diagnosis renders no empty section' {
+        # Most failures are not command failures and carry nothing derived. A message that always makes
+        # room for a diagnosis teaches the reader to skip the place where one appears.
+        $log = [Collections.Generic.List[string]]::new()
+        $landing = script:Invoke-Landing -Ports (script:New-LandingPorts -GateOk $false -Log $log)
+
+        $landing.landed | Should -BeFalse
+        $landing.message | Should -Not -Match '(?i)what the check reported'
+    }
+
     It 'a failed acceptance stops the chain before the gate is touched' {
         $log = [Collections.Generic.List[string]]::new()
         $landing = script:Invoke-Landing -Ports (script:New-LandingPorts -AcceptOk $false -Log $log)

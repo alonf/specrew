@@ -675,9 +675,20 @@ consumer-facing pause surface (`Format-ReviewCampaignPauseSurface`) says nothing
 all. So a project whose reviews verify only governance while its tests never run is told "verification
 passed" with no way to notice, which is precisely the invisible-degradation class the maintainer named.
 
-**Owed, and small**: name the commands that ran on the consumer surface. Explicitly NOT owed:
-detection of "auto-detection would now match something else" — that routes to beta4 if still wanted
-after this lands.
+**Owed, and small — traced to the exact sentence.** The stop-here landing already tells the consumer,
+on SUCCESS: *"Review is signed off. Any remaining minor findings are saved as follow-ups, and the final
+check ran on your files exactly as they were."* That last clause is where the naming belongs, because
+it is the one place a human is told the check happened. A project verifying only governance should read
+something like *"…the final check ran on your files exactly as they were (1 command: Specrew governance
+validation)"* — and then the degradation is visible without any shadow-detection at all.
+
+The facts are already in hand at the success return: `$planIds` holds the command ids and
+`$selected.plan.commands[].label` holds their human labels. So the change is the same three-step shape
+as the diagnosis — carry `command_ids`/labels out of `Invoke-ReviewCampaignFrozenVerification`, through
+the verify port, into the landing message — and it reuses the seam the diagnosis wiring just proved.
+
+Explicitly NOT owed: detection of "auto-detection would now match something else". That routes to beta4
+if still wanted after this lands, per the maintainer's ruling.
 
 ### T008 design record — which failure classes actually charge, READ FROM SOURCE (2026-08-10)
 

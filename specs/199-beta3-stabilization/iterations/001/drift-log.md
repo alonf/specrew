@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 24 (DRIFT-199-I001-001 through -024)
+**Total drift events**: 25 (DRIFT-199-I001-001 through -025)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -702,6 +702,42 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-025 — the synthesis trap, THIRD instance in one day, inside the fix for the second (resolved)
+
+- **Observed**: 2026-08-10, wiring the FR-013 derived diagnosis. Two EXISTING fixtures in a suite I had
+  not touched went red:
+
+  > `verification-copy-failed: The property 'failure_reason' cannot be found on this object.`
+  > `Verify that the property exists.`
+
+- **Cause**: `Get-ContinuousCoReviewVerificationFailureDiagnosis` read every evidence field directly
+  (`$record.failure_reason`, `$record.exit_code`, ...). Evidence records are produced by SEVERAL
+  builders and do not all carry the same fields, so under `Set-StrictMode -Version Latest` the first
+  real record threw.
+- **And its own fixtures were green**, because they SYNTHESISED records carrying every field. A partial
+  record is the NORMAL case in production, not an edge, and the fixture had no way to know that because
+  it invented its inputs.
+- **Why this is worth its own entry rather than a line in a commit**: it is the THIRD instance today of
+  the same trap, and the second one INSIDE a fix for the first.
+
+  1. The reparse classifier refused every real file while its synthesised dehydrated shapes passed
+     (DRIFT-199-I001-023).
+  2. The fix for that synthesised `unpinned+hydrated` as `0x100420`; the real value is `0x420`, and no
+     synthesised shape included `SPARSE 0x200` (DRIFT-199-I001-024).
+  3. This one.
+
+- **The rule, restated because three instances earn a rule**: **a fixture can only prove the shape it
+  invents.** When a function consumes data produced ELSEWHERE — a filesystem, another builder, an
+  external system — synthesised inputs test the author's model of that data, not the data. Either feed
+  it a real record once, or read every field defensively and pin the partial case explicitly.
+- **Resolution**: FIXED. All field reads go through one tolerant accessor; a missing `command_id`
+  renders `(unnamed command)` rather than dropping the record, because a failed command that vanishes
+  from the diagnosis is worse than an ugly label. Two new cases pin exactly the shape that broke it — a
+  record carrying only `command_id` and `command_succeeded`, and one carrying neither.
+- **Method note**: caught by EXISTING fixtures in a suite the change did not touch, which is now the
+  fifth time this session. `review-campaign-verification.Tests.ps1` was not written for this function
+  and had no idea it existed.
 
 ### DRIFT-199-I001-024 — a HYDRATED-UNPINNED cloud file is indistinguishable from an AppExecLink (RESOLVED by maintainer ruling 2026-08-10)
 

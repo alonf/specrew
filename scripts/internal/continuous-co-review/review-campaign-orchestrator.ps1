@@ -438,6 +438,11 @@ function Invoke-ReviewCampaignFrozenVerification {
         # evidence injection, harness preflight, claim acquisition, or spend; the reservation is
         # released by the caller. Output stays private by default. The stable reason directs the
         # operator to the existing human-authorized, command-scoped bounded-disclosure path.
+        # T007 / FR-013. `reason` is UNCHANGED, byte for byte: it is the machine token AND the pointer
+        # to the human-authorized disclosure door, three fixtures assert it by exact equality, and the
+        # seal is not what this improves. The DIAGNOSIS rides beside it - facts the controller already
+        # owns (command, exit code, duration, timeout, classification, and the env_refs the plan
+        # allowed), never command output. See Get-ContinuousCoReviewVerificationFailureDiagnosis.
         return [pscustomobject]@{
             ok = $false
             reason = 'verification-command-failed:' + ($failedIds -join ',') + ':diagnostics-require-command-scoped-disclosure'
@@ -446,6 +451,7 @@ function Invoke-ReviewCampaignFrozenVerification {
             command_count = $planIds.Count
             evidence_count = $evidence.Count
             failed_command_ids = @($failedIds)
+            diagnosis = (Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence $evidence)
         }
     }
 
@@ -725,7 +731,12 @@ function Invoke-ReviewCampaignStopHereLanding {
             param($ctx)
             $snapshot = New-GitReviewTargetSnapshot -RepoRoot $ctx.project_root
             $verification = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
-            return [pscustomobject]@{ ok = [bool]$verification.ok; reason = [string]$verification.reason }
+            # The diagnosis is carried THROUGH the port, not dropped here. A port that narrows its
+            # result to {ok, reason} is where a derived explanation quietly dies (FR-013).
+            return [pscustomobject]@{
+                ok = [bool]$verification.ok; reason = [string]$verification.reason
+                diagnosis = [string](Get-ReviewAuthorityProperty -Object $verification -Name 'diagnosis')
+            }
         }
     }
     if ($null -eq $AcceptPort) {
@@ -754,6 +765,7 @@ function Invoke-ReviewCampaignStopHereLanding {
 
     $failedStep = $null
     $failureReason = $null
+    $failureDiagnosis = ''
     foreach ($step in $ordered) {
         $outcome = $null
         try { $outcome = & $step.port $context }
@@ -763,6 +775,9 @@ function Invoke-ReviewCampaignStopHereLanding {
         if (-not $ok) {
             $failedStep = [string]$step.name
             $failureReason = [string]$outcome.reason
+            # Read defensively: most ports return {ok, reason} only, and a missing property must not
+            # throw under StrictMode.
+            $failureDiagnosis = [string](Get-ReviewAuthorityProperty -Object $outcome -Name 'diagnosis')
             break
         }
     }
@@ -777,7 +792,15 @@ function Invoke-ReviewCampaignStopHereLanding {
             'residual-acceptance' { 'the remaining findings could not be recorded as accepted' }
             default { 'sign-off could not be completed' }
         }
+        # T007 / FR-013. This sentence tells the human to "fix what the message above names", so the
+        # message has to NAME something. A sealed verification failure used to arrive here as a machine
+        # token and a locked door, which named nothing they could act on. The derived diagnosis is
+        # rendered only when a step supplied one - a section that is always present, most often empty,
+        # teaches the reader to skip exactly where the useful part appears.
+        $diagnosisSection = if ([string]::IsNullOrWhiteSpace($failureDiagnosis)) { '' }
+        else { ([Environment]::NewLine * 2) + 'What the check reported:' + [Environment]::NewLine + $failureDiagnosis + ([Environment]::NewLine * 2) }
         ('Stopping here did not finish: {0} ({1}). Nothing was signed off, and your review findings are unchanged. ' -f $whatFailed, $failureReason) +
+        $diagnosisSection +
         'What to do next: fix what the message above names, then choose "stop here" again - the whole landing runs as one step, so there is nothing else for you to reconcile by hand.'
     }
 

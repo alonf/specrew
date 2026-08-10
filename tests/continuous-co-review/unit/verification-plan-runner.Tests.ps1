@@ -621,6 +621,26 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
             $d | Should -Match '(?i)no exit code \(it did not start\)'
         }
 
+        It 'survives a REAL record that lacks fields the synthesised ones all had' {
+            # The defect this case exists for: the first version read every field directly and threw
+            # under StrictMode the moment it met a record without `failure_reason`
+            # (`verification-copy-failed: The property 'failure_reason' cannot be found on this
+            # object`). Its own fixtures passed because they invented records carrying everything.
+            # Evidence comes from several builders; a partial record is the NORMAL case, not the edge.
+            $sparse = [pscustomobject]@{ command_id = 'sparse'; command_succeeded = $false }
+            { Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @($sparse) } | Should -Not -Throw
+
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @($sparse)
+            $d | Should -Match 'sparse'
+            $d | Should -Match '(?i)no exit code'
+            $d | Should -Match '(?i)NO environment variables at all'
+        }
+
+        It 'a record with no command_id is still reported, never dropped' {
+            $d = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @([pscustomobject]@{ command_succeeded = $false })
+            $d | Should -Match '(?i)unnamed command' -Because 'a failed command that vanishes from the diagnosis is worse than an ugly label'
+        }
+
         It 'reports EVERY failed command, and stays silent when nothing failed' {
             $two = Get-ContinuousCoReviewVerificationFailureDiagnosis -Evidence @(
                 (script:New-FailedEvidence -Id 'first'), (script:New-FailedEvidence -Id 'second')
