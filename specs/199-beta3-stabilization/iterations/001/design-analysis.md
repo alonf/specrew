@@ -31,7 +31,7 @@ amendment).
 
 ## Alternatives
 
-### Option A — Simplest: derived pause state
+### Option A - Simplest: derived pause state
 
 No persisted pause fact. The decision surface is re-derived from the latest run
 result; the stop governor infers quietness from run records.
@@ -40,7 +40,7 @@ quiet-state read becomes heuristic — it strains the human-bound sanctioned-sta
 semantics (architecture D3 addition), and a resumed session re-renders lossily; the
 budget fixtures would pin inference behavior instead of a fact.
 
-### Option B — Reasonable: first-class pending-pause fact (RECOMMENDED)
+### Option B - Reasonable: first-class pending-pause fact (RECOMMENDED)
 
 A pending-pause fact in the review authority store (atomic FileMode.CreateNew,
 immutable; answered by writing the corresponding decision fact). The decision surface
@@ -51,7 +51,7 @@ already the single review authority; projections render from facts); object-inva
 (an unanswered pause with a running round is an impossible state, guardable).
 Bridge-sized: one fact schema plus reads.
 
-### Option C — By-the-book: decision-state machine with grant kinds
+### Option C - By-the-book: decision-state machine with grant kinds
 
 A full decision pipeline with single-run/until-terminal grant vocabulary.
 **Rejected because** grant kinds are explicitly beta4's disposition-vocabulary cluster
