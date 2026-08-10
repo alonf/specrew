@@ -45,18 +45,18 @@ verbatim and ready to paste, for the closeout leg (T012 / FR-021) or the maintai
 > MODEL of that data, not the data. Either feed it a real artifact once before the fixture is believed,
 > or read every field defensively and pin the partial case explicitly. A green suite over invented
 > inputs is evidence about the author, not about the world.
->
-> *Evidence: DRIFT-199-I001-023, -024, -025 — three instances in a single day, the second inside the fix
-> for the first, and the third inside the fix for the second.*
+
+*Evidence: DRIFT-199-I001-023, -024, -025 — three instances in a single day, the second inside the fix
+for the first, and the third inside the fix for the second.*
 
 > **RULE — comments record intent; they do not enforce it. Where a comment states a rule that matters,
 > add a guard that asserts it.** The author who writes the rationale is not thereby protected by it.
->
-> *Evidence: twice in one day the same author wrote a rationale and then built the exact failure it
-> warned against — the starter plan scaffolding a command that could not run, minutes after commenting
-> that this was the thing to avoid; and the `@()` array-nesting bug, documented in a comment ~300 lines
-> above the line written, and read that same day. The countermeasure that DID work is the structural
-> fixture asserting the diagnosis composer's body never mentions `stdout`/`stderr`/`ReadAllText`.*
+
+*Evidence: twice in one day the same author wrote a rationale and then built the exact failure it warned
+against — the starter plan scaffolding a command that could not run, minutes after commenting that this
+was the thing to avoid; and the `@()` array-nesting bug, documented in a comment ~300 lines above the
+line written, and read that same day. The countermeasure that DID work is the structural fixture
+asserting the diagnosis composer's body never mentions `stdout`/`stderr`/`ReadAllText`.*
 
 ## BETA4 LIST — everything this feature routed out, collected in one place
 
