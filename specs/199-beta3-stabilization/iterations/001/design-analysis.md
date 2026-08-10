@@ -603,6 +603,26 @@ PATH`), and propagates the contract's own reason for a schema-invalid plan.
    that never mentions environment at all. Naming the missing variable requires knowing which one was
    missing, which the current design cannot know — so this needs a decision about how much to infer,
    not just a better string. **Do not implement it as a guess.**
+   **PARTIALLY DELIVERED since this was written**: the derived diagnosis now names *"this command could
+   only see these environment variables: PATH, TMPDIR ... if it needs another one, add its NAME to that
+   command's env_refs"* — the HINT half, the rule plus the exact place to change it, which is what would
+   have ended T067. Still absent: naming WHICH variable was missing, the part needing the inference
+   decision.
+2b. **THE DEFER-RECORD FORMAT — found in the spec, NOT found in code (measured 2026-08-11).** FR-013's
+   acceptance scenario 3 reads: *"Given an invalid plan or a malformed defer record, When the failure
+   renders, Then the error names the schema element or required defer format rather than a generic
+   verification-command-failed."* But `verification-plan-contract.ps1` contains **no** defer, waiver or
+   skip concept at all — there is nothing in the verification path to name.
+   The closest EXISTING contract is reviewer-side, `worktree-reviewer.ps1:1104-1114`: a recorded human
+   deferral must live in a **worktree-visible** artifact (a drift-log event, a specs decision artifact,
+   or a proposal work item), name the issue, record the approving human, and state where the work is
+   carried — and a deferral CLAIM without such a record is itself a blocking finding.
+   **So FR-013 means one of two things, and it must be settled before code**: (a) the verification plan
+   gains a defer concept it does not have, or (b) the requirement is about surfacing the EXISTING
+   reviewer-side deferral format when a deferral claim fails validation. **(b) is far more likely** — it
+   names a "required defer format" that already exists and is already enforced — but (a) would be new
+   machinery in a closed-scope feature, so this is a maintainer scope call rather than an implementer's
+   guess.
 3. **The genuinely SEALED failure — FR-013's real target.** DRIFT-199-I001-012 recorded a verification
    failure surfacing as `diagnostics-require-command-scoped-disclosure`, where the consumer cannot see
    why their verification failed without a human-authorized diagnostic disclosure. This is the one that

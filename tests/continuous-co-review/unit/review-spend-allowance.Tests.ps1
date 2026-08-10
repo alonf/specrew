@@ -345,21 +345,44 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
             [string]$out.result.result.failure_reason | Should -Not -Match '(?i)still available'
         }
 
-        It 'every failed-run return CARRIES the restored-slot fact (source guard)' {
-            # Labelled a source guard, like the pause-terminal one: the behavioural cases above exercise
-            # the helper directly, and this pins that the campaign's four failed-run returns do not DROP
-            # what it reports. A result narrowed at a boundary is where an explanation dies - the
-            # verification diagnosis was lost at exactly this shape - and a unit fixture cannot reach
-            # these returns without standing up the full harness/runtime port set.
+        It 'EVERY return carrying $failed also carries the restored-slot fact (source guard)' {
+            # THE INVARIANT IS SHAPE-INDEPENDENT ON PURPOSE, and the first version of this guard got that
+            # wrong in the most instructive way. It matched "status = 'failed'; reason = $reason", which
+            # enumerated the four shapes already known, asserted EXACTLY four, and went green - while a
+            # FIFTH site fifty lines away (`status = 'not-started'`, reason composed inline from
+            # $claim.reason) called the helper with -Spends @(), restored the slot, and dropped the
+            # fields. F4 verbatim, on a path the guard could not see BY CONSTRUCTION.
+            #
+            # Fourth instance today of "a fixture can only prove the shape it invents" - this one inside
+            # the guard written specifically to stop a fifth return from dropping these fields. An exact
+            # count over a hand-enumerated pattern reports COMPLETENESS over the author's list, not over
+            # the code.
+            #
+            # So the invariant is not "returns whose status is failed". It is: ANY return that carries
+            # $failed must carry the restored-slot fields. Matching on `$failed.` is shape-independent,
+            # so a sixth site with yet another status is caught too - and the reservation-refused return
+            # (`result = $null`, no $failed) is excluded naturally rather than by exception.
             $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
-            $failedReturns = @([regex]::Matches($source, "status = 'failed'; reason = \`$reason[^}]*}"))
+            $carrying = @([regex]::Matches($source, '(?m)return \[pscustomobject\]@\{[^}]*\$failed\.[^}]*\}'))
 
-            @($failedReturns).Count | Should -Be 4 -Because 'if a fifth failed-run return appears, it must be checked too rather than silently omitted'
-            foreach ($match in $failedReturns) {
-                $match.Value | Should -Match 'slot_restored' -Because 'a failed run that restored the human''s authorization must say so all the way out'
+            @($carrying).Count | Should -BeGreaterOrEqual 5 -Because 'a FLOOR, never an exact count: an exact count is what let the fifth site hide. This only guards against the regex silently matching nothing.'
+            foreach ($match in $carrying) {
+                $match.Value | Should -Match 'slot_restored' -Because "a run that restored the human's authorization must say so all the way out, whatever its status reads: $($match.Value)"
                 $match.Value | Should -Match 'slot_restored_note'
-                $match.Value | Should -Match 'reason = \$reason' -Because 'the machine reason stays untouched; three fixtures assert it by exact equality'
             }
+        }
+
+        It 'a return with NO $failed is correctly out of scope (the guard excludes it naturally)' {
+            # The reservation-refused path returns result = $null and never calls the helper, so there is
+            # no restored slot to report. It must be excluded by the invariant itself, not by an
+            # exception list - exception lists are how the next site gets forgotten.
+            $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
+            $reservationRefused = [regex]::Match($source, "return \[pscustomobject\]@\{ status = 'not-started'; reason = \`$reservationResult\.reason[^}]*\}").Value
+
+            $reservationRefused | Should -Not -BeNullOrEmpty
+            $reservationRefused | Should -Match 'result = \$null'
+            $reservationRefused | Should -Not -Match '\$failed\.' -Because 'no reservation was made, so no slot came back'
+            $reservationRefused | Should -Not -Match 'slot_restored' -Because 'claiming a restored slot here would tell the human they hold an authorization they never spent'
         }
 
         It 'says nothing when no slot was restored (an invoked run keeps its charge)' {

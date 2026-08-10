@@ -916,6 +916,15 @@ if ($Live) {
                     # which setting to change ON THE PATH THEY ACTUALLY RAN. The signoff-gate route
                     # carries this text for the boundary surface; the public CLI needs it too, or the
                     # timeout stays sealed exactly where the consumer is standing.
+                    # F4 (T067), same argument as the timeout text below and the same reason it lives
+                    # HERE: measured in the T067 timeline, a pre-invocation failure released the slot,
+                    # nothing offered it back, and the human minted a fresh authorization three minutes
+                    # later that they did not need. The engine knew the slot had returned and told
+                    # nobody. This is where the consumer is standing when they decide.
+                    if ([bool](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'slot_restored')) {
+                        $restoredNote = [string](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'slot_restored_note')
+                        if (-not [string]::IsNullOrWhiteSpace($restoredNote)) { Write-Host $restoredNote -ForegroundColor Cyan }
+                    }
                     if ([string]$campaignRun.result.runtime_outcome -ceq 'timed-out') {
                         $windowText = if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) { [string]$campaignRun.resolved_timeout_seconds } else { [string]$tos }
                         Write-Host ("The review ran out of time after {0} seconds, so it produced no usable result. Reviews of this size often need a longer window: raise co_review_timeout_seconds in .specrew/config.yml, or pass --timeout-seconds on the next run, then run the review again." -f $windowText) -ForegroundColor Yellow

@@ -1110,7 +1110,12 @@ issue, records the approving human, and states where the work is carried. NOTE: 
 the mirror record in the drift-log/specs/proposals; the implementer is required to mirror deferrals into a
 worktree-visible artifact. A deferral-covered issue is reported (if at all) as ADVISORY with the decision id
 cited, never blocking. A deferral CLAIM without a verifiable worktree-visible record is itself a blocking
-finding. A prior-round item of kind 'escalation' is itself RESOLVED once every finding underneath it is fixed or
+finding - AND WHEN YOU RAISE THAT FINDING, STATE THE FORMAT THAT WOULD SATISFY IT (FR-013). Naming the
+rule without naming its shape leaves the implementer guessing at exactly the moment they are trying to
+comply. Your finding must name all four required elements: (1) a WORKTREE-VISIBLE artifact - an
+iteration drift-log event, a specs decision artifact, or a proposal work item; (2) which NAMES or
+unmistakably describes the issue; (3) which RECORDS the approving human; and (4) which STATES where the
+work is carried. Then name the next step: mirror the decision into one of those artifacts and cite it. A prior-round item of kind 'escalation' is itself RESOLVED once every finding underneath it is fixed or
 deferral-covered - do not copy an escalation forward.
 
 WORKSHOP-DECISION CONFORMANCE: the workshop records + design-analysis are BINDING. Raise a conflict when a change

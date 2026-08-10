@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 26 (DRIFT-199-I001-001 through -026)
+**Total drift events**: 27 (DRIFT-199-I001-001 through -027)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -68,6 +68,33 @@ asserting the diagnosis composer's body never mentions `stdout`/`stderr`/`ReadAl
 hour. One derived reuses as `reservations - grants` and produced a committed, false defect claim; the
 other counted grant subdirectories as reservations and produced arithmetic that would not close. The
 stores were clean throughout; only the counting was wrong.*
+
+### PROPOSED third rule — awaiting the maintainer's ruling, not staged on my own authority
+
+The two rules above were staged under an explicit ruling. This one is offered, not assumed, because the
+maintainer decides what the ledger inherits.
+
+> **RULE — a guard that ENUMERATES known shapes reports completeness over the author's list, not over
+> the code.** When the invariant is "every X must do Y", assert it against the property that makes
+> something an X, never against the incidental form of the X's you happened to find. An exact count over
+> an enumerated pattern is the tell: it converts "I found four" into "there are four."
+
+*Evidence: TWO source guards in one session, both mine, both rewritten after failing to guard what they
+claimed. The first sliced a function body with `.*?\n\}`, stopped at the first nested brace, and guarded
+almost nothing. The second keyed on `status = 'failed'; reason = $reason`, asserted EXACTLY four
+matches, and went green while a fifth return - `status = 'not-started'`, reason composed inline -
+restored a slot and dropped the fields fifty lines away. It was written specifically to stop a fifth
+return from doing that.*
+
+*The fix in both cases was to assert the INVARIANT rather than the form: slice to the next top-level
+function; match on `$failed.` appearing in the returned object. The second phrasing also excludes the
+reservation-refused return naturally, because that return genuinely has no `$failed` - which is the
+mark of a correctly-stated invariant: the out-of-scope cases fall out instead of needing an exception
+list.*
+
+*Distinct from the synthesis rule, and worth separating: that one is about INPUTS (invented data testing
+the author's model of real data). This is about the PREDICATE (an invented enumeration testing the
+author's model of the code's shape). Same failure, opposite ends of the fixture.*
 
 ## BETA4 LIST — everything this feature routed out, collected in one place
 
@@ -744,6 +771,36 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-027 — FR-013 groups a REVIEWER-side concept with two verification-plan ones (resolved by ruling)
+
+- **Observed**: 2026-08-11, implementing T007 part 2. FR-013 and its acceptance scenario 3 require that a
+  failure name *"the schema element or required defer format"*, listing the missing pieces as
+  **env_refs, plan schema, defer-record format**. The first two ARE verification-plan concepts, so the
+  grouping implies the third is one too.
+- **Measured, and the premise is wrong**: `verification-plan-contract.ps1` and
+  `verification-plan-runner.ps1` contain **no** defer, waiver or skip concept at all. There is nothing
+  in the verification path to name. The search found nothing because the premise was wrong, not because
+  the search was.
+- **Where the concept actually lives**: reviewer-side, in the prompt at
+  `worktree-reviewer.ps1:1104-1114`. A recorded human deferral must live in a WORKTREE-VISIBLE artifact
+  (an iteration drift-log event, a specs decision artifact, or a proposal work item), NAME the issue,
+  RECORD the approving human, and STATE where the work is carried — and a deferral CLAIM without such a
+  record is already ruled a blocking finding.
+- **Two readings were possible and the difference was scope**: (a) the verification plan GAINS a defer
+  concept, or (b) the requirement is about surfacing the EXISTING reviewer-side format. **(a) DECLINED
+  by the maintainer** — new machinery, and TG-004 closes scope.
+- **RULED (b), 2026-08-11, with a refinement**: it lands in the REVIEWER PROMPT, not in engine code,
+  because the prompt is the only place a defer record is ever judged. The format is already written
+  there and already enforced; what was missing is the instruction to STATE it when raising the finding.
+  **No engine code was written for this.**
+- **Resolution**: the prompt's deferral clause now requires that a blocking finding for an unverifiable
+  deferral claim NAME all four required elements and the next step (mirror the decision into one of
+  those artifacts and cite it). Rationale recorded in the prompt itself: naming the rule without naming
+  its shape leaves the implementer guessing at exactly the moment they are trying to comply.
+- **Recorded as drift rather than quietly reinterpreted**, because silently re-reading a requirement to
+  fit what the code happens to support is the failure this feature punishes everywhere else. The spec's
+  grouping is wrong; this entry is the reconciliation so the next reader does not repeat the hunt.
 
 ### DRIFT-199-I001-026 — TWO aggregate-over-containers errors, one each side, and a retracted finding (resolved)
 

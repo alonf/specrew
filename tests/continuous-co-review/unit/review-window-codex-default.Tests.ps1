@@ -86,6 +86,20 @@ Describe 'Codex review-window default and timeout message (T009 / FR-018)' {
         $campaignRender | Should -Match '--timeout-seconds'
     }
 
+    # F4 (T067), guarded in the same place and the same way as the timeout text above, because it is the
+    # same defect shape: the engine knew something the consumer needed and the PUBLIC branch they
+    # actually run never said it. Measured in the T067 timeline - a pre-invocation failure released the
+    # slot, nothing offered it back, and a fresh human authorization was minted three minutes later that
+    # was not needed.
+    It 'the PUBLIC campaign branch tells the human their authorization came back' {
+        $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
+        $campaignRender = [regex]::Match($cli, "(?ms)SPECREW CAMPAIGN REVIEW.*?Authority store").Value
+
+        $campaignRender | Should -Not -BeNullOrEmpty
+        $campaignRender | Should -Match 'slot_restored' -Because 'the fact reaches this branch; rendering it is what makes the human able to act on it'
+        $campaignRender | Should -Match 'slot_restored_note' -Because 'the sentence is carried as data so the CLI renders it verbatim rather than re-composing it'
+    }
+
     It 'the --help text states the real default resolution, not a fictional 120 seconds' {
         $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
         $helpLine = [regex]::Match($cli, '(?m)^\s*--timeout-seconds.*(?:\r?\n\s{20,}.*)*').Value
