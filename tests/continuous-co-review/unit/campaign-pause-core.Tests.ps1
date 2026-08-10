@@ -169,6 +169,61 @@ Describe 'Campaign pause core (T001)' {
         }
     }
 
+    Context 'the round terminal (FR-001: every round ends in a pause, never another round)' {
+        BeforeAll {
+            . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1')
+        }
+
+        It 'records the pause and returns the surface when a round publishes its result' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-term-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $result = [pscustomobject]@{
+                    findings = @(
+                        [pscustomobject]@{ severity = 'major'; title = 'retry loop never backs off'; location = 'src/poll.ps1:41' },
+                        [pscustomobject]@{ severity = 'minor'; title = 'wording'; location = 'docs/a.md:2' }
+                    )
+                    duration_ms = 600000
+                }
+                $pause = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-a' `
+                    -TargetDigest ('e' * 40) -ProjectName 'linkcheck' -Result $result -ObservedAt '2026-08-10T11:00:00Z'
+
+                $pause.recorded | Should -BeTrue
+                $pause.surface | Should -Match 'Review round'
+                $pause.surface | Should -Match 'Nothing runs and nothing is spent until you answer'
+                # The pause is now readable state, not something the caller must remember.
+                (Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId 'cmp-199-x-i001') | Should -Not -BeNullOrEmpty
+            }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'counts this round against the campaign budget, so cost accumulates across rounds' {
+            $store = Join-Path ([IO.Path]::GetTempPath()) ('ccr-term-' + [Guid]::NewGuid().ToString('N'))
+            try {
+                $result = [pscustomobject]@{ findings = @(); duration_ms = 60000 }
+                $first = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-1' `
+                    -TargetDigest ('f' * 40) -ProjectName 'linkcheck' -Result $result -ObservedAt '2026-08-10T11:00:00Z'
+                $first.decision.rounds_used | Should -Be 1
+
+                # A second round on the same campaign sees the first one's cost.
+                $second = Add-ReviewCampaignRoundPause -StoreRoot $store -CampaignId 'cmp-199-x-i001' -RunId 'run-term-2' `
+                    -TargetDigest ('f' * 40) -ProjectName 'linkcheck' -Result $result -ObservedAt '2026-08-10T11:10:00Z'
+                $second.decision.rounds_used | Should -Be 2
+            }
+            finally { Remove-Item -LiteralPath $store -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'the published-result path in the orchestrator records the pause' {
+            # Source guard (labelled as such): the behavioural cases above exercise the helper
+            # directly; this pins that the terminal actually calls it, which a unit fixture cannot
+            # reach without standing up the full harness/runtime port set.
+            $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1') -Raw
+            $publishedBlock = [regex]::Match($source, '(?ms)if \(\$ingress\.published\) \{.*?\n        \}').Value
+
+            $publishedBlock | Should -Not -BeNullOrEmpty
+            $publishedBlock | Should -Match 'Add-ReviewCampaignRoundPause'
+        }
+    }
+
     Context 'the pause facts (Option B: the pause is recorded, never inferred)' {
         It 'a pending-pause fact validates against its contract' {
             $fact = New-ReviewCampaignPendingPauseFact -CampaignId 'cmp-199-x-i001' -RunId 'run-t001-a' `

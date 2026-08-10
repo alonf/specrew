@@ -591,6 +591,99 @@ function Complete-ReviewPreInvocationFailure {
     return Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -HarnessId $HarnessId -RuntimeOutcome $RuntimeOutcome -Invoked $false -TerminationVerified $true -Containment $Containment -Currentness unknown -StartedAt $StartedAt -EndedAt $ObservedAt -DurationMs $DurationMs -FailureReason $Reason
 }
 
+function Get-ReviewCampaignRoundBudgetTotal {
+    # N1: the runaway fuse, per CAMPAIGN (clarified 2026-08-10 - a per-tree-state budget would reset
+    # on every fix round and never bind). Default 4: deep enough that a legitimate round-5-class
+    # blocker does not hit the reset ceremony mid-flow, small enough that a runaway dies fast.
+    [CmdletBinding()]
+    param([AllowEmptyString()][string]$RepoRoot = '')
+    $default = 4
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $default }
+    $configPath = Join-Path $RepoRoot '.specrew/config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { return $default }
+    try {
+        foreach ($line in @(Get-Content -LiteralPath $configPath -Encoding UTF8)) {
+            if ($line -match '^\s*co_review_max_rounds:\s*[''"]?(?<value>\d+)[''"]?\s*(?:#.*)?$') {
+                $parsed = 0
+                if ([int]::TryParse($Matches['value'], [ref]$parsed) -and $parsed -gt 0) { return $parsed }
+            }
+        }
+    }
+    catch { $null = $_ }
+    return $default
+}
+
+function Add-ReviewCampaignRoundPause {
+    # T001 / FR-001. THE ROUND TERMINAL. Every round ends here: the engine records what it found and
+    # what it cost, then hands the decision back to the human. It never starts another round on its
+    # own - that is the whole point. Ledger F8 measured what the missing pause cost: fifteen fix
+    # rounds on one target with no sanctioned way to stop.
+    #
+    # Cost is CUMULATIVE across the campaign, so the human sees what the campaign has spent rather
+    # than what this one round took.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][string]$TargetDigest,
+        [Parameter(Mandatory)][string]$ProjectName,
+        [Parameter(Mandatory)]$Result,
+        [Parameter(Mandatory)][string]$ObservedAt,
+        [AllowEmptyString()][string]$RepoRoot = ''
+    )
+
+    # A prior ROUND is one that reached a terminal: it published a result, or it recorded a pause,
+    # or both. Infrastructure failures are excluded here for the same reason FR-014 keeps them off
+    # the allowance - a consumer must not be charged a round for an engine defect.
+    $priorResults = @()
+    try { $priorResults = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId) } catch { $priorResults = @() }
+    $invokedPrior = @($priorResults | Where-Object {
+            [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -cne $RunId -and
+            [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed')
+        })
+    $priorRunIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($prior in $invokedPrior) { $null = $priorRunIds.Add([string](Get-ReviewAuthorityProperty -Object $prior -Name 'run_id')) }
+    try {
+        $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath ((Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs')
+        if ([IO.Directory]::Exists($runsRoot)) {
+            foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot)) {
+                $name = [IO.Path]::GetFileName($runDirectory)
+                if ($name -ceq $RunId) { continue }
+                if ([IO.File]::Exists([IO.Path]::Combine($runDirectory, 'pending-pause.json'))) { $null = $priorRunIds.Add($name) }
+            }
+        }
+    }
+    catch { $null = $_ }
+    $roundsUsed = $priorRunIds.Count + 1
+
+    $elapsedMs = [double]([long](Get-ReviewAuthorityProperty -Object $Result -Name 'duration_ms'))
+    foreach ($prior in $invokedPrior) {
+        $priorMs = [long](Get-ReviewAuthorityProperty -Object $prior -Name 'duration_ms')
+        if ($priorMs -gt 0) { $elapsedMs += $priorMs }
+    }
+
+    $decision = Resolve-ReviewCampaignPauseDecision -Findings @(Get-ReviewAuthorityProperty -Object $Result -Name 'findings') `
+        -RoundsUsed $roundsUsed -BudgetTotal (Get-ReviewCampaignRoundBudgetTotal -RepoRoot $RepoRoot) `
+        -ElapsedMinutes ([Math]::Round($elapsedMs / 60000, 0))
+
+    $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -Decision $decision -ObservedAt $ObservedAt
+    $recorded = $false
+    try { $recorded = [bool](Write-ReviewCampaignPendingPauseFact -StoreRoot $StoreRoot -Fact $fact).created }
+    catch { $recorded = $false }
+
+    if (-not (Get-Command -Name 'Format-ReviewCampaignPauseSurface' -ErrorAction SilentlyContinue)) {
+        $navigator = Join-Path $PSScriptRoot 'continuous-co-review-navigator.ps1'
+        if (Test-Path -LiteralPath $navigator -PathType Leaf) { try { . $navigator } catch { $null = $_ } }
+    }
+    $surface = if (Get-Command -Name 'Format-ReviewCampaignPauseSurface' -ErrorAction SilentlyContinue) {
+        Format-ReviewCampaignPauseSurface -ProjectName $ProjectName -Decision $decision
+    }
+    else { $null }
+
+    return [pscustomobject]@{ recorded = $recorded; decision = $decision; fact = $fact; surface = $surface }
+}
+
 function Get-ReviewCampaignStableToken {
     param([Parameter(Mandatory)][string]$Value, [ValidateRange(8, 32)][int]$Length = 16)
     $bytes = [Text.Encoding]::UTF8.GetBytes($Value)
@@ -1165,7 +1258,17 @@ function Invoke-ReviewCampaignRun {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null
             $findingCount = if ($ingress.candidate_category -ceq 'valid' -and [string]$ingress.result.completion -ceq 'complete' -and [string]$ingress.result.validation -ceq 'valid') { @($ingress.result.findings).Count } else { $null }
             Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'terminal' -Message $ingress.reason -ProcessTreeLive $false -OutputActivity $runtimeResult.output_activity -ValidatedFindingCount $findingCount -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds -Usage $observedUsage
-            return [pscustomobject]@{ status = 'terminal'; reason = $ingress.reason; invoked = $true; result = $ingress.result; result_path = $ingress.result_path; report_path = $ingress.report_path }
+            # FR-001: the round ENDS here. Record what it found and what the campaign has spent, then
+            # hand the decision to the human. Fail-soft: a pause that cannot be recorded must not
+            # destroy a published review result, so the round still returns its terminal outcome.
+            $roundPause = $null
+            try {
+                $roundPause = Add-ReviewCampaignRoundPause -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId `
+                    -TargetDigest $targetDigest -ProjectName $FeatureId -Result $ingress.result `
+                    -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) -RepoRoot $RepoRoot
+            }
+            catch { $roundPause = $null }
+            return [pscustomobject]@{ status = 'terminal'; reason = $ingress.reason; invoked = $true; result = $ingress.result; result_path = $ingress.result_path; report_path = $ingress.report_path; pause = $roundPause }
         }
         # A reviewer tree may still be using the frozen target. Recovery owns disposal after it proves
         # termination; removing the worktree here could race a live process or strand an OS-specific
