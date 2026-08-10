@@ -320,6 +320,49 @@ function New-ReviewCampaignVerdictPacketDecision {
     }
 }
 
+function Test-ReviewCampaignDeltaIsRecordsOnly {
+    # FR-009. Reviewable content is everything that is NOT the methodology machinery and NOT the
+    # lifecycle records tree. The machinery list comes from the ONE FR-012 resolver so this can never
+    # drift from the digest and worktree strips; `specs/` is reviewable to a reviewer but is records,
+    # not implementation, which is the distinction that stops a drift-log commit invalidating the
+    # review that produced it (DRIFT-199-I001-013).
+    #
+    # An EMPTY or unknown delta returns $false - fail closed. Absence of evidence is not evidence.
+    [CmdletBinding()]
+    param([AllowNull()][object[]]$ChangedPaths)
+
+    if ($null -eq $ChangedPaths -or @($ChangedPaths).Count -eq 0) { return $false }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $reviewerModule = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $reviewerModule -PathType Leaf) { try { . $reviewerModule } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) { return $false }
+
+    $recordsRoots = @('specs')
+    try {
+        foreach ($machinery in @(Get-ContinuousCoReviewMachineryPaths)) {
+            if (-not [string]::IsNullOrWhiteSpace($machinery)) { $recordsRoots += (([string]$machinery -replace '\\', '/').Trim('/')) }
+        }
+    }
+    catch { return $false }
+
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $PSScriptRoot -WhenUndetermined 'distinct'
+    foreach ($raw in @($ChangedPaths)) {
+        $path = ([string]$raw -replace '\\', '/').Trim().Trim('/')
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $isRecords = $false
+        foreach ($root in $recordsRoots) {
+            if ([string]::IsNullOrWhiteSpace($root)) { continue }
+            if ($path.Equals($root, $comparison) -or $path.StartsWith(($root + '/'), $comparison)) {
+                $isRecords = $true
+                break
+            }
+        }
+        if (-not $isRecords) { return $false }
+    }
+    return $true
+}
+
 function Resolve-ReviewCampaignVerdictPacketDecision {
     [CmdletBinding()]
     param(
@@ -328,7 +371,21 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         [AllowEmptyCollection()][string[]]$OrderedRunIds = @(),
         [AllowEmptyCollection()][object[]]$Results = @(),
         [AllowNull()]$ActiveRun,
-        [AllowEmptyCollection()][object[]]$HumanDispositions = @()
+        [AllowEmptyCollection()][object[]]$HumanDispositions = @(),
+        # T003 / FR-009: the paths that changed since the latest result. A delta touching only the
+        # methodology machinery or the lifecycle records tree is not reviewable content, so it must
+        # not stale a reviewed state - DRIFT-199-I001-013 caught this twice in one session, once when
+        # a commit containing nothing but the drift log invalidated the review that produced it.
+        # $null (unknown) fails CLOSED and stales as before: absence of evidence is not evidence.
+        [AllowNull()][object[]]$ChangedPathsSinceResult = $null,
+        # T003 / FR-007: the recorded signoff-gate decision. T067's two-governor collision made an
+        # agent adjudicate between a gate that said allow and a surface that said blocked - a call a
+        # consumer cannot make. The surface consults the record instead of contradicting it.
+        [AllowNull()]$SignoffGateDecision = $null,
+        # T003: a pending pause on the CURRENT tree is a sanctioned quiet state (the maintainer's
+        # architecture-lens addition). A superseded pause - one describing a tree that has moved on -
+        # confers nothing, because a stale pause would SILENCE the surface rather than nag it.
+        [AllowNull()]$PendingPause = $null
     )
     if (-not (Test-ReviewAuthorityIdentifier -Value $CampaignId -Kind campaign) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-or-digest-invalid' -Message 'Campaign identity or current digest is unavailable; no lifecycle verdict may be requested.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
@@ -368,6 +425,12 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The active review targets an earlier digest and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
     }
 
+    # A pause recorded against the CURRENT tree is a decision already sitting with the human. Nagging
+    # for a review there would ask them to spend on a question they are mid-answer to.
+    if ($null -ne $PendingPause -and [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'target_digest') -ceq $CurrentDigest) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'pause-pending' -Reason 'human-pause-decision-outstanding' -Message 'This review is waiting for your decision; nothing is running and nothing is being spent.' -CampaignId $CampaignId -RunId ([string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'run_id')) -TargetDigest $CurrentDigest -ImplementerAction 'await-human-pause-decision'
+    }
+
     if ($ordered.Count -eq 0) {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No claim-ordered campaign result can authorize the current digest.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
     }
@@ -382,6 +445,18 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     }
     $latest = $byRun[$latestRunId]
     if ([string]$latest.target_digest -cne $CurrentDigest -or [string]$latest.currentness -ceq 'snapshot-moved') {
+        # FR-007: a recorded gate decision for THIS tree is authority, not an opinion to argue with.
+        if ($null -ne $SignoffGateDecision -and
+            [string](Get-ReviewAuthorityProperty -Object $SignoffGateDecision -Name 'decision') -ceq 'allow' -and
+            [string](Get-ReviewAuthorityProperty -Object $SignoffGateDecision -Name 'reviewed_digest') -ceq $CurrentDigest) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'signoff-gate-allow-recorded' -Message 'Your review is signed off for the files as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'proceed'
+        }
+        # FR-009: only reviewable content stales a review. Machinery and the lifecycle records tree
+        # are not reviewable content, so recording what a review found cannot invalidate it.
+        if ($null -ne $ChangedPathsSinceResult -and
+            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'proceed'
+        }
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
     }
     if ([string]$latest.runtime_outcome -ceq 'timed-out') {
