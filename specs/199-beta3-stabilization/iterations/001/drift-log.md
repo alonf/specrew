@@ -1459,6 +1459,40 @@ then released, with the failure reason recorded. Stated as a measurement, not a 
 about F4 generally — T008's RED fixture must therefore pin the specific failure classes
 that do NOT release, rather than assume every infrastructure failure charges a round.
 
+### THE SEVENTEEN — FAIL-ON-MAIN TRIAGE, MEASURED 2026-08-11 (each one dispositioned before the gate)
+
+Ordered before review-signoff rather than discovered at it. The same suite was run in a DETACHED
+WORKTREE at `origin/main` and the two failure sets compared name for name.
+
+> `MAIN   PASSED=933  FAILED=16`
+> `BRANCH PASSED=1098 FAILED=17`
+
+**SIXTEEN OF SEVENTEEN ALSO FAIL ON MAIN — pre-existing, and the branch introduced none of them.**
+Name for name identical: the inline `$proc.Kill` fallback; the ceiling-halt escalation finding; the
+partial-run `moreTimeNote`; the ten T067 signoff-gate cases; and the three T073/T074 conditional-Assert
+cases. **Disposition: inherited, out of this feature's closed scope, routed to beta4** — unchanged from
+the recorded baseline, now MEASURED rather than assumed from their having been constant.
+
+**THE SEVENTEENTH — `the captured corpus contains NO flush/read race signature` — PASSES ON MAIN, and
+that does NOT make it branch-introduced.** The measurement has a confound and it must be stated, not
+resolved by the convenient reading:
+
+- The analyzer reads MACHINE-LOCAL runtime state (`.specrew/runtime/conformance-journal.jsonl`), not
+  code. The triage worktree is a fresh temp checkout, so it carries NO journal — the analyzer passes
+  there because **its evidence is absent**, not because the code differs.
+- That is precisely the case the recorded rule anticipates: *a detector that goes green because its
+  evidence was deleted has not been fixed.* A green on main is exactly such a green.
+- **So "passes on main" is uninformative for this one detector.** No code change in this feature could
+  have produced the signature; the session's own stop traffic captured it, in this worktree's journal.
+
+**Disposition: environment-dependent detector, evidence-preserving, routed to beta4** (DRIFT-199-I001-015
+and the flush-race routing ruling), with the durable evidence being the verbatim signature recorded
+there rather than the pass/fail state of the analyzer.
+
+**Net: zero branch-introduced failures.** Seventeen dispositioned — sixteen inherited by measurement,
+one environment-dependent with its confound named. The +165 passing tests on the branch (933 -> 1098)
+are this feature's own additions.
+
 ### THE BRANCH TEST BASELINE IS SEVENTEEN (restated 2026-08-10 by maintainer ruling)
 
 A future measurement reading 17 must not treat it as a fresh regression. The branch baseline is:

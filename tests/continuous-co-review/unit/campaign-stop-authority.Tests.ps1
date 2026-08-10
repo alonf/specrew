@@ -42,6 +42,61 @@ Describe 'Single-authority stop surface (T003)' {
         }
     }
 
+    # T010 / FR-015, FR-016. MEASURED IN THE REVIEWER SESSION, four times in one day, on a real stop.
+    # The stale block reads "targets a moved or earlier snapshot and cannot authorize the current tree"
+    # and names a run id. Every word is true and the reader still cannot act, because the ONE fact that
+    # resolves it is missing: the stale result belonged to a DIFFERENT FEATURE - a beta2 certify run
+    # surfacing during beta3 work. With that fact it is dismissible in one read; without it, it reads as
+    # a problem with the current tree and invites an investigation that finds nothing.
+    Context 'T010: the stale block names WHOSE result it is, and who can act on it' {
+        It 'a MISLEADING run id is disambiguated by naming the campaign the result belongs to' {
+            # THE MECHANISM, corrected by measurement. The observed block named
+            # `run-f198-beta2-...-certify` during beta3 work, which reads as a beta2 result leaking in.
+            # It is not: results are validated with -ExpectedCampaignId, so a foreign-campaign result
+            # returns review-failure and CANNOT reach the stale branch (pinned below). What actually
+            # happens is a run id whose TEXT names another feature - an explicit --run-id - inside THIS
+            # campaign. So the fix is to state unconditionally which campaign owns the result, putting
+            # the run id and its true owner in the same sentence.
+            $misleading = script:New-TerminalResult -RunId 'run-f198-beta2-0fa26271-certify' -Digest ('f' * 40)
+
+            $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
+                -CurrentDigest $script:Digest -OrderedRunIds @('run-f198-beta2-0fa26271-certify') -Results @($misleading)
+
+            $decision.route | Should -Be 'review-stale'
+            $decision.message | Should -Match 'cmp-199-x-i001' -Because 'the reader must see the result''s TRUE owner beside a run name that implies another project'
+            $decision.message | Should -Match '(?i)whatever its run name suggests|belongs to this review'
+            $decision.message | Should -Not -Match '(?i)belongs to a different' -Because 'it does NOT belong to another review; saying so would send the reader hunting a feature that is not involved'
+        }
+
+        It 'a result from ANOTHER campaign cannot reach the stale branch at all (identity fails closed)' {
+            # The premise check for the case above, pinned so the corrected mechanism cannot quietly
+            # revert to the wrong one. This is why a conditional "different review" clause would have
+            # been DEAD CODE.
+            $foreign = script:New-TerminalResult -RunId 'run-foreign' -Digest ('f' * 40)
+            $foreign.campaign_id = 'cmp-198-beta2-hardening-i008'
+
+            $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
+                -CurrentDigest $script:Digest -OrderedRunIds @('run-foreign') -Results @($foreign)
+
+            $decision.route | Should -Be 'review-failure'
+            $decision.reason | Should -Match 'campaign-result-invalid' -Because 'identity mismatch fails closed long before any staleness question'
+        }
+
+        It 'FR-016: the block states it is advisory for a reader who cannot run the remediation' {
+            # Its only stated remediation - request-current-digest-review - is addressed to the
+            # implementer. A reader in any other role holds an instruction they cannot execute, so the
+            # block never clears and re-fires at every stop. A block correctly declined every time
+            # trains people to stop reading blocks, which is how the one that matters gets missed.
+            $own = script:New-TerminalResult -RunId 'run-advisory' -Digest ('d' * 40)
+
+            $decision = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-199-x-i001' `
+                -CurrentDigest $script:Digest -OrderedRunIds @('run-advisory') -Results @($own)
+
+            $decision.message | Should -Match '(?i)advisory' -Because 'a reader who cannot run the remediation must be told the block is not theirs to clear'
+            $decision.implementer_action | Should -Be 'request-current-digest-review' -Because 'the structured action is unchanged; only the human sentence gains the role clause'
+        }
+    }
+
     Context 'FR-008: an authorized in-flight run suppresses the block' {
         It 'a RESERVED, non-terminal run routes to review-running, never review-required' {
             $activeRun = [pscustomobject]@{

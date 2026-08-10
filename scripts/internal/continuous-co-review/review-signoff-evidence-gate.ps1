@@ -722,7 +722,34 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult -RepoRoot $RepoRoot -FeatureId $FeatureId)) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'proceed'
         }
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
+        # T010 / FR-015, FR-016. MEASURED four times in one reviewer session: every word of the old
+        # sentence was true and the reader still could not act, because the two facts that resolve it
+        # were missing.
+        #
+        # (1) WHOSE result it is - and the FIRST attempt at this got the mechanism wrong, so the
+        #     corrected version is recorded here. The observed block named `run-f198-beta2-...-certify`
+        #     during beta3 work, which reads as a beta2 result leaking in. It is NOT: results are
+        #     validated with -ExpectedCampaignId above, so a foreign-campaign result returns
+        #     review-failure and can never reach this branch. What actually happened is a RUN ID whose
+        #     TEXT names another feature (an explicit --run-id) inside THIS campaign. So the fix is not
+        #     a conditional "belongs to a different review" - that case is unreachable - it is to state
+        #     unconditionally which campaign the result belongs to, so a misleading run id cannot imply
+        #     otherwise. The reader then sees the run id and its true owner in the same sentence.
+        # (2) WHO CAN CLEAR IT. The only remediation, `request-current-digest-review`, is addressed to
+        #     the implementer. A reader in any other role holds an instruction they cannot execute, so
+        #     the block re-fires at every stop - and a block correctly declined every time trains people
+        #     to stop reading blocks, which is how the one that matters gets missed.
+        #
+        # The structured `implementer_action` is UNCHANGED; only the human sentence gains these clauses.
+        $latestCampaignId = [string](Get-ReviewAuthorityProperty -Object $latest -Name 'campaign_id')
+        $ownership = if (-not [string]::IsNullOrWhiteSpace($latestCampaignId)) {
+            ' That result belongs to this review ({0}) - whatever its run name suggests - so it is about your own earlier snapshot, not another project.' -f $latestCampaignId
+        }
+        else { '' }
+        $staleMessage = 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' +
+        $ownership +
+        ' If you are not the person running reviews for this project, this is advisory: there is nothing here for you to run, and it does not block your work.'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message $staleMessage -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
     }
     if ([string]$latest.runtime_outcome -ceq 'timed-out') {
         # FR-018: a consumer who loses a review to the budget must be told which setting to change.
