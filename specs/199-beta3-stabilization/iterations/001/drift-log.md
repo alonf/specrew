@@ -198,6 +198,27 @@ named above.
   (the guard green from the start), 4/4 green after; 61/61 green across the campaign
   orchestrator and public-command suites.
 
+### DRIFT-199-I001-011 — ledger F5 (in-flight blindness) reproduced with store evidence (open)
+
+- **Observed**: 2026-08-10, while the authorized round was executing. The campaign stop
+  surface emitted `review-required / no-authoritative-campaign-result` with implementer
+  action `request-authorized-review` — instructing that a review be requested while one
+  was already running under the maintainer's authorization.
+- **Store evidence at that moment** (`.specrew/review/authority/campaigns/cmp-199-beta3-stabilization-i001/runs/`):
+  - `run-20260810-074723936-616f0b0e` — `requested.json`, `reserved.json`, and NO
+    `result.json`: reserved and in flight, not terminal.
+  - `run-t003-activation-slice-1` — the earlier terminal `preflight-failed` run.
+- **Sharper than the ledger's statement**: the classifier already HAS an in-flight route
+  (`review-running` / `current-review-in-flight` / `poll-existing-run`,
+  `review-signoff-evidence-gate.ps1:366`). The defect is not a missing concept — the
+  existing detection did not match this reserved, non-terminal run. T003's FR-008 fixture
+  should pin THIS shape: a reserved run with no terminal result must suppress the block
+  and route to `poll-existing-run`.
+- **Incidental confirmation**: the run id `run-20260810-074723936-616f0b0e` is the fixed
+  minter's output (lowercase-safe stamp) reaching the store on the default path, with no
+  explicit `--run-id` supplied — the DRIFT-199-I001-007 fix working end to end in the
+  shipped flow.
+
 ### DRIFT-199-I001-010 — the verification definition is per-machine, not in the repository (sharpens ledger F2)
 
 **Measured 2026-08-10** against `C:\Dev\specrew-beta2-hardening\.specrew\verification-plan.json`
