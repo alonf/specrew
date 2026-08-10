@@ -33,29 +33,76 @@ amendment).
 
 ### Option A - Simplest: derived pause state
 
-No persisted pause fact. The decision surface is re-derived from the latest run
-result; the stop governor infers quietness from run records.
-**Design-principle rationale**: minimal state, no new schema. **Rejected because** the
-quiet-state read becomes heuristic — it strains the human-bound sanctioned-state
-semantics (architecture D3 addition), and a resumed session re-renders lossily; the
-budget fixtures would pin inference behavior instead of a fact.
+- **Approach**: no persisted pause fact — the decision surface is re-derived from the
+  latest run result at render time, and the stop governor infers quietness from run
+  records.
+- **Architectural pattern**: projection-only; heuristic state inference over existing
+  run facts.
+- **Quality features considered**: simplicity (no new schema); weak on state
+  integrity, auditability, and resume fidelity — the quiet state is inferred, never
+  recorded.
+- **Effort estimate**: ~1.5 SP.
+- **Reversibility cost**: low — nothing persisted to migrate away from.
+- **Trade-offs**: the quiet-state read becomes heuristic, straining the human-bound
+  sanctioned-state semantics (architecture D3 addition); a resumed session re-renders
+  lossily; budget fixtures would pin inference behavior instead of a fact.
+
+```mermaid
+flowchart LR
+  ingest[round ingest] --> derive[re-derive surface from latest result]
+  derive --> render[render decision surface]
+  runrecs[(run records)] -. heuristic inference .-> governor[stop governor: quiet?]
+```
 
 ### Option B - Reasonable: first-class pending-pause fact (RECOMMENDED)
 
-A pending-pause fact in the review authority store (atomic FileMode.CreateNew,
-immutable; answered by writing the corresponding decision fact). The decision surface
-renders from the fact; the stop governor reads it directly for the quiet state; resume
-re-renders it verbatim; the budget fixtures pin facts.
-**Design-principle rationale**: normalize-state and immutability-intent (the store is
-already the single review authority; projections render from facts); object-invariants
-(an unanswered pause with a running round is an impossible state, guardable).
-Bridge-sized: one fact schema plus reads.
+- **Approach**: the orchestrator's round terminal writes a pending-pause fact to the
+  review authority store; the decision surface renders from the fact; the human's
+  numbered reply is the only writer of the answering decision fact; the stop governor
+  reads the fact directly for the quiet state; resume re-renders it verbatim.
+- **Architectural pattern**: normalize-state + immutability-intent — immutable facts
+  in the single review authority store (atomic FileMode.CreateNew), projections
+  render; object-invariants guard impossible states (an unanswered pause coexisting
+  with a running round).
+- **Quality features considered**: state integrity, auditability, resume fidelity,
+  quiet-state exactness, testability (budget and pause fixtures pin facts).
+- **Effort estimate**: ~2.5 SP (inside the ledger's F8 fast-core envelope).
+- **Reversibility cost**: low-moderate — one fact schema plus reads; beta4's decision
+  pipeline supersedes it cleanly (replacement note recorded).
+- **Trade-offs**: one more fact schema in a store beta4 rebuilds; one extra atomic
+  write per round.
+
+```mermaid
+flowchart LR
+  ingest[round ingest] --> verdict[core: pause verdict]
+  verdict --> fact[(pending-pause fact\natomic CreateNew)]
+  fact --> render[navigator: decision surface]
+  fact --> governor[stop governor: quiet]
+  human[human numbered reply] --> decision[(decision fact answers pause)]
+```
 
 ### Option C - By-the-book: decision-state machine with grant kinds
 
-A full decision pipeline with single-run/until-terminal grant vocabulary.
-**Rejected because** grant kinds are explicitly beta4's disposition-vocabulary cluster
-per the maintainer's split ruling — out of closed scope.
+- **Approach**: a full decision pipeline modeling grant kinds (single-run /
+  until-terminal / until-new-blocking) with a formal decision-state machine.
+- **Architectural pattern**: explicit state machine plus disposition-vocabulary
+  expansion across engine, store, and surfaces.
+- **Quality features considered**: expressiveness, forward-compatibility; maximal
+  authorization fidelity.
+- **Effort estimate**: 8–12 SP (the ledger's own estimate for the vocabulary
+  cluster).
+- **Reversibility cost**: high — a vocabulary shipped to consumers is a compatibility
+  surface.
+- **Trade-offs**: preempts beta4's disposition-cluster design spike and is explicitly
+  out of the closed beta3 scope per the maintainer's split ruling. Not meaningfully
+  available to this iteration; listed because it IS the distinct by-the-book shape
+  beta4 will design properly.
+
+```mermaid
+flowchart LR
+  grant[grant kinds: single-run / until-terminal / until-new-blocking] --> sm[decision-state machine]
+  sm --> engine[engine] & store[(store)] & surfaces[consumer surfaces]
+```
 
 ## Crew recommendation
 
