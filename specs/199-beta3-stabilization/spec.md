@@ -265,6 +265,15 @@ timeout-message fixture asserts the message names `co_review_timeout_seconds`.
 - **Resolved by recorded default — abandon semantics**: choosing abandon closes the
   campaign as abandoned; sign-off remains un-passed; recorded findings persist; a
   later campaign starts fresh with a fresh budget (FR-002's third option).
+- **Human ruling from the live capture-lag instance (2026-08-10)**: FR-010 amended —
+  prompt-submit capture is the primary path (Stop-time is fallback only); the
+  diagnosed stale-wiring gap (a deployed hook-settings file missing the registered
+  UserPromptSubmit event is never reconciled or flagged) is in scope under FR-010;
+  and the sync skills carry the defense rule that a boundary sync never runs in the
+  same turn that received its verdict and never asks the human for a catch-up nudge.
+  Diagnosis evidence: hosts/claude/host.psd1 Registrations list all four events;
+  this worktree's .claude/settings.local.json carried only the older three-event
+  set with no reconciliation on deploy and no drift flag from hooks status.
 
 ## Requirements *(mandatory)*
 
@@ -316,6 +325,18 @@ Verdict capture (durable):
   the classifier agree); capture MUST scan past non-verdict turns instead of examining
   only the first turn after a marker; boundary-name words appearing as plain English
   MUST NOT flip classification. Reproductions: the iteration 011 closeout notes.
+  **Amendment (human ruling, 2026-08-10, from the live capture-lag instance)**:
+  verdict capture MUST execute at prompt submission as the primary path — the verdict
+  is durable before the agent's next turn begins — with Stop-time capture as the
+  fallback only. The prompt-submit wiring gap diagnosed live in this worktree is in
+  scope: the claude host manifest registers UserPromptSubmit, but a previously
+  deployed hook-settings file lacking a newly registered event is never reconciled
+  and nothing flags the drift — the hooks deploy/status path MUST detect and repair a
+  missing registered event so the primary capture path cannot silently degrade.
+  Defense-in-depth instruction rule for the sync skills: a boundary sync never runs
+  in the same turn that received its verdict, and never asks the human for a nudge to
+  let the record catch up — if the record lags, end the turn and resume on the next
+  natural exchange.
 
 OneDrive / reparse policy (durable):
 
