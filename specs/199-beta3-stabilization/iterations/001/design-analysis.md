@@ -812,6 +812,29 @@ issues an authorization they did not need. That is a MESSAGE, squarely on the be
 distinguish *"the tooling asked for a fresh reference"* from *"the human supplied one unprompted."* Do
 not assert which. What is provable is that **the slot was available and was not offered.**
 
+**THE FIX — designed, traced, NOT YET BUILT.** The release happens in
+`Complete-ReviewPreInvocationFailure` (`review-campaign-orchestrator.ps1:596-607`): it calls
+`Resolve-ReviewCampaignReleaseDecision` and writes the release fact when `permitted`. That function
+already knows the one fact the human needs — **a slot just came back** — and currently tells nobody.
+
+The shape, and the constraint that decides it:
+
+- `Complete-ReviewPreInvocationFailure` reports whether it restored a slot (it has the decision in
+  hand), and appends a consumer sentence to the PERSISTED failure reason, so the run record and its
+  report both carry it.
+- **The campaign's RETURNED `reason` must stay byte-identical.** Three fixtures assert it by exact
+  equality, and the failed-run return at `:1318` uses the local `$reason`, not the ingress result — so
+  appending inside `Complete-ReviewPreInvocationFailure` does not disturb them. That separation is why
+  this is cheap.
+- The remaining wiring is the CLI surface: whichever path prints a failed run to a human needs the
+  sentence too, or it reaches only the stored record. **Name that seam before claiming the fix lands** —
+  a disclosure that only the record can see is the same class of defect as the demotion and the
+  diagnosis, both of which were caught this session at exactly this step.
+
+The sentence should say what is true and nothing more: the review did not start, no round was used, and
+**the authorization you already gave is still available** — so it does not need reissuing. It must not
+claim the tooling asked for a new one, per the limit above.
+
 ### F4 ANSWERED BY MEASUREMENT — it was correctly OBSERVED on i008, and it is already FIXED (2026-08-10) — **SEE RETRACTION ABOVE**
 
 Counted directly from the authority stores rather than reasoned about or relayed. Every campaign that
