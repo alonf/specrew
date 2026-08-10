@@ -759,6 +759,50 @@ is implemented, and it is wired.** Three independent reads:
 **So the code says a released slot is reusable.** That is a measurement of the CODE, not of T067's
 behaviour, and it does not by itself explain the 26:26 ratio.
 
+### F4 ANSWERED BY MEASUREMENT — it was correctly OBSERVED on i008, and it is already FIXED (2026-08-10)
+
+Counted directly from the authority stores rather than reasoned about or relayed. Every campaign that
+exists, both worktrees:
+
+| Campaign | grants | reservations | releases | spends | `res - spend` = rel? | `res - grants` = rel? |
+| --- | --- | --- | --- | --- | --- | --- |
+| `cmp-198-beta2-hardening-i008` | 25 | 26 | 5 | 21 | **yes** (5) | **NO — 1, not 5** |
+| `cmp-198-beta2-hardening-i009` | 8 | 11 | 3 | 8 | yes (3) | yes (3) |
+| `cmp-198-beta2-hardening-i010` | 1 | 1 | 0 | 1 | yes (0) | yes (0) |
+| `cmp-198-beta2-hardening-i011` | 6 | 7 | 1 | 6 | yes (1) | yes (1) |
+| `cmp-199-beta3-stabilization-i001` (THIS feature) | 1 | 3 | 2 | 1 | yes (2) | yes (2) |
+
+**Two facts fall straight out, and they settle the question:**
+
+1. **`reservations - spends = releases` in ALL FIVE.** Every reservation resolved exactly once, as a
+   spend or a release, and none is both. The store is internally consistent — the
+   `reservation-both-spent-and-released` worry raised from the relayed counts does not occur. That
+   arithmetic signal is now RESOLVED, and it was an artifact of the relayed numbers, not of the store.
+2. **`reservations - grants = releases` in FOUR of five — and i008 is the exception.** In i008 there
+   were 5 releases but only ONE slot reuse, so **four released slots were never reused and four fresh
+   authorizations were minted instead.** That is F4's cost, visible in the ledger. In i009, i010, i011
+   and this feature's own i001, every released slot IS reused exactly once.
+
+**So F4 was correctly OBSERVED and is already FIXED.** i008 is the T067-era campaign; the behaviour
+changed by i009. **This feature's own campaign is the cleanest possible demonstration: ONE grant
+supported THREE reservations, because TWO were released and reused.** A single human authorization
+covered three attempts.
+
+That agrees with the three code reads above — a released, unspent slot returns to `available`, the
+caller supplies the releases, and reuse appends an immutable generation. Code and ledger now say the
+same thing from opposite directions.
+
+**Limits of this evidence, stated rather than implied**: it establishes THAT reuse works now and did not
+in i008. It does NOT establish WHICH change fixed it or WHEN, and I have not bisected for that. The
+relayed counts (26 / 26 / 4 / 25 / 30) do not match any campaign measured — i008 is the closest at
+25 / 26 / 5 / 21 / 26 — so the "1:1, no grant ever reused" reading came from those numbers rather than
+from these.
+
+**CONSEQUENCE FOR T008: there is no grant-reuse defect left to repair, and a fixture asserting one would
+go RED against correct code.** What T008 should now ship is a CHARACTERIZATION that pins all three
+questions — reservation released, spend not fired, **grant reusable** — so the i008 behaviour cannot
+return silently. That is a guard, and it must be reported as a guard, not as a fix.
+
 **AN ARITHMETIC SIGNAL IN THE RELAYED COUNTS, raised rather than resolved**: 25 spends + 4 releases = 29
 dispositions across 26 reservations. Those cannot all be distinct 1:1 resolutions, and the validator
 treats a reservation that is BOTH spent and released as an error
