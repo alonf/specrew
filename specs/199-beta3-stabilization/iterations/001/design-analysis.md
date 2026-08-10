@@ -431,6 +431,56 @@ not self-resuming — "start a fresh session and point it at the handover" for a
 only when that is literally true. The template should make the no-action case the one that has to be
 justified, not the default.
 
+### T006 design record — reparse-tag discrimination, MEASURED before any code (2026-08-10)
+
+The hard unknown in T006 was how to tell a cloud placeholder from a symlink without shelling out on a
+hot path. Measured on this machine rather than reasoned about:
+
+| Probe | attrs | ReparsePoint | `LinkTarget` | `LinkType` | real tag (`fsutil`) |
+| --- | --- | --- | --- | --- | --- |
+| ordinary file | `0x00000020` | no | null | — | not a reparse point |
+| ordinary dir | `0x00000010` | no | null | — | not a reparse point |
+| symlink (file) | `0x00000420` | yes | the target path | `SymbolicLink` | `0xa000000c` |
+| junction (dir) | `0x00000410` | yes | the target path | `Junction` | `0xa0000003` |
+
+**The discriminator is already in .NET — no P/Invoke and no subprocess.** `FileSystemInfo.LinkType`
+names the redirecting family exactly, and `LinkTarget` is non-null only for those. That matters beyond
+convenience: `fsutil` would be a subprocess on a path walked per component, and this repository has
+already been bitten once by a subprocess on a per-path loop (the `git config core.ignorecase` call
+that silently hung the Linux CI review suite). The classifier must not repeat it.
+
+**The three dispositions, and the fail direction of each:**
+
+- **REFUSE — the redirecting family.** `LinkType` is `SymbolicLink` or `Junction`. This is exactly
+  today's behaviour for these two, so the existing refusal fixtures stay green and untouched; the task
+  requires that they do.
+- **HYDRATE then hash-verify — the cloud-files family.** ReparsePoint set, `LinkTarget` NULL, and one
+  of `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` (`0x00400000`), `FILE_ATTRIBUTE_RECALL_ON_OPEN`
+  (`0x00040000`) or `FILE_ATTRIBUTE_OFFLINE` (`0x00001000`). A placeholder is not a redirect: the file
+  IS the file, its content merely is not local yet. Refusing it is what makes the product unusable on
+  the default CurrentUser install (DRIFT-199-I001-005, where the sanctioned remediation door itself
+  was unreachable).
+- **FAIL CLOSED — everything else.** ReparsePoint set and neither of the above. An ALLOWLIST, so an
+  unrecognised tag refuses rather than being admitted; the safe direction here is refusal, the mirror
+  of FR-009's allowlist where the safe direction was nagging.
+
+**Fixtures use the real tag constants** (`0xa000000c` symlink, `0xa0000003` junction, `0x9000001a`
+plus the cloud-family mask) as data, cross-checked against live `fsutil` output for the two families
+this machine can materialise. The classifier itself stays attribute-based; the constants pin that the
+mapping describes the real tags rather than an invented vocabulary.
+
+**Three sites must move together** (the task's "symmetric" requirement), all sharing the one
+classifier: `Get-ReviewAuthorityStorePath` (authority store, root + every component),
+`Assert-SpecrewReviewRuntimePathContained` and `Get-SpecrewReviewRuntimeManagedTextSha256`
+(module install), and the frozen-snapshot check.
+
+**The OneDrive hydration leg is a MANUAL measurement** on the recorded T067-class environment, per the
+task: an agent cannot materialise a cloud placeholder on a local volume, so that proof line is
+transcribed from the maintainer's install and scoped to it. The classifier's cloud branch is therefore
+unit-testable by attribute synthesis but its END-TO-END hydration is human-measured — the same
+limit-of-evidence discipline recorded for T004's backstop, and it should be recorded as such rather
+than implied by a green suite.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):
