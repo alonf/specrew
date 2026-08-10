@@ -16,7 +16,9 @@ or a sentence they cannot understand. Scope is CLOSED to the ledger's ten Beta3 
 plus two human-ruled additions (the markdownlint CI chore; the FR-010 prompt-submit
 amendment).
 
-## Decision points (bound by the workshop; carried as constraints)
+## Key Design Decision Points
+
+(Bound by the workshop; carried as constraints.)
 
 - Decomposition: existing core/store/orchestrator/navigator layering, no new layers.
 - Pause ownership: the orchestrator's terminal state — engine exits after every round.
@@ -27,7 +29,7 @@ amendment).
   action.
 - The open point this analysis decides: HOW the pending pause decision is represented.
 
-## Options
+## Alternatives
 
 ### Option A — Simplest: derived pause state
 
@@ -72,6 +74,8 @@ beta4's decision pipeline; the decision-surface contract survives).
   primitives; the one-action landing UX contract is durable.
 
 ## Co-Design Record
+
+Human-agreed: yes
 
 **Co-design agreed by the maintainer, 2026-08-10**: component map approved as drawn
 (no renames, splits, merges, or reassignments requested); stop-here and pause flows
