@@ -27,6 +27,26 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
+## BETA4 LIST — everything this feature routed out, collected in one place
+
+Scattered "routes to beta4" clauses are easy to lose at closeout, so they are collected here with the
+entry that carries the full reasoning. **This section is a pointer list, not the record** — each item's
+evidence stays in its own entry.
+
+| Item | Why it is not in scope | Entry |
+| --- | --- | --- |
+| **Read the REAL reparse tag** (`IO_REPARSE_TAG_CLOUD*` vs `IO_REPARSE_TAG_APPEXECLINK`) — the precise version of what the non-linking ruling APPROXIMATES. Needs P/Invoke. Belongs with the path-identity consolidation. | Adding P/Invoke to a shipped safety-critical hot path at the tail of an over-scope feature is the wrong trade; the hash carries the trust meanwhile. | -024 |
+| **Path-identity consolidation** — make the comparer the ONLY REACHABLE path, not the recommended one. | A primitive that can be bypassed by forgetting a dot-source will be bypassed again; proven three times in one day. | -014, -017 |
+| **Flush-race re-read variant** in the conformance Stop provider. | Changes read semantics in the most safety-critical hook path; beta4 does that deliberately, not as a fifth in-flight exception. | -015 |
+| **Campaign command does not resolve the feature id** (`--feature`/`--iteration` must be passed by hand). | Sits in the CLI's campaign branch parameter contract, not in code this feature touches. | -009 |
+| **Pending-verdict stop artifact not emitted at the plan sync.** | Diagnosis only was ordered; the fix stays deferred unless it lands in files this feature already touches. | -002 |
+| **Trust-hardening `cycle_id`** — the validator warns `state-advance-without-verdict` while HOLDING the verdict, because persisted entries carry no `cycle_id` to match. | A WARN on a passing validator that blocks nothing; the fix is in the trust-hardening cycle model. | -022 |
+
+**Explicitly NOT on this list, recorded so nobody re-adds it**: the shell-wrapper installer's blanket
+reparse refusal. It was measured and found not to be an instance of the class on its own platform —
+macOS/Linux only, enforced in code, and CloudFilter is a Windows mechanism. A deferral would have left
+beta4 an item that does not exist. See the class sweep in -023.
+
 ## Before-implement verdict — ratification clause (maintainer, 2026-08-10)
 
 Recorded verbatim in intent alongside the verdict, so the ledger explains itself without
@@ -626,7 +646,62 @@ contract a heuristic and therefore not a contract.
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
 
-### DRIFT-199-I001-024 — a HYDRATED-UNPINNED cloud file is indistinguishable from an AppExecLink, and the fix does not cover it (OPEN — needs a maintainer ruling)
+### DRIFT-199-I001-024 — a HYDRATED-UNPINNED cloud file is indistinguishable from an AppExecLink (RESOLVED by maintainer ruling 2026-08-10)
+
+**RULED IN SCOPE.** Storage Sense evicting a module folder, plus any later read, leaves a consumer in
+exactly this state; a refused install means they cannot complete a first feature. That is the acceptance
+bar's first clause, not a nicety.
+
+**THE RULING — take the third option, which neither party had named: admit a reparse point that .NET
+reports as NON-LINKING, and let the HASH carry the trust.** Refusal is now EXACTLY the linking family.
+
+**It opens with the maintainer correcting their own earlier warning**, recorded because the correction is
+the load-bearing step: *"allow-by-default would admit an AppExecLink, so the allowlist stays"* was right
+about the general claim and wrong about its relevance to these call sites. **An AppExecLink redirects
+EXECUTION. None of the three sites executes anything** — they read text, hash it, and walk path
+components for containment. A true general statement was applied to sites it does not reach, and the
+`0x420` measurement is what exposed that.
+
+The reasoning, recorded for the design record:
+
+- For a READ, the only redirection that matters is *this path returns some OTHER file's bytes*. That is
+  exactly what `LinkType` and `LinkTarget` name, and .NET names it reliably for the redirecting
+  family — symlink and junction, both measured live.
+- Every plausible non-linking reparse tag in a module tree or an authority store is content
+  VIRTUALIZATION rather than path redirection: cloud files, Windows Server dedup, ProjFS. In all of them
+  the file IS the file; the bytes merely arrive later. Refusing them buys nothing.
+- Trust already rests on the hash of the bytes actually read — the security lens's S1 principle, already
+  ratified for the cloud family. Extending it to any non-linking tag applies that principle CONSISTENTLY
+  instead of carving an exception around one vendor's attribute bits.
+- For CONTAINMENT walks the same holds: a directory that redirects is a junction or a directory symlink,
+  both named. A cloud or ProjFS directory placeholder redirects nothing.
+
+**THE RESIDUAL, recorded explicitly because this IS a widening**: an unknown tag that redirects a READ
+without .NET naming it would now pass. No such tag is known, and the hash still catches wrong bytes — but
+the honest statement is **"not known"**, not "impossible".
+
+**THE BOUNDARY**: this rule holds for READ, HASH and CONTAINMENT. It does **NOT** extend to any future
+call site that EXECUTES a path, where an AppExecLink genuinely redirects and the hash proves nothing.
+`admit-nonlinking` is therefore kept DISTINCT from `hydrate-cloud` so such a site can refuse it without
+reopening this decision, and every current site asks `Test-SpecrewReparseRefusesRead` rather than
+comparing dispositions itself — three hand-written sets would be three things that drift apart.
+
+**The AppExecLink fixture is kept and now asserts what HAPPENS to it** (admitted) rather than that it is
+refused, so a later reader sees the case was decided rather than overlooked.
+
+**THE DURABLE FIX ROUTES TO BETA4**: reading the real reparse tag is the only thing that truly separates
+these two, it needs P/Invoke, and adding that to a shipped safety-critical hot path at the tail of an
+over-scope feature is the wrong trade today. **Named in the beta4 list as the precise version of what
+this ruling approximates**, alongside the path-identity consolidation.
+
+**The synthesis recurrence is resolved too.** The four-state fixture was REBUILT from MEASURED values
+with provenance on each row — `0x80420` pinned, `0x501620` evicted, `0x420` hydrated-unpinned, all
+transcribed from the maintainer's install — rather than from constructed attribute arithmetic. The
+evicted value is the proof that this mattered: it carries `FILE_ATTRIBUTE_SPARSE_FILE` (`0x200`), which
+no amount of reasoning from the constant list would have suggested, and which every synthesised shape
+omitted. **Twice now synthesised attributes described a state the filesystem does not produce.**
+
+### DRIFT-199-I001-024 (original finding, kept for the record) — how it was found
 
 **Found by half 2 of the hydration proof, at its own step 4** — the measurement the maintainer designed to
 confirm the fix is what showed the fix is incomplete. Recorded as a finding in its own right rather than
@@ -660,16 +735,17 @@ cannot separate these two; only the real reparse tag can** (`IO_REPARSE_TAG_CLOU
 `IO_REPARSE_TAG_APPEXECLINK`), and reading it needs P/Invoke or `fsutil` — a subprocess on a per-component
 path walk, which T006's design record rejected on the evidence of a prior CI hang.
 
-**This is a genuine fork and it is the maintainer's to take**, not the implementer's, because both
-branches trade a containment guarantee against a usability one. Not decided here.
+**This was a genuine fork and it was the maintainer's to take** — both branches trade a containment
+guarantee against a usability one. **Taken above**: neither branch was chosen; a third option was, once
+the maintainer noticed that the AppExecLink objection does not reach a call site that never executes.
 
-**AND THE FIXTURES ARE WRONG IN THE SAME WAY AS BEFORE.** The four-state case added in
-DRIFT-199-I001-023 synthesises "unpinned + hydrated" as `ReparsePoint|Archive|UNPINNED` (`0x100420`).
+**AND THE FIXTURES WERE WRONG IN THE SAME WAY AS BEFORE.** The four-state case added in
+DRIFT-199-I001-023 synthesised "unpinned + hydrated" as `ReparsePoint|Archive|UNPINNED` (`0x100420`).
 Measurement says that shape is not what a hydrated-unpinned file reports — it reports `0x420` with no
 marker at all. So the fix for the synthesis trap contained a fresh instance of the synthesis trap: an
-invented shape asserted as if it were the world. The fixture is green about a state that may not exist,
-while the state that does exist is unmodelled. **Recorded rather than quietly corrected**, because the
-correct behaviour for `0x420` is exactly what is undecided above.
+invented shape asserted as if it were the world. **Resolved under the ruling above** — the context was
+rebuilt from measured values with provenance, and the `SPARSE` bit it had been missing is now pinned as
+its own case.
 
 ### DRIFT-199-I001-023 — the reparse classifier detected only DEHYDRATED placeholders, so T006 did not fix the bug it was written for (resolved)
 

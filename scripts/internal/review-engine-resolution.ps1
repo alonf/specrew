@@ -50,7 +50,7 @@ function Assert-SpecrewReviewRuntimePathContained {
     # cloud placeholder is not a redirect and must not be treated as one.
     $rootItem = Get-Item -LiteralPath $rootFull -Force -ErrorAction Stop
     $rootDisposition = Get-SpecrewReparseDispositionForItem -Item $rootItem
-    if ($rootDisposition.disposition -cin @('refuse-link', 'refuse-unknown')) {
+    if (Test-SpecrewReparseRefusesRead -Disposition $rootDisposition.disposition) {
         throw (Get-SpecrewReparseRefusalMessage -Code 'review-runtime-managed-root-link-unsupported' -Path $Root `
                 -Disposition $rootDisposition.disposition -LinkType $rootDisposition.link_type)
     }
@@ -62,7 +62,7 @@ function Assert-SpecrewReviewRuntimePathContained {
         if (-not (Test-Path -LiteralPath $current)) { continue }
         $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
         $disposition = Get-SpecrewReparseDispositionForItem -Item $item
-        if ($disposition.disposition -cin @('refuse-link', 'refuse-unknown')) {
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
             throw (Get-SpecrewReparseRefusalMessage -Code 'review-runtime-managed-path-link-unsupported' -Path $Path `
                     -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
@@ -79,7 +79,7 @@ function Get-SpecrewReviewRuntimeManagedTextSha256 {
     # `...\OneDrive - Zionet LTD\Documents\PowerShell\Modules\Specrew\0.40.0\...\_load.ps1` and took the
     # whole remediation door down with it. A link here is still refused; a placeholder is read.
     $disposition = Get-SpecrewReparseDispositionForItem -Item $item
-    if ($disposition.disposition -cin @('refuse-link', 'refuse-unknown')) {
+    if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
         throw (Get-SpecrewReparseRefusalMessage -Code 'review-runtime-managed-file-link-unsupported' -Path $Path `
                 -Disposition $disposition.disposition -LinkType $disposition.link_type)
     }

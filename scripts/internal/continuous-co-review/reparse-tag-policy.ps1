@@ -82,15 +82,55 @@ function Resolve-SpecrewReparseDisposition {
     # redirects. Widening the cloud markers makes this guard load-bearing rather than theoretical:
     # without it, a redirect carrying a pinned bit would now be admitted.
     $redirects = (-not [string]::IsNullOrWhiteSpace($LinkType)) -or (-not [string]::IsNullOrWhiteSpace($LinkTarget))
-    if ((-not $redirects) -and (($Attributes -band $cloudMask) -ne 0)) {
+    if ($redirects) {
+        # A target without a named type still proves the path returns another file's bytes. Refusal is
+        # keyed on REDIRECTION, which is the only property that matters to a read.
+        return [pscustomobject]@{ disposition = 'refuse-link'; family = 'redirecting'; link_type = $LinkType }
+    }
+    if (($Attributes -band $cloudMask) -ne 0) {
         return [pscustomobject]@{ disposition = 'hydrate-cloud'; family = 'cloud-files'; link_type = $null }
     }
 
-    # ALLOWLIST, so the fail direction is REFUSAL. An unrecognised reparse tag - a container-isolation
-    # tag, a filter driver's own - is refused rather than admitted. This is the mirror of FR-009's
-    # allowlist, where the safe direction was nagging; here admitting an unknown redirect is how the
-    # containment class returns, so the safe direction is to refuse.
-    return [pscustomobject]@{ disposition = 'refuse-unknown'; family = 'unknown'; link_type = $null }
+    # MAINTAINER RULING 2026-08-10 - refusal is EXACTLY the linking family, and a NON-LINKING reparse
+    # point is ADMITTED with the HASH carrying the trust. Recorded in full because the reversal reads
+    # like a loosening of a containment rule, and it is not:
+    #
+    #  - For a READ the only redirection that matters is "this path returns some OTHER file's bytes",
+    #    which is exactly what LinkType and LinkTarget name - and .NET names it reliably for the
+    #    redirecting family, symlink and junction, both measured live in this suite.
+    #  - Every plausible non-linking tag in a module tree or an authority store is content
+    #    VIRTUALIZATION rather than path redirection: cloud files, Windows Server dedup, ProjFS. The
+    #    file IS the file; the bytes merely arrive later. Refusing them buys nothing.
+    #  - Trust already rests on the hash of the bytes actually read (the security lens's S1 principle,
+    #    ratified for the cloud family). Extending it to any non-linking tag applies that principle
+    #    CONSISTENTLY instead of carving an exception around one vendor's attribute bits.
+    #  - The "this would admit an AppExecLink" objection is true in general and does not reach these
+    #    sites: an AppExecLink redirects EXECUTION, and none of the three call sites executes anything -
+    #    they read text, hash it, and walk components for containment.
+    #
+    # THE RESIDUAL, stated as NOT KNOWN rather than impossible: an unknown tag that redirects a READ
+    # without .NET naming it would now pass. No such tag is known, and the hash still catches wrong
+    # bytes - but that is the honest wording. The durable fix is reading the REAL reparse tag, which
+    # genuinely separates these; it needs P/Invoke and routes to BETA4 with the path-identity
+    # consolidation, rather than being added to a shipped safety-critical hot path at the tail of an
+    # over-scope feature.
+    #
+    # THE BOUNDARY: safe for READ, HASH and CONTAINMENT. NOT safe for a future call site that EXECUTES a
+    # path, where an AppExecLink genuinely redirects and the hash proves nothing. This stays a DISTINCT
+    # disposition from hydrate-cloud precisely so such a site can refuse it without reopening this
+    # decision - ask Test-SpecrewReparseRefusesRead, never a bare equality against this value.
+    return [pscustomobject]@{ disposition = 'admit-nonlinking'; family = 'non-linking'; link_type = $null }
+}
+
+function Test-SpecrewReparseRefusesRead {
+    # The ONE question a READ / HASH / CONTAINMENT call site asks. A function rather than each site
+    # spelling out its own set, because three hand-written sets are three things that drift apart - and
+    # it gives a future EXECUTE site somewhere to add a stricter sibling instead of editing these
+    # callers and rediscovering the whole argument.
+    [OutputType([bool])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Disposition)
+    return ($Disposition -ceq 'refuse-link')
 }
 
 function Get-SpecrewReparseDispositionForItem {

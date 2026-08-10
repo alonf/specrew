@@ -545,6 +545,24 @@ generated-marker. On every later run it is then found by the `$planExists` branc
 Writing it as a MARKED generated plan would be wrong: the materializer removes a generated plan when
 selection turns unconfigured, so the starter would delete itself on the next run.
 
+**ANSWERED BY MEASUREMENT 2026-08-10 — the starter ships a GENERIC command, no placeholder and no
+run-time resolver.** Both questions below were run rather than reasoned about:
+
+| Question | Measurement |
+| --- | --- |
+| Does the DEPLOYED validator path exist in a consumer tree? | YES — `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` is present (the source-repo `extensions/...` path also exists here, but the starter must name the deployed one) |
+| Does the validator run usefully WITHOUT `-IterationPath`? | **YES.** `exit=0`, 12.3 s, and it RESOLVED THE ACTIVE ITERATION ITSELF: `PASS .../specs/199-beta3-stabilization/iterations/001`, `[validator-timing] mode=scoped iterations_validated=1` |
+
+**Why this is the good outcome rather than merely a convenient one**: DRIFT-199-I001-010 recorded that
+the beta2 plan hardcoded `plan_id: f198.i008.signoff.v5` and `-IterationPath
+specs/198-beta2-hardening/iterations/008`, so the definition "survives neither a clone, nor a new
+worktree, nor a new feature". A command with NO feature/iteration binding survives all three. The starter
+is therefore genuinely generic — it does not go stale when the consumer starts their second feature,
+which a placeholder would have.
+
+**Superseded**: the two sub-questions below are kept because they record what had to be established, not
+because they are still open.
+
 **NEXT UNKNOWN — MEASURE BEFORE WRITING THE STARTER.** This repository's plan invokes the validator as
 `extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath
 specs/<feature>/iterations/<NNN> -NoCacheRead -NoParallel`. Two things must be established rather than

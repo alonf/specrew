@@ -89,41 +89,76 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
     # could only ever confirm the shape they invented. On the real install every file was hydrated and
     # fell through to refuse-unknown, so T006 did not fix DRIFT-199-I001-005 on the machine that
     # produced it. Snapshot-versus-state, in a new place.
-    Context 'a cloud file is cloud-backed whether or not it is downloaded RIGHT NOW' {
-        It 'the MEASURED hydrated OneDrive attributes hydrate rather than refuse' {
-            $d = Resolve-SpecrewReparseDisposition -Attributes $script:MeasuredHydratedOneDriveAttrs -LinkType $null
-            $d.disposition | Should -Be 'hydrate-cloud' -Because 'this exact value was measured on three files of the maintainer''s own install, every one of which the first classifier refused'
-            $d.family | Should -Be 'cloud-files'
+    # REBUILT FROM MEASURED VALUES (maintainer ruling, 2026-08-10). The previous version of this context
+    # composed its four states by attribute arithmetic, and twice that produced shapes the filesystem
+    # does not actually make - it asserted unpinned+hydrated as 0x100420 when the real value is 0x420,
+    # and it never included FILE_ATTRIBUTE_SPARSE_FILE (0x200), which a real evicted file carries and no
+    # amount of reasoning from the constant list would have suggested.
+    #
+    # Every value below is TRANSCRIBED from the maintainer's install (LICENSE, evicted and re-hydrated
+    # under the half-2 proof). Provenance is on each row. Constructed arithmetic is not used here.
+    Context 'the THREE MEASURED OneDrive states, transcribed not synthesised' {
+        It 'classifies each measured state as the ruling requires' -ForEach @(
+            @{ name = 'pinned + hydrated'; attrs = 0x00080420; expect = 'hydrate-cloud'; family = 'cloud-files'
+                provenance = 'CHANGELOG.md / install.sh / LICENSE / _load.ps1 on the installed module, half 1' }
+            @{ name = 'unpinned + evicted'; attrs = 0x00501620; expect = 'hydrate-cloud'; family = 'cloud-files'
+                provenance = 'LICENSE immediately after attrib -p +u, half 2 - note SPARSE (0x200), which synthesis missed' }
+            @{ name = 'unpinned + hydrated'; attrs = 0x00000420; expect = 'admit-nonlinking'; family = 'non-linking'
+                provenance = 'LICENSE after the read hydrated it, stable at +2s/+5s/+10s, half 2 step 4' }
+        ) {
+            $d = Resolve-SpecrewReparseDisposition -Attributes $attrs -LinkType $null
+            $d.disposition | Should -Be $expect -Because "$name was measured as 0x$('{0:X}' -f $attrs) ($provenance)"
+            $d.family | Should -Be $family
         }
 
-        It 'all FOUR real states classify as cloud, not just the two dehydrated ones' -ForEach @(
-            @{ name = 'pinned + hydrated (the measured case)'; attr = 0x00080000 }
-            @{ name = 'unpinned + hydrated'; attr = 0x00100000 }
-            @{ name = 'pinned + dehydrated'; attr = (0x00080000 -bor 0x00400000) }
-            @{ name = 'unpinned + dehydrated'; attr = (0x00100000 -bor 0x00001000) }
-        ) {
-            # Synthesising all four is the guard against a future NARROWING: drop either new marker and
-            # this fails loudly instead of going quiet on hydrated files again.
-            $d = Resolve-SpecrewReparseDisposition -Attributes ($script:AttrArchive -bor $script:AttrReparsePoint -bor $attr) -LinkType $null
-            $d.disposition | Should -Be 'hydrate-cloud' -Because "$name is a cloud-backed file"
+        It 'the evicted state carries SPARSE, which no synthesised shape included' {
+            # Kept as its own case because it is the concrete evidence for why this context stopped
+            # composing values: the constant list gives you no reason to expect 0x200 here.
+            (0x00501620 -band 0x00000200) | Should -Not -Be 0
         }
     }
 
-    # The maintainer's explicit warning, pinned so nobody "simplifies" the allowlist away later.
-    Context 'do NOT generalise to "any reparse point .NET does not call a link is safe"' {
-        It 'an AppExecLink is attribute-identical to a symlink and must still refuse' {
-            # MEASURED on the same machine: LOCALAPPDATA\Microsoft\WindowsApps\winget.exe reports
-            # attrs 0x420 with LinkType EMPTY and no LinkTarget - indistinguishable from a symbolic
-            # link by attributes alone, separable only by LinkType. Allow-by-default would admit it.
+    # THE RULING (maintainer, 2026-08-10), and the correction that produced it. The earlier warning -
+    # "allow-by-default would admit an AppExecLink, so the allowlist stays" - was right in general and
+    # WRONG about these call sites. An AppExecLink redirects EXECUTION. None of the three sites executes
+    # anything: they read text, hash it, and walk path components for containment.
+    #
+    # So refusal is now EXACTLY the linking family. For a READ the only redirection that matters is
+    # "this path returns some OTHER file's bytes", which is precisely what LinkType and LinkTarget name,
+    # and .NET names it reliably for symlink and junction (both measured live in this file). Every
+    # plausible non-linking tag in a module tree or authority store is content VIRTUALIZATION rather than
+    # path redirection - cloud files, Server dedup, ProjFS - where the file IS the file and the bytes
+    # merely arrive later. Trust rests on the HASH of the bytes actually read (the S1 principle already
+    # ratified for the cloud family); this applies it consistently instead of carving an exception around
+    # one vendor's attribute bits.
+    Context 'refusal is EXACTLY the linking family - a non-linking tag is admitted and the hash carries the trust' {
+        It 'an AppExecLink is now ADMITTED, and that is the considered answer rather than an oversight' {
+            # MEASURED: LOCALAPPDATA\Microsoft\WindowsApps\winget.exe reports attrs 0x420, LinkType EMPTY,
+            # no LinkTarget - identical on every signal to a hydrated-unpinned OneDrive file, which is why
+            # attributes cannot separate them. Pinned deliberately asserting what NOW HAPPENS to it, so a
+            # later reader sees the case was decided, not missed.
             $d = Resolve-SpecrewReparseDisposition -Attributes 0x00000420 -LinkType $null
-            $d.disposition | Should -Be 'refuse-unknown' -Because 'the allowlist stays; an unrecognised redirect is refused, not admitted'
+            $d.disposition | Should -Be 'admit-nonlinking'
         }
 
-        It 'the ONLY thing separating a hydrated cloud file from an AppExecLink is a cloud marker bit' {
-            # 0x80420 vs 0x420. If the cloud test ever widens to "reparse point without a link type",
-            # these two collapse into one answer and the containment class returns.
-            (Resolve-SpecrewReparseDisposition -Attributes 0x00080420 -LinkType $null).disposition | Should -Be 'hydrate-cloud'
-            (Resolve-SpecrewReparseDisposition -Attributes 0x00000420 -LinkType $null).disposition | Should -Be 'refuse-unknown'
+        It 'THE BOUNDARY: this rule is for READ, HASH and CONTAINMENT - never for a site that EXECUTES' {
+            # An AppExecLink genuinely redirects execution, and there the hash proves nothing. The
+            # disposition stays DISTINCT from hydrate-cloud precisely so a future execute-site can refuse
+            # it without reopening the read decision.
+            $exec = Resolve-SpecrewReparseDisposition -Attributes 0x00000420 -LinkType $null
+            $cloud = Resolve-SpecrewReparseDisposition -Attributes 0x00080420 -LinkType $null
+            $exec.disposition | Should -Not -Be $cloud.disposition -Because 'collapsing these two would erase the only signal a future execute-site could refuse on'
+            Test-SpecrewReparseRefusesRead -Disposition $exec.disposition | Should -BeFalse
+            Test-SpecrewReparseRefusesRead -Disposition 'refuse-link' | Should -BeTrue
+        }
+
+        It 'THE RESIDUAL, stated as not-known rather than impossible' {
+            # This is a WIDENING. An unknown tag that redirects a READ without .NET naming it would now
+            # pass. No such tag is known, and the hash still catches wrong bytes - but the honest
+            # statement is "not known", not "impossible". The durable fix is reading the real reparse
+            # tag, which routes to beta4 with the path-identity consolidation.
+            $d = Resolve-SpecrewReparseDisposition -Attributes 0x00000420 -LinkType $null
+            $d.family | Should -Be 'non-linking' -Because 'the family name records that this was admitted WITHOUT the tag being identified'
         }
 
         It 'a link carrying a cloud marker is STILL refused, on both new markers' -ForEach @(
@@ -142,12 +177,18 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
         }
     }
 
-    Context 'anything else FAILS CLOSED' {
-        It 'refuses an unrecognised reparse tag (allowlist, not blocklist)' {
-            # e.g. IO_REPARSE_TAG_WCI (0x80000018) - a container-isolation tag. Not a link we recognise
-            # and not a placeholder, so it is refused rather than admitted.
+    Context 'a non-linking tag is admitted for a READ, and refusal stays keyed on redirection' {
+        It 'an unidentified non-linking tag is admitted rather than refused' {
+            # e.g. IO_REPARSE_TAG_WCI (0x80000018), Server dedup, ProjFS - content virtualization, not
+            # path redirection. The file IS the file; the bytes merely arrive later. Refusing these buys
+            # nothing for a read, and the hash still catches wrong bytes.
             $d = Resolve-SpecrewReparseDisposition -Attributes ($script:AttrArchive -bor $script:AttrReparsePoint) -LinkType $null
-            $d.disposition | Should -Be 'refuse-unknown'
+            $d.disposition | Should -Be 'admit-nonlinking'
+        }
+
+        It 'a LinkTarget with NO LinkType still refuses - redirection is what refusal is keyed on' {
+            $d = Resolve-SpecrewReparseDisposition -Attributes ($script:AttrArchive -bor $script:AttrReparsePoint) -LinkType $null -LinkTarget 'D:\elsewhere\f.txt'
+            $d.disposition | Should -Be 'refuse-link' -Because 'a host that exposes a target without a type still proves the path returns another file''s bytes'
         }
     }
 
@@ -275,15 +316,26 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
             Get-SpecrewReviewRuntimeManagedTextSha256 -Path $file | Should -Match '^[a-f0-9]{64}$' -Because 'opening the file IS the hydration; refusing it is what took the remediation door down'
         }
 
-        It 'an unrecognised tag still refuses at every site (allowlist, fail closed)' {
-            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'refuse-unknown'; family = 'unknown'; link_type = $null } }
-            $store = Join-Path $TestDrive 'unknown-store'
+        It 'a REDIRECTING tag still refuses at every site' {
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'refuse-link'; family = 'redirecting'; link_type = 'SymbolicLink' } }
+            $store = Join-Path $TestDrive 'link-store'
             New-Item -ItemType Directory -Path $store -Force | Out-Null
-            $file = Join-Path $TestDrive 'unknown.ps1'
+            $file = Join-Path $TestDrive 'linked.ps1'
             Set-Content -LiteralPath $file -Value 'hello' -Encoding UTF8
 
             { Get-ReviewAuthorityStorePath -StoreRoot $store -RelativePath 'campaigns/c.json' } | Should -Throw '*review-store-root-link-unsupported*'
             { Get-SpecrewReviewRuntimeManagedTextSha256 -Path $file } | Should -Throw '*review-runtime-managed-file-link-unsupported*'
+        }
+
+        It 'a NON-LINKING tag is admitted at every site (the ruling, at the sites it governs)' {
+            Mock Get-SpecrewReparseDispositionForItem { [pscustomobject]@{ disposition = 'admit-nonlinking'; family = 'non-linking'; link_type = $null } }
+            $store = Join-Path $TestDrive 'nonlinking-store'
+            New-Item -ItemType Directory -Path $store -Force | Out-Null
+            $file = Join-Path $TestDrive 'nonlinking.ps1'
+            Set-Content -LiteralPath $file -Value 'hello' -Encoding UTF8
+
+            { Get-ReviewAuthorityStorePath -StoreRoot $store -RelativePath 'campaigns/c.json' } | Should -Not -Throw
+            Get-SpecrewReviewRuntimeManagedTextSha256 -Path $file | Should -Match '^[a-f0-9]{64}$' -Because 'the hash of the bytes actually read is what carries the trust'
         }
     }
 

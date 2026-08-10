@@ -98,7 +98,7 @@ function Get-ReviewAuthorityStorePath {
     if (Test-Path -LiteralPath $root) {
         $rootItem = Get-Item -LiteralPath $root -Force -ErrorAction Stop
         $disposition = Get-SpecrewReparseDispositionForItem -Item $rootItem
-        if ($disposition.disposition -cin @('refuse-link', 'refuse-unknown')) {
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
             throw (Get-SpecrewReparseRefusalMessage -Code 'review-store-root-link-unsupported' -Path $StoreRoot `
                     -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
@@ -116,7 +116,7 @@ function Get-ReviewAuthorityStorePath {
         if (-not (Test-Path -LiteralPath $current)) { continue }
         $item = Get-Item -LiteralPath $current -Force -ErrorAction Stop
         $disposition = Get-SpecrewReparseDispositionForItem -Item $item
-        if ($disposition.disposition -cin @('refuse-link', 'refuse-unknown')) {
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {
             throw (Get-SpecrewReparseRefusalMessage -Code 'review-store-path-link-unsupported' -Path $RelativePath `
                     -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
