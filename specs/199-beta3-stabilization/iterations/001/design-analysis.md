@@ -615,6 +615,70 @@ against the validator's shape rather than a design choice. Note it pairs natural
 both concern a consumer being unable to see why a round failed. The maintainer's ruling is conditional — take it only if it is a few
 lines, else beta4 — so it is a measurement against the validator's shape, not a design choice.
 
+### FR-013 — how a sealed failure was improved WITHOUT unsealing anything (maintainer ruling, 2026-08-10)
+
+Recorded prominently because a later reader will otherwise assume this was a loosening. **It was not.
+The human-authorized, scoped, redacted disclosure door is untouched, and the stable
+`diagnostics-require-command-scoped-disclosure` reason still points at it.**
+
+**The insight the ruling turns on**: what a consumer needs when verification fails is almost never the
+command's OUTPUT — it is the FACTS ABOUT the failure, and the engine already owns all of them. Which
+command ran, what class of failure, what exit code, how long it took, and the load-bearing one: exactly
+which environment variable NAMES the plan allowed through. None of that is output, so none of it is
+disclosure.
+
+**T067 is the proof.** Its real cause was an empty child environment with git not on PATH, and an hour
+went into a sealed failure that a single derived sentence would have ended — a sentence composable
+entirely from the PLAN, with the seal never opened.
+
+**So the shape is a DERIVED-DIAGNOSIS LAYER ABOVE the seal**, not a change to it:
+`Get-ContinuousCoReviewVerificationFailureDiagnosis` reads only controller-owned evidence fields
+(`command_id`, `exit_code`, `duration_seconds`, `timed_out`, `classification`, `failure_reason`,
+`env_refs`) and never touches stdout or stderr. A structural fixture asserts that — the function body,
+comments stripped, must not mention `stdout`, `stderr`, `Get-Content`, `ReadAllText` or
+`StandardOutput` — so "it does not read output" is a guarded property rather than a promise in a
+comment.
+
+**The env_refs line is a HINT, not a diagnosis.** The engine cannot know which variable was missing, so
+it names the rule and the exact place to change it and does not guess. An EMPTY env_refs list says so
+explicitly rather than omitting the line, because silence there is indistinguishable from "the message
+did not mention environment" — which is exactly how T067 stayed mysterious.
+
+**NOT YET WIRED TO THE CONSUMER, and this is the honest half.** The composer and its fixtures exist; the
+diagnosis does not yet reach a human. **Until that lands, this is a diagnosis nobody can see**, which is
+the same class as the demotion defect and must not be described as done.
+
+**The wiring, traced end to end so it is a mechanical edit rather than a fresh investigation:**
+
+1. `Invoke-ReviewCampaignFrozenVerification`'s failed-command return
+   (`review-campaign-orchestrator.ps1:441-449`) gains a `diagnosis` field from the composer. Its
+   `reason` stays BYTE-IDENTICAL — three fixtures assert that string by exact equality
+   (`verification-plan-end-to-end.Tests.ps1:236`, `review-campaign-verification.Tests.ps1:263` and
+   `:341`) and they are correct to: the machine token is a contract and the disclosure pointer.
+2. The default verify port (`:728`) currently returns `{ ok; reason }` and drops everything else; it
+   carries `diagnosis` through.
+3. **The destination, and it is better than the port**: the stop-here landing message (`:780`) already
+   embeds the raw reason in consumer prose — *"Stopping here did not finish: the final check on your
+   files did not pass (verification-command-failed:build:diagnostics-require-command-scoped-disclosure).
+   ... fix what the message above names"*. That sentence tells the human to fix what the message names
+   while the message names nothing actionable. **That is the sealed-failure consumer experience in one
+   line, and it is exactly where the derived diagnosis belongs.**
+
+### FR-013 — does a completed verification NAME what it ran? MEASURED: no (2026-08-10)
+
+The maintainer's ruling on starter-plan shadowing asked for a measurement before any code: if a
+completed verification already names its commands, the gap is visible and nothing is owed.
+
+**Measured, and it does not.** The success path composes `review_scope_suffix` with a COUNT only —
+*"one joined record for each of N declared command(s)"* — and that text is REVIEWER-facing. The
+consumer-facing pause surface (`Format-ReviewCampaignPauseSurface`) says nothing about verification at
+all. So a project whose reviews verify only governance while its tests never run is told "verification
+passed" with no way to notice, which is precisely the invisible-degradation class the maintainer named.
+
+**Owed, and small**: name the commands that ran on the consumer surface. Explicitly NOT owed:
+detection of "auto-detection would now match something else" — that routes to beta4 if still wanted
+after this lands.
+
 ### T008 design record — which failure classes actually charge, READ FROM SOURCE (2026-08-10)
 
 The drift log's evidence note is explicit that this must be measured, not assumed: *"T008's RED fixture
@@ -649,6 +713,14 @@ above.
    observation into a guard, and the honest framing is "this already worked", not "this was repaired".
 2. The `invalid-reservation` path, and every call site that could reach the failure path WITHOUT
    passing its reservation. That is where a real charge can still hide.
+
+**THE QUESTION THE FIXTURE MUST ANSWER, not assume (maintainer, 2026-08-10): was F4 correctly diagnosed
+in the first place?** Its evidence was T067's runs 1-3 consuming the allowance, yet this feature's own
+`preflight-failed` run released cleanly. Both cannot be generally true. **Reproduce the T067
+three-failure sequence END TO END and measure whether the allowance is actually consumed.** If it is
+not, F4 as recorded is partly a MISDIAGNOSIS — the allowance may have been spent by the RESERVATION
+rather than by the failure — and knowing that is worth more than a fix aimed at the wrong mechanism.
+Record whichever way it lands.
 
 **Do NOT claim T008 repaired F4 unless a fixture goes RED first.** The distinction between "what my
 change fixed" and "what already worked" is a standing method rule here, and this task is the most

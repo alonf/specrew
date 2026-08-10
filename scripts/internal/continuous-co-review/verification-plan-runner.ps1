@@ -151,6 +151,58 @@ function New-ContinuousCoReviewVerificationFailureRecord {
     }
 }
 
+function Get-ContinuousCoReviewVerificationFailureDiagnosis {
+    # T007 / FR-013 - THE DERIVED-DIAGNOSIS LAYER, ABOVE THE SEAL (maintainer ruling 2026-08-10).
+    #
+    # READ THIS BEFORE ASSUMING IT LOOSENED ANYTHING. It does not. The human-authorized, scoped,
+    # redacted disclosure door is untouched, and the stable
+    # `diagnostics-require-command-scoped-disclosure` reason still points at it. Nothing here is command
+    # OUTPUT - every fact below is one the ENGINE already owns, derived from the PLAN and from the
+    # controller's own execution record:
+    #
+    #   which command ran, what class of failure, the exit code, how long it took, whether it timed out,
+    #   and - the load-bearing one - exactly which environment variable NAMES the plan allowed through.
+    #
+    # T067 is the proof that this is the right layer. The real cause there was an empty child
+    # environment with git not on PATH, and an hour went into a sealed failure that could have been
+    # ended by a sentence composed entirely from the plan. What a consumer needs when verification
+    # fails is almost never the output; it is the facts ABOUT the failure.
+    #
+    # The env_refs sentence is deliberately phrased as a HINT rather than a diagnosis: the engine
+    # cannot know which variable was missing (see the T007 part-2 record), so it names the rule and the
+    # exact place to change, and does not guess.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param([AllowNull()][object[]]$Evidence)
+
+    $failed = @(@($Evidence) | Where-Object { $null -ne $_ -and -not [bool]$_.command_succeeded })
+    if ($failed.Count -eq 0) { return '' }
+
+    $lines = [Collections.Generic.List[string]]::new()
+    foreach ($record in $failed) {
+        $id = [string]$record.command_id
+        $exit = if ($null -eq $record.exit_code) { 'no exit code (it did not start)' } else { "exit code $([int]$record.exit_code)" }
+        $timing = if ([bool]$record.timed_out) { 'it ran out of time' } else { 'it finished on its own' }
+        $seconds = [double]$record.duration_seconds
+        $lines.Add(("  {0}: {1}, after {2:N1}s - {3}." -f $id, $exit, $seconds, $timing))
+        $classification = [string]$record.classification
+        if (-not [string]::IsNullOrWhiteSpace($classification)) { $lines.Add(("    what happened: {0}" -f $classification)) }
+        $reason = [string]$record.failure_reason
+        if (-not [string]::IsNullOrWhiteSpace($reason)) { $lines.Add(("    reported: {0}" -f $reason)) }
+
+        # The env_refs line is the one that would have ended T067 in a minute.
+        $names = @(@($record.env_refs) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        if ($names.Count -gt 0) {
+            $lines.Add(("    this command could only see these environment variables: {0}" -f ($names -join ', ')))
+            $lines.Add('    if it needs another one, add its NAME to that command''s env_refs in .specrew/verification-plan.json (names only, never values).')
+        }
+        else {
+            $lines.Add('    this command was given NO environment variables at all - not even PATH. If it needs any, add their NAMES to env_refs in .specrew/verification-plan.json.')
+        }
+    }
+    return (($lines -join [Environment]::NewLine))
+}
+
 # THE SELECTED-PLAN RESOLVER (maintainer wiring directive 2026-07-15): the ONE production seam that loads
 # the project's SELECTED VerificationPlan for the evidence-injection boundary and any other consumer. The
 # FR-049 supplier chain (config-authoritative -> detected -> profile -> provider-gated) TARGETS this seam by
