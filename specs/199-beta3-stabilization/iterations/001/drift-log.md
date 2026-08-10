@@ -69,15 +69,17 @@ hour. One derived reuses as `reservations - grants` and produced a committed, fa
 other counted grant subdirectories as reservations and produced arithmetic that would not close. The
 stores were clean throughout; only the counting was wrong.*
 
-### PROPOSED third rule — awaiting the maintainer's ruling, not staged on my own authority
+**RULED IN 2026-08-11 — this rule joins the other two in the ledger**, with the maintainer's refinement:
+the abstract form is not checkable in review, the operational form is. Staged in the operational form.
 
-The two rules above were staged under an explicit ruling. This one is offered, not assumed, because the
-maintainer decides what the ledger inherits.
-
-> **RULE — a guard that ENUMERATES known shapes reports completeness over the author's list, not over
-> the code.** When the invariant is "every X must do Y", assert it against the property that makes
-> something an X, never against the incidental form of the X's you happened to find. An exact count over
-> an enumerated pattern is the tell: it converts "I found four" into "there are four."
+> **RULE — IF A GUARD ASSERTS A COUNT, ASK WHAT DEFINES THE SET.** A count means something over a set
+> defined by the INVARIANT; over a hand-enumerated list it silently converts *"I found four"* into
+> *"there are four."* When the invariant is "every X must do Y", assert it against the property that
+> MAKES something an X, never against the incidental form of the X's you happened to find.
+>
+> **The diagnostic for a correctly-stated invariant**: out-of-scope cases fall out NATURALLY instead of
+> needing an exception list. If you are writing an exception, the invariant is probably still describing
+> forms rather than the property.
 
 *Evidence: TWO source guards in one session, both mine, both rewritten after failing to guard what they
 claimed. The first sliced a function body with `.*?\n\}`, stopped at the first nested brace, and guarded
@@ -86,11 +88,16 @@ matches, and went green while a fifth return - `status = 'not-started'`, reason 
 restored a slot and dropped the fields fifty lines away. It was written specifically to stop a fifth
 return from doing that.*
 
-*The fix in both cases was to assert the INVARIANT rather than the form: slice to the next top-level
-function; match on `$failed.` appearing in the returned object. The second phrasing also excludes the
-reservation-refused return naturally, because that return genuinely has no `$failed` - which is the
-mark of a correctly-stated invariant: the out-of-scope cases fall out instead of needing an exception
-list.*
+*THE WORKED EXAMPLE, kept because the rule is easier to agree with than to apply: the fix in both cases
+was to assert the INVARIANT rather than the form — slice to the next top-level function; match on
+`$failed.` appearing in the returned object. The count then became a FLOOR (`>= 5`), guarding only
+against the regex silently matching nothing, since an exact count was the defect itself.*
+
+*THE COMPANION DIAGNOSTIC, which is the checkable half: the `$failed.` phrasing excludes the
+reservation-refused return NATURALLY, because that return genuinely has no `$failed`. The
+`status = 'failed'` phrasing would have needed the author to already know every status a return might
+carry — which is exactly what they did not know. When out-of-scope cases need an exception list, the
+invariant is still describing forms.*
 
 *Distinct from the synthesis rule, and worth separating: that one is about INPUTS (invented data testing
 the author's model of real data). This is about the PREDICATE (an invented enumeration testing the

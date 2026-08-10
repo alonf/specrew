@@ -294,6 +294,69 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
     # run and NO REFUSAL EVENT followed, and a fresh human authorization was minted three minutes later
     # anyway. The slot WAS available and was never offered - so the human paid for an authorization they
     # did not need. That is a disclosure gap, not a ledger defect.
+    # T008's RED as the task words it: "the T067 three-infra-failure sequence leaves the allowance
+    # intact". The cases above are singles; this is the SEQUENCE, end to end against a real store, with
+    # all three declared outcomes - preflight-failed, claim-contended, launch-failed.
+    #
+    # ONE GRANT, ONE SLOT, THREE RUNS. That is the whole point: if a pre-invocation failure consumed the
+    # allowance, run 2 could not reserve at all. The sequence therefore proves reuse and non-consumption
+    # in the same measurement, which is what F4's original evidence was read as disproving.
+    Context 'T008 - the three-failure sequence leaves the allowance intact (FR-014/SC-008)' {
+        BeforeAll {
+            . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1')
+        }
+
+        It 'three consecutive pre-invocation failures reuse ONE human authorization' {
+            $root = Join-Path $TestDrive ('seq-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            $store = Join-Path $root 'store'; $staging = Join-Path $root 'staging'
+            $campaign = 'cmp-t008-seq-i001'
+
+            Add-ReviewCampaignGrantFact -StoreRoot $store -Fact ([pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'grant'; campaign_id = $campaign; grant_id = 'grant-seq'
+                    slots = 1; authority_kind = 'human'; authorization_ref = 'human-verdict-once'
+                    observed_at = '2026-08-11T00:00:00Z'
+                }) | Out-Null
+
+            $outcomes = @('preflight-failed', 'claim-contended', 'launch-failed')
+            $runIds = @('run-seq-a', 'run-seq-b', 'run-seq-c')
+            for ($i = 0; $i -lt 3; $i++) {
+                $runId = $runIds[$i]
+                $reserved = Request-ReviewCampaignReservationFact -StoreRoot $store -CampaignId $campaign `
+                    -RunId $runId -ReservationId ('res-seq-' + $i) -ObservedAt ('2026-08-11T00:0{0}:00Z' -f ($i + 1))
+                $reserved.acquired | Should -BeTrue -Because "run $($i + 1) must be able to reserve - if an infrastructure failure consumed the allowance, this is where it would die"
+
+                Initialize-ReviewRunStaging -StagingRoot $staging -CampaignId $campaign -RunId $runId | Out-Null
+                $failed = Complete-ReviewPreInvocationFailure -StoreRoot $store -StagingRoot $staging `
+                    -CampaignId $campaign -RunId $runId -TargetDigest 'digest-seq' -HarnessId 'fixture' `
+                    -Reservation $reserved.fact -Spends @() -Reason ('infra:' + $outcomes[$i]) `
+                    -ObservedAt ('2026-08-11T00:0{0}:30Z' -f ($i + 1)) -StartedAt ('2026-08-11T00:0{0}:10Z' -f ($i + 1)) `
+                    -DurationMs 200 -RuntimeOutcome $outcomes[$i]
+
+                # "publishes run records" is half the requirement - a failed run must not vanish.
+                [bool]$failed.published | Should -BeTrue -Because "$($outcomes[$i]) must PUBLISH a run record, not disappear"
+                [bool]$failed.slot_restored | Should -BeTrue -Because 'no reviewer was invoked, so the authorization comes back'
+            }
+
+            # THE ASSERTION, naming WHICH counter it measures so it cannot inherit F4's ambiguity.
+            $grants = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $campaign -Kind grants)
+            $reservations = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $campaign -Kind reservations)
+            $spends = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $campaign -Kind spend)
+            $releases = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $campaign -Kind releases)
+
+            @($spends).Count | Should -Be 0 -Because 'PROVIDER SPEND: no reviewer was ever invoked across all three failures'
+            @($releases).Count | Should -Be 3 -Because 'each pre-invocation failure returns its slot'
+            @($grants).Count | Should -Be 1 -Because 'ONE human authorization covered three attempts - that is the whole claim'
+            @($reservations).Count | Should -Be 3 -Because 'three reservations against one grant slot: reuse, measured'
+
+            $state = Get-ReviewCampaignAllowanceState -CampaignId $campaign -Grants $grants `
+                -Reservations $reservations -Spends $spends -Releases $releases
+            $state.valid | Should -BeTrue -Because 'three reserve/release cycles on one slot must leave a CONSISTENT ledger'
+            $state.available.Count | Should -Be 1 -Because 'SLOT ALLOWANCE: the authorization is still spendable after three infrastructure failures'
+            $state.spent.Count | Should -Be 0
+            $state.active.Count | Should -Be 0
+        }
+    }
+
     Context 'T008 - a restored slot is SURFACED, and never leaks into the ledger' {
         BeforeAll {
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1')
