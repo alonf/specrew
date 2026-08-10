@@ -781,6 +781,17 @@ beyond the first on a grant/slot) rather than deriving them:**
 | `cmp-198-beta2-hardening-i010` | 1 | 1 | 1 | 0 | 1 | 0 | yes |
 | `cmp-198-beta2-hardening-i011` | 6 | 6 | 7 | 1 | 6 | 1 | yes |
 | `cmp-199-beta3-stabilization-i001` | 1 | 1 | 3 | 2 | 1 | 2 | yes |
+| `cmp-001-linkcheck-i001` (T067) — **RELAYED, NOT VERIFIED HERE** | 26 | 26 | 29 | 4 | 25 | **3** | **NO — 3 of 4** |
+
+**The T067 row is labelled because it is not a measurement I made.** That store is not present in this
+machine's worktrees — searched `C:\Dev`, `%USERPROFILE%\source`, `%USERPROFILE%\Documents`, `D:\` — so
+nothing here verifies it. Adding relayed numbers to a table of measurements without that label would
+repeat the exact class of error this section exists to correct.
+
+**And it is the row that matters.** The five measured stores all show `reuses == releases`; T067 shows
+3 of 4. **That single un-reused release is F4's entire surviving evidence.** Reading the five-store
+result as "no residue, therefore no F4" deletes the motivation for the disclosure fix — which is why the
+guard comment that made exactly that error was corrected rather than trimmed.
 
 **GRANT REUSE WAS NEVER BROKEN.** It works in all five stores, including the earliest, and reuse
 generations exist in T067's own store — the campaign where F4 was observed. **NO BISECT**: there is no
@@ -834,6 +845,26 @@ The shape, and the constraint that decides it:
 The sentence should say what is true and nothing more: the review did not start, no round was used, and
 **the authorization you already gave is still available** — so it does not need reissuing. It must not
 claim the tooling asked for a new one, per the limit above.
+
+**HARD CONSTRAINT — THE SENTENCE MUST NEVER REACH THE RELEASE FACT'S `reason`.** Verified in code:
+`Complete-ReviewPreInvocationFailure` passes the SAME `$Reason` to two places:
+
+> `Resolve-ReviewCampaignReleaseDecision -Reason $Reason`  -> becomes the RELEASE FACT's reason
+> `Invoke-ReviewResultIngress ... -FailureReason $Reason`  -> the persisted result
+
+The release fact's `reason` is a **machine-classified, immutable** field (`preflight-failed`,
+`verification-command-failed:governance-validator:...`) — it is the field releases are counted and
+classified BY. A consumer sentence appended into it is permanent ledger pollution and would break any
+prefix classification over it, including the counting that produced this very analysis.
+
+**The function's ordering happens to be safe** — the release resolves first (line 603), the ingress runs
+last (line 606) — so composing the sentence BETWEEN them works. **The hazard is that `$Reason` is
+composed at the CALL SITE**, which is exactly where a developer naturally reaches to append a sentence,
+and from there it reaches the release fact. So: **attach the disclosure to the ingress/report path only,
+inside this function, after the release decision has been resolved.** Never to `$Reason` at a call site.
+
+This is the same seam class as the dropped demotion mark — right idea, lost one layer down — which is
+why it is recorded as a constraint rather than left to be rediscovered.
 
 ### F4 ANSWERED BY MEASUREMENT — it was correctly OBSERVED on i008, and it is already FIXED (2026-08-10) — **SEE RETRACTION ABOVE**
 

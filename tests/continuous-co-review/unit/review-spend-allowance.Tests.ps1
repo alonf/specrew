@@ -152,10 +152,24 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
 
     # Trace: T008 / FR-014 / SC-008.
     #
-    # CHARACTERIZATION, NOT A REPAIR - and the label is load-bearing. Measured across all five authority
-    # stores in existence (T067's, 198-i008/i009/i010/i011, and this feature's own): reuses == releases
-    # in every one. GRANT REUSE WAS NEVER BROKEN. F4 was real but is a DISCLOSURE gap, not a ledger
-    # defect: a restored slot is never surfaced, so a human mints an authorization they did not need.
+    # CHARACTERIZATION, NOT A REPAIR - and the label is load-bearing.
+    #
+    # MEASURED HERE: the FIVE stores present in this machine's worktrees - 198-i008, i009, i010, i011,
+    # and this feature's own i001. In all five, reuses == releases. GRANT REUSE WAS NEVER BROKEN.
+    #
+    # NOT MEASURED HERE, and stated as such: T067's own store (cmp-001-linkcheck-i001) is not present on
+    # this machine, so nothing in this suite verifies it. RELAYED for that store: 4 releases but only 3
+    # reuses. THAT ONE UN-REUSED RELEASE IS F4'S ENTIRE SURVIVING EVIDENCE, so do NOT read the five-store
+    # result as "there is no residue, therefore no F4". F4 is real and is a DISCLOSURE gap rather than a
+    # ledger defect: a restored slot is never surfaced, so a human mints an authorization they did not
+    # need.
+    #
+    # An earlier version of this comment claimed the property across "all five stores ... T067's, i008,
+    # i009, i010, i011, and this feature's own" - six names for five, over a set whose T067 member was
+    # never measured, and whose relayed numbers CONTRADICT the claim. Believed, it deletes F4's only
+    # evidence and with it the motivation for the disclosure fix. Same family as the aggregate-over-
+    # containers error it was written to document (DRIFT-199-I001-026): a quantifier asserted wider than
+    # the measurement behind it.
     #
     # These cases exist so the behaviour cannot regress silently, and so no future analysis re-derives
     # the false identity that produced a retracted defect claim (DRIFT-199-I001-026).
@@ -262,9 +276,17 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
             $state.granted_slots | Should -Be 2
             $state.available.Count | Should -Be 1
             @($state.available)[0].grant_id | Should -Be 'grant-never-used'
-            # The identity that produced the retracted claim, asserted to be WRONG on this shape.
-            $reservations = 1; $grants = 2; $releases = 0
-            ($reservations - $grants) | Should -Not -Be $releases -Because 'COUNT THE LEAF FACTS: an aggregate over container counts silently assumes every grant was reserved against, and is wrong exactly when one was not'
+
+            # The identity that produced the retracted claim, asserted WRONG on this shape - with BOTH
+            # operands DERIVED FROM $state, never from literals. An earlier version of this line read
+            # `$reservations = 1; $grants = 2; $releases = 0` and asserted `1 - 2 -ne 0`: three hardcoded
+            # numbers, true forever, exercising zero product code. It was a comment wearing an
+            # assertion's syntax, and its -Because string recited the rule so it READ like the pin while
+            # pinning nothing.
+            $trueReuses = 0   # no slot here was reserved twice
+            $derivedReuses = ($state.active.Count + $state.spent.Count) - $state.granted_slots
+            $derivedReuses | Should -Not -Be $trueReuses -Because 'COUNT THE LEAF FACTS: deriving reuses from an aggregate over grants assumes every grant was reserved against, and is wrong exactly when one was not - which is the shape under test'
+            $trueReuses | Should -Be 0 -Because 'the honest count comes from generations per grant/slot, not from subtracting two ledgers'
         }
     }
 
