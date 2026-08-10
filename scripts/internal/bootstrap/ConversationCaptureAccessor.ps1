@@ -148,14 +148,80 @@ function Test-SpecrewHumanVerdictToken {
     $t = ($Text -replace '\s+', ' ').Trim()
     $lower = $t.ToLowerInvariant()
 
+    $boundaryAlternation = '(?:specify|clarify|plan|tasks|before-implement|implement|review-signoff|review|retro|iteration-closeout|iteration|closeout|feature-closeout|feature)'
+
     # Extract any boundary the human NAMED ("X -> Y", "X → Y", "approve for <b>", "approve <b>"). Used by the
     # caller only as a cross-check AGAINST the packet marker: a named boundary that contradicts the marker makes
     # the verdict ambiguous (-> un-authorized). The marker, not this, is the primary tie.
     $named = New-Object System.Collections.Generic.List[string]
-    foreach ($m in [regex]::Matches($lower, '\b(specify|clarify|plan|tasks|before-implement|implement|review-signoff|review|retro|iteration-closeout|iteration|closeout|feature-closeout|feature)\b')) {
+    foreach ($m in [regex]::Matches($lower, ('\b' + $boundaryAlternation + '\b'))) {
         if ($named -notcontains $m.Value) { $named.Add($m.Value) | Out-Null }
     }
     $r.NamedBoundaries = $named.ToArray()
+
+    # T004 / FR-010 - A LEADING RECOGNIZED APPROVAL PHRASE WINS OVER ANY INSTRUCTION WORDING THAT FOLLOWS,
+    # so this is tested BEFORE the send-back / discuss / question clauses below.
+    #
+    # Those clauses scan the WHOLE utterance, which is right when there is no clear approval to anchor on and
+    # wrong the moment there is: "approved for before-implement - then discuss prompt 2 with me" classified as
+    # DISCUSS, "approved for tasks, and send back the draft doc" as SEND-BACK. Each recorded the crossing
+    # un-authorized, and the human then had to re-approve while avoiding a vocabulary nobody had told them
+    # about - the iteration-011 reproductions this ordering exists to close.
+    #
+    # This is a rule about what FOLLOWS a clear approval, NEVER a relaxation of what counts as one. The
+    # anchoring below is unchanged and remains the mention/quote/teaching firewall ("reply with approved...",
+    # quoted examples, bare numbers, bare "yes" all still fall through), and two guards still apply - but to
+    # the APPROVAL CLAUSE rather than to the trailing instructions:
+    #   - an interrogative approval clause ("approve?") is deliberation, not authorization (FR-026 / SC-013),
+    #     while a trailing question after a declarative approval is an ordinary follow-up;
+    #   - a DEFERRED approval clause ("approve once the tests pass") is still not an approval.
+    # "RECOGNIZED APPROVAL PHRASE" is narrower than "a sentence starting with the word approve", and the
+    # difference is the whole safety margin. What may follow the approval verb is a CLOSED set: nothing, a
+    # clause delimiter, `for <boundary>` / `<boundary>`, or `with instructions` / `as-is`. An arbitrary object
+    # after the verb - "Approve the idea, but send back the diagram" - is NOT the phrase the packet asks for;
+    # it approves some THING while disposing of the verdict differently, so it falls through to the
+    # whole-utterance clauses and lands on send-back exactly as before. `?` is deliberately absent from the
+    # delimiters, so "approve?" is still deliberation rather than authorization.
+    $approvalAnchor = '^\s*(?:(?:option\s*)?([12])\s*[.):\-–—]\s*)?(?:(?:yes|confirmed)\s*[,;:\-–—]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b'
+    $leadingApproval = [regex]::Match($lower, $approvalAnchor)
+    if ($leadingApproval.Success) {
+        $afterApproval = $lower.Substring($leadingApproval.Length)
+        $isRecognizedPhrase = (
+            [string]::IsNullOrWhiteSpace($afterApproval) -or
+            $afterApproval -match '^\s*[,.;:]' -or
+            $afterApproval -match '^\s+[-–—]\s' -or
+            $afterApproval -match ('^\s+(?:for\s+)?' + $boundaryAlternation + '\b') -or
+            $afterApproval -match '^\s+(?:with\s+instructions?\b|as[-\s]is\b)'
+        )
+
+        # The APPROVAL CLAUSE is everything up to the first instruction delimiter. Boundary names are read from
+        # it and from nowhere else: scanning the whole utterance let ordinary prose - "approved for tasks - the
+        # plan looks good and the review list is fine" - name three boundaries, contradict the packet marker,
+        # and turn a clear verdict ambiguous, which the caller records as un-authorized. A hyphen counts as a
+        # delimiter only when SPACED, or `before-implement` and `review-signoff` would be cut in half; `->` is
+        # not one either, so "approve plan -> tasks" still names the crossing's BOTH ends.
+        $clause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s', 2))[0]
+
+        # A deferral inside the CLAUSE still defers ("approve once the tests pass") - the conservative floor is
+        # unchanged. After a delimiter the same word is ordinary instruction wording and no longer blocks.
+        $deferred = $clause -match '\b(later|after|once|when|unless)\b'
+
+        if ($isRecognizedPhrase -and -not $deferred) {
+            $clauseBoundaries = New-Object System.Collections.Generic.List[string]
+            foreach ($m in [regex]::Matches($clause, ('\b' + $boundaryAlternation + '\b'))) {
+                if ($clauseBoundaries -notcontains $m.Value) { $clauseBoundaries.Add($m.Value) | Out-Null }
+            }
+            # Assigned through if/else STATEMENTS, never `$(... else { @() })`: a subexpression enumerates an
+            # empty array to NOTHING, so that form assigns $null and a caller counting @($null) sees ONE
+            # element - a phantom named boundary that would contradict the marker and make a clean verdict
+            # ambiguous. The bug this comment describes was caught by its own fixture, not by review.
+            if ($clauseBoundaries.Count -gt 0) { $r.NamedBoundaries = $clauseBoundaries.ToArray() }
+            else { $r.NamedBoundaries = @() }
+
+            if ($leadingApproval.Groups[1].Success) { $r.ApprovalOption = [int]$leadingApproval.Groups[1].Value }
+            $r.IsApproval = $true; $r.Action = 'approve'; return $r
+        }
+    }
 
     # Send-back / reject FIRST: a turn that says "send back" (even alongside praise) is NOT an approval.
     # F-174 iter-11 (review-signoff P7-1): the "changes needed/required/requested" clause must NOT fire on a

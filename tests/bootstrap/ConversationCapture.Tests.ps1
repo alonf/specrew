@@ -74,4 +74,63 @@ try {
 }
 finally { Remove-Item -LiteralPath $tailFix -Force -ErrorAction SilentlyContinue }
 
+# --- T004 / FR-010: a leading recognized approval phrase WINS over any instruction wording that
+#     follows. Every case below is an iteration-011 reproduction: the classifier scanned the WHOLE
+#     utterance for send-back / discuss words, so ordinary instructions after a clear approval flipped
+#     the verdict to a non-approval and the crossing recorded un-authorized. The human then had to
+#     re-approve using words that avoided a vocabulary they were never told about. ---
+$approveWithInstructions = @(
+    @{ text = 'approved for before-implement — then discuss prompt 2 with me'; why = 'trailing "discuss prompt 2" is an instruction, not a request to deliberate' }
+    @{ text = 'approved for tasks, and send back the draft doc when you are done';  why = 'trailing "send back" refers to a document, not to the verdict' }
+    @{ text = 'approved for plan. changes needed in the README are noted for later'; why = 'an affirmative change clause AFTER the approval is instruction wording' }
+    @{ text = 'approved for review-signoff with instructions: reject any finding without a failure scenario'; why = '"reject" describes what to do with findings, not the boundary' }
+    @{ text = 'approved for implement. should I also update the changelog?';        why = 'a trailing QUESTION is a follow-up, not an interrogative approval' }
+)
+foreach ($c in $approveWithInstructions) {
+    $v = Test-SpecrewHumanVerdictToken -Text $c.text
+    Assert-True ($v.IsApproval) "FR-010 leading approval wins: $($c.why)"
+    Assert-True ($v.Action -eq 'approve') "FR-010 action is approve: $($c.text)"
+}
+
+# --- T004 / FR-010: boundary-name words used as PLAIN ENGLISH in the instructions must never flip the
+#     classification. NamedBoundaries is a cross-check against the packet marker, so a stray "plan" or
+#     "review" in a sentence of instructions used to contradict the marker and make a clear verdict
+#     ambiguous - which the caller records as un-authorized. Only the boundary named BY the approval
+#     phrase itself counts. ---
+$named = Test-SpecrewHumanVerdictToken -Text 'approved for tasks — the plan looks good and the review list is fine, so implement it'
+Assert-True ($named.IsApproval) 'FR-010 plain-English boundary words: still an approval'
+Assert-True (@($named.NamedBoundaries).Count -eq 1) "FR-010 plain-English boundary words: exactly one boundary named (got $(@($named.NamedBoundaries) -join ','))"
+Assert-True (@($named.NamedBoundaries)[0] -eq 'tasks') 'FR-010 plain-English boundary words: the approval phrase names the boundary, not the prose'
+
+$bare = Test-SpecrewHumanVerdictToken -Text 'approved — the review notes look right'
+Assert-True ($bare.IsApproval) 'FR-010 bare approval with prose: still an approval'
+Assert-True (@($bare.NamedBoundaries).Count -eq 0) 'FR-010 bare approval with prose: names no boundary, so the marker decides alone'
+
+# --- T004 / FR-010 SAFETY: the conservative floor is UNCHANGED. Capture must never invent an approval
+#     the human did not give, so each of these stays a non-approval. Recorded as the paired sibling of
+#     the cases above: leading-phrase-wins is a rule about what FOLLOWS a clear approval, never a
+#     relaxation of what counts as one. ---
+$nonApprovals = @(
+    @{ text = 'send back — the plan needs work';                       approval = $false; action = 'send-back' }
+    @{ text = 'changes needed before this can go ahead';               approval = $false; action = 'send-back' }
+    @{ text = 'discuss prompt 2';                                      approval = $false; action = 'discuss' }
+    @{ text = 'do not approve this yet';                               approval = $false; action = 'none' }
+    @{ text = 'approve?';                                              approval = $false; action = 'none' }
+    @{ text = 'should I approve this or not?';                         approval = $false; action = 'none' }
+    @{ text = 'reply with approved for tasks when you are ready';      approval = $false; action = 'none' }
+    @{ text = '1';                                                     approval = $false; action = 'none' }
+    @{ text = 'yes';                                                   approval = $false; action = 'none' }
+)
+foreach ($c in $nonApprovals) {
+    $v = Test-SpecrewHumanVerdictToken -Text $c.text
+    Assert-True ($v.IsApproval -eq $c.approval) "FR-010 safety floor: '$($c.text)' is not an approval"
+    Assert-True ($v.Action -eq $c.action) "FR-010 safety floor: '$($c.text)' -> $($c.action) (got $($v.Action))"
+}
+
+# --- T004 / FR-010: the captured TEXT keeps the instructions, so what the human authorized and what
+#     they asked for are one record rather than an approval with its conditions dropped. ---
+$capturedDirect = Get-SpecrewCapturedVerdictText -HumanText 'approved for before-implement — then discuss prompt 2 with me' -ToBoundary 'before-implement'
+Assert-True ($capturedDirect.StartsWith('approved for before-implement')) 'FR-010 captured text: canonical prefix preserved for the writer'
+Assert-True ($capturedDirect.Contains('discuss prompt 2')) 'FR-010 captured text: the instructions survive byte-for-byte'
+
 Write-Host "`n=== ConversationCapture.Tests.ps1: all assertions passed ===" -ForegroundColor Green
