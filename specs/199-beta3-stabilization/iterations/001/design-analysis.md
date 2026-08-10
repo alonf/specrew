@@ -397,6 +397,13 @@ write arrives after the cursor has advanced, so its `from_boundary` is the desti
 guard could never have matched a real duplicate. Recorded because unreachable code that looks like a
 safety mechanism is worse than none.
 
+**LIMIT OF THE EVIDENCE** (maintainer ruling 2026-08-10, accepted as-is): the backstop is proven AT THE
+WRITER by a direct-call fixture and UNPROVEN THROUGH THE HOOKS, because the only way to exercise it end
+to end is fault injection on the crossing-consumption write — more machinery than the risk warrants. A
+backstop that fired today would mean the primary protection had already failed, so "latent" is its
+correct state; a passing suite here is not end-to-end coverage, and a later reader should not read it
+as such.
+
 **Sequencing note carried from the session that recorded this**: the classifier (FR-010
 leading-approval precedence) and the marker-forward reader are both DONE and green, so part 3 is pure
 wiring and ordering. Its two suites — `tests/bootstrap/ConversationCapture.Tests.ps1` and

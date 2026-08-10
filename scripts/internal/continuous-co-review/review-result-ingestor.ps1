@@ -132,6 +132,69 @@ function Write-ReviewRunReportCreateNew {
     }
 }
 
+function Test-ReviewFindingStatesFailureScenario {
+    # T005 / FR-006. A prompt is a REQUEST; a contract needs a REJECTION. The reviewer prompt demands an
+    # explicit `Failure scenario:` clause on every finding, and THIS is where that demand either binds or
+    # is decoration - if a scenario-less finding is accepted at its stated severity anyway, "every finding
+    # states a concrete failure scenario or it is not a finding" changes nothing about what happens.
+    #
+    # Detection is deliberately the LITERAL clause, not a heuristic read of the prose. A contract is
+    # explicit by construction; the generosity lives in the CONSEQUENCE (demote, never discard), not in
+    # pretending to infer a failure scenario from wording. `-> ` alone is not enough - a clause header
+    # with nothing after it is not a scenario either.
+    [OutputType([bool])]
+    param([AllowNull()][AllowEmptyString()][string]$Description)
+
+    if ([string]::IsNullOrWhiteSpace($Description)) { return $false }
+    $match = [regex]::Match($Description, '(?is)failure\s+scenario\s*:\s*(?<body>.+)$')
+    if (-not $match.Success) { return $false }
+    return (([string]$match.Groups['body'].Value).Trim().Length -ge 12)
+}
+
+function Resolve-ReviewFindingGatingEligibility {
+    # T005 / FR-006 - DEMOTE, NEVER DISCARD (maintainer ruling 2026-08-10).
+    #
+    # The fail direction matters more than the rule: losing a real blocking finding is worse than
+    # admitting a weak one. So a finding without a concrete failure scenario is not dropped and not
+    # rejected - it lands BELOW THE GATING FLOOR as a `minor`, carried as a recorded follow-up exactly
+    # like any other minor. That keeps the signal, removes its power to hold sign-off hostage, and is the
+    # same shape as the existing "minors never gate" rule rather than a new mechanism beside it.
+    #
+    # It also attacks the gold-plating economics at the point where they bite: an observation with no
+    # failure scenario can still be REPORTED, it just cannot cost the human a round.
+    #
+    # Only a GATING severity can be demoted. A finding that never gated is returned untouched - in
+    # particular its description is NOT rewritten, because a demotion note on something that was never
+    # demoted would be a lie in the record.
+    [CmdletBinding()]
+    param([AllowNull()][object[]]$Findings)
+
+    $graded = [System.Collections.Generic.List[object]]::new()
+    foreach ($finding in @($Findings)) {
+        if ($null -eq $finding) { continue }
+        $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
+        $description = [string](Get-ReviewAuthorityProperty -Object $finding -Name 'description')
+        $gates = ($severity -ceq 'blocking' -or $severity -ceq 'major')
+        $demote = $gates -and -not (Test-ReviewFindingStatesFailureScenario -Description $description)
+
+        $copy = [pscustomobject]@{}
+        foreach ($property in $finding.PSObject.Properties) {
+            $copy | Add-Member -NotePropertyName $property.Name -NotePropertyValue $property.Value -Force
+        }
+        if ($demote) {
+            $copy | Add-Member -NotePropertyName 'severity' -NotePropertyValue 'minor' -Force
+            # The demotion is recorded IN the finding rather than only in a counter, so a human reading
+            # the follow-up list can see why this one is not gating and judge it for themselves. The
+            # original severity is named, never silently erased.
+            $note = ('[demoted to minor: no concrete failure scenario, so it cannot gate; reported as {0} by the reviewer] ' -f $severity)
+            $copy | Add-Member -NotePropertyName 'description' -NotePropertyValue ($note + $description) -Force
+        }
+        $copy | Add-Member -NotePropertyName 'demoted' -NotePropertyValue $demote -Force
+        $graded.Add($copy) | Out-Null
+    }
+    return @($graded)
+}
+
 function Invoke-ReviewResultIngress {
     [CmdletBinding()]
     param(
@@ -167,6 +230,10 @@ function Invoke-ReviewResultIngress {
 
     $candidateFindings = @()
     if ($candidateRead.valid) { $candidateFindings = @($candidateRead.candidate.findings | Where-Object { $null -ne $_ }) }
+    # T005 / FR-006: the failure-scenario contract binds HERE, before lineage and before publication, so a
+    # scenario-less finding is carried into the terminal result as a non-gating follow-up rather than
+    # arriving at the human with the power to demand a round.
+    if ($candidateFindings.Count -gt 0) { $candidateFindings = @(Resolve-ReviewFindingGatingEligibility -Findings $candidateFindings) }
     $links = if ($candidateFindings.Count -gt 0) { @(Resolve-ReviewFindingLineage -RunId $RunId -CurrentFindings $candidateFindings -PriorFindings $PriorFindings) } else { @() }
     $terminalFindings = [System.Collections.Generic.List[object]]::new()
     for ($i = 0; $i -lt $candidateFindings.Count; $i++) {

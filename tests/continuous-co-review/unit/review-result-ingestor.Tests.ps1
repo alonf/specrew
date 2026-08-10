@@ -7,7 +7,15 @@ Describe 'Strict candidate result ingress and controller publication (T047)' {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-result-ingestor.ps1')
 
         function script:New-IngressFinding {
-            param([string]$LocalId = 'local-1', [string]$Severity = 'major', [string]$Title = 'Bug', [string]$Description = 'Incorrect behavior')
+            # The default description carries a `Failure scenario:` clause because T005/FR-006 makes one a
+            # CONTRACT: a gating finding that arrives without it is demoted to a non-gating follow-up at
+            # ingest. These fixtures stand in for real reviewer output, so they must look like output that
+            # satisfies the contract - otherwise every gating assertion here would be measuring the
+            # demotion rather than the behaviour it is about (retention, lineage, publication).
+            param(
+                [string]$LocalId = 'local-1', [string]$Severity = 'major', [string]$Title = 'Bug',
+                [string]$Description = 'Incorrect behavior. Failure scenario: a caller passing an empty path gets a published result whose digest does not match the reviewed tree, so signoff proceeds on unreviewed state.'
+            )
             [pscustomobject][ordered]@{ local_id = $LocalId; severity = $Severity; title = $Title; description = $Description; location = 'src/app.ps1:10' }
         }
         function script:New-IngressCandidate {
@@ -137,7 +145,12 @@ Describe 'Strict candidate result ingress and controller publication (T047)' {
         $store = Join-Path $TestDrive 'moved-store'; $staging = Join-Path $TestDrive 'moved-staging'
         $finding = New-IngressFinding -LocalId reviewer-new -Severity minor
         Write-IngressCandidate -Staging $staging -Candidate (New-IngressCandidate -Verdict findings -Findings @($finding)) | Out-Null
-        $prior = [pscustomobject]@{ finding_id = 'finding-prior'; lineage_id = 'lin-existing'; severity = 'blocking'; title = 'Bug'; description = 'Incorrect behavior'; location = 'src/app.ps1:10' }
+        # The prior finding's identity fields are DERIVED from the same helper as the new one, not repeated
+        # as literals: lineage linking matches on them, so a hand-copied description silently stops the
+        # match the moment the helper changes - which is exactly what happened when T005 gave the helper a
+        # failure-scenario clause. Coupling them keeps this case measuring LINEAGE rather than string luck.
+        $priorTemplate = New-IngressFinding
+        $prior = [pscustomobject]@{ finding_id = 'finding-prior'; lineage_id = 'lin-existing'; severity = 'blocking'; title = $priorTemplate.title; description = $priorTemplate.description; location = $priorTemplate.location }
         $published = Invoke-TestIngress -Store $store -Staging $staging -Override @{ Currentness = 'snapshot-moved'; PriorFindings = @($prior) }
         $published.result.completion | Should -Be 'complete'
         $published.result.currentness | Should -Be 'snapshot-moved'

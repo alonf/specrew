@@ -1137,6 +1137,25 @@ NEVER-FALSE-GREEN: an infrastructure failure, invalid JSON, empty stdout, an emp
 unreadable context is NEVER "no findings" - report the failure as a finding, not a clean pass. Do not use live
 web search, do not add dependencies, and do not invoke paid/non-default providers or hidden host tools.
 
+YOUR VERDICT IS THE DELIVERABLE, NOT YOUR FINDING COUNT. The question you are answering is whether this artifact
+is SAFE TO PROCEED ON. "Yes, and here is what I verified" is a complete, blessed answer - a justified CLEAN
+VERDICT naming what you verified is a first-class output of this review, not a failure to find something. State
+which phases you exercised and what evidence you actually read or ran; a clean verdict WITHOUT that basis is not
+a verdict, it is a shrug. Everything above tells you to distrust claims and never paper over a failure; none of
+it asks you to manufacture a finding to justify the round.
+
+EVERY FINDING STATES A CONCRETE FAILURE SCENARIO, OR IT IS NOT A FINDING. In each finding's `comment`, include a
+literal clause `Failure scenario: <concrete inputs or state -> the wrong output, crash, or false state that
+results>`. Name what breaks, for whom, and when - not that something is untidy, inconsistent, or could be
+clearer. This is a CONTRACT, not a style note: a finding that arrives without that clause is DEMOTED to a
+non-gating follow-up at ingest. It is still reported and the human still sees it; it simply cannot hold sign-off
+hostage or cost them another round. If you cannot name the failure, you have an observation - report it as a nit
+and say so plainly.
+
+RANK AND CAP. Order your findings by severity, worst first. Report AT MOST 20 findings; if you have more, keep
+the 20 whose failure scenarios matter most and say in the summary how many you dropped. A long tail of low-value
+findings buries the ones that matter and costs the human rounds to work through.
+
 ## Review round
 $roundBlock
 

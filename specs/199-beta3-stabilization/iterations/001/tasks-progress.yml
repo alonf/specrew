@@ -29,9 +29,9 @@ tasks:
     blocked_reason: ""
   T005:
     title: "Verdict-goal reviewer prompt contract"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "complete"
+    started_at: "2026-08-10"
+    completed_at: "2026-08-10"
     blocked_reason: ""
   T006:
     title: "Reparse-tag discrimination + refusal messages + docs"

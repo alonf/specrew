@@ -489,6 +489,35 @@ The invariant that actually matters is the one the 1200-versus-900 defect violat
 the window with a sealed failure. Currently 600 s of 900 — satisfied, with the class-guard lane
 measured at 10.3 s against its 120 s ceiling.
 
+### FR-006 — the expectations T005 moved, old and new side by side (recorded 2026-08-10)
+
+Same discipline as the FR-009 table: a later reader should see a guarantee sharpened by a requirement,
+not a test bent to fit new code. Both moves are in
+`tests/continuous-co-review/unit/review-result-ingestor.Tests.ps1`.
+
+**The requirement that moved them** — FR-006 as the maintainer ruled it: *a prompt is a REQUEST; a
+contract needs a REJECTION.* If a finding omits a concrete failure scenario and ingest accepts it at
+its stated severity anyway, "every finding states a concrete failure scenario or it is not a finding"
+is aspirational text. The fail direction is **DEMOTE, never discard** — losing a real blocking finding
+is worse than admitting a weak one — so a scenario-less gating finding lands below the gating floor as
+a `minor`, carried as a recorded follow-up.
+
+| Case | What changed | Old | New | Why |
+| --- | --- | --- | --- | --- |
+| `waits for verified process-tree death … retains valid partial findings` | the shared `New-IngressFinding` default description | `'Incorrect behavior'` | the same plus a `Failure scenario:` clause | The case is about RETENTION of a blocking partial finding, not about severity. Left alone, its `blocking` assertion would have been measuring the DEMOTION instead of the behaviour it exists to guard. These fixtures stand in for real reviewer output, so they must look like output that satisfies the contract. |
+| `keeps moved-snapshot findings visible with lineage…` | the prior finding's identity fields | hand-copied literals | DERIVED from the same helper | Lineage matches on title/description/location, so a hand-copied description silently stops matching the moment the helper changes — which is exactly what happened here. Coupling them keeps the case measuring LINEAGE rather than string luck. |
+
+**Nothing about either case's subject moved**: the timeout case still asserts a `blocking` finding
+survives a verified tree-death, and the lineage case still asserts `lin-existing` links and that
+lineage never rewrites reviewer severity. The demotion rule itself is pinned separately, in both
+directions, by `reviewer-prompt-contract.Tests.ps1`.
+
+**Known behaviour change on first deploy, stated rather than discovered later**: detection requires the
+literal `Failure scenario:` clause, so a reviewer whose prompt predates this change has ALL its gating
+findings demoted on the first round after deploy. Accepted: the findings stay visible and reach the
+human as follow-ups, and the alternative — inferring a failure scenario from prose — would make the
+contract a heuristic and therefore not a contract.
+
 ### DRIFT-199-I001-019 — `hooks status` reported a drifted wiring as installed (resolved)
 
 - **Observed**: 2026-08-10 (the live diagnosis T004 names), reproduced as a fixture before the fix. On
