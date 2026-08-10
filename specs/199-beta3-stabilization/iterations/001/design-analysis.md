@@ -347,6 +347,32 @@ touching the wiring that drifts, so the constraints must bind whoever implements
 overlapping. Belt and braces at the STORE, because the wiring is precisely what drifts — the same
 reasoning that put the class guards in a permanent lane rather than trusting selection.
 
+**WHAT ALREADY EXISTS, read from source rather than assumed (2026-08-10).** Two facts change the shape
+of this part, and both were measured before any code was written:
+
+- **Prompt-submit capture is ALREADY WIRED, so the double-write risk is LIVE today, not hypothetical.**
+  `Invoke-SpecrewBoundaryVerdictCapture` is the one write path and BOTH hooks reach it:
+  `HandoverStore.ps1` calls it on `UserPromptSubmit`/`PreInvocation` (returning early) and again at
+  Stop when `$isEndOfTurn`. The first bullet of this task is therefore already built; the work is the
+  idempotency and the wiring reconciliation.
+- **An idempotence guard exists but is keyed on the CURSOR, not on crossing + verdict text.**
+  `Add-SpecrewBoundaryAuthorization` (shared-governance.ps1) no-ops when the cursor already sits on
+  the authorized boundary AND the newest history entry has the same `to_boundary`. Its own comment
+  calls it "narrow by design". It does prevent today's ordinary double-write — prompt-submit writes,
+  the cursor advances, Stop's re-fire no-ops — but it is wrong in BOTH directions the maintainer's
+  key would get right:
+  - **Zero-capture direction**: it cannot tell two DIFFERENT verdicts for the same boundary apart, so
+    a genuine re-approval after a send-back cycles back to the same boundary is swallowed as a
+    duplicate and its instruction text is lost.
+  - **Double-capture direction**: it depends on the cursor having advanced. If the state write fails
+    midway, or the two paths interleave before it lands, both can append.
+
+  Keying on **crossing + verdict text** is strictly better in both: it swallows only a TRUE duplicate
+  and lets a genuinely different verdict through. A stable entry identity already exists to build on —
+  `Get-SpecrewBoundaryAuthorizationEntryId` mints `auth-<sha256>`. Note the writer is MIRRORED in two
+  trees (`extensions/...` and `.specify/extensions/...`); both must move together, and the deployed
+  mirror has its own structural parity guard.
+
 **Sequencing note carried from the session that recorded this**: the classifier (FR-010
 leading-approval precedence) and the marker-forward reader are both DONE and green, so part 3 is pure
 wiring and ordering. Its two suites — `tests/bootstrap/ConversationCapture.Tests.ps1` and
