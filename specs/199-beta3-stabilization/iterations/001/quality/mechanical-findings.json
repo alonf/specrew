@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/199-beta3-stabilization/spec.md",
+  "iterationRef": "specs/199-beta3-stabilization/iterations/001",
+  "generatedAt": "2026-08-10T00:59:11Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}
