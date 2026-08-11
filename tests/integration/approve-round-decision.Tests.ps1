@@ -135,6 +135,28 @@ Describe 'T014: approving a round is a decision the system files, not an identif
         [string]$grants[0].authority_kind | Should -Be 'human'
     }
 
+    It '--approve-round OUTRANKS a stale reference already on file' {
+        # Found while preparing the next round in the Specrew repo itself. The engine writes the last
+        # used reference back into .specrew/reviewer-hosts.json, so after a round that row holds a SPENT
+        # reference - reusing it mints no new slot. The first version of T014 let the file win, so an
+        # explicit human approval would have silently done nothing.
+        #
+        # A RECORDED VALUE MUST NOT OUTRANK AN ACT PERFORMED NOW: the file describes the past, the human
+        # is deciding in the present. Same shape as the consent gate.
+        $root = script:New-ApprovalProject -Root (Join-Path $TestDrive 'stale-ref') -AuthorizationRef 'already-spent-last-round'
+        script:Invoke-Cli -Root $root -Extra @('-ApproveRound') | Out-Null
+
+        $grants = @(script:Get-Facts -Root $root -Kind 'grants')
+        @($grants).Count | Should -Be 1
+        [string]$grants[0].authorization_ref | Should -Be 'cmp-001-demo-i007-round-1' -Because 'the approval given NOW must mint its own slot, not silently reuse a spent one from the file'
+        [string]$grants[0].authorization_ref | Should -Not -Be 'already-spent-last-round'
+
+        # ...but an EXPLICIT label still outranks both, because the human named it in the same breath.
+        $explicit = script:New-ApprovalProject -Root (Join-Path $TestDrive 'stale-ref-explicit') -AuthorizationRef 'on-file'
+        script:Invoke-Cli -Root $explicit -Extra @('-ApproveRound', '-AuthorizationRef', 'i-named-this-one') | Out-Null
+        [string]@(script:Get-Facts -Root $explicit -Kind 'grants')[0].authorization_ref | Should -Be 'i-named-this-one'
+    }
+
     It 'AN UNKNOWN REVIEWER says the reviewer is unknown - not that approval is missing' {
         # The other half of splitting the three conditions. Each now names itself, so the consumer is
         # sent to the thing that is actually wrong.

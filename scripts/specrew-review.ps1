@@ -895,7 +895,19 @@ if ($Live) {
             $campaignHost = [string]$parsedArgs.Host
             $campaignModel = [string]$parsedArgs.Model
             $campaignGrantAuthorizationRef = [string]$parsedArgs.AuthorizationRef
-            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) {
+            # PRECEDENCE: an explicit --authorization-ref wins, then --approve-round, then whatever the
+            # project has on file.
+            #
+            # The config fallback must NOT pre-empt --approve-round, and the first version of T014 let
+            # it: the engine writes the last used reference back into .specrew/reviewer-hosts.json, so
+            # after a round that row holds a SPENT reference. Reusing it mints no new slot, and
+            # --approve-round - an explicit human act, performed deliberately - would have silently done
+            # nothing. Found by preparing to run the next round in this very repo, where the row already
+            # read `beta3-i001-signoff-round-3`.
+            #
+            # A RECORDED VALUE MUST NEVER OUTRANK AN ACT PERFORMED NOW. That is the same shape as the
+            # consent gate: what is on file describes the past, and the human is deciding in the present.
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and -not [bool]$parsedArgs.ApproveRound) {
                 $configuredReviewer = Resolve-ContinuousCoReviewConfiguredReviewerCandidate -RepoRoot $resolvedProjectPath `
                     -ReviewerConfigPath ([string]$parsedArgs.ReviewerConfigPath) -RequestedHost $campaignHost `
                     -RequestedModel $campaignModel -CodeWriterHost ([string]$parsedArgs.CodeWriterHost)

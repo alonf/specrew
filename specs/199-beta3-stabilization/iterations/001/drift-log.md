@@ -389,6 +389,52 @@ it on the author's laptop.*
   failing closed exactly as the terminal path does. A predicate that can only ever QUIET a surface must
   never treat absence of evidence as evidence.
 
+### FR-002 ACCEPTANCE EVIDENCE — the first CORRECT decision surface this product has produced (2026-08-11)
+
+**Transcribed verbatim, not paraphrased**, and it matters that it is this one: every earlier
+transcription in this log is of a surface that was LYING. Until the array-nesting fix
+(DRIFT-199-I001-033) every round rendered `blocking 0, major 0, minor 1, gating FALSE` whatever the
+reviewer found. This pause was written by the corrected logic, so it is the first decision surface whose
+numbers describe the round it belongs to.
+
+> `Review round 3 of 199-beta3-stabilization complete.`
+>
+> `Findings that need your attention (4):`
+> `BLOCKING  A failed stop-here landing consumes the only answer and cannot be retried  (scripts/specrew-review.ps1:930)`
+> `BLOCKING  A pre-invocation failure permanently consumes the continuation decision  (scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:1323)`
+> `BLOCKING  Failure to persist a round pause fails open to another reviewer spend  (scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1:725)`
+> `MAJOR  The resumed pause surface omits findings, locations, and numbered choices  (scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1:1087)`
+> `Also recorded: 1 minor finding - saved as follow-ups, they never block your sign-off.`
+>
+> `Cost so far: 3 rounds, 39 minutes. Round budget: 3 of 4 used.`
+>
+> `Recommendation: Fix the blocking findings before you sign off - they describe behaviour that is wrong or unsafe.`
+>
+> `What would you like to do?`
+> `1. Fix these and run another review round`
+> `2. Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes`
+> `3. Abandon this review campaign (nothing further runs)`
+>
+> `Reply with a number. Nothing runs and nothing is spent until you answer.`
+
+**WHAT IT SHOWS, narrowly.** FR-002's decision surface, rendered live from a real round: what was found
+with severities and locations, what it cost in rounds and minutes, the budget position, a recommendation
+that follows the findings rather than a template, three numbered choices, and the closing promise that
+the loop has stopped. Ledger F8 recorded the opposite — a console held open while spend continued — and
+that last line is the direct answer to it. Every count was verified against `result.json`: 2 blocking,
+5 major, 1 minor, of which 4 gate.
+
+**Also visible without being asked for**: the minor finding is named as carried rather than hidden, and
+the recommendation names blocking specifically because blocking is present — the major-only wording
+("fix what matters to you, then stop here") never appeared, which is the discrimination the consent gate
+now enforces.
+
+**WHAT IT DOES NOT SHOW.** No demotion occurred in this round, so `demoted_count` was zero and the
+demotion line correctly did not render — the visibility ruling remains proven by fixture, not by this
+stop. The `2` option was displayed but not exercised; the consent gate would now refuse it here, on the
+blocking arm. And a surface being CORRECT is not a surface being USABLE — that is precisely what T015
+exists to measure, and no human has yet answered one of these unaided.
+
 ## ROUND 3 — the authorized round, and what it found (run-20260811-140522865-0122b46b)
 
 Reference `beta3-i001-signoff-round-3`, minted from the maintainer's stated approval — **transcription,
