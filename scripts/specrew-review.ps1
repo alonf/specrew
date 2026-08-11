@@ -20,6 +20,19 @@ param(
     [string]$Model,
     [Alias('authorization-ref')]
     [string]$AuthorizationRef,
+    # T014. APPROVING A ROUND IS A DECISION, NOT AN IDENTIFIER.
+    #
+    # --authorization-ref accepts any non-empty string, nothing validates it, and its one real property
+    # - reuse the same string and no new approval is spent - was never explained anywhere a consumer
+    # reads. So there was nothing to know AND no way to discover there was nothing to know. The
+    # maintainer, holding full context, could not work out what to type. The system was asking a human
+    # to produce an identifier when what it needed was approval.
+    #
+    # This takes no value. The human's input is the APPROVAL; the identifier is filing, and filing is
+    # the system's job. --authorization-ref stays for scripts and for anyone who wants to name their
+    # own: a working interface is not removed to add a friendlier one.
+    [Alias('approve-round')]
+    [switch]$ApproveRound,
     # FR-003/FR-005. The human's numbered reply to a paused round, as the ONLY way a further round is
     # authorized. Accepts the number shown on the surface or the choice name behind it, because the
     # surface shows numbers and a consumer reading a transcript later has only the words.
@@ -182,6 +195,7 @@ function Convert-UnixStyleArguments {
         # command tests went red on a pause field they never use.
         PauseChoice     = $null
         PauseRationale  = $null
+        ApproveRound    = $false
         CodeWriterHost  = $null
         TimeoutSeconds  = 0
         FallbackPolicy  = 'none'
@@ -274,6 +288,7 @@ function Convert-UnixStyleArguments {
             '^--json$' { $result.Json = $true }
             '^--open$' { $result.Open = $true }
             '^--live$' { $result.Live = $true }
+            '^--approve-round$' { $result.ApproveRound = $true }
             '^--ack-degraded$' {
                 $index++
                 if ($index -ge $CliArgs.Count) { throw '--ack-degraded requires a run-id value.' }
@@ -698,6 +713,7 @@ $boundHost = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHo
 if (-not [string]::IsNullOrWhiteSpace($boundHost)) { $parsedArgs.Host = $boundHost }
 if (-not [string]::IsNullOrWhiteSpace($Model)) { $parsedArgs.Model = $Model }
 if (-not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $parsedArgs.AuthorizationRef = $AuthorizationRef }
+if ($ApproveRound.IsPresent) { $parsedArgs.ApproveRound = $true }
 if (-not [string]::IsNullOrWhiteSpace($PauseChoice)) { $parsedArgs.PauseChoice = $PauseChoice }
 if (-not [string]::IsNullOrWhiteSpace($PauseRationale)) { $parsedArgs.PauseRationale = $PauseRationale }
 if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $parsedArgs.CodeWriterHost = $CodeWriterHost }
@@ -895,6 +911,56 @@ if ($Live) {
                     $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
                 }
             }
+
+            # T014: --approve-round MINTS THE REFERENCE. The human supplied the decision; the string is
+            # filing, and filing is the system's job.
+            #
+            # Derived from the campaign and the round position rather than from a clock or a random
+            # value, so it is STABLE for one round: re-running the same approved round reuses the same
+            # one-slot grant instead of minting a second. That is the property --authorization-ref
+            # always had and never explained - here it is a consequence of how the string is built,
+            # which nobody has to be told.
+            #
+            # An explicit --authorization-ref still wins, untouched.
+            $approvalMinted = $false
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and [bool]$parsedArgs.ApproveRound) {
+                $approvalIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath `
+                    -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                # THE ROUND NUMBER IS ROUNDS ALREADY RUN, NOT APPROVALS ALREADY MINTED.
+                #
+                # The first version counted grants, so approving the same round twice minted a SECOND
+                # approval - destroying the very property this was meant to make automatic. Counting
+                # INVOKED rounds keeps the reference stable until a round actually runs, so re-approving
+                # before running reuses the one already recorded. Caught by the fixture that asserts
+                # approving twice leaves one grant.
+                #
+                # The invoked filter is FR-014's, reused so a round that never reached a reviewer does
+                # not advance the number - the same discriminator the continuation counter uses.
+                $roundsRun = 0
+                try {
+                    $roundsRun = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') `
+                            -CampaignId $approvalIdentity.campaign_id |
+                            Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') }).Count
+                }
+                catch { $roundsRun = 0 }
+                $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($roundsRun + 1)
+                $approvalMinted = $true
+            }
+
+            # NEITHER GIVEN, AND A ROUND NEEDS ONE: say THAT, and name the command. This is the sentence
+            # whose absence sent the maintainer looking for a value to invent.
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) {
+                Write-Host 'This review round needs your approval before it can run.' -ForegroundColor Yellow
+                Write-Host ''
+                Write-Host 'Approve it with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                Write-Host ''
+                Write-Host 'Approving one round runs one review. Nothing is spent until you do, and Specrew records that you approved it.'
+                Write-Host 'If you keep your own approval records, you can supply your own label instead with --authorization-ref <label>.'
+                exit 1
+            }
+            if ($approvalMinted -and -not $Json -and -not $Quiet) {
+                Write-Host ('Round approved. Specrew recorded your approval as {0}.' -f $campaignGrantAuthorizationRef) -ForegroundColor Cyan
+            }
             $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 600 }
             $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
             $progressSink = $null
@@ -1045,6 +1111,11 @@ if ($Live) {
                 if ($pauseLines.Count -gt 0) {
                     Write-Host ''
                     foreach ($pauseLine in $pauseLines) { Write-Host $pauseLine }
+                    # The RESUMED surface carries its own reply line (it must, so the surface is
+                    # complete wherever it is rendered); the live round's surface does not. Printing
+                    # unconditionally showed it twice on the resumed path - measured on a real stop, not
+                    # in a fixture, because no assertion counts how many times a correct line appears.
+                    $alreadyTold = (($pauseLines -join "`n") -match '--pause-choice')
                     # The surface states the choices; this states HOW to send one, which is the half a
                     # numbered list cannot carry on a command line.
                     $answerRunId = [string](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_run_id')
@@ -1052,8 +1123,10 @@ if ($Live) {
                         $answerFact = Get-ReviewAuthorityProperty -Object $pauseObject -Name 'fact'
                         if ($null -ne $answerFact) { $answerRunId = [string](Get-ReviewAuthorityProperty -Object $answerFact -Name 'run_id') }
                     }
-                    Write-Host ''
-                    Write-Host ("Reply with:  specrew review --pause-choice <1|2|3>{0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
+                    if (-not $alreadyTold) {
+                        Write-Host ''
+                        Write-Host ("Reply with:  specrew review --pause-choice <1|2|3>{0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
+                    }
                 }
                 if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) {
                     Write-Host ("Resolved timeout: {0} seconds" -f $campaignRun.resolved_timeout_seconds)

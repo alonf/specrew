@@ -1277,9 +1277,38 @@ function Invoke-ReviewCampaignCommand {
             $null -ne (Get-Command -Name ([string]$hostDefinition.command) -ErrorAction SilentlyContinue)
         $hostAuthorized = -not [string]::IsNullOrWhiteSpace($GrantAuthorizationRef)
         if ($null -eq $hostDefinition -or -not $hostCommandAvailable -or -not $hostAuthorized) {
+            # T014: SAY WHICH OF THE THREE FAILED.
+            #
+            # One sentence used to cover three unrelated conditions - not catalogued, not installed, not
+            # approved - so a MISSING APPROVAL read as "codex is not installed" and sent the consumer to
+            # reinstall a tool that works perfectly. It fires on exactly the path a human answering a
+            # pause takes, because that path supplies a host and may not supply an approval.
+            #
+            # Ordered from the condition the consumer can act on most directly. Approval is checked LAST
+            # of the three but reported FIRST when it is the only failure, because it is the one they
+            # can fix in the next keystroke.
+            $failedCondition = if ($null -eq $hostDefinition) { 'not-cataloged' }
+            elseif (-not $hostCommandAvailable) { 'not-installed' }
+            else { 'not-approved' }
+            $conditionSentence = switch ($failedCondition) {
+                'not-cataloged' { "Specrew does not recognise the reviewer '$ReviewerHost'. Check the name, or list the reviewers this project can use with: specrew review --list-hosts" }
+                'not-installed' { "The reviewer '$ReviewerHost' is set up for this project, but its command is not on this machine. Install it, or choose one that is available with: specrew review --list-hosts" }
+                default { "This review round needs your approval before it can run. Approve it with: specrew review --live --approve-round" }
+            }
+            # THE TOKEN ITSELF MUST STOP LYING, not just the sentence beside it. For the two genuine
+            # host conditions the host really is the problem, so the long-standing
+            # `requested-host-not-available:` prefix is KEPT - other tooling classifies on it, and
+            # renaming a true token to add detail would be churn. A MISSING APPROVAL is not a host
+            # problem at all, so it gets its own token; that conflation is the whole defect.
+            $reasonToken = if ($failedCondition -ceq 'not-approved') { 'review-round-not-approved' }
+            else { "requested-host-not-available:{0}:{1}" -f $failedCondition, $ReviewerHost }
             return [pscustomobject][ordered]@{
                 status = 'not-started'
-                reason = "requested-host-not-available: '$ReviewerHost' is not installed+authorized+cataloged (an explicit --host is honoured or surfaced, never silently substituted)"
+                reason = $reasonToken
+                # The human sentence rides BESIDE the machine token, never inside it - the token is
+                # classified and counted, the sentence is read.
+                reason_detail = $conditionSentence
+                host_condition = $failedCondition
                 invoked = $false; result = $null; campaign_id = $identity.campaign_id; run_id = $identity.run_id
                 target_lineage = $identity.target_lineage; authority_mode = 'campaign'
                 design_context = [string]$designContext.classification
@@ -1398,6 +1427,16 @@ function Invoke-ReviewCampaignCommand {
             # The findings come from the RESULT, not from the pause fact - the fact stores counts only,
             # which is exactly why the resumed surface had nothing to show. Read defensively and
             # unwrapped with a direct assignment: the accessor returns collections with -NoEnumerate.
+            # The navigator is NOT in _load.ps1's set, so it must be pulled in the same lazy way
+            # Add-ReviewCampaignRoundPause already does for its sibling renderer. Missed here because
+            # every fixture dot-sources the navigator in BeforeAll - so the suite was green while the
+            # shipped path threw "Format-ReviewCampaignOutstandingPause is not recognized" on the first
+            # real paused invocation. A fixture can only prove the shape it invents, and it invented a
+            # load order production does not have.
+            if (-not (Get-Command -Name 'Format-ReviewCampaignOutstandingPause' -ErrorAction SilentlyContinue)) {
+                $navigatorModule = Join-Path $PSScriptRoot 'continuous-co-review-navigator.ps1'
+                if (Test-Path -LiteralPath $navigatorModule -PathType Leaf) { try { . $navigatorModule } catch { $null = $_ } }
+            }
             $pausedRoundFindings = $null
             try {
                 $pausedResult = Get-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `

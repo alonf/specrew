@@ -83,9 +83,9 @@ tasks:
     blocked_reason: ""
   T014:
     title: "Approving a round is a decision, not an identifier (--approve-round; split the three host conditions)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-11T15:00:00.0000000Z"
+    completed_at: "2026-08-11T15:45:00.0000000Z"
     blocked_reason: ""
   T015:
     title: "Branch dogfood end to end, driven by someone who did not build it (measurement: help/guess/source-read count)"
