@@ -857,16 +857,60 @@ function Invoke-ReviewCampaignStopHereLanding {
                     'major' { $major++ }
                 }
             }
-            if (($blocking + $major) -gt 0) {
-                $parts = @()
-                if ($blocking -gt 0) { $parts += ('{0} blocking' -f $blocking) }
-                if ($major -gt 0) { $parts += ('{0} major' -f $major) }
+
+            # ARM 1 - BLOCKING ALWAYS REFUSES. Accepting a blocking finding as a residual defeats what
+            # the severity means. No summary agreement can license it.
+            if ($blocking -gt 0) {
                 return [pscustomobject]@{
-                    ok = $false; reason = ('stop-here-refused-gating-findings:blocking={0};major={1}' -f $blocking, $major)
-                    diagnosis = ('This review round found {0} finding{1} that need your attention, so sign-off cannot complete here. Fix what matters to you and run another round: reply with option 1 and a new authorization reference.' -f ($parts -join ' and '), $(if (($blocking + $major) -eq 1) { '' } else { 's' }))
+                    ok = $false; reason = ('stop-here-refused-blocking-findings:blocking={0}' -f $blocking)
+                    diagnosis = ('This review round found {0} finding{1} that must be fixed before sign-off. Fix them and run another round: reply with option 1 and a new authorization reference.' -f $blocking, $(if ($blocking -eq 1) { '' } else { 's' }))
                 }
             }
-            return [pscustomobject]@{ ok = $true; reason = 'no-gating-findings-in-result' }
+
+            # ARMS 2 AND 3 - CONSENT GIVEN AGAINST FALSE INFORMATION IS NOT CONSENT.
+            #
+            # Majors are MEANT to be acceptable as residuals: the decision surface itself says "Look at
+            # the major findings; fix what matters to you, then stop here." Refusing them outright would
+            # leave stop-here technically present and practically dead, since a minor-only round never
+            # needed it - minors do not gate.
+            #
+            # So the question is not whether majors are acceptable. It is whether the human SAW them.
+            # The live-store hazard was never that majors might be accepted; it was that the surface
+            # said there were none while the result held five. What must be verified is that the number
+            # they consented to is the number that is true.
+            #
+            # This is STRICTER than a plain "no majors" test where it matters: a summary claiming 5
+            # majors when the result holds 7 passes "no majors" and fails this. Tighter on the failure
+            # that occurred, looser on the one that never did.
+            #
+            # Both counts are POST-demotion - the pause fact's counts are derived from the ingested
+            # result, whose severities the T005 contract has already lowered - so a demoted finding is
+            # counted identically on both sides and cannot manufacture a false mismatch.
+            if ($major -gt 0) {
+                $pauseRecord = $null
+                try {
+                    $pauseRecord = @(Get-ReviewCampaignPauseRecords -StoreRoot $ctx.store_root -CampaignId $ctx.campaign_id |
+                            Where-Object { [string]$_.run_id -ceq [string]$ctx.run_id }) | Select-Object -First 1
+                }
+                catch { $pauseRecord = $null }
+
+                if ($null -eq $pauseRecord) {
+                    return [pscustomobject]@{
+                        ok = $false; reason = ('stop-here-refused-consent-unverifiable:major={0}' -f $major)
+                        diagnosis = ('This round found {0} finding{1} worth your attention, but Specrew has no record of the summary you were shown, so it cannot treat your answer as informed. Run a fresh review of your files as they are now to see the real numbers: specrew review --live' -f $major, $(if ($major -eq 1) { '' } else { 's' }))
+                    }
+                }
+
+                $shownMajor = [int](Get-ReviewAuthorityProperty -Object $pauseRecord.pause -Name 'major_count')
+                if ($shownMajor -ne $major) {
+                    return [pscustomobject]@{
+                        ok = $false; reason = ('stop-here-refused-summary-mismatch:shown={0};actual={1}' -f $shownMajor, $major)
+                        diagnosis = ('The summary you were shown does not match what this round found - it reported {0} finding{1} needing your attention, and the round actually found {2}. Specrew cannot treat your answer as informed, so sign-off will not complete. Run a fresh review of your files as they are now to see the real numbers: specrew review --live' -f $shownMajor, $(if ($shownMajor -eq 1) { '' } else { 's' }), $major)
+                    }
+                }
+            }
+
+            return [pscustomobject]@{ ok = $true; reason = ('consent-matches-result:major={0}' -f $major) }
         }
     }
 

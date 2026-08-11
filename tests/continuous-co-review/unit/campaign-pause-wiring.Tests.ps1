@@ -390,9 +390,12 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
             -GateSyncPort { param($ctx) throw 'gate-must-not-be-synced-on-a-gating-round' }
 
         [bool]$landing.landed | Should -BeFalse -Because 'the RESULT holds two blocking findings, whatever the pause fact says'
-        [string]$landing.reason | Should -Match 'stop-here-refused-gating-findings'
+        # ARM 1 by name. Blocking always refuses - accepting one as a residual defeats the severity -
+        # and it fires BEFORE the consent check, which is why the live fact is closed by this arm rather
+        # than by the mismatch arm.
+        [string]$landing.reason | Should -Match 'stop-here-refused-blocking-findings'
         [string]$landing.reason | Should -Match 'blocking=2'
-        [string]$landing.reason | Should -Match 'major=1'
+        [string]$landing.message | Should -Match '(?i)must be fixed before sign-off' -Because 'blocking and mismatch mean different things to a human and must not read alike'
 
         # And it names the next step rather than only refusing - a prohibition with no way forward is
         # how the stop-block lost its action line.
@@ -403,6 +406,104 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         # human-disposition fact behind would let the gate allow sign-off on the next read.
         @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $store -CampaignId $campaign -RunId $runId).Count |
             Should -Be 0 -Because 'a refused landing must leave no acceptance behind'
+    }
+
+    It 'STOP-HERE PERMITS majors the human actually SAW, and REFUSES the ones they did not' -ForEach @(
+        @{ case = 'matched'; shownMajor = 2; shouldLand = $true }
+        @{ case = 'mismatched'; shownMajor = 0; shouldLand = $false }
+    ) {
+        # THE CORRECTED RULING (maintainer, 2026-08-11). The first version of this guard refused on ANY
+        # major, which would have left stop-here technically present and practically dead: majors are
+        # exactly what it exists to accept as residuals - the decision surface itself says "Look at the
+        # major findings; fix what matters to you, then stop here" - and a minor-only round never needed
+        # stop-here at all, because minors do not gate.
+        #
+        # The danger in the live store was never that majors might be accepted. It was that the human
+        # was told there were NONE. So the axis is not severity, it is whether they saw it:
+        #
+        #     CONSENT GIVEN AGAINST FALSE INFORMATION IS NOT CONSENT.
+        #
+        # Both arms are driven from ONE fixture with only the shown count varying, so the permit and the
+        # refusal are proven to differ by exactly that and nothing else.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive "consent-$case")
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaign = "cmp-consent-$case-i001"
+        $runId = "run-consent-$case"
+
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId $runId -TargetLineage 'lin-consent' -ObservedAt '2026-08-11T09:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId $runId -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = $campaign; run_id = $runId; target_digest = "digest-$case"
+                harness_id = 'fixture'; completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'
+                termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+                can_approve_current = $false; summary = 'two majors, no blocking'
+                findings = @(
+                    [pscustomobject][ordered]@{ finding_id = 'finding-c1'; source_local_id = 'c1'; lineage_id = 'lin-consent'; severity = 'major'; title = 'First major'; description = 'Failure scenario: a retry is wasted on a partial label.'; location = 'app.txt:1'; relevance = 'current'; resolution = 'open' }
+                    [pscustomobject][ordered]@{ finding_id = 'finding-c2'; source_local_id = 'c2'; lineage_id = 'lin-consent'; severity = 'major'; title = 'Second major'; description = 'Failure scenario: the budget line reads zero after a release.'; location = 'app.txt:2'; relevance = 'current'; resolution = 'open' }
+                )
+                started_at = '2026-08-11T09:00:00Z'; ended_at = '2026-08-11T09:10:00Z'; duration_ms = 600000
+            }) | Out-Null
+
+        Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = $campaign; run_id = $runId
+                target_digest = "digest-$case"; blocking_count = 0; major_count = $shownMajor; minor_count = 0
+                demoted_count = 0; rounds_used = 1; budget_total = 4; elapsed_minutes = 10.0
+                recommendation = 'Look at the major findings; fix what matters to you, then stop here.'
+                observed_at = '2026-08-11T09:11:00.0000000+00:00'
+            }) | Out-Null
+
+        $reached = [Collections.Generic.List[string]]::new()
+        $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $root -StoreRoot $store `
+            -CampaignId $campaign -RunId $runId -AuthorizedBy 'human' -AuthorizationRef "ref-$case" `
+            -Rationale 'majors read and carried as follow-ups' `
+            -VerifyPort { param($ctx) $reached.Add('verify') | Out-Null; [pscustomobject]@{ ok = $true; reason = 'verified' } }.GetNewClosure() `
+            -AcceptPort { param($ctx) $reached.Add('accept') | Out-Null; [pscustomobject]@{ ok = $true; reason = 'residuals-accepted' } }.GetNewClosure() `
+            -GateSyncPort { param($ctx) $reached.Add('gate') | Out-Null; [pscustomobject]@{ ok = $true; reason = 'signoff-gate-allow' } }.GetNewClosure()
+
+        [bool]$landing.landed | Should -Be $shouldLand
+
+        if ($shouldLand) {
+            @($reached) -join ',' | Should -Be 'verify,accept,gate' -Because 'the designed flow must actually run when the human saw the real number'
+        }
+        else {
+            @($reached).Count | Should -Be 0 -Because 'a refusal must happen before the tree is verified or anything is accepted'
+            [string]$landing.reason | Should -Match 'stop-here-refused-summary-mismatch'
+            [string]$landing.reason | Should -Match 'shown=0;actual=2'
+            # ARM 3 must NOT read like arm 1. This is the sentence that would have saved the maintainer:
+            # the problem is not that the findings are unacceptable, it is that the answer was not
+            # informed - so the next step is to SEE the real numbers, not to fix something.
+            [string]$landing.message | Should -Match '(?i)does not match what this round found'
+            [string]$landing.message | Should -Match '(?i)cannot treat your answer as informed'
+            [string]$landing.message | Should -Not -Match '(?i)must be fixed before sign-off' -Because 'collapsing the mismatch into the blocking sentence loses the one fact the human needs'
+        }
+    }
+
+    It 'STOP-HERE REFUSES majors when NO summary was ever recorded (consent cannot be verified)' {
+        # The third way consent can be absent: not wrong, but missing. A landing invoked on a round that
+        # never produced a pause fact has no record of what the human was shown, so it cannot claim they
+        # were informed. Fails closed for the same reason as an unreadable result.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'consent-absent')
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaign = 'cmp-consent-absent-i001'
+        $runId = 'run-consent-absent'
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId $runId -TargetLineage 'lin-absent' -ObservedAt '2026-08-11T09:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId $runId -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = $campaign; run_id = $runId; target_digest = 'digest-absent'
+                harness_id = 'fixture'; completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'
+                termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+                can_approve_current = $false; summary = 'one major, no pause recorded'
+                findings = @([pscustomobject][ordered]@{ finding_id = 'finding-a1'; source_local_id = 'a1'; lineage_id = 'lin-absent'; severity = 'major'; title = 'A major'; description = 'Failure scenario: the surface never rendered.'; location = 'app.txt:1'; relevance = 'current'; resolution = 'open' })
+                started_at = '2026-08-11T09:00:00Z'; ended_at = '2026-08-11T09:05:00Z'; duration_ms = 300000
+            }) | Out-Null
+
+        $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $root -StoreRoot $store `
+            -CampaignId $campaign -RunId $runId -AuthorizedBy 'human' -AuthorizationRef 'ref-absent' `
+            -Rationale 'accepting residuals' `
+            -VerifyPort { param($ctx) throw 'must-not-run' } `
+            -AcceptPort { param($ctx) throw 'must-not-run' } `
+            -GateSyncPort { param($ctx) throw 'must-not-run' }
+
+        [bool]$landing.landed | Should -BeFalse
+        [string]$landing.reason | Should -Match 'stop-here-refused-consent-unverifiable'
     }
 
     It 'STOP-HERE FAILS CLOSED when the result cannot be read at all' {

@@ -1136,13 +1136,57 @@ contract a heuristic and therefore not a contract.
   the human what to do. The refusal would still have held; only its explanation was lost. Same class as
   every other seam this iteration: two correct components, one wrong assumption about the shape between
   them.
-- **ONE CONCERN WITH THE RULING AS SPECIFIED, stated and then implemented as instructed.** Refusing on
-  MAJOR as well as blocking makes the flow that `Resolve-ReviewCampaignPauseDecision` itself recommends
-  unreachable — for a major-only round it says *"Look at the major findings; fix what matters to you,
-  then stop here."* With this guard, stopping there now refuses. That may well be the intent (a major is
-  still gating, and accepting residuals should perhaps be a distinct, explicit act rather than the same
-  keystroke), but the recommendation text and the guard now disagree, and one of them should move.
-  **Implemented strictly as ruled; flagged for the maintainer.**
+- **THE GUARD WAS RULED TOO BROAD, AND THE CORRECTION MOVED THE AXIS.** The first version refused on any
+  major. I raised that it makes the flow the decision surface itself recommends unreachable — *"Look at
+  the major findings; fix what matters to you, then stop here"* — and the maintainer's correction went
+  further than my objection: **my instinct was to drop or soften the major check; the right move was to
+  change what it tests.** Majors are exactly what stop-here exists to accept as residuals, and a
+  minor-only round never needed stop-here at all because minors do not gate. Refusing majors would have
+  left the feature technically present and practically dead.
+  **The danger in the live store was never that majors might be accepted. It was that the human was
+  told there were none.**
+- **THE RULED PRECONDITION, four arms**:
+
+  | condition | outcome |
+  | --- | --- |
+  | `result.blocking > 0` | **REFUSE**, always — accepting a blocking finding as a residual defeats the severity, and no summary agreement licenses it |
+  | `result.major > 0` and `pause.major_count == result.major` | **PERMIT** — the human saw the real number and chose to carry them; the designed flow, and the recommendation text is honest |
+  | `result.major > 0` and `pause.major_count != result.major` | **REFUSE** — they consented to a DIFFERENT round than the one they are signing off |
+  | result unreadable or absent | **REFUSE** — fails closed, unchanged |
+
+  Plus a third refusal the arms imply: majors present and **no pause fact recorded at all**. Consent is
+  then not wrong but missing, which cannot be treated as informed either.
+- **It is STRICTER than the broad version where it matters.** A summary claiming 5 majors when the
+  result holds 7 passes a plain "no majors" test and fails this one. Tighter on the failure that
+  occurred, looser on the one that never did.
+- **Counts compared POST-demotion on both sides** — the pause fact's counts derive from the ingested
+  result, whose severities T005 has already lowered — so a demoted finding is counted identically by
+  surface and guard and cannot manufacture a false mismatch.
+- **THE TWO REFUSALS MUST NOT READ ALIKE**, and the fixture asserts they do not. Blocking says *"must be
+  fixed before sign-off"*. Mismatch says *"the summary you were shown does not match what this round
+  found ... Specrew cannot treat your answer as informed"* and sends the human to SEE the real numbers,
+  not to fix something. The second is the one that would have saved the maintainer, so collapsing it
+  into the first would lose the only fact that mattered.
+- **CHECKED AGAINST THE LIVE HAZARD BEFORE THE FIXTURES WERE WRITTEN**, read-only, with ports that throw
+  if reached:
+
+  > `landed = False  failed_step = gating-precondition`
+  > `reason = stop-here-refused-blocking-findings:blocking=2`
+  > `steps run = gating-precondition`   ·   `disposition facts = 0`
+
+  Closed on **arm 1**, because that fact also holds 2 blocking findings. The mismatch arm is what covers
+  the case this one does not: blocking absent, majors misreported.
+- **The recommendation text stays as written.** Under this ruling it is true again — *"fix what matters
+  to you, then stop here"* works, provided the human saw the real numbers, which is now exactly what the
+  guard enforces.
+
+> **PRINCIPLE — A CONSENT GATE MUST VERIFY THAT WHAT THE HUMAN CONSENTED TO MATCHES WHAT IS TRUE.** Not
+> merely *"is this acceptable"* but *"did they see it."* Consent given against false information is not
+> consent.
+
+*Every gate in this system that records a human decision against a DERIVED SUMMARY has the same exposure;
+this is the first one to be checked. Recorded deliberately WITHOUT sweeping for others in this feature —
+scope is closed, and a sweep found under time pressure is how a second wrong fact gets written.*
 
 ### DRIFT-199-I001-034 — the pending pause was picked by RUN-ID TEXT, which wedges the gate (resolved by ruling)
 
