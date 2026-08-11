@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 33 (DRIFT-199-I001-001 through -033)
+**Total drift events**: 34 (DRIFT-199-I001-001 through -034)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -288,19 +288,23 @@ dropped them silently in between.*
 helper's author tests the helper; the CLI's author tests the CLI; the PROJECTION between them is where
 the capability dies, and it is exactly the layer no fixture entered.*
 
-**CANDIDATE, NOT RULED — offered for the maintainer's decision, recorded so it is not lost.**
+**RULED IN 2026-08-11 by the maintainer, in the operational form.**
 
-> **RULE (candidate) — A GUARD PROVES THE PLATFORM AND THE TRIGGER IT RAN ON.** A green local suite is
-> evidence about one OS; a guard in CI is evidence only on the branches its trigger matches. Before
-> trusting either, ask **where does this run, and when** — and treat "the guard exists" and "the guard
-> executed against this change" as two different claims.
+> **RULE — A GUARD PROVES THE PLATFORM AND THE TRIGGER IT RAN ON.** Treat *"a guard exists"* and *"the
+> guard executed against this change"* as two different claims. Before trusting either, ask **WHERE does
+> this run, and WHEN.**
 
-*Evidence: DRIFT-199-I001-028 and -029, found the same hour, from opposite ends. A correct, property-based
-FileList guard could not run on a feature branch because `specrew-ci.yml` triggers only on
-`branches: [ main, 001-specrew-product ]` — so the check that would have caught the blocking finding was
-structurally unreachable for the whole implementation. And a fixture written this iteration passed on
-Windows and failed on macOS and Ubuntu on a hardcoded `\` path separator, red on five consecutive CI runs
-while every local run was green.*
+*Evidence, both instances, found the same hour from opposite ends. **DRIFT-199-I001-028**: a correct,
+property-based FileList guard could not run on a feature branch, because `specrew-ci.yml` triggers only
+on `branches: [ main, 001-specrew-product ]` — so the check that would have caught a blocking finding was
+structurally unreachable for the entire implementation, and would first have fired at PR-to-main, after
+the release decision. **DRIFT-199-I001-029**: a fixture written this iteration passed on Windows and
+failed on macOS and Ubuntu on a hardcoded `\` path separator, red on five consecutive CI runs while every
+local run was green.*
+
+*Same failure from opposite ends — mistaking the sample you can see for the population you ship to. One
+had the wrong TRIGGER, the other the wrong PLATFORM; in both cases the guard was correct and the question
+nobody asked was where and when it actually executes.*
 
 *Kept separate from the fifth rule deliberately, though they are close relatives. The fifth is about the
 ENTRY POINT (which door the test comes through). This is about the ENVIRONMENT (which machines and which
@@ -321,9 +325,10 @@ evidence stays in its own entry.
 | **Campaign command does not resolve the feature id** (`--feature`/`--iteration` must be passed by hand). | Sits in the CLI's campaign branch parameter contract, not in code this feature touches. | -009 |
 | **Pending-verdict stop artifact not emitted at the plan sync.** | Diagnosis only was ordered; the fix stays deferred unless it lands in files this feature already touches. | -002 |
 | **Trust-hardening `cycle_id`** — the validator warns `state-advance-without-verdict` while HOLDING the verdict, because persisted entries carry no `cycle_id` to match. | A WARN on a passing validator that blocks nothing; the fix is in the trust-hardening cycle model. | -022 |
+| **Verification failure does not NAME the missing environment variable** — the diagnosis lists the variables already allowed and says to add another, without identifying which one is absent or showing the exact `env_refs` line. | Partially delivered already. Closing it needs a DESIGN DECISION about how much to infer from a failed command's output — not a better string — and inferring wrongly would name the wrong variable with full confidence. **Maintainer ruling 2026-08-11: beta4.** | signoff round finding 6 |
 | **GATE-PREFLIGHT SCRIPT** — deterministic boundary checks run before any packet is rendered. | The preflight exists as PROSE, not as a guard, so it covers what someone remembered to include. Three defects reached a boundary packet seconds before a spend. | see below |
 | **CI RATCHET** — CI globs the test directories with the 16 inherited failures explicitly quarantined. | Same defect one altitude up: nothing mechanically holds the line, so a new failure is indistinguishable from an inherited one. **Status: UNDER CONSIDERATION as standalone work outside this feature — not ruled, do not build.** | the SEVENTEEN triage |
-| **CI TRIGGER REACH** — `specrew-ci.yml` runs on `branches: [ main, 001-specrew-product ]` only, so no feature branch is ever built by it. | The guard that would have caught this round's first blocking finding was correct and unreachable. Changing a CI trigger changes what every future branch pays in minutes and is a maintainer call, not a tail-of-feature edit. **Not ruled — recorded, not built.** | -028 |
+| **CI TRIGGER REACH — and it must land BEFORE the ratchet.** `specrew-ci.yml` runs on `branches: [ main, 001-specrew-product ]` only, so **no feature branch is ever built by it**. | On a feature branch the deterministic gate, the f198 regression suite, the contract lane and the FileList guard are ALL absent — CI runs roughly **15 of 90** unit suites. Globbing suites inside a workflow that never triggers changes nothing, so the trigger fix must PRECEDE the ratchet. `cross-platform-validation.yml` already carries the `0*-*` / `1*-*` patterns `specrew-ci.yml` lacks, so the fix is one line. Changing it changes every branch's CI minutes: a maintainer call. **Recorded, NOT built.** | -028 |
 
 ### The gate-preflight finding — why a reviewer could never have caught these (2026-08-11)
 
@@ -1042,6 +1047,43 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-034 — the pending pause was picked by RUN-ID TEXT, which wedges the gate (resolved by ruling)
+
+- **Observed**: 2026-08-11. `Get-ReviewCampaignPendingPause` enumerated run directories, sorted them
+  LEXICOGRAPHICALLY by run-id, and took the last unanswered one. Run ids need not sort chronologically —
+  explicit `--run-id` is supported — and **the T067 store really holds `run-review-signoff-10` and
+  `run-review-signoff-9`, which sort backwards** (`...-9` > `...-10` as text). Not theoretical.
+- **I reported this as rendering-only, and that was HALF RIGHT.** My claim was that the block is safe
+  whichever pause is returned, because *any* unanswered pause makes the guard refuse. That part holds.
+  What it missed is that the function has **two callers, and only one of them renders**:
+  `review-signoff-evidence-gate.ps1:908` is the stop surface (the rendering case I described), and
+  `specrew-review.ps1:918` is the `--pause-choice` ANSWER path.
+- **THE FAILURE IS A WEDGE, AND FAILING CLOSED IS NOT SUFFICIENT.** A mis-targeted pick records the
+  human's reply against the WRONG `run_id`. The continuation guard then correctly consults
+  `Get-ReviewCampaignLatestPause`, finds the genuinely-newest pause still unanswered, and refuses.
+  Nothing is ever spent — and the consumer answers, is told it worked, runs again, and is refused with
+  `pause-decision-pending` identically. **They can answer forever and nothing moves.** A wedged gate is
+  one of the failures the acceptance bar names, so "it fails closed" does not dispose of it.
+- **The lesson about my own reasoning, which is the part worth carrying**: I judged the blast radius
+  from the caller I had just written and generalised it to the function. *A safety claim about a
+  function is a claim about ALL its callers* — the same enumeration error as counting the shapes you
+  happen to have looked at, one level up. The correct move was to enumerate the callers before
+  characterising the impact, which took one search.
+- **Resolution (maintainer ruling)**: order by `observed_at`, and have one selector delegate to the
+  other so a third ordering cannot appear later. Introduced `Get-ReviewCampaignPauseRecords` — every
+  pause with its answer, in ONE chronological order — and both `Get-ReviewCampaignPendingPause` (last
+  unanswered) and `Get-ReviewCampaignLatestPause` (last overall) are now a filter plus "take the last"
+  over that single list. The two questions stay different — *pending* is about answeredness, *latest* is
+  about recency — while the ORDER they disagree over no longer exists in two places.
+- **Guarded with the measured ids**, not invented ones, and the trap itself is asserted
+  (`'run-review-signoff-9' -gt 'run-review-signoff-10'`) so the test cannot silently stop testing
+  anything if the ids change. **Mutation-tested**: restoring `Sort-Object -Property run_id` turns it red
+  on exactly the pending-pause assertion.
+- **A process note against myself.** I reverted that mutation with `git checkout -- <file>` on a file
+  that still carried UNCOMMITTED work, and silently lost the fix; only a follow-up grep caught it. Two
+  earlier mutation tests this session were safe purely because the file happened to be clean. **Mutate
+  and revert with a precise reverse edit, or commit first — never with a whole-file checkout.**
 
 ### DRIFT-199-I001-033 — the decision surface reported `gating=False` on EVERY round, whatever the reviewer found (resolved)
 

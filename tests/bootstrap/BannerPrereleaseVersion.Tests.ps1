@@ -54,6 +54,29 @@ Describe 'Orientation banner renders the full prerelease version (T011 / FR-019)
         $script:ManifestVersionText | Should -Be $script:ExpectedVersion
     }
 
+    It 'the published RELEASE NOTES describe the version the manifest declares' {
+        # Signoff-round finding: the manifest read Prerelease = 'beta3' while
+        # PrivateData.PSData.ReleaseNotes still described 0.40.0-beta2 and linked the beta2 tag. Those
+        # notes are what a consumer reads on the gallery page BEFORE installing, and the reason they
+        # read them is the "known limitations" line - so a stale label sends them to the wrong
+        # release's limitations at exactly the moment they are deciding whether to trust this one.
+        #
+        # Derived from the manifest rather than hardcoded, so the next version bump cannot satisfy it by
+        # leaving both halves stale together.
+        $manifest = Import-PowerShellDataFile -Path (Join-Path $script:RepoRoot 'Specrew.psd1')
+        $notes = [string]$manifest.PrivateData.PSData.ReleaseNotes
+        $expected = $script:ManifestVersionText
+
+        $notes | Should -Match ([regex]::Escape("Specrew $expected")) -Because 'the notes must name the version they describe'
+        $notes | Should -Match ([regex]::Escape("releases/tag/v$expected")) -Because 'the known-limitations link must point at THIS release, not the previous one'
+
+        # And it must not still be advertising a different prerelease of the same version.
+        $otherLabels = @('beta1', 'beta2', 'beta4', 'rc1') | Where-Object { $expected -notlike "*-$_" }
+        foreach ($stale in $otherLabels) {
+            $notes | Should -Not -Match ([regex]::Escape("0.40.0-$stale")) -Because "the notes still mention $stale while the package ships $expected"
+        }
+    }
+
     It 'the rendered directive carries the FULL prerelease version' {
         $output = script:Invoke-BootstrapProvider -ProjectRoot $script:Project
 

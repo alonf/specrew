@@ -290,6 +290,55 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         [string]$second.reason | Should -Match ('choice-does-not-continue:' + $choice)
     }
 
+    It 'the pending pause is the CHRONOLOGICALLY newest, not the lexicographically last run-id' {
+        # Maintainer ruling 2026-08-11. Get-ReviewCampaignPendingPause enumerated run directories and
+        # sorted them LEXICOGRAPHICALLY, then took the last. Run ids need not sort chronologically -
+        # explicit ids are supported - and the T067 store really does hold `run-review-signoff-10` and
+        # `run-review-signoff-9`, which sort BACKWARDS: "...-9" > "...-10" as text.
+        #
+        # THE CONSEQUENCE IS A WEDGE, NOT A COSMETIC MIS-RENDER, which is why failing closed is not
+        # enough here. --pause-choice records the human's reply against the mis-picked run_id; the
+        # continuation guard then reads the genuinely newest pause, correctly finds it unanswered, and
+        # refuses. Nothing is spent - but the consumer answers, is told it worked, and the next run
+        # refuses identically. They can answer forever and nothing moves.
+        #
+        # Written against the store directly rather than through two live rounds because the defect is
+        # in ORDER SELECTION over recorded facts, and two fixture rounds cannot produce the backwards
+        # pair without inventing the ids anyway. The ids and their real ordering are transcribed from
+        # the T067 store, not composed.
+        $store = Join-Path $TestDrive 'sortstore'
+        $campaign = 'cmp-sort-i001'
+
+        # Deliberately written OLDEST FIRST while sorting LAST lexicographically, so a lexicographic
+        # implementation returns the older pause and a chronological one returns the newer.
+        Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact (
+            New-ReviewCampaignPendingPauseFact -CampaignId $campaign -RunId 'run-review-signoff-9' -TargetDigest 'digest-older' `
+                -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 1) `
+                -ObservedAt '2026-08-01T00:00:00.0000000+00:00') | Out-Null
+        Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact (
+            New-ReviewCampaignPendingPauseFact -CampaignId $campaign -RunId 'run-review-signoff-10' -TargetDigest 'digest-newer' `
+                -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 4 -ElapsedMinutes 2) `
+                -ObservedAt '2026-08-02T00:00:00.0000000+00:00') | Out-Null
+
+        # The premise, asserted so the test cannot quietly stop testing anything if the ids ever change.
+        ('run-review-signoff-9' -gt 'run-review-signoff-10') | Should -BeTrue -Because 'these ids sort backwards as text; that is the entire trap'
+
+        $pending = Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId $campaign
+        [string]$pending.run_id | Should -Be 'run-review-signoff-10' -Because 'the newest pause is the one the human is actually being asked about'
+
+        # The two selectors must never disagree about which pause is newest - they now read one ordering.
+        $latest = Get-ReviewCampaignLatestPause -StoreRoot $store -CampaignId $campaign
+        [string]$latest.run_id | Should -Be ([string]$pending.run_id)
+
+        # And once the newest is answered, the pending selector must fall silent rather than reaching
+        # back to the older unanswered-looking one by a different sort.
+        Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact (
+            New-ReviewCampaignPauseDecisionFact -CampaignId $campaign -RunId 'run-review-signoff-10' `
+                -Choice 'fix-and-continue' -ObservedAt '2026-08-02T01:00:00.0000000+00:00') | Out-Null
+        [string](Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId $campaign).run_id | Should -Be 'run-review-signoff-9' -Because 'the older pause is genuinely still unanswered; it becomes pending only once the newer one is answered'
+        [string](Get-ReviewCampaignLatestPause -StoreRoot $store -CampaignId $campaign).run_id | Should -Be 'run-review-signoff-10' -Because 'latest is about recency, pending is about answeredness; they are different questions over the same order'
+    }
+
     It 'THE CLI CAN REACH ALL OF IT: the shipped command exposes the reply and calls the three helpers' {
         # A source-level companion to the behaviour above, and it exists because the finding was found by
         # a CALLER INSPECTION, not by a failing test: three functions with no production caller. The

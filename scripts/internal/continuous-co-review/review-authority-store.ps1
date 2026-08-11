@@ -324,23 +324,65 @@ function Write-ReviewCampaignPauseDecisionFact {
     return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName PauseDecisionFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId
 }
 
-function Get-ReviewCampaignPendingPause {
-    # The newest pause that has NOT been answered. An answered pause is history, not a pending
-    # decision, so it neither renders nor confers quiet.
+function Get-ReviewCampaignPauseRecords {
+    # EVERY pause in the campaign, each with its answer if it has one, in ONE chronological order.
+    #
+    # This exists so there is exactly one ordering in the codebase. Both selectors below are a filter
+    # plus "take the last" over this list, so a third ordering cannot quietly appear later - which is
+    # how the two that existed came to disagree in the first place.
+    #
+    # Ordered by observed_at. The facts carry ISO-8601 with a UTC offset, so lexicographic comparison
+    # over the string is chronological; a fact missing the field sorts first rather than throwing, and
+    # is therefore never mistaken for the newest.
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs'
     $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
-    if (-not [IO.Directory]::Exists($runsRoot)) { return $null }
-    $pending = $null
-    foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot) | Sort-Object) {
+    if (-not [IO.Directory]::Exists($runsRoot)) { return @() }
+
+    $records = [Collections.Generic.List[object]]::new()
+    foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot)) {
         $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
         if (-not [IO.File]::Exists($pausePath)) { continue }
-        if ([IO.File]::Exists([IO.Path]::Combine($runDirectory, 'pause-decision.json'))) { continue }
-        try { $pending = Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json }
-        catch { continue }
+        $pause = $null
+        try { $pause = Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json } catch { continue }
+        if ($null -eq $pause) { continue }
+        $decision = $null
+        $decisionPath = [IO.Path]::Combine($runDirectory, 'pause-decision.json')
+        if ([IO.File]::Exists($decisionPath)) {
+            try { $decision = Get-Content -LiteralPath $decisionPath -Raw | ConvertFrom-Json } catch { $decision = $null }
+        }
+        $records.Add([pscustomobject]@{
+                pause       = $pause
+                decision    = $decision
+                answered    = ($null -ne $decision)
+                run_id      = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'run_id')
+                observed_at = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'observed_at')
+            }) | Out-Null
     }
-    return $pending
+    return @($records | Sort-Object -Property observed_at)
+}
+
+function Get-ReviewCampaignPendingPause {
+    # The newest pause that has NOT been answered. An answered pause is history, not a pending
+    # decision, so it neither renders nor confers quiet.
+    #
+    # ORDERING FIXED 2026-08-11 (maintainer ruling, signoff-round finding). This enumerated run
+    # directories and sorted them LEXICOGRAPHICALLY BY RUN-ID, then took the last. Run ids need not sort
+    # chronologically - explicit ids are supported, and the T067 store really does hold
+    # `run-review-signoff-10` and `run-review-signoff-9`, which sort BACKWARDS.
+    #
+    # The rendering caller (the stop surface) would merely show the wrong round. The ANSWER path is the
+    # wedge: --pause-choice records the human's reply against the mis-picked run_id, the continuation
+    # guard then reads the genuinely-newest pause, correctly finds it unanswered, and refuses. It fails
+    # CLOSED, so nothing is spent - but the consumer answers, is told it worked, and the next run refuses
+    # with pause-decision-pending again. They can answer forever and nothing moves. A wedged gate is one
+    # of the failures the acceptance bar names, so failing closed is not sufficient here.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $unanswered = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId | Where-Object { -not $_.answered })
+    if ($unanswered.Count -eq 0) { return $null }
+    return $unanswered[-1].pause
 }
 
 function Get-ReviewCampaignLatestPause {
@@ -352,36 +394,12 @@ function Get-ReviewCampaignLatestPause {
     # too, because "abandon" and "stop-here" are answers that must REFUSE the next round just as firmly
     # as no answer at all.
     #
-    # Ordered by observed_at (ISO-8601, so lexicographic order is chronological), falling back to
-    # directory order when a fact carries no timestamp. Absent or unreadable -> $null, and the caller
-    # fails closed.
+    # Both selectors read the SAME ordered list, so they cannot disagree about which pause is newest.
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
-    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs'
-    $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
-    if (-not [IO.Directory]::Exists($runsRoot)) { return $null }
-
-    $candidates = [Collections.Generic.List[object]]::new()
-    foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot) | Sort-Object) {
-        $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
-        if (-not [IO.File]::Exists($pausePath)) { continue }
-        $pause = $null
-        try { $pause = Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json } catch { continue }
-        if ($null -eq $pause) { continue }
-        $decision = $null
-        $decisionPath = [IO.Path]::Combine($runDirectory, 'pause-decision.json')
-        if ([IO.File]::Exists($decisionPath)) {
-            try { $decision = Get-Content -LiteralPath $decisionPath -Raw | ConvertFrom-Json } catch { $decision = $null }
-        }
-        $candidates.Add([pscustomobject]@{
-                pause       = $pause
-                decision    = $decision
-                run_id      = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'run_id')
-                observed_at = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'observed_at')
-            }) | Out-Null
-    }
-    if ($candidates.Count -eq 0) { return $null }
-    return @($candidates | Sort-Object -Property observed_at)[-1]
+    $records = @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    if ($records.Count -eq 0) { return $null }
+    return $records[-1]
 }
 
 function Publish-ReviewRunResultFact {
