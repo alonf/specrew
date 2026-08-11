@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 29 (DRIFT-199-I001-001 through -029)
+**Total drift events**: 30 (DRIFT-199-I001-001 through -030)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -1033,6 +1033,43 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-030 — `workshop/` was allowlisted as a review RECORD while the spec called it a binding INPUT (resolved)
+
+- **Observed**: 2026-08-11, signoff round finding, ruled by the maintainer: *"workshop/ is an INPUT, not a
+  record."* `Test-ReviewCampaignPathIsFeatureProcessRecord` matched every path under `workshop/` as a
+  process record, so `Resolve-ReviewCampaignVerdictPacketDecision` read a workshop-only delta as
+  `review-current`.
+- **What is actually in there**: `architecture-core.md`, `requirements-nfr.md`, `security-compliance.md`,
+  `product-domain.md/.yml`, `ui-ux.md`, `devops-operations.md`, `code-implementation.md`. The binding
+  standard, not a record of the process.
+- **The failure it allowed**: change a binding security or architecture decision after a review, and the
+  campaign goes on authorizing sign-off from the old result — against a standard that no longer exists.
+- **THIS IS NOT A SPEC-VERSUS-CODE JUDGMENT CALL, and that is the sharp part.** Two artifacts in this
+  repository already said so, in writing, before the reviewer did:
+
+  - `spec.md` line 8, the feature's own opening: *"Workshop decisions in
+    `specs/199-beta3-stabilization/workshop/` and `lens-applicability.json` are **binding design
+    inputs**."*
+  - `worktree-reviewer.ps1:1121`, the prompt the engine SHIPS to every reviewer:
+    *"WORKSHOP-DECISION CONFORMANCE: the workshop records + design-analysis are BINDING."*
+
+  So the engine instructed the reviewer to treat workshop as binding while its own staleness classifier
+  treated it as a non-binding record. **No amendment is owed: the spec was right and the code disagreed
+  with it.**
+- **Resolution**: `workshop/` removed from the directory allowlist. RED first — the existing fixture
+  ASSERTED `workshop/architecture-core.md` was a review OUTPUT, so the defect was pinned as a test and had
+  to be moved to the INPUT side before the code changed. Now green: 21/21 in the stop-authority suite, 79
+  more across navigator / authority-core / machinery-paths. `lens-applicability.json` — the sibling from
+  the same spec sentence — already staled correctly and is now pinned beside it, so neither can be
+  restored without confronting the other.
+- **The general lesson, and it is about the SHAPE of the earlier reasoning, not this entry alone.** The
+  allowlist carries a careful comment arguing enumeration is acceptable HERE because an allowlist fails
+  toward NAGGING while a blocklist fails toward SILENCING. The argument is correct and the conclusion was
+  still wrong, because it only covers omissions. **A wrongly INCLUDED entry fails toward silence — the
+  exact direction the argument promised was impossible.** A safety argument about one failure mode reads
+  as a safety argument about the mechanism, and this one sat unchallenged over the single entry that
+  inverted it. When a comment says "this fails safe", ask *fails safe against WHICH mistake*.
 
 ### DRIFT-199-I001-029 — a branch-introduced CROSS-PLATFORM failure, invisible on the maintainer's OS (resolved)
 

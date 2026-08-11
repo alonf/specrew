@@ -458,7 +458,15 @@ function Test-ReviewCampaignPathIsFeatureProcessRecord {
     }
     if ($relative.StartsWith('closeout', $Comparison) -and $relative -notmatch '/') { return $true }
 
-    foreach ($directory in @('quality/', 'checklists/', 'workshop/', 'dashboards/', 'gates/')) {
+    # workshop/ IS DELIBERATELY ABSENT (maintainer ruling, 2026-08-11, on the signoff round's finding).
+    # It sat in this list and was the one entry that inverted the list's own safety argument. A design
+    # workshop holds architecture-core, requirements-nfr, security-compliance, product-domain: the
+    # binding standard the implementation is judged against, INPUT by the ruling's own test. Classified
+    # as a record, a maintainer could change a security or architecture decision after a review and the
+    # campaign would keep authorizing sign-off from the old result - a real change going quiet, which is
+    # precisely the SILENCING failure this allowlist exists to make impossible. An allowlist is safe
+    # because omissions nag; that safety is void for any entry wrongly INCLUDED.
+    foreach ($directory in @('quality/', 'checklists/', 'dashboards/', 'gates/')) {
         if ($relative.StartsWith($directory, $Comparison)) { return $true }
     }
     return $false

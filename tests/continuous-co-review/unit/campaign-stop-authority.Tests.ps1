@@ -172,7 +172,6 @@ Describe 'Single-authority stop surface (T003)' {
                 "$root/iterations/001/retro.md"
                 "$root/iterations/001/quality/hardening-gate.md"
                 "$root/iterations/001/checklists/security.md"
-                "$root/workshop/architecture-core.md"
             )
             foreach ($path in $reviewOutputs) {
                 Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths @($path) -RepoRoot $script:RepoRoot -FeatureId $feature |
@@ -189,6 +188,25 @@ Describe 'Single-authority stop surface (T003)' {
                 "$root/data-model.md"
                 "$root/quickstart.md"
                 "$root/iterations/001/research/t007-notes.md"
+
+                # workshop/ RECLASSIFIED (maintainer ruling, 2026-08-11, on the signoff round's finding).
+                # It was allowlisted as a process record and it is not one: these files ARE the binding
+                # standard - architecture, requirements/NFR, security/compliance, product-domain. Change a
+                # security decision after a review and the campaign would have gone on authorizing sign-off
+                # from the old result, against a standard that no longer exists. That is the silencing
+                # direction the allowlist was specifically designed never to fail toward, sitting inside
+                # the allowlist. Listed per-file rather than once, because the ruling is about the whole
+                # DIRECTORY and a single path would pass equally well if someone re-added a narrower entry.
+                "$root/workshop/architecture-core.md"
+                "$root/workshop/security-compliance.md"
+                "$root/workshop/requirements-nfr.md"
+                "$root/workshop/product-domain.yml"
+                "$root/iterations/001/workshop/architecture-core.md"
+
+                # Named in the SAME spec sentence as workshop/ ("binding design inputs"). It already
+                # staled - it was never allowlisted - but the pair is pinned together so a future edit
+                # cannot restore one without confronting the other.
+                "$root/lens-applicability.json"
             )
             foreach ($path in $reviewInputs) {
                 Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths @($path) -RepoRoot $script:RepoRoot -FeatureId $feature |
