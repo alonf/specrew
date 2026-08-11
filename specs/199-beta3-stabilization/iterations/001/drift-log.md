@@ -475,6 +475,50 @@ claims to have fixed it**. Hitting it is an ACCEPTANCE MEASUREMENT, not an accid
 message and the reset ceremony exactly as the other proof lines. Finding it broken is worth more than
 avoiding it. The dogfood project has its own budget and is unaffected.
 
+## T015 — THE DOGFOOD PROTOCOL (maintainer ruling, 2026-08-11)
+
+Recorded BEFORE the run, so the measurement cannot be reshaped afterwards to fit what happened.
+
+**THE DRIVER MUST NOT KNOW IT IS A TEST.** They get a real task and the install instructions a consumer
+would have. Nothing about what any message means, no list of what to watch for, no mention that anything
+is being evaluated. *A person told to find usability problems becomes persistent and forgiving in exactly
+the ways a real consumer is not* — they read source instead of giving up, and the confusion being
+measured never appears as confusion.
+
+**THEIR TRANSCRIPT IS THE INSTRUMENT.** No observer, no notes. Everything is already recorded. Afterwards,
+count three things:
+
+| Measure | Meaning |
+| --- | --- |
+| Questions asked | *"how do I…"* — the product did not say |
+| Guesses made | they proceeded without knowing, and might have been wrong |
+| Source files opened to interpret a message | the message failed and the code had to explain it |
+
+**Zero on all three means beta3 is usable.** Anything above zero is a defect list, and **each entry must
+carry THE EXACT SENTENCE that produced it**. The confusion is the data; the driver's eventual success is
+not a result.
+
+**NOBODY HELPS THEM.** An answered question is a papered-over defect. If they are genuinely stuck and the
+run would otherwise end, the maintainer may unblock — and whatever had to be said is recorded verbatim,
+**because that sentence is precisely what the product failed to say.**
+
+**THE RUN MUST REACH A REVIEW ROUND AND THE ANSWERING OF ITS PAUSE.** That is beta3's headline
+capability, it was wired the day before, and no human has driven it. Stopping short of that has not
+measured the thing that matters.
+
+**WHAT WAS PREPARED, and nothing more**: the branch, and a brief containing the task, the prerequisites,
+the install command, and how to start. **Deliberately absent**: any explanation of what a Specrew message
+means, any hint that a decision will be asked for, and any mention of `--approve-round` — the product
+must say that itself, and if it does not, that is the finding.
+
+**A PREPARATION DEFECT, CAUGHT BEFORE IT COULD MANUFACTURE A FALSE FINDING.** The first draft of the brief
+told the driver to run `specrew specify`, `specrew clarify`, `specrew plan`, `specrew tasks`,
+`specrew implement` as CLI commands. **None of those exist.** The real path is `specrew init`, then launch
+a host CLI, and the agent drives the lifecycle through its boundaries. Had that shipped, the dogfood's
+first finding would have been MY fabrication rather than a product defect — and it would have looked
+exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
+which is the synthesis rule applied to a document instead of a fixture.
+
 ## SCOPE EXCEPTION — TG-004 opened for exactly two items (maintainer ruling, 2026-08-11)
 
 **Recorded as an EXCEPTION, not absorbed as ordinary work.** TG-004 closes this feature's scope, and
