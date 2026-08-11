@@ -763,6 +763,10 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         if (-not $latchHandled) {
                             if ($null -eq $result.stop_block) {
                                 $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)
+                                # T010 emission point: the agent's directive travels beside the human's
+                                # block, never inside it. Moved, not deleted.
+                                $result | Add-Member -NotePropertyName agent_directives `
+                                    -NotePropertyValue (Build-ContinuousCoReviewNavigatorAgentDirective -Verdict $verdict) -Force
                             }
                             if (-not [string]::IsNullOrWhiteSpace($moreTimeNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $moreTimeNote)) | Out-Null }
                             if (-not [string]::IsNullOrWhiteSpace($independenceNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $independenceNote)) | Out-Null }
@@ -1180,7 +1184,7 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine('Specrew co-review — BLOCKING. The fresh-context review of your latest increment found an issue to address before you continue. Fix it, then re-stop so co-review can re-check.')
     [void]$sb.AppendLine('')
-    [void]$sb.AppendLine(("Run {0}  -  {1} blocking finding(s):" -f $RunId, $blocking.Count))
+    [void]$sb.AppendLine(("Review run {0} (identifies this review if you need to refer to it)  -  {1} blocking finding(s):" -f $RunId, $blocking.Count))
     foreach ($f in $blocking) {
         $loc = $null
         if (($f.PSObject.Properties.Name -contains 'location') -and $null -ne $f.location) {
@@ -1197,7 +1201,11 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
     if (-not [string]::IsNullOrWhiteSpace($BlackboardRef)) {
         [void]$sb.AppendLine(("Full findings (all severities): {0}" -f $BlackboardRef))
     }
-    [void]$sb.AppendLine('(Co-review navigator block, not a boundary verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker. Reviewed in an isolated read-only worktree; your tree is unchanged.)')
+    # T010, emission point. The old single line bundled an AGENT DIRECTIVE with a fact the HUMAN needs.
+    # Split by reader, not deleted: the directive moved to
+    # Build-ContinuousCoReviewNavigatorAgentDirective, and the reassurance stays here - a human told
+    # their review found problems will reasonably wonder whether their files were touched.
+    [void]$sb.AppendLine('(This review ran on a private copy; your tree is unchanged.)')
     return $sb.ToString().TrimEnd()
 }
 
@@ -1290,6 +1298,17 @@ function Get-ReviewCampaignRouteSentence {
         'pause-pending' { return 'this review is waiting for your decision' }
         default { return 'there is something to know about your review' }
     }
+}
+
+function Build-ContinuousCoReviewNavigatorAgentDirective {
+    # The agent's half of the blocking co-review stop. Split from the human block under T010's
+    # emission-point rule: the marker instruction is for the assistant, the "your tree is unchanged"
+    # reassurance is for the person.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Verdict)
+    $null = $Verdict
+    return 'Co-review navigator block, not a boundary verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.'
 }
 
 function Get-ReviewCampaignActionSentence {

@@ -170,6 +170,32 @@ Describe 'Consumer language layer (T010)' {
             $source | Should -Match 'agent_directives'
         }
 
+        It 'THE SECOND human block - a blocking co-review verdict - obeys the same rule' {
+            # Found by re-verifying BY EMISSION POINT instead of by file. There are TWO blocks a human
+            # reads at a stop, and the first pass only found one. This one carried the identical defect:
+            # `do NOT emit a SPECREW-VERDICT-BOUNDARY marker` inside the human's message.
+            $verdict = [pscustomobject]@{
+                raw = [pscustomobject]@{
+                    findings = @([pscustomobject]@{
+                            severity = 'blocking'; comment = 'Unvalidated input reaches the shell.'
+                            location = [pscustomobject]@{ path = 'src/app.ps1'; line_start = 10 }
+                        })
+                }
+            }
+            $block = Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId 'run-blocking-x' -BlackboardRef ''
+
+            $block | Should -Not -Match 'SPECREW-VERDICT-BOUNDARY' -Because 'an agent directive in the human''s block is the defect the emission-point rule exists for'
+            $block | Should -Not -Match '(?i)do NOT emit'
+            $block | Should -Match '(?i)your tree is unchanged' -Because 'DEMOTE, NEVER DISCARD: the reassurance in that line is for the human and must survive the split'
+            $block | Should -Match 'src/app\.ps1:10' -Because 'the finding location is what the human acts on'
+        }
+
+        It 'its agent directive still exists, on the agent channel' {
+            $verdict = [pscustomobject]@{ raw = [pscustomobject]@{ findings = @() } }
+            $directive = Build-ContinuousCoReviewNavigatorAgentDirective -Verdict $verdict
+            $directive | Should -Match 'SPECREW-VERDICT-BOUNDARY'
+        }
+
         It 'no line carries a banned noun' {
             foreach ($block in @((script:New-StaleBlock), (script:New-StaleBlock -WithCrossing))) {
                 foreach ($line in ($block -split "`n")) {
