@@ -1017,6 +1017,32 @@ Record whichever way it lands.
 change fixed" and "what already worked" is a standing method rule here, and this task is the most
 likely place in the feature to blur it.
 
+### T010 SURFACE PASS — the four named surfaces, measured, and the line the ban does NOT cross (2026-08-11)
+
+T010 names four surfaces: packet templates, stop messages, skill instructions, and the orientation
+banner. Measured rather than assumed, and three of the four needed nothing:
+
+| Surface | Measured result |
+| --- | --- |
+| **Stop messages** (`review-signoff-evidence-gate.ps1` decision messages) | **SIX of twenty-nine carried internal vocabulary** — all `digest`, one also `claim-ordered`. Rewritten, and guarded by an invariant over the property "is passed as `-Message` to the decision builder". |
+| **Orientation banner** (`specrew-bootstrap-provider.ps1`) | **CLEAN.** Its only two matches are inside CODE COMMENTS, not rendered text. |
+| **Packet template** (`specrew-gate-stop/SKILL.md`, the six section headers and the verdict options) | **CLEAN.** The human-facing text carries no machinery vocabulary. |
+| **Skill instructions** (the prose around that template) | **DELIBERATELY OUT OF SCOPE — see below.** |
+
+**THE LINE, and it is the load-bearing part of this pass: the ban applies to text a HUMAN reads, not to
+text an AGENT reads.** The gate-stop skill instructs the agent to "copy its `Marker` last line exactly"
+and to name "the crossing it defers to". Those words are BANNED NOUNS and they are also the correct,
+necessary vocabulary for the instruction — the agent cannot read a crossing it is forbidden to be told
+about.
+
+**A naive surface pass would have "fixed" those and broken the agent's ability to follow the
+instruction.** So the rule is scoped by AUDIENCE, not by file: rendered output is a consumer surface;
+the instructions that produce it are not. The banned-noun guard is therefore pointed at the decision
+MESSAGES, never at the skill files.
+
+**Recorded because the next reader will otherwise see machinery vocabulary sitting in a skill file and
+assume the pass missed it.** It did not; that vocabulary is doing its job.
+
 ### Agreed flows
 
 **Stop-here landing** (the flow that used to wedge):
