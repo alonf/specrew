@@ -27,6 +27,31 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
+### Measured proof line — FR-009 closes DRIFT-199-I001-013's circularity, on the perfect case (2026-08-11)
+
+Not drafted ahead of the run. The stop IMMEDIATELY after committing the drift-log entry that records the
+signoff round's own findings:
+
+> `Specrew review — your review covers these files.`
+> `Only governance and records files changed since your review, so it still covers your project.`
+> `Review run: run-20260811-093414640-d58e787b (identifies this review if you need to refer to it)`
+> `This does not decide the approval you still owe (before-implement -> review-signoff); that decision`
+> `is unaffected and still waits for you.`
+
+**Why this is the perfect case.** DRIFT-199-I001-013 recorded the original absurdity: a commit whose
+entire content was this drift log flipped the surface to `review-stale`, so **writing down what a review
+found invalidated that review** and currency was unachievable by construction. The commit that preceded
+this stop is exactly that shape — the drift log recording THIS round's findings — and the review stayed
+`review-current`.
+
+**What it shows, narrowly**: the records-only predicate holds for a `specs/<feature>/iterations/` records
+commit against a live campaign result. **What it does NOT show**: that the allowlist is right in general.
+An input artifact (`spec.md`, `plan.md`, a contract) must still stale, and that direction is pinned by
+fixture, not by this stop.
+
+**Also visible**: the route sentence is T010's gloss on the POSITIVE path too ("your review covers these
+files" rather than `review-current`), and the block still names the approval it does not govern.
+
 ## THE AUTHORIZED SIGNOFF ROUND — and the LIVE ACCEPTANCE MEASUREMENT for FR-001..FR-004 (2026-08-11)
 
 Run `run-20260811-093414640-d58e787b`, host codex, authorization reference
