@@ -70,6 +70,43 @@ Describe 'Consumer language layer (T010)' {
         }
     }
 
+    # THE SURFACE GUARD. The set is defined by a PROPERTY - "is passed as -Message to the decision
+    # builder" - not by a list of strings I happened to find. That is the staged rule applied to my own
+    # guard: an enumeration would report completeness over my list, and the seventh message added next
+    # week would not be in it.
+    Context 'every consumer-facing decision message is in consumer language' {
+        BeforeAll {
+            $script:GateSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1') -Raw
+            $script:GateMessages = @([regex]::Matches($script:GateSource, "-Message '(?<s>[^']+)'") | ForEach-Object { $_.Groups['s'].Value })
+        }
+
+        It 'the guard actually finds messages (a scan that matches nothing proves nothing)' {
+            @($script:GateMessages).Count | Should -BeGreaterOrEqual 25 -Because 'a FLOOR, so a regex that silently stops matching is caught rather than reported as clean'
+        }
+
+        It 'no decision message carries internal machinery vocabulary' {
+            $offenders = [Collections.Generic.List[string]]::new()
+            foreach ($message in $script:GateMessages) {
+                foreach ($noun in @(Get-SpecrewBannedConsumerNoun -Text $message)) {
+                    $offenders.Add(("[{0}] {1}" -f $noun, $message)) | Out-Null
+                }
+            }
+            # MEASURED before this landed: six of twenty-nine carried `digest`, one of those also
+            # `claim-ordered`. Every one was a sentence a consumer reads at a stop.
+            @($offenders) -join "`n" | Should -BeNullOrEmpty -Because 'a stop message is where a consumer is standing when they decide; internal vocabulary there is the acceptance bar failing'
+        }
+
+        It 'no decision message carries an unglossed identifier' {
+            $offenders = [Collections.Generic.List[string]]::new()
+            foreach ($message in $script:GateMessages) {
+                foreach ($id in @(Get-SpecrewUnglossedId -Text $message)) {
+                    $offenders.Add(("[{0}] {1}" -f $id, $message)) | Out-Null
+                }
+            }
+            @($offenders) -join "`n" | Should -BeNullOrEmpty -Because 'an identifier the reader must look up is a sentence they cannot understand'
+        }
+    }
+
     Context 'the banned-noun check: internal vocabulary never reaches a consumer surface' {
         It 'flags machinery nouns' -ForEach @(
             @{ noun = 'crossing' }, @{ noun = 'digest' }, @{ noun = 'ratchet' }

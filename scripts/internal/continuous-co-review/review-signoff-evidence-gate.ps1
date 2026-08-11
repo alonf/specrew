@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 # T067 / FR-025: the deterministic co-review gate-floor decision (re-architected).
@@ -619,7 +619,7 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         [AllowNull()]$PendingPause = $null
     )
     if (-not (Test-ReviewAuthorityIdentifier -Value $CampaignId -Kind campaign) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-or-digest-invalid' -Message 'Campaign identity or current digest is unavailable; no lifecycle verdict may be requested.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-or-digest-invalid' -Message 'Specrew cannot tell which review this is, or what state your files are in, so it cannot ask you for a decision yet.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
     }
     $byRun = @{}
     foreach ($result in @($Results)) {
@@ -651,9 +651,9 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'terminal-result-still-has-active-claim' -Message 'A terminal result exists while its run claim is still active; reconciliation must retire the claim before signoff.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'reconcile-run-claim'
         }
         if ([string]$ActiveRun.target_digest -ceq $CurrentDigest) {
-            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight' -Message 'The single campaign review for the current digest is still running; no human decision is required.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight' -Message 'A review of your files as they are now is still running; there is nothing for you to decide yet.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
         }
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The active review targets an earlier digest and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The review that is running started from an earlier version of your files, so it cannot sign off what you have now.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
     }
 
     # A pause recorded against the CURRENT tree is a decision already sitting with the human. Nagging
@@ -697,7 +697,7 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     }
 
     if ($ordered.Count -eq 0) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No claim-ordered campaign result can authorize the current digest.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No completed review covers your files as they are now.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
     }
 
     # A newer claimed invocation supersedes every older result, including an older clean result.
@@ -770,7 +770,7 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     # already excluded every other shape, so this is equivalent to the conjunction it replaces - and
     # sharing one definition is what stops the pause guard and this return drifting apart.
     if (Test-ReviewCampaignResultReleasesBoundary -Result $latest -CurrentDigest $CurrentDigest) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'The authoritative campaign result is a complete valid pass for the exact current digest.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'Your review passed, and it covers your files exactly as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
     }
     if ([string]$latest.verdict -ceq 'findings') {
         $matchingDispositions = @($HumanDispositions | Where-Object {
@@ -821,7 +821,7 @@ function Get-ReviewCampaignVerdictPacketDecision {
     if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
     $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns
     if ($null -eq $digest -or -not $digest.ok -or [string]::IsNullOrWhiteSpace([string]$digest.tree_id)) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'digest-unresolvable' -Message 'The current reviewed-state digest could not be computed; no lifecycle verdict may be requested.' -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'digest-unresolvable' -Message 'Specrew could not read the current state of your files, so it cannot ask you for a decision yet.' -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
     }
     $claimFacts = @(Get-ReviewAuthorityClaimFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -TargetLineage $TargetLineage)
     $orderedRunIds = @($claimFacts | Where-Object { [string]$_.fact_type -ceq 'claim-held' } | Sort-Object { [int]$_.generation } | ForEach-Object { [string]$_.run_id })
