@@ -237,6 +237,17 @@ not what the invariant requires.
 > `status:` values in `tasks-progress.yml`  -> enum consistent, count matches `state.md`?
 > the boundary's owed artifact exists       -> already covered today
 
+**ONE REFINEMENT, learned by running the checks by hand at this boundary.** The dirty-path check needs a
+classifier, and the obvious one is wrong. Classifying by governance PREFIX (`.squad/`, `.specrew/`,
+`.claude/`, `.specify/`) flags `specs/<feature>/iterations/<NNN>/state.md` as PRODUCT — but it is
+TOOL-WRITTEN: the tracker sync rewrites its `**Updated**:` timestamp on every call. The same applies to
+`tasks-progress.yml`. **A classifier that cries wolf on tool-written records is a classifier people
+learn to skip**, which is how the real dirty path gets waved through. The records-only set must be
+defined by WHO WRITES THE FILE, not by where it sits.
+
+Verified at this boundary: the flagged `state.md` diff was exactly one line, the timestamp, and nothing
+else.
+
 **RECORDED, NOT BUILT.** Beta3 scope is closed and this is not on the acceptance bar.
 
 **Explicitly NOT on this list, recorded so nobody re-adds it**: the shell-wrapper installer's blanket
