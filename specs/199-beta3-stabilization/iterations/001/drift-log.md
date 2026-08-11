@@ -103,6 +103,19 @@ invariant is still describing forms.*
 the author's model of real data). This is about the PREDICATE (an invented enumeration testing the
 author's model of the code's shape). Same failure, opposite ends of the fixture.*
 
+> **RULE — A SUITE MADE ONLY OF PROHIBITIONS IS SATISFIED BY SILENCE.** For every *"must not appear"*,
+> ask what MUST appear instead, and assert that too. A guard that only forbids is satisfied by an empty
+> message, and deleting the offending sentence will always pass it.
+
+*Evidence: the stop-block rewrite asserted "no banned noun", "no raw route name", "no agent directive" —
+every one a prohibition. The block then rendered with NO NEXT STEP AT ALL, because the machinery-worded
+action line had been deleted rather than translated, and every fixture stayed green. It was caught by
+reading a live stop, not by the suite. The worked example is the case added afterwards: the block must
+MATCH `What to do` and match the command, not merely fail to match the token.*
+
+*This is the same failure as "demote, never discard" seen from the test side: the rule says do not delete
+the signal, and a prohibition-only suite cannot tell you when you have.*
+
 ## BETA4 LIST — everything this feature routed out, collected in one place
 
 Scattered "routes to beta4" clauses are easy to lose at closeout, so they are collected here with the
@@ -1204,6 +1217,37 @@ proves admission, the second proves the property the whole branch exists for.
 **The hydration-FAILURE path is likewise seam-proven**: the wrap is exercised by a path whose read
 fails for an ordinary reason, which shows the message is produced and shaped, not that a sync client
 actually declined to fetch a file.
+
+### Measured proof line — T010's SECOND human block, transcribed from a real render (2026-08-11)
+
+The blocking co-review stop, rendered from the shipped composer and pasted verbatim:
+
+> `Specrew co-review — BLOCKING. The fresh-context review of your latest increment found an issue to`
+> `address before you continue. Fix it, then re-stop so co-review can re-check.`
+>
+> `Review run run-blocking-demo (identifies this review if you need to refer to it)  -  2 blocking finding(s):`
+>
+> — `[src/app.ps1:10]` — Unvalidated input reaches the shell.
+>
+> — `[src/poll.ps1:41]` — The retry loop never backs off.
+>
+> `(This review ran on a private copy; your tree is unchanged.)`
+
+And its AGENT channel, which is where the directive went:
+
+> `Co-review navigator block, not a boundary verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.`
+
+**HOW THIS EVIDENCE WAS OBTAINED, stated because it differs from the campaign block's.** That one is
+transcribed from a LIVE STOP on the maintainer's own session. This one is a DIRECT RENDER of the shipped
+composer: producing it from a live stop would require an actual blocking reviewer verdict, which means a
+review round, which is a provider-spend event needing the maintainer's authorization. **A direct render
+proves the composer's output; it does not prove the delivery path.** The delivery path is covered by the
+source guard asserting the navigator assigns both `stop_block` and `agent_directives`.
+
+**What it shows**: the run id is glossed, the findings carry clean `[path:line]` locations, the
+reassurance survives the split, the agent directive is absent — and the block still names a NEXT STEP
+("Fix it, then re-stop"), which is the fourth rule's requirement rather than merely the absence of
+banned words.
 
 ### Measured proof line — T010's FULL stop block by emission point, transcribed from a live stop (2026-08-11)
 

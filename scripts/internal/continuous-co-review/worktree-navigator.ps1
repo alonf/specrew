@@ -356,10 +356,10 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
         }
         $decision.reason = [string]$packet.reason
         if ([bool]$packet.render_boundary_packet) {
-            $decision.inject_notes = @(("[co-review] campaign run {0} authorizes the exact current digest; the lifecycle boundary packet may now be rendered." -f $packet.run_id))
+            $decision.inject_notes = @(("[co-review] Review {0} covers your files exactly as they are now." -f $packet.run_id))
         }
         elseif ([string]$packet.route -eq 'review-running') {
-            $decision.inject_notes = @(("[co-review] campaign run {0} is still reviewing the current digest; no decision is required." -f $packet.run_id))
+            $decision.inject_notes = @(("[co-review] Review {0} is still checking your files as they are now; nothing is needed from you yet." -f $packet.run_id))
         }
         else {
             # T003 / FR-007: hand the block the recorded crossing so it can scope itself instead of

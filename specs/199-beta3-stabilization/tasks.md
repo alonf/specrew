@@ -122,7 +122,7 @@ The phase headings below keep their authoring order; this execution order govern
 
 ## Iteration 001 — Phase 5: language, version, records, CI (2.35 SP)
 
-- [ ] T010 [owner: Implementer] [sp: 1.75] **Consumer-language layer** — the gloss
+- [x] T010 [owner: Implementer] [sp: 1.75] **Consumer-language layer** — the gloss
   helper (id + title required; an unglossed ID in a consumer surface is a failing
   test); the banned-machinery-noun check (crossing, mint, marker, digest, boundary
   sync, verdict capture, controller truth, ratchet, claim-ordered, terminalize —

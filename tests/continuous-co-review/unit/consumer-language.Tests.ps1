@@ -196,6 +196,23 @@ Describe 'Consumer language layer (T010)' {
             $directive | Should -Match 'SPECREW-VERDICT-BOUNDARY'
         }
 
+        It 'THE THIRD emission point - console inject-notes - obeys the same rule' {
+            # Found by sweeping EMISSION POINTS rather than files. inject_notes are printed to the
+            # human, so they are a consumer surface even though they are not a "block". Measured when
+            # this guard was written: 17 notes, 2 carrying `digest` - the other 15 were already written
+            # in consumer language, which is the shape T010 generalises FROM.
+            $offenders = [Collections.Generic.List[string]]::new()
+            foreach ($file in @('continuous-co-review-navigator.ps1', 'worktree-navigator.ps1')) {
+                $src = Get-Content -LiteralPath (Join-Path $script:RepoRoot ('scripts/internal/continuous-co-review/' + $file)) -Raw
+                foreach ($match in [regex]::Matches($src, '\[co-review\][^"'']{20,}')) {
+                    foreach ($noun in @(Get-SpecrewBannedConsumerNoun -Text $match.Value)) {
+                        $offenders.Add(("[{0}] {1}" -f $noun, $match.Value)) | Out-Null
+                    }
+                }
+            }
+            @($offenders) -join "`n" | Should -BeNullOrEmpty -Because 'a console line the human reads is a consumer surface, block or not'
+        }
+
         It 'no line carries a banned noun' {
             foreach ($block in @((script:New-StaleBlock), (script:New-StaleBlock -WithCrossing))) {
                 foreach ($line in ($block -split "`n")) {
