@@ -89,7 +89,7 @@ tasks:
     blocked_reason: ""
   T015:
     title: "Branch dogfood end to end, driven by someone who did not build it (measurement: help/guess/source-read count)"
-    status: "planned"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-08-12T00:30:00.0000000Z"
     completed_at: ""
     blocked_reason: ""
