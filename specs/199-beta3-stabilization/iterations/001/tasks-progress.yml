@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "001"
-updated_at: "2026-08-11T06:57:08.9257917Z"
+updated_at: "2026-08-11T14:10:00.0000000Z"
 tasks:
   T001:
     title: "Pause core (round terminal + pause facts + decision surface + per-campaign budget)"
@@ -80,4 +80,16 @@ tasks:
     status: "done"
     started_at: "2026-08-10T16:03:03.6699804Z"
     completed_at: "2026-08-10T16:03:34.5273859Z"
+    blocked_reason: ""
+  T014:
+    title: "Approving a round is a decision, not an identifier (--approve-round; split the three host conditions)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T015:
+    title: "Branch dogfood end to end, driven by someone who did not build it (measurement: help/guess/source-read count)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
     blocked_reason: ""

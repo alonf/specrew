@@ -2,19 +2,21 @@
 
 **Schema**: v1
 **Current Phase**: before-implement
-**Iteration Status**: ready-for-review
-**Last Completed Task**: T008
-**Tasks Remaining**: (none)
+**Iteration Status**: executing
+**Last Completed Task**: T013
+**Tasks Remaining**: T014, T015
 **In Progress**: (none)
 **Baseline Ref**: 78f68e4563c612c7cf1bd1d0cecadd826c887f6c
-**Updated**: 2026-08-11T06:57:08.9910952Z
+**Updated**: 2026-08-11T14:10:00.0000000Z
 
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Implementation tasks are complete; review-signoff is next.
-- Task progress: 13 complete, 0 in-progress, 0 pending, 0 blocked.
-- Latest completed task: T008
+- SCOPE EXCEPTION ruled 2026-08-11 re-opened this iteration: two items, T014 and T015. The status
+  moved back to `executing` BEFORE the work started, because a ledger that catches up afterwards was
+  wrong in the interval.
+- Task progress: 13 complete, 0 in-progress, 2 pending, 0 blocked.
+- Latest completed task: T013
 <!-- specrew:task-progress-summary:end -->
 ## Notes
 

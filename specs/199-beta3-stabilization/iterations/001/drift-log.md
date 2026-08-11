@@ -347,6 +347,40 @@ ENTRY POINT (which door the test comes through). This is about the ENVIRONMENT (
 triggers the test is ever run under). A fixture can satisfy the fifth perfectly and still only ever prove
 it on the author's laptop.*
 
+## SCOPE EXCEPTION — TG-004 opened for exactly two items (maintainer ruling, 2026-08-11)
+
+**Recorded as an EXCEPTION, not absorbed as ordinary work.** TG-004 closes this feature's scope, and
+every discovery in this iteration has been routed to beta4 under it. This ruling opens that door for two
+items and closes it again behind them.
+
+**THE REASONING, in the maintainer's terms**: *the maintainer cannot ask beta testers to use a release
+whose headline capability is gated behind a field its own designer could not fill in.* That is an
+acceptance-bar failure, which is the one condition TG-004 itself names as grounds for an exception — not
+a judgement that the items are valuable.
+
+| Item | Task |
+| --- | --- |
+| Approving a round becomes a DECISION, not an identifier. `--approve-round` takes no value and the system mints the reference; `--authorization-ref` stays for scripts and for anyone naming their own; a missing approval says so in a sentence naming the exact next command; the three collapsed host conditions are split. The recorded fact still carries `authority_kind: human` and the human's own words as rationale. | **T014** |
+| A branch dogfood, end to end on a fresh project — init through sign-off including ANSWERING THE PAUSE — driven by someone who did not build it. | **T015** |
+
+**THE LEDGER WAS CORRECTED FIRST, before any of the work.** Tasks read 13/13 and the iteration read
+`ready-for-review`; neither was true once this was ruled. `state.md` moved to `executing`, T014 and T015
+were added as `planned`, and the count now says 13 complete / 2 pending. *A ledger that catches up
+afterwards was wrong in the interval* — and this iteration has already recorded what it costs to trust a
+summary that does not match the thing it summarises (-035).
+
+**WHY I MUST NOT DRIVE THE DOGFOOD, recorded because it is the part most easily rationalised away.** I
+wrote these sentences, so I know what each is supposed to mean and will read past defects a stranger
+trips on. That is not hypothetical: **the maintainer found the authorization-reference defect in one
+minute of being a user, after a full day in which neither of us saw it.** The measurement is therefore
+not "did it work" but *how many times did the driver have to ask for help, guess, or read the source* —
+zero means beta3 is usable, and anything above zero is a defect list with the exact sentence that caused
+it. **The confusion is the data**, so those moments are transcribed verbatim rather than summarised, and
+the driver's eventual success is not the finding.
+
+**WHAT DOES NOT CHANGE**: the seventeen stay inherited, the beta4 list stays closed to new building, and
+nothing else re-opens.
+
 ## BETA4 LIST — everything this feature routed out, collected in one place
 
 Scattered "routes to beta4" clauses are easy to lose at closeout, so they are collected here with the
