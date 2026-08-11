@@ -347,7 +347,7 @@ ENTRY POINT (which door the test comes through). This is about the ENVIRONMENT (
 triggers the test is ever run under). A fixture can satisfy the fifth perfectly and still only ever prove
 it on the author's laptop.*
 
-## DRIFT-199-I001-036 — the records-only exemption is missing from the IN-FLIGHT path (observed live; NOT fixed)
+## DRIFT-199-I001-036 — the records-only exemption was missing from the IN-FLIGHT path (RESOLVED by ruling)
 
 **Found by being bitten by it, minutes after the ruling that caused it.**
 
@@ -375,10 +375,59 @@ it on the author's laptop.*
 - **The cost here is real but bounded**: the round's findings remain useful evidence, which is what the
   ruled order needs them for. Only its ability to authorize the current tree is lost, and no sign-off
   was going to happen on it anyway.
-- **NOT FIXED. Scope is open for T014 and T015 only.** Routed as an observation for the maintainer's
-  ruling rather than to the beta4 list, because it is the same requirement (FR-009) as a closed defect
-  rather than new ground — and because it makes the governance instruction *"correct the ledger first"*
-  conflict with *"run a round"*, which is a decision about the process, not just the code.
+- **RULED A COMPLETION, NOT NEW SCOPE (maintainer, 2026-08-11)**: FR-009 was applied to one of two
+  paths, so this is an incomplete fix of DRIFT-199-I001-013 rather than new ground — the same argument
+  that reopened T010. The cost of leaving it is concrete: every governance-required commit during a
+  round makes that round unable to authorize sign-off, so **the human pays for a round they cannot use**.
+- **Resolution**: `Resolve-ReviewCampaignVerdictPacketDecision` gained `-ChangedPathsSinceActiveRun`, and
+  the in-flight branch now applies `Test-ReviewCampaignDeltaIsRecordsOnly` exactly as the terminal branch
+  does. The delta is computed against the ACTIVE RUN's own frozen target rather than reusing the
+  result-baselined one: while a round is in flight the newest reviewed tree is that round's target, so
+  the result baseline would report changes the running round already covers.
+- **Guarded in all three directions**, because two of them are the ways this could go wrong later:
+  records-only → `review-running`; product code → `review-stale`, unchanged; **unknown delta → stale**,
+  failing closed exactly as the terminal path does. A predicate that can only ever QUIET a surface must
+  never treat absence of evidence as evidence.
+
+## ROUND 3 — the authorized round, and what it found (run-20260811-140522865-0122b46b)
+
+Reference `beta3-i001-signoff-round-3`, minted from the maintainer's stated approval — **transcription,
+not self-authorization**: a placeholder is the absence of a decision, this was a decision and the string
+is filing. Answered the outstanding pause with option 1 and ran the round it authorized in one command,
+so the answer and the round travelled together.
+
+**Two things were proven by the round starting at all**, neither true that morning: the `--pause-choice 1`
+reply was RECORDED as a decision fact against the correct run, and the continuation guard READ it and
+permitted exactly one round. Before that day those three helpers had no production caller.
+
+**Result**: 5 findings — 3 blocking, 1 major, 1 minor. Verdict `findings`, currentness `snapshot-moved`
+(the cost of -036, which the same round's work then closed). 3 of 4 rounds used. **All five verified
+against the code before being reported or acted on.**
+
+**ALL THREE BLOCKING FINDINGS WERE IN CODE WRITTEN THAT DAY**, and two were CREATED by the wiring:
+
+| # | Finding | Origin |
+| --- | --- | --- |
+| 1 | A failed stop-here landing consumes the only answer and cannot be retried — the CLI recorded the immutable decision BEFORE attempting the landing, and answered pauses are excluded from `Get-ReviewCampaignPendingPause`. The landing's own message told the human to choose "stop here" again, which could no longer be submitted. | Mine, that morning. **The gating precondition ruled in hours earlier made it reachable rather than theoretical** — it ADDED refusal arms, and the mismatch arm fires on the pause in the live store. A safety fix raised the odds of hitting the wedge. |
+| 2 | A pre-invocation failure permanently consumes the continuation decision — `RoundsSinceDecision` counted every run record after the answer, and a pre-invocation failure PUBLISHES one (that is FR-014 working). Meanwhile the F4 disclosure on the same failure said the authorization was still available. | Mine. **Same requirement, two counters, opposite behaviour, five hours apart.** |
+| 3 | A failed pause write fails OPEN to another spend — `Add-ReviewCampaignRoundPause` swallows write errors so a review the human paid for is never destroyed. | Pre-existing tolerance, **made load-bearing by the wiring**: nothing read pause facts before, so the fail-soft was harmless. |
+
+> **RULE (accepted for the seam family) — ADDING A CONSUMER CHANGES THE RISK OF AN EXISTING TOLERANCE.**
+> A forgiving failure path is harmless while nothing depends on its output. Wire a reader to it and the
+> same tolerance becomes an open door. When adding a consumer, re-ask what its producer does on failure.
+
+**Fixes, all six**: the decision is now written only AFTER a successful landing, and a refused landing
+tells the human their answer was not used up; the counter filters to INVOKED rounds using FR-014's own
+discriminator and states in its comment which counter it measures (T008's convention, so it cannot
+inherit the ambiguity that made F4 hard to pin); a completed round with no pause record now fails CLOSED
+with a message naming the folder to check; the resumed surface reads the RESULT for findings and renders
+the numbered choices and how to send one; the contract's reparse clause is amended to match FR-011.
+
+**On the budget (maintainer ruling): DO NOT pre-emptively reset.** Round 4 covers post-fix verification.
+If the dogfood needs a fifth, the ceiling fires — and that path **has never run live on a release that
+claims to have fixed it**. Hitting it is an ACCEPTANCE MEASUREMENT, not an accident: transcribe the halt
+message and the reset ceremony exactly as the other proof lines. Finding it broken is worth more than
+avoiding it. The dogfood project has its own budget and is unaffected.
 
 ## SCOPE EXCEPTION — TG-004 opened for exactly two items (maintainer ruling, 2026-08-11)
 

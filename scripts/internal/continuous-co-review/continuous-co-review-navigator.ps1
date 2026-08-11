@@ -1100,7 +1100,19 @@ function Format-ReviewCampaignOutstandingPause {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectName,
-        [Parameter(Mandatory)]$Fact
+        [Parameter(Mandatory)]$Fact,
+        # THE ROUND'S OWN FINDINGS, read from the terminal RESULT rather than from the fact.
+        #
+        # The first version of this renderer showed counts and a recommendation and nothing else,
+        # because that is all the pause fact stores - and it was the surface a consumer meets when they
+        # come back the next day, in a new session, with no other context. It told them nothing would
+        # run until they answered, then offered nothing to answer and named nothing to act on.
+        #
+        # The fix is NOT to enrich the fact. It is to read the result, which is the same lesson the
+        # consent gate learned this morning: a derived summary is written by whatever logic held at the
+        # time, and the result is what the reviewer actually returned.
+        [AllowNull()][object[]]$Findings = $null,
+        [AllowNull()][object[]]$Options = $null
     )
     $lines = [Collections.Generic.List[string]]::new()
     $roundsUsed = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'rounds_used')
@@ -1115,7 +1127,18 @@ function Format-ReviewCampaignOutstandingPause {
     $lines.Add('')
     $gatingTotal = $blocking + $major
     if ($gatingTotal -gt 0) {
-        $lines.Add(('That round found {0} thing{1} that need your attention.' -f $gatingTotal, $(if ($gatingTotal -eq 1) { '' } else { 's' })))
+        $lines.Add(('That round found {0} thing{1} that need your attention:' -f $gatingTotal, $(if ($gatingTotal -eq 1) { '' } else { 's' })))
+        # Named with their locations, exactly as the live surface does. A count alone sends the reader
+        # somewhere else to reconstruct what it was about, which for a returning consumer is the whole
+        # difficulty.
+        foreach ($finding in @($Findings)) {
+            if ($null -eq $finding) { continue }
+            $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
+            if ($severity -cne 'blocking' -and $severity -cne 'major') { continue }
+            $lines.Add(('  {0}  {1}  ({2})' -f $severity.ToUpperInvariant(),
+                    [string](Get-ReviewAuthorityProperty -Object $finding -Name 'title'),
+                    [string](Get-ReviewAuthorityProperty -Object $finding -Name 'location')))
+        }
     }
     else {
         $lines.Add('That round found nothing that needs your attention.')
@@ -1133,10 +1156,32 @@ function Format-ReviewCampaignOutstandingPause {
     }
     if (-not [string]::IsNullOrWhiteSpace($recommendation)) {
         $lines.Add('')
-        $lines.Add($recommendation)
+        $lines.Add(('Recommendation: {0}' -f $recommendation))
     }
+
+    # THE CHOICES, on the surface that says a choice is required. Without them this reads as a
+    # notification about a decision rather than the decision itself - and a suite of prohibitions would
+    # not have noticed, because nothing was WRONG here, something was ABSENT.
     $lines.Add('')
-    $lines.Add('Nothing further will run until you answer.')
+    $lines.Add('What would you like to do?')
+    $offered = @($Options | Where-Object { $null -ne $_ })
+    if ($offered.Count -eq 0) {
+        # The same three the live surface offers, minus continuation when the budget is spent - derived
+        # from the fact's own counts rather than assumed, so a resumed surface cannot offer a round the
+        # campaign can no longer run.
+        $offered = @(
+            if ($budgetTotal -le 0 -or $roundsUsed -lt $budgetTotal) { [pscustomobject]@{ id = 1; text = 'Fix these and run another review round' } }
+            [pscustomobject]@{ id = 2; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' }
+            [pscustomobject]@{ id = 3; text = 'Abandon this review campaign (nothing further runs)' }
+        )
+    }
+    foreach ($option in $offered) { $lines.Add(('  {0}. {1}' -f $option.id, $option.text)) }
+
+    $lines.Add('')
+    $lines.Add('Reply with a number. Nothing runs and nothing is spent until you answer.')
+    $lines.Add(('Reply with:  specrew review --pause-choice <1|2|3>{0}' -f $(
+                $answerRun = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+                if ([string]::IsNullOrWhiteSpace($answerRun)) { '' } else { "   (answering round $answerRun)" })))
     return $lines.ToArray()
 }
 

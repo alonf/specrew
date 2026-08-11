@@ -551,6 +551,166 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         @($reached) -join ',' | Should -Be 'verify,accept,gate' -Because 'the guard must pass THROUGH to the chain, in order, not short-circuit it'
     }
 
+    It 'A REFUSED stop-here leaves the pause ANSWERABLE; a successful one does not' {
+        # Round-3 blocking finding 1. The CLI recorded the immutable pause-decision BEFORE attempting
+        # the landing, so a refused landing left the human holding a spent answer: the command reports
+        # no round waiting (answered pauses are excluded from Get-ReviewCampaignPendingPause) while the
+        # recorded choice also refuses another round. Wedged - and the landing's own message told them
+        # to choose "stop here" again, which could no longer be submitted.
+        #
+        # The gating precondition ruled in this morning made it reachable rather than theoretical: it
+        # ADDED refusal arms, so my own safety fix increased the chance of hitting this one.
+        #
+        # BOTH DIRECTIONS, as ruled - a prohibition alone would be satisfied by never recording at all.
+        $store = Join-Path $TestDrive 'answerable'
+        $campaign = 'cmp-answerable-i001'
+
+        # (a) refused: no decision written -> the pause is still pending and can be answered again.
+        Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact (
+            New-ReviewCampaignPendingPauseFact -CampaignId $campaign -RunId 'run-refused' -TargetDigest 'digest-refused' `
+                -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 1) `
+                -ObservedAt '2026-08-11T10:00:00.0000000+00:00') | Out-Null
+        [string](Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId $campaign).run_id |
+            Should -Be 'run-refused' -Because 'a refused landing must leave the question open'
+
+        # (b) succeeded: decision written -> the pause is answered and no longer pending.
+        Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact (
+            New-ReviewCampaignPauseDecisionFact -CampaignId $campaign -RunId 'run-refused' -Choice 'stop-here' `
+                -ObservedAt '2026-08-11T10:05:00.0000000+00:00') | Out-Null
+        Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId $campaign |
+            Should -BeNullOrEmpty -Because 'a landed stop-here really is answered, and must not be re-answerable'
+
+        # THE ORDERING ITSELF, which is what actually decides recoverability. Asserted on the source
+        # because the defect was neither function being wrong - it was which one ran first.
+        $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
+        $branch = [regex]::Match($cli, "(?s)if \(\`$choice -ceq 'stop-here'\) \{.*?\n                \}")
+        $branch.Success | Should -BeTrue -Because 'the guard must anchor on the real stop-here branch'
+        $landingAt = $branch.Value.IndexOf('Invoke-ReviewCampaignStopHereLanding')
+        $writeAt = $branch.Value.IndexOf('Write-ReviewCampaignPauseDecisionFact')
+        $landingAt | Should -BeGreaterThan -1
+        $writeAt | Should -BeGreaterThan -1
+        $landingAt | Should -BeLessThan $writeAt -Because 'the answer must be spent only AFTER the attempt it authorizes has succeeded'
+        $branch.Value | Should -Match '(?i)has NOT been used up' -Because 'the human must be told the answer survived, or they cannot know retrying is possible'
+    }
+
+    It 'A PRE-INVOCATION FAILURE does not consume the continuation decision (FR-014)' {
+        # Round-3 blocking finding 2. RoundsSinceDecision counted every run result started after the
+        # decision - and a pre-invocation failure PUBLISHES a run record, which is FR-014 working
+        # correctly. So a round that never launched a reviewer consumed the human's answer, while the
+        # F4 disclosure on that same failure told them their authorization was still available. Same
+        # requirement, two counters, opposite behaviour, five hours apart.
+        #
+        # WHAT THIS COUNTER MEASURES: invoked rounds since the answer. Not runs, not allowance slots.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'preinvoke')
+        $config = script:New-PauseConfig -Root $root
+        $store = Join-Path $root '.specrew/review/authority'
+        $first = script:Invoke-PauseCommand -Root $root -Config $config -RunId 'run-pre-a' -External (Join-Path $TestDrive 'pre-ext-a')
+        [string]$first.status | Should -Be 'terminal'
+
+        $decidedAt = [DateTimeOffset]::UtcNow.ToString('o')
+        $failedAt = [DateTimeOffset]::UtcNow.AddMinutes(1).ToString('o')
+        Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact (
+            New-ReviewCampaignPauseDecisionFact -CampaignId ([string]$first.campaign_id) -RunId ([string]$first.pause.fact.run_id) `
+                -Choice 'fix-and-continue' -ObservedAt $decidedAt) | Out-Null
+
+        # A run record from a round that NEVER reached a reviewer, published AFTER the decision.
+        # The timestamps are derived from the real clock rather than written as literals: the first
+        # round above ran on the system clock, so a hardcoded earlier decision time would make that
+        # round itself count as "since the decision" - which is how the first draft of this fixture
+        # failed, measuring its own bad arithmetic instead of the code.
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId ([string]$first.campaign_id) -RunId 'run-pre-failed' -TargetLineage ([string]$first.target_lineage) -ObservedAt $failedAt | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId ([string]$first.campaign_id) -RunId 'run-pre-failed' -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = [string]$first.campaign_id; run_id = 'run-pre-failed'; target_digest = 'digest-pre'
+                harness_id = 'fixture'; completion = 'none'; verdict = 'incomplete'; runtime_outcome = 'preflight-failed'
+                termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'not-produced'
+                can_approve_current = $false; failure_reason = 'preflight-failed:verification'; summary = 'never invoked'
+                findings = @(); started_at = $failedAt; ended_at = $failedAt; duration_ms = 30000
+            }) | Out-Null
+        Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId ([string]$first.campaign_id) -RunId 'run-pre-failed' -TargetLineage ([string]$first.target_lineage) -Disposition released -ObservedAt $failedAt | Out-Null
+
+        # The retry the human is entitled to: their answer was never spent on a reviewer.
+        $retry = script:Invoke-PauseCommand -Root $root -Config $config -RunId 'run-pre-b' -External (Join-Path $TestDrive 'pre-ext-b') -AuthRef 'auth-pause-2'
+        [string]$retry.status | Should -Be 'terminal' -Because 'a round that never launched a reviewer cannot have consumed the answer that authorized one'
+        [bool]$retry.invoked | Should -BeTrue
+    }
+
+    It 'A COMPLETED ROUND WITH NO PAUSE RECORD fails CLOSED instead of letting the next round spend' {
+        # Round-3 blocking finding 3. Recording the pause is deliberately forgiving so a write failure
+        # cannot destroy a review the human paid for. That was harmless while nothing read pause facts;
+        # the continuation guard reads them, so the same tolerance became an open door - no pause, no
+        # brake, and the next command reserves and invokes another reviewer with nobody having answered.
+        #
+        # ADDING A CONSUMER CHANGES THE RISK OF AN EXISTING TOLERANCE. The fail-soft was not wrong
+        # before and is not wrong now; what changed is that something now depends on its output.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'nopause')
+        $config = script:New-PauseConfig -Root $root
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaign = 'cmp-001-demo-i007'
+
+        # An INVOKED round that completed, with its pending-pause.json missing - the failed-write state.
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId 'run-nopause' -TargetLineage 'lin-nopause' -ObservedAt '2026-08-11T12:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId 'run-nopause' -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = $campaign; run_id = 'run-nopause'; target_digest = 'digest-nopause'
+                harness_id = 'fixture'; completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'
+                termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+                can_approve_current = $false; summary = 'completed but pause write failed'; findings = @()
+                started_at = '2026-08-11T12:00:00Z'; ended_at = '2026-08-11T12:10:00Z'; duration_ms = 600000
+            }) | Out-Null
+        Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId 'run-nopause' -TargetLineage 'lin-nopause' -Disposition released -ObservedAt '2026-08-11T12:10:01Z' | Out-Null
+
+        $next = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
+            -RunId 'run-nopause-next' -AuthorityConfigPath $config -GrantAuthorizationRef 'auth-nopause' `
+            -Ports ([pscustomobject]@{
+                    target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'nopause-ext')
+                    harness = [pscustomobject]@{
+                        id = 'must-not-run'
+                        preflight = { param($invocation) throw 'harness-must-not-run-when-the-pause-record-is-missing' }
+                        invoke = { param($invocation, $environment) throw 'harness-must-not-run-when-the-pause-record-is-missing' }
+                    }
+                    runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort
+                    clock = New-ReviewSystemClockPort; prompt_path = (Join-Path $root 'prompt.txt')
+                })
+
+        [string]$next.status | Should -Be 'paused'
+        [bool]$next.invoked | Should -BeFalse
+        [string]$next.reason | Should -Match 'pause-record-missing-for-completed-round'
+        (@($next.pause_surface) -join "`n") | Should -Match '(?i)could not save the record' -Because 'the consumer must be told what is wrong and where to look, not merely refused'
+        (@($next.pause_surface) -join "`n") | Should -Match '(?i)\.specrew/review/authority'
+    }
+
+    It 'THE RESUMED SURFACE carries the findings and the numbered choices' {
+        # Round-3 major finding. The persisted pause fact stores counts only, so the surface a consumer
+        # meets when they come back the next day named nothing and offered nothing - it told them
+        # nothing would run until they answered, then gave them no way to answer. Nothing was WRONG on
+        # that surface; something was ABSENT, which a suite of prohibitions cannot see.
+        #
+        # Fixed by reading the RESULT rather than enriching the fact - the same lesson as the consent
+        # gate: a derived summary is written by whatever logic held at the time.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'resume')
+        $config = script:New-PauseConfig -Root $root
+        $first = script:Invoke-PauseCommand -Root $root -Config $config -RunId 'run-resume-a' -External (Join-Path $TestDrive 'resume-ext-a')
+        [string]$first.status | Should -Be 'terminal'
+
+        $second = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
+            -RunId 'run-resume-b' -AuthorityConfigPath $config -GrantAuthorizationRef 'auth-resume-2' `
+            -Ports ([pscustomobject]@{
+                    target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'resume-ext-b')
+                    harness = [pscustomobject]@{ id = 'must-not-run'
+                        preflight = { param($i) throw 'must-not-run' }; invoke = { param($i, $e) throw 'must-not-run' } }
+                    runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort
+                    clock = New-ReviewSystemClockPort; prompt_path = (Join-Path $root 'prompt.txt')
+                })
+
+        [string]$second.status | Should -Be 'paused'
+        $surface = @($second.pause_surface) -join "`n"
+        # What MUST be there (rule 4), not merely what must not.
+        $surface | Should -Match 'What would you like to do\?'
+        $surface | Should -Match '(?m)^\s+2\. Stop here'
+        $surface | Should -Match '(?m)^\s+3\. Abandon'
+        $surface | Should -Match 'specrew review --pause-choice' -Because 'a decision surface must say how to answer it'
+        $surface | Should -Match 'Nothing runs and nothing is spent until you answer'
+    }
+
     It 'THE CLI CAN REACH ALL OF IT: the shipped command exposes the reply and calls the three helpers' {
         # A source-level companion to the behaviour above, and it exists because the finding was found by
         # a CALLER INSPECTION, not by a failing test: three functions with no production caller. The

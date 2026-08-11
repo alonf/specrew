@@ -214,6 +214,47 @@ Describe 'Single-authority stop surface (T003)' {
             }
         }
 
+        It 'FR-009 ON THE IN-FLIGHT PATH: a records-only commit does not stale a RUNNING round' {
+            # DRIFT-199-I001-036, ruled a completion of DRIFT-199-I001-013 rather than new scope.
+            #
+            # The terminal path has exempted records-only deltas since T003. The IN-FLIGHT path compared
+            # digests exactly and never called the predicate, so the circularity survived on the other
+            # half: writing down what a review is about invalidated the review that was RUNNING. Found
+            # by being bitten - the ruling to correct the ledger before starting work produced a
+            # records-only commit, and the next stop said the running round could no longer cover the
+            # tree. Every governance-required commit during a round made the human pay for a round they
+            # could not use.
+            $feature = '199-beta3-stabilization'
+            # The ReviewRun contract's required set, read from Get-ReviewAuthorityContractRequiredFields
+            # rather than composed - a fabricated shape fails validation and the branch returns
+            # 'review-failure', which would look like the guard disagreeing when it is the fixture.
+            $activeRun = [pscustomobject]@{
+                schema_version = '1.0'; campaign_id = 'cmp-inflight-i001'; run_id = 'run-inflight'
+                target_digest = ('a' * 40); harness_id = 'codex-cli-file-primary'; state = 'reserved'
+            }
+
+            # RECORDS-ONLY while the round runs -> still running, nothing for the human to decide.
+            $recordsOnly = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-inflight-i001' `
+                -CurrentDigest ('b' * 40) -RepoRoot $script:RepoRoot -FeatureId $feature -ActiveRun $activeRun `
+                -ChangedPathsSinceActiveRun @("specs/$feature/iterations/001/drift-log.md", "specs/$feature/iterations/001/state.md")
+            $recordsOnly.route | Should -Be 'review-running' -Because 'recording what a review is about must never invalidate the review that is running'
+            $recordsOnly.reason | Should -Match 'records-only'
+
+            # PRODUCT CODE while the round runs -> genuinely stale, exactly as before.
+            $productCode = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-inflight-i001' `
+                -CurrentDigest ('b' * 40) -RepoRoot $script:RepoRoot -FeatureId $feature -ActiveRun $activeRun `
+                -ChangedPathsSinceActiveRun @("specs/$feature/iterations/001/drift-log.md", 'scripts/internal/continuous-co-review/review-authority-core.ps1')
+            $productCode.route | Should -Be 'review-stale'
+            $productCode.reason | Should -Be 'in-flight-review-target-moved'
+
+            # UNKNOWN delta -> fails CLOSED, the same direction as the terminal path. Absence of
+            # evidence is not evidence, and this predicate can only ever QUIET the surface.
+            $unknown = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-inflight-i001' `
+                -CurrentDigest ('b' * 40) -RepoRoot $script:RepoRoot -FeatureId $feature -ActiveRun $activeRun `
+                -ChangedPathsSinceActiveRun $null
+            $unknown.route | Should -Be 'review-stale' -Because 'an unresolvable delta must never be mistaken for a clean one'
+        }
+
         It 'another feature''s records tree is ordinary content to THIS campaign' {
             # The narrowing the recorded requirement already named. Only the ACTIVE feature's process records
             # are exempt; a different feature's tree has no special standing here.

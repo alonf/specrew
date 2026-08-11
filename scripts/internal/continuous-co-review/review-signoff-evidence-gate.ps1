@@ -617,6 +617,17 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         # a commit containing nothing but the drift log invalidated the review that produced it.
         # $null (unknown) fails CLOSED and stales as before: absence of evidence is not evidence.
         [AllowNull()][object[]]$ChangedPathsSinceResult = $null,
+        # FR-009 ON THE IN-FLIGHT PATH (maintainer ruling 2026-08-11, DRIFT-199-I001-036). The same
+        # question as ChangedPathsSinceResult, asked against the RUNNING round's frozen target instead
+        # of the last published result. It needs its own baseline: while a round is in flight the newest
+        # reviewed tree is that round's target, not the previous result's.
+        #
+        # This closes DRIFT-199-I001-013 on the path it was never applied to. The terminal branch below
+        # has exempted records-only deltas since T003; this branch compared digests exactly, so writing
+        # down what a review is about invalidated the review that was running - and every
+        # governance-required commit during a round made the human pay for a round they could not use.
+        # $null (unknown) fails CLOSED and stales, exactly as on the terminal path.
+        [AllowNull()][object[]]$ChangedPathsSinceActiveRun = $null,
         # T003 / FR-007: the recorded signoff-gate decision. T067's two-governor collision made an
         # agent adjudicate between a gate that said allow and a surface that said blocked - a call a
         # consumer cannot make. The surface consults the record instead of contradicting it.
@@ -660,6 +671,14 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         }
         if ([string]$ActiveRun.target_digest -ceq $CurrentDigest) {
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight' -Message 'A review of your files as they are now is still running; there is nothing for you to decide yet.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
+        }
+        # The tree moved while the round runs - but a records-only move is not reviewable content, and
+        # the running round still covers the code. Same predicate, same fail-closed default, as the
+        # terminal path: the exemption exists so that WRITING DOWN what a review is about cannot
+        # invalidate that review, and a round in flight has exactly the same claim to it.
+        if ($null -ne $ChangedPathsSinceActiveRun -and
+            (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceActiveRun -RepoRoot $RepoRoot -FeatureId $FeatureId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight-records-only-delta' -Message 'A review of your files is still running; only governance and records files have changed since it started, so it still covers your project. There is nothing for you to decide yet.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
         }
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The review that is running started from an earlier version of your files, so it cannot sign off what you have now.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
     }
@@ -919,10 +938,21 @@ function Get-ReviewCampaignVerdictPacketDecision {
             -ReviewedDigest ([string]$latestResult.target_digest) -CurrentDigest $decisionDigest
     }
 
+    # The same evidence for a RUNNING round, against its own frozen target. Computed separately rather
+    # than reusing the delta above, because while a round is in flight the newest reviewed tree is that
+    # round's target and the last result's digest is older - so the result baseline would report changes
+    # the running round already covers (DRIFT-199-I001-036).
+    $changedSinceActiveRun = $null
+    if ($null -ne $activeRun) {
+        $changedSinceActiveRun = Get-ReviewCampaignChangedPathsSinceResult -RepoRoot $root `
+            -ReviewedDigest ([string]$activeRun.target_digest) -CurrentDigest $decisionDigest
+    }
+
     $packet = Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest $decisionDigest `
         -RepoRoot $root -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun `
         -FeatureId $FeatureId -HumanDispositions $dispositions -PendingPause $pendingPause `
-        -SignoffGateDecision $recordedGateDecision -ChangedPathsSinceResult $changedSinceResult
+        -SignoffGateDecision $recordedGateDecision -ChangedPathsSinceResult $changedSinceResult `
+        -ChangedPathsSinceActiveRun $changedSinceActiveRun
     if ($null -eq $finalizationEnvelope) { return $packet }
     if ([string]$packet.route -cne 'boundary-clean') {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'review-finalization-result-not-clean' -Message 'The finalization envelope is valid but its bound result is not an authorizing clean result; authority fails closed.' -CampaignId $CampaignId -RunId ([string]$finalizationEnvelope.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'repair-review-state'

@@ -1310,20 +1310,83 @@ function Invoke-ReviewCampaignCommand {
     $latestPause = $null
     try { $latestPause = Get-ReviewCampaignLatestPause -StoreRoot $StoreRoot -CampaignId $identity.campaign_id }
     catch { $latestPause = $null }
+
+    # A PAUSE THAT COULD NOT BE WRITTEN MUST NOT READ AS "NO PAUSE".
+    #
+    # Recording the pause is deliberately forgiving - Add-ReviewCampaignRoundPause swallows write
+    # errors and the round still returns its terminal result, because a pause that cannot be recorded
+    # must not destroy a review the human already paid for. That tolerance was HARMLESS while nothing
+    # read pause facts. This guard reads them, so the same tolerance became an open door: a failed
+    # write leaves no pause, the guard sees nothing to enforce, and the next command reserves and
+    # invokes another reviewer with no numbered answer given - the unbounded loop the feature exists to
+    # stop.
+    #
+    # ADDING A CONSUMER CHANGES THE RISK OF AN EXISTING TOLERANCE. The fail-soft was not wrong before
+    # and is not wrong now; what changed is that something now depends on its output.
+    #
+    # So absence is checked against the store's own evidence rather than trusted: if the newest INVOKED
+    # round has no pause fact, the pause is MISSING rather than absent, and this fails closed. The
+    # invoked filter is FR-014's, so a pre-invocation failure - which correctly publishes a run record
+    # without ever pausing - cannot trip it.
+    if ($null -eq $latestPause) {
+        $newestInvoked = $null
+        try {
+            $newestInvoked = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
+                    Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') } |
+                    Sort-Object -Property { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') }) | Select-Object -Last 1
+        }
+        catch { $newestInvoked = $null }
+        if ($null -ne $newestInvoked) {
+            return [pscustomobject][ordered]@{
+                status = 'paused'; reason = 'review-round-paused:pause-record-missing-for-completed-round'
+                invoked = $false; result = $null
+                campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
+                store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+                design_context = [string]$designContext.classification
+                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+                pause = $null; pause_decision = $null
+                pause_run_id = [string](Get-ReviewAuthorityProperty -Object $newestInvoked -Name 'run_id')
+                pause_surface = @(
+                    'A review round finished, but Specrew could not save the record of what it found.',
+                    '',
+                    'Because that record is missing, Specrew cannot tell whether you have answered it, so it will not start another review.',
+                    'This protects you from paying for rounds nobody asked for.',
+                    '',
+                    'What to do: check that Specrew can write to its own folder under .specrew/review/authority, then run the review again.'
+                )
+                continuation_authorized = $false
+                continuation_reason = 'pause-record-missing-for-completed-round'
+                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+            }
+        }
+    }
     if ($null -ne $latestPause) {
         $pauseDecisions = @()
         if ($null -ne $latestPause.decision) { $pauseDecisions = @($latestPause.decision) }
         $roundsSinceDecision = 0
         if ($null -ne $latestPause.decision) {
-            # An answer authorizes exactly ONE round. Rounds are counted from the store rather than
-            # assumed: a run that failed before it could record its own pause still spent the answer.
+            # WHAT THIS COUNTER MEASURES, stated because the last counter that left it implicit took a
+            # day to pin (T008's naming convention): it is INVOKED ROUNDS SINCE THE HUMAN'S ANSWER. It
+            # is NOT runs, and it is NOT allowance slots.
+            #
+            # The distinction is FR-014's own, and this counter broke it hours after the requirement was
+            # honoured elsewhere. A pre-invocation failure PUBLISHES a run record - correctly, that is
+            # FR-014 working - so counting run records made a round that never launched a reviewer
+            # consume the answer, while the F4 disclosure on the very same failure told the human their
+            # authorization was still available. Same requirement, two counters, opposite behaviour.
+            #
+            # The filter is FR-014's existing discriminator, reused verbatim rather than re-derived, so
+            # the two cannot drift apart: a run whose runtime_outcome is preflight-failed,
+            # claim-contended, or launch-failed never reached a reviewer and therefore never spent the
+            # round the human authorized.
             $decidedAt = [string](Get-ReviewAuthorityProperty -Object $latestPause.decision -Name 'observed_at')
             if (-not [string]::IsNullOrWhiteSpace($decidedAt)) {
                 try {
                     $roundsSinceDecision = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
                             Where-Object {
                                 $startedAt = [string](Get-ReviewAuthorityProperty -Object $_ -Name 'started_at')
-                                -not [string]::IsNullOrWhiteSpace($startedAt) -and $startedAt -gt $decidedAt
+                                -not [string]::IsNullOrWhiteSpace($startedAt) -and $startedAt -gt $decidedAt -and
+                                [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed')
                             }).Count
                 }
                 catch { $roundsSinceDecision = 0 }
@@ -1332,6 +1395,16 @@ function Invoke-ReviewCampaignCommand {
         $continuation = Test-ReviewCampaignContinuationAuthorized -PendingPause $latestPause.pause `
             -PauseDecisions $pauseDecisions -RoundsSinceDecision $roundsSinceDecision
         if (-not $continuation.authorized) {
+            # The findings come from the RESULT, not from the pause fact - the fact stores counts only,
+            # which is exactly why the resumed surface had nothing to show. Read defensively and
+            # unwrapped with a direct assignment: the accessor returns collections with -NoEnumerate.
+            $pausedRoundFindings = $null
+            try {
+                $pausedResult = Get-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `
+                    -RunId ([string]$latestPause.run_id) -Stage result
+                if ($null -ne $pausedResult) { $pausedRoundFindings = Get-ReviewAuthorityProperty -Object $pausedResult -Name 'findings' }
+            }
+            catch { $pausedRoundFindings = $null }
             return [pscustomobject][ordered]@{
                 status = 'paused'; reason = ('review-round-paused:' + [string]$continuation.reason)
                 invoked = $false; result = $null
@@ -1344,7 +1417,9 @@ function Invoke-ReviewCampaignCommand {
                 pause = $latestPause.pause
                 pause_decision = $latestPause.decision
                 pause_run_id = [string]$latestPause.run_id
-                pause_surface = @(Format-ReviewCampaignOutstandingPause -ProjectName $(if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId } else { Split-Path -Leaf $root }) -Fact $latestPause.pause)
+                pause_surface = @(Format-ReviewCampaignOutstandingPause `
+                        -ProjectName $(if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId } else { Split-Path -Leaf $root }) `
+                        -Fact $latestPause.pause -Findings $pausedRoundFindings)
                 continuation_authorized = $false
                 continuation_reason = [string]$continuation.reason
                 diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)

@@ -73,6 +73,17 @@ finding. Output ranked by severity, capped. (Consequence tags: beta4.)
 
 ## Reparse policy (integrity check)
 
-Allowlist: Microsoft cloud-files tag family -> hydrate then hash-verify. Junction,
-symlink, and unknown tags -> refuse with the consumer message. Symmetric across module
-install, authority store, frozen snapshot.
+Cloud-files tag family -> hydrate then hash-verify. Junction and symlink -> refuse with the
+consumer message. A reparse point that is **neither a link nor a cloud placeholder** ->
+**admit as ordinary content, trusted on the hash of the bytes actually read**, and never
+executed: read, hash, and containment-check only. Symmetric across module install,
+authority store, frozen snapshot.
+
+**AMENDED 2026-08-11 by maintainer ruling**, in step with FR-011 and US4 scenario 3. This
+clause previously read *"Junction, symlink, and unknown tags -> refuse"*. It was left behind
+when the requirement was amended, so the contract and the shipped policy described
+incompatible behaviour — a reader working from the contract would have reintroduced the
+OneDrive failure the amendment exists to fix. Refusing every unrecognised tag refused the
+real, common case (measured `0x80420` on a live install), and could not be implemented as
+written without P/Invoke, because .NET never exposes the reparse tag. See
+DRIFT-199-I001-024, -031.

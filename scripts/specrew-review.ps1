@@ -929,37 +929,54 @@ if ($Live) {
                 $answeredRunId = [string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')
                 $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId `
                     -Choice $choice -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
-                Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
 
-                if ($choice -ceq 'abandon') {
-                    Write-Host 'This review campaign is closed. Nothing further will run.' -ForegroundColor Cyan
-                    exit 0
-                }
+                # A REFUSED ATTEMPT MUST NOT CONSUME THE ANSWER.
+                #
+                # The decision fact is IMMUTABLE, and an answered pause is excluded from
+                # Get-ReviewCampaignPendingPause - so recording it before attempting the landing meant a
+                # failed landing left the human holding a spent answer: the command would report no
+                # round waiting, while the recorded choice also refused any further round. Wedged, with
+                # the landing's own message telling them to choose "stop here" again, which could no
+                # longer be submitted.
+                #
+                # The gating precondition ruled in this morning made that reachable rather than
+                # theoretical: it adds refusal arms, and the mismatch arm fires on the pause sitting in
+                # the live store right now.
+                #
+                # So for stop-here the write moves AFTER a successful landing. The other two choices are
+                # terminal in themselves - there is no attempt that can fail - so they record
+                # immediately, as before.
                 if ($choice -ceq 'stop-here') {
-                    # The composed landing, not three steps a consumer has to know to run in order.
                     $rationale = if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.PauseRationale)) { [string]$parsedArgs.PauseRationale }
                     else { 'Remaining findings accepted as follow-ups at the review pause.' }
                     $landingRef = if (-not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) { $campaignGrantAuthorizationRef } else { "pause-stop-here:$answeredRunId" }
                     $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $resolvedProjectPath -StoreRoot $campaignStoreRoot `
                         -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId -AuthorizedBy 'human' `
                         -AuthorizationRef $landingRef -Rationale $rationale
-                    # `landed`, not `ok`. Invoke-ReviewCampaignStopHereLanding returns
-                    # { landed, steps, failed_step, reason, message } - the per-STEP outcomes carry `ok`,
-                    # the composition does not. Reading `.ok` here returned $null, so a REFUSED landing
-                    # would have rendered as a failure with an empty reason instead of the sentence that
-                    # tells the human what to do. Caught by the fixture, not by reading.
+                    if ([bool]$landing.landed) {
+                        # Recorded only now that it has actually landed. Ordering, not bookkeeping: this
+                        # is the line that decides whether a failure is recoverable.
+                        Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
+                    }
                     if ($Json) { $landing | ConvertTo-Json -Depth 30; exit $(if ([bool]$landing.landed) { 0 } else { 1 }) }
                     if ([bool]$landing.landed) {
                         Write-Host 'Your files were checked exactly as they are now, the remaining findings were saved as follow-ups, and review sign-off is complete.' -ForegroundColor Green
                         exit 0
                     }
-                    # The composed message already names what failed, the reason, and the next step -
-                    # including the gating-precondition refusal. Rendering it verbatim keeps one voice
-                    # rather than re-deriving a second, thinner sentence here.
                     Write-Host ([string]$landing.message) -ForegroundColor Yellow
+                    Write-Host 'Your answer has NOT been used up - once the problem above is resolved you can choose an option again.' -ForegroundColor Cyan
                     exit 1
                 }
+
+                Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
+
+                if ($choice -ceq 'abandon') {
+                    Write-Host 'This review campaign is closed. Nothing further will run.' -ForegroundColor Cyan
+                    exit 0
+                }
                 # fix-and-continue falls through: the answer authorizes the round that follows.
+                # (stop-here returned above, before its decision could be recorded on a failed landing;
+                # `landed`, not `ok` - the per-STEP outcomes carry `ok`, the composition does not.)
             }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
