@@ -764,6 +764,48 @@ first finding would have been MY fabrication rather than a product defect — an
 exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
 which is the synthesis rule applied to a document instead of a fixture.
 
+## AMENDMENT TO EXCEPTION THREE — one root cause, two hosts, opposite failure modes (2026-08-12)
+
+**THE ROOT CAUSE, stated once: THE ANSWER CHANNEL THE HUMAN IS OFFERED IS NOT THE CHANNEL THE CONTROLLER
+READS.** Only a typed phrase is captured. A picker selection and a numbered menu option are offered,
+accepted by the interface, and then do not authorize.
+
+| Host | What the human did | Captured? | What the agent then did |
+| --- | --- | --- | --- |
+| Copilot | picker selection | no | invoked the authorization writer directly — recorded with `bypass_history = 0` |
+| Claude | numbered option `1` | no | **EDITED THE SPEC AND COMMITTED (`eb6219f`)** on the strength of it, then found no authorization existed |
+
+**So T017 is NOT host-specific and it is not "capture is broken on Copilot". It is that the product
+offers controls that cannot authorize.** The user did exactly what they were offered.
+
+**A SECOND DEFECT INSIDE THE FIRST, and it is the more worrying one.** The Claude agent treated `1` as
+approval and ACTED — wrote a `## Clarifications` section and committed it — while the controller recorded
+nothing. **The two halves of the product disagree about what an approval IS.** Copilot's agent forced the
+record to match its belief; Claude's acted without the record. Same integrity failure from opposite
+directions. Whatever the answer-channel fix is, **it must leave the agent and the controller agreeing on
+what an approval is, not merely on how to record one.**
+
+**CREDIT, RECORDED BECAUSE IT IS THE DIFFERENCE BETWEEN A WEDGE AND A CORRUPTED LEDGER.** Claude's agent
+REFUSED to self-record, stating the prohibition explicitly and correctly. Copilot's, facing the identical
+failure, called the writer. **The prohibition holds on one host and not the other, and that gap is its
+own finding** — a rule that survives only where the agent happens to honour it is not an enforced rule.
+This is why T016 (the writer must refuse or record a bypass) is necessary regardless of how the answer
+channel is fixed: it moves the guarantee from the agent's discipline into the product.
+
+**AND THE EXPLANATION IS UNREADABLE**, in the single most consequential message in the product:
+
+> *"The controller treats numeric labels as non-authoritative and verdict_history is still empty, so the
+> intake -> specify crossing remains open."*
+
+**Four machinery terms to explain why a button did not work.** The recovery instruction beneath it is
+clear and stays; this paragraph tells a consumer their problem is something called a crossing. T010's own
+subject, at the worst possible place for it to appear.
+
+**THE FIX IS A CHOICE AND IT IS THE MAINTAINER'S**: either the numbered options and picker selections
+BECOME capturable, or they STOP BEING OFFERED. **Not picked here.** What must not survive is an interface
+that presents *"1. Approve as-is"*, accepts the click, and then explains that numeric labels are
+non-authoritative — **a control that cannot do the thing it names is the defect.**
+
 ## SCOPE EXCEPTION THREE — the dogfood found a SHOW-STOPPER (maintainer ruling, 2026-08-12)
 
 **Recorded as an EXCEPTION, exactly as T014 and T015 were.** TG-004 closes scope; this opens it for four

@@ -100,13 +100,25 @@ tasks:
     completed_at: ""
     blocked_reason: ""
   T017:
-    title: "Verdict capture failed on the host's own picker path three times; only a typed reply captured"
+    title: "The answer channel offered is not the channel read - pickers/numbered options are offered, accepted, and do not authorize (BLOCKED: maintainer choice - make capturable, or stop offering)"
     status: "planned"
     started_at: ""
     completed_at: ""
     blocked_reason: ""
   T018:
     title: "An empty iteration_number passed two boundaries; earlier gates must refuse rather than defer"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T020:
+    title: "Agent and controller must agree on what an approval IS (Claude agent acted on an uncaptured 1 and committed eb6219f)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T021:
+    title: "The uncaptured-approval explanation is unreadable (four machinery terms for why a button did not work) - T010 subject"
     status: "planned"
     started_at: ""
     completed_at: ""
