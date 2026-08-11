@@ -27,6 +27,64 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
+## THE AUTHORIZED SIGNOFF ROUND — and the LIVE ACCEPTANCE MEASUREMENT for FR-001..FR-004 (2026-08-11)
+
+Run `run-20260811-093414640-d58e787b`, host codex, authorization reference
+`beta3-i001-signoff-round-1`, one slot, reserved against the SAME single grant (reservations 3 -> 4 —
+grant reuse working on a live authorized round, not a fixture).
+
+**Transcribed from the run, not drafted ahead of it:**
+
+> `review terminal elapsed=817.7s remaining<=82.3s tree=dead output=observed validated-findings=8`
+> `- terminal-result-published`
+> `Run: run-20260811-093414640-d58e787b  Status: terminal  Invoked: True`
+> `Verdict: findings  Completion: complete  Currentness: current  Can approve current: False`
+> `Observed elapsed: 817.7s  Heartbeats: 99  Usage: unavailable`
+
+**2 blocking, 5 major, 1 minor.** The full finding text is in the run's terminal result under the
+authority store; the two blocking ones are verified on disk below.
+
+### THE ACCEPTANCE MEASUREMENT — FR-001 through FR-004 are NOT MET on the shipped path
+
+Each observation is what the RUN showed, with the limit of what it establishes stated beside it. None is
+asserted from the code.
+
+| FR | What the run showed | Limit of this observation |
+| --- | --- | --- |
+| **FR-001** — render the decision surface and terminate the round loop | The round DID terminate after ingest (`Status: terminal`, one round, no second invocation). **NO decision surface was rendered** — the command printed a flat findings list and exited. | Shows the terminal half holds and the surface half does not, ON THE PUBLIC COMMAND. It does not show the surface is absent from the engine — `Invoke-ReviewCampaignRun` does return one. |
+| **FR-002** — severity groups, non-gating minors, cost, budget position, recommendation, three numbered options, nothing-spends line | **NONE of these appeared.** Output was `[severity] text` lines. No cost, no budget, no recommendation, no options, no nothing-spends line. | Shows the consumer surface is absent on the shipped path. Says nothing about `Format-ReviewCampaignPauseSurface`, which is unit-green and simply never reached. |
+| **FR-003** — continuation is an explicit human choice, single-run grant, budget of 4 | **NOT EXERCISABLE.** No continuation was offered, so no choice could consume a grant. The ALLOWANCE half was observed: one grant carried a 4th reservation. | Shows the human-choice half is unreachable. It does NOT show the single-run rule is broken — that rule is unit-pinned and was never given the chance to run. |
+| **FR-004** — minors never gate, auto-carried as follow-ups | The minor finding did not gate (`Can approve current: False` is driven by the blocking/major set). **Whether it was auto-carried as a recorded follow-up is NOT VISIBLE** in the output. | Shows non-gating only. The carry half is unobserved, not confirmed. |
+
+**The cause is finding 2, verified on disk**: a workspace search finds **ZERO production references** to
+`Write-ReviewCampaignPauseDecisionFact`, `Test-ReviewCampaignContinuationAuthorized`, and
+`Invoke-ReviewCampaignStopHereLanding`. `Invoke-ReviewCampaignCommand` (`review-campaign-orchestrator.ps1:1100`)
+mentions neither `pause` nor `slot_restored`. **The economics core exists as helpers and tests and is not
+reachable by a consumer.**
+
+### The two blocking findings, VERIFIED on disk rather than taken from the reviewer
+
+- **Packaged install would be broken.** `Specrew.psd1`'s FileList does NOT contain
+  `reparse-tag-policy.ps1` or `specrew-consumer-language.ps1`, while it DOES contain
+  `path-identity.ps1` — so the pattern exists and the two new files were simply never added. `_load.ps1`
+  and `review-authority-store.ps1` hard-depend on the reparse policy, so a consumer installing the
+  packaged beta3 gets an engine that fails to load. **A defect introduced by this feature's own new
+  files.**
+- **The pause protocol is unwired**, as measured above.
+
+### What this says about the session, recorded because it is the durable part
+
+**I spent the day catching "the wiring is what drifts" one layer at a time — the demotion marks, the
+verification diagnosis, the restored-slot note, the fifth failed-run return — and the TOP-LEVEL wiring
+of the feature's headline capability was missing the whole time.** Every guard I wrote was inside a
+layer; none asked whether the layer was reached from the shipped command. The F4 disclosure is the
+sharpest instance: carried through five returns, guarded, rendered in the CLI, transcribed from a live
+stop — and dropped by the projection between them, which no guard covered.
+
+**The reviewer found in one round what four suites and a day of my own measurement did not**, because it
+asked a question I never asked: *can a consumer reach this?* That is the same gap the gate-preflight
+finding names — a reviewer cannot see the packet, and my guards could not see the command.
+
 ## T008 — re-read against its task text, clause by clause (2026-08-11)
 
 Re-read rather than closed from memory of having worked on it, which is the standing rule. Its text has
