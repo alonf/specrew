@@ -612,7 +612,9 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
                 (Resolve-ReviewCampaignVerdictPacketDecision -CampaignId 'cmp-demo-i007' -CurrentDigest 'digest-current' -OrderedRunIds @('run-one') -Results @($timeout)))) {
             $blocked.render_boundary_packet | Should -BeFalse
             $blocked.render_verdict_marker | Should -BeFalse
-            (Build-ReviewCampaignNavigatorStopBlock -PacketDecision $blocked) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            # MOVED 2026-08-11 (T010, emission-point rule): the no-marker clause is an AGENT directive and no
+            # longer prints in the human's block. Same guarantee, different channel.
+            (Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $blocked -PendingCrossing $null) | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
     }
 

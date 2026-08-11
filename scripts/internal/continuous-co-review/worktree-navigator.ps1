@@ -370,6 +370,11 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
             try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved }
             catch { $pendingCrossing = $null }
             $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet -PendingCrossing $pendingCrossing
+            # T010 (emission-point rule): the agent's directives travel BESIDE the human's block, never
+            # inside it. MOVED, not deleted - the agent is a different reader, not a lesser one, and it
+            # still has to be told whether a verdict marker applies.
+            $decision | Add-Member -NotePropertyName agent_directives `
+                -NotePropertyValue (Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $packet -PendingCrossing $pendingCrossing) -Force
         }
         return $decision
     }

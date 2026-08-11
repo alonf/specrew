@@ -1029,6 +1029,38 @@ banner. Measured rather than assumed, and three of the four needed nothing:
 | **Packet template** (`specrew-gate-stop/SKILL.md`, the six section headers and the verdict options) | **CLEAN.** The human-facing text carries no machinery vocabulary. |
 | **Skill instructions** (the prose around that template) | **DELIBERATELY OUT OF SCOPE — see below.** |
 
+### CORRECTION — the rule above was scoped on the WRONG AXIS (maintainer, 2026-08-11)
+
+**Read this before the section it corrects.** The scoping below says *"rendered output is a consumer
+surface; the instructions that produce it are not"* — which sorts by FILE. **The line that matters is
+WHERE THE TEXT IS EMITTED.** Text a human reads at a stop is a consumer surface WHEREVER it is composed.
+
+**The proof, measured**: the block a consumer actually reads is composed of SIX lines in
+`continuous-co-review-navigator.ps1`, and the guard covered exactly ONE of them — the `-Message`
+literal from the gate file. The other five carried every defect the pass was about: a raw route name in
+the first line, a bare 30-character run id, machinery addressed to a role, `crossing crossing-`
+stuttered, a 64-character hex id — and, decisively, **an INSTRUCTION TO THE AGENT printed inside the
+human's message** (`do NOT emit a SPECREW-VERDICT-BOUNDARY marker`). That is not vocabulary leaking
+through; it is the agent's private channel rendered in front of the consumer.
+
+**So the surface was assessed from ONE FILE, and it is the most-read message in the product.** The
+skill exemption below survives unchanged and correctly — but it is justified by AUDIENCE, and audience
+is decided at the emission point, not by which file the string sits in.
+
+**Resolution**: all five lines fixed; agent directives moved to `Build-ReviewCampaignNavigatorAgentDirective`
+and wired beside `stop_block` (MOVED, never deleted — the agent still has to be told); the guard extended
+to assert every line of the composed block rather than a second hand-picked file. **Making the guard a
+second file list would have been the third instance in one day of enumerating instead of stating the
+invariant.**
+
+**AND ONE DEFECT WAS INTRODUCED BY THE FIX, caught on a live stop**: removing
+`Implementer action: request-current-digest-review` left the block with NO actionable step. The
+complaint about that line was that it was machinery addressed to a role — not that the reader needs no
+next step. Deleting it traded one unusable sentence for a missing one. Translated instead
+(`What to do: run a fresh review of your files as they are now: specrew review --live`), with unknown
+actions printing nothing rather than echoing a token. **This is the recorded "demote, never discard"
+rule applying to sentences as well as findings.**
+
 **THE LINE, and it is the load-bearing part of this pass: the ban applies to text a HUMAN reads, not to
 text an AGENT reads.** The gate-stop skill instructs the agent to "copy its `Marker` last line exactly"
 and to name "the crossing it defers to". Those words are BANNED NOUNS and they are also the correct,

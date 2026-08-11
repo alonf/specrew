@@ -1224,12 +1224,31 @@ function Build-ReviewCampaignNavigatorStopBlock {
         [Parameter(Mandatory)]$PacketDecision,
         [AllowNull()]$PendingCrossing
     )
+    # T010 / FR-015, FR-016 - SCOPED BY EMISSION POINT (maintainer ruling 2026-08-11). Text a human
+    # reads at a stop is a consumer surface WHEREVER it is composed. An earlier pass scoped this by FILE
+    # and guarded only the `-Message` literal, leaving the five lines around it - the ones composed
+    # here - carrying every defect the pass was about.
+    #
+    # AGENT DIRECTIVES DO NOT LIVE IN THIS BLOCK. They are not vocabulary leaking through; they are the
+    # agent's private channel printed in front of the consumer. They moved to
+    # Build-ReviewCampaignNavigatorAgentDirective - MOVED, never deleted: the agent is a different
+    # reader, not a lesser one, and it still has to be told.
     $sb = [Text.StringBuilder]::new()
-    [void]$sb.AppendLine(('Specrew campaign review — {0}.' -f ([string]$PacketDecision.route)))
+    [void]$sb.AppendLine(('Specrew review — {0}.' -f (Get-ReviewCampaignRouteSentence -Route ([string]$PacketDecision.route))))
     [void]$sb.AppendLine([string]$PacketDecision.message)
-    if (-not [string]::IsNullOrWhiteSpace([string]$PacketDecision.run_id)) { [void]$sb.AppendLine(('Run: {0}' -f [string]$PacketDecision.run_id)) }
-    [void]$sb.AppendLine(('Implementer action: {0}' -f [string]$PacketDecision.implementer_action))
-    if ([bool]$PacketDecision.ask_narrow_question) { [void]$sb.AppendLine('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') }
+    # THE NEXT STEP, in words. Removing the old `Implementer action: request-current-digest-review` line
+    # was itself a defect - caught on a live stop, which rendered a block with no actionable step at
+    # all. The complaint about that line was that it was MACHINERY ADDRESSED TO A ROLE, not that the
+    # reader does not need a next step. Translating it is the fix; deleting it traded one unusable
+    # sentence for a missing one.
+    $nextStep = Get-ReviewCampaignActionSentence -Action ([string]$PacketDecision.implementer_action)
+    if (-not [string]::IsNullOrWhiteSpace($nextStep)) { [void]$sb.AppendLine(('What to do: {0}' -f $nextStep)) }
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$PacketDecision.run_id)) {
+        # A bare identifier is a thing the reader must look up before the line means anything. The gloss
+        # says what it is FOR, so a reader who does not need it can skip it.
+        [void]$sb.AppendLine(('Review run: {0} (identifies this review if you need to refer to it)' -f [string]$PacketDecision.run_id))
+    }
 
     $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
     $crossingFrom = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'from_boundary')
@@ -1239,16 +1258,87 @@ function Build-ReviewCampaignNavigatorStopBlock {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($crossingTo) -and -not [string]::IsNullOrWhiteSpace($crossingId)) {
-        # Scoped, and it STATES the adjudication rather than leaving it to be inferred.
+        # THE BOUNDARIES ARE THE ACTIONABLE PART; the identifier is REMOVED, not glossed. The old line
+        # read "the recorded crossing crossing-fdfd..." - a stutter, because the label and the id say
+        # the same word - and a 64-character hex string is noise in a sentence whose job is to tell a
+        # human their approval is still owed. The id still travels on the agent channel, where it is
+        # the thing actually being matched.
+        $null = $crossingId
         [void]$sb.AppendLine((
-            '(This is a campaign review block, not a lifecycle verdict. It does not govern the recorded crossing {0} ({1} -> {2}), which is still pending your decision: that crossing''s verdict marker applies as normal, and this block does not suppress it.)' -f `
-                $crossingId, $(if ([string]::IsNullOrWhiteSpace($crossingFrom)) { 'unrecorded' } else { $crossingFrom }), $crossingTo
+            'This does not decide the approval you still owe ({0} -> {1}); that decision is unaffected and still waits for you.' -f `
+                $(if ([string]::IsNullOrWhiteSpace($crossingFrom)) { 'unrecorded' } else { $crossingFrom }), $crossingTo
         ))
     }
-    else {
-        [void]$sb.AppendLine('(Campaign review block, not a lifecycle verdict — do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)')
-    }
     return $sb.ToString().TrimEnd()
+}
+
+function Get-ReviewCampaignRouteSentence {
+    # A raw route name (`review-stale`, `review-required`) is internal vocabulary in the FIRST line the
+    # reader sees. Unknown routes fall back to a neutral phrase rather than leaking the token: a new
+    # route added later degrades to vague, never to machinery.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Route)
+    switch ([string]$Route) {
+        'review-stale' { return 'your last review no longer covers these files' }
+        'review-required' { return 'these files have not been reviewed yet' }
+        'review-running' { return 'a review is running now' }
+        'review-current' { return 'your review covers these files' }
+        'review-timeout' { return 'the last review ran out of time' }
+        'review-failure' { return 'the review record needs repair' }
+        'review-partial' { return 'the last review finished only partly' }
+        'pause-pending' { return 'this review is waiting for your decision' }
+        default { return 'there is something to know about your review' }
+    }
+}
+
+function Get-ReviewCampaignActionSentence {
+    # `request-current-digest-review` is machinery addressed to a role. The reader needs the ACT, in
+    # words, with the command where one exists. An unknown action returns EMPTY rather than echoing the
+    # token: a line that prints an internal identifier is worse than no line, because it looks like an
+    # instruction the reader has failed to follow.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Action)
+    switch ([string]$Action) {
+        'request-current-digest-review' { return 'run a fresh review of your files as they are now: specrew review --live' }
+        'request-authorized-review' { return 'start a review of these files: specrew review --live' }
+        'poll-existing-run' { return 'wait for the review that is already running; nothing else is needed from you' }
+        'proceed' { return '' }
+        'await-human-pause-decision' { return 'answer the review question above; nothing runs until you do' }
+        'reconcile-run-claim' { return 'recover the interrupted review before signing off: specrew review --reconcile' }
+        'repair-review-state' { return 'the stored review records need repair before a decision can be asked for' }
+        default { return '' }
+    }
+}
+
+function Build-ReviewCampaignNavigatorAgentDirective {
+    # THE AGENT'S CHANNEL. These lines are instructions to the assistant, not information for the human,
+    # and printing them inside the human's block was the defect that forced the emission-point rule.
+    # They are carried separately so the agent still receives them - it is a different reader, not a
+    # lesser one.
+    [OutputType([string])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$PacketDecision, [AllowNull()]$PendingCrossing)
+
+    $lines = [Collections.Generic.List[string]]::new()
+    if ([bool](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'ask_narrow_question')) {
+        $lines.Add('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') | Out-Null
+    }
+    $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
+    $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'to_boundary')
+    if ([string]::IsNullOrWhiteSpace($crossingTo)) {
+        $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'working_boundary')
+    }
+    if (-not [string]::IsNullOrWhiteSpace($crossingTo) -and -not [string]::IsNullOrWhiteSpace($crossingId)) {
+        # T003's adjudication, unchanged in substance: the recorded crossing WINS over this block's
+        # self-describing no-marker clause.
+        $lines.Add(('This is a campaign review block, not a lifecycle verdict. It does not govern the recorded crossing {0}, whose SPECREW-VERDICT-BOUNDARY marker applies as normal; this block does not suppress it.' -f $crossingId)) | Out-Null
+    }
+    else {
+        $lines.Add('Campaign review block, not a lifecycle verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.') | Out-Null
+    }
+    return (($lines -join [Environment]::NewLine))
 }
 
 function Get-ReviewCampaignCrossingField {

@@ -107,6 +107,114 @@ Describe 'Consumer language layer (T010)' {
         }
     }
 
+    # THE RULE, RESTATED BY EMISSION POINT (maintainer, 2026-08-11). My first scoping said "rendered
+    # output is a consumer surface; the instructions that produce it are not" - which is the wrong AXIS.
+    # The line is not which FILE the text lives in, it is WHERE THE TEXT IS EMITTED. Text a human reads
+    # at a stop is a consumer surface WHEREVER it is composed.
+    #
+    # The proof: the block a consumer actually reads is composed of SIX lines in the navigator, and the
+    # earlier guard covered exactly ONE of them - the -Message literal. The other five carried every
+    # defect the fix was about, including `crossing crossing-` stuttered, a 64-character hex id with no
+    # gloss, and - decisively - an INSTRUCTION TO THE AGENT printed inside the human's message.
+    #
+    # The skill exemption still stands and is unchanged: an agent cannot act on a thing it is forbidden
+    # to be told the name of. The agent is a different reader, not a lesser one - so its directives get
+    # their own channel rather than being deleted.
+    Context 'the STOP BLOCK a human reads - every line, not just the message' {
+        BeforeAll {
+            . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+
+            function script:New-StaleBlock {
+                param([switch]$WithCrossing)
+                $decision = New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' `
+                    -Reason 'latest-result-not-current' -Message 'Your earlier review no longer covers these files.' `
+                    -CampaignId 'cmp-199-x-i001' -RunId 'run-20260810-085753967-af5bef76' `
+                    -TargetDigest ('a' * 40) -ImplementerAction 'request-current-digest-review'
+                $crossing = if ($WithCrossing) {
+                    [pscustomobject]@{
+                        crossing_id = 'crossing-fdfd08331c434810bfb008886e73a3476306c1bf484c84813463914ae4ba0605'
+                        from_boundary = 'before-implement'; to_boundary = 'review-signoff'
+                    }
+                }
+                else { $null }
+                return (Build-ReviewCampaignNavigatorStopBlock -PacketDecision $decision -PendingCrossing $crossing)
+            }
+        }
+
+        It 'carries NO agent directive - the agent has its own channel' {
+            # The decisive case. `do NOT emit a SPECREW-VERDICT-BOUNDARY marker` is the agent's private
+            # instruction printed in front of the consumer.
+            $block = script:New-StaleBlock
+            $block | Should -Not -Match 'SPECREW-VERDICT-BOUNDARY'
+            $block | Should -Not -Match '(?i)do NOT emit'
+            $block | Should -Not -Match '(?i)Ask only the narrow'
+        }
+
+        It 'the agent directives still EXIST, on their own channel' {
+            # Moved, not deleted: the agent must still be told. Same guarantee, different emission point.
+            $decision = New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'r' `
+                -Message 'm' -CampaignId 'cmp-199-x-i001' -RunId 'run-x' -TargetDigest ('a' * 40) `
+                -ImplementerAction 'request-current-digest-review'
+            $directives = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $decision -PendingCrossing $null
+            $directives | Should -Match 'SPECREW-VERDICT-BOUNDARY'
+        }
+
+        It 'the navigator CARRIES the agent channel beside the block (source guard)' {
+            # Creating the channel without wiring it would break the "moved, not deleted" promise and
+            # leave the agent with no directive at all - a worse outcome than the defect being fixed.
+            # Guarded here because a unit fixture cannot reach that assignment without the full
+            # navigator harness.
+            $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-navigator.ps1') -Raw
+            $source | Should -Match 'Build-ReviewCampaignNavigatorAgentDirective' -Because 'the directives must actually be produced, not merely producible'
+            $source | Should -Match 'agent_directives'
+        }
+
+        It 'no line carries a banned noun' {
+            foreach ($block in @((script:New-StaleBlock), (script:New-StaleBlock -WithCrossing))) {
+                foreach ($line in ($block -split "`n")) {
+                    @(Get-SpecrewBannedConsumerNoun -Text $line) -join ',' |
+                        Should -BeNullOrEmpty -Because "every line a human reads is a consumer surface: $line"
+                }
+            }
+        }
+
+        It 'the block still tells the reader WHAT TO DO - in words, with the command' {
+            # SELF-CAUGHT ON A LIVE STOP. The first rewrite deleted `Implementer action:
+            # request-current-digest-review` instead of translating it, and the block rendered with no
+            # actionable step at all. The complaint about that line was that it was MACHINERY ADDRESSED
+            # TO A ROLE - not that the reader does not need a next step. Deleting it traded one unusable
+            # sentence for a missing one.
+            $block = script:New-StaleBlock
+            $block | Should -Match '(?i)what to do'
+            $block | Should -Match 'specrew review --live'
+            $block | Should -Not -Match 'request-current-digest-review' -Because 'the ACT belongs in the human''s block; the token belongs on the machine channel'
+        }
+
+        It 'an UNKNOWN action prints no line at all, rather than echoing the token' {
+            # A line printing an internal identifier is worse than no line: it looks like an instruction
+            # the reader has failed to follow.
+            Get-ReviewCampaignActionSentence -Action 'some-future-action-nobody-glossed' | Should -BeNullOrEmpty
+        }
+
+        It 'the run identifier is glossed, not bare' {
+            $block = script:New-StaleBlock
+            $block | Should -Match 'run-20260810-085753967-af5bef76'
+            $block | Should -Match '(?i)\(.*(support|reference|identifies).*\)' -Because 'a bare 30-character id is a thing the reader must look up before the line means anything'
+        }
+
+        It 'the route name is glossed into something a human can act on' {
+            $block = script:New-StaleBlock
+            ($block -split "`n")[0] | Should -Not -Match 'review-stale' -Because 'a raw route name is internal vocabulary in the very first line the reader sees'
+        }
+
+        It 'says NOTHING stuttered, and glosses the crossing id it names' {
+            $block = script:New-StaleBlock -WithCrossing
+            $block | Should -Not -Match 'crossing crossing-' -Because 'the label and the id both said "crossing"'
+            $block | Should -Match 'before-implement' -Because 'the boundaries are the part a human can act on'
+        }
+    }
+
     Context 'the banned-noun check: internal vocabulary never reaches a consumer surface' {
         It 'flags machinery nouns' -ForEach @(
             @{ noun = 'crossing' }, @{ noun = 'digest' }, @{ noun = 'ratchet' }

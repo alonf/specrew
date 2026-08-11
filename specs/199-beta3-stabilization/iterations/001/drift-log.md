@@ -1205,6 +1205,34 @@ proves admission, the second proves the property the whole branch exists for.
 fails for an ordinary reason, which shows the message is produced and shaped, not that a sync client
 actually declined to fetch a file.
 
+### Measured proof line — T010's FULL stop block by emission point, transcribed from a live stop (2026-08-11)
+
+The earlier proof line below covered the MESSAGE only, which is exactly the mistake the emission-point
+ruling corrected. This is the whole block a human reads, rendered on the maintainer's own session after
+the composer rewrite:
+
+> `Specrew review — your last review no longer covers these files.`
+> `The latest campaign result remains useful evidence but targets a moved or earlier snapshot and`
+> `cannot authorize the current tree. That result belongs to this review`
+> `(cmp-199-beta3-stabilization-i001) - whatever its run name suggests - so it is about your own`
+> `earlier snapshot, not another project. If you are not the person running reviews for this project,`
+> `this is advisory: there is nothing here for you to run, and it does not block your work.`
+> `What to do: run a fresh review of your files as they are now: specrew review --live`
+> `Review run: run-20260810-085753967-af5bef76 (identifies this review if you need to refer to it)`
+> `This does not decide the approval you still owe (before-implement -> review-signoff); that decision`
+> `is unaffected and still waits for you.`
+
+**Every line is now something a reader can act on or safely skip.** The raw route name is gone from the
+first line, the run id says what it is FOR, the next step names the command, the boundaries name the
+decision still owed, and the 64-character identifier and the `crossing crossing-` stutter are gone.
+**Both agent directives are absent** — they travel on `agent_directives` beside the block.
+
+**THE INTERMEDIATE STATE IS RECORDED TOO, because it is the more useful evidence.** The first rewrite
+rendered this same block with NO `What to do:` line at all: the machinery-addressed action had been
+deleted rather than translated. That was caught by reading a live stop, not by a fixture — the fixtures
+were green, because none of them asserted that a next step must exist. The lesson is the one already in
+these records, generalised: **demote, never discard**, which applies to sentences as well as findings.
+
 ### Measured proof line — T010's stale-block message, transcribed from a live stop (2026-08-11)
 
 Not drafted ahead of the run. The FIRST stop after `5b62b02f` landed rendered both new clauses on the

@@ -58,7 +58,10 @@ Describe 'Two-governor adjudication: a recorded crossing outranks the campaign n
             # The pre-existing guarantee, restated here so the adjudication below can never be read as
             # permission to emit markers generally. review-public-campaign-command.Tests.ps1 asserts
             # this same clause across every blocked route.
-            $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket
+            # MOVED 2026-08-11 (T010, emission-point rule): the no-marker clause is an AGENT directive and no
+            # longer prints inside the human's block. The GUARANTEE is unchanged - the agent is still told -
+            # only the channel moved.
+            $block = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket -PendingCrossing $null
             $block | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
     }
@@ -75,9 +78,16 @@ Describe 'Two-governor adjudication: a recorded crossing outranks the campaign n
             $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket `
                 -PendingCrossing (script:New-PendingCrossing)
 
-            $block | Should -Match 'crossing-9b3d255e'
+            # MOVED 2026-08-11 (T010, emission-point rule). The GUARANTEE - the adjudication is READABLE
+            # rather than inferred - is unchanged and now asserted on both channels for what each owes.
+            # The human is told which approval is still theirs, in boundary names they can act on; the
+            # 64-character identifier was REMOVED from that sentence (it stuttered with its own label and
+            # is noise to a reader) and travels on the agent channel, where it is the thing being matched.
             $block | Should -Match 'before-implement'
             $block | Should -Match 'review-signoff'
+            $directive = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket `
+                -PendingCrossing (script:New-PendingCrossing)
+            $directive | Should -Match 'crossing-9b3d255e'
         }
 
         It 'still states its own review position - deferring on the marker is not withdrawing the block' {
@@ -86,8 +96,12 @@ Describe 'Two-governor adjudication: a recorded crossing outranks the campaign n
             $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket `
                 -PendingCrossing (script:New-PendingCrossing)
 
-            $block | Should -Match 'review-stale'
-            $block | Should -Match 'request-current-digest-review'
+            # MOVED 2026-08-11 (T010). Was `Should -Match 'review-stale'` - a RAW ROUTE NAME, which is
+            # internal vocabulary in the first line a human reads. The guarantee is that the block still
+            # STATES ITS REVIEW POSITION, so it is asserted on the position itself rather than on the
+            # token that used to express it.
+            $block | Should -Match '(?i)no longer covers these files'
+            $block | Should -Not -Match 'review-stale' -Because 'the position must be stated in words the reader can act on'
         }
     }
 
@@ -99,12 +113,12 @@ Describe 'Two-governor adjudication: a recorded crossing outranks the campaign n
             $partial.to_boundary = ''
             $partial.working_boundary = ''
 
-            $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket -PendingCrossing $partial
+            $block = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket -PendingCrossing $partial
             $block | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
 
         It 'a null crossing confers nothing' {
-            $block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $script:BlockedPacket -PendingCrossing $null
+            $block = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $script:BlockedPacket -PendingCrossing $null
             $block | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
     }

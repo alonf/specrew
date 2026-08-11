@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "001"
-updated_at: "2026-08-11T00:27:14.9531852Z"
+updated_at: "2026-08-11T00:32:15.2613473Z"
 tasks:
   T001:
     title: "Pause core (round terminal + pause facts + decision surface + per-campaign budget)"
@@ -59,9 +59,9 @@ tasks:
     blocked_reason: ""
   T010:
     title: "Consumer-language layer (gloss helper + banned nouns + surface pass + one-message stops)"
-    status: "complete"
+    status: "in-progress"
     started_at: "2026-08-11T00:24:31.9217606Z"
-    completed_at: "2026-08-11T00:27:14.9500691Z"
+    completed_at: ""
     blocked_reason: ""
   T011:
     title: "Banner full prerelease version"
