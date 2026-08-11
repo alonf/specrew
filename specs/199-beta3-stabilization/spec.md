@@ -122,8 +122,10 @@ F1); T067's agent had to hand-copy the module to work around it. This is the mos
 consumer-common install shape.
 
 **Independent Test**: Tag-classifier fixtures with real reparse-tag constants
-(cloud-family accepted, junction/symlink/unknown refused); junction and symlink
-filesystem fixtures stay green; the hydration leg measured manually on the recorded
+(cloud-family hydrated, junction/symlink refused, non-linking admitted — the fixture
+values MEASURED from a real install, not composed); junction and symlink filesystem
+fixtures stay green; a source guard proving no call site downstream of the classifier
+executes admitted content; the hydration leg measured manually on the recorded
 T067-class environment with the proof line transcribed and scoped.
 
 **Acceptance Scenarios**:
@@ -134,8 +136,13 @@ T067-class environment with the proof line transcribed and scoped.
 2. **Given** a junction or symlink inside a containment root, **When** the integrity
    check runs, **Then** it is refused exactly as in beta2, and the refusal message
    states what happened and the next step in consumer language.
-3. **Given** a reparse point with an unknown tag, **When** the integrity check runs,
-   **Then** it is refused (allowlist, not blocklist).
+3. **Given** a reparse point that is neither a link nor a cloud placeholder, **When**
+   the integrity check runs, **Then** it is admitted as ordinary content and trusted on
+   the hash of the bytes actually read, and no call site downstream of the classifier
+   executes what was admitted — it is only read, hashed, and containment-checked.
+   *(AMENDED 2026-08-11 by maintainer ruling; was "an unknown tag ... is refused
+   (allowlist, not blocklist)". Refusing every unrecognised tag refused the real
+   OneDrive case this story exists to fix. See FR-011 and DRIFT-199-I001-024, -031.)*
 
 ---
 
@@ -343,11 +350,23 @@ OneDrive / reparse policy (durable):
 
 - **FR-011**: The review engine's integrity check MUST discriminate reparse tags:
   cloud-family placeholders are hydrated then hash-verified; junction/symlink tags
-  remain refused; unknown tags are refused (allowlist). The policy is symmetric across
-  module install, authority store, and frozen snapshot. The refusal message follows
-  the consumer message shape; the default CurrentUser install path MUST be able to run
-  campaigns. Docs carry the AllUsers alternative and one advisory sentence on synced
-  folders.
+  remain refused; a reparse point that is **not a link and not a cloud placeholder** is
+  **admitted as ordinary content and trusted on the hash of the bytes actually read**.
+  The policy is symmetric across module install, authority store, and frozen snapshot.
+  The refusal message follows the consumer message shape; the default CurrentUser
+  install path MUST be able to run campaigns. Docs carry the AllUsers alternative and
+  one advisory sentence on synced folders.
+  **AMENDED 2026-08-11 by maintainer ruling** (was: *"unknown tags are refused
+  (allowlist)"*). Refusing every unrecognised tag was measured to refuse the real,
+  common case: OneDrive-backed installs present attribute combinations .NET does not
+  expose as links, and the original wording made the default install path unusable —
+  the very failure FR-011 exists to fix. Without P/Invoke the engine cannot read the
+  true tag, so the allowlist could only ever be an allowlist over what .NET happens to
+  surface, not over tags. **The boundary that carries the trust is narrower than an
+  allowlist and enforced instead of asserted**: admitted content is only ever read,
+  hashed, and containment-checked — never executed. The residual is recorded as *not
+  known* rather than argued away, and reading the real tag routes to beta4.
+  See DRIFT-199-I001-024, -031.
 
 Campaign bootstrap (durable):
 

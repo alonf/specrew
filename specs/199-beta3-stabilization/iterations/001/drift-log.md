@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 30 (DRIFT-199-I001-001 through -030)
+**Total drift events**: 31 (DRIFT-199-I001-001 through -031)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -429,6 +429,15 @@ surfaced explicitly at the next boundary, never absorbed silently.
   feature required clearing seven distinct defects, so the first-run path has never
   been exercised end to end, and a preflight-only criterion would pass while the path
   stayed broken. US5 scenario 1 aligned to the same wording.
+- **2026-08-11, maintainer ruling** — FR-011 and US4 scenario 3 amended: a reparse
+  point that is neither a link nor a cloud placeholder is ADMITTED as ordinary content
+  and trusted on the hash of the bytes actually read. Was: *"unknown tags are refused
+  (allowlist)"*. Rationale recorded in the spec and in DRIFT-199-I001-031: the original
+  wording refused the real OneDrive case FR-011 exists to fix (measured `0x80420` on
+  the maintainer's own install), and could not be implemented as stated without P/Invoke
+  because .NET never exposes the tag. US4's Independent Test aligned to the same wording
+  and now also requires the premise guard. **This amendment lands AFTER the
+  before-implement verdict and is surfaced here as a diff-to-approve, not absorbed.**
 
 ## Standing instructions carried from the same verdict
 
@@ -1033,6 +1042,53 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-031 — FR-011 / US4 scenario 3 amended: the allowlist was unimplementable as written (resolved by ruling)
+
+- **Observed**: 2026-08-11. The signoff round raised, correctly, that
+  `Resolve-SpecrewReparseDisposition` returns `admit-nonlinking` for a reparse point whose `LinkType` and
+  `LinkTarget` are empty and whose attributes miss the cloud mask, while the binding acceptance scenario
+  required *"an unknown tag ... is refused (allowlist, not blocklist)"*. **The code and the spec did
+  disagree. The finding is accurate.**
+- **Maintainer ruling (2026-08-11)**: *admit-nonlinking STANDS; amend the spec, not the code; add a guard
+  asserting no downstream call site EXECUTES what it admitted.* Reconciled through the path TG-004
+  already names — a drift-log entry citing the governing FR plus a ruling.
+- **Why the spec clause was the defect.** It was written before anyone measured a real install. The
+  maintainer then measured attributes `0x80420` on their own OneDrive-backed module directory and the
+  classifier said `refuse-unknown` — so the wording refused **the exact case FR-011 exists to fix**, and
+  the default CurrentUser install path stayed unusable. Worse, the clause **cannot be implemented as
+  stated without P/Invoke**: .NET never exposes the reparse TAG, so an "allowlist of tags" could only
+  ever be an allowlist over what .NET happens to surface. It described a check the engine has no way to
+  perform.
+- **What replaces it, and it is NARROWER than an allowlist rather than looser.** Trust does not rest on
+  recognising the tag; it rests on two things that are enforced rather than asserted: the **hash of the
+  bytes actually read**, which is self-consistent whatever a reparse point redirected to, and
+  **containment**, which bounds where the read could have gone. Links stay refused, because a link
+  redirects the read past the containment check that was already made.
+- **THE PREMISE, now a guard instead of a sentence**: `tests/continuous-co-review/unit/reparse-admission-premise.Tests.ps1`.
+  The whole argument turns on one word — admitted content is **read**, never **executed**. Read a
+  redirected file and the hash describes what you read; execute it and the hash describes something you
+  have already run.
+  - **The set is DISCOVERED, not listed.** The AST is walked over every engine script for functions
+    reaching the classifier: **10 call sites in 3 functions, none at file scope**. A new consumer is
+    covered without editing the guard.
+  - **The floor was MEASURED after being wrong.** The first draft asserted `>= 4`, counted off a grep of
+    call sites; the parser returned 3, because the containment walk checks root and segments from one
+    function and both authority-store sites share `Get-ReviewAuthorityStorePath`. Fifth instance this
+    iteration of a guard's own premise being the author's model. It is a FLOOR, not an equality.
+  - **A parser, not a regex.** An earlier guard sliced function bodies with `.*?\n\}` and stopped at the
+    first nested brace. The AST also settles the two awkward cases for free: the file-scope
+    `. (Join-Path $PSScriptRoot 'reparse-tag-policy.ps1')` dot-source is not inside a consuming function
+    and correctly does not trip it, while a `&` or `.` inside one does.
+  - **It asserts what MUST happen too** (rule 4): the admitted path still reads, hashes, and
+    containment-checks. Four prohibitions alone would be satisfied by deleting the reading code.
+  - **MUTATION-TESTED, because a guard that has never gone red proves nothing.** `Invoke-Expression`
+    injected into a consuming function → caught by the execution-primitive assertion. `& $Path` injected
+    → caught by the call-operator assertion. Source reverted clean both times. 6/6 green on the real tree.
+- **The residual, recorded as NOT KNOWN rather than argued away**: an unknown tag that redirects reads
+  without .NET exposing `LinkType`/`LinkTarget` would be admitted, and its hash would describe the
+  redirected bytes. Containment still applies, and nothing executes them. **Reading the true tag via
+  P/Invoke is on the beta4 list** (-024) — the precise version of what this ruling approximates.
 
 ### DRIFT-199-I001-030 — `workshop/` was allowlisted as a review RECORD while the spec called it a binding INPUT (resolved)
 
