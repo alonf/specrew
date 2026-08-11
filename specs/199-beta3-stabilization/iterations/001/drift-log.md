@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 27 (DRIFT-199-I001-001 through -027)
+**Total drift events**: 29 (DRIFT-199-I001-001 through -029)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -267,6 +267,46 @@ MATCH `What to do` and match the command, not merely fail to match the token.*
 *This is the same failure as "demote, never discard" seen from the test side: the rule says do not delete
 the signal, and a prohibition-only suite cannot tell you when you have.*
 
+**RULED IN 2026-08-11 by the maintainer, on the authorized signoff round's second blocking finding.**
+
+> **RULE — ASSERT EVERY CAPABILITY FROM THE COMMAND A CONSUMER TYPES, NOT FROM THE FUNCTION THAT
+> IMPLEMENTS IT.** A capability is not shipped when its helpers pass their tests; it is shipped when it
+> is REACHABLE from the entry point a consumer actually invokes. Every fixture for a consumer-visible
+> capability must enter through that entry point, so that a projection, a CLI renderer, or a missing call
+> site between the helper and the human FAILS THE TEST instead of hiding under it.
+
+*Evidence, and it is the sharpest in the iteration: the pause protocol — the release's P1 acceptance flow
+— had `Write-ReviewCampaignPauseDecisionFact`, `Test-ReviewCampaignContinuationAuthorized` and
+`Invoke-ReviewCampaignStopHereLanding` all implemented and all green. `Invoke-ReviewCampaignRun` returned
+the decision surface correctly. And `Invoke-ReviewCampaignCommand` PROJECTED IT AWAY, while
+`scripts/specrew-review.ps1` rendered only the generic result — so no production call to any of the three
+helpers existed. Every test entered at the helper. Not one entered at the command. The same shape, in
+miniature, took out the restored-slot disclosure (F4): fields added, CLI ready to render them, projection
+dropped them silently in between.*
+
+*The corollary the review made concrete: **the gap is always in the seam nobody owns a test for.** The
+helper's author tests the helper; the CLI's author tests the CLI; the PROJECTION between them is where
+the capability dies, and it is exactly the layer no fixture entered.*
+
+**CANDIDATE, NOT RULED — offered for the maintainer's decision, recorded so it is not lost.**
+
+> **RULE (candidate) — A GUARD PROVES THE PLATFORM AND THE TRIGGER IT RAN ON.** A green local suite is
+> evidence about one OS; a guard in CI is evidence only on the branches its trigger matches. Before
+> trusting either, ask **where does this run, and when** — and treat "the guard exists" and "the guard
+> executed against this change" as two different claims.
+
+*Evidence: DRIFT-199-I001-028 and -029, found the same hour, from opposite ends. A correct, property-based
+FileList guard could not run on a feature branch because `specrew-ci.yml` triggers only on
+`branches: [ main, 001-specrew-product ]` — so the check that would have caught the blocking finding was
+structurally unreachable for the whole implementation. And a fixture written this iteration passed on
+Windows and failed on macOS and Ubuntu on a hardcoded `\` path separator, red on five consecutive CI runs
+while every local run was green.*
+
+*Kept separate from the fifth rule deliberately, though they are close relatives. The fifth is about the
+ENTRY POINT (which door the test comes through). This is about the ENVIRONMENT (which machines and which
+triggers the test is ever run under). A fixture can satisfy the fifth perfectly and still only ever prove
+it on the author's laptop.*
+
 ## BETA4 LIST — everything this feature routed out, collected in one place
 
 Scattered "routes to beta4" clauses are easy to lose at closeout, so they are collected here with the
@@ -281,9 +321,9 @@ evidence stays in its own entry.
 | **Campaign command does not resolve the feature id** (`--feature`/`--iteration` must be passed by hand). | Sits in the CLI's campaign branch parameter contract, not in code this feature touches. | -009 |
 | **Pending-verdict stop artifact not emitted at the plan sync.** | Diagnosis only was ordered; the fix stays deferred unless it lands in files this feature already touches. | -002 |
 | **Trust-hardening `cycle_id`** — the validator warns `state-advance-without-verdict` while HOLDING the verdict, because persisted entries carry no `cycle_id` to match. | A WARN on a passing validator that blocks nothing; the fix is in the trust-hardening cycle model. | -022 |
-
 | **GATE-PREFLIGHT SCRIPT** — deterministic boundary checks run before any packet is rendered. | The preflight exists as PROSE, not as a guard, so it covers what someone remembered to include. Three defects reached a boundary packet seconds before a spend. | see below |
 | **CI RATCHET** — CI globs the test directories with the 16 inherited failures explicitly quarantined. | Same defect one altitude up: nothing mechanically holds the line, so a new failure is indistinguishable from an inherited one. **Status: UNDER CONSIDERATION as standalone work outside this feature — not ruled, do not build.** | the SEVENTEEN triage |
+| **CI TRIGGER REACH** — `specrew-ci.yml` runs on `branches: [ main, 001-specrew-product ]` only, so no feature branch is ever built by it. | The guard that would have caught this round's first blocking finding was correct and unreachable. Changing a CI trigger changes what every future branch pays in minutes and is a maintainer call, not a tail-of-feature edit. **Not ruled — recorded, not built.** | -028 |
 
 ### The gate-preflight finding — why a reviewer could never have caught these (2026-08-11)
 
@@ -993,6 +1033,74 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-029 — a branch-introduced CROSS-PLATFORM failure, invisible on the maintainer's OS (resolved)
+
+- **Observed**: 2026-08-11, while fixing DRIFT-199-I001-028. Checking whether CI had ever run this branch
+  surfaced something the fix itself was not looking for: **Cross-Platform Validation ran five times on
+  this branch and FAILED all five**, while the same workflow is **green on `main`, six runs for six**.
+  Unlike the recorded seventeen, this one is **branch-introduced** — measured, not inferred.
+- **The failure**: job *Deterministic fake-provider review runtime* on **macos-latest and ubuntu-latest**;
+  **windows-latest PASSES**. One test:
+  `tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1` →
+  *"THE CONSTRAINT: no reason field anywhere carries the sentence"* — written THIS iteration, for T008/F4.
+- **Mechanism**: the fixture filtered release facts with `$_.FullName -match '\\releases\\'`. On POSIX,
+  `FullName` uses `/`, so the filter matched nothing, `$releaseFacts` came back **empty**, and
+  `@($out.releases).Count | Should -Be 1` failed. The sibling F4 test never touches `.releases`, which is
+  why exactly one test failed rather than the pair. Measured both ways before fixing:
+
+  | pattern | windows | posix |
+  | --- | --- | --- |
+  | `\\releases\\` (old) | True | **False** |
+  | `[\\/]releases[\\/]` (new) | True | True |
+
+- **Citation**: FR-001..FR-004 acceptance rests on the campaign engine behaving the same on every
+  supported platform; a release that is red on two of three does not meet the bar.
+- **Resolution**: separator-agnostic pattern. Suite green on Windows (24/24); the POSIX half is proven by
+  the pattern measurement above and confirmed by CI on push — **the local run cannot prove it**, which is
+  the whole point of the entry. A repo-wide sweep of every `.ps1` changed on this branch found **exactly
+  one** such filesystem-path match; the other backslash patterns match document TEXT (`.squad\decisions.md`
+  inside prose) or already accept both separators.
+- **THE RULE THIS ADDS, and it is a sibling of the fifth**: *a guard proves the platform it ran on.* A
+  green local suite is evidence about **one OS**, and for a cross-platform product that is a strictly
+  weaker claim than it appears. The fifth rule says assert from the command a consumer types; this says
+  assert on the **platforms a consumer runs**. Both are the same failure — mistaking the sample you can
+  see for the population you ship to.
+- **Why the earlier "zero branch-introduced failures" line was not wrong, but was NARROWER than it read**:
+  that triage measured `tests/continuous-co-review/unit` **on Windows** — MAIN 933/16 vs BRANCH 1136/17.
+  Within its stated scope it holds and still holds. It simply never covered CI workflows or other
+  platforms, and nothing in the phrasing said so. Recorded here so the release note's failure counts are
+  read with their true scope.
+
+### DRIFT-199-I001-028 — the FileList guard existed, was CORRECT, and could not run (resolved)
+
+- **Observed**: 2026-08-11, fixing the signoff round's first blocking finding — `Specrew.psd1`'s FileList
+  omitted `scripts/internal/continuous-co-review/reparse-tag-policy.ps1` and
+  `scripts/internal/specrew-consumer-language.ps1`, both added this iteration, while
+  `continuous-co-review/path-identity.ps1` was present. The pattern existed and was not followed.
+- **What the fix was NOT**: writing a guard. Before adding one, `tests/integration/filelist-completeness.tests.ps1`
+  turned out to already assert exactly this invariant — bidirectional, **property-based** (scan roots
+  DERIVED from FileList's own top-level prefixes, not hand-listed), motivated by the identical v0.28.0-beta1
+  break. Replayed against a manifest with the two entries removed, it flags **both, and only those two**.
+  The duplicate guard drafted here was **deleted**; a second assertion of a property already asserted is
+  drift, not coverage.
+- **So the defect is REACH, not absence.** `.github/workflows/specrew-ci.yml` triggers on
+  `branches: [ main, 001-specrew-product ]` for both `push` and `pull_request`. A feature branch matches
+  neither and no PR was open, so the guard was **structurally unreachable for this feature's entire
+  implementation** — measured: five workflow runs on this branch, all Cross-Platform Validation, zero
+  Specrew CI. It would first have fired at PR-to-main, i.e. **after** the beta3 release decision.
+- **Citation**: the packaged artifact is what a consumer installs; `review-authority-store.ps1` and
+  `review-engine-resolution.ps1` dot-source the reparse policy **unguarded**, so on a packaged install the
+  omission throws on first use of the authority store, for every consumer. `_load.ps1` is NOT the failure
+  path — it enumerates the file but skips a missing one (`Test-Path ... continue`).
+- **Resolution**: both entries added to FileList (397 entries; manifest parses; the shipped guard passes).
+  The **durable** fix — running the packaging and integration guards before a boundary packet rather than
+  at merge — is the **gate-preflight script already routed to beta4**, and is deliberately NOT built here.
+- **This is the fifth method rule's own shape, one level up.** The rule says assert a capability from the
+  command a consumer types, not the function that implements it. Here the capability was a **guard**: it
+  existed, it was well-designed, it was correct — and asking "is there a guard?" returned yes while asking
+  "does it ever execute on the branch where the code is written?" returned no. **A guard that cannot run
+  is a comment.** That is rule 3 (comments record intent, they do not enforce it) arriving by a new route.
 
 ### DRIFT-199-I001-027 — FR-013 groups a REVIEWER-side concept with two verification-plan ones (resolved by ruling)
 

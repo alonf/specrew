@@ -377,7 +377,7 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
                     -ObservedAt '2026-08-10T00:00:02Z' -StartedAt '2026-08-10T00:00:00Z' -DurationMs 500 `
                     -RuntimeOutcome preflight-failed
                 $releaseFacts = @(Get-ChildItem -LiteralPath $store -Recurse -File -Filter '*.json' -ErrorAction SilentlyContinue |
-                        Where-Object { $_.FullName -match '\\releases\\' } |
+                        Where-Object { $_.FullName -match '[\\/]releases[\\/]' } |
                         ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json })
                 return [pscustomobject]@{ result = $result; releases = $releaseFacts }
             }
