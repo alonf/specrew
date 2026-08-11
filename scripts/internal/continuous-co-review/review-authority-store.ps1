@@ -133,7 +133,7 @@ function Write-ReviewAuthorityImmutableFact {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
         )][string]$ContractName,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
@@ -172,7 +172,7 @@ function Read-ReviewAuthorityFactFile {
         [ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
         )][string]$ContractName,
         [int]$MaxBytes = 1048576
     )
@@ -322,6 +322,35 @@ function Write-ReviewCampaignPauseDecisionFact {
     $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/runs/$runId/pause-decision.json"
     return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName PauseDecisionFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId
+}
+
+function Write-ReviewCampaignBudgetResetFact {
+    # Immutable like every other authority fact. Each reset gets its own path, so a campaign's resets
+    # are a visible history rather than a value that was quietly changed - "how many times did we lift
+    # this limit" stays answerable, which is the question that matters if a campaign runs away.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $resetId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'reset_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/budget-resets/$resetId.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName RoundBudgetResetFact -ExpectedCampaignId $campaignId
+}
+
+function Get-ReviewCampaignLatestBudgetReset {
+    # The newest reset, or $null. Ordered by observed_at like every other selector in this file, and for
+    # the same reason: one ordering, so two readers cannot disagree about which is newest.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/budget-resets'
+    $root = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($root)) { return $null }
+    $facts = [Collections.Generic.List[object]]::new()
+    foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.json')) {
+        try { $fact = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json } catch { continue }
+        if ($null -ne $fact) { $facts.Add($fact) | Out-Null }
+    }
+    if ($facts.Count -eq 0) { return $null }
+    return @($facts | Sort-Object -Property { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') })[-1]
 }
 
 function Get-ReviewCampaignPauseRecords {

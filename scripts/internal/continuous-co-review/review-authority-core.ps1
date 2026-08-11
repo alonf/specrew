@@ -291,6 +291,40 @@ function New-ReviewCampaignPendingPauseFact {
     }
 }
 
+function New-ReviewCampaignBudgetResetFact {
+    # THE CEILING'S WAY OUT, which the ceiling has been advertising and the engine refused.
+    #
+    # `Cost so far ... Round budget: 4 of 4 used` withdrew option 1 and told the consumer, in prose,
+    # `specrew review --remediate allowance-reset`. Under campaign authority that command threw - every
+    # remediation except override-block was rejected - so a consumer who reached the ceiling was told
+    # exactly one way forward, followed it verbatim, and was refused. Permanently wedged, with no route
+    # to another round short of editing configuration or abandoning the campaign. It surfaced only
+    # because the maintainer ruled to run INTO the failure state rather than around it (round 4).
+    #
+    # THE BUDGET IS TOPPED UP BY RECORDING A DECISION, NEVER BY MUTATING A COUNT. Rounds already run are
+    # immutable facts and stay on the record; this fact says where the human chose to start counting
+    # again, and carries WHO chose and WHY. That keeps the ledger's whole property intact - every round
+    # ever run remains visible - while letting the human lift a limit that is theirs to lift.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$AuthorizedBy,
+        [Parameter(Mandatory)][string]$Reason,
+        [Parameter(Mandatory)][string]$ObservedAt
+    )
+    $token = Get-ReviewCampaignStableToken -Value "$CampaignId/$ObservedAt/$Reason" -Length 20
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        fact_type      = 'round-budget-reset'
+        campaign_id    = $CampaignId
+        reset_id       = "reset-$token"
+        authority_kind = 'human'
+        authorized_by  = $AuthorizedBy
+        reason         = $Reason
+        observed_at    = $ObservedAt
+    }
+}
+
 function New-ReviewCampaignPauseDecisionFact {
     # The human's numbered reply. This fact is the ONLY thing that authorizes another round; an agent
     # cannot mint one from a prior grant, which is the self-minted-continuation failure ledger obs-6
@@ -535,7 +569,7 @@ function Test-ReviewAuthorityContractObject {
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
-            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact'
+            'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -564,6 +598,10 @@ function Test-ReviewAuthorityContractObject {
             'recommendation', 'observed_at'
         ) }
         'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at') }
+        # The round budget is topped up by RECORDING a decision, never by mutating a count. Rounds
+        # already run are immutable facts and stay on the record; this fact says where the human chose
+        # to start counting again, and carries who chose and why.
+        'RoundBudgetResetFact' { @('schema_version', 'fact_type', 'campaign_id', 'reset_id', 'authority_kind', 'authorized_by', 'reason', 'observed_at') }
         'RecoveryFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'target_lineage',
             'runtime_id', 'platform', 'containment_kind', 'containment_id', 'process_id', 'process_started_at',

@@ -512,6 +512,112 @@ claims to have fixed it**. Hitting it is an ACCEPTANCE MEASUREMENT, not an accid
 message and the reset ceremony exactly as the other proof lines. Finding it broken is worth more than
 avoiding it. The dogfood project has its own budget and is unaffected.
 
+## ROUND 4 — six findings, and the trajectory read that closes scope (2026-08-11/12)
+
+Run `run-20260811-175326143-cf6bc6a8`, reference `cmp-199-beta3-stabilization-i001-round-4`, minted by
+`--approve-round` on its first real use. 3 blocking, 3 major. **All five verified against the code before
+being acted on.**
+
+**THE TRAJECTORY, which is the finding above the findings (maintainer, 2026-08-12).** Round 3 found five,
+round 4 found six — flat, *until sorted by class*. **FOUR OF ROUND 4'S SIX ARE REPEAT CLASSES**: a
+component never exercised from the real path (the pause protocol again), the ordering of two checks
+(decision-before-landing again), consumer-facing wiring that does not reach its handler, and a surface
+that renders without what the reader needs. **All four are in code written in the previous 48 hours.**
+
+> **The yield is not flat because review is broken. It is flat because we keep adding surface, and new
+> surface carries the same seam defects.**
+
+**SCOPE IS THEREFORE CLOSED AGAIN AND STAYS CLOSED** after the reset and these three blockers. No new
+capability, no more improvements; nothing discovered in round 5 gets built unless it blocks the
+acceptance bar itself. Fix, verify, dogfood, ship — anything else routes to beta4 without discussion.
+
+**The three blockers, and what each really was:**
+
+1. **The production stop-here verifier had never executed.** It called `New-GitReviewTargetSnapshot`
+   with `-RepoRoot` (no such parameter) and no `-RunId` (mandatory), so PowerShell threw on the binding
+   before verification began and option 2 could not complete a sign-off at all. **The maintainer's
+   condition on the fix decided whether it was closed**: correcting the arguments is not the fix — the
+   defect is that the DEFAULT never runs, and the next defect inside that function would be exactly as
+   invisible. So it ships with `campaign-stop-here-real-ports.Tests.ps1`, which injects **nothing**.
+   Mutation-tested by restoring `-RepoRoot`: red on the verification step. The worktree the verifier
+   creates is now disposed in a `finally`.
+2. **The ceiling's advertised way out was rejected.** Recorded separately with its transcript.
+3. **A recorded ALLOW was projected back into a BLOCK.** The `review-current` branches omitted
+   `-RenderBoundaryPacket`, which defaults false, and the gate mapped that flag straight to `block` — so
+   the surface said *"Your review is signed off for the files as they are now"* and returned a refusal.
+   **The first fix was too broad and two existing tests caught it**: setting the flag also RELEASED the
+   boundary packet, and those tests correctly hold that no non-review-evidence path may do that whatever
+   the route. The real defect was underneath — **one value serving two readers**: `render_boundary_packet`
+   told the navigator to release the packet AND told the gate whether to allow. They are now separate
+   (`gate_allows` defaults to the old value, so every other call site is unchanged), which is the same
+   correction this iteration has made for machine tokens versus human sentences, and for candidate
+   versus terminal finding shapes.
+
+**The three majors ride along only if they land in files already being touched; otherwise beta4.**
+
+## THE RULED CONDITION ON BLOCKER 1, COMPLETED — three production defaults now execute where ZERO did
+
+The first version of the real-ports file ran ONE default. The maintainer ruled that insufficient: the
+chain stopped at verification because the fixture repo had no plan, so `AcceptPort` and `GateSyncPort`
+remained as unexecuted as `VerifyPort` had been before round 4 — **two thirds of the same blindness still
+shipping**, and that blindness is what produced round 4's worst finding.
+
+Giving the fixture a verification plan that PASSES found **three more defects in the same default**,
+each hidden behind the one before it. This is the strongest evidence in the iteration for why the
+condition, not the argument correction, was the fix:
+
+| # | Defect | Hidden by |
+| --- | --- | --- |
+| 1 | `-RepoRoot` / no `-RunId` — threw on binding | *(the original finding)* |
+| 2 | Verified against the RAW SNAPSHOT, which can never contain a plan: `.specrew/**` is excluded from the snapshot tree, and the captured plan is materialized only by `New-GitReviewTargetVerificationCopy`. **The default was wrong in two independent ways and one throw concealed the other.** | #1 |
+| 3 | `implementer_evidence_path` was passed a DIRECTORY; it is a file (`<run>/implementer-evidence.json`). The evidence writer failed to open it and the error surfaced only as a warning. | #2 |
+| 4 | The evidence path was fixed per RUN, so a SECOND stop-here attempt for the same round collided and verification failed for a reason having nothing to do with the project — and a refused landing now deliberately invites a second attempt, so this was reachable by design. | #3 |
+| 5 | `GateSyncPort` threw *"Invoke-ContinuousCoReviewSignoffGateIfEnabled is not recognized"*: `signoff-gate-wiring.ps1` is not in `_load.ps1`'s set. **Third load-order defect of the day in a production default**, all three found by RUNNING rather than by testing. | #4 |
+
+**THE FIX THAT MATTERED was not any of those five individually.** The stop-here verifier now REUSES
+`New-ReviewProductionVerificationPort` — the port the campaign run already relies on, which makes the
+verification copy, runs the plan inside it, disposes it, and confirms the original frozen target was not
+mutated. Stop-here now verifies exactly the way a review round does, and there is one implementation to
+keep correct instead of two that drift. Defects 2 and 3 existed only because it was reimplemented.
+
+**WHERE IT STANDS, stated precisely rather than as "closed".** `gating-precondition`, `verification` and
+`residual-acceptance` now run their real defaults and SUCCEED against a real repository and a real store
+— the acceptance is asserted by the human-disposition fact it leaves behind, not by a stand-in returning
+true. `gate-sync` EXECUTES and returns a governed refusal (`review-campaign-active-feature-unresolved`),
+which is the gate working correctly in a bare repo with no governed feature. Making it ALLOW needs a full
+governed feature and a passing co-review chain — the gate's own subject, and an end-to-end concern rather
+than a unit one. **So: three defaults execute where zero did, three succeed outright, and the fourth
+returns a real answer instead of a missing function.**
+
+*The general lesson, and it is sharper than "test the real thing": FIVE defects sat in a single
+never-executed code path, each invisible until the one in front of it was fixed. A path that has never
+run does not have "a" defect — it has an unknown number, and finding the first tells you nothing about
+how many remain.*
+
+## INJECTED-PORT SWEEP — which green tests are claims about FIXTURES, not about the product
+
+Ordered after round 4's first blocking finding: the production `VerifyPort` had **never executed**, and
+the whole stop-here suite was green throughout because every test injects. Listed, **not fixed** — the
+point is that the next reader knows which assertions are about a stand-in.
+
+| Call site | Injects | Therefore UNPROVEN in production |
+| --- | --- | --- |
+| `campaign-stop-here-landing.Tests.ps1:41` (the whole suite, via `New-LandingPorts`) | all four ports | every step's real behaviour. This suite proves ORDER, stop-on-failure, and message shape — nothing about what the steps do. That is legitimate and now stated. |
+| `campaign-pause-wiring.Tests.ps1:385, 498, 514` | all three, as THROWING ports | nothing — these assert a refusal happens BEFORE any step runs, so a throwing port is the assertion, not a substitute. |
+| `campaign-pause-wiring.Tests.ps1:455, 543` | all three, as recording ports | that a permitted landing actually verifies, accepts, and syncs. It proves the chain is REACHED and ordered; the real acceptance and gate sync are still unexercised. |
+| `campaign-stop-here-real-ports.Tests.ps1` (new) | **nothing** | — this is the one path where the defaults run. |
+
+**STILL UNPROVEN AFTER THIS ROUND, and named so it is not mistaken for covered**: the default
+`AcceptPort` (`Add-ReviewCampaignHumanDisposition` against a real store) and the default `GateSyncPort`
+(`Invoke-ContinuousCoReviewSignoffGateIfEnabled`) have never executed in a test. The new real-ports file
+reaches VERIFICATION and stops there, because the round it lands on has no verification plan. **A defect
+inside either of those two would be exactly as invisible as round 4's was**, and the honest statement is
+that this fix closed one of three, not three of three.
+
+*The general form, worth carrying: an injected port is a claim about the COMPOSITION and never about the
+thing injected. A suite made entirely of injected ports proves that the wiring calls something in the
+right order — which is worth proving, and is not the same as the product working.*
+
 ## T015 — THE DOGFOOD PROTOCOL (maintainer ruling, 2026-08-11)
 
 Recorded BEFORE the run, so the measurement cannot be reshaped afterwards to fit what happened.

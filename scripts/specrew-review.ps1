@@ -835,6 +835,39 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
             throw ("Review authority is unavailable ({0}); neither legacy nor campaign remediation may mutate review state." -f $remediationAuthority.reason)
         }
         if ([bool]$remediationAuthority.campaign_authority_enabled) {
+            # ALLOWANCE-RESET IS THE CEILING'S OWN ADVERTISED WAY OUT, and campaign authority used to
+            # reject it - so the exhausted-budget message named a command that could not run, and a
+            # consumer who reached the ceiling was permanently wedged. Round 4 found this by RUNNING
+            # into the ceiling rather than around it.
+            #
+            # It does NOT create signoff authority, which is why the old blanket refusal existed and why
+            # that reasoning was right about override-block. It creates ROUND allowance: permission to
+            # run more reviews, not permission to skip one. Those are different powers and only one of
+            # them is being granted here.
+            #
+            # It still demands explicit human evidence - a reason, in the human's own words - because
+            # lifting a spend limit is exactly the act that must never be implicit.
+            if ([string]$parsedArgs.Remediate -ceq 'allowance-reset') {
+                if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
+                    Write-Host 'Topping up the review rounds needs a reason recorded with it.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host 'Run:  specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
+                    exit 1
+                }
+                $resetIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                $resetActor = (& git -C $resolvedProjectPath config user.name 2>$null)
+                if ([string]::IsNullOrWhiteSpace([string]$resetActor)) { $resetActor = [string]$env:USERNAME }
+                if ([string]::IsNullOrWhiteSpace([string]$resetActor)) { $resetActor = 'human' }
+                $resetFact = New-ReviewCampaignBudgetResetFact -CampaignId $resetIdentity.campaign_id `
+                    -AuthorizedBy ([string]$resetActor) -Reason ([string]$parsedArgs.AckReason) `
+                    -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+                Write-ReviewCampaignBudgetResetFact -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') -Fact $resetFact | Out-Null
+                if ($Json) { $resetFact | ConvertTo-Json -Depth 10; exit 0 }
+                Write-Host 'Your review rounds are topped up. The rounds already run stay on the record; they no longer count against your allowance.' -ForegroundColor Green
+                Write-Host ''
+                Write-Host 'Run the next review with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                exit 0
+            }
             if ([string]$parsedArgs.Remediate -cne 'override-block') { throw "Campaign remediation '$($parsedArgs.Remediate)' does not create signoff authority; use a new explicitly authorized run." }
             if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.RunId) -or [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
                 throw 'Campaign override-block requires --run-id and --ack-reason; the disposition is never implicit.'

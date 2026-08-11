@@ -686,9 +686,20 @@ function Add-ReviewCampaignRoundPause {
     # the allowance - a consumer must not be charged a round for an engine defect.
     $priorResults = @()
     try { $priorResults = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId) } catch { $priorResults = @() }
+    # A recorded budget reset moves where counting STARTS. Rounds before it stay on the record - they
+    # are immutable facts and the campaign's history is the point - they simply no longer count against
+    # the allowance the human just topped up. Absent, this is $null and nothing is excluded.
+    $budgetResetAt = $null
+    try {
+        $budgetReset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
+        if ($null -ne $budgetReset) { $budgetResetAt = [string](Get-ReviewAuthorityProperty -Object $budgetReset -Name 'observed_at') }
+    }
+    catch { $budgetResetAt = $null }
     $invokedPrior = @($priorResults | Where-Object {
+            $priorStartedAt = [string](Get-ReviewAuthorityProperty -Object $_ -Name 'started_at')
             [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -cne $RunId -and
-            [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed')
+            [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') -and
+            ([string]::IsNullOrWhiteSpace($budgetResetAt) -or ([string]::IsNullOrWhiteSpace($priorStartedAt)) -or $priorStartedAt -gt $budgetResetAt)
         })
     $priorRunIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($prior in $invokedPrior) { $null = $priorRunIds.Add([string](Get-ReviewAuthorityProperty -Object $prior -Name 'run_id')) }
@@ -698,7 +709,18 @@ function Add-ReviewCampaignRoundPause {
             foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot)) {
                 $name = [IO.Path]::GetFileName($runDirectory)
                 if ($name -ceq $RunId) { continue }
-                if ([IO.File]::Exists([IO.Path]::Combine($runDirectory, 'pending-pause.json'))) { $null = $priorRunIds.Add($name) }
+                $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
+                if (-not [IO.File]::Exists($pausePath)) { continue }
+                # This second source exists because a round that paused counts even if its result is
+                # unreadable. It must honour the reset for the same reason the first one does - counting
+                # a pre-reset round here would silently undo the top-up the human just recorded.
+                if (-not [string]::IsNullOrWhiteSpace($budgetResetAt)) {
+                    $pausedAt = ''
+                    try { $pausedAt = [string](Get-ReviewAuthorityProperty -Object (Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json) -Name 'observed_at') }
+                    catch { $pausedAt = '' }
+                    if (-not [string]::IsNullOrWhiteSpace($pausedAt) -and $pausedAt -le $budgetResetAt) { continue }
+                }
+                $null = $priorRunIds.Add($name)
             }
         }
     }
@@ -778,8 +800,57 @@ function Invoke-ReviewCampaignStopHereLanding {
     if ($null -eq $VerifyPort) {
         $VerifyPort = {
             param($ctx)
-            $snapshot = New-GitReviewTargetSnapshot -RepoRoot $ctx.project_root
-            $verification = Invoke-ReviewCampaignFrozenVerification -Snapshot $snapshot
+            # THIS DEFAULT HAD NEVER EXECUTED. It called New-GitReviewTargetSnapshot with -RepoRoot -
+            # a parameter that does not exist - and supplied no -RunId, which is mandatory. PowerShell
+            # threw on the binding before verification began, so the PUBLIC option-2 path could not
+            # complete a sign-off at all. Every fixture in the stop-here suite injects -VerifyPort,
+            # including the ones added the same morning to guard this very landing, so nothing saw it.
+            #
+            # CORRECTING THE ARGUMENTS IS NOT THE FIX. The fix is that the defaults now RUN in at least
+            # one path (see campaign-stop-here-real-ports.Tests.ps1); otherwise the next defect inside
+            # this function is exactly as invisible and we meet it a round later.
+            # IT REUSES THE PRODUCTION VERIFICATION PORT rather than calling the verifier directly, and
+            # that is the actual fix rather than the argument correction.
+            #
+            # Correcting -OriginRepo/-RunId made the call bind, and the chain still stopped at
+            # verification reporting "no verification plan" for a project that HAS one. The reason is a
+            # second defect the first one was hiding: `.specrew/**` is excluded from the snapshot tree,
+            # so the plan is captured as bytes and materialized only by New-GitReviewTargetVerificationCopy.
+            # Verifying against the raw snapshot could therefore NEVER find a plan - the default was
+            # wrong in two independent ways, and one throw concealed the other.
+            #
+            # New-ReviewProductionVerificationPort already does the whole sequence the campaign run
+            # relies on: make the verification copy, run the plan inside it, dispose it, and confirm the
+            # ORIGINAL frozen target was not mutated. Reusing it means stop-here verifies exactly the way
+            # a review round does, and there is one implementation to keep correct instead of two that
+            # drift.
+            $snapshot = $null
+            $verification = $null
+            try {
+                $snapshot = New-GitReviewTargetSnapshot -OriginRepo $ctx.project_root -RunId $ctx.run_id
+                # implementer_evidence_path is a FILE, not a directory - the ingestor builds it as
+                # `<run>/implementer-evidence.json`. Passing a directory made the evidence writer try to
+                # OPEN it and fail with an access error, which surfaced as a warning while verification
+                # carried on: the exact shape of a defect that a fixture with an injected port could
+                # never have shown, found on the second run of the real one.
+                # UNIQUE PER ATTEMPT, not per run. A fixed path per run id collides the moment stop-here
+                # is attempted twice for the same round - which is exactly what a REFUSED landing now
+                # invites, since the answer survives and the human is told to try again. The second
+                # attempt then fails writing evidence, and verification reports a failure that has
+                # nothing to do with the project. Found by running this test twice.
+                $evidenceDirectory = Join-Path ([IO.Path]::GetTempPath()) ("specrew-stop-here-evidence/" + [string]$ctx.run_id + '/' + [guid]::NewGuid().ToString('N').Substring(0, 12))
+                [IO.Directory]::CreateDirectory($evidenceDirectory) | Out-Null
+                $evidenceFile = Join-Path $evidenceDirectory 'implementer-evidence.json'
+                $verificationPort = New-ReviewProductionVerificationPort
+                $verification = & $verificationPort.execute $snapshot ([pscustomobject]@{ implementer_evidence_path = $evidenceFile })
+            }
+            finally {
+                # The snapshot is a linked git worktree. Leaving it behind on every stop-here accumulates
+                # worktrees the consumer never asked for and git later complains about.
+                if ($null -ne $snapshot) {
+                    try { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null } catch { $null = $_ }
+                }
+            }
             # The diagnosis is carried THROUGH the port, not dropped here. A port that narrows its
             # result to {ok, reason} is where a derived explanation quietly dies (FR-013).
             return [pscustomobject]@{
@@ -801,6 +872,15 @@ function Invoke-ReviewCampaignStopHereLanding {
     if ($null -eq $GateSyncPort) {
         $GateSyncPort = {
             param($ctx)
+            # signoff-gate-wiring.ps1 is NOT in _load.ps1's set, so this default threw
+            # "Invoke-ContinuousCoReviewSignoffGateIfEnabled is not recognized" the first time it was
+            # ever executed. Third load-order defect of the day in a production default, and the third
+            # found by running rather than by testing - the suites dot-source this file in BeforeAll,
+            # which is a load order production does not have.
+            if (-not (Get-Command -Name 'Invoke-ContinuousCoReviewSignoffGateIfEnabled' -ErrorAction SilentlyContinue)) {
+                $gateWiring = Join-Path $PSScriptRoot 'signoff-gate-wiring.ps1'
+                if (Test-Path -LiteralPath $gateWiring -PathType Leaf) { try { . $gateWiring } catch { $null = $_ } }
+            }
             Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $ctx.project_root -BoundaryType 'review-signoff'
             return [pscustomobject]@{ ok = $true; reason = 'signoff-gate-allow' }
         }

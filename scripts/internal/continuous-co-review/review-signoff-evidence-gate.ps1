@@ -321,6 +321,15 @@ function New-ReviewCampaignVerdictPacketDecision {
         [string]$ReviewedCommit,
         [string]$FinalizationCommit,
         [bool]$RenderBoundaryPacket = $false,
+        # ONE VALUE WAS SERVING TWO READERS, which is this iteration's most repeated defect shape.
+        # `render_boundary_packet` told the NAVIGATOR to release the boundary packet, and the signoff
+        # gate ALSO derived its allow/block from it. So a route could not say "the review still covers
+        # you" to the gate without also releasing the packet - and round 4 found the consequence from
+        # the other side: a recorded ALLOW returned a BLOCK because the flag defaulted to false.
+        #
+        # $null means "same as RenderBoundaryPacket", so every existing call site keeps its exact
+        # behaviour and only the branches that need to differ say so.
+        [AllowNull()][object]$GateAllows = $null,
         [bool]$AskNarrowQuestion = $false,
         [string]$ImplementerAction = 'wait'
     )
@@ -329,6 +338,7 @@ function New-ReviewCampaignVerdictPacketDecision {
         campaign_id = $CampaignId; run_id = $RunId; target_digest = $TargetDigest
         reviewed_digest = $ReviewedDigest; reviewed_commit = $ReviewedCommit; finalization_commit = $FinalizationCommit
         render_boundary_packet = $RenderBoundaryPacket; render_verdict_marker = $RenderBoundaryPacket
+        gate_allows = $(if ($null -eq $GateAllows) { $RenderBoundaryPacket } else { [bool]$GateAllows })
         ask_narrow_question = $AskNarrowQuestion; implementer_action = $ImplementerAction
     }
 }
@@ -741,13 +751,22 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         if ($null -ne $SignoffGateDecision -and
             [string](Get-ReviewAuthorityProperty -Object $SignoffGateDecision -Name 'decision') -ceq 'allow' -and
             [string](Get-ReviewAuthorityProperty -Object $SignoffGateDecision -Name 'reviewed_digest') -ceq $CurrentDigest) {
-            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'signoff-gate-allow-recorded' -Message 'Your review is signed off for the files as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'proceed'
+            # -RenderBoundaryPacket $true, because line ~1007 maps this flag DIRECTLY to allow/block and
+            # it defaults to $false. Without it this branch said "Your review is signed off for the files
+            # as they are now" and returned a BLOCK - the message and the decision contradicting each
+            # other, with the message being the true one. A recorded allow for THIS exact tree is
+            # authority (FR-007); projecting it back into a block wedges sign-off against the store's own
+            # record.
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'signoff-gate-allow-recorded' -Message 'Your review is signed off for the files as they are now.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -GateAllows $true -ImplementerAction 'proceed'
         }
         # FR-009: only reviewable content stales a review. Machinery and the lifecycle records tree
         # are not reviewable content, so recording what a review found cannot invalidate it.
         if ($null -ne $ChangedPathsSinceResult -and
             (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult -RepoRoot $RepoRoot -FeatureId $FeatureId)) {
-            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'proceed'
+            # Same projection defect, same fix. A review that still covers the project must not return a
+            # block; the records-only exemption exists precisely so recording what a review found cannot
+            # take the review away.
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -GateAllows $true -ImplementerAction 'proceed'
         }
         # T010 / FR-015, FR-016. MEASURED four times in one reviewer session: every word of the old
         # sentence was true and the reader still could not act, because the two facts that resolve it
@@ -1004,8 +1023,8 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         catch {
             return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'campaign-review-state-invalid' -Message ('Campaign review authority could not be read safely: ' + $_.Exception.Message)
         }
-        $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.render_boundary_packet) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
-        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'ask_narrow_question', 'implementer_action', 'reviewed_digest', 'reviewed_commit', 'finalization_commit')) {
+        $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.gate_allows) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
+        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'gate_allows', 'ask_narrow_question', 'implementer_action', 'reviewed_digest', 'reviewed_commit', 'finalization_commit')) {
             $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property
         }
         return $decision
