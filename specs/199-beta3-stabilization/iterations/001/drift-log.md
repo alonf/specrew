@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 35 (DRIFT-199-I001-001 through -035)
+**Total drift events**: 36 (DRIFT-199-I001-001 through -036)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -346,6 +346,39 @@ nobody asked was where and when it actually executes.*
 ENTRY POINT (which door the test comes through). This is about the ENVIRONMENT (which machines and which
 triggers the test is ever run under). A fixture can satisfy the fifth perfectly and still only ever prove
 it on the author's laptop.*
+
+## DRIFT-199-I001-036 — the records-only exemption is missing from the IN-FLIGHT path (observed live; NOT fixed)
+
+**Found by being bitten by it, minutes after the ruling that caused it.**
+
+- **What happened**: the scope-exception ruling said to correct the ledger BEFORE the work. I did — a
+  records-only commit touching `drift-log.md`, `state.md`, `tasks-progress.yml`. The very next stop said:
+  *"The review that is running started from an earlier version of your files, so it cannot sign off what
+  you have now."* **Doing the required governance act invalidated the round it was recording.**
+- **Mechanism, measured** — `review-signoff-evidence-gate.ps1:660-664`:
+
+  ```powershell
+  if ([string]$ActiveRun.target_digest -ceq $CurrentDigest) { ... 'review-running' ... }
+  return ... 'review-stale' ... 'in-flight-review-target-moved' ...
+  ```
+
+  An exact digest comparison with **no records-only exemption**. The TERMINAL-result path calls
+  `Test-ReviewCampaignDeltaIsRecordsOnly`; the IN-FLIGHT path never does. So the fix that closed
+  DRIFT-199-I001-013 was applied to one of the two paths, and the circularity survives on the other:
+  writing down what a review is about invalidates the review that is running.
+- **A CORRECTION TO MY OWN OBSERVATION, made an hour earlier.** I said the stop surface *"has no notion
+  of a round being in flight"* and proposed routing that to beta4. **That was wrong**, and the code shows
+  two in-flight branches, one of which is exactly right: *"A review of your files as they are now is
+  still running; there is nothing for you to decide yet."* That is the message I would have seen had I
+  committed nothing. The observation is withdrawn rather than deferred — a wrong item on the beta4 list
+  costs somebody a day of chasing something that already works.
+- **The cost here is real but bounded**: the round's findings remain useful evidence, which is what the
+  ruled order needs them for. Only its ability to authorize the current tree is lost, and no sign-off
+  was going to happen on it anyway.
+- **NOT FIXED. Scope is open for T014 and T015 only.** Routed as an observation for the maintainer's
+  ruling rather than to the beta4 list, because it is the same requirement (FR-009) as a closed defect
+  rather than new ground — and because it makes the governance instruction *"correct the ledger first"*
+  conflict with *"run a round"*, which is a decision about the process, not just the code.
 
 ## SCOPE EXCEPTION — TG-004 opened for exactly two items (maintainer ruling, 2026-08-11)
 
