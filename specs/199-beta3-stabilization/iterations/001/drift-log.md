@@ -199,6 +199,46 @@ evidence stays in its own entry.
 | **Pending-verdict stop artifact not emitted at the plan sync.** | Diagnosis only was ordered; the fix stays deferred unless it lands in files this feature already touches. | -002 |
 | **Trust-hardening `cycle_id`** — the validator warns `state-advance-without-verdict` while HOLDING the verdict, because persisted entries carry no `cycle_id` to match. | A WARN on a passing validator that blocks nothing; the fix is in the trust-hardening cycle model. | -022 |
 
+| **GATE-PREFLIGHT SCRIPT** — deterministic boundary checks run before any packet is rendered. | The preflight exists as PROSE, not as a guard, so it covers what someone remembered to include. Three defects reached a boundary packet seconds before a spend. | see below |
+| **CI RATCHET** — CI globs the test directories with the 16 inherited failures explicitly quarantined. | Same defect one altitude up: nothing mechanically holds the line, so a new failure is indistinguishable from an inherited one. **Status: UNDER CONSIDERATION as standalone work outside this feature — not ruled, do not build.** | the SEVENTEEN triage |
+
+### The gate-preflight finding — why a reviewer could never have caught these (2026-08-11)
+
+Three corrections were caught by the maintainer AT THE BOUNDARY, seconds before a provider spend: the
+branch had **never been pushed** (98 commits on one machine), the packet's commit count was measured from
+an arbitrary mid-session commit, and the status enum carried two values for one state.
+
+**NONE of them was catchable by the campaign reviewer, for structural reasons worth recording rather
+than rediscovering:**
+
+- **It works in a DETACHED COPY.** Relational facts — *is this pushed*, *how far ahead of main* — do not
+  exist there to be asked.
+- **THE PACKET IS NOT A FILE.** The reviewer's input is a changed-file set, so the one artifact that
+  reaches the human directly is the one artifact no reviewer ever sees. **Every claim in a boundary
+  packet is unverified by construction.**
+- **Machinery paths are STRIPPED** from its worktree, so `tasks-progress.yml` is not even present.
+- **It is asked whether the CODE has defects**, not whether the CLAIMS are true.
+
+**AND THE PREFLIGHT ALREADY EXISTS AS PROSE.** The discipline says to run validator / parity /
+dirty-state / artifact / stale-phrase / packet / evidence checks before any boundary packet. **Searched:
+nothing in `scripts/` checks push state or ahead-count** — the only `ls-remote` is
+`specrew-update.ps1:423`, and it queries `--tags` for version resolution. The preflight DID catch the
+missing `review.md`; it missed these three because those checks were never written.
+
+**That is this session's own rules at process level, twice over**: *comments record intent, they do not
+enforce it* — the preflight is a comment; and *a guard that enumerates covers what someone remembered*,
+not what the invariant requires.
+
+**THE CHECKS — all deterministic, zero-judgment, sub-second, no provider spend:**
+
+> `git ls-remote --heads origin <branch>`   -> pushed at all?
+> `git rev-list --count origin/main..HEAD`  -> does the packet's count match?
+> `git status --porcelain`                  -> dirty paths, classified by kind
+> `status:` values in `tasks-progress.yml`  -> enum consistent, count matches `state.md`?
+> the boundary's owed artifact exists       -> already covered today
+
+**RECORDED, NOT BUILT.** Beta3 scope is closed and this is not on the acceptance bar.
+
 **Explicitly NOT on this list, recorded so nobody re-adds it**: the shell-wrapper installer's blanket
 reparse refusal. It was measured and found not to be an instance of the class on its own platform —
 macOS/Linux only, enforced in code, and CloudFilter is a Windows mechanism. A deferral would have left
