@@ -73,6 +73,14 @@ $script:SpecrewBannedConsumerNouns = @(
 
 function Get-SpecrewBannedConsumerNoun {
     # Case-insensitive on purpose: a capitalised "Digest" is the same word to a reader.
+    #
+    # INFLECTIONS MATTER, and this was found by running the detector over its own release notes. The
+    # first version matched `\bmint\b`, which reports CLEAN on "a fresh authorization was minted" - the
+    # exact sentence the ban exists to catch. A detector that passes the inflected form of a banned word
+    # is worse than none, because it certifies the text as checked.
+    #
+    # Suffixes are bounded deliberately (s / ed / ing / e / es). A looser rule would start matching
+    # unrelated words and get the detector switched off, which guards nothing.
     [OutputType([string[]])]
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
@@ -80,7 +88,8 @@ function Get-SpecrewBannedConsumerNoun {
     if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
     $found = [Collections.Generic.List[string]]::new()
     foreach ($noun in $script:SpecrewBannedConsumerNouns) {
-        if ([regex]::IsMatch($Text, ('\b' + [regex]::Escape($noun) + '\b'), 'IgnoreCase')) { $found.Add($noun) | Out-Null }
+        $pattern = '\b' + [regex]::Escape($noun) + '(?:e?s|ed|ing)?\b'
+        if ([regex]::IsMatch($Text, $pattern, 'IgnoreCase')) { $found.Add($noun) | Out-Null }
     }
     return @($found)
 }

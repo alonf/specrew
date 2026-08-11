@@ -78,6 +78,30 @@ Then **STOP** — end your turn and wait for the human to type their choice (a n
 - Discussion is not approval unless the human clearly authorizes the boundary after the discussion.
 - One approval advances at most one lifecycle boundary.
 
+### ONE-MESSAGE DECISION STOPS (FR-017)
+
+**The packet and the ask are ONE message.** Never end a turn with the decision and then render the
+packet in a follow-up. A human who is asked to decide before they can read what they are deciding is
+being asked to guess, and the second message arrives after they have already started answering.
+
+This is a MEASURED failure, not a theoretical one: DRIFT-199-I001-001 records a co-design presentation
+that ended the turn without its context packet, the Stop hook bouncing, and the packet arriving in a
+follow-up message. The same shape applies to any decision-yield stop, boundary or not.
+
+**The check before you end a turn that asks for anything**: is everything the human needs in order to
+answer already in THIS message? If the answer is no, you are not ready to stop.
+
+### NEVER SYNC IN THE VERDICT TURN (FR-017 defense)
+
+**Do not run a boundary sync, a state write, or any lifecycle-advancing script in the same turn that
+carries the human's verdict.** The verdict turn's job is to record what the human said; a sync in that
+turn rebinds the crossing the verdict is being recorded against, so the authorization and the thing it
+authorizes can no longer be told apart in the ledger.
+
+If the stop reveals that a sync is missing — for example the pending-verdict artifact does not exist —
+say so plainly, run the sync in its OWN turn, and render the stop again from the artifact. That
+sequence is slower by one turn and keeps the record honest, which is the trade this rule exists to make.
+
 ## When to Use
 
 - At **every** human-judgment boundary stop on the Claude host — invoke this skill to perform the stop

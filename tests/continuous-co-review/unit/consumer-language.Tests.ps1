@@ -125,5 +125,22 @@ Describe 'Consumer language layer (T010)' {
         It 'is case-insensitive, because a capitalised Digest is the same word' {
             @(Get-SpecrewBannedConsumerNoun -Text 'The Digest moved.') | Should -Contain 'digest'
         }
+
+        It 'catches INFLECTIONS - found by running this detector over its own release notes' {
+            # The first version matched `\bmint\b` and reported CLEAN on "a fresh authorization was
+            # minted", which is the exact sentence the ban exists to catch. A detector that passes the
+            # inflected form is worse than none: it certifies the text as checked.
+            @(Get-SpecrewBannedConsumerNoun -Text 'A fresh authorization was minted.') | Should -Contain 'mint'
+            @(Get-SpecrewBannedConsumerNoun -Text 'Specrew is minting a grant.') | Should -Contain 'mint'
+            @(Get-SpecrewBannedConsumerNoun -Text 'Two markers were written.') | Should -Contain 'marker'
+            @(Get-SpecrewBannedConsumerNoun -Text 'The digests differ.') | Should -Contain 'digest'
+        }
+
+        It 'the suffix rule stays BOUNDED, so the detector does not get switched off' {
+            # A looser rule would start matching unrelated words, and a noisy detector gets disabled -
+            # which guards nothing. These must NOT fire.
+            @(Get-SpecrewBannedConsumerNoun -Text 'The mintage of coins is unrelated.') | Should -BeNullOrEmpty
+            @(Get-SpecrewBannedConsumerNoun -Text 'Cross the boundary when ready.') | Should -BeNullOrEmpty
+        }
     }
 }
