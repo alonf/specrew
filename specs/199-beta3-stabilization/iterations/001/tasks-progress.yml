@@ -93,3 +93,27 @@ tasks:
     started_at: "2026-08-12T00:30:00.0000000Z"
     completed_at: ""
     blocked_reason: ""
+  T016:
+    title: "An agent-written authorization must not be indistinguishable from a captured one (refuse, or record as bypass with reason)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T017:
+    title: "Verdict capture failed on the host's own picker path three times; only a typed reply captured"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T018:
+    title: "An empty iteration_number passed two boundaries; earlier gates must refuse rather than defer"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T019:
+    title: "Plan artifacts untracked - determine whether a second defect or a consequence of the wedge"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""

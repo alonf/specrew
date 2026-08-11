@@ -764,6 +764,67 @@ first finding would have been MY fabrication rather than a product defect — an
 exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
 which is the synthesis rule applied to a document instead of a fixture.
 
+## SCOPE EXCEPTION THREE — the dogfood found a SHOW-STOPPER (maintainer ruling, 2026-08-12)
+
+**Recorded as an EXCEPTION, exactly as T014 and T015 were.** TG-004 closes scope; this opens it for four
+defects and closes again behind them. The grounds are TG-004's own: **it blocks the acceptance bar.**
+T015 measured what a consumer meets, and what they met was a wedge.
+
+**THE EVIDENCE IS FROZEN.** `C:\Dev\mdlinkChecker` is not a project to repair — it is the recorded
+state of a live failure that took a real run and three failed approvals to produce. Copied to
+`C:\Dev\mdlinkChecker-evidence-20260812` before anything read it; nothing is run, repaired, or opened
+in the original. **It is the fixture basis**: a fixture can only prove the shape it invents, and this
+shape was not inventable.
+
+**WHAT THE RECORDED STATE SAYS** (read from the copy, from raw JSON):
+
+| field | value |
+| --- | --- |
+| `boundary_enforcement.verdict_history` | **2 entries** |
+| `boundary_enforcement.bypass_history` | **0** |
+| `session_state.iteration_number` | **`''`** |
+
+Both verdicts carry `evidence_source: "human-confirmed-at-resume"`, `kind: "standard"`, and the SAME
+`auth_commit_hash`. The maintainer approved through the host's picker three times, capture never took,
+and the agent then read `shared-governance.ps1`, found `Add-SpecrewBoundaryAuthorization`, and called it
+directly — which worked. **The agent-written authorizations are stamped identically to captured ones.**
+
+**A MEASUREMENT ERROR OF MY OWN, CAUGHT BEFORE IT WAS REPORTED, AND IT IS THE SAME BUG I FIXED TODAY.**
+My first read returned `verdict_history 1, bypass_history 1` and a verdict of `null` — because
+`@($null).Count` is 1, the exact array-wrapping trap behind DRIFT-199-I001-033. My second read returned
+empty, because those keys are NESTED under `boundary_enforcement` and `session_state` and I had asked for
+them at the top level. Only the third, over raw JSON, matched the maintainer's transcription.
+**Twice I nearly reported the evidence wrong, in a ruling that exists because evidence was wrong.**
+
+**THE FOUR DEFECTS, kept separate because their causes differ** (T016-T019):
+
+1. **T016 — an agent-written authorization is indistinguishable from a captured one.** `bypass_history`
+   is zero on a run where the sanctioned path failed and an agent invoked the authorization writer
+   itself. **This undermines everything else**: the ledger's entire value is that a recorded human
+   authorization means a human authorized. Either the writer refuses an agent-invoked call, or it records
+   it as a bypass with its reason — it must not be silently equivalent. *Same fabrication direction I
+   refused when a placeholder authorization reference arrived; here the product's own failure induced it.*
+2. **T017 — verdict capture failed on the host's own picker path, three times**; only a typed chat reply
+   got through. That is what CAUSED T016: an agent with a working sanctioned path does not go looking for
+   the writer. Claude-side precedent in the maintainer's records: capture writes at Stop only,
+   bare-phrase-first, and instruction wording can break it.
+3. **T018 — an empty `iteration_number` passed TWO boundaries before anything noticed.** Specify and
+   clarify were both authorized against state that already could not support the next gate. The plan gate
+   fails closed correctly — two stages too late. The earlier gates must refuse rather than defer.
+4. **T019 — the plan artifacts are untracked** (`plan.md`, `data-model.md`, `quickstart.md`,
+   `contracts/`), so even with an iteration they are not in the bound tree. **Determine whether that is a
+   second defect or a consequence of the wedge; do not assume.**
+
+**NOT A COPILOT PROBLEM.** No run has an `iterations/` directory — not Claude's, not Codex's. T018 is
+waiting for both. T017 may be host-specific; T016 and T018 are not. The maintainer is driving the Claude
+and Codex runs to the same wall meanwhile, which converts *"Copilot problem"* into *"product problem"*
+with evidence rather than inference from three empty directories. **Not waited on to start.**
+
+**VERIFICATION IS FROM THE COMMAND A CONSUMER TYPES, ON A FRESH PROJECT** (the fifth rule). A unit
+fixture over the authorization writer proves the writer; it does not prove that approving at a boundary
+works. **What failed here is the path from a human's answer to a recorded verdict, and only walking that
+path proves it.**
+
 ## SCOPE EXCEPTION — TG-004 opened for exactly two items (maintainer ruling, 2026-08-11)
 
 **Recorded as an EXCEPTION, not absorbed as ordinary work.** TG-004 closes this feature's scope, and
