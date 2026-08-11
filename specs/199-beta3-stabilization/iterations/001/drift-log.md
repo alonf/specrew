@@ -389,6 +389,43 @@ it on the author's laptop.*
   failing closed exactly as the terminal path does. A predicate that can only ever QUIET a surface must
   never treat absence of evidence as evidence.
 
+### THE ROUND CEILING FIRED — acceptance measurement, and the advertised remedy is BROKEN (2026-08-11)
+
+Round 4 (`run-20260811-175326143-cf6bc6a8`) consumed the last round. **The ceiling has never run live on a
+release claiming to have fixed it**, so the maintainer ruled hitting it an acceptance measurement rather
+than an accident, to be transcribed exactly. Transcribed:
+
+> `Cost so far: 4 rounds, 54 minutes. Round budget: 4 of 4 used.`
+>
+> `Recommendation: Fix the blocking findings before you sign off - they describe behaviour that is wrong or unsafe.`
+>
+> `The round budget for this review is spent (4 of 4 rounds used), so another round is not on offer. That`
+> `limit exists because repeated rounds keep costing you time and money long after they stop finding much.`
+> `If this review genuinely needs more rounds, you can top the allowance up yourself with: specrew review`
+> `--remediate allowance-reset`
+>
+> `What would you like to do?`
+> `2. Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes`
+> `3. Abandon this review campaign (nothing further runs)`
+
+**WHAT WORKS.** Option 1 is WITHDRAWN, not merely discouraged — the numbering jumps 2, 3, so the choice
+that would spend is not on the menu at all. The refusal explains WHY the limit exists in terms of the
+consumer's time and money rather than policy. And the reset is stated in PROSE rather than offered as a
+numbered option, which was the maintainer's ruling of 2026-08-10: *a sanctioned bypass rendered as a
+numbered choice becomes one keystroke inside the very flow the budget exists to interrupt.*
+
+**WHAT IS BROKEN, and the measurement is the whole reason we know.** The named remedy does not run.
+`scripts/specrew-review.ps1:838` — under campaign authority every remediation except `override-block`
+throws: *"Campaign remediation 'allowance-reset' does not create signoff authority; use a new explicitly
+authorized run."* **The halt message names a command that cannot work.** A consumer at the ceiling is
+told exactly one way forward, follows it verbatim, and is refused — with no other route to another round
+short of editing configuration or abandoning the campaign.
+
+**This is the ceiling path's first live exercise, and it failed at the only step that matters.** Round 4's
+finding 2 reports it independently. Recorded here as the measurement rather than only as a finding,
+because the value was in RUNNING it: no fixture had ever driven a campaign to exhaustion, and the prose
+sentence had been read many times without anyone executing what it names.
+
 ### FR-002 ACCEPTANCE EVIDENCE — the first CORRECT decision surface this product has produced (2026-08-11)
 
 **Transcribed verbatim, not paraphrased**, and it matters that it is this one: every earlier
