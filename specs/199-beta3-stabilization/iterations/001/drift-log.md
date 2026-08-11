@@ -52,6 +52,42 @@ fixture, not by this stop.
 **Also visible**: the route sentence is T010's gloss on the POSITIVE path too ("your review covers these
 files" rather than `review-current`), and the block still names the approval it does not govern.
 
+### Measured proof line — the OTHER direction of FR-009, which fixture alone had pinned (2026-08-11)
+
+The earlier proof line recorded the positive case: a records-only commit kept the review `review-current`,
+closing DRIFT-199-I001-013's circularity. It ended by naming exactly what it did **not** show — *"an input
+artifact must still stale, and that direction is pinned by fixture, not by this stop."*
+
+That direction has now fired live, unprompted, on the stop immediately after five commits touching
+`scripts/`, `tests/` and `Specrew.psd1`:
+
+> `Specrew review — your last review no longer covers these files.`
+> `The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot`
+> `authorize the current tree. That result belongs to this review (cmp-199-beta3-stabilization-i001) -`
+> `whatever its run name suggests - so it is about your own earlier snapshot, not another project.`
+> `What to do: run a fresh review of your files as they are now: specrew review --live`
+> `This does not decide the approval you still owe (before-implement -> review-signoff); that decision`
+> `is unaffected and still waits for you.`
+
+**What it shows, narrowly**: the records-only predicate discriminates. The same classifier that held the
+review current across a drift-log commit stales it across a product-code commit. Both directions are now
+observed on live stops rather than one being observed and the other asserted.
+
+**Also visible, and each is a separate piece of this feature rendering live**: the identity sentence
+("that result belongs to this review ... whatever its run name suggests") is the single-authority stop
+surface from T003, answering the confusion where a run id read like a different project. The advisory
+clause for a non-reviewer reader, and the closing line separating the stale review from the approval it
+does not govern, are both T010's emission-point work. And the message names the exact command to run
+rather than a route token.
+
+**What it does NOT show**: that `workshop/` now stales correctly (-030). That commit changed no workshop
+file, so this stop is silent on it and the fixture remains the only evidence.
+
+**Adjudicated, not answered.** The block is correct and costs nothing: it asks for a review, and a review
+is a provider spend that requires a per-round human authorization reference. `beta3-i001-signoff-round-1`
+was genuinely spent - a reviewer was invoked, which is precisely the case that does NOT restore a slot.
+**A stop-block is never answered with a spend.**
+
 ## THE AUTHORIZED SIGNOFF ROUND — and the LIVE ACCEPTANCE MEASUREMENT for FR-001..FR-004 (2026-08-11)
 
 Run `run-20260811-093414640-d58e787b`, host codex, authorization reference
