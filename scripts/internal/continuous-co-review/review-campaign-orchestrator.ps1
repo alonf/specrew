@@ -711,7 +711,13 @@ function Add-ReviewCampaignRoundPause {
         if ($priorMs -gt 0) { $elapsedMs += $priorMs }
     }
 
-    $decision = Resolve-ReviewCampaignPauseDecision -Findings @(Get-ReviewAuthorityProperty -Object $Result -Name 'findings') `
+    # Assigned to a variable BEFORE wrapping. Get-ReviewAuthorityProperty returns collections with
+    # -NoEnumerate, so `@(Get-ReviewAuthorityProperty ...)` inline nests the whole findings array inside
+    # a single element and the decision counted a wrapper instead of findings. The callee now flattens
+    # defensively as well; this line is corrected too, because relying on a downstream repair to make a
+    # wrong call right is how the next caller gets it wrong again.
+    $resultFindings = Get-ReviewAuthorityProperty -Object $Result -Name 'findings'
+    $decision = Resolve-ReviewCampaignPauseDecision -Findings @($resultFindings) `
         -RoundsUsed $roundsUsed -BudgetTotal (Get-ReviewCampaignRoundBudgetTotal -RepoRoot $RepoRoot) `
         -ElapsedMinutes ([Math]::Round($elapsedMs / 60000, 0))
 
@@ -1180,6 +1186,59 @@ function Invoke-ReviewCampaignCommand {
     if (Test-ReviewTargetPathUnderRoot -Path $StagingRoot -Root $root) {
         throw "review-campaign-staging-root-inside-origin:$StagingRoot"
     }
+    # FR-003, WIRED TO THE COMMAND. This check existed as Test-ReviewCampaignContinuationAuthorized and
+    # nothing in production called it, so a round that ended in a pause did not stop the next one from
+    # spending - the exact self-minted continuation ledger obs-6 recorded, where one grant was stretched
+    # across seven rounds. It sits BEFORE grant persistence, harness selection, reservation and snapshot,
+    # so a refusal costs nothing.
+    #
+    # The digest is deliberately NOT consulted here. A moved tree SUPERSEDES a pause for the purpose of
+    # quieting the stop surface (Test-ReviewCampaignPendingPauseQuiet), but it does not authorize a
+    # spend: fixing the code is not answering the question. Only the human's numbered reply is.
+    $latestPause = $null
+    try { $latestPause = Get-ReviewCampaignLatestPause -StoreRoot $StoreRoot -CampaignId $identity.campaign_id }
+    catch { $latestPause = $null }
+    if ($null -ne $latestPause) {
+        $pauseDecisions = @()
+        if ($null -ne $latestPause.decision) { $pauseDecisions = @($latestPause.decision) }
+        $roundsSinceDecision = 0
+        if ($null -ne $latestPause.decision) {
+            # An answer authorizes exactly ONE round. Rounds are counted from the store rather than
+            # assumed: a run that failed before it could record its own pause still spent the answer.
+            $decidedAt = [string](Get-ReviewAuthorityProperty -Object $latestPause.decision -Name 'observed_at')
+            if (-not [string]::IsNullOrWhiteSpace($decidedAt)) {
+                try {
+                    $roundsSinceDecision = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
+                            Where-Object {
+                                $startedAt = [string](Get-ReviewAuthorityProperty -Object $_ -Name 'started_at')
+                                -not [string]::IsNullOrWhiteSpace($startedAt) -and $startedAt -gt $decidedAt
+                            }).Count
+                }
+                catch { $roundsSinceDecision = 0 }
+            }
+        }
+        $continuation = Test-ReviewCampaignContinuationAuthorized -PendingPause $latestPause.pause `
+            -PauseDecisions $pauseDecisions -RoundsSinceDecision $roundsSinceDecision
+        if (-not $continuation.authorized) {
+            return [pscustomobject][ordered]@{
+                status = 'paused'; reason = ('review-round-paused:' + [string]$continuation.reason)
+                invoked = $false; result = $null
+                campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
+                store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+                design_context = [string]$designContext.classification
+                resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+                # The surface the human must answer, carried OUT so the CLI can re-render it verbatim
+                # rather than reconstructing a decision from a status string.
+                pause = $latestPause.pause
+                pause_decision = $latestPause.decision
+                pause_run_id = [string]$latestPause.run_id
+                pause_surface = @(Format-ReviewCampaignOutstandingPause -ProjectName $(if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId } else { Split-Path -Leaf $root }) -Fact $latestPause.pause)
+                continuation_authorized = $false
+                continuation_reason = [string]$continuation.reason
+                diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+            }
+        }
+    }
     if (-not [string]::IsNullOrWhiteSpace($GrantAuthorizationRef)) {
         # One human authorization reference creates at most one campaign slot. A new run that reuses
         # the same reference sees the already-spent grant; it does not mint another allowance slot.
@@ -1211,6 +1270,13 @@ function Invoke-ReviewCampaignCommand {
         -RuntimePort $Ports.runtime -VerificationPort $Ports.verification -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `
         -ReviewScope $ReviewScope -DesignContextEmpty:([bool]$designContext.design_context_empty) `
         -ProgressSink $progressCollector.sink -AuthorityConfigPath $AuthorityConfigPath
+    # THIS PROJECTION IS WHERE TWO CAPABILITIES DIED, and both were fully built on either side of it.
+    # Invoke-ReviewCampaignRun returns `pause` on a terminal round and slot_restored/_note on a
+    # pre-invocation failure; specrew-review.ps1 already contains the code to render the restored-slot
+    # note. The explicit field list in between silently dropped all three, so the decision surface never
+    # reached a consumer and F4's disclosure was fixed everywhere except the one place it travels.
+    # Same shape as the demoted-mark drop in the result ingestor: a closed field list that nobody
+    # updated when a field was added upstream.
     return [pscustomobject][ordered]@{
         status = $run.status; reason = $run.reason; invoked = $run.invoked; result = $run.result
         result_path = $(if ($run.PSObject.Properties['result_path']) { $run.result_path } else { $null })
@@ -1219,6 +1285,10 @@ function Invoke-ReviewCampaignCommand {
         store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
         design_context = [string]$designContext.classification; resolved_design_context = @($designContext.resolved_refs)
         unresolved_design_context = @()
+        pause = (Get-ReviewAuthorityProperty -Object $run -Name 'pause')
+        slot_restored = [bool](Get-ReviewAuthorityProperty -Object $run -Name 'slot_restored')
+        slot_restored_note = [string](Get-ReviewAuthorityProperty -Object $run -Name 'slot_restored_note')
+        continuation_authorized = $true
         diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
     }
 }

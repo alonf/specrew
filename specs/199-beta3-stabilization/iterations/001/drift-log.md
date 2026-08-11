@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 31 (DRIFT-199-I001-001 through -031)
+**Total drift events**: 33 (DRIFT-199-I001-001 through -033)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -1042,6 +1042,91 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-033 — the decision surface reported `gating=False` on EVERY round, whatever the reviewer found (resolved)
+
+**The most serious defect this iteration produced, and it was only ever reachable from the command.**
+
+- **Observed**: 2026-08-11, while wiring the pause protocol (-032). A fixture round returning a demoted
+  finding reported `demoted_count = 0` even though the finding on the very same object carried
+  `demoted=True, demoted_from=major`. The mark was present and the count was blind to it.
+- **Mechanism, measured rather than reasoned**: `Get-ReviewAuthorityProperty` returns collections with
+  `Write-Output -NoEnumerate`. `Add-ReviewCampaignRoundPause` then built its decision from
+  `@(Get-ReviewAuthorityProperty -Object $Result -Name 'findings')` — and wrapping the **CALL** in `@()`
+  produces an array of ONE element whose type is `Object[]`: the findings array itself, nested.
+  Assigning to a variable first and wrapping THAT behaves correctly, which is precisely what made this
+  invisible to inspection. Measured side by side on the same two-finding input:
+
+  | form | blocking | major | minor | demoted | gating |
+  | --- | --- | --- | --- | --- | --- |
+  | `@(Get-... )` inline (shipped) | 0 | 0 | **1** | 0 | **False** |
+  | `$v = Get-...; @($v)` (correct) | 0 | **2** | 0 | **2** | **True** |
+
+- **What a consumer saw**: the wrapper element has no `severity`, so it fell past the blocking/major
+  test into the minor bucket. EVERY round, regardless of findings, produced `blocking=0, major=0,
+  minor=1, demoted=0, gating=False`. **A round with two blocking findings rendered "Nothing found that
+  needs your attention" and recommended stopping here.** The demotion-visibility ruling could never
+  render, because `demoted_count` was structurally always zero. And a round that found nothing at all
+  reported one minor finding that did not exist.
+- **Resolution**: the call site assigns before wrapping, AND `Resolve-ReviewCampaignPauseDecision`
+  flattens one level plus drops nulls — an element that is itself a collection is definitionally not a
+  finding, so expanding it is always right and never masks a real one. Both, deliberately: relying on a
+  downstream repair to make a wrong call right is how the next caller gets it wrong again.
+- **Guarded with TWO findings, not one.** With a single finding the broken answer and the correct answer
+  are both "1", so a one-finding fixture would have gone green over an inverted surface. The regression
+  test asserts `blocking_count = 2`, `gating = True`, and that the rendered surface does NOT say
+  "Nothing found that needs your attention".
+- **WHY NOTHING CAUGHT IT, and this is the fifth rule's strongest evidence yet.** Every unit test of
+  `Resolve-ReviewCampaignPauseDecision` passed a findings array DIRECTLY and was correct. The defect
+  lived entirely in how one caller wrapped one call. It could not be seen from the function, only from
+  the command — and no fixture entered at the command, because the surface was unreachable from there
+  (-032). **Two defects hid each other**: the projection made the surface invisible, and the invisible
+  surface was wrong. Wiring the first is what exposed the second.
+- **The class is already in the ledger**: the `@()` array-nesting trap, documented in a comment ~300
+  lines above the line that reproduced it, and read that same day. It is now on its third appearance,
+  which argues the countermeasure cannot be knowledge — it has to be a fixture that enters where the
+  consumer does.
+
+### DRIFT-199-I001-032 — the pause protocol was built, tested, and unreachable (resolved)
+
+- **Observed**: 2026-08-11, the signoff round's SECOND BLOCKING finding, and the reason the fifth method
+  rule was ruled in. Every piece existed and was green — `Resolve-ReviewCampaignPauseDecision`,
+  `Format-ReviewCampaignPauseSurface`, `Add-ReviewCampaignRoundPause`,
+  `Write-ReviewCampaignPauseDecisionFact`, `Test-ReviewCampaignContinuationAuthorized`,
+  `Invoke-ReviewCampaignStopHereLanding` — and a workspace-wide caller inspection found **no production
+  call** to three of them. `Invoke-ReviewCampaignRun` returned the pause; `Invoke-ReviewCampaignCommand`
+  projected it away; `scripts/specrew-review.ps1` rendered the generic result. The release's P1
+  acceptance flow shipped as disconnected helpers.
+- **The seam, named precisely**: an explicit closed field list in the command's return. The same list
+  dropped `slot_restored`/`slot_restored_note` while the CLI already contained the code to render them —
+  so F4's disclosure was fixed everywhere except the one place it travels. Identical shape to the
+  `demoted` drop in the result ingestor (-020). **Three separate capabilities died in field lists nobody
+  updated.**
+- **Resolution, four connected pieces**:
+  - the projection carries `pause`, `slot_restored`, `slot_restored_note` (F4 closes end to end with no
+    CLI change, because the CLI was already ready);
+  - a continuation guard runs BEFORE grant persistence, harness selection, reservation and snapshot, so
+    a refusal costs nothing — an unanswered pause, or one answered `stop-here`/`abandon`, refuses the
+    next round;
+  - the CLI renders the surface for both shapes and states how to reply;
+  - `--pause-choice <1|2|3>` records the reply and, for option 2, runs the composed stop-here landing.
+- **`Get-ReviewCampaignLatestPause` is new, and exists to avoid a tautology.**
+  `Get-ReviewCampaignPendingPause` returns only UNANSWERED pauses, so asking it whether a continuation
+  is authorized could only ever answer "pending" — a check that cannot fail is not a check. The guard
+  needs the ANSWERED case too, because `abandon` must refuse the next round as firmly as silence does.
+- **A deliberate ordering change, flagged rather than absorbed**: after a completed round both refusals
+  are true — the decision is unanswered and the single grant is spent. The pinned contract reported
+  `allowance-exhausted` first, which points a consumer at `--remediate allowance-reset`, a
+  spend-enabling action, when what is owed is an ANSWER — and answering may end the campaign with no
+  top-up at all. Pause now wins. Nothing invoked and nothing spent is unchanged and still asserted.
+- **Every fixture enters at `Invoke-ReviewCampaignCommand`**, per the rule this finding produced. None
+  calls a pause helper to set up the state it checks. Two of the fixture's own drafts were wrong in
+  instructive ways — a candidate finding missing `local_id`, then one "corrected" by adding the TERMINAL
+  fields that the closed candidate contract rejects — and both times the run still returned status
+  `terminal` with an INVALID result, so early assertions passed and only a later count disagreed. The
+  engine had the answer in `result.failure_reason` the whole time; two rounds of guessing preceded one
+  round of reading it. The suite now asserts `validation = 'valid'` BEFORE any count, because **a count
+  over an invalid result measures the fixture's bugs, not the code's.**
 
 ### DRIFT-199-I001-031 — FR-011 / US4 scenario 3 amended: the allowlist was unimplementable as written (resolved by ruling)
 

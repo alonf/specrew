@@ -20,6 +20,14 @@ param(
     [string]$Model,
     [Alias('authorization-ref')]
     [string]$AuthorizationRef,
+    # FR-003/FR-005. The human's numbered reply to a paused round, as the ONLY way a further round is
+    # authorized. Accepts the number shown on the surface or the choice name behind it, because the
+    # surface shows numbers and a consumer reading a transcript later has only the words.
+    [Alias('pause-choice')]
+    [ValidateSet('1', '2', '3', 'fix-and-continue', 'stop-here', 'abandon')]
+    [string]$PauseChoice,
+    [Alias('pause-rationale')]
+    [string]$PauseRationale,
     [Alias('code-writer-host')]
     [string]$CodeWriterHost,
     [Alias('fallback-policy')]
@@ -168,6 +176,12 @@ function Convert-UnixStyleArguments {
         Model           = $null
         Effort          = $null
         AuthorizationRef = $null
+        # Declared here, not only assigned when supplied. Reading an undeclared key off this object
+        # under Set-StrictMode throws, and the throw surfaces as a generic renderer error that masks
+        # whatever the command was actually reporting - which is exactly how three unrelated public
+        # command tests went red on a pause field they never use.
+        PauseChoice     = $null
+        PauseRationale  = $null
         CodeWriterHost  = $null
         TimeoutSeconds  = 0
         FallbackPolicy  = 'none'
@@ -684,6 +698,8 @@ $boundHost = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHo
 if (-not [string]::IsNullOrWhiteSpace($boundHost)) { $parsedArgs.Host = $boundHost }
 if (-not [string]::IsNullOrWhiteSpace($Model)) { $parsedArgs.Model = $Model }
 if (-not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $parsedArgs.AuthorizationRef = $AuthorizationRef }
+if (-not [string]::IsNullOrWhiteSpace($PauseChoice)) { $parsedArgs.PauseChoice = $PauseChoice }
+if (-not [string]::IsNullOrWhiteSpace($PauseRationale)) { $parsedArgs.PauseRationale = $PauseRationale }
 if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $parsedArgs.CodeWriterHost = $CodeWriterHost }
 if (-not [string]::IsNullOrWhiteSpace($FallbackPolicy)) { $parsedArgs.FallbackPolicy = $FallbackPolicy }
 if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.ReviewerConfigPath = $ReviewerConfigPath }
@@ -890,6 +906,56 @@ if ($Live) {
                     Write-Host (& $formatProgressCommand -Event $event) -ForegroundColor $color
                 }.GetNewClosure()
             }
+            # FR-003/FR-005: THE HUMAN'S REPLY, on the command they are already standing in.
+            #
+            # Answering happens BEFORE any run, and two of the three answers end the invocation without
+            # spending anything. Only 'fix-and-continue' falls through to a round, which is what makes
+            # one answer authorize exactly one round rather than a mode the campaign stays in.
+            $pauseAnswer = [string]$parsedArgs.PauseChoice
+            if (-not [string]::IsNullOrWhiteSpace($pauseAnswer)) {
+                $campaignStoreRoot = Join-Path $resolvedProjectPath '.specrew/review/authority'
+                $answerIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                $outstanding = Get-ReviewCampaignPendingPause -StoreRoot $campaignStoreRoot -CampaignId $answerIdentity.campaign_id
+                if ($null -eq $outstanding) {
+                    Write-Host 'There is no review round waiting for your answer, so there is nothing to reply to. Run the review first.' -ForegroundColor Yellow
+                    exit 1
+                }
+                $choice = switch ($pauseAnswer) {
+                    '1' { 'fix-and-continue' }
+                    '2' { 'stop-here' }
+                    '3' { 'abandon' }
+                    default { $pauseAnswer }
+                }
+                $answeredRunId = [string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')
+                $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId `
+                    -Choice $choice -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
+                Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
+
+                if ($choice -ceq 'abandon') {
+                    Write-Host 'This review campaign is closed. Nothing further will run.' -ForegroundColor Cyan
+                    exit 0
+                }
+                if ($choice -ceq 'stop-here') {
+                    # The composed landing, not three steps a consumer has to know to run in order.
+                    $rationale = if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.PauseRationale)) { [string]$parsedArgs.PauseRationale }
+                    else { 'Remaining findings accepted as follow-ups at the review pause.' }
+                    $landingRef = if (-not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) { $campaignGrantAuthorizationRef } else { "pause-stop-here:$answeredRunId" }
+                    $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $resolvedProjectPath -StoreRoot $campaignStoreRoot `
+                        -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId -AuthorizedBy 'human' `
+                        -AuthorizationRef $landingRef -Rationale $rationale
+                    if ($Json) { $landing | ConvertTo-Json -Depth 30; exit $(if ([bool]$landing.ok) { 0 } else { 1 }) }
+                    if ([bool]$landing.ok) {
+                        Write-Host 'Your files were checked exactly as they are now, the remaining findings were saved as follow-ups, and review sign-off is complete.' -ForegroundColor Green
+                        exit 0
+                    }
+                    Write-Host ("Stopping here did not complete: {0}" -f [string]$landing.reason) -ForegroundColor Yellow
+                    if (-not [string]::IsNullOrWhiteSpace([string](Get-ReviewAuthorityProperty -Object $landing -Name 'diagnosis'))) {
+                        Write-Host ([string](Get-ReviewAuthorityProperty -Object $landing -Name 'diagnosis')) -ForegroundColor Yellow
+                    }
+                    exit 1
+                }
+                # fix-and-continue falls through: the answer authorizes the round that follows.
+            }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
                 -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
@@ -932,6 +998,41 @@ if ($Live) {
                     foreach ($finding in @($campaignRun.result.findings)) { Write-Host ("  [{0}] {1}: {2}" -f $finding.severity, $finding.title, $finding.description) }
                 }
                 else { Write-Host ("Reason: {0}" -f $campaignRun.reason) -ForegroundColor Yellow }
+                # FR-002/FR-003/FR-015: THE DECISION SURFACE, rendered where the human is standing.
+                #
+                # Format-ReviewCampaignPauseSurface has existed since T001 and nothing on the shipped
+                # path ever called it, so every round ended with a generic result dump and no question.
+                # This renders the same surface for BOTH shapes: the pause a round just produced, and
+                # the outstanding pause a later invocation refused to spend past. A consumer must not
+                # have to tell those apart - it is the same unanswered question either way.
+                # The surface is rendered UPSTREAM in both shapes and carried here as lines, never
+                # re-derived. A round that just ended carries pause.surface (built from the full
+                # decision, findings and options in hand); a round walked back into later carries
+                # pause_surface (built from the recorded fact, which knows less). Rendering here from
+                # whichever object happened to arrive is how the two would drift apart.
+                $pauseObject = Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause'
+                $pauseLines = @()
+                if ($null -ne $pauseObject) {
+                    $embedded = Get-ReviewAuthorityProperty -Object $pauseObject -Name 'surface'
+                    if ($null -ne $embedded) { $pauseLines = @($embedded) }
+                }
+                if ($pauseLines.Count -eq 0) {
+                    $carried = Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_surface'
+                    if ($null -ne $carried) { $pauseLines = @($carried) }
+                }
+                if ($pauseLines.Count -gt 0) {
+                    Write-Host ''
+                    foreach ($pauseLine in $pauseLines) { Write-Host $pauseLine }
+                    # The surface states the choices; this states HOW to send one, which is the half a
+                    # numbered list cannot carry on a command line.
+                    $answerRunId = [string](Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_run_id')
+                    if ([string]::IsNullOrWhiteSpace($answerRunId) -and $null -ne $pauseObject) {
+                        $answerFact = Get-ReviewAuthorityProperty -Object $pauseObject -Name 'fact'
+                        if ($null -ne $answerFact) { $answerRunId = [string](Get-ReviewAuthorityProperty -Object $answerFact -Name 'run_id') }
+                    }
+                    Write-Host ''
+                    Write-Host ("Reply with:  specrew review --pause-choice <1|2|3>{0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
+                }
                 if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) {
                     Write-Host ("Resolved timeout: {0} seconds" -f $campaignRun.resolved_timeout_seconds)
                 }

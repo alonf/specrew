@@ -110,7 +110,42 @@ function Resolve-ReviewCampaignPauseDecision {
     $demoted = 0; $demotedFromBlocking = 0; $demotedFromMajor = 0
     $gatingLocations = [Collections.Generic.List[string]]::new()
     $gatingFindings = [Collections.Generic.List[object]]::new()
-    foreach ($finding in @($Findings)) {
+    # A PHANTOM FINDING IS A LIE ON THE ONE SURFACE THAT MUST NOT LIE.
+    #
+    # Measured while wiring this surface to the public command: `@($null)` in PowerShell is an array of
+    # ONE null element, not an empty array. A result whose `findings` property is null or absent -
+    # which is exactly what an incomplete or invalid result looks like, i.e. a round that FAILED -
+    # therefore arrived here as a single unusable element, fell through the severity test to the minor
+    # bucket, and produced `minor_count = 1` with the recommendation "Nothing here blocks you. Stopping
+    # here saves the minor findings as follow-ups." A finding that does not exist, and an instruction to
+    # save it.
+    #
+    # Filtered HERE rather than at the call site on purpose (rule 2 - assert the property, not the
+    # instances): every caller is covered, including ones written later, instead of the one call site
+    # that happened to be looked at. `findings = @()` was always correct and stays correct.
+    #
+    # THE FLATTEN IS NOT DEFENSIVE TIDINESS - it is the fix for the worst defect this iteration found.
+    # Get-ReviewAuthorityProperty returns collections with `Write-Output -NoEnumerate`, so wrapping the
+    # CALL in @() - `@(Get-ReviewAuthorityProperty -Object $Result -Name 'findings')` - yields an array
+    # of ONE element whose type is Object[]: the findings array itself, nested. (Assigning to a variable
+    # first and wrapping THAT behaves differently and correctly, which is what made this invisible.)
+    # The wrapper element has no `severity`, so it fell past the blocking/major test into the minor
+    # bucket, and EVERY round produced blocking=0, major=0, minor=1, demoted=0, gating=FALSE - whatever
+    # the reviewer actually found. A round with two blocking findings rendered as "Nothing found that
+    # needs your attention."
+    #
+    # An element that is itself a collection is definitionally not a finding, so expanding one level is
+    # always right and never masks a real finding.
+    $normalizedFindings = [Collections.Generic.List[object]]::new()
+    foreach ($candidate in @($Findings)) {
+        if ($null -eq $candidate) { continue }
+        if ($candidate -is [System.Collections.IEnumerable] -and $candidate -isnot [string] -and $candidate -isnot [System.Collections.IDictionary]) {
+            foreach ($inner in $candidate) { if ($null -ne $inner) { $normalizedFindings.Add($inner) | Out-Null } }
+            continue
+        }
+        $normalizedFindings.Add($candidate) | Out-Null
+    }
+    foreach ($finding in $normalizedFindings) {
         $severity = ([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()
         # T005/FR-006 visibility (maintainer ruling 2026-08-10). A demoted finding IS a minor by now,
         # so it is counted in the minor bucket like any other; this counts the SUBSET of those minors

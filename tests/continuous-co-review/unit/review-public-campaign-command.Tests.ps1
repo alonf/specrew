@@ -334,9 +334,19 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
 
         $reused = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId 'run-public-two' `
             -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
-        $reused.status | Should -Be 'not-started'
+        # ORDERING CHANGED 2026-08-11 when the pause protocol was wired to this command, and the change
+        # is deliberate rather than incidental. After a completed round BOTH refusals are true: the
+        # round's decision is unanswered, and the single grant is spent. The old order reported
+        # 'allowance-exhausted' first, which points the consumer at `--remediate allowance-reset` - a
+        # spend-enabling action - while the thing actually owed is an ANSWER. Answering may well end the
+        # campaign (option 2 stops here and completes sign-off) with no top-up needed at all, so the
+        # pause is not merely first in the code, it is the cheaper and more accurate next step.
+        #
+        # What has NOT changed is the part that matters most: nothing was invoked and nothing was spent.
+        # The two fact counts below are unchanged from before this reordering and are the real guarantee.
+        $reused.status | Should -Be 'paused'
         $reused.invoked | Should -BeFalse
-        $reused.reason | Should -Be 'allowance-exhausted'
+        $reused.reason | Should -Match 'pause-decision-pending'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind grants).Count | Should -Be 1
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind spend).Count | Should -Be 1
     }

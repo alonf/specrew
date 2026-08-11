@@ -1084,6 +1084,62 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
     catch { $null = $_; return $null }
 }
 
+function Format-ReviewCampaignOutstandingPause {
+    # The SAME unanswered question, met on a LATER invocation.
+    #
+    # Format-ReviewCampaignPauseSurface renders the round that just ended, from the full decision - it
+    # has the findings and the options in hand. This renders the pause a consumer walks back into, and
+    # it has strictly less to work with: the recorded fact keeps the counts, the round position and the
+    # recommendation, but not the finding list or the option objects. Inventing them here would put
+    # text on the screen that no longer matches the store, so this says exactly what the fact knows and
+    # points at the round for the rest.
+    #
+    # Written as its own renderer rather than by reconstructing a decision, because a reconstructed
+    # decision is a guess wearing the shape of a fact - and this surface's whole job is to be the thing
+    # the human can trust between two sessions.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectName,
+        [Parameter(Mandatory)]$Fact
+    )
+    $lines = [Collections.Generic.List[string]]::new()
+    $roundsUsed = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'rounds_used')
+    $budgetTotal = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'budget_total')
+    $blocking = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'blocking_count')
+    $major = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'major_count')
+    $minor = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'minor_count')
+    $demoted = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'demoted_count')
+    $recommendation = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'recommendation')
+
+    $lines.Add(('Review round {0} of {1} is still waiting for your answer.' -f $roundsUsed, $ProjectName))
+    $lines.Add('')
+    $gatingTotal = $blocking + $major
+    if ($gatingTotal -gt 0) {
+        $lines.Add(('That round found {0} thing{1} that need your attention.' -f $gatingTotal, $(if ($gatingTotal -eq 1) { '' } else { 's' })))
+    }
+    else {
+        $lines.Add('That round found nothing that needs your attention.')
+    }
+    if ($minor -gt 0) {
+        $lines.Add(('It also recorded {0} minor finding{1}, saved as follow-ups; they never block your sign-off.' -f $minor, $(if ($minor -eq 1) { '' } else { 's' })))
+    }
+    # Carried for the same reason it is carried on the live surface: a demotion the human cannot see is
+    # a silencing, and coming back a day later is exactly when it would go unnoticed.
+    if ($demoted -gt 0) {
+        $lines.Add(('{0} of those were reported as more serious by the reviewer and demoted because they stated no concrete failure scenario.' -f $demoted))
+    }
+    if ($budgetTotal -gt 0) {
+        $lines.Add(('You have used {0} of {1} review rounds on this project.' -f $roundsUsed, $budgetTotal))
+    }
+    if (-not [string]::IsNullOrWhiteSpace($recommendation)) {
+        $lines.Add('')
+        $lines.Add($recommendation)
+    }
+    $lines.Add('')
+    $lines.Add('Nothing further will run until you answer.')
+    return $lines.ToArray()
+}
+
 function Format-ReviewCampaignPauseSurface {
     # T001 / FR-002, FR-015. The one thing the human actually reads after a round. Every sentence is
     # about THEIR project and THEIR decision: what was found and where, what it cost, what is on

@@ -343,6 +343,47 @@ function Get-ReviewCampaignPendingPause {
     return $pending
 }
 
+function Get-ReviewCampaignLatestPause {
+    # The newest pause AND its answer, if it has one.
+    #
+    # Distinct from Get-ReviewCampaignPendingPause on purpose, and the difference is the whole point:
+    # that one returns only UNANSWERED pauses, so asking it whether a continuation is authorized can
+    # only ever answer "pending" - a tautology, not a check. The spend guard needs the answered case
+    # too, because "abandon" and "stop-here" are answers that must REFUSE the next round just as firmly
+    # as no answer at all.
+    #
+    # Ordered by observed_at (ISO-8601, so lexicographic order is chronological), falling back to
+    # directory order when a fact carries no timestamp. Absent or unreadable -> $null, and the caller
+    # fails closed.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs'
+    $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($runsRoot)) { return $null }
+
+    $candidates = [Collections.Generic.List[object]]::new()
+    foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot) | Sort-Object) {
+        $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
+        if (-not [IO.File]::Exists($pausePath)) { continue }
+        $pause = $null
+        try { $pause = Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json } catch { continue }
+        if ($null -eq $pause) { continue }
+        $decision = $null
+        $decisionPath = [IO.Path]::Combine($runDirectory, 'pause-decision.json')
+        if ([IO.File]::Exists($decisionPath)) {
+            try { $decision = Get-Content -LiteralPath $decisionPath -Raw | ConvertFrom-Json } catch { $decision = $null }
+        }
+        $candidates.Add([pscustomobject]@{
+                pause       = $pause
+                decision    = $decision
+                run_id      = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'run_id')
+                observed_at = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'observed_at')
+            }) | Out-Null
+    }
+    if ($candidates.Count -eq 0) { return $null }
+    return @($candidates | Sort-Object -Property observed_at)[-1]
+}
+
 function Publish-ReviewRunResultFact {
     [CmdletBinding()]
     param(
