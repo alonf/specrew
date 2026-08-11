@@ -84,7 +84,7 @@ Examples:
   specrew start
   specrew start "Build a REST API for user management"
   specrew review --project-path .
-  specrew review --live --baseline-ref origin/main --host claude --authorization-ref manual-review
+  specrew review --live --baseline-ref origin/main --host claude --approve-round
   specrew where
   specrew status --compact
   specrew update

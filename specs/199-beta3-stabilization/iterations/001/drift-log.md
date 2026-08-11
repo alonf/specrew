@@ -660,6 +660,66 @@ that this fix closed one of three, not three of three.
 thing injected. A suite made entirely of injected ports proves that the wiring calls something in the
 right order — which is worth proving, and is not the same as the product working.*
 
+## T014 COMPLETION — `--authorization-ref` was still THE ADVICE (2026-08-12)
+
+T014 replaced *invent an identifier* with *approve a round*, and the consumer-facing messages went on
+telling people to fill in `--authorization-ref <ref>` — **the exact field the maintainer could not fill
+in, which is why the task existed.** Same incomplete-fix shape as the emission point (-010) and the
+in-flight staleness path (-036): the capability landed and the callers kept the old form.
+
+**It mattered on a deadline**: a driver with a single agent CLI takes the labelled SAME-HOST FALLBACK
+path, whose note is one of these messages, so they meet it minutes into their first review — spending the
+dogfood's first finding on something already known.
+
+**SWEPT BY PROPERTY, AND THE TWO KNOWN SITES WERE NOT THE SET.** The sweep found **five more**: the CLI's
+own usage example, a `Write-Host` remediation, and two agent-facing refocus instructions. Grep over a
+hand-read list is method rule 2, and this iteration was bitten by exactly that days earlier — the
+front-door whitelist, whose recorded countermeasure was *"a test covers the quartet"* and which could not
+see a fifth flag.
+
+**THE INVARIANT BANS THE PLACEHOLDER, NOT THE FLAG.** `--authorization-ref` stays valid and supported for
+scripts and for anyone naming their own label. What may not appear is `--authorization-ref <ref>` — a
+placeholder asking a human to invent a value whose meaning was never explained. A concrete label
+(`--authorization-ref workshop-<feature>`, in the design-lens knowledge) is someone naming their own and
+is deliberately left alone. Guarded in `tests/unit/authorization-ref-not-the-advice.tests.ps1` across 333
+files, with the positive half asserted too (the two messages must still NAME the approving command, or
+a prohibition would be satisfied by deleting the advice and leaving a refusal with no way forward) and
+mutation-tested both ways.
+
+**The same-host fallback itself is UNCHANGED, by ruling.** A driver with one CLI exercising the labelled
+fallback is a real consumer configuration and is worth measuring.
+
+## THE INSTRUMENT NEEDED AS MUCH VERIFICATION AS THE PRODUCT — and did not get it by default
+
+**Recorded as a pattern, not an incident.** The driver brief needed THREE corrections before it was fit
+to use:
+
+| Draft | Defect | How it would have read |
+| --- | --- | --- |
+| 1 | An INVENTED command sequence (`specrew specify/clarify/plan/tasks/implement`) — none of those exist | the driver's first command fails; a fabricated finding indistinguishable from a real one |
+| 2 | A real-but-UNCOMMON entry point (`specrew start`) — exported and working, but the ordinary path is `specrew init` then simply launching the agent CLI and letting the start hook integrate | the run measures a path few consumers take, and never tests whether the hook bootstraps a fresh project at all — which is where beta2's deadlock lived |
+| 3 | Setup guidance that EXPLAINED what the product should say | the explanation hides the defect it was compensating for |
+
+**Every one is the system described correctly from INSIDE and wrongly from OUTSIDE — the same failure the
+dogfood exists to detect, occurring in the document written to detect it.** I caught the first by checking
+the command surface and the second only when the maintainer said so; the third is the standing rule
+(*if you find yourself adding an explanation, that explanation belongs in the product*).
+
+*The maintainer's brief is the one being used. Mine is superseded and is NOT handed over.*
+
+## AFTER THE DOGFOOD — the procedure, fixed BEFORE the result exists
+
+Recorded now so it cannot be reshaped by what the run produces.
+
+1. **Read the driver's transcript** and count three things: **questions asked**, **guesses made**, **source
+   files opened to interpret a message**. Zero on all three means beta3 is usable.
+2. **Each finding carries THE EXACT SENTENCE that produced it**, transcribed rather than summarised. The
+   confusion is the data; the driver's eventual success is not a result.
+3. **Triage by the round-5 class rule**: a REPEAT class → beta4 unless it blocks the acceptance bar itself;
+   genuinely NEW and blocking → fix; everything else → beta4 without discussion.
+4. **Anything the maintainer had to say to unblock them is recorded verbatim** — that sentence is precisely
+   what the product failed to say.
+
 ## T015 — THE DOGFOOD PROTOCOL (maintainer ruling, 2026-08-11)
 
 Recorded BEFORE the run, so the measurement cannot be reshaped afterwards to fit what happened.

@@ -1247,7 +1247,7 @@ if ($Live) {
                     Write-Host ("Run: {0}   Reason: {1}" -f $run.run_id, $reason)
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
-                        Write-Host '    specrew review --host <claude|codex|...> --authorization-ref <ref>'
+                        Write-Host '    specrew review --live --host <claude|codex|...> --approve-round'
                     }
                     elseif ($reason -match 'timeout|budget') {
                         # F-198 FR-022 teaching (consumer-legible, amended approval UX): the sanctioned
