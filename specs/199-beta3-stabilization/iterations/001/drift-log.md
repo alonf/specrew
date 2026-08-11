@@ -27,6 +27,74 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
+## T008 — re-read against its task text, clause by clause (2026-08-11)
+
+Re-read rather than closed from memory of having worked on it, which is the standing rule. Its text has
+five clauses; three are satisfied outright and TWO DEVIATE, both recorded rather than papered over.
+
+| Clause | State |
+| --- | --- |
+| the pre-invocation path (`preflight-failed`, `claim-contended`, `launch-failed`) **publishes run records** | **SATISFIED** — asserted per outcome in the three-failure sequence |
+| **never consumes the allowance** | **SATISFIED** — 0 spends, 3 releases, slot still available, each assertion naming WHICH counter |
+| **aligned to the legacy spend-class rule** | **SATISFIED** — `Get-ContinuousCoReviewRoundSpendClass` pins `preflight-failed` as consuming neither budget, and the campaign path was measured to match |
+| **"RED: the T067 three-infra-failure sequence..."** | **DEVIATES — it never went red** |
+| **owns `tests/continuous-co-review/unit/spend-accounting.Tests.ps1`** | **DEVIATES — that file does not exist** |
+
+**DEVIATION 1 — the RED never happened, and that is the finding.** The task specifies a RED fixture. All
+of T008's cases passed on first run with zero product change, because **grant reuse and
+non-consumption already worked** — measured 12 times across five real authority stores. A RED was
+impossible without breaking something first. Reported throughout as a CHARACTERIZATION rather than a
+repair, and the honest framing was committed BEFORE the measurement precisely so this outcome could not
+be quietly relabelled. The one thing F4 turned out to be — a restored slot nobody surfaced — was a
+DISCLOSURE gap, and that fix did go red first.
+
+**DEVIATION 2 — the named test file does not exist.** T008 names
+`tests/continuous-co-review/unit/spend-accounting.Tests.ps1`. The work landed in the pre-existing
+`review-spend-allowance.Tests.ps1`, which ALREADY owned two-budget accounting (`provider spend vs round
+allowance`, lines 132-151) and the allowance-reset rules. **Creating the named file would have split one
+subject across two homes** to satisfy a path, which is how a suite becomes hard to reason about. Same
+class as T006's "frozen-snapshot check" — a task text naming a surface that does not exist — and handled
+the same way: record it, do not invent the artifact to match the sentence.
+
+**Conclusion**: T008's substance is delivered and its deviations are recorded, so it closes.
+
+## T012 — the 009/010 registry-vs-claim wording inconsistency, RESOLVED (records-only, 2026-08-11)
+
+Carried into this feature as item 10 and marked `[research-needed]`: *"specifics to be pulled from the
+198 records during implementation."* Pulled, and both sides are quoted rather than summarised.
+
+**THE 009 SIDE — the retro named the problem and assigned it a vehicle**
+(`198/iterations/009/retro-draft.md:146`):
+
+> `Establish one local command that runs exactly what CI runs (lint + registry + bootstrap), or state`
+> `per-claim that "registry green" excludes them | Reviewer | Iteration 010`
+
+**THE 010 SIDE — the claim was then made bare** (`198/iterations/010/drift-log.md:331-332`):
+
+> `**Registry**: tests/f198-regression-suite.ps1:160 already covers conformance-detection.tests.ps1;`
+> `no new registration needed. Full suite: 75/75 passed, exit 0.`
+
+**THE INCONSISTENCY, stated exactly**: 009 required that a "registry green" claim either be backed by a
+command running everything CI runs, or SAY what it excludes. 010 did neither — *"Full suite: 75/75
+passed, exit 0"* reads as total coverage while the registry excludes lint and the bootstrap suites. The
+words "full suite" are doing work the measurement does not support.
+
+**WHY IT MATTERS BEYOND TIDINESS**: this is the honest-claims class this whole feature is about. A
+reader taking "full suite passed" at face value believes CI would pass; a lint or bootstrap failure then
+arrives as a surprise from a system that had reported itself green. It is the same shape as a demotion
+nobody can see, in the evidence record rather than the console.
+
+**RESOLUTION (records-only, this feature's convention going forward)**: **a suite claim states its
+SCOPE and its EXCLUSIONS, or it names the command that ran.** Not "full suite: 75/75" but "the
+deterministic registry lane: 75/75, exit 0 — excludes markdownlint and the bootstrap suites, which run
+as separate CI jobs." Every measurement recorded in this feature already follows it — the seventeen are
+always reported as `N failed / M passed across tests/continuous-co-review/unit`, naming the path rather
+than claiming totality.
+
+**NOT WRITTEN INTO THE 198 RECORDS.** `spec.md` declares that ledger a read-only input committed on
+another branch; correcting another feature's records from this one is the cross-boundary write the
+governance model exists to prevent. The resolution is recorded here and surfaces at closeout.
+
 ## METHOD RULES TO CARRY — staged for the ledger's method-rules section (maintainer ruling, 2026-08-10)
 
 **Ruling**: both homes, differently. The INSTANCES stay in this drift log as evidence — they are what

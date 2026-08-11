@@ -106,7 +106,7 @@ The phase headings below keep their authoring order; this execution order govern
 
 ## Iteration 001 — Phase 4: accounting + windows (1.0 SP)
 
-- [ ] T008 [owner: Implementer] [sp: 0.5] **Reviewer-invoked-only spend** — the
+- [x] T008 [owner: Implementer] [sp: 0.5] **Reviewer-invoked-only spend** — the
   campaign engine's pre-invocation-failure path (`preflight-failed`,
   `claim-contended`, `launch-failed`) publishes run records but never consumes the
   allowance, aligned to the legacy spend-class rule. RED: the T067 three-infra-
@@ -138,7 +138,7 @@ The phase headings below keep their authoring order; this execution order govern
   deployed mirror updates in lockstep. RED: banner fixture asserts `0.40.0-beta3`
   (Trace: FR-019, SC-010; owns: `specrew-bootstrap-provider.ps1:438` + mirror,
   `coordinator-prompt-surgery.ps1:105-110`, `tests/bootstrap/BannerVersion.Tests.ps1`)
-- [ ] T012 [owner: Spec Steward] [sp: 0.25] **Records: 009/010 wording + release
+- [x] T012 [owner: Spec Steward] [sp: 0.25] **Records: 009/010 wording + release
   notes** — resolve the flagged 009/010 registry-vs-claim wording inconsistency
   (records-only; specifics pulled from the 198 records); draft the release notes
   carrying the review-loop fixes, the updated known-issues list, and the explicit
