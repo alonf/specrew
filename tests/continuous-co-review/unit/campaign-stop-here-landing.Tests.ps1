@@ -21,6 +21,15 @@ Describe 'Composed stop-here landing (T002)' {
         function script:New-LandingPorts {
             param([bool]$VerifyOk = $true, [bool]$AcceptOk = $true, [bool]$GateOk = $true, [Parameter(Mandatory)]$Log)
             return @{
+                # The gating precondition added 2026-08-11 reads the TERMINAL RESULT from the store and
+                # fails closed when it cannot. This suite runs in PORT MODE against
+                # `-StoreRoot 'unused-in-port-mode'` - there is deliberately no store - so it is
+                # satisfied explicitly here. That is not a way around the guard: these tests are about
+                # the CHAIN COMPOSITION (order, stop-on-failure, message shape), and the precondition
+                # has its own dedicated tests in campaign-pause-wiring.Tests.ps1 which exercise the REAL
+                # default against real published facts, including the refusal and the fail-closed path.
+                # Injecting it here keeps each suite testing one thing instead of two badly.
+                GatingPrecondition = { param($ctx) [pscustomobject]@{ ok = $true; reason = 'precondition-satisfied-by-fixture' } }
                 VerifyPort   = { param($ctx) $Log.Add('verify') | Out-Null; if ($VerifyOk) { [pscustomobject]@{ ok = $true; reason = 'verification-passed' } } else { [pscustomobject]@{ ok = $false; reason = 'verification-command-failed:slice' } } }.GetNewClosure()
                 AcceptPort   = { param($ctx) $Log.Add('accept') | Out-Null; if ($AcceptOk) { [pscustomobject]@{ ok = $true; reason = 'residuals-accepted' } } else { [pscustomobject]@{ ok = $false; reason = 'review-human-disposition-result-missing' } } }.GetNewClosure()
                 GateSyncPort = { param($ctx) $Log.Add('gate') | Out-Null; if ($GateOk) { [pscustomobject]@{ ok = $true; reason = 'signoff-gate-allow' } } else { [pscustomobject]@{ ok = $false; reason = 'signoff-gate-blocked' } } }.GetNewClosure()
@@ -41,7 +50,14 @@ Describe 'Composed stop-here landing (T002)' {
 
         $landing.landed | Should -BeTrue
         @($log) | Should -Be @('verify', 'accept', 'gate')
-        @($landing.steps).Count | Should -Be 3
+
+        # FOUR steps since 2026-08-11: a gating precondition now runs BEFORE verification, so a round
+        # whose result holds blocking or major findings costs nothing at all - no frozen-tree check, no
+        # acceptance recorded, no gate touched. The three sanctioned steps and their order are unchanged
+        # and still asserted above; this only records that the chain gained a refusal in front of them.
+        @($landing.steps).Count | Should -Be 4
+        [string]@($landing.steps)[0].name | Should -Be 'gating-precondition' -Because 'a refusal that runs after verification has already touched the tree it was meant to protect'
+        @(@($landing.steps) | ForEach-Object { [string]$_.name }) | Should -Be @('gating-precondition', 'verification', 'residual-acceptance', 'gate-sync')
     }
 
     It 'THE T067 WEDGE: a failed verification stops the chain - residuals are never accepted on an unverified tree' {

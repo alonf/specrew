@@ -339,6 +339,117 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         [string](Get-ReviewCampaignLatestPause -StoreRoot $store -CampaignId $campaign).run_id | Should -Be 'run-review-signoff-10' -Because 'latest is about recency, pending is about answeredness; they are different questions over the same order'
     }
 
+    It 'STOP-HERE REFUSES on a round whose RESULT gates, even when the pause fact says nothing blocks' {
+        # THE LIVE-STORE HAZARD (maintainer ruling 2026-08-11), reproduced from the real facts.
+        #
+        # DRIFT-199-I001-033 wrote a pending-pause fact into the live campaign store reading
+        # blocking=0, major=0, minor=1, "Nothing here blocks you. Stopping here saves the minor findings
+        # as follow-ups" - for run-20260811-093414640-d58e787b, whose result.json holds 8 findings: 2
+        # BLOCKING and 5 MAJOR. The code fix could not correct a fact already written, because authority
+        # facts are immutable by design and that design is right. So the surface a maintainer was about
+        # to read actively RECOMMENDED the option that completes sign-off on two blocking findings.
+        #
+        # The counts below are TRANSCRIBED from that store, not composed, so this test reproduces the
+        # real hazard rather than an imagined one.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'stophere')
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaign = 'cmp-stop-i001'
+        $runId = 'run-gating-result'
+
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId $runId -TargetLineage 'lin-stop' -ObservedAt '2026-08-11T09:00:00Z' | Out-Null
+        $findings = @(
+            [pscustomobject][ordered]@{ finding_id = 'finding-b1'; source_local_id = 'b1'; lineage_id = 'lin-stop'; severity = 'blocking'; title = 'Package omits a runtime file'; description = 'Failure scenario: a packaged install throws on first use.'; location = 'Specrew.psd1:1'; relevance = 'current'; resolution = 'open' }
+            [pscustomobject][ordered]@{ finding_id = 'finding-b2'; source_local_id = 'b2'; lineage_id = 'lin-stop'; severity = 'blocking'; title = 'Pause protocol unreachable'; description = 'Failure scenario: the consumer never sees a decision surface.'; location = 'cli.ps1:1'; relevance = 'current'; resolution = 'open' }
+            [pscustomobject][ordered]@{ finding_id = 'finding-m1'; source_local_id = 'm1'; lineage_id = 'lin-stop'; severity = 'major'; title = 'Restored slot not disclosed'; description = 'Failure scenario: the human mints an authorization they did not need.'; location = 'cli.ps1:2'; relevance = 'current'; resolution = 'open' }
+        )
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId $runId -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = $campaign; run_id = $runId; target_digest = 'digest-stop'
+                harness_id = 'fixture'; completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'
+                termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+                can_approve_current = $false; summary = 'gating round'; findings = $findings
+                started_at = '2026-08-11T09:00:00Z'; ended_at = '2026-08-11T09:25:00Z'; duration_ms = 1500000
+            }) | Out-Null
+
+        # THE LYING SUMMARY, byte-for-byte in shape with the one in the live store.
+        Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = $campaign; run_id = $runId
+                target_digest = 'digest-stop'; blocking_count = 0; major_count = 0; minor_count = 1
+                demoted_count = 0; rounds_used = 2; budget_total = 4; elapsed_minutes = 25.0
+                recommendation = 'Nothing here blocks you. Stopping here saves the minor findings as follow-ups.'
+                observed_at = '2026-08-11T09:47:53.0259184+00:00'
+            }) | Out-Null
+
+        # Ports that MUST NOT RUN. A refusal has to happen before the frozen-tree check, before the
+        # residual acceptance is recorded, and before the gate is synced - otherwise "refused" still
+        # leaves an accept fact behind for the gate to find later.
+        $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $root -StoreRoot $store `
+            -CampaignId $campaign -RunId $runId -AuthorizedBy 'human' -AuthorizationRef 'ref-stop' `
+            -Rationale 'accepting residuals' `
+            -VerifyPort { param($ctx) throw 'verification-must-not-run-on-a-gating-round' } `
+            -AcceptPort { param($ctx) throw 'acceptance-must-not-be-recorded-on-a-gating-round' } `
+            -GateSyncPort { param($ctx) throw 'gate-must-not-be-synced-on-a-gating-round' }
+
+        [bool]$landing.landed | Should -BeFalse -Because 'the RESULT holds two blocking findings, whatever the pause fact says'
+        [string]$landing.reason | Should -Match 'stop-here-refused-gating-findings'
+        [string]$landing.reason | Should -Match 'blocking=2'
+        [string]$landing.reason | Should -Match 'major=1'
+
+        # And it names the next step rather than only refusing - a prohibition with no way forward is
+        # how the stop-block lost its action line.
+        $text = [string]$landing.message
+        $text | Should -Match '(?i)option 1'
+
+        # Nothing was accepted. This is the assertion that matters most: a refusal that still left a
+        # human-disposition fact behind would let the gate allow sign-off on the next read.
+        @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $store -CampaignId $campaign -RunId $runId).Count |
+            Should -Be 0 -Because 'a refused landing must leave no acceptance behind'
+    }
+
+    It 'STOP-HERE FAILS CLOSED when the result cannot be read at all' {
+        # A sign-off that cannot see what it is signing off is the failure this feature exists to
+        # prevent, so an absent result refuses rather than falling forward.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'stophere-missing')
+        $store = Join-Path $root '.specrew/review/authority'
+        $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $root -StoreRoot $store `
+            -CampaignId 'cmp-missing-i001' -RunId 'run-missing' -AuthorizedBy 'human' `
+            -AuthorizationRef 'ref-missing' -Rationale 'accepting residuals' `
+            -VerifyPort { param($ctx) throw 'must-not-run' } `
+            -AcceptPort { param($ctx) throw 'must-not-run' } `
+            -GateSyncPort { param($ctx) throw 'must-not-run' }
+
+        [bool]$landing.landed | Should -BeFalse
+        [string]$landing.reason | Should -Match 'stop-here-result-unavailable'
+    }
+
+    It 'STOP-HERE STILL COMPLETES on a clean round - the guard refuses gating, not stopping' {
+        # The positive half (rule 4). Four prohibitions above would be satisfied by a landing that
+        # refuses everything, which would break the option the feature exists to offer.
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'stophere-clean')
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaign = 'cmp-clean-i001'
+        $runId = 'run-clean'
+        Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId $runId -TargetLineage 'lin-clean' -ObservedAt '2026-08-11T09:00:00Z' | Out-Null
+        Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId $runId -Fact ([pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = $campaign; run_id = $runId; target_digest = 'digest-clean'
+                harness_id = 'fixture'; completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'
+                termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+                can_approve_current = $false; summary = 'minor only'
+                findings = @([pscustomobject][ordered]@{ finding_id = 'finding-n1'; source_local_id = 'n1'; lineage_id = 'lin-clean'; severity = 'minor'; title = 'A follow-up'; description = 'Saved as a follow-up.'; location = 'app.txt:1'; relevance = 'current'; resolution = 'open' })
+                started_at = '2026-08-11T09:00:00Z'; ended_at = '2026-08-11T09:05:00Z'; duration_ms = 300000
+            }) | Out-Null
+
+        $reached = [Collections.Generic.List[string]]::new()
+        $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $root -StoreRoot $store `
+            -CampaignId $campaign -RunId $runId -AuthorizedBy 'human' -AuthorizationRef 'ref-clean' `
+            -Rationale 'minor findings accepted as follow-ups' `
+            -VerifyPort { param($ctx) $reached.Add('verify') | Out-Null; [pscustomobject]@{ ok = $true; reason = 'verified' } }.GetNewClosure() `
+            -AcceptPort { param($ctx) $reached.Add('accept') | Out-Null; [pscustomobject]@{ ok = $true; reason = 'residuals-accepted' } }.GetNewClosure() `
+            -GateSyncPort { param($ctx) $reached.Add('gate') | Out-Null; [pscustomobject]@{ ok = $true; reason = 'signoff-gate-allow' } }.GetNewClosure()
+
+        [bool]$landing.landed | Should -BeTrue -Because 'a minor-only round is exactly what stop-here is for'
+        @($reached) -join ',' | Should -Be 'verify,accept,gate' -Because 'the guard must pass THROUGH to the chain, in order, not short-circuit it'
+    }
+
     It 'THE CLI CAN REACH ALL OF IT: the shipped command exposes the reply and calls the three helpers' {
         # A source-level companion to the behaviour above, and it exists because the finding was found by
         # a CALLER INSPECTION, not by a failing test: three functions with no production caller. The

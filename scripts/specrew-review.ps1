@@ -943,15 +943,20 @@ if ($Live) {
                     $landing = Invoke-ReviewCampaignStopHereLanding -ProjectRoot $resolvedProjectPath -StoreRoot $campaignStoreRoot `
                         -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId -AuthorizedBy 'human' `
                         -AuthorizationRef $landingRef -Rationale $rationale
-                    if ($Json) { $landing | ConvertTo-Json -Depth 30; exit $(if ([bool]$landing.ok) { 0 } else { 1 }) }
-                    if ([bool]$landing.ok) {
+                    # `landed`, not `ok`. Invoke-ReviewCampaignStopHereLanding returns
+                    # { landed, steps, failed_step, reason, message } - the per-STEP outcomes carry `ok`,
+                    # the composition does not. Reading `.ok` here returned $null, so a REFUSED landing
+                    # would have rendered as a failure with an empty reason instead of the sentence that
+                    # tells the human what to do. Caught by the fixture, not by reading.
+                    if ($Json) { $landing | ConvertTo-Json -Depth 30; exit $(if ([bool]$landing.landed) { 0 } else { 1 }) }
+                    if ([bool]$landing.landed) {
                         Write-Host 'Your files were checked exactly as they are now, the remaining findings were saved as follow-ups, and review sign-off is complete.' -ForegroundColor Green
                         exit 0
                     }
-                    Write-Host ("Stopping here did not complete: {0}" -f [string]$landing.reason) -ForegroundColor Yellow
-                    if (-not [string]::IsNullOrWhiteSpace([string](Get-ReviewAuthorityProperty -Object $landing -Name 'diagnosis'))) {
-                        Write-Host ([string](Get-ReviewAuthorityProperty -Object $landing -Name 'diagnosis')) -ForegroundColor Yellow
-                    }
+                    # The composed message already names what failed, the reason, and the next step -
+                    # including the gating-precondition refusal. Rendering it verbatim keeps one voice
+                    # rather than re-deriving a second, thinner sentence here.
+                    Write-Host ([string]$landing.message) -ForegroundColor Yellow
                     exit 1
                 }
                 # fix-and-continue falls through: the answer authorizes the round that follows.

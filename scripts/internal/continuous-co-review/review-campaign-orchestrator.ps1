@@ -764,6 +764,7 @@ function Invoke-ReviewCampaignStopHereLanding {
         [Parameter(Mandatory)][string]$AuthorizedBy,
         [Parameter(Mandatory)][string]$AuthorizationRef,
         [Parameter(Mandatory)][string]$Rationale,
+        [scriptblock]$GatingPrecondition,
         [scriptblock]$VerifyPort,
         [scriptblock]$AcceptPort,
         [scriptblock]$GateSyncPort
@@ -805,8 +806,75 @@ function Invoke-ReviewCampaignStopHereLanding {
         }
     }
 
+    if ($null -eq $GatingPrecondition) {
+        $GatingPrecondition = {
+            param($ctx)
+            # READ THE RESULT, NEVER THE SUMMARY (maintainer ruling 2026-08-11, live-store hazard).
+            #
+            # This landing completes review sign-off. Until now it trusted that the human had been shown
+            # an accurate decision surface - and DRIFT-199-I001-033 wrote a pending-pause fact into the
+            # LIVE store reading `blocking 0, major 0, minor 1, "Nothing here blocks you. Stopping here
+            # saves the minor findings as follow-ups"` for a round whose result holds 2 BLOCKING and 5
+            # MAJOR findings. The fix corrected the code; it could not correct a fact already written,
+            # and authority facts are immutable by design. So the surface actively RECOMMENDED the
+            # option that completes sign-off on a round with two blocking findings.
+            #
+            # A derived count is written by whatever logic held at the time. The terminal result is what
+            # the reviewer actually returned. Those are different trust levels, and only one of them is
+            # safe to sign off against. Fails CLOSED: an unreadable or absent result refuses, because a
+            # sign-off that cannot see what it is signing off is the failure this whole feature exists
+            # to prevent.
+            #
+            # Severities are read POST-demotion, which is correct rather than incidental: the T005
+            # contract lowers a gating finding that states no concrete failure scenario, and a finding
+            # the contract demoted genuinely does not gate. This counts what still gates.
+            $result = $null
+            try { $result = Get-ReviewRunAuthorityFact -StoreRoot $ctx.store_root -CampaignId $ctx.campaign_id -RunId $ctx.run_id -Stage result }
+            catch { $result = $null }
+            if ($null -eq $result) {
+                return [pscustomobject]@{
+                    ok = $false; reason = 'stop-here-result-unavailable'
+                    diagnosis = 'Specrew cannot find the saved result for this review round, so it cannot confirm what the round found. Run a fresh review of your files as they are now before completing sign-off: specrew review --live'
+                }
+            }
+            # Direct assignment, never @(...) around the call: the accessor returns collections with
+            # -NoEnumerate, and wrapping the CALL nests the whole list as one element. That exact trap
+            # is what produced the wrong fact this guard exists to catch.
+            $rawFindings = Get-ReviewAuthorityProperty -Object $result -Name 'findings'
+            $findings = [Collections.Generic.List[object]]::new()
+            foreach ($item in @($rawFindings)) {
+                if ($null -eq $item) { continue }
+                if ($item -is [System.Collections.IEnumerable] -and $item -isnot [string] -and $item -isnot [System.Collections.IDictionary]) {
+                    foreach ($inner in $item) { if ($null -ne $inner) { $findings.Add($inner) | Out-Null } }
+                    continue
+                }
+                $findings.Add($item) | Out-Null
+            }
+            $blocking = 0; $major = 0
+            foreach ($finding in $findings) {
+                switch (([string](Get-ReviewAuthorityProperty -Object $finding -Name 'severity')).Trim().ToLowerInvariant()) {
+                    'blocking' { $blocking++ }
+                    'major' { $major++ }
+                }
+            }
+            if (($blocking + $major) -gt 0) {
+                $parts = @()
+                if ($blocking -gt 0) { $parts += ('{0} blocking' -f $blocking) }
+                if ($major -gt 0) { $parts += ('{0} major' -f $major) }
+                return [pscustomobject]@{
+                    ok = $false; reason = ('stop-here-refused-gating-findings:blocking={0};major={1}' -f $blocking, $major)
+                    diagnosis = ('This review round found {0} finding{1} that need your attention, so sign-off cannot complete here. Fix what matters to you and run another round: reply with option 1 and a new authorization reference.' -f ($parts -join ' and '), $(if (($blocking + $major) -eq 1) { '' } else { 's' }))
+                }
+            }
+            return [pscustomobject]@{ ok = $true; reason = 'no-gating-findings-in-result' }
+        }
+    }
+
     $steps = [Collections.Generic.List[object]]::new()
+    # The precondition runs FIRST, before verification, so a gating round costs nothing at all: no
+    # frozen-tree verification, no residual acceptance, no gate sync. A failed step stops the chain.
     $ordered = @(
+        @{ name = 'gating-precondition'; port = $GatingPrecondition },
         @{ name = 'verification'; port = $VerifyPort },
         @{ name = 'residual-acceptance'; port = $AcceptPort },
         @{ name = 'gate-sync'; port = $GateSyncPort }

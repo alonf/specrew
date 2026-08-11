@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 34 (DRIFT-199-I001-001 through -034)
+**Total drift events**: 35 (DRIFT-199-I001-001 through -035)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -364,6 +364,8 @@ evidence stays in its own entry.
 | **Verification failure does not NAME the missing environment variable** — the diagnosis lists the variables already allowed and says to add another, without identifying which one is absent or showing the exact `env_refs` line. | Partially delivered already. Closing it needs a DESIGN DECISION about how much to infer from a failed command's output — not a better string — and inferring wrongly would name the wrong variable with full confidence. **Maintainer ruling 2026-08-11: beta4.** | signoff round finding 6 |
 | **GATE-PREFLIGHT SCRIPT** — deterministic boundary checks run before any packet is rendered. | The preflight exists as PROSE, not as a guard, so it covers what someone remembered to include. Three defects reached a boundary packet seconds before a spend. | see below |
 | **CI RATCHET** — CI globs the test directories with the 16 inherited failures explicitly quarantined. | Same defect one altitude up: nothing mechanically holds the line, so a new failure is indistinguishable from an inherited one. **Status: UNDER CONSIDERATION as standalone work outside this feature — not ruled, do not build.** | the SEVENTEEN triage |
+| **AN IMMUTABLE FACT WRITTEN BY BUGGY LOGIC IS PERMANENTLY WRONG, AND NOTHING MARKS IT AS SUSPECT** — architectural, and the most consequential item on this list. | The store's integrity model treats immutability as evidence of truth, but **immutability preserves an error exactly as faithfully as a fact**. There is no supersede-with-reason mechanism: readers take the NEWEST, so a wrong fact stays authoritative until something writes over it — and in the live store the wrong one IS the newest (-035). A modelling gap, not a bug. Belongs beside the host-adapter contract. | -035, -033 |
+| **`requested-host-not-available` collapses THREE conditions into one sentence** — not installed, not authorized, not cataloged. | A missing authorization reference reads as *"codex is not installed"*, sending a consumer to reinstall a tool that works. It fires on the `--pause-choice` fallthrough when no `--authorization-ref` accompanies it — **exactly the path a human answering a pause takes**. Must say WHICH of the three failed. | signoff round / -032 |
 | **CI TRIGGER REACH — and it must land BEFORE the ratchet.** `specrew-ci.yml` runs on `branches: [ main, 001-specrew-product ]` only, so **no feature branch is ever built by it**. | On a feature branch the deterministic gate, the f198 regression suite, the contract lane and the FileList guard are ALL absent — CI runs roughly **15 of 90** unit suites. Globbing suites inside a workflow that never triggers changes nothing, so the trigger fix must PRECEDE the ratchet. `cross-platform-validation.yml` already carries the `0*-*` / `1*-*` patterns `specrew-ci.yml` lacks, so the fix is one line. Changing it changes every branch's CI minutes: a maintainer call. **Recorded, NOT built.** | -028 |
 
 ### The gate-preflight finding — why a reviewer could never have caught these (2026-08-11)
@@ -1083,6 +1085,64 @@ contract a heuristic and therefore not a contract.
 - **Evidence**: `tests/integration/hooks-reconcile.Tests.ps1` (new, 6 assertions, RED before the fix);
   nine hook suites green, including `refocus-deploy`, `specrew-hooks-command`, `ProviderMirrorParity`
   and `stopblock-deployed-binding`.
+
+### DRIFT-199-I001-035 — DRIFT-033 IS PERSISTED IN THE LIVE STORE, and the surface recommends the dangerous option (guarded)
+
+**Found by the maintainer in the pre-authorization audit. The code fix could not reach it.**
+
+- **The fact**, verified in the store rather than taken from the report —
+  `runs/run-20260811-093414640-d58e787b/pending-pause.json`:
+
+  | field | value |
+  | --- | --- |
+  | `blocking_count` | **0** |
+  | `major_count` | **0** |
+  | `minor_count` | **1** (the phantom wrapper element) |
+  | `demoted_count` | 0 |
+  | `rounds_used` | 2 of 4 |
+  | `recommendation` | *"Nothing here blocks you. Stopping here saves the minor findings as follow-ups."* |
+
+  The `result.json` for **the same run** holds **8 findings: 2 blocking, 5 major, 1 minor**, none
+  demoted. DRIFT-199-I001-033's exact signature, written into the live campaign store as an IMMUTABLE
+  authority fact. No `pause-decision.json` exists, so it is the pending pause.
+
+- **THE HAZARD IS THE PATH, not the fact.** The outstanding-pause renderer wired in -032 reads this
+  fact, so the next invocation would have told the maintainer nothing blocks them and RECOMMENDED
+  stopping here. Answering option 2 runs the stop-here landing and completes review sign-off on a round
+  with two blocking findings. **A false sign-off produced by a surface that lies while actively
+  recommending the dangerous option** — the single worst outcome this feature exists to prevent, one
+  keystroke away.
+- **The fact is NOT edited or deleted.** Authority facts are immutable by design and the design is
+  right; a store that can be corrected by hand is not evidence. It is superseded instead: the round that
+  follows a `fix-and-continue` writes a correct pause fact that becomes the newest.
+- **THE GUARD, and it is general rather than particular to this fact.** `Invoke-ReviewCampaignStopHereLanding`
+  now runs a `gating-precondition` step FIRST — before frozen-tree verification, before residual
+  acceptance, before gate sync — which reads the **terminal result** and refuses when it holds blocking
+  or major findings. A derived count is written by whatever logic held at the time; the result is what
+  the reviewer returned. Those are different trust levels and only one is safe to sign off against.
+  Fails CLOSED: an unreadable or absent result refuses, because a sign-off that cannot see what it is
+  signing off is this feature's defining failure. Severities are read POST-demotion, so a finding the
+  T005 contract lowered genuinely does not gate.
+- **What the fixtures pin**: refusal on the transcribed live counts with ports that THROW if reached, so
+  a refusal cannot leave an acceptance fact behind for the gate to find later (asserted directly:
+  zero human-disposition facts); fail-closed on a missing result; and — the positive half — a
+  minor-only round still completes, reaching verify, accept and gate **in order**. Four prohibitions
+  alone would be satisfied by a landing that refuses everything, which would break the option the
+  feature exists to offer.
+- **A SECOND SEAM DEFECT, caught by the fixture rather than by reading.** The landing returns
+  `{ landed, steps, failed_step, reason, message }` — the per-STEP outcomes carry `ok`, the composition
+  does not. The `--pause-choice` branch written in -032 tested `$landing.ok`, which is `$null`, so a
+  REFUSED landing would have rendered as a failure with an empty reason instead of the sentence telling
+  the human what to do. The refusal would still have held; only its explanation was lost. Same class as
+  every other seam this iteration: two correct components, one wrong assumption about the shape between
+  them.
+- **ONE CONCERN WITH THE RULING AS SPECIFIED, stated and then implemented as instructed.** Refusing on
+  MAJOR as well as blocking makes the flow that `Resolve-ReviewCampaignPauseDecision` itself recommends
+  unreachable — for a major-only round it says *"Look at the major findings; fix what matters to you,
+  then stop here."* With this guard, stopping there now refuses. That may well be the intent (a major is
+  still gating, and accepting residuals should perhaps be a distinct, explicit act rather than the same
+  keystroke), but the recommendation text and the guard now disagree, and one of them should move.
+  **Implemented strictly as ruled; flagged for the maintainer.**
 
 ### DRIFT-199-I001-034 — the pending pause was picked by RUN-ID TEXT, which wedges the gate (resolved by ruling)
 
