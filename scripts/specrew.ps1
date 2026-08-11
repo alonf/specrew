@@ -361,7 +361,15 @@ function Assert-WhitelistedArguments {
             # Downstream field bug 2026-07-09 (tesr197local): the whitelist predated the flags, so every
             # sanctioned remediation/ack command was rejected as "Unsupported argument" and the agent
             # concluded the mechanisms were unimplemented. Whitelist test covers the quartet.
-            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--trunk', '--checkpoint-id', '--run-id', '--reconcile-run', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope', '--fix-evidence-ref') -MaxPositionals 1
+            # SAME DEFECT AGAIN, 2026-08-12: --approve-round, --pause-choice and --pause-rationale were
+            # added to specrew-review.ps1 and not here, so `specrew review --live --approve-round` - the
+            # command the product's own messages tell people to run - exited "Unsupported argument".
+            # The note above describes the identical failure from 2026-07-09, and its countermeasure was
+            # a test covering "the quartet": a guard over a hand-enumerated list, which cannot see a
+            # fifth flag. tests/unit/review-flag-whitelist-parity.tests.ps1 now DERIVES the expected set
+            # from specrew-review.ps1's own parameter aliases, so the next flag is covered by the
+            # invariant instead of by whoever remembers this line.
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--approve-round', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--trunk', '--checkpoint-id', '--run-id', '--reconcile-run', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope', '--fix-evidence-ref', '--pause-choice', '--pause-rationale') -MaxPositionals 1
         }
         'version' {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h') -ValueOptions @('--project-path')

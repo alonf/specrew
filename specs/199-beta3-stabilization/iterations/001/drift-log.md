@@ -555,6 +555,48 @@ acceptance bar itself. Fix, verify, dogfood, ship — anything else routes to be
 
 **The three majors ride along only if they land in files already being touched; otherwise beta4.**
 
+## ROUND 5 — verification-scoped, triaged BY CLASS (run-20260811-213318650-9ab64f34)
+
+The reset worked and that is blocker 2 of round 4 verifying itself: budget was 4 of 4 with option 1
+withdrawn; after `--remediate allowance-reset --ack-reason "..."`, `--approve-round` minted
+`cmp-199-beta3-stabilization-i001-round-5` and the round ran. **Currentness `current`** — it covers the
+tree, unlike rounds 3 and 4.
+
+5 findings: 3 blocking, 2 major. **THREE OF THE FIVE ARE DEFECTS I INTRODUCED IN THE PREVIOUS FEW HOURS
+WHILE FIXING ROUND 4.** That is the trajectory read arriving exactly on schedule.
+
+| Finding | Class | Disposition |
+| --- | --- | --- |
+| The shipped `specrew review` front door REJECTED `--approve-round`, `--pause-choice`, `--pause-rationale` | repeat (wiring that does not reach its handler) | **FIXED** — blocks the acceptance bar and would stop the dogfood driver in the first minute |
+| A records-only delta turned any moved terminal result into signoff AUTHORITY | new, mine, 2 hours old | **FIXED** |
+| Allowance reset did not make the exhausted round continuable | incomplete fix of round 4's blocker 2 | **FIXED** |
+| Budget-reset fact consumed without contract validation | new, mine, 1 hour old | **FIXED** (authority hole, in a file already being edited) |
+| Orientation banner still emits bare requirement IDs; the gloss helper has no production call sites | repeat (surface missing what the reader needs) | **BETA4** — does not block the bar |
+
+**THE FRONT-DOOR FINDING IS THE FIFTH RULE CATCHING ME ON THE FLAG I BUILT TO SATISFY IT.** Every
+verification this session ran `pwsh -File scripts/specrew-review.ps1`, so I never met the wrapper a
+consumer types. And the whitelist's own comment documents **the identical failure from 2026-07-09** —
+flags added downstream, front door not updated, *"every sanctioned remediation/ack command was rejected
+as Unsupported argument and the agent concluded the mechanisms were unimplemented"* — whose recorded
+countermeasure was *"a whitelist test covers the quartet"*. **A guard over a hand-enumerated list cannot
+see a fifth flag.** Method rule 2, with a documented prior instance, repeated anyway.
+
+*A near-miss worth recording: my first verification of the fix appeared to FAIL, and I nearly treated a
+correct fix as broken. The error path named
+`...\Documents\PowerShell\Modules\Specrew .40.0\scripts\specrew-review.ps1` — the INSTALLED
+module, not the repo. The fix was right; the test was reaching a different copy of the product. Verified
+properly with `SPECREW_MODULE_PATH` pointed at the tree: `--pause-choice 9` now reaches the script and is
+refused by its own value check, which is the correct behaviour.*
+
+**On the records-only regression, the distinction that makes it a defect rather than a judgement call**:
+the exemption is about STALENESS — a records commit must not take your review away. It must never GIVE
+you one you never had. A timed-out or invalid result plus a drift-log commit was being handed to the gate
+as an allow. It is now conditional on the result authorizing on its own terms, and falls through to stale
+when it does not — the safe direction.
+
+**No round 6 to verify these.** Per the verification-scoped ruling, another patch round produces another
+six of the same classes, because the cause is added surface rather than wrong fixes. The dogfood is next.
+
 ## THE RULED CONDITION ON BLOCKER 1, COMPLETED — three production defaults now execute where ZERO did
 
 The first version of the real-ports file ran ONE default. The maintainer ruled that insufficient: the

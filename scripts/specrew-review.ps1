@@ -862,6 +862,21 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     -AuthorizedBy ([string]$resetActor) -Reason ([string]$parsedArgs.AckReason) `
                     -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
                 Write-ReviewCampaignBudgetResetFact -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') -Fact $resetFact | Out-Null
+                # THE RESET MUST ALSO UNWEDGE THE ROUND IT WAS CALLED FOR. Round 5, blocking: recording
+                # the fact alone left the exhausted round's pause UNANSWERED, so the very next command -
+                # the one this message names - was refused with `pause-decision-pending`, and the
+                # resumed surface still omitted option 1 because its immutable pause fact says 4 of 4.
+                # The advertised recovery stayed wedged unless the consumer guessed an extra step nobody
+                # offered. Topping up the allowance IS the choice to continue, so the outstanding pause
+                # is answered as `fix-and-continue` in the same act.
+                $resetStore = Join-Path $resolvedProjectPath '.specrew/review/authority'
+                $outstandingAtReset = Get-ReviewCampaignPendingPause -StoreRoot $resetStore -CampaignId $resetIdentity.campaign_id
+                if ($null -ne $outstandingAtReset) {
+                    Write-ReviewCampaignPauseDecisionFact -StoreRoot $resetStore -Fact (
+                        New-ReviewCampaignPauseDecisionFact -CampaignId $resetIdentity.campaign_id `
+                            -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingAtReset -Name 'run_id')) `
+                            -Choice 'fix-and-continue' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))) | Out-Null
+                }
                 if ($Json) { $resetFact | ConvertTo-Json -Depth 10; exit 0 }
                 Write-Host 'Your review rounds are topped up. The rounds already run stay on the record; they no longer count against your allowance.' -ForegroundColor Green
                 Write-Host ''

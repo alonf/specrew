@@ -763,9 +763,26 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
         # are not reviewable content, so recording what a review found cannot invalidate it.
         if ($null -ne $ChangedPathsSinceResult -and
             (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $ChangedPathsSinceResult -RepoRoot $RepoRoot -FeatureId $FeatureId)) {
-            # Same projection defect, same fix. A review that still covers the project must not return a
-            # block; the records-only exemption exists precisely so recording what a review found cannot
-            # take the review away.
+            # THE EXEMPTION PRESERVES AN ALREADY-AUTHORIZING RESULT; IT NEVER PROMOTES ONE.
+            #
+            # My own regression, found by round 5. Setting GateAllows here unconditionally meant a
+            # reviewer that TIMED OUT or published a partial/invalid findings result, followed by a
+            # drift-log commit, produced a digest differing only by that record - and this branch handed
+            # the signoff gate an ALLOW for a result that could never have authorized anything. The
+            # records-only rule is about STALENESS, not about authority: it says a records commit does
+            # not take your review away. It must not be able to give you one you never had.
+            #
+            # So the allow is conditional on the result being one that authorizes on its own terms. When
+            # it is not, this falls through to the ordinary handling, which stales - the safe direction.
+            $recordsOnlyAuthorizes = (
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'runtime_outcome') -ceq 'completed' -and
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'completion') -ceq 'complete' -and
+                [string](Get-ReviewAuthorityProperty -Object $latest -Name 'validation') -ceq 'valid' -and
+                [bool](Get-ReviewAuthorityProperty -Object $latest -Name 'can_approve_current')
+            )
+            if (-not $recordsOnlyAuthorizes) {
+                return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'records-only-delta-over-non-authorizing-result' -Message 'Only governance and records files changed since your last review, but that review did not finish with a result that can sign anything off. Run a fresh review of your files as they are now: specrew review --live' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
+            }
             return New-ReviewCampaignVerdictPacketDecision -Route 'review-current' -Reason 'records-only-delta-does-not-stale' -Message 'Only governance and records files changed since your review, so it still covers your project.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -GateAllows $true -ImplementerAction 'proceed'
         }
         # T010 / FR-015, FR-016. MEASURED four times in one reviewer session: every word of the old

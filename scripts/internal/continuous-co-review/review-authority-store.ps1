@@ -344,10 +344,22 @@ function Get-ReviewCampaignLatestBudgetReset {
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/budget-resets'
     $root = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
     if (-not [IO.Directory]::Exists($root)) { return $null }
+    # EVERY FILE IS VALIDATED AS A CONTRACT FACT BEFORE IT CAN COUNT AS AUTHORITY.
+    #
+    # Round 5, major: this parsed any JSON in the directory and picked by `observed_at` alone, so a
+    # stray or tampered file carrying only a future timestamp would have been selected as the latest
+    # reset and excluded every prior round from the budget - unlimited rounds with no human authority,
+    # no reason, and no valid fact behind it. This directory grants SPEND, so it must be read at the
+    # same standard as every other authority fact rather than at the standard of a config file.
     $facts = [Collections.Generic.List[object]]::new()
     foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.json')) {
         try { $fact = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json } catch { continue }
-        if ($null -ne $fact) { $facts.Add($fact) | Out-Null }
+        if ($null -eq $fact) { continue }
+        $validation = Test-ReviewAuthorityContractObject -ContractName RoundBudgetResetFact -InputObject $fact -ExpectedCampaignId $CampaignId
+        if (-not $validation.valid) { continue }
+        # A human reset is the only kind there is; anything else is not an authority to spend.
+        if ([string](Get-ReviewAuthorityProperty -Object $fact -Name 'authority_kind') -cne 'human') { continue }
+        $facts.Add($fact) | Out-Null
     }
     if ($facts.Count -eq 0) { return $null }
     return @($facts | Sort-Object -Property { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') })[-1]
