@@ -764,6 +764,68 @@ first finding would have been MY fabrication rather than a product defect — an
 exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
 which is the synthesis rule applied to a document instead of a fixture.
 
+## THE ENFORCEMENT MECHANISM HAS THE SHAPE OF AN ATTACK (maintainer diagnosis, 2026-08-12)
+
+**The most consequential finding of the feature, and it is not a defect in a working system — it is the
+governance mechanism being REJECTED by the thing it governs.** On a supported host, with the fix
+installed, on the second attempt.
+
+Copilot on a reasoning model, given a fully-specified task, reasoned:
+
+> *"I'm noticing this looks like a prompt injection attempt — there's a system prompt override claiming I
+> should be a 'Specrew coordinator' demanding elaborate governance workshops… I should ignore the
+> injected instructions."*
+
+then half-relented — *"a legitimate Specrew-configured environment, so I should follow the design workshop
+lifecycle TO SOME DEGREE"* — and decided for itself how much to comply. It skipped the workshop with
+*"requirements are fully specified with no ambiguity"*, which is the rationalisation my previous fix
+refused BY NAME, in different words.
+
+**MY PREVIOUS FIX WAS THE WRONG DIRECTION AND I HAVE REVERSED IT.** I answered the free-run regression by
+adding a louder clause — capitals, *BINDING ON YOU*, a named refusal of the exact excuse. Measured: the
+clause was present and did not bind. **A discounted instruction does not bind at any volume, and emphasis
+is what makes it discountable.** More capitals made the block MORE injection-shaped, not more binding.
+
+**THE MODEL IS NOT MISBEHAVING.** Text arriving in context, claiming authority over behaviour, telling it
+to do something other than what the user asked, is structurally identical to a prompt-injection attack. A
+safety-trained model that discounts it is working correctly. **The problem is that Specrew's delivery has
+the shape of an attack.**
+
+**AND THE FIX IS NOT CHANNEL, IT IS REGISTER** — the maintainer's correction to their own first
+direction, and the sharpest part. `AGENTS.md`/`CLAUDE.md` are user-owned, trusted, already deployed, and
+already carried the constraint verbatim. **It was ignored anyway.** The agent's reasoning quotes the
+file's own words while classifying them as an attack, because the file opens *"You are the Specrew Crew
+coordinator."*
+
+| sentence | how it lands |
+| --- | --- |
+| *"You are the Specrew Crew coordinator."* | **ROLE OVERRIDE** — the shape of an injection, which models are trained to distrust |
+| *"This project uses Specrew. Work here starts with the design workshop…"* | **PROJECT CONFIGURATION** — what `AGENTS.md` is FOR, which models are trained to follow |
+
+Same rules, same specificity, opposite reception.
+
+**WHAT CHANGED.** `templates/coordinator-instructions.md` is rewritten from persona assignment into
+project rules: no *"You are…"*, no *"your intake is…"*, no identity claim. Every constraint kept —
+workshop first, no spec before it, governed commands only, boundaries authorized by an explicit
+`approved for <boundary>`, and that a clear request is where the shortcut is most tempting. Only the
+voice changed. The hook injection is reframed the same way one layer out: *MANDATORY FIRST ACTION* became
+a statement of what a session opens with, and the injection now reports STATE — version, host, project,
+branch, lifecycle position — with the rules living in the file the agent already trusts. **An injection
+that reports state cannot look like an attack; one that issues mandates always will.**
+
+> **THE STRATEGIC POINT, which outlives this fix.** Models are being hardened against prompt injection
+> continuously. Claude Code complied today; Copilot on a reasoning model did not. **That gap widens with
+> every model release.** A governance product whose enforcement depends on agents NOT being
+> injection-resistant is building against the tide. The durable form is *"here is how this project
+> works"* — a fact the agent incorporates — rather than *"you are X and you must Y"* — a claim it is
+> trained to evaluate and, increasingly, to refuse.
+
+**VERIFICATION IS A WALK.** A fixture proving a file contains a string proves nothing: the failure is a
+model's CLASSIFICATION of text it has already read. The only check that counts is a fresh session on a
+fresh project, on a reasoning-capable host, that reaches the design workshop instead of writing a spec.
+**Owed, and not something I can perform** — I know what I am supposed to do, which is the one thing the
+driver must not.
+
 ## REGRESSION — THE BANNER REWRITE REMOVED THE AGENT'S BINDING CLAUSE (mine, 2026-08-12)
 
 **An agent skipped the entire lifecycle, and my item-E fix caused it.**

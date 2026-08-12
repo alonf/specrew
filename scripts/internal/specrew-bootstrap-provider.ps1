@@ -127,15 +127,15 @@ function Format-BootstrapDirective {
     # Get-SpecrewCoordinatorFragment, so the bootstrap guard cannot drift from the instruction-file guard),
     # ABOVE the broader banner/contract context so a weak model attends to the immediate action + guard first.
     if (-not [string]::IsNullOrWhiteSpace($CoordinatorFragment)) {
-        $lines.Add('=== SPECREW COORDINATOR (front-loaded - the immediate posture + the anti-raw-Spec-Kit guard; read FIRST) ===')
+        $lines.Add('=== HOW THIS PROJECT WORKS (the same text deployed in AGENTS.md / CLAUDE.md, repeated here for convenience) ===')
         $lines.Add($CoordinatorFragment.Trim())
     }
     # FR-001 (banner fix, 2026-06-10): the orientation BANNER is mandatory on EVERY host and must render
     # FIRST. It was skipped on claude (the render instruction sat AFTER the ~45KB inline contract, so claude
     # skimmed past it to the task; copilot rendered it). Hoist the full, EXPANDED banner mandate to the TOP -
     # before the contract - and name the "how we work" + user-profile/expertise content the human expects.
-    $lines.Add('=== MANDATORY FIRST ACTION - render before anything else, on EVERY host ===')
-    $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render it ONCE, only as the opening of THIS session''s first response: if you RE-READ this contract later in the same session (e.g. to re-check the lifecycle state), do NOT render the banner again - you have already oriented; just continue the work. Render, in order:')
+    $lines.Add('=== SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH ===')
+    $lines.Add('Sessions in this project open with an orientation banner, before the first request is acted on, so the person can see where the work stands. It is rendered once, as the opening of the session''s first response - re-reading this state later in the same session does not call for another one. It contains, in order:')
     $lines.Add('  (1) What Specrew does for THIS person, in PLAIN WORDS - no lifecycle vocabulary in the first sentence a consumer ever reads. Say, in your own phrasing: you write down what they want before building it, you check with them before each big step instead of running ahead, and nothing moves past one of those checks until they say so. Do NOT open with words like lifecycle, spec-driven, boundaries, gates, verdict, or SDLC: they are precise for someone who already knows the method and meaningless to someone meeting it. (Measured 2026-08-12: the previous opening carried six such terms in its first sentence, and the consumer-language pass rated it clean because those words are deliberately NOT on the banned-noun list - that list governs approval instructions, where the reader has already been introduced. An introduction has a different audience, and the same word can be right in one and wrong in the other.)')
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
     # ================= AGENT-BINDING CLAUSE - NOT PART OF THE RENDERED BANNER =================
@@ -161,13 +161,24 @@ function Format-BootstrapDirective {
     # sentence was doing for the other reader.
     #
     # So the two audiences are now addressed SEPARATELY: (1) speaks to the consumer, this speaks to you.
+    # DE-ESCALATED 2026-08-12, and this reverses my own fix from hours earlier.
+    #
+    # I answered the free-run regression by adding a loud agent-binding block here - capitals, BINDING
+    # ON YOU, a named refusal of the exact rationalisation. Measured on a reasoning-capable host: the
+    # clause was present, and the agent skipped the lifecycle anyway using that very reasoning in
+    # different words. Worse, its stated reason for discounting Specrew was that this text 'looks like a
+    # prompt injection attempt ... a system prompt override claiming I should be a Specrew coordinator'.
+    #
+    # A DISCOUNTED INSTRUCTION DOES NOT BIND AT ANY VOLUME, and emphasis is what makes it look
+    # discountable: mandates arriving in context, claiming authority over behaviour, are structurally
+    # identical to an injection attack, and a safety-trained model is right to treat them that way. More
+    # capitals made the block MORE injection-shaped, not more binding.
+    #
+    # So the rules moved to where they carry provenance - AGENTS.md / CLAUDE.md, user-owned files the
+    # agent trusts - and this channel now reports STATE. An injection that reports state cannot look
+    # like an attack; one that issues mandates always will.
     $lines.Add('')
-    $lines.Add('=== BINDING ON YOU, THE AGENT - NOT banner text. Never render these lines to the human; they are machinery, and putting them on screen is the exact defect item (1) above exists to fix. Obey them silently. ===')
-    $lines.Add('You do NOT implement before the governed intake. For a NEW feature the intake is the specrew-design-workshop skill, and it comes FIRST - before any spec, any code, any file you create for the request.')
-    $lines.Add('You STOP at every boundary for a human verdict, and you do not advance past one on your own reading of the situation.')
-    $lines.Add('You do NOT free-run the lifecycle. Not for any request, however clear it looks to you.')
-    $lines.Add('SPECIFICALLY REFUSED as a reason to skip: "this is a concrete, well-scoped request", "this is small", "the intent is obvious", "the workshop would add nothing here". A small, clear task is EXACTLY when free-running feels justified, and it is the case this rule exists for. Scope is not a lifecycle exemption; a well-understood request still gets the workshop, the spec, and the gates.')
-    $lines.Add('If you are about to write code and cannot name the boundary that authorized it, you are already off the path - go run the intake instead.')
+    $lines.Add('The project rules above are also deployed in AGENTS.md / CLAUDE.md at the project root, which is where they are maintained.')
     # FR-025 (banner-3 resolution fix, 2026-07-01 / D-197-I009-012): inject the RESOLVED expertise line straight
     # into the reminder. A POINTER-mode host (claude/codex - whose hook-output cap drops the inline contract) skims
     # the pointer and renders an EMPTY item 3 ("it knows nothing about me") even though ~/.specrew/user-profile.yml
