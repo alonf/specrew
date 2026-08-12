@@ -92,21 +92,25 @@ requires P/Invoke on a safety-critical path.
 
 ## What "continuous co-review" means in this release — read this before relying on it
 
-**The co-review is GATE-TRIGGERED, not continuous.** It runs when a boundary gate refuses, and when you
-run `specrew review --live --approve-round` yourself. It does **not** currently review automatically as
-you commit.
+**Specrew checks, at every stop, whether your last review still covers your files, and tells you when it
+does not. It does not start a review by itself.** Starting one spends a review round, and a round needs
+your approval — so you start it:
 
-The design intends a checkpoint that fires as work lands, so that once a reviewer is authorized once, the
-next changed checkpoint reviews automatically. In dogfood runs on three hosts, code landed and commits
-were made and the co-review journal gained no entries.
+```
+specrew review --live --approve-round
+```
 
-**What was measured, and its limit.** In the one run whose state we hold frozen, the project never
-reached the implement stage — it was wedged at `clarify` — so the checkpoint correctly declined to fire.
-That explains that run and **is not established for the runs where code did land**; those states were not
-captured. So the honest position is: the checkpoint did not fire, one run has an innocent explanation,
-and the general cause is not known.
+**This is more specific than "gate-triggered", and the difference matters.** The checkpoint is not
+silent and it is not asleep. It EVALUATES, repeatedly, in an open implementation window, against a tree
+carrying your code — and it reports that the last result no longer covers you, rather than beginning a
+new review. Measured on a dogfood run: `last_authorized_boundary: before-implement`, 32 source files
+under `src/`, and six consecutive journal entries all reading `latest-result-not-current`.
 
-**Why this is stated rather than quietly deferred.** "Continuous co-review" is a claim a consumer will
-eventually test by committing and waiting. Finding out then, rather than here, is the kind of surprise
-that costs trust in everything else the tool says. Treat review as something you run at a gate or on
-demand in this release, and the diagnosis carries to beta4.
+**Why it stops there.** Automatic firing and per-round human approval are in direct tension: a round that
+fires on its own is a provider spend nobody authorized. This release chose approval. The consequence is
+that the review is something you run, and the product's job is to tell you clearly and promptly when you
+need to — which it does.
+
+**What is deferred to beta4** is the design question, not a bug fix: whether a standing "review
+automatically for the next N rounds" authorization should exist, so that continuous review and explicit
+approval can both be true at once.

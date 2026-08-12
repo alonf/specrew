@@ -792,6 +792,46 @@ A fixture proves one component; a suite proves many components separately. Neith
 where an absent help entry and a quiet return meet, because that meeting is not a component — it is a
 path. *Fixture green on any of the five places this broke is not evidence.*
 
+## THE CHECKPOINT — DIAGNOSED. It is not silent; it CANNOT fire in the shipped mode (2026-08-12)
+
+**The maintainer supplied the measurement my first pass said was missing, and it changed the question.**
+From the Claude run: `last_authorized_boundary: before-implement`, 32 source files under `src/`, and the
+co-review journal growing 27 -> 33 lines with **all six new entries reading `latest-result-not-current`**.
+The window was open — the navigator's own comment says a cursor normalizing to `before-implement` IS the
+implementation window. So the checkpoint was EVALUATING, repeatedly, against a tree carrying code, and
+stopping at "the last result is stale" instead of starting a round.
+
+That reframed it from *"why does it never fire?"* — an absence, unanswerable — to *"why does evaluation
+end at `latest-result-not-current`?"*, which is narrow and has evidence behind it. **Six identical
+entries is a lead, not a mystery.**
+
+**MEASURED CAUSE.** `worktree-navigator.ps1:344` — `if ([bool]$authority.campaign_authority_enabled)` —
+and **every path inside that branch returns**. The branch's job is to produce a SURFACE: inject notes, or
+a stop block. The only round-firing code in the file is at **line 458**, `$decision.action = 'fired'`,
+which sits BELOW that return, together with the REAP, the implement-stage gate and the identity/dedup.
+Confirmed by search: nothing between 344 and 400 can start a round.
+
+**So the checkpoint does not decline — it is never reached.** Continuous firing lives entirely on the
+LEGACY path and is unreachable under campaign authority, which is the shipped mode. The six journal
+entries are six Stop events, each correctly producing the stale surface, none able to do anything else.
+
+**WHY THIS IS NOT A PATCH.** Making the campaign path fire would spend a provider round with no human
+approval — in direct contradiction with the authorization model built this week, where one human approval
+mints one round and an undeclared reference is refused. **Automatic firing and per-round approval cannot
+both be true as currently stated.** This release chose approval. Choosing differently means inventing a
+standing "review automatically for the next N rounds" authorization, which is a design decision and the
+maintainer's, not a fix to be taken at the end of a night.
+
+**Deferred to beta4 as a DESIGN QUESTION, not a bug**, and the release note now says what the product
+actually does rather than the vaguer "gate-triggered": it checks at every stop whether the last review
+still covers your files and tells you when it does not; it does not start one itself, because starting
+one spends a round that needs your approval.
+
+*The method note, and it is the maintainer's twice over: my first pass concluded "correct for that
+project, unknown in general" and stopped — right, and still one measurement short. The absence of firing
+was unanswerable; the PRESENCE of six identical declines was answerable in minutes. **When an absence
+resists diagnosis, look for the thing that IS happening.***
+
 ## THE CHECKPOINT DIAGNOSIS — deferred, with what IS known stated (timeboxed, 2026-08-12)
 
 `Get-ContinuousCoReviewNavigatorImplementStage` gates the checkpoint: it fires only when the recorded
