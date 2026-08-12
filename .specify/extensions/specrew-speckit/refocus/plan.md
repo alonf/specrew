@@ -17,6 +17,3 @@ reviewed_at: 2026-06-07
 
 Known traps: plans that quietly re-litigate the design option; declared-vs-summed capacity mismatch; Wave B authored as placeholders; quality profile pasted without feature-specific reconciliation.
 
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md

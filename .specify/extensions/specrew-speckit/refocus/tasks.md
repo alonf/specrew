@@ -15,6 +15,3 @@ reviewed_at: 2026-06-07
 
 Known traps: SC rows with no covering task; "misc/polish" tasks traceable to nothing; capacity that ignores test effort; treating after-tasks output as permission to start coding.
 
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md

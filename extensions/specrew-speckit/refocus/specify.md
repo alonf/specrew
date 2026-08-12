@@ -18,5 +18,4 @@ Known traps: menu-before-render (a picker/menu collapses the verdict packet into
 
 Deep sources:
 
-- {{project_root}}/docs/methodology/lifecycle-discipline.md
 - {{project_root}}/.claude/skills/specrew-design-workshop/SKILL.md

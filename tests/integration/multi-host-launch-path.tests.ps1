@@ -274,8 +274,22 @@ $interactionPrompt = @'
 '@
 
 $codexInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'codex'
-if ($codexInteraction -notmatch 'request_user_input' -or $codexInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
-    Write-Fail "Codex interaction guidance did not require the structured user-input/menu path with the shared response contract:`n$codexInteraction"
+# NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT (maintainer ruling 2026-08-12). This assertion used to
+# REQUIRE the structured user-input primitive for the verdict on Codex, which is the defect rather than
+# the contract: only a typed phrase is captured, so a structured selection at the verdict offers a control
+# that cannot authorize. Measured the same day - a picker selection accepted and never captured, and the
+# agent then invoked the authorization writer directly.
+#
+# The response contract is unchanged and still asserted; what changed is how it is OFFERED. The four
+# responses must be lines the human can literally send, and the structured primitive must NOT be required
+# at the verdict step. It remains available for clarify questions and design discussion, where nothing is
+# recorded and no boundary advances.
+# ASSERTED ON THE RIGHT SURFACE. A first attempt demanded the literal sendable lines here and failed
+# correctly: those lines live in launch-contract Rule 53, which this guidance points AT, and the block
+# legitimately still names the host's primitive because clarify questions and design discussion keep it.
+# What this surface must say is that the primitive is NOT for the verdict and that the reply is TYPED.
+if ($codexInteraction -notmatch "(?i)stop for the human's TYPED reply" -or $codexInteraction -notmatch '(?i)not for a boundary verdict|Do NOT call the structured primitive for a boundary verdict') {
+    Write-Fail "Codex interaction guidance must direct a TYPED reply at the verdict and must exclude the structured primitive from the verdict step:`n$codexInteraction"
 }
 if ($codexInteraction -match 'AskUserQuestion|Squad handles the rest') {
     Write-Fail "Codex interaction guidance contains another host/runtime primitive or false lifecycle claim:`n$codexInteraction"
@@ -289,8 +303,13 @@ $claudeInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interaction
 # stops route through the specrew-gate-stop skill, whose frontmatter disallows AskUserQuestion, so the
 # picker is removed for the stop and the packet MUST render as Markdown. The design-workshop skill
 # independently removes the same unsafe picker for workshop questions; clarify questions keep it.
-if ($claudeInteraction -notmatch 'specrew-gate-stop' -or $claudeInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
-    Write-Fail "Claude interaction guidance did not route boundary verdict stops through the specrew-gate-stop skill with the shared response contract:`n$claudeInteraction"
+# The response CONTRACT is unchanged - all four kinds survive - but it is no longer OFFERED as a
+# numbered list, so the assertion pins the kinds by name rather than the menu string that carried them.
+if ($claudeInteraction -notmatch 'specrew-gate-stop' -or
+    $claudeInteraction -notmatch '(?i)approve-with-instructions|approve with instructions' -or
+    $claudeInteraction -notmatch '(?i)send-back|send back' -or
+    $claudeInteraction -notmatch '(?i)LINES THE HUMAN CAN LITERALLY SEND') {
+    Write-Fail "Claude interaction guidance must route boundary verdict stops through specrew-gate-stop and offer the four response kinds as literally sendable lines:`n$claudeInteraction"
 }
 if ($claudeInteraction -notmatch 'disallows the AskUserQuestion tool' -or $claudeInteraction -notmatch 'is a Rule 46 violation') {
     Write-Fail "Claude interaction guidance does not remove the picker at the boundary verdict stop (165 collapse fix):`n$claudeInteraction"
@@ -300,8 +319,11 @@ if ($claudeInteraction -notmatch 'specrew-design-workshop skill independently di
 }
 
 $copilotInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'copilot'
-if ($copilotInteraction -notmatch 'No structured question/menu primitive is declared' -or $copilotInteraction -notmatch 'textual "What''s your verdict\?" options exactly as shown') {
-    Write-Fail "Copilot interaction guidance did not render the textual fallback contract when no structured primitive is declared:`n$copilotInteraction"
+# The fallback path for a host with no primitive. It used to require the old menu heading; the four
+# responses are now lines the human can literally send, which is the whole ruling - on this path there was
+# never a picker to remove, so the change is purely from a MENU to SENDABLE TEXT.
+if ($copilotInteraction -notmatch 'No structured question/menu primitive is declared' -or $copilotInteraction -notmatch 'approved for <to>' -or $copilotInteraction -notmatch 'changes needed:') {
+    Write-Fail "Copilot interaction guidance must render the four responses as literally sendable lines when no structured primitive is declared:`n$copilotInteraction"
 }
 if ($copilotInteraction -match 'request_user_input|AskUserQuestion') {
     Write-Fail "Copilot interaction guidance leaked another host's structured primitive:`n$copilotInteraction"

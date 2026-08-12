@@ -15,6 +15,3 @@ reviewed_at: 2026-06-07
 
 Known traps: re-asking what the repo already answers; burying scope changes in clarify prose; advancing to plan because clarify "found nothing" without the human's verdict.
 
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md

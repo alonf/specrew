@@ -545,15 +545,22 @@ sequenceDiagram
 
 These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
 
-53. **Structured verdict menu at every human-approval boundary stop (mandatory where available).** Core Specrew defines the response contract and allowed response shapes. The selected host package renders the interaction behavior below. Immediately AFTER you emit the human re-entry packet at a human-verdict gate, follow the host-rendered guidance:
+53. **NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT — the four responses are lines the human can literally send** (maintainer ruling 2026-08-12). Core Specrew defines the response contract and allowed response shapes. The selected host package renders the interaction behavior below. Immediately AFTER you emit the human re-entry packet at a human-verdict gate, render the four responses as sendable lines, substituting the real boundary name and a real prompt number:
 
 ``````text
-What's your verdict?
-  1. Approve as-is — proceed with the defaults
-  2. Approve with instructions — proceed and carry the added instructions
-  3. Send back — describe what to change before this boundary can advance
-  4. Discuss prompt #N — discuss that prompt only, then return for explicit approval
+What would you like to do? Type one of these:
+
+  approved for <to>
+  approved for <to> - <your instructions>
+  changes needed: <what to change>
+  discuss prompt 1
 ``````
+
+**Not a numbered list, not a picker, not a menu — at the VERDICT step.** Only a typed phrase is captured, so a selection affordance here offers a control that cannot do the thing it names, and the user does exactly what they were offered. Measured on two hosts on 2026-08-12: a picker selection was accepted and not captured, and that agent then invoked the authorization writer directly; a numbered option was typed and not captured, and that agent edited and committed the spec on the strength of it. One cause, opposite failure modes.
+
+**This binds the boundary verdict ONLY. It is not a rule against pickers.** A picker in a design discussion, a clarify question, a workshop agenda — anywhere nothing is recorded in the ledger and no boundary advances — is doing good work and stays; a wrong click there costs a re-ask.
+
+All four response kinds are kept: **approve with instructions** is how a human approves without rubber-stamping, and **discuss prompt N** opens one item without withdrawing approval of the rest. Do NOT add a line warning that clicking or numbering will not authorize — it defends against an affordance no longer offered, plants the idea, and speaks in the machinery's voice. If someone sends `1` anyway, answer them helpfully at that point.
 
 <<SPECREW_HOST_INTERACTION_GUIDANCE_BLOCK>>
 

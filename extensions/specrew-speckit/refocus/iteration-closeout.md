@@ -16,6 +16,3 @@ reviewed_at: 2026-06-07
 
 Known traps: `Status: complete` with prose still saying "executing"; dashboard stale from a review-time capture; deferred tasks that appear nowhere in the next iteration's input; closing with unapplied stashes or uncommitted churn unaccounted.
 
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md

@@ -15,6 +15,3 @@ reviewed_at: 2026-06-07
 
 Known traps: `Status: approved` / `in_progress` (invalid enums); `tbd` concern rows; capacity lines with trailing prose; starting T001 while the gate is still blocked.
 
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md

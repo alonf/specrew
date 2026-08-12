@@ -19,6 +19,3 @@ reviewed_at: 2026-06-07
 
 Known traps: tests written but never run; state.md frozen at T001 while code is at T009; "while I'm here" refactors with no task; tool-contract failures papered over instead of stopped on.
 
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md

@@ -371,12 +371,42 @@ function New-SpecrewSessionState {
     $resolvedFeatureRef = Resolve-SpecrewFeatureRef -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef
     $featurePath = Resolve-SpecrewFeatureDirectory -ProjectRoot $ProjectRoot -FeatureRef $resolvedFeatureRef
     $recordedAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+
+    # AN EMPTY ITERATION NUMBER MUST NEVER PERSIST AS IF IT WERE A VALUE (maintainer ruling 2026-08-12).
+    #
+    # This recorded whatever the agent typed, INCLUDING NOTHING - no derivation, no check against disk -
+    # and two boundaries then advanced against state that could not support the third. The plan gate
+    # fails closed correctly, two stages too late. Measured across three dogfood runs from the SAME
+    # machinery:
+    #
+    #   Claude   ran sync WITH -IterationNumber 001        -> registered, plan authorized
+    #   Codex    scaffolded iterations/001, synced WITHOUT -> directory on disk, controller blank
+    #   Copilot  never reached the sanctioned sync         -> neither
+    #
+    # Three harnesses, three outcomes, one contract: the differing results are evidence that the CONTRACT
+    # is underspecified, not that the agents differ. So the controller derives it rather than trusting
+    # what it was handed, and REFUSES when it cannot - fail closed HERE, not two gates later.
+    #
+    # "sync needs -IterationNumber" was already a known trap in the maintainer's own records. It has now
+    # cost a dogfood run, which is the argument for fixing it in the controller rather than documenting
+    # it a second time: a trap that must be remembered is not a contract.
+    $effectiveIteration = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
+    if ([string]::IsNullOrWhiteSpace($effectiveIteration)) {
+        $derived = Resolve-SpecrewIterationStateTruthDirectory -FeaturePath $featurePath -IterationNumber $null
+        if ($null -ne $derived) { $effectiveIteration = Normalize-SpecrewIterationNumber -IterationNumber $derived.Name }
+    }
+    if ([string]::IsNullOrWhiteSpace($effectiveIteration) -and $BoundaryType -notin @('before-specify', 'specify', 'feature-closeout')) {
+        throw ("Specrew cannot record this boundary because it does not know which iteration it belongs to. " +
+            "No iteration was given and none was found under {0}. " +
+            "Create the iteration first (the plan boundary scaffolds `iterations/001/`), or pass -IterationNumber with the one you mean." -f (Join-Path $featurePath 'iterations'))
+    }
+
     return [pscustomobject]@{
         boundary_type    = $BoundaryType
         feature_ref      = $resolvedFeatureRef
         feature_number   = Get-SpecrewFeatureNumber -FeatureRef $resolvedFeatureRef
         feature_path     = $featurePath
-        iteration_number = Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber
+        iteration_number = $effectiveIteration
         task_id          = if ([string]::IsNullOrWhiteSpace($TaskId)) { $null } else { $TaskId.Trim() }
         auth_commit_hash = if ([string]::IsNullOrWhiteSpace($AuthCommitHash)) { $null } else { $AuthCommitHash.Trim() }
         recorded_at      = $recordedAt

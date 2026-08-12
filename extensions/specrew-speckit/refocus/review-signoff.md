@@ -23,4 +23,3 @@ Known traps: accepting counts ("12 tests added") without running them; reviewing
 Deep sources:
 
 - {{project_root}}/docs/methodology/review-instructions.md
-- {{project_root}}/docs/methodology/lifecycle-discipline.md

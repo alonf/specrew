@@ -41,15 +41,35 @@ Every artifact / file / directory reference in every section MUST be a **visible
 (Rule 52) — not a repo-relative path (`specs/...`, `.specrew/...`), and not a markdown link, because
 terminal hosts hide the clickable target otherwise.
 
-Then render the verdict options as a **numbered Markdown list**, exactly:
+Then render the four responses as **lines the human can literally send**, exactly — substituting the real
+boundary name for `<to>` and a real prompt number:
 
 ```text
-What's your verdict?
-  1. Approve as-is — proceed with the defaults
-  2. Approve with instructions — proceed and carry the added instructions
-  3. Send back — describe what to change before this boundary can advance
-  4. Discuss prompt #N — discuss that prompt only, then return for explicit approval
+What would you like to do? Type one of these:
+
+  approved for <to>
+  approved for <to> - <your instructions>
+  changes needed: <what to change>
+  discuss prompt 1
 ```
+
+**NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT** (maintainer ruling 2026-08-12). Not a numbered list,
+not a picker, not a menu. Only a typed phrase is captured, so an interface that offers a selection is
+offering a control that cannot do the thing it names — and the user does exactly what they were offered.
+Measured on two hosts: a Copilot picker selection was not captured and its agent then invoked the
+authorization writer directly; a Claude numbered option was not captured and its agent edited and
+committed the spec on the strength of it. Same cause, opposite failure modes.
+
+**This rule is about the BOUNDARY VERDICT, not about pickers.** A picker in a design discussion, a
+clarify question, or any exchange where no ledger records the answer and no boundary advances is doing
+good work and stays. The rule binds only where a typed phrase is the sole captured channel.
+
+Each line above is literally sendable, which is the whole point: the human reads four lines and every one
+of them is text they can type. All four response kinds are kept — **approve with instructions** is how a
+human approves without rubber-stamping, and **discuss prompt N** is how they open one item without
+withdrawing approval of the rest. Do not add a line warning that clicking or numbering will not
+authorize: it defends against an affordance that is no longer offered, plants the idea, and speaks in the
+machinery's voice. If someone types `1` anyway, answer them helpfully then.
 
 Then, as the **VERY LAST line of your message**, emit the machine marker — an HTML comment, invisible when
 the message is rendered, but read by the Stop hook to capture the human's verdict and tie it to THIS exact
@@ -77,30 +97,6 @@ Then **STOP** — end your turn and wait for the human to type their choice (a n
   here, and it drops the packet on this host. The Markdown message above is the entire stop.
 - Discussion is not approval unless the human clearly authorizes the boundary after the discussion.
 - One approval advances at most one lifecycle boundary.
-
-### ONE-MESSAGE DECISION STOPS (FR-017)
-
-**The packet and the ask are ONE message.** Never end a turn with the decision and then render the
-packet in a follow-up. A human who is asked to decide before they can read what they are deciding is
-being asked to guess, and the second message arrives after they have already started answering.
-
-This is a MEASURED failure, not a theoretical one: DRIFT-199-I001-001 records a co-design presentation
-that ended the turn without its context packet, the Stop hook bouncing, and the packet arriving in a
-follow-up message. The same shape applies to any decision-yield stop, boundary or not.
-
-**The check before you end a turn that asks for anything**: is everything the human needs in order to
-answer already in THIS message? If the answer is no, you are not ready to stop.
-
-### NEVER SYNC IN THE VERDICT TURN (FR-017 defense)
-
-**Do not run a boundary sync, a state write, or any lifecycle-advancing script in the same turn that
-carries the human's verdict.** The verdict turn's job is to record what the human said; a sync in that
-turn rebinds the crossing the verdict is being recorded against, so the authorization and the thing it
-authorizes can no longer be told apart in the ledger.
-
-If the stop reveals that a sync is missing — for example the pending-verdict artifact does not exist —
-say so plainly, run the sync in its OWN turn, and render the stop again from the artifact. That
-sequence is slower by one turn and keeps the record honest, which is the trade this rule exists to make.
 
 ## When to Use
 

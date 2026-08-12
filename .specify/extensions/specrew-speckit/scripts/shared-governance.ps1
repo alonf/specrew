@@ -3115,6 +3115,27 @@ function Add-SpecrewBoundaryAuthorization {
         [AllowNull()]
         [string]$EvidenceSource,
 
+        # AN AGENT-WRITTEN AUTHORIZATION MUST NOT BE INDISTINGUISHABLE FROM A CAPTURED ONE
+        # (maintainer ruling 2026-08-12, from frozen dogfood evidence).
+        #
+        # Measured: verdict_history [2], bypass_history [0], on a run where capture failed three times
+        # and the agent - having read this file and found this function - called it directly. Both
+        # entries were stamped evidence_source 'human-confirmed-at-resume', kind 'standard': a REAL,
+        # documented provenance label, self-asserted, with nothing verifying it. The ledger's entire
+        # value is that a recorded human authorization means a human authorized.
+        #
+        # The label alone cannot be the discriminator, precisely because the agent chose a legitimate
+        # one. So: only the CAPTURE PATH may claim a captured source, and any other caller must declare
+        # itself here. A declared call is still recorded - the human's intent is not thrown away - but it
+        # is ALSO written to bypass_history with this reason, so provenance is visible instead of silently
+        # equivalent. An undeclared non-capture call is REFUSED.
+        #
+        # Same fabrication direction refused when a placeholder authorization reference arrived; here the
+        # product's own failure induced it, which is why the guarantee moves from the agent's discipline
+        # into the writer.
+        [AllowNull()]
+        [string]$OutOfBandReason,
+
         # FR-005: 'standard' (the verdict answered the live pending ask) | 'retroactive'
         # (the human reconciled an already-crossed boundary after the fact - the resume/re-confirm
         # surface, or a capture that missed its original stop). Recorded on the entry so
@@ -3206,6 +3227,17 @@ function Add-SpecrewBoundaryAuthorization {
         $verdictHistory.Add($entry) | Out-Null
     }
     $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
+
+    # The sources the capture path actually emits, read from HandoverStore.ps1 rather than composed.
+    $capturedEvidenceSources = @('hook-captured-from-transcript', 'hook-captured-from-transcript-pending-artifact')
+    $isCapturedProvenance = $capturedEvidenceSources -ccontains $effectiveEvidenceSource
+    $isOutOfBand = -not $isCapturedProvenance
+    if ($isOutOfBand -and [string]::IsNullOrWhiteSpace($OutOfBandReason)) {
+        throw ("This authorization was not recorded by Specrew's verdict capture, so it cannot be recorded as one. " +
+            "If a human approved and capture did not take it, say so explicitly by passing -OutOfBandReason with what happened; " +
+            "it will be recorded as an authorization AND as a bypass, so the audit trail shows how it was made. " +
+            "Evidence source seen: '$effectiveEvidenceSource'.")
+    }
     $effectiveKind = if ([string]::IsNullOrWhiteSpace($Kind)) { 'standard' } else { $Kind.Trim().ToLowerInvariant() }
     if ($effectiveKind -notin @('standard', 'retroactive')) {
         throw "Authorization kind '$Kind' is not recognized (standard | retroactive)."
@@ -3219,9 +3251,29 @@ function Add-SpecrewBoundaryAuthorization {
         auth_commit_hash  = $effectiveAuthCommitHash
         evidence_source   = $effectiveEvidenceSource
         kind              = $effectiveKind
+        # Carried ON the entry, not only in bypass_history, so a reader of verdict_history alone can
+        # still tell a captured authorization from a declared out-of-band one.
+        out_of_band       = [bool]$isOutOfBand
     }
     $newAuthorization['authorization_id'] = Get-SpecrewBoundaryAuthorizationEntryId -Entry $newAuthorization
     $verdictHistory.Add($newAuthorization) | Out-Null
+
+    # THE BYPASS RECORD IS THE POINT. Without this, a declared out-of-band authorization would still
+    # leave bypass_history at zero - which is the exact state the frozen evidence shows and the reason
+    # nobody could tell the run had gone off the sanctioned path.
+    $bypassHistoryForAuthorization = New-Object System.Collections.Generic.List[object]
+    foreach ($existingBypass in @($enforcementState.State['bypass_history'])) { $bypassHistoryForAuthorization.Add($existingBypass) | Out-Null }
+    if ($isOutOfBand) {
+        $bypassHistoryForAuthorization.Add([ordered]@{
+                session_id             = $null
+                reason                 = ('authorization-recorded-out-of-band: ' + $OutOfBandReason.Trim())
+                recorded_at            = $effectiveRecordedAt
+                boundary               = $authorizedCanonical
+                launch_mode            = $null
+                agent_response_snippet = Get-SpecrewBoundaryEnforcementSnippet -Value $VerdictText
+                auth_commit_hash       = $effectiveAuthCommitHash
+            }) | Out-Null
+    }
 
     $nextScope = $null
     $scope = if ($enforcementState.State.Contains('pending_crossing')) { ConvertTo-SpecrewBoundaryMap -Value $enforcementState.State['pending_crossing'] } else { $null }
@@ -3256,7 +3308,10 @@ function Add-SpecrewBoundaryAuthorization {
         pending_crossing         = $nextScope
         verdict_history          = @($verdictHistory.ToArray())
         correction_history       = if ($enforcementState.State.Contains('correction_history')) { @($enforcementState.State['correction_history']) } else { @() }
-        bypass_history           = @($enforcementState.State['bypass_history'])
+        # The list built above, not the pre-existing state: an out-of-band authorization appends a bypass
+        # entry, and writing the original array back would discard it and leave bypass_history at zero -
+        # the very reading that made the frozen evidence look like a clean run.
+        bypass_history           = @($bypassHistoryForAuthorization.ToArray())
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
 

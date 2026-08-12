@@ -16,6 +16,3 @@ reviewed_at: 2026-06-07
 
 Known traps: feature "closed" with the worktree dirty; closeout claims contradicting verdict history; skipping the beta because the change "is just docs/tests" (the mandate has no exceptions for runtime-touching artifacts); merging without reading the host's automated PR review.
 
-Deep sources:
-
-- {{project_root}}/docs/methodology/lifecycle-discipline.md
