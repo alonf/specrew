@@ -138,6 +138,36 @@ function Format-BootstrapDirective {
     $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render it ONCE, only as the opening of THIS session''s first response: if you RE-READ this contract later in the same session (e.g. to re-check the lifecycle state), do NOT render the banner again - you have already oriented; just continue the work. Render, in order:')
     $lines.Add('  (1) What Specrew does for THIS person, in PLAIN WORDS - no lifecycle vocabulary in the first sentence a consumer ever reads. Say, in your own phrasing: you write down what they want before building it, you check with them before each big step instead of running ahead, and nothing moves past one of those checks until they say so. Do NOT open with words like lifecycle, spec-driven, boundaries, gates, verdict, or SDLC: they are precise for someone who already knows the method and meaningless to someone meeting it. (Measured 2026-08-12: the previous opening carried six such terms in its first sentence, and the consumer-language pass rated it clean because those words are deliberately NOT on the banned-noun list - that list governs approval instructions, where the reader has already been introduced. An introduction has a different audience, and the same word can be right in one and wrong in the other.)')
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
+    # ================= AGENT-BINDING CLAUSE - NOT PART OF THE RENDERED BANNER =================
+    # RESTORED 2026-08-12 after a measured regression that is mine. The consumer-facing rewrite of item
+    # (1) was correct and stays: the first sentence a person reads must not open with lifecycle, gates,
+    # verdict, SDLC. But the sentence I replaced was doing TWO jobs. Its tail - "I drive the gates and
+    # stop for your verdict at each one - I do not free-run the SDLC" - was the clause that BOUND THE
+    # AGENT, and removing it removed the binding.
+    #
+    # Measured at C:\Dev\docscheck on module 2ff657d1: the banner rendered correctly and in plain
+    # language, and the agent's very next sentence was "this is a concrete, well-scoped request so I am
+    # going straight to implementation." It wrote the tool, committed 83281a1, and declared done - no
+    # workshop, no spec, no clarify, no plan, no tasks, no boundary stop. The only governance that fired
+    # was the Stop hook demanding a packet, which described work that should never have happened. The
+    # same host on the same task shape ran the full workshop and reached clarify the day before, under
+    # the old wording.
+    #
+    # THE CLASS, and it is this week's own lesson committed by the people who named it: THE BANNER HAS
+    # TWO READERS AND THE REWRITE SERVED ONE. Same shape as the demotion mark versus the human sentence,
+    # the agent directive inside the human's block, and the candidate versus terminal finding shape.
+    # When a surface has two readers, a change for one is a change for BOTH until proven otherwise.
+    # Item E was raised by a reviewer and validated by a maintainer; neither of us asked what the removed
+    # sentence was doing for the other reader.
+    #
+    # So the two audiences are now addressed SEPARATELY: (1) speaks to the consumer, this speaks to you.
+    $lines.Add('')
+    $lines.Add('=== BINDING ON YOU, THE AGENT - NOT banner text. Never render these lines to the human; they are machinery, and putting them on screen is the exact defect item (1) above exists to fix. Obey them silently. ===')
+    $lines.Add('You do NOT implement before the governed intake. For a NEW feature the intake is the specrew-design-workshop skill, and it comes FIRST - before any spec, any code, any file you create for the request.')
+    $lines.Add('You STOP at every boundary for a human verdict, and you do not advance past one on your own reading of the situation.')
+    $lines.Add('You do NOT free-run the lifecycle. Not for any request, however clear it looks to you.')
+    $lines.Add('SPECIFICALLY REFUSED as a reason to skip: "this is a concrete, well-scoped request", "this is small", "the intent is obvious", "the workshop would add nothing here". A small, clear task is EXACTLY when free-running feels justified, and it is the case this rule exists for. Scope is not a lifecycle exemption; a well-understood request still gets the workshop, the spec, and the gates.')
+    $lines.Add('If you are about to write code and cannot name the boundary that authorized it, you are already off the path - go run the intake instead.')
     # FR-025 (banner-3 resolution fix, 2026-07-01 / D-197-I009-012): inject the RESOLVED expertise line straight
     # into the reminder. A POINTER-mode host (claude/codex - whose hook-output cap drops the inline contract) skims
     # the pointer and renders an EMPTY item 3 ("it knows nothing about me") even though ~/.specrew/user-profile.yml

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "001"
-updated_at: "2026-08-11T14:10:00.0000000Z"
+updated_at: "2026-08-12T16:12:53.1231612Z"
 tasks:
   T001:
     title: "Pause core (round terminal + pause facts + decision surface + per-campaign budget)"
@@ -80,52 +80,4 @@ tasks:
     status: "done"
     started_at: "2026-08-10T16:03:03.6699804Z"
     completed_at: "2026-08-10T16:03:34.5273859Z"
-    blocked_reason: ""
-  T014:
-    title: "Approving a round is a decision, not an identifier (--approve-round; split the three host conditions)"
-    status: "done"
-    started_at: "2026-08-11T15:00:00.0000000Z"
-    completed_at: "2026-08-11T15:45:00.0000000Z"
-    blocked_reason: ""
-  T015:
-    title: "Branch dogfood end to end, driven by someone who did not build it (measurement: help/guess/source-read count)"
-    status: "in-progress"
-    started_at: "2026-08-12T00:30:00.0000000Z"
-    completed_at: ""
-    blocked_reason: ""
-  T016:
-    title: "An agent-written authorization must not be indistinguishable from a captured one (refuse, or record as bypass with reason)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: ""
-  T017:
-    title: "The answer channel offered is not the channel read - pickers/numbered options are offered, accepted, and do not authorize (BLOCKED: maintainer choice - make capturable, or stop offering)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: ""
-  T018:
-    title: "An empty iteration_number passed two boundaries; earlier gates must refuse rather than defer"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: ""
-  T020:
-    title: "Agent and controller must agree on what an approval IS (Claude agent acted on an uncaptured 1 and committed eb6219f)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: ""
-  T021:
-    title: "The uncaptured-approval explanation is unreadable (four machinery terms for why a button did not work) - T010 subject"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: ""
-  T019:
-    title: "Plan artifacts untracked - determine whether a second defect or a consequence of the wedge"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
     blocked_reason: ""

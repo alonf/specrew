@@ -764,6 +764,52 @@ first finding would have been MY fabrication rather than a product defect — an
 exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
 which is the synthesis rule applied to a document instead of a fixture.
 
+## REGRESSION — THE BANNER REWRITE REMOVED THE AGENT'S BINDING CLAUSE (mine, 2026-08-12)
+
+**An agent skipped the entire lifecycle, and my item-E fix caused it.**
+
+Measured at `C:\Dev\docscheck`, module pinned at `2ff657d1`. The banner rendered correctly and in plain
+language — item E worked. The agent's very next sentence: *"Starting now: building the delimiter-checker
+tool directly — this is a concrete, well-scoped request so I'm going straight to implementation."* It
+wrote the tool, created fixtures, committed `83281a1`, and declared done. **No workshop, no spec, no
+clarify, no plan, no tasks, no before-implement, no boundary stop.** The only governance that fired was
+the Stop hook demanding a packet — which it rendered, describing work that should never have happened,
+ending *"Nothing required — the tool is done."*
+
+**Near-controlled evidence**: the same host, on the same task shape, ran the full workshop and reached
+clarify the day before, under the old wording.
+
+**CAUSE.** The sentence I replaced was doing TWO jobs. Its consumer half was the introduction; its tail —
+*"I drive the gates and stop for your verdict at each one — I don't free-run the SDLC"* — was the clause
+that BOUND THE AGENT. I rewrote the surface for the human and deleted the constraint on the machine.
+
+**THE CLASS, and it is this week's own lesson committed by the people who named it: THE BANNER HAS TWO
+READERS, AND THE REWRITE SERVED ONE.** Same shape as the demotion mark versus the human sentence, the
+agent directive inside the human's block, the candidate versus terminal finding shape, and
+`render_boundary_packet` deciding both rendering and allow/block. **When a surface has two readers, a
+change for one is a change for BOTH until proven otherwise.**
+
+*The uncomfortable part, recorded deliberately: item E was raised by a reviewer, ruled by the maintainer,
+and implemented by me — three passes, by the people who had spent the week naming exactly this failure —
+and none of us asked what the removed sentence was doing for the other reader. Knowing a rule is not
+applying it; the rule has to be a QUESTION you ask at the moment of the change.*
+
+**THE FIX IS NOT A REVERT.** The consumer rewrite is right and stays. The two audiences are now addressed
+SEPARATELY: item (1) speaks to the person in plain words; a distinct, explicitly non-rendered block
+speaks to the agent in its own register — no implementing before the governed intake, a stop at every
+boundary, no free-running the lifecycle.
+
+**AND THE RATIONALISATION IS REFUSED BY NAME.** *"This is a concrete, well-scoped request"* is the exact
+sentence the agent gave, so it is quoted back and refused, along with *"this is small"*, *"the intent is
+obvious"*, *"the workshop would add nothing here"*. **A small, clear task is precisely when free-running
+feels justified — it is the case the rule exists for.** Plus a self-check that needs no interpretation:
+*if you are about to write code and cannot name the boundary that authorized it, you are already off the
+path.*
+
+**VERIFICATION IS A WALK, NOT AN ASSERTION.** A fixture proving the banner contains a string proves
+nothing here — the failure was an agent's DECISION after reading it. The check is a fresh session on a
+fresh project that reaches the design workshop instead of writing code, and it is owed.
+
 ## THE COMPOSITION LESSON — three survivable defects made an outcome none of them was (2026-08-12)
 
 **Recorded above the individual fixes, because it is a different kind of finding from everything else in

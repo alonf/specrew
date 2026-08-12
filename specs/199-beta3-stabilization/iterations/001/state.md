@@ -2,21 +2,19 @@
 
 **Schema**: v1
 **Current Phase**: before-implement
-**Iteration Status**: executing
-**Last Completed Task**: T014
-**Tasks Remaining**: T015, T016, T017 (blocked on a maintainer choice), T018, T019, T020, T021
-**In Progress**: T015 (awaiting a driver who did not build it)
+**Iteration Status**: ready-for-review
+**Last Completed Task**: T008
+**Tasks Remaining**: (none)
+**In Progress**: (none)
 **Baseline Ref**: 78f68e4563c612c7cf1bd1d0cecadd826c887f6c
-**Updated**: 2026-08-11T14:10:00.0000000Z
+**Updated**: 2026-08-12T16:12:53.1855997Z
 
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- SCOPE EXCEPTION ruled 2026-08-11 re-opened this iteration: two items, T014 and T015. The status
-  moved back to `executing` BEFORE the work started, because a ledger that catches up afterwards was
-  wrong in the interval.
-- Task progress: 14 complete, 1 in-progress, 5 pending, 1 blocked.
-- Latest completed task: T013
+- Implementation tasks are complete; review-signoff is next.
+- Task progress: 13 complete, 0 in-progress, 0 pending, 0 blocked.
+- Latest completed task: T008
 <!-- specrew:task-progress-summary:end -->
 ## Notes
 
