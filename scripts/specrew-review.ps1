@@ -138,7 +138,13 @@ Options:
   --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
   --model <model>        Requested reviewer model id for the host
   --effort <effort>      Optional host-specific reviewer reasoning/effort setting to persist in evidence
-  --authorization-ref    Human-approved authorization reference for the requested reviewer
+  --approve-round        Approve one review round. Specrew records your approval and mints the
+                         reference itself - there is no value to invent
+  --pause-choice <1|2|3> Answer a review round that is waiting for your decision:
+                         1 run another round, 2 stop here and complete sign-off, 3 abandon
+  --pause-rationale      Optional note recorded with a stop-here answer
+  --authorization-ref    Your own approval label, for scripts or an approval recorded elsewhere.
+                         Requires --ack-reason saying where that approval came from
   --code-writer-host     Host that produced the implementation, used to prefer an independent reviewer
   --design-context-ref   Design/spec artifact to include in the request bundle; repeatable
   --allowed-path         Path scope the reviewer may inspect; repeatable
@@ -1071,8 +1077,28 @@ if ($Live) {
                 $campaignStoreRoot = Join-Path $resolvedProjectPath '.specrew/review/authority'
                 $answerIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
                 $outstanding = Get-ReviewCampaignPendingPause -StoreRoot $campaignStoreRoot -CampaignId $answerIdentity.campaign_id
+                # A SILENT FAILURE INVITES THE WORST AVAILABLE DIAGNOSIS.
+                #
+                # Measured: an agent ran --pause-choice without --feature, resolved no campaign, found no
+                # pause, and got nothing back. It then checked --help, where the flag was not listed, and
+                # concluded "the CLI is telling you to run a flag its own parser doesn't implement" - and
+                # proposed bypassing the campaign gate as the remedy. A defensible inference from two
+                # signals that both said ABSENT. Three individually-minor defects - an undocumented flag,
+                # an unresolved feature id, and a no-op instead of a refusal - chained into an agent
+                # proposing to route around governance.
+                #
+                # So the two causes are told apart. "I do not know which feature" is a different problem
+                # from "there is nothing waiting", and only one of them is fixed by naming --feature.
+                if ([string]::IsNullOrWhiteSpace([string]$FeatureId)) {
+                    Write-Host 'Specrew does not know which feature you are answering for, so it cannot find the round waiting for you.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host ('Tell it which one:  specrew review --live --feature <feature-id> --pause-choice {0}' -f $pauseAnswer) -ForegroundColor Cyan
+                    exit 1
+                }
                 if ($null -eq $outstanding) {
-                    Write-Host 'There is no review round waiting for your answer, so there is nothing to reply to. Run the review first.' -ForegroundColor Yellow
+                    Write-Host ('No review round is waiting for your answer on {0}, so there is nothing to reply to.' -f $answerIdentity.campaign_id) -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host 'Start one with:  specrew review --live --approve-round' -ForegroundColor Cyan
                     exit 1
                 }
                 $choice = switch ($pauseAnswer) {

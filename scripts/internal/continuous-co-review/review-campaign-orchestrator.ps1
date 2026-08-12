@@ -1219,7 +1219,35 @@ function Resolve-ReviewCampaignPublicIdentity {
             $feature = $branch.stdout
         }
     }
-    if (-not (Test-ReviewCampaignFeatureIdentity -Value $feature)) { throw 'review-campaign-active-feature-unresolved' }
+    # LIFECYCLE STATE IS ASKED BEFORE THE CALLER IS. Same class as the -IterationNumber trap: a value
+    # the controller can resolve, required from the caller instead. Measured - Codex's first review
+    # failed here even though the lifecycle context named the active feature, and recovered only by
+    # reading SKILL.md and passing --project-path, --feature, --iteration and --design-context-ref by
+    # hand.
+    if ([string]::IsNullOrWhiteSpace($feature)) {
+        foreach ($probe in @(
+                @{ Path = '.specify/feature.json'; Read = { param($t) (($t | ConvertFrom-Json).feature) } },
+                @{ Path = '.specrew/start-context.json'; Read = { param($t) (($t | ConvertFrom-Json).session_state.feature_ref) } }
+            )) {
+            $probePath = Join-Path $root $probe.Path
+            if (-not (Test-Path -LiteralPath $probePath -PathType Leaf)) { continue }
+            try {
+                $candidate = [string](& $probe.Read (Get-Content -LiteralPath $probePath -Raw))
+                if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+                    $candidate = Split-Path -Leaf $candidate.Trim()
+                    if (Test-Path -LiteralPath (Join-Path $root "specs/$candidate") -PathType Container) { $feature = $candidate; break }
+                }
+            }
+            catch { $null = $_ }
+        }
+    }
+    if (-not (Test-ReviewCampaignFeatureIdentity -Value $feature)) {
+        # A SILENT OR CRYPTIC REFUSAL INVITES THE WORST DIAGNOSIS. The bare token sent an agent to
+        # conclude the feature did not exist and to propose bypassing the gate.
+        throw ('Specrew could not work out which feature this review is for. It looked at the lifecycle ' +
+            'state, the active feature record, and the branch name, and none of them named one. ' +
+            'Tell it directly: specrew review --live --feature <feature-id> --approve-round')
+    }
     $featureDirectory = Join-Path $root "specs/$feature"
     if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) { throw "review-campaign-feature-missing:$feature" }
 
