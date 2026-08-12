@@ -739,7 +739,9 @@ function Add-ReviewCampaignRoundPause {
     # defensively as well; this line is corrected too, because relying on a downstream repair to make a
     # wrong call right is how the next caller gets it wrong again.
     $resultFindings = Get-ReviewAuthorityProperty -Object $Result -Name 'findings'
-    $decision = Resolve-ReviewCampaignPauseDecision -Findings @($resultFindings) `
+    # -Result carried so an unfinished review cannot render as a clean one: findings=0 on a timed-out
+    # run means WE DO NOT KNOW, not NOTHING WAS FOUND.
+    $decision = Resolve-ReviewCampaignPauseDecision -Result $Result -Findings @($resultFindings) `
         -RoundsUsed $roundsUsed -BudgetTotal (Get-ReviewCampaignRoundBudgetTotal -RepoRoot $RepoRoot) `
         -ElapsedMinutes ([Math]::Round($elapsedMs / 60000, 0))
 

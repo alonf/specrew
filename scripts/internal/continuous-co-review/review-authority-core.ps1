@@ -103,7 +103,12 @@ function Resolve-ReviewCampaignPauseDecision {
         [AllowEmptyCollection()][object[]]$Findings = @(),
         [Parameter(Mandatory)][int]$RoundsUsed,
         [Parameter(Mandatory)][int]$BudgetTotal,
-        [double]$ElapsedMinutes = 0
+        [double]$ElapsedMinutes = 0,
+
+        # The terminal RESULT, so an unfinished run can be told from a clean one. Optional and $null by
+        # default: every existing caller keeps its exact behaviour, and only a caller that HAS the result
+        # gains the new surface. Absent, the decision is computed from findings as before.
+        [AllowNull()]$Result = $null
     )
 
     $blocking = 0; $major = 0; $minor = 0
@@ -172,21 +177,92 @@ function Resolve-ReviewCampaignPauseDecision {
         else { $minor++ }
     }
 
+    # AN ABSENT REVIEW MUST NEVER READ AS A CLEAN ONE.
+    #
+    # Measured on a live dogfood run: verdict=incomplete, completion=none, validation=not-produced,
+    # findings=0. The review TIMED OUT and produced nothing. `findings=0` is technically true and
+    # semantically a lie - it means WE DO NOT KNOW, not NOTHING WAS FOUND - and the agent read it as
+    # "no blocking defect" and carried on implementing.
+    #
+    # This is the failure the whole feature exists to prevent, arriving through the one door nobody
+    # guarded: a detector that produced NOTHING being read as a detector that FOUND nothing. The same
+    # shape as a green suite whose evidence was deleted.
+    #
+    # So counts from a run that did not finish are NOT presented as findings counts at all, and the
+    # decision surface says plainly that there is no evidence either way.
+    $resultProduced = $true
+    if ($null -ne $Result) {
+        $resultCompletion = ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'completion')).Trim().ToLowerInvariant()
+        $resultValidation = ([string](Get-ReviewAuthorityProperty -Object $Result -Name 'validation')).Trim().ToLowerInvariant()
+        if (-not [string]::IsNullOrWhiteSpace($resultCompletion) -and $resultCompletion -cne 'complete') { $resultProduced = $false }
+        if (-not [string]::IsNullOrWhiteSpace($resultValidation) -and $resultValidation -cne 'valid') { $resultProduced = $false }
+    }
+    if (-not $resultProduced) {
+        return [pscustomobject][ordered]@{
+            blocking_count         = 0
+            major_count            = 0
+            minor_count            = 0
+            carried_followups      = 0
+            demoted_count          = 0
+            demoted_from_blocking  = 0
+            demoted_from_major     = 0
+            gating                 = $false
+            gating_locations       = @()
+            gating_findings        = @()
+            rounds_used            = $RoundsUsed
+            budget_total           = $BudgetTotal
+            budget_exhausted       = ($RoundsUsed -ge $BudgetTotal)
+            continuation_available = ($RoundsUsed -lt $BudgetTotal)
+            elapsed_minutes        = $ElapsedMinutes
+            result_produced        = $false
+            recommendation         = 'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Run it again: specrew review --live --approve-round'
+            budget_refusal         = $null
+            options                = @(
+                [pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Run the review again' }
+                [pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' }
+            )
+        }
+    }
+
     $gating = ($blocking + $major) -gt 0
     $budgetExhausted = $RoundsUsed -ge $BudgetTotal
     $continuationAvailable = -not $budgetExhausted
 
+    # A RECOMMENDATION MUST NOT SAY "NOTHING BLOCKS YOU" WHEN FINDINGS WERE DEMOTED.
+    #
+    # Measured on a live dogfood run: blocking 0, major 0, minor 6, demoted 4 - and the surface said
+    # "Nothing here blocks you. Stopping here saves the minor findings as follow-ups." The reviewer had
+    # reported four of those six as MAJOR, including a containment bypass at the entry point (a directory
+    # symlink passed as the root is followed) and an incomplete scan printing an authoritative clean
+    # summary. Both real, both with real consequences.
+    #
+    # demoted_count was already carried - the visibility ruling landed and the SURFACE names the
+    # demotions. The RECOMMENDATION ignored it, and the recommendation is the sentence a human acts on.
+    # So the two halves of the same screen disagreed, and the one giving advice was the one that was
+    # wrong.
+    #
+    # This does NOT loosen the eligibility test. That test stops gold-plating and is doing its job. The
+    # defect is that a well-founded finding written in the wrong voice is indistinguishable from an
+    # unfounded one - so the human is told to read them, rather than the contract quietly deciding for
+    # them.
+    $demotionAdvice = if ($demoted -gt 0) {
+        ' {0} finding{1} {2} downgraded for not stating a concrete failure scenario - read {3} before you decide.' -f
+            $demoted, $(if ($demoted -eq 1) { '' } else { 's' }), $(if ($demoted -eq 1) { 'was' } else { 'were' }), $(if ($demoted -eq 1) { 'it' } else { 'them' })
+    }
+    else { '' }
+
     $recommendation = if ($blocking -gt 0) {
-        'Fix the blocking findings before you sign off - they describe behaviour that is wrong or unsafe.'
+        'Fix the blocking findings before you sign off - they describe behaviour that is wrong or unsafe.' + $demotionAdvice
     }
     elseif ($major -gt 0) {
-        'Look at the major findings; fix what matters to you, then stop here.'
+        'Look at the major findings; fix what matters to you, then stop here.' + $demotionAdvice
     }
     elseif ($minor -gt 0) {
-        'Nothing here blocks you. Stopping here saves the minor findings as follow-ups.'
+        $(if ($demoted -gt 0) { 'Nothing was reported as blocking.' } else { 'Nothing here blocks you.' }) +
+        ' Stopping here saves the minor findings as follow-ups.' + $demotionAdvice
     }
     else {
-        'Nothing was found. Stopping here completes your sign-off.'
+        'Nothing was found. Stopping here completes your sign-off.' + $demotionAdvice
     }
 
     # Option ids are stable: 1 fix-and-continue, 2 stop-here, 3 abandon. Option 1 disappears when the
