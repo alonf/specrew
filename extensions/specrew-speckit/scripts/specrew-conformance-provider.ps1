@@ -1003,7 +1003,41 @@ try {
     $stopIntentReason = if ($workshopIntermediate) { [string]$workshopQuestion.reason } else { $null }
     $stopIntentContinueKey = $null
     $stopIntentContinueCount = 0
-    if ($blockKind -eq 'material' -and $canAssess -and (-not $workshopIntermediate)) {
+    # WORKSHOP-RECORD-ONLY TURNS DO NOT OWE A MATERIAL PACKET.
+    #
+    # Measured across one Claude workshop: the exemption fired 9 times and failed 3, and all three
+    # failures were the SAME turn shape - persist the previous lens, then present the next lens question.
+    # That is the shape EVERY lens boundary produces. Material-work enforcement keys off the rolling
+    # handover Stop snapshot, so persisting the lens record MOVES the material surface, and the material
+    # path won over a workshop question that was otherwise proved.
+    #
+    # Precedence by ruling: the material that moved IS the workshop record for the question just
+    # answered, and it cannot surprise the human who co-authored it. So a turn whose entire changed set
+    # lies inside the workshop record set does not owe a packet.
+    #
+    # THE GUARD IS THE POINT: touch anything outside that set and material-work wins exactly as today.
+    # This narrows the exemption to the turn shape that produced the duplicates; it does not weaken
+    # material-work enforcement for real work that happens to coincide with a workshop.
+    #
+    # Keyed on changed_paths rather than on the question classification, deliberately - the classification
+    # is what proved unreliable on precisely these turns, so relying on it again would re-enter the same
+    # failure. Unknown or empty paths fall through to today's behaviour (block), which is fail-closed.
+    $workshopRecordOnlyTurn = $false
+    if ($blockKind -eq 'material' -and $canAssess -and $null -ne $materialSignal) {
+        $turnPaths = @()
+        try { $turnPaths = @($materialSignal.changed_paths | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) }
+        catch { $turnPaths = @() }
+        if (@($turnPaths).Count -gt 0) {
+            $outsideWorkshop = @($turnPaths | Where-Object {
+                    $normalizedTurnPath = ([string]$_).Replace([char]92, [char]47)
+                    -not ($normalizedTurnPath -match '(^|/)workshop/' -or
+                        $normalizedTurnPath -match '(^|/)lens-applicability\.json$' -or
+                        $normalizedTurnPath -match '(^|/)\.specrew/handover/workshop-question\.json$')
+                })
+            $workshopRecordOnlyTurn = (@($outsideWorkshop).Count -eq 0)
+        }
+    }
+    if ($blockKind -eq 'material' -and $canAssess -and (-not $workshopIntermediate) -and (-not $workshopRecordOnlyTurn)) {
         try {
             if (-not (Get-Command Resolve-ContinuousCoReviewStopIntent -ErrorAction SilentlyContinue) -and -not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
                 $stopIntentPath = Join-Path (Split-Path $bootstrapDir -Parent) 'continuous-co-review/stop-intent-contract.ps1'
