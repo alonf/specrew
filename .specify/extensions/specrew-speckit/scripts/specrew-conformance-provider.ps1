@@ -1180,6 +1180,18 @@ try {
     # If not blocking (not warranted, or capped), surface the cooperative nudges instead.
     if ([string]::IsNullOrWhiteSpace($blockReason)) {
         if ($capped) {
+            # A CAPPED BLOCK MUST ANNOUNCE THAT IT CAPPED.
+            #
+            # The cap is a defensible runaway guard; the SILENCE is not. Until now it wrote only to
+            # stderr, so from the transcript the fourth turn looked exactly like the first three - a
+            # nudge - while enforcement had actually stopped. Measured: the maintainer watched governance
+            # work, watched it stop, and reasonably concluded the hook had broken. The condition was
+            # unmet the whole time.
+            #
+            # The corrections below already NAME the unmet condition. What was missing is the fact that
+            # nothing is enforcing it any more, which is the difference between "I am being reminded"
+            # and "I am now on my own".
+            $corrections.Add(('[specrew-conformance] ENFORCEMENT STOPPED after {0} consecutive blocks on the same unmet condition. Specrew is no longer holding this turn - the requirement below is still unmet, and from here it is on you rather than on the hook. This limit exists so a disagreement between us cannot hang your session indefinitely.' -f $script:SpecrewBlockCap)) | Out-Null
             if ($cappedKind -eq 'material') {
                 $corrections.Add('[specrew-conformance] MATERIAL-WORK STOP packet still missing (FR-015) - render the five-part context packet with file:/// references before handing control back.') | Out-Null
             }

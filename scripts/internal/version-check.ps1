@@ -156,10 +156,40 @@ function Get-SpecrewVersionInfoFromManifest {
         }
     }
 
+    # THE BUILD MUST BE IDENTIFIABLE, not just the version.
+    #
+    # Every commit on a prerelease branch reports the same string, so a stale install and a fresh one are
+    # indistinguishable. Measured cost: the maintainer could not tell whether a reinstall had taken, and
+    # had to probe for a flag they happened to know was recent. For a beta programme that is not
+    # diagnostics polish - a tester's bug report is unactionable without it, because nobody can tell
+    # which code they were running.
+    #
+    # Read from a build stamp written at package time, falling back to the git HEAD of the tree being
+    # run (which is what a developer install actually is). Absent both, the display is unchanged - this
+    # can only ever ADD identification, never break the version string.
+    $buildId = ''
+    try {
+        # $PSScriptRoot, not $PSCommandPath: the latter is empty inside a function in a dot-sourced
+        # file, which silently produced no build id at all - the failure mode this whole item exists to end.
+        $moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $stampPath = Join-Path $moduleRoot 'build-stamp.json'
+        if (Test-Path -LiteralPath $stampPath -PathType Leaf) {
+            $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json
+            $buildId = [string]$stamp.commit
+        }
+        elseif (Test-Path -LiteralPath (Join-Path $moduleRoot '.git')) {
+            $head = (& git -C $moduleRoot rev-parse --short HEAD 2>$null)
+            if ($LASTEXITCODE -eq 0) { $buildId = ([string]$head).Trim() }
+        }
+    }
+    catch { $buildId = '' }
+
     $display = if (-not [string]::IsNullOrWhiteSpace($prerelease)) { "$baseVersion-$prerelease" } else { $baseVersion }
+    if (-not [string]::IsNullOrWhiteSpace($buildId)) { $display = "$display ($buildId)" }
     return [pscustomobject]@{
         Version    = $baseVersion
         Prerelease = $prerelease
+        BuildId    = $buildId
         Display    = $display
     }
 }

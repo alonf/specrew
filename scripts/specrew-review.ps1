@@ -1208,7 +1208,12 @@ if ($Live) {
                 $border = ('=' * 60)
                 $color = if ($null -ne $campaignRun.result -and [bool]$campaignRun.result.can_approve_current) { 'Green' } else { 'Yellow' }
                 Write-Host $border -ForegroundColor $color
-                $campaignHeading = if (-not [bool]$campaignRun.invoked -and [string]$campaignRun.status -cne 'terminal') { 'SPECREW CO-REVIEW DID NOT RUN' } else { 'SPECREW CAMPAIGN REVIEW' }
+                # "DID NOT RUN" overstates a pause. The state is usually "waiting for your answer", and an
+                # alarming banner over content that says nothing is wrong teaches people to discount the
+                # banner. Reserved for the case where a review genuinely could not start.
+                $campaignHeading = if ([string]$campaignRun.status -ceq 'paused') { 'SPECREW REVIEW - WAITING FOR YOUR ANSWER' }
+                elseif (-not [bool]$campaignRun.invoked -and [string]$campaignRun.status -cne 'terminal') { 'SPECREW CO-REVIEW DID NOT RUN' }
+                else { 'SPECREW CAMPAIGN REVIEW' }
                 Write-Host $campaignHeading -ForegroundColor $color
                 Write-Host $border -ForegroundColor $color
                 Write-Host ("Campaign: {0}" -f $campaignRun.campaign_id)
