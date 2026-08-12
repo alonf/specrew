@@ -1178,8 +1178,16 @@ function Format-ReviewCampaignOutstandingPause {
     foreach ($option in $offered) { $lines.Add(('  {0}. {1}' -f $option.id, $option.text)) }
 
     $lines.Add('')
-    $lines.Add('Reply with a number. Nothing runs and nothing is spent until you answer.')
-    $lines.Add(('Reply with:  specrew review --pause-choice <1|2|3>{0}' -f $(
+    # "Reply with a number" contradicted the line directly beneath it. In a terminal there is nothing to
+    # reply TO - typing 2 does nothing - and the command below is how the answer actually reaches
+    # Specrew. Two instructions in consecutive lines, one of them impossible.
+    #
+    # The numbered LIST above stays, and that is not an exception to last night's ruling: at a BOUNDARY
+    # VERDICT only a typed phrase is captured, so a number there is a control that cannot authorize. Here
+    # the number IS the answer channel - `--pause-choice 2` is read and acted on - so the numbers are
+    # real. The ruling is about offering controls that cannot do what they name, not about digits.
+    $lines.Add('Nothing runs and nothing is spent until you answer.')
+    $lines.Add(('Answer with:  specrew review --live --pause-choice <1|2|3>{0}' -f $(
                 $answerRun = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
                 if ([string]::IsNullOrWhiteSpace($answerRun)) { '' } else { "   (answering round $answerRun)" })))
     return $lines.ToArray()
@@ -1262,7 +1270,10 @@ function Format-ReviewCampaignPauseSurface {
         $lines.Add(('  {0}. {1}' -f $option.id, $option.text))
     }
     $lines.Add('')
-    $lines.Add('Reply with a number. Nothing runs and nothing is spent until you answer.')
+    # This surface said "Reply with a number" and then named NO way to send one - the reader was told to
+    # answer and not told how. The resumed surface at least carried the command; this one did not.
+    $lines.Add('Nothing runs and nothing is spent until you answer.')
+    $lines.Add('Answer with:  specrew review --live --pause-choice <1|2|3>')
     return ($lines -join [Environment]::NewLine)
 }
 

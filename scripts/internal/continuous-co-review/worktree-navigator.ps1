@@ -369,6 +369,46 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
             $pendingCrossing = $null
             try { $pendingCrossing = Get-ReviewCampaignRecordedPendingCrossing -RepoRoot $resolved }
             catch { $pendingCrossing = $null }
+            # AN UNANSWERED PAUSE BLOCKS THE STOP UNTIL ITS SURFACE HAS BEEN RENDERED.
+            #
+            # The route already blocked the Stop - what it carried was a one-line summary ("This review
+            # is waiting for your decision"), while the decision surface FR-002 exists to produce sat in
+            # the store, written and shown to nobody. Measured on both dogfood runs: each agent read the
+            # findings itself, decided, and proceeded; the human saw a count and a conclusion.
+            #
+            # Same shape as the projection that dropped the pause and the generated file that was not the
+            # rendered one - the mechanism worked and the seam to the human did not. So the block IS the
+            # surface: findings with locations, the numbered options, and how to send one. An agent
+            # cannot now read a review's findings and carry on while the human sees only a summary,
+            # because the Stop does not clear until this text has been put in front of them.
+            if ([string]$packet.route -ceq 'pause-pending') {
+                $pauseSurfaceLines = @()
+                try {
+                    if (-not (Get-Command -Name 'Format-ReviewCampaignOutstandingPause' -ErrorAction SilentlyContinue)) {
+                        . (Join-Path $PSScriptRoot 'continuous-co-review-navigator.ps1')
+                    }
+                    $pauseStore = Join-Path $resolved '.specrew/review/authority'
+                    $outstandingPause = Get-ReviewCampaignPendingPause -StoreRoot $pauseStore -CampaignId ([string]$packet.campaign_id)
+                    if ($null -ne $outstandingPause) {
+                        $pauseFindings = $null
+                        try {
+                            $pauseResult = Get-ReviewRunAuthorityFact -StoreRoot $pauseStore -CampaignId ([string]$packet.campaign_id) `
+                                -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingPause -Name 'run_id')) -Stage result
+                            if ($null -ne $pauseResult) { $pauseFindings = Get-ReviewAuthorityProperty -Object $pauseResult -Name 'findings' }
+                        }
+                        catch { $pauseFindings = $null }
+                        $pauseProject = Split-Path -Leaf $resolved
+                        $pauseSurfaceLines = @(Format-ReviewCampaignOutstandingPause -ProjectName $pauseProject -Fact $outstandingPause -Findings $pauseFindings)
+                    }
+                }
+                catch { $pauseSurfaceLines = @() }
+                if (@($pauseSurfaceLines).Count -gt 0) {
+                    $decision.stop_block = (@($pauseSurfaceLines) -join [Environment]::NewLine)
+                    $decision | Add-Member -NotePropertyName agent_directives `
+                        -NotePropertyValue 'A review round is waiting for the human''s answer. Render the block above verbatim and STOP. Do NOT read the findings and decide on their behalf - the decision is theirs, and answering it is a command they run.' -Force
+                    return $decision
+                }
+            }
             $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet -PendingCrossing $pendingCrossing
             # T010 (emission-point rule): the agent's directives travel BESIDE the human's block, never
             # inside it. MOVED, not deleted - the agent is a different reader, not a lesser one, and it

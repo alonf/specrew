@@ -764,6 +764,59 @@ first finding would have been MY fabrication rather than a product defect — an
 exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
 which is the synthesis rule applied to a document instead of a fixture.
 
+## THE COMPOSITION LESSON — three survivable defects made an outcome none of them was (2026-08-12)
+
+**Recorded above the individual fixes, because it is a different kind of finding from everything else in
+this iteration.**
+
+> **Three defects, each survivable alone, composed into an outcome none of them was.** An undocumented
+> flag, an id the controller would not resolve, and a no-op where a refusal belonged — and the product
+> induced a competent agent to conclude a shipped feature did not exist, and to propose routing around
+> governance.
+
+The chain, measured: `--pause-choice` IS implemented. Without `--feature` it resolved no campaign, found
+no pause, and returned quietly. It was also absent from `--help`. The agent invoked it, got silence,
+checked the help, found nothing, and inferred *"the CLI is telling you to run a flag its own parser
+doesn't implement."* **That inference is defensible** — two independent signals both said ABSENT.
+
+**No individual severity assessment would have caught this.** Rate each defect alone and all three are
+minor: a missing help entry, a convenience resolution, a quiet return. The severity is in the
+INTERACTION, and severity is assessed per finding.
+
+**Everything else this iteration was one defect doing damage.** The projection that dropped the pause,
+the counter that miscounted, the writer that could not tell an agent from a human — each was a single
+thing wrong in a single place. This was three right-ish things arranged badly.
+
+**And it is the argument for the end-to-end walk.** Composition only shows up when you USE the thing.
+A fixture proves one component; a suite proves many components separately. Neither can produce the state
+where an absent help entry and a quiet return meet, because that meeting is not a component — it is a
+path. *Fixture green on any of the five places this broke is not evidence.*
+
+## THE CHECKPOINT DIAGNOSIS — deferred, with what IS known stated (timeboxed, 2026-08-12)
+
+`Get-ContinuousCoReviewNavigatorImplementStage` gates the checkpoint: it fires only when the recorded
+boundary reads `implement`. Measured in the frozen evidence:
+
+| field | value |
+| --- | --- |
+| `session_state.boundary_type` | `clarify` |
+| `boundary_enforcement.last_authorized_boundary` | `clarify` |
+| `boundary_enforcement.pending_next_boundary` | `plan` |
+
+**That run never reached implement** — it was wedged at the plan gate by the empty iteration number — so
+the checkpoint correctly declined. On that project the checkpoint did not fail; there was no stage to
+check.
+
+**WHAT THIS DOES NOT ESTABLISH, and the distinction is the whole point.** The runs where code actually
+landed are the ones whose checkpoint behaviour matters, and their states were not captured. Concluding
+"the checkpoint is fine" from the one project that never got there would be **generalising from a single
+snapshot** — precisely the error the method lesson records against my own first two diagnoses of the plan
+wedge. So: one run has an innocent explanation, the general cause is unknown, and the fix is deferred.
+
+**The release-note correction is therefore MANDATORY and is written**: the co-review is gate-triggered,
+not continuous. Shipping a "continuous co-review" that only runs when a gate refuses is a claim a
+consumer will test by committing and waiting.
+
 ## AMENDMENT TO EXCEPTION THREE — one root cause, two hosts, opposite failure modes (2026-08-12)
 
 **THE ROOT CAUSE, stated once: THE ANSWER CHANNEL THE HUMAN IS OFFERED IS NOT THE CHANNEL THE CONTROLLER

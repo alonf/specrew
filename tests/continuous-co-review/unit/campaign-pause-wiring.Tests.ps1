@@ -707,7 +707,10 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         $surface | Should -Match 'What would you like to do\?'
         $surface | Should -Match '(?m)^\s+2\. Stop here'
         $surface | Should -Match '(?m)^\s+3\. Abandon'
-        $surface | Should -Match 'specrew review --pause-choice' -Because 'a decision surface must say how to answer it'
+        # `--live` is part of the command now: the campaign path is only entered with it, so the line
+        # a human copies has to carry it. The earlier form would have had them run a command that never
+        # reaches the pause handler.
+        $surface | Should -Match 'specrew review --live --pause-choice' -Because 'a decision surface must say how to answer it, in a form that actually works'
         $surface | Should -Match 'Nothing runs and nothing is spent until you answer'
     }
 

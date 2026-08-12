@@ -89,3 +89,24 @@ primitive but that primitive is still the *recommended* path rather than the *on
 making it unbypassable is the consolidation beta4 owns. Reading the real Windows reparse tag — which is
 the precise version of the discrimination beta3 approximates by attribute — belongs there too, since it
 requires P/Invoke on a safety-critical path.
+
+## What "continuous co-review" means in this release — read this before relying on it
+
+**The co-review is GATE-TRIGGERED, not continuous.** It runs when a boundary gate refuses, and when you
+run `specrew review --live --approve-round` yourself. It does **not** currently review automatically as
+you commit.
+
+The design intends a checkpoint that fires as work lands, so that once a reviewer is authorized once, the
+next changed checkpoint reviews automatically. In dogfood runs on three hosts, code landed and commits
+were made and the co-review journal gained no entries.
+
+**What was measured, and its limit.** In the one run whose state we hold frozen, the project never
+reached the implement stage — it was wedged at `clarify` — so the checkpoint correctly declined to fire.
+That explains that run and **is not established for the runs where code did land**; those states were not
+captured. So the honest position is: the checkpoint did not fire, one run has an innocent explanation,
+and the general cause is not known.
+
+**Why this is stated rather than quietly deferred.** "Continuous co-review" is a claim a consumer will
+eventually test by committing and waiting. Finding out then, rather than here, is the kind of surprise
+that costs trust in everything else the tool says. Treat review as something you run at a gate or on
+demand in this release, and the diagnosis carries to beta4.

@@ -121,7 +121,6 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $pwsh = (Get-Process -Id $PID).Path
         $output = @(& $pwsh -NoProfile -File $publicScript -ProjectPath $root -FeatureId '001-demo' -IterationNumber '007' `
             -Live -ReviewerHost claude -RunId 'run-public-design-invalid' -AuthorizationRef 'human-slot-public-design-invalid' `
-            --ack-reason 'scripted fixture approval' `
             -DesignContextRef 'specs/001-demo/missing.md' -TimeoutSeconds 30 2>&1)
         $exitCode = $LASTEXITCODE
         $text = ($output | Out-String)

@@ -967,7 +967,29 @@ if ($Live) {
             # of the run. A hand-supplied reference is out-of-band by definition - the human may well
             # have approved something, but not necessarily THIS round - so it must be declared, exactly
             # as an agent-invoked boundary authorization must.
-            if (-not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and
+            # VALIDATION BEFORE AUTHORIZATION (maintainer ruling 2026-08-12). When a request is BOTH
+            # malformed and unauthorized, report the MALFORMATION first: it is the thing the human can
+            # fix in the next keystroke, while getting authorization may involve another person, another
+            # session, or a decision they have to think about. Reporting the permission failure first
+            # sends them off to obtain approval and then straight into the validation error they could
+            # have fixed immediately - the same cost as naming the wrong one of three host conditions.
+            #
+            # The usual counter-argument (do not reveal request shape to an unauthorized caller) is a
+            # network-service concern; this is a local CLI whose caller already holds the filesystem.
+            #
+            # So the declaration refusal is SKIPPED when the request will not survive its own validation:
+            # the command below reports the malformation, and the human meets the authorization question
+            # only once the request is well-formed.
+            $requestWellFormed = $true
+            try {
+                $designPrecheck = Resolve-ContinuousCoReviewDesignContextSelection -RepoRoot $resolvedProjectPath `
+                    -DesignContextFiles @($parsedArgs.DesignContextRefs) -FeatureId ([string]$FeatureId)
+                $requestWellFormed = [bool]$designPrecheck.valid
+            }
+            catch { $requestWellFormed = $true }
+
+            if ($requestWellFormed -and
+                -not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and
                 [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
                 Write-Host 'That authorization reference was not created by approving this review round.' -ForegroundColor Yellow
                 Write-Host ''
