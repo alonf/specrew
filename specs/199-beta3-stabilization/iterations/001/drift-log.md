@@ -764,6 +764,62 @@ first finding would have been MY fabrication rather than a product defect — an
 exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
 which is the synthesis rule applied to a document instead of a fixture.
 
+## THE SIGNOFF-GATE DIAGNOSIS — the tests are stale; the gate blocks (2026-08-13)
+
+**ANSWER: the gate works. Its tests assert a retired evidence model.** Not the other fork, and the
+release does not need its central claim rewritten on this account.
+
+**Case (a), `SC-019` — measured.** `$threw | Should -Be $true` **PASSED**. The persisted block **exists**.
+The single mismatch is a string:
+
+| | |
+| --- | --- |
+| expected reason | `no-co-review-evidence` |
+| actual reason | `campaign-review-state-invalid` |
+
+So a `review-signoff` with no passing review **is refused and the refusal is recorded**. The property
+holds; the test names the legacy reason for it.
+
+**Cases (b) / (b2), `SC-020`.** These write a LEGACY pass run via `Write-WiringPassRun` and expect the
+gate not to throw. Under campaign authority a legacy run record is not evidence, so the gate refuses —
+**fail-closed, which is the safe direction.** The fixture cannot express campaign evidence, so it cannot
+reach the allow path at all. Corroborated independently: round 5's own gate evaluation reached
+`boundary-clean` on this repo with real campaign results, so the allow path is live.
+
+**WHY THEY WENT STALE.** The gate moved from the legacy evidence model to campaign authority; the tests
+were not moved with it. They were then triaged as *"the three T073/T074 conditional-Assert cases"* and
+carried as inherited.
+
+**WHAT REPAIRING THEM TAKES** — small, and it is test work, not gate work: (a) assert the block and its
+persistence, and accept either reason, or assert the campaign reason; (b)/(b2) need a fixture that writes
+a CAMPAIGN result — a claim, a `result.json` with `completion=complete` / `validation=valid` matching the
+current digest, and a release — instead of `Write-WiringPassRun`. The helper for that already exists in
+`review-public-campaign-command.Tests.ps1` (`Add-CleanCampaignResult`). **Not done in this pass, by
+ruling: a half-changed gate is worse than a red one.**
+
+## THE SECOND FAILURE, INDEPENDENT OF THE FIRST — the gate was never called
+
+**In `braces` the gate was not broken. It was never invoked.** The agent hand-wrote `review.md` rather
+than running the stop-here landing that calls `Invoke-ContinuousCoReviewSignoffGateIfEnabled`. **Repairing
+the wiring does not close this**, and both must hold for *"reviewed"* to mean anything:
+
+| failure | what it takes |
+| --- | --- |
+| the gate refuses correctly | test repair above; the behaviour already holds |
+| the gate is REACHED | the boundary must consult it rather than trusting `review.md` on disk. Today `review.md` existing is treated as the evidence; the gate is a separate call an agent can simply not make. The validator cross-check landed yesterday closes the artifact half from a store the implementer does not author — the remaining half is that the BOUNDARY must fail closed on `validation != valid` / `completion != complete` rather than on the artifact's shape |
+
+*The distinction matters for the release call: the certification property has been ENFORCED wherever the
+gate ran. What has never been enforced is that it runs.*
+
+> **RULE — A CONSTANT COUNT ANSWERS "IS THIS GETTING WORSE." IT NEVER ANSWERS "IS THIS WORKING."** A
+> stable number proves only that nothing changed — and if it was wrong at the start, it stays wrong and
+> stays quiet. **Read what a failing test is FOR, not how many there are.**
+
+*Evidence: "the same seventeen, zero new" was reported roughly thirty times across this iteration, and
+four of the seventeen were the signoff gate. It was true every time. The triage named them "the three
+T073/T074 conditional-Assert cases" and moved on; the maintainer's reviewer validated that disposition
+and did not ask what the tests were for either. Three passes, one number, nobody read the name.*
+
 ## AN ACCEPTED REVIEW THAT NEVER HAPPENED — and the guard that could not see it (2026-08-12)
 
 **The register fix VERIFIED first**: on Copilot CLI with claude-sonnet-5 — the exact configuration that
