@@ -815,12 +815,31 @@ Confirmed by search: nothing between 344 and 400 can start a round.
 LEGACY path and is unreachable under campaign authority, which is the shipped mode. The six journal
 entries are six Stop events, each correctly producing the stale surface, none able to do anything else.
 
-**WHY THIS IS NOT A PATCH.** Making the campaign path fire would spend a provider round with no human
-approval — in direct contradiction with the authorization model built this week, where one human approval
-mints one round and an undeclared reference is refused. **Automatic firing and per-round approval cannot
-both be true as currently stated.** This release chose approval. Choosing differently means inventing a
-standing "review automatically for the next N rounds" authorization, which is a design decision and the
-maintainer's, not a fix to be taken at the end of a night.
+**WHY THIS IS NOT A PATCH — and a CORRECTION to how I first framed it.** I wrote that automatic firing
+and per-round approval *"cannot both be true"*. **That is a false dichotomy, and the maintainer named the
+middle**: fire automatically only when an UNSPENT APPROVED ROUND ALREADY EXISTS. One approval still mints
+one round, nothing spends without a human act, and the review runs when there is something to review.
+The human approves a round; the checkpoint decides WHEN to use it, rather than whether to have it.
+
+That is strictly better than either pole I offered, and I would have carried a two-way choice into beta4
+that excluded the answer. Recorded because the framing of a deferred question shapes the decision taken
+on it later — a wrong dichotomy in the record is worse than no record.
+
+**THE ROOT, which is older than the checkpoint and explains more than it.** *What does authorizing a
+reviewer HOST authorize?* **Host approval and round grant have been conflated since the `:835` message** —
+*"authorize an INDEPENDENT reviewer ONCE ... it then reviews automatically at the next changed
+checkpoint"* — a single sentence promising that approving a HOST yields ongoing ROUNDS. They are
+different objects: one says WHO may review, the other says THIS REVIEW MAY RUN.
+
+The same conflation produced the integrity defect fixed hours earlier: both dogfood agents passed the
+reviewer-HOST reference minted in the design workshop as the campaign GRANT reference, and the ledger
+recorded a human-authorized spend. **That was not two agents making the same mistake — it was the product
+teaching it**, in a sentence that says approving a host is how you get reviews. The refusal now in place
+stops the symptom; the concepts are still the same shape.
+
+So the beta4 question is not "automatic or approved" but: **separate host approval from round grant, and
+then decide what an unspent round licenses the checkpoint to do.** With those separated the middle option
+becomes obvious and safe; with them conflated it is not expressible.
 
 **Deferred to beta4 as a DESIGN QUESTION, not a bug**, and the release note now says what the product
 actually does rather than the vaguer "gate-triggered": it checks at every stop whether the last review

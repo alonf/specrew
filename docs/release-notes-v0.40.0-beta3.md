@@ -106,11 +106,16 @@ carrying your code — and it reports that the last result no longer covers you,
 new review. Measured on a dogfood run: `last_authorized_boundary: before-implement`, 32 source files
 under `src/`, and six consecutive journal entries all reading `latest-result-not-current`.
 
-**Why it stops there.** Automatic firing and per-round human approval are in direct tension: a round that
-fires on its own is a provider spend nobody authorized. This release chose approval. The consequence is
-that the review is something you run, and the product's job is to tell you clearly and promptly when you
-need to — which it does.
+**Why it stops there.** A round that fires on its own is a provider spend nobody authorized, so this
+release requires your approval for each one. The consequence is that a review is something you run, and
+the product's job is to tell you clearly and promptly when you need to — which it does.
 
-**What is deferred to beta4** is the design question, not a bug fix: whether a standing "review
-automatically for the next N rounds" authorization should exist, so that continuous review and explicit
-approval can both be true at once.
+**What is deferred to beta4** is a design question, not a bug fix, and it is narrower than "automatic or
+approved". A middle exists: fire automatically only when an approved round is already sitting unspent.
+One approval still mints one round, nothing spends without your say-so, and the review runs when there is
+something to review.
+
+Underneath it is an older question this release does not settle: **what does approving a reviewer host
+actually authorize?** Approving *who may review* and granting *this review may run* are different things,
+and Specrew has not kept them apart. Until it does, treat the reviewer you approve and the rounds you
+approve as separate decisions — because that is what they are.
