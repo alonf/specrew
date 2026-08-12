@@ -119,3 +119,20 @@ Underneath it is an older question this release does not settle: **what does app
 actually authorize?** Approving *who may review* and granting *this review may run* are different things,
 and Specrew has not kept them apart. Until it does, treat the reviewer you approve and the rounds you
 approve as separate decisions — because that is what they are.
+
+## Choose a reviewer before your first review
+
+Specrew does not pick a reviewer for you, and until you pick one there is nothing to run a review with.
+Approve one once, per project:
+
+```
+specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round
+```
+
+Prefer a different tool from the one that wrote the code — a second opinion is the point of the review.
+
+**This is a setup step, not a fault.** In a dogfood run a project with no reviewer configured reported
+`preflight-failed:harness`, which reads like broken tooling; the agent concluded the co-review was
+unavailable and wrote the review record itself, marking 24 tasks passed when no reviewer had ever run.
+That message now says what is actually missing. **Co-review works on Copilot CLI** — the failure there
+was a reviewer nobody had chosen, not a host limitation.

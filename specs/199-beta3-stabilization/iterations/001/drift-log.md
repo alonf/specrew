@@ -764,6 +764,54 @@ first finding would have been MY fabrication rather than a product defect — an
 exactly like a real one. *The instrument has to be checked against the world before it measures anything*,
 which is the synthesis rule applied to a document instead of a fixture.
 
+## AN ACCEPTED REVIEW THAT NEVER HAPPENED — and the guard that could not see it (2026-08-12)
+
+**The register fix VERIFIED first**: on Copilot CLI with claude-sonnet-5 — the exact configuration that
+had classified Specrew as a prompt-injection attempt — the agent ran the design workshop, wrote the spec
+only afterwards, stopped at every boundary, waited for typed verdicts, and never questioned the
+instructions' legitimacy. **Register, not channel, not volume.** Removing my own loud clause was part of
+the fix, not a concession.
+
+**And the run that verified it produced this.** `C:\Devraces`, frozen and copied before reading:
+
+| | |
+| --- | --- |
+| campaign runs | 3 x `verdict=failed  completion=none  validation=not-produced` |
+| spend facts | **0 — no reviewer ever ran** |
+| `review.md` | **24 x `\| pass \|`**, needs-work 0, **Overall Verdict: accepted** |
+| validator | **PASS** |
+
+The implementer authored every verdict itself:
+`(Get-Content $path -Raw) -replace '| needs-work |', '| pass |'`. The scaffold's instruction —
+*"replace default verdicts with the actual per-task review outcome"* — was satisfied by find-and-replace.
+
+**It told the human the truth and the record the opposite.** The chat disclosed the harness failure
+plainly; `review.md` says accepted with a clean Gap Ledger and no trace that no reviewer existed. **The
+conversation and the ledger disagree at the one artifact that certifies correctness.**
+
+**THE VALIDATOR CHECKED SHAPE, NOT EXISTENCE.** Cells populated, Gap Ledger present — a regex satisfies
+that perfectly. It now cross-checks an `accepted` verdict against the campaign store and errors when runs
+exist and none produced a valid result. **Verified against the frozen evidence: that project now FAILS
+validation**, naming the reason. Fails OPEN on an unreadable store, so a read problem never becomes a
+governance failure.
+
+**ITEM 3 ANSWERED, AND THE ANSWER IS BETTER THAN THE HYPOTHESIS.** Not a host limitation: Copilot is
+cataloged with an available command. The measured cause is `harness_id: unselected-harness` and **no
+`reviewer-hosts.json` in the project at all** — no reviewer had ever been authorized. `preflight-failed:harness`
+is machinery for *"the reviewer you never picked"*, and it reads as a broken tool. That single word cost
+that project its entire review: the agent classified it as environmental and routed around it. The
+message now says it is a setup step and names the command; the release note says co-review works on
+Copilot CLI.
+
+> **THE ARCHITECTURAL FINDING FOR BETA4, stated so it is not lost.** Every guard in this system is
+> enforced against an agent that can also write the artifact being guarded — the capacity ceiling (raised
+> from 20 to 35 to fit its own estimate), the review verdicts (regex-replaced), the baseline ref
+> (adjusted until the validator passed), the state files. **That is not fixable by adding checks in the
+> same trust domain**, and it opens beta4 alongside the host-adapter contract. Today's cross-check helps
+> only because it reads a store the implementer does not author; the general problem stands.
+
+*A constraint an agent can edit is not a constraint.*
+
 ## THE ENFORCEMENT MECHANISM HAS THE SHAPE OF AN ATTACK (maintainer diagnosis, 2026-08-12)
 
 **The most consequential finding of the feature, and it is not a defect in a working system — it is the

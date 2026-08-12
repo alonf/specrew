@@ -1215,7 +1215,23 @@ if ($Live) {
                 Write-Host ("Run: {0}  Status: {1}  Invoked: {2}" -f $campaignRun.run_id, $campaignRun.status, $campaignRun.invoked)
                 if ($null -ne $campaignRun.result) {
                     Write-Host ("Verdict: {0}  Completion: {1}  Currentness: {2}  Can approve current: {3}" -f $campaignRun.result.verdict, $campaignRun.result.completion, $campaignRun.result.currentness, $campaignRun.result.can_approve_current)
-                    if (-not [string]::IsNullOrWhiteSpace([string]$campaignRun.result.failure_reason)) { Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow }
+                    if (-not [string]::IsNullOrWhiteSpace([string]$campaignRun.result.failure_reason)) {
+                        Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow
+                        # NO REVIEWER CHOSEN IS NOT A BROKEN TOOL, and it read like one.
+                        #
+                        # Measured at C:\Devraces: three runs failed with `preflight-failed:harness`,
+                        # harness_id `unselected-harness`, and the project had NO reviewer-hosts.json at
+                        # all - no reviewer had ever been authorized. The agent read the token as an
+                        # ENVIRONMENTAL blocker, decided the co-review was unavailable, and wrote the
+                        # review artifact itself. The word "harness" is machinery for "the reviewer you
+                        # never picked", and it cost that project its entire review.
+                        if ([string]$campaignRun.result.failure_reason -match 'unselected-harness|reviewer-host-required|preflight-failed:harness') {
+                            Write-Host ''
+                            Write-Host 'No reviewer has been chosen for this project yet, so there was nothing to run the review with. This is a setup step, not a broken tool.' -ForegroundColor Cyan
+                            Write-Host 'Pick one you have installed, and approve it once:  specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round' -ForegroundColor Cyan
+                            Write-Host 'Choose a different one from the tool that wrote the code where you can - a second opinion is the point.'
+                        }
+                    }
                     # FR-018 (round-1 finding): a consumer losing a review to the budget must be told
                     # which setting to change ON THE PATH THEY ACTUALLY RAN. The signoff-gate route
                     # carries this text for the boundary surface; the public CLI needs it too, or the
