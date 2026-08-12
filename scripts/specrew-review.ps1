@@ -943,6 +943,35 @@ if ($Live) {
             $campaignHost = [string]$parsedArgs.Host
             $campaignModel = [string]$parsedArgs.Model
             $campaignGrantAuthorizationRef = [string]$parsedArgs.AuthorizationRef
+
+            # AN AUTHORIZATION THE HUMAN DID NOT GIVE FOR *THIS* ACT MUST NOT LOOK LIKE ONE THEY DID.
+            #
+            # Measured on both dogfood runs. Each agent passed the reviewer-HOST authorization reference
+            # minted during the design workshop as the campaign GRANT reference:
+            #
+            #   mdlink           workshop-001-md-link-checker        -> slots=1 kind=human
+            #   mdlinkValidator  workshop-001-markdown-link-checker  -> slots=1 kind=human
+            #
+            # The human approved WHICH HOST MAY REVIEW. The ledger then recorded that a human authorized
+            # THIS SPEND against THIS CODE. Any string reaching --authorization-ref became a kind=human
+            # grant and nothing checked what it had been minted for.
+            #
+            # Same rule as the authorization writer, one layer over: --approve-round is the sanctioned
+            # path and needs no declaration, because the human performed the approving act at the moment
+            # of the run. A hand-supplied reference is out-of-band by definition - the human may well
+            # have approved something, but not necessarily THIS round - so it must be declared, exactly
+            # as an agent-invoked boundary authorization must.
+            if (-not [string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and
+                [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
+                Write-Host 'That authorization reference was not created by approving this review round.' -ForegroundColor Yellow
+                Write-Host ''
+                Write-Host 'If you want to approve a round now, use:  specrew review --live --approve-round' -ForegroundColor Cyan
+                Write-Host ''
+                Write-Host 'If you are deliberately supplying your own label - a scripted run, or an approval you recorded elsewhere -'
+                Write-Host 'say what it is, and Specrew will record it as such rather than as a round you approved here:'
+                Write-Host '  specrew review --live --authorization-ref <label> --ack-reason "where this approval came from"' -ForegroundColor Cyan
+                exit 1
+            }
             # PRECEDENCE: an explicit --authorization-ref wins, then --approve-round, then whatever the
             # project has on file.
             #

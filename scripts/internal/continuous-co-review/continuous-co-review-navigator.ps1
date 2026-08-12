@@ -1421,8 +1421,18 @@ function Get-ReviewCampaignActionSentence {
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Action)
     switch ([string]$Action) {
-        'request-current-digest-review' { return 'run a fresh review of your files as they are now: specrew review --live' }
-        'request-authorized-review' { return 'start a review of these files: specrew review --live' }
+        # --approve-round IS NAMED HERE because this is the ONE place every "run a review" instruction
+        # resolves through, and because the only other place that named it was emitted BY the checkpoint
+        # (navigator :835). The checkpoint never fired on either dogfood host, so the message never
+        # rendered, so neither agent could discover the flag - and both improvised an authorization
+        # instead. The instruction for the fix lived inside the thing that was broken.
+        #
+        # A review costs a provider round and needs the human's approval, so the command that starts one
+        # must carry the approval in the same line. Someone reading a refusal is exactly the person
+        # looking for how to run a review; making them find a second message first is what produced two
+        # invented authorizations.
+        'request-current-digest-review' { return 'run a fresh review of your files as they are now: specrew review --live --approve-round' }
+        'request-authorized-review' { return 'start a review of these files: specrew review --live --approve-round' }
         'poll-existing-run' { return 'wait for the review that is already running; nothing else is needed from you' }
         'proceed' { return '' }
         'await-human-pause-decision' { return 'answer the review question above; nothing runs until you do' }

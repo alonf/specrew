@@ -734,7 +734,7 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     }
 
     if ($ordered.Count -eq 0) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No completed review covers your files as they are now.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No completed review covers your files as they are now. Start one with: specrew review --live --approve-round' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
     }
 
     # A newer claimed invocation supersedes every older result, including an older clean result.

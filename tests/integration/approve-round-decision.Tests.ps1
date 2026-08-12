@@ -151,10 +151,20 @@ Describe 'T014: approving a round is a decision the system files, not an identif
         [string]$grants[0].authorization_ref | Should -Be 'cmp-001-demo-i007-round-1' -Because 'the approval given NOW must mint its own slot, not silently reuse a spent one from the file'
         [string]$grants[0].authorization_ref | Should -Not -Be 'already-spent-last-round'
 
-        # ...but an EXPLICIT label still outranks both, because the human named it in the same breath.
+        # ...and an EXPLICIT label still outranks both - but since 2026-08-12 it must DECLARE itself.
+        # A hand-supplied reference is out-of-band by definition: the human may have approved something,
+        # but not necessarily THIS round. Measured on both dogfood runs, an agent passed the reviewer-HOST
+        # reference from the design workshop and the ledger recorded a human-authorized spend.
         $explicit = script:New-ApprovalProject -Root (Join-Path $TestDrive 'stale-ref-explicit') -AuthorizationRef 'on-file'
-        script:Invoke-Cli -Root $explicit -Extra @('-ApproveRound', '-AuthorizationRef', 'i-named-this-one') | Out-Null
-        [string]@(script:Get-Facts -Root $explicit -Kind 'grants')[0].authorization_ref | Should -Be 'i-named-this-one'
+        $refused = script:Invoke-Cli -Root $explicit -Extra @('-AuthorizationRef', 'i-named-this-one')
+        $refused | Should -Match '(?i)not created by approving this review round'
+        @(script:Get-Facts -Root $explicit -Kind 'grants').Count | Should -Be 0 -Because 'an undeclared hand-supplied reference must not become a human grant'
+
+        # `--ack-reason`, not `-AckReason`: only the unix-style form exists, which is exactly what the
+        # product's refusal message tells the user to type. The first draft of this line used the
+        # PowerShell form and failed - the test was not sending what the message advertises.
+        script:Invoke-Cli -Root $explicit -Extra @('-AuthorizationRef', 'i-named-this-one', '--ack-reason', 'approved in the release checklist') | Out-Null
+        [string]@(script:Get-Facts -Root $explicit -Kind 'grants')[0].authorization_ref | Should -Be 'i-named-this-one' -Because 'a DECLARED label is still honoured verbatim - the interface is kept, not removed'
     }
 
     It 'AN UNKNOWN REVIEWER says the reviewer is unknown - not that approval is missing' {
