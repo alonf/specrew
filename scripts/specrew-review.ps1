@@ -1066,7 +1066,17 @@ if ($Live) {
 
             # NEITHER GIVEN, AND A ROUND NEEDS ONE: say THAT, and name the command. This is the sentence
             # whose absence sent the maintainer looking for a value to invent.
-            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) {
+            # ANSWERING A PAUSE IS NOT RUNNING A ROUND. Found by the end-to-end walk on a fresh install,
+            # after every fixture passed: `--pause-choice 2` - stop here - was refused for lack of
+            # APPROVAL, so a human declining to spend was asked to authorize the spend they were
+            # declining. Same for 3, abandon. Only option 1 leads to a round, and it falls through to the
+            # approval check below on its own.
+            #
+            # This is the ordering half of round 4's "the rendered pause reply command does not enter the
+            # reply handler". I fixed the wiring and left the order, and no fixture could see it: each
+            # entered with an approval already in hand, because that is what a fixture naturally supplies.
+            $answeringPause = -not [string]::IsNullOrWhiteSpace([string]$parsedArgs.PauseChoice)
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and -not $answeringPause) {
                 Write-Host 'This review round needs your approval before it can run.' -ForegroundColor Yellow
                 Write-Host ''
                 Write-Host 'Approve it with:  specrew review --live --approve-round' -ForegroundColor Cyan
@@ -1096,6 +1106,15 @@ if ($Live) {
             # one answer authorize exactly one round rather than a mode the campaign stays in.
             $pauseAnswer = [string]$parsedArgs.PauseChoice
             if (-not [string]::IsNullOrWhiteSpace($pauseAnswer)) {
+                # CHECKED BEFORE IDENTITY RESOLUTION, or the resolver throws first and the human is told
+                # to run --approve-round when they were ANSWERING a pause. Found by the end-to-end walk:
+                # the text was correct and the next step it named was for a different act.
+                if ([string]::IsNullOrWhiteSpace([string]$FeatureId)) {
+                    Write-Host 'Specrew does not know which feature you are answering for, so it cannot find the round waiting for you.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host ('Tell it which one:  specrew review --live --feature <feature-id> --pause-choice {0}' -f $pauseAnswer) -ForegroundColor Cyan
+                    exit 1
+                }
                 $campaignStoreRoot = Join-Path $resolvedProjectPath '.specrew/review/authority'
                 $answerIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
                 $outstanding = Get-ReviewCampaignPendingPause -StoreRoot $campaignStoreRoot -CampaignId $answerIdentity.campaign_id
@@ -1111,12 +1130,6 @@ if ($Live) {
                 #
                 # So the two causes are told apart. "I do not know which feature" is a different problem
                 # from "there is nothing waiting", and only one of them is fixed by naming --feature.
-                if ([string]::IsNullOrWhiteSpace([string]$FeatureId)) {
-                    Write-Host 'Specrew does not know which feature you are answering for, so it cannot find the round waiting for you.' -ForegroundColor Yellow
-                    Write-Host ''
-                    Write-Host ('Tell it which one:  specrew review --live --feature <feature-id> --pause-choice {0}' -f $pauseAnswer) -ForegroundColor Cyan
-                    exit 1
-                }
                 if ($null -eq $outstanding) {
                     Write-Host ('No review round is waiting for your answer on {0}, so there is nothing to reply to.' -f $answerIdentity.campaign_id) -ForegroundColor Yellow
                     Write-Host ''
