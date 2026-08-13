@@ -1,7 +1,7 @@
 # Quickstart: Beta3 Stabilization
 
 **Feature**: 199-beta3-stabilization
-**Last verified**: 2026-08-13 — all 103 committed-tree regression suites passed at `182db92b`;
+**Last verified**: 2026-08-13 — all 104 committed-tree regression suites passed at `5d2dbf6d`;
 the fresh, blind consumer walk remains the release gate.
 
 ## Run it
