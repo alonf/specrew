@@ -1,8 +1,11 @@
 # Quickstart: Beta3 Stabilization
 
 **Feature**: 199-beta3-stabilization
-**Last verified**: 2026-08-13 — all 104 committed-tree regression suites passed at `5d2dbf6d`;
-the fresh, blind consumer walk remains the release gate.
+**Last verified**: 2026-08-13 — all 105 suites in the explicit F-198 honesty registry passed on the
+working tree after `97c6ec49`. That registry covers the signoff decision and wiring, active-campaign
+evidence, workshop routing and packet behavior, reviewer setup/write scope, production harness contracts,
+and the installed PowerShell wrapper's Windows drive-path forwarding. The fresh, blind consumer walk
+remains the release gate.
 
 ## Run it
 
