@@ -581,12 +581,32 @@ function Get-ReviewBoundarySyncWarning {
 # no-feature project. ONLY on explicit --host + --authorization-ref (the human-provenance anchor).
 $authHostName = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHost } elseif (-not [string]::IsNullOrWhiteSpace($HostName)) { $HostName } else { '' }
 $authRefValue = $AuthorizationRef; $authModelValue = $Model
+$authProjectPathInput = $ProjectPath
 $cliArgList = @($CliArgs)
 for ($ai = 0; $ai -lt $cliArgList.Count; $ai++) {
-    switch ([string]$cliArgList[$ai]) {
-        '--host' { if (($ai + 1) -lt $cliArgList.Count) { $authHostName = [string]$cliArgList[$ai + 1] } }
-        '--authorization-ref' { if (($ai + 1) -lt $cliArgList.Count) { $authRefValue = [string]$cliArgList[$ai + 1] } }
-        '--model' { if (($ai + 1) -lt $cliArgList.Count) { $authModelValue = [string]$cliArgList[$ai + 1] } }
+    $earlyArgument = [string]$cliArgList[$ai]
+    switch -Regex ($earlyArgument) {
+        '^--(?<name>project-path|host|authorization-ref|model)=(?<value>.+)$' {
+            switch ($Matches['name']) {
+                'project-path' { $authProjectPathInput = [string]$Matches['value'] }
+                'host' { $authHostName = [string]$Matches['value'] }
+                'authorization-ref' { $authRefValue = [string]$Matches['value'] }
+                'model' { $authModelValue = [string]$Matches['value'] }
+            }
+        }
+        '^--(?<name>project-path|host|authorization-ref|model)$' {
+            if (($ai + 1) -ge $cliArgList.Count -or ([string]$cliArgList[$ai + 1]).StartsWith('--')) {
+                throw ("--{0} requires a value." -f $Matches['name'])
+            }
+            $ai++
+            $earlyValue = [string]$cliArgList[$ai]
+            switch ($Matches['name']) {
+                'project-path' { $authProjectPathInput = $earlyValue }
+                'host' { $authHostName = $earlyValue }
+                'authorization-ref' { $authRefValue = $earlyValue }
+                'model' { $authModelValue = $earlyValue }
+            }
+        }
     }
 }
 function Set-ReviewerHostRowField {
@@ -608,7 +628,7 @@ if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNu
     $authError = $null
     $reviewerHostsPath = $null
     try {
-        $authProjectPath = if ([string]::IsNullOrWhiteSpace($ProjectPath)) { (Get-Location).Path } else { (Resolve-Path -LiteralPath $ProjectPath -ErrorAction Stop).Path }
+        $authProjectPath = if ([string]::IsNullOrWhiteSpace($authProjectPathInput)) { (Get-Location).Path } else { (Resolve-Path -LiteralPath $authProjectPathInput -ErrorAction Stop).Path }
         . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')   # for New-ContinuousCoReviewDefaultReviewerHostConfig
         $authConfig = Get-LiveReviewConfiguration -HostName $authHostName -Model $authModelValue -AuthorizationRef $authRefValue -TimeoutSeconds 0 -FallbackPolicy 'none'
         if ($null -ne $authConfig) {

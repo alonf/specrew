@@ -138,4 +138,32 @@ Describe 'recording a reviewer grant writes ONE field of ONE row' {
                 -Because "appending a new host must not disturb existing row '$($priorRow.host)'"
         }
     }
+
+    It 'routes the documented --project-path value to the target project before the early setup write' {
+        $callerProject = New-GrantFixtureProject
+        $targetProject = New-GrantFixtureProject
+        $callerCatalogPath = Join-Path $callerProject '.specrew/reviewer-hosts.json'
+        $callerBefore = [IO.File]::ReadAllBytes($callerCatalogPath)
+
+        Push-Location -LiteralPath $callerProject
+        try {
+            $output = @(& 'pwsh' -NoProfile -File $script:ReviewScript `
+                    '--project-path' $targetProject `
+                    '--host' 'codex' `
+                    '--authorization-ref' 'target-project-only' 2>&1)
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            Pop-Location
+        }
+
+        $exitCode | Should -Be 0 -Because 'the documented spaced CLI form must authorize the requested project'
+        ($output -join "`n") | Should -Match ([regex]::Escape((Join-Path $targetProject '.specrew/reviewer-hosts.json'))) `
+            -Because 'the success receipt must name the project that actually received the grant'
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($callerCatalogPath)) |
+            Should -BeExactly ([Convert]::ToBase64String($callerBefore)) `
+            -Because 'a pure setup command must never fall back to the caller working directory when --project-path was supplied'
+        $targetRow = @((Get-GrantCatalog -ProjectRoot $targetProject).hosts | Where-Object { $_.host -eq 'codex' })[0]
+        $targetRow.authorization_ref | Should -Be 'target-project-only'
+    }
 }
