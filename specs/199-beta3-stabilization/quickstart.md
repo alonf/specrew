@@ -36,9 +36,14 @@ every round still needs its own `--approve-round` authorization.
 - **OneDrive install**: with the module under a OneDrive path, a campaign runs
   (placeholders hydrate + verify); a junction inside the tree is still refused with a
   plain-language message.
-- **Installed build marker**: after importing the installed module, `Get-Command
-  Get-SpecrewReviewCampaignEvidenceState` resolves from that module. Use this marker to prove the install
-  contains the beta3 campaign gate; the prerelease version string alone does not distinguish stale beta3
-  builds.
+- **Installed build marker**: resolve the installed module root, dot-source its packaged governance
+  library, then resolve the new helper. Use this marker to prove the install contains the beta3 campaign
+  gate; the prerelease version string alone does not distinguish stale beta3 builds:
+
+  ```powershell
+  $specrewModuleRoot = (Get-Module Specrew -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).ModuleBase
+  . (Join-Path $specrewModuleRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
+  Get-Command Get-SpecrewReviewCampaignEvidenceState -ErrorAction Stop
+  ```
 - **Broken env_refs**: remove `PATH` from env_refs and run verification; the error
   names `env_refs` and shows the exact line to add.

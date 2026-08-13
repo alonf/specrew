@@ -27,7 +27,7 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
-### DRIFT-199-I001-038 — broad green count omitted the signoff gate; campaign override was unreachable (implementation resolved; committed-tree registry run pending)
+### DRIFT-199-I001-038 — broad green count omitted the signoff gate; campaign override was unreachable (implementation resolved; manual walk pending)
 
 - **Observed**: the implementation packet said “all 95 regression suites pass,” while a direct run of
   `tests/continuous-co-review/unit/review-signoff-evidence-gate.Tests.ps1` produced ten failures. The
@@ -48,9 +48,17 @@ recorded maintainer ruling, so a single rate here would misstate them.
   harness contract/adapter/fault suites are 61/61 green with no skips. A production-path dry run resolved
   and built bounded file-primary process specifications for `claude`, `codex`, `copilot`, `cursor-agent`,
   and `antigravity`; every installed executable passed preflight and no provider was invoked.
-- **Count boundary**: no broad green claim is made here. The changed F-198 registry must run against the
-  committed tree; its result covers only the paths explicitly named in that registry. The complete
-  manual lifecycle walk, including its human-authorized provider round, remains separate evidence.
+- **Committed-tree evidence**: product/test/docs changes committed as `f1645a43`. The amended explicit
+  F-198 registry then completed all **99 named suites green in 516.260 seconds**; that sentence covers
+  only the 99 paths printed by `tests/f198-regression-suite.ps1`. The distribution publish dry-run exited
+  0 and proved source-commit stamping, manifest stamping, unsigned-default packaging, manual/tag gating,
+  and missing-key refusal. From the staged package, dot-sourcing its packaged `shared-governance.ps1`
+  resolved `Get-SpecrewReviewCampaignEvidenceState` from the package path, not the source checkout.
+  Review-evidence integrity, version/build identity, and provider mirror-parity script lanes also exited
+  0 independently.
+- **Remaining acceptance evidence**: the complete manual lifecycle walk, including its explicitly
+  human-authorized provider round, remains separate evidence. The count above is not that walk and is
+  not a claim that every test file in the repository ran.
 
 ### DRIFT-199-I001-037 — dogfood reopening found a review without a reviewer and consumer-facing wedges (implementation resolved; manual walk pending)
 
@@ -69,15 +77,18 @@ recorded maintainer ruling, so a single rate here would misstate them.
   cap announces that enforcement stopped, constraint edits are written to both human and machine
   ledgers before a refusal, packaged/source version reports carry an eight-character build id, and the
   isolated packaged review runtime now loads its reparse policy without scope-dependent variables.
-- **Test evidence**: `tests/f198-regression-suite.ps1 -PerTestTimeoutSeconds 300 -MaxParallel 4`
-  completed with **all 95 suites green** on 2026-08-13. Focused campaign/signoff/constraint tests were
-  27/27 green; the full conformance script passed every case, including workshop-record-only versus
-  outside-path precedence and the capped-block message; package release and package-only runtime deploy
-  paths passed independently.
+- **Test evidence as measured at that time**: `tests/f198-regression-suite.ps1
+  -PerTestTimeoutSeconds 300 -MaxParallel 4` completed the **95 paths in its then-current explicit
+  registry** green on 2026-08-13. It did **not** include T067 and therefore was not a complete signoff-gate
+  claim; DRIFT-199-I001-038 records that reporting correction and the amended 99-suite committed-tree
+  run. Focused campaign/signoff/constraint tests were 27/27 green; the full conformance script passed
+  every case, including workshop-record-only versus outside-path precedence and the capped-block message;
+  package release and package-only runtime deploy paths passed independently.
 - **Historical-baseline correction**: the older sections below accurately record what was known when
   “the seventeen” were routed. They are no longer the current disposition. The signoff cases were stale
-  legacy-evidence fixtures around a working fail-closed gate, and the full current 95-suite registry is
-  green. The historical text remains so the reporting failure is not erased.
+  legacy-evidence fixtures around a working fail-closed gate. The then-current 95-path registry was green
+  but omitted T067; DRIFT-199-I001-038 records the repaired fixtures and amended registry. The historical
+  text remains so the reporting failure is not erased.
 - **Remaining acceptance evidence**: automation does not replace the two manual walks already ruled in:
   a fresh Copilot CLI / `claude-sonnet-5` lifecycle through closeout, followed by a Claude workshop run
   proving that lens transitions do not duplicate packets. No review/signoff or release approval is
