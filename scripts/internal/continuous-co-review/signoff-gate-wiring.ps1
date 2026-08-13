@@ -99,7 +99,8 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     #>
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [Parameter(Mandatory = $true)][string]$BoundaryType
+        [Parameter(Mandatory = $true)][string]$BoundaryType,
+        [AllowNull()] $OverrideAuthorization
     )
 
     if ($BoundaryType -ne 'review-signoff') {
@@ -128,7 +129,7 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     # pre-feature branch, else fail-closed with a config instruction), so a non-`main`-trunk repo no longer fails
     # closed and there is no 'main' default to pre-read here. The decision is persisted before either throw/allow
     # so a failed signoff leaves inspectable evidence.
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -OverrideAuthorization $OverrideAuthorization
     Write-ContinuousCoReviewSignoffGateDecisionEvidence -ProjectRoot $ProjectRoot -BoundaryType $BoundaryType -Decision $decision
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"

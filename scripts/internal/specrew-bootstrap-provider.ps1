@@ -476,7 +476,7 @@ try {
     # Resolve the Specrew version from the module manifest ($moduleRoot came from the same 3-tier chain) so the
     # mandatory orientation banner renders the REAL version, not "Specrew: unknown" (the surgery defaults to
     # "unknown" with no version). Fail-soft: an unreadable manifest leaves it null (banner falls back to unknown).
-    # F-199 T011 (FR-019): compose ModuleVersion WITH PrivateData.PSData.Prerelease. Reading
+    # Compose ModuleVersion WITH PrivateData.PSData.Prerelease. Reading
     # ModuleVersion alone rendered "0.40.0" on a beta build, so a consumer could not tell which
     # channel they were on (ledger obs-2). Reference implementation:
     # scripts/specrew-start.ps1 :: Get-ManifestSpecrewVersionText. Fail-soft as before: an

@@ -1090,6 +1090,164 @@ function Add-SpecrewBoundarySyncWarningLedgerEntry {
     Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title ('Boundary sync warning: {0}' -f $BoundaryType) -Lines $lines | Out-Null
 }
 
+function Get-SpecrewGitFileTextAtCommit {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$CommitHash,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $gitObject = '{0}:{1}' -f $CommitHash.Trim(), $RelativePath.Replace([char]92, [char]47)
+    $output = @(& git -C $ProjectRoot show --no-textconv $gitObject 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    return ($output -join "`n")
+}
+
+function Get-SpecrewConstraintValue {
+    param(
+        [AllowNull()][string]$Content,
+        [Parameter(Mandatory = $true)][ValidateSet('capacity_per_iteration', 'review_baseline_ref')][string]$Field
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Content)) {
+        return $null
+    }
+
+    $pattern = if ($Field -eq 'capacity_per_iteration') {
+        '(?m)^\s*capacity_per_iteration\s*:\s*(?<value>[^#\r\n]+?)\s*(?:#.*)?$'
+    }
+    else {
+        '(?m)^\s*\*\*Baseline Ref\*\*\s*:\s*(?<value>[^\r\n]+?)\s*$'
+    }
+    $match = [regex]::Match($Content, $pattern)
+    if (-not $match.Success) {
+        return $null
+    }
+
+    return $match.Groups['value'].Value.Trim().Trim('"', "'")
+}
+
+function Get-SpecrewConstraintChanges {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$PreviousCommitHash,
+        [Parameter(Mandatory = $true)][string]$CurrentCommitHash
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PreviousCommitHash) -or
+        [string]::IsNullOrWhiteSpace($CurrentCommitHash) -or
+        $PreviousCommitHash.Trim() -eq $CurrentCommitHash.Trim()) {
+        return @()
+    }
+
+    $descriptors = New-Object System.Collections.Generic.List[object]
+    $descriptors.Add([pscustomobject]@{
+        Field = 'capacity_per_iteration'
+        ArtifactPath = '.specrew/iteration-config.yml'
+    }) | Out-Null
+    if (-not [string]::IsNullOrWhiteSpace($FeatureRef) -and -not [string]::IsNullOrWhiteSpace($IterationNumber)) {
+        $descriptors.Add([pscustomobject]@{
+            Field = 'review_baseline_ref'
+            ArtifactPath = ('specs/{0}/iterations/{1}/state.md' -f $FeatureRef.Trim(), $IterationNumber.Trim())
+        }) | Out-Null
+    }
+
+    $changes = New-Object System.Collections.Generic.List[object]
+    foreach ($descriptor in $descriptors) {
+        $previousContent = Get-SpecrewGitFileTextAtCommit -ProjectRoot $ProjectRoot -CommitHash $PreviousCommitHash -RelativePath $descriptor.ArtifactPath
+        $currentContent = Get-SpecrewGitFileTextAtCommit -ProjectRoot $ProjectRoot -CommitHash $CurrentCommitHash -RelativePath $descriptor.ArtifactPath
+        $previousValue = Get-SpecrewConstraintValue -Content $previousContent -Field $descriptor.Field
+        $currentValue = Get-SpecrewConstraintValue -Content $currentContent -Field $descriptor.Field
+
+        # Creation is scaffold setup, not an edit. Only a value that existed at both governed
+        # snapshots can represent the silent constraint mutation this record is intended to expose.
+        if ([string]::IsNullOrWhiteSpace($previousValue) -or
+            [string]::IsNullOrWhiteSpace($currentValue) -or
+            $previousValue -eq $currentValue) {
+            continue
+        }
+
+        $keyMaterial = '{0}|{1}|{2}|{3}|{4}' -f $descriptor.Field, $PreviousCommitHash.Trim().ToLowerInvariant(), $CurrentCommitHash.Trim().ToLowerInvariant(), $previousValue, $currentValue
+        $changes.Add([pscustomobject]@{
+            ChangeKey = 'constraint-' + (Get-SpecrewBoundarySha256 -Text $keyMaterial).Substring(0, 20)
+            Field = $descriptor.Field
+            ArtifactPath = $descriptor.ArtifactPath
+            PreviousValue = $previousValue
+            CurrentValue = $currentValue
+            PreviousCommitHash = $PreviousCommitHash.Trim().ToLowerInvariant()
+            CurrentCommitHash = $CurrentCommitHash.Trim().ToLowerInvariant()
+        }) | Out-Null
+    }
+
+    return $changes.ToArray()
+}
+
+function Publish-SpecrewConstraintChangeRecords {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$BoundaryType,
+        [AllowEmptyCollection()][Parameter(Mandatory = $true)][object[]]$Changes,
+        [AllowNull()][string]$NowUtc
+    )
+
+    if ($Changes.Count -eq 0) {
+        return
+    }
+    if ([string]::IsNullOrWhiteSpace($NowUtc)) {
+        $NowUtc = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+
+    $decisionsPath = Get-DecisionsLedgerPath -ProjectRoot $ProjectRoot
+    $ledgerContent = if (Test-Path -LiteralPath $decisionsPath -PathType Leaf) {
+        Get-Content -LiteralPath $decisionsPath -Raw -Encoding UTF8
+    }
+    else { '' }
+    $eventsPath = Get-SpecrewLifecycleEventsPath -ProjectRoot $ProjectRoot
+    $eventContent = if (Test-Path -LiteralPath $eventsPath -PathType Leaf) {
+        Get-Content -LiteralPath $eventsPath -Raw -Encoding UTF8
+    }
+    else { '' }
+
+    foreach ($change in $Changes) {
+        $ledgerMarker = '**Change Key**: {0}' -f $change.ChangeKey
+        if (-not $ledgerContent.Contains($ledgerMarker)) {
+            $lines = @(
+                ('- **Change Key**: {0}' -f $change.ChangeKey)
+                ('- **Boundary Attempt**: {0}' -f $BoundaryType)
+                ('- **Artifact**: {0}' -f $change.ArtifactPath)
+                ('- **Previous Value**: {0}' -f $change.PreviousValue)
+                ('- **Current Value**: {0}' -f $change.CurrentValue)
+                ('- **Previous Auth Commit**: {0}' -f $change.PreviousCommitHash)
+                ('- **Current Auth Commit**: {0}' -f $change.CurrentCommitHash)
+                '- **Authority**: This record makes the edit visible; it does not authorize the change.'
+            )
+            Add-DecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title ('Constraint change detected: {0}' -f $change.Field) -Lines $lines | Out-Null
+            $ledgerContent += "`n$ledgerMarker"
+            Write-Host ("Specrew constraint change detected: {0} changed from '{1}' to '{2}'. The edit is recorded but not authorized by this record." -f $change.Field, $change.PreviousValue, $change.CurrentValue) -ForegroundColor Yellow
+        }
+
+        if (-not $eventContent.Contains([string]$change.ChangeKey)) {
+            Add-SpecrewLifecycleEvent -ProjectRoot $ProjectRoot -EventType 'constraint-change' -NowUtc $NowUtc -Payload @{
+                change_key = $change.ChangeKey
+                boundary_type = $BoundaryType
+                field = $change.Field
+                artifact_path = $change.ArtifactPath
+                previous_value = $change.PreviousValue
+                current_value = $change.CurrentValue
+                previous_auth_commit = $change.PreviousCommitHash
+                current_auth_commit = $change.CurrentCommitHash
+                authority = 'visibility-only-not-authorization'
+            }
+            $eventContent += [string]$change.ChangeKey
+        }
+    }
+}
+
 function Get-LatestSpecrewBoundarySyncState {
     param(
         [Parameter(Mandatory = $true)]
@@ -1479,7 +1637,13 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$IdentityBody,
 
         [AllowNull()]
-        [string]$HandoffText
+        [string]$HandoffText,
+
+        [AllowNull()]
+        [string]$ReviewSignoffOverrideAuthorizedBy,
+
+        [AllowNull()]
+        [string]$ReviewSignoffOverrideRationale
     )
 
     $aliasMap = @{
@@ -1593,16 +1757,46 @@ function Invoke-SpecrewBoundaryStateSync {
         -FeatureRef $effectiveFeatureRef `
         -IterationNumber $effectiveIterationNumber
 
+    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
+    $effectiveAuthCommitHash = Resolve-SpecrewBoundaryAuthCommitHash -ProjectRoot $paths.ProjectRoot -AuthCommitHash $AuthCommitHash
+    try {
+        if ($null -ne $latestBoundary -and -not [string]::IsNullOrWhiteSpace([string]$latestBoundary.auth_commit_hash)) {
+            $constraintChanges = @(Get-SpecrewConstraintChanges `
+                -ProjectRoot $paths.ProjectRoot `
+                -FeatureRef $effectiveFeatureRef `
+                -IterationNumber $effectiveIterationNumber `
+                -PreviousCommitHash ([string]$latestBoundary.auth_commit_hash) `
+                -CurrentCommitHash $effectiveAuthCommitHash)
+            Publish-SpecrewConstraintChangeRecords `
+                -ProjectRoot $paths.ProjectRoot `
+                -BoundaryType $BoundaryType `
+                -Changes $constraintChanges `
+                -NowUtc ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
+        }
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not record constraint edits: {1}" -f $BoundaryType, $_.Exception.Message)
+    }
+
     # T073 / FR-025 / SC-019 / SC-020: opt-in continuous-co-review signoff gate. A no-op for
     # every boundary except review-signoff and a no-op unless co_review_gate_enforcement is
     # enabled; when ON it refuses signoff (throws) on un-reviewed/stale/uncovered state. $BoundaryType
     # is canonical here (implement/review both alias to review-signoff). Out-Null guards the
     # boundary-sync result pipeline against the gate's allow-path return value.
+    $reviewSignoffOverride = $null
+    if (-not [string]::IsNullOrWhiteSpace($ReviewSignoffOverrideAuthorizedBy) -or
+        -not [string]::IsNullOrWhiteSpace($ReviewSignoffOverrideRationale)) {
+        $reviewSignoffOverride = [pscustomobject][ordered]@{
+            authorized_by = $ReviewSignoffOverrideAuthorizedBy
+            rationale     = $ReviewSignoffOverrideRationale
+        }
+    }
+
     Invoke-ContinuousCoReviewSignoffGateIfEnabled `
         -ProjectRoot $paths.ProjectRoot `
-        -BoundaryType $BoundaryType | Out-Null
+        -BoundaryType $BoundaryType `
+        -OverrideAuthorization $reviewSignoffOverride | Out-Null
 
-    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $expectedBoundaryType = if ($null -eq $latestBoundary) {
         $boundaryOrder[0]
@@ -1620,8 +1814,6 @@ function Invoke-SpecrewBoundaryStateSync {
     if (-not [string]::IsNullOrWhiteSpace($expectedBoundaryType) -and $expectedBoundaryType -ne $BoundaryType) {
         Add-SpecrewBoundarySyncWarningLedgerEntry -ProjectRoot $paths.ProjectRoot -BoundaryType $BoundaryType -LatestBoundary $latestBoundary -Message ("Expected next boundary '{0}' but received '{1}'." -f $expectedBoundaryType, $BoundaryType)
     }
-
-    $effectiveAuthCommitHash = Resolve-SpecrewBoundaryAuthCommitHash -ProjectRoot $paths.ProjectRoot -AuthCommitHash $AuthCommitHash
 
     $sessionState = New-SpecrewSessionState `
         -BoundaryType $BoundaryType `

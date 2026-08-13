@@ -70,11 +70,6 @@ mechanism they describe — a restored slot that nothing surfaced — was verifi
 
 ## Known issues
 
-- **Seventeen test failures accompany this branch, and every one is dispositioned.** Sixteen also fail
-  on `main`, name for name: they are pre-existing and inherited, not introduced here. The seventeenth is
-  an analyzer that reads machine-local runtime state; it passes on a fresh checkout only because that
-  checkout has no such state to read, which is not evidence that it is fixed. All seventeen route to
-  beta4.
 - **A stale review block still re-fires at every stop** once its message has been read and correctly
   declined. The message now explains itself and says when it is advisory; suppressing the repeat is a
   behaviour change held for a later release.
@@ -136,3 +131,27 @@ Prefer a different tool from the one that wrote the code — a second opinion is
 unavailable and wrote the review record itself, marking 24 tasks passed when no reviewer had ever run.
 That message now says what is actually missing. **Co-review works on Copilot CLI** — the failure there
 was a reviewer nobody had chosen, not a host limitation.
+
+## What the complete lifecycle walk does at review
+
+The walkthrough is deliberately not unattended. When implementation reaches review, Specrew stops and
+waits for a human to authorize one provider-spend round:
+
+```
+specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round
+```
+
+If a reviewer is already selected for the project, omit `--host`. One approval authorizes one round.
+The expected stop is the product working: no reviewer process starts, and no spend occurs, until the
+tester grants that round. A complete, valid result for the exact active campaign and current file digest
+is required before `review-signoff` can advance; a hand-written `review.md` is not review evidence.
+
+For an exceptional case where the human deliberately accepts partial review coverage, the governed
+boundary wrapper exposes an explicit recorded escape hatch. Both fields are required, and the resulting
+allow decision (including the human and rationale) is written to `.specrew/review/signoff-gate/`:
+
+```
+pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -ProjectPath . -BoundaryType review-signoff -ReviewSignoffOverrideAuthorizedBy "<human>" -ReviewSignoffOverrideRationale "<why proceeding with partial coverage is acceptable>"
+```
+
+This is an explicit human disposition, not a recovery command for an agent to infer or issue itself.

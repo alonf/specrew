@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "001"
-updated_at: "2026-08-12T16:12:53.1231612Z"
+updated_at: "2026-08-13T01:46:17.2074892Z"
 tasks:
   T001:
     title: "Pause core (round terminal + pause facts + decision surface + per-campaign budget)"

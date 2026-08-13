@@ -106,11 +106,12 @@ try {
     Write-Pass "evidence tag: pending-artifact fallback authorizations can be audited distinctly"
 
     $pB = New-EnfProj
-    Add-SpecrewBoundaryAuthorization -ProjectRoot $pB -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'Alon' -VerdictText 'approved for tasks' -AuthCommitHash 'TESTHASH' -RecordedAt '2026-01-01T00:00:00Z' | Out-Null
+    $missingEvidenceFailure = $null
+    try { Add-SpecrewBoundaryAuthorization -ProjectRoot $pB -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'Alon' -VerdictText 'approved for tasks' -AuthCommitHash 'TESTHASH' -RecordedAt '2026-01-01T00:00:00Z' | Out-Null }
+    catch { $missingEvidenceFailure = $_.Exception.Message }
     $ctxB = Get-Content -LiteralPath (Join-Path $pB '.specrew\start-context.json') -Raw | ConvertFrom-Json -Depth 12
-    $vB = @($ctxB.boundary_enforcement.verdict_history)[-1]
-    if ($vB.evidence_source -ne 'unspecified') { Fail "omitted EvidenceSource must default to 'unspecified', got '$($vB.evidence_source)'" }
-    Write-Pass "evidence tag: omitted EvidenceSource defaults to 'unspecified' (never blank, never fabricated)"
+    if ($missingEvidenceFailure -notmatch 'not recorded by Specrew''s verdict capture' -or @($ctxB.boundary_enforcement.verdict_history).Count -ne 0) { Fail "omitted EvidenceSource must refuse without writing authority, got '$missingEvidenceFailure'" }
+    Write-Pass 'evidence tag: omitted provenance refuses authorization instead of fabricating an unspecified source'
 
     # ---- Part C: the transcript reader (Get-SpecrewCapturedBoundaryVerdict) ---------------------------------
     function New-Transcript {

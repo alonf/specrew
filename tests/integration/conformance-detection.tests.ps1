@@ -914,6 +914,7 @@ try {
     $t7cap = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (attempt 4).' })
     $r7cap = Invoke-Conformance -Proj $p7 -TranscriptPath $t7cap
     if ($r7cap.Blocked) { Fail "Case 7: the 4th consecutive block exceeds the cap and MUST degrade (release the stop) to avoid a hang. Out: $($r7cap.Out)" }
+    if ($r7cap.Out -notmatch 'ENFORCEMENT STOPPED after 3 consecutive blocks') { Fail "Case 7: the capped release MUST announce that enforcement stopped and name the cap. Out: $($r7cap.Out)" }
     if ($r7cap.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 7: over the cap, degrade to a plain marker nudge. Out: $($r7cap.Out)" }
     # A packet-present stop resets the counter.
     $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = $realPacket })
@@ -1056,7 +1057,10 @@ try {
     $p16 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16
     New-LensApplicability -Proj $p16 -Selected @('architecture-core','data-storage') -Done @()
-    New-HandoverSnapshot -Proj $p16 -ChangedUserFiles 2
+    $null = Invoke-Conformance -Proj $p16 -Event SessionStart
+    $p16LensState = Join-Path $p16 'specs\050-host-neutral-gate\iterations\001\lens-applicability.json'
+    Add-Content -LiteralPath $p16LensState -Value '' -Encoding UTF8
+    New-HandoverSnapshot -Proj $p16 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
     $liveWorkshopQuestion = 'Lens 1 of 8: architecture-core. The current design question is how to decompose the ingestion, approval, and publisher responsibilities. Would you rather answer the decisions together, or one at a time?'
     $t16 = New-Transcript -Proj $p16 -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16a = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
@@ -1071,6 +1075,18 @@ try {
     }
     Write-Pass "Case 16: strict active iteration workshop state suppresses the generic packet without a model marker and retains durable re-entry context"
 
+    # ---- Case 16a2 / beta3 dogfood guard: the question exemption is only for the workshop record set.
+    #      A source/test/doc change in the same turn is ordinary material work and must win.
+    $p16a2 = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16a2
+    New-LensApplicability -Proj $p16a2 -Selected @('architecture-core','data-storage') -Done @()
+    $null = Invoke-Conformance -Proj $p16a2 -Event SessionStart
+    New-HandoverSnapshot -Proj $p16a2 -ChangedUserFiles 1 -FileList 'src/provider.ps1'
+    $t16a2 = New-Transcript -Proj $p16a2 -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
+    $r16a2 = Invoke-Conformance -Proj $p16a2 -TranscriptPath $t16a2
+    if (-not $r16a2.Blocked -or $r16a2.Out -notmatch 'five-part context packet') { Fail "Case 16a2: a proved workshop question that also changed a non-workshop path MUST still require the material packet. Out: $($r16a2.Out)" }
+    Write-Pass "Case 16a2: material work outside the workshop record set wins over a proved workshop question"
+
     # ---- Case 16b / FR-056(d): lifecycle boundary state has precedence even when every workshop-question signal
     #      is otherwise valid. The six-section packet and exact boundary marker remain mandatory.
     $p16b = New-Fixture -Working 'plan' -LastAuth 'clarify'
@@ -1084,11 +1100,11 @@ try {
     Write-Pass "Case 16b: lifecycle boundary state overrides active workshop artifacts and retains the six-section contract"
 
     # ---- Case 16c / FR-056(c): assistant prose is not authority in either direction. Even prose with no question,
-    #      lens name, or marker cannot turn a valid active workshop into an ordinary material hand-back.
+    #      lens name, or marker cannot turn a valid active workshop pause into an ordinary hand-back.
     $p16c = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16c
     New-LensApplicability -Proj $p16c -Selected @('architecture-core','data-storage') -Done @()
-    New-HandoverSnapshot -Proj $p16c -ChangedUserFiles 2
+    New-HandoverSnapshot -Proj $p16c -ChangedUserFiles 0
     $t16c = New-Transcript -Proj $p16c -Turns @(@{ role = 'assistant'; text = 'I saved the current discussion and am pausing for your response.' })
     $r16c = Invoke-Conformance -Proj $p16c -TranscriptPath $t16c
     if ($r16c.Blocked -or $r16c.Out -match 'five-part context packet') { Fail "Case 16c: valid active workshop state MUST suppress the generic packet independently of assistant prose. Out: $($r16c.Out)" }
@@ -1111,7 +1127,7 @@ try {
     $p16e = New-Fixture -Working '' -LastAuth ''
     New-Spec -Proj $p16e
     New-LensApplicability -Proj $p16e -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
-    New-HandoverSnapshot -Proj $p16e -ChangedUserFiles 2
+    New-HandoverSnapshot -Proj $p16e -ChangedUserFiles 0
     $t16e = New-Transcript -Proj $p16e -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16e = Invoke-Conformance -Proj $p16e -TranscriptPath $t16e
     if ($r16e.Blocked -or $r16e.Out -match 'five-part context packet') { Fail "Case 16e: a proved feature-level intake question MUST remain the final visible turn. Out: $($r16e.Out)" }
@@ -1129,7 +1145,7 @@ Write-Pass "Case 16e: feature-level intake question stops once without a generic
 $p16pa = New-Fixture -Working '' -LastAuth ''
 New-Spec -Proj $p16pa
 New-PreAgendaLensApplicability -Proj $p16pa
-New-HandoverSnapshot -Proj $p16pa -ChangedUserFiles 2
+New-HandoverSnapshot -Proj $p16pa -ChangedUserFiles 0
 $t16pa = New-Transcript -Proj $p16pa -Turns @(@{ role = 'assistant'; text = 'Who uses this product day to day, and what does the current workflow look like?' })
 $r16pa = Invoke-Conformance -Proj $p16pa -TranscriptPath $t16pa
 if ($r16pa.Blocked -or $r16pa.Out -match 'five-part context packet') { Fail "Case 16pa: strict pre-agenda product-domain state MUST leave the ordinary question visible. Out: $($r16pa.Out)" }
@@ -1174,7 +1190,7 @@ Write-Pass "Case 16pd: stale feature-level pre-agenda state fails closed after i
 $p16e2 = New-Fixture -Working '' -LastAuth ''
 New-Spec -Proj $p16e2
 New-LensApplicability -Proj $p16e2 -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
-New-HandoverSnapshot -Proj $p16e2 -ChangedUserFiles 2 -ActiveFeature '(no active feature)'
+New-HandoverSnapshot -Proj $p16e2 -ChangedUserFiles 0 -ActiveFeature '(no active feature)'
 $t16e2 = New-Transcript -Proj $p16e2 -Turns @(@{ role = 'assistant'; text = 'Should we continue with the next architecture decision?' })
 $r16e2 = Invoke-Conformance -Proj $p16e2 -TranscriptPath $t16e2
 if ($r16e2.Blocked -or $r16e2.Out -match 'five-part context packet') { Fail "Case 16e2: a placeholder handover feature MUST NOT hide the sole durable active workshop. Out: $($r16e2.Out)" }
@@ -1199,7 +1215,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     $p16f = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16f
     New-LensApplicability -Proj $p16f -Selected @('architecture-core','data-storage') -Done @()
-    New-HandoverSnapshot -Proj $p16f -ChangedUserFiles 2
+    New-HandoverSnapshot -Proj $p16f -ChangedUserFiles 0
     $t16f = New-Transcript -Proj $p16f -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
     $r16f = Invoke-Conformance -Proj $p16f -TranscriptPath $t16f
     if ($r16f.Blocked -or $r16f.Out -match 'five-part context packet') { Fail "Case 16f: model text MUST NOT redirect away from valid active iteration state. Out: $($r16f.Out)" }
@@ -1210,7 +1226,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     $p16g = New-Fixture -Working '' -LastAuth ''
     New-Spec -Proj $p16g
     New-LensApplicability -Proj $p16g -Selected @('architecture-core','data-storage') -Done @() -FeatureOnly
-    New-HandoverSnapshot -Proj $p16g -ChangedUserFiles 2
+    New-HandoverSnapshot -Proj $p16g -ChangedUserFiles 0
     $t16g = New-Transcript -Proj $p16g -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
     $r16g = Invoke-Conformance -Proj $p16g -TranscriptPath $t16g
     if ($r16g.Blocked -or $r16g.Out -match 'five-part context packet') { Fail "Case 16g: model text MUST NOT redirect away from valid feature intake state. Out: $($r16g.Out)" }

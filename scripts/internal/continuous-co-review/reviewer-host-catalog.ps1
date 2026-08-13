@@ -124,7 +124,9 @@ function Get-ContinuousCoReviewHostDefaultTimeoutSeconds {
     # seam). Values are field-measured (F-198 iteration 001: copilot 61-82s observed -> 300;
     # codex 240-410s -> 600; claude 600 and antigravity 900 per the maintainer clarify).
     # Returns $null when the row is absent or carries no value - the tolerant-reader contract:
-    # callers fall through to the 600-second floor, never throw.
+    # codex 240-410s originally resolved to 600; planning-scale dogfood later raised that catalog row
+    # to 900 after a useful review was cut off at 600. Callers without a row still fall through to the
+    # 600-second floor, never throw.
     param([Parameter(Mandatory)][string]$HostName)
     $needle = ([string]$HostName).ToLowerInvariant()
     $row = @(Get-ContinuousCoReviewReviewerHostRows) | Where-Object { $_.host -eq $needle } | Select-Object -First 1

@@ -122,6 +122,13 @@ try {
     New-Item -ItemType Directory -Path $rootIter -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $rootFeature 'spec.md') -Value "# Spec`n`nBody." -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $rootIter 'review.md') -Value "# Review`n`nBody." -Encoding UTF8
+    $campaignRun = Join-Path $rootProj '.specrew\review\authority\campaigns\cmp-050-host-neutral-gate-i001\runs\run-valid-control'
+    New-Item -ItemType Directory -Path $campaignRun -Force | Out-Null
+    [System.IO.File]::WriteAllText(
+        (Join-Path $campaignRun 'result.json'),
+        '{"schema_version":"1.0","campaign_id":"cmp-050-host-neutral-gate-i001","run_id":"run-valid-control","completion":"complete","validation":"valid","verdict":"clean"}',
+        [System.Text.UTF8Encoding]::new($false)
+    )
     $null = & git -C $rootProj init --quiet
     $null = & git -C $rootProj config core.autocrlf false
     $null = & git -C $rootProj add -A

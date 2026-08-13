@@ -27,20 +27,6 @@ Set-StrictMode -Version Latest
 # path-identity primitive exists to keep out). The tag constants are pinned in the fixture as data so
 # the vocabulary stays honest; the runtime keys on attributes.
 
-# Windows file attributes that mark a cloud placeholder. Not in [IO.FileAttributes] as named members
-# across all targets, so they are declared here once rather than re-spelled at each call site.
-$script:SpecrewAttrReparsePoint = 0x00000400
-$script:SpecrewAttrOffline = 0x00001000
-$script:SpecrewAttrRecallOnOpen = 0x00040000
-$script:SpecrewAttrRecallOnDataAccess = 0x00400000
-# PINNED and UNPINNED are the STABLE half of the cloud family, and leaving them out was the defect
-# (DRIFT-199-I001-023). The three attributes above all describe a file that is NOT CURRENTLY
-# DOWNLOADED - a transient state a file leaves the moment anyone reads it. These two describe the
-# consumer's RETENTION CHOICE for a cloud-backed file and survive hydration, which is the property
-# this predicate actually means to test.
-$script:SpecrewAttrPinned = 0x00080000
-$script:SpecrewAttrUnpinned = 0x00100000
-
 function Resolve-SpecrewReparseDisposition {
     # PURE decision over (attributes, link type). Pure on purpose: no agent can materialise a cloud
     # placeholder on a local volume, so the cloud branch would otherwise be untestable. Splitting the
@@ -56,7 +42,20 @@ function Resolve-SpecrewReparseDisposition {
         [AllowNull()][AllowEmptyString()][string]$LinkTarget
     )
 
-    if (($Attributes -band $script:SpecrewAttrReparsePoint) -eq 0) {
+    # Keep the constants inside the pure decision function. A guarded consumer can observe this
+    # function from another dot-source scope while the policy file's `$script:` variables belong to
+    # the loader that created them; the deployed review-engine hit exactly that split and failed under
+    # StrictMode before it could hash its runtime. Local constants make the function self-contained.
+    $attrReparsePoint = 0x00000400
+    $attrOffline = 0x00001000
+    $attrRecallOnOpen = 0x00040000
+    $attrRecallOnDataAccess = 0x00400000
+    # PINNED and UNPINNED are the stable half of the cloud family: unlike recall/offline, they survive
+    # hydration and retain the consumer's cloud-storage choice.
+    $attrPinned = 0x00080000
+    $attrUnpinned = 0x00100000
+
+    if (($Attributes -band $attrReparsePoint) -eq 0) {
         # No reparse bit means nothing to discriminate - and in particular an OFFLINE ordinary file is
         # NOT a placeholder: there is no reparse point to hydrate, and routing it through the hydration
         # path would be treating an ordinary file as cloud state.
@@ -74,8 +73,7 @@ function Resolve-SpecrewReparseDisposition {
     # survives hydration, and the not-yet-local markers, which are transient. Keying on the transient
     # half alone meant a file stopped being recognised as cloud-backed the moment it was downloaded -
     # so on a real install, where everything was hydrated, every file fell through to refuse-unknown.
-    $cloudMask = $script:SpecrewAttrRecallOnDataAccess -bor $script:SpecrewAttrRecallOnOpen -bor
-    $script:SpecrewAttrOffline -bor $script:SpecrewAttrPinned -bor $script:SpecrewAttrUnpinned
+    $cloudMask = $attrRecallOnDataAccess -bor $attrRecallOnOpen -bor $attrOffline -bor $attrPinned -bor $attrUnpinned
     # BOTH link signals must be absent before anything reaches this branch. LinkType is already known
     # not to be a symlink or junction by the check above, but "not a family we name" is not the same as
     # "not a link at all", and a host that exposes a TARGET without a TYPE still proves the path

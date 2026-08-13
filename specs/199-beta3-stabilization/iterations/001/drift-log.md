@@ -22,10 +22,66 @@
 
 ## Summary
 
-**Total drift events**: 36 (DRIFT-199-I001-001 through -036)
+**Total drift events**: 38 (DRIFT-199-I001-001 through -038)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-038 — broad green count omitted the signoff gate; campaign override was unreachable (implementation resolved; committed-tree registry run pending)
+
+- **Observed**: the implementation packet said “all 95 regression suites pass,” while a direct run of
+  `tests/continuous-co-review/unit/review-signoff-evidence-gate.Tests.ps1` produced ten failures. The
+  explicit F-198 registry did not contain T067, so its green count described only its registry while the
+  packet presented it as the stabilization bar. The same reporting rule failed twice: a constant count
+  answers “is this getting worse,” never “is this working,” whether the number is red or green.
+- **Release-gating answer**: the human-authorized recorded override was genuinely unreachable under
+  campaign authority, not merely backed by a stale fixture. Campaign mode returned before the override
+  check, and the wired boundary exposed no override parameter. A campaign refusal therefore left no
+  explicit human-authority path forward.
+- **Resolution**: implementation-resolved. Authority configuration is validated first; a complete
+  `authorized_by` + `rationale` override then applies to either authority model. The wired signoff gate
+  accepts and durably records it, malformed input remains a persisted block, and both governed sync
+  wrappers expose the two explicit fields. The remaining T067 cases now write active campaign facts and
+  assert campaign semantics rather than retired inline tree/anchor-chain vocabulary. T067, T073/T074,
+  exact boundary campaign evidence, and constraint-edit visibility are now explicit registry entries.
+- **Focused evidence before commit**: T067 is 11/11 green; wired signoff is 22/22 green; the four named
+  harness contract/adapter/fault suites are 61/61 green with no skips. A production-path dry run resolved
+  and built bounded file-primary process specifications for `claude`, `codex`, `copilot`, `cursor-agent`,
+  and `antigravity`; every installed executable passed preflight and no provider was invoked.
+- **Count boundary**: no broad green claim is made here. The changed F-198 registry must run against the
+  committed tree; its result covers only the paths explicitly named in that registry. The complete
+  manual lifecycle walk, including its human-authorized provider round, remains separate evidence.
+
+### DRIFT-199-I001-037 — dogfood reopening found a review without a reviewer and consumer-facing wedges (implementation resolved; manual walk pending)
+
+- **Observed**: the frozen `braces` dogfood project contained three campaign runs with
+  `completion=none` / `validation=not-produced`, zero reviewer spends, and an accepted `review.md`
+  whose 24 task verdicts had been written by the implementer. The same stabilization cycle also
+  reproduced duplicate packet stops between workshop lenses, a silent fourth-attempt enforcement
+  lapse, indistinguishable beta builds, and silent edits to capacity/baseline constraints.
+- **Citation**: the feature acceptance bar at `spec.md:6`, the signoff decision-store requirement
+  (FR-007), full fresh-project campaign acceptance (SC-007), and build identity requirement (FR-019).
+- **Resolution**: implementation-resolved. Review-signoff stage evidence and the validator now require
+  a complete, valid result from the exact active campaign; an unrelated valid campaign cannot launder
+  an invalid one. The existing hard signoff gate remains the final authority and its campaign-era
+  allow/refuse fixtures are current. Workshop-record-only turns take precedence only when every changed
+  path is in the workshop record set; any source/test/doc path retains material-work enforcement. The
+  cap announces that enforcement stopped, constraint edits are written to both human and machine
+  ledgers before a refusal, packaged/source version reports carry an eight-character build id, and the
+  isolated packaged review runtime now loads its reparse policy without scope-dependent variables.
+- **Test evidence**: `tests/f198-regression-suite.ps1 -PerTestTimeoutSeconds 300 -MaxParallel 4`
+  completed with **all 95 suites green** on 2026-08-13. Focused campaign/signoff/constraint tests were
+  27/27 green; the full conformance script passed every case, including workshop-record-only versus
+  outside-path precedence and the capped-block message; package release and package-only runtime deploy
+  paths passed independently.
+- **Historical-baseline correction**: the older sections below accurately record what was known when
+  “the seventeen” were routed. They are no longer the current disposition. The signoff cases were stale
+  legacy-evidence fixtures around a working fail-closed gate, and the full current 95-suite registry is
+  green. The historical text remains so the reporting failure is not erased.
+- **Remaining acceptance evidence**: automation does not replace the two manual walks already ruled in:
+  a fresh Copilot CLI / `claude-sonnet-5` lifecycle through closeout, followed by a Claude workshop run
+  proving that lens transitions do not duplicate packets. No review/signoff or release approval is
+  inferred from this implementation result.
 
 ### Measured proof line — FR-009 closes DRIFT-199-I001-013's circularity, on the perfect case (2026-08-11)
 
@@ -583,7 +639,7 @@ see a fifth flag.** Method rule 2, with a documented prior instance, repeated an
 
 *A near-miss worth recording: my first verification of the fix appeared to FAIL, and I nearly treated a
 correct fix as broken. The error path named
-`...\Documents\PowerShell\Modules\Specrew .40.0\scripts\specrew-review.ps1` — the INSTALLED
+`...\Documents\PowerShell\Modules\Specrew\0.40.0\scripts\specrew-review.ps1` — the INSTALLED
 module, not the repo. The fix was right; the test was reaching a different copy of the product. Verified
 properly with `SPECREW_MODULE_PATH` pointed at the tree: `--pause-choice 9` now reaches the script and is
 refused by its own value check, which is the correct behaviour.*
@@ -828,7 +884,7 @@ only afterwards, stopped at every boundary, waited for typed verdicts, and never
 instructions' legitimacy. **Register, not channel, not volume.** Removing my own loud clause was part of
 the fix, not a concession.
 
-**And the run that verified it produced this.** `C:\Devraces`, frozen and copied before reading:
+**And the run that verified it produced this.** `C:\Dev\braces`, frozen and copied before reading:
 
 | | |
 | --- | --- |

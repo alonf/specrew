@@ -164,14 +164,12 @@ function Get-SpecrewVersionInfoFromManifest {
     # diagnostics polish - a tester's bug report is unactionable without it, because nobody can tell
     # which code they were running.
     #
-    # Read from a build stamp written at package time, falling back to the git HEAD of the tree being
-    # run (which is what a developer install actually is). Absent both, the display is unchanged - this
-    # can only ever ADD identification, never break the version string.
+    # Read identity beside the manifest being inspected: a package carries build-stamp.json, while a
+    # developer checkout can fall back to its own git HEAD. The helper also parses arbitrary manifests
+    # during compatibility checks and tests; those must not inherit the build id of this script's repo.
     $buildId = ''
     try {
-        # $PSScriptRoot, not $PSCommandPath: the latter is empty inside a function in a dot-sourced
-        # file, which silently produced no build id at all - the failure mode this whole item exists to end.
-        $moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $moduleRoot = Split-Path -Parent ([System.IO.Path]::GetFullPath($ManifestPath))
         $stampPath = Join-Path $moduleRoot 'build-stamp.json'
         if (Test-Path -LiteralPath $stampPath -PathType Leaf) {
             $stamp = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json

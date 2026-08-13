@@ -111,6 +111,13 @@ $registry = @(
     @{ area = 'no auto-verification + reviewer-invocation integrity (FR-010)'; path = 'tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1'; kind = 'pester' }
     @{ area = 'review spend allowance (FR-018/FR-019)'; path = 'tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1'; kind = 'pester' }
     @{ area = 'signoff evidence gate (FR-020 wiring)'; path = 'tests/continuous-co-review/unit/degraded-evidence-gate.Tests.ps1'; kind = 'pester' }
+    # Beta3 stabilization: a broad green count omitted the T067/T073 signoff gate while claiming
+    # regression coverage. Keep the decision, wired boundary, exact campaign cross-check, and
+    # constraint-edit visibility in the explicit registry so future counts name what they cover.
+    @{ area = 'T067 campaign-authority signoff decision - current complete valid result, stale/missing state, and human-authorized override'; path = 'tests/continuous-co-review/unit/review-signoff-evidence-gate.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T073/T074 review-signoff boundary wiring - fail-closed block, clean allow, override persistence, silent allow pipeline'; path = 'tests/continuous-co-review/unit/signoff-gate-wiring.Tests.ps1'; kind = 'pester' }
+    @{ area = 'beta3 exact active-campaign evidence state consumed by review boundary'; path = 'tests/continuous-co-review/unit/review-boundary-campaign-evidence.Tests.ps1'; kind = 'pester' }
+    @{ area = 'beta3 capacity and baseline constraint changes are recorded before signoff evaluation'; path = 'tests/unit/constraint-change-visibility.Tests.ps1'; kind = 'pester' }
     # Shared co-review engine that F-198 modifies (T012/T014/T020 touch the orchestrator run path):
     # these guard against the exact regression class that slipped when they were manual-only (a T012
     # host-field addition crashed the orchestrator under StrictMode; only these full-run suites catch it).

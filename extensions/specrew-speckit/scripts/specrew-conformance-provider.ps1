@@ -999,8 +999,8 @@ try {
     # ($blockKind -eq 'material' -and $canAssess). BOUNDARY stops, 'none', an unavailable classifier, and EVERY error
     # leave $stopIntentOutcome at its 'real' default -> today's real-stop enforcement is preserved byte-for-byte. The
     # classifier is dot-sourced fail-open: the ONE pure, self-contained contract file (sibling of bootstrap; no _load).
-    $stopIntentOutcome = if ($workshopIntermediate) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } else { 'real' }
-    $stopIntentReason = if ($workshopIntermediate) { [string]$workshopQuestion.reason } else { $null }
+    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } else { 'real' }
+    $stopIntentReason = $null
     $stopIntentContinueKey = $null
     $stopIntentContinueCount = 0
     # WORKSHOP-RECORD-ONLY TURNS DO NOT OWE A MATERIAL PACKET.
@@ -1019,9 +1019,9 @@ try {
     # This narrows the exemption to the turn shape that produced the duplicates; it does not weaken
     # material-work enforcement for real work that happens to coincide with a workshop.
     #
-    # Keyed on changed_paths rather than on the question classification, deliberately - the classification
-    # is what proved unreliable on precisely these turns, so relying on it again would re-enter the same
-    # failure. Unknown or empty paths fall through to today's behaviour (block), which is fail-closed.
+    # The exact durable workshop classification proves the exception is in scope; changed_paths then decides
+    # precedence. Unknown or empty paths, or any path outside the workshop record set, fall through to today's
+    # material-work behavior (block), which is fail-closed.
     $workshopRecordOnlyTurn = $false
     if ($blockKind -eq 'material' -and $canAssess -and $null -ne $materialSignal) {
         $turnPaths = @()
@@ -1037,7 +1037,12 @@ try {
             $workshopRecordOnlyTurn = (@($outsideWorkshop).Count -eq 0)
         }
     }
-    if ($blockKind -eq 'material' -and $canAssess -and (-not $workshopIntermediate) -and (-not $workshopRecordOnlyTurn)) {
+    $workshopQuestionWins = $workshopIntermediate -and (($blockKind -ne 'material') -or $workshopRecordOnlyTurn)
+    if ($workshopQuestionWins) {
+        $stopIntentOutcome = 'workshop-intermediate'
+        $stopIntentReason = [string]$workshopQuestion.reason
+    }
+    if ($blockKind -eq 'material' -and $canAssess -and (-not $workshopRecordOnlyTurn)) {
         try {
             if (-not (Get-Command Resolve-ContinuousCoReviewStopIntent -ErrorAction SilentlyContinue) -and -not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
                 $stopIntentPath = Join-Path (Split-Path $bootstrapDir -Parent) 'continuous-co-review/stop-intent-contract.ps1'
@@ -1256,7 +1261,7 @@ try {
             # FR-045a: a continuation directive is NOT a packet-render block - label it distinctly so the flush-race
             # forensic (which keys off 'stop-block' + a low dx_lat_hits to catch mid-flush truncation) does not treat a
             # by-design non-packet continue message as a partial-read suspect.
-            $evt = if ($workshopIntermediate) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
+            $evt = if ($workshopQuestionWins) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
             # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.
@@ -1265,7 +1270,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopIntermediate) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopIntermediate) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopIntermediate) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopIntermediate) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

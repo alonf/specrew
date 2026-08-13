@@ -149,7 +149,7 @@ try {
     $unrelatedEffective = Get-SpecrewEffectiveBoundaryEnforcementState -BoundaryEnforcement $unrelatedRaw
     Assert-True (@($unrelatedEffective['verdict_history']).Count -eq 1 -and $unrelatedEffective['last_authorized_boundary'] -eq 'tasks') 'scoped correction does not globally invalidate a valid historical verdict'
 
-    Add-SpecrewBoundaryAuthorization -ProjectRoot $scratch -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'human@example.test' -VerdictText 'approved for tasks' -AuthCommitHash $boundaryCommit -RecordedAt '2026-07-02T10:10:00Z' -EvidenceSource 'human-confirmed-at-resume' | Out-Null
+    Add-SpecrewBoundaryAuthorization -ProjectRoot $scratch -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'human@example.test' -VerdictText 'approved for tasks' -AuthCommitHash $boundaryCommit -RecordedAt '2026-07-02T10:10:00Z' -EvidenceSource 'human-confirmed-at-resume' -OutOfBandReason 'fixture directly exercises reauthorization after a scoped correction' | Out-Null
     $reauthorized = Get-SpecrewBoundaryEnforcementState -ProjectRoot $scratch
     Assert-True (@($reauthorized.State['verdict_history']).Count -eq 2 -and @($reauthorized.State['correction_history']).Count -eq 1) 'fresh explicit re-authorization appends without rewriting verdict or correction history'
     $newEntry = ConvertTo-SpecrewBoundaryMap -Value @($reauthorized.State['verdict_history'])[-1]

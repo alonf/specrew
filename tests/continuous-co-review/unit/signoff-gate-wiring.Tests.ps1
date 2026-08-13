@@ -39,22 +39,47 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
                 Invoke-WiringGit $repo @('branch', '-M', 'main')
                 $anchor = (& git -C $repo rev-parse HEAD).Trim()
                 Invoke-WiringGit $repo @('checkout', '-q', '-b', 'feature')
+                New-Item -ItemType Directory -Path (Join-Path $repo 'specs/001-wiring/iterations/001') -Force | Out-Null
+                New-Item -ItemType Directory -Path (Join-Path $repo '.specrew') -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $repo 'specs/001-wiring/spec.md') -Value '# Wiring feature' -Encoding UTF8
+                ([ordered]@{
+                    schema = 'v2'
+                    feature_path = (Join-Path $repo 'specs/001-wiring')
+                    session_state = [ordered]@{
+                        active = $true
+                        boundary_type = 'before-implement'
+                        feature_ref = '001-wiring'
+                        feature_path = (Join-Path $repo 'specs/001-wiring')
+                        iteration_number = '001'
+                    }
+                } | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath (Join-Path $repo '.specrew/start-context.json') -Encoding UTF8
                 Set-Content -LiteralPath (Join-Path $repo 'feat.txt') -Value 'feature v0' -Encoding UTF8
                 Invoke-WiringGit $repo @('add', '-A'); Invoke-WiringGitCommit $repo 'feat'
                 return @{ repo = $repo; anchor = $anchor }
             }
 
-        function Write-WiringPassRun {
-                param($Repo, $RunId, $BaselineRef, $TreeId, $ReviewedRef)
-                $dir = Join-Path (Join-Path $Repo '.specrew/review/inline') $RunId
-                New-Item -ItemType Directory -Path $dir -Force | Out-Null
-                ([pscustomobject][ordered]@{
-                    schema_version = '1.0'; run_id = $RunId; checkpoint_id = 'cp'; baseline_ref = $BaselineRef
-                    diff_hash = 'sha256:x'; reviewed_ref = $ReviewedRef; reviewed_tree_id = $TreeId
-                    evidence_labels = [pscustomobject]@{ completeness = 'full'; independence = 'independent'; budget = 'normal' }   # T094: healthy-run fixture
-                    status = 'pass'
-                    created_at = '2026-06-23T00:00:01Z'; updated_at = '2026-06-23T00:00:01Z'
-                } | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $dir 'review-run.json') -Encoding UTF8 -NoNewline
+        function New-WiringCampaignResult {
+                param([string]$RunId, [string]$Digest)
+                return [pscustomobject][ordered]@{
+                    schema_version = '1.0'; campaign_id = 'cmp-001-wiring-i001'; run_id = $RunId
+                    target_digest = $Digest; harness_id = 'fixture'; completion = 'complete'; verdict = 'pass'
+                    runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+                    currentness = 'current'; validation = 'valid'; can_approve_current = $true
+                    failure_reason = $null; summary = 'campaign-authority wiring fixture'; findings = @()
+                    started_at = '2026-08-12T00:00:00Z'; ended_at = '2026-08-12T00:01:00Z'; duration_ms = 60000
+                }
+            }
+
+        function Add-WiringCleanCampaignResult {
+                param([string]$Repo, [string]$RunId)
+                $store = Join-Path $Repo '.specrew/review/authority'
+                $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Repo).tree_id
+                Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-001-wiring-i001' -RunId $RunId `
+                    -TargetLineage 'lin-001-wiring' -ObservedAt '2026-08-12T00:00:00Z' | Out-Null
+                Publish-ReviewRunResultFact -StoreRoot $store -CampaignId 'cmp-001-wiring-i001' -RunId $RunId `
+                    -Fact (New-WiringCampaignResult -RunId $RunId -Digest $digest) | Out-Null
+                Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId 'cmp-001-wiring-i001' -RunId $RunId `
+                    -TargetLineage 'lin-001-wiring' -Disposition released -ObservedAt '2026-08-12T00:01:00Z' | Out-Null
             }
 
         function Set-WiringConfig {
@@ -175,31 +200,56 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
             $msg | Should -Match 'review-signoff refused'
             $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
             $latest.decision.decision | Should -Be 'block'
-            $latest.decision.reason | Should -Be 'no-co-review-evidence'
+            $latest.decision.reason | Should -Be 'no-authoritative-campaign-result'
         }
 
         It '(b) review-signoff + a fresh PASSING run matching the current tree -> does NOT throw [SC-020]' {
             $f = New-WiringFeatureRepo 'on-fresh'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
-            $head = (& git -C $f.repo rev-parse HEAD).Trim()
-            # Compute the expected tree-id AFTER writing config so its (excluded) bytes are settled;
-            # .specrew/** is stripped from the digest, so the config + run record never perturb it.
-            $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
-            Write-WiringPassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head  # baseline = anchor -> chain reaches
+            Add-WiringCleanCampaignResult -Repo $f.repo -RunId 'run-fresh'
             { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Not -Throw
             $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
             $latest.decision.decision | Should -Be 'allow'
-            $latest.decision.reason | Should -Be 'fresh-and-covered'
+            $latest.decision.reason | Should -Be 'complete-current-clean-result'
         }
 
         It '(b2) the allow path returns NOTHING (so it cannot corrupt the boundary-sync result pipeline)' {
             $f = New-WiringFeatureRepo 'on-fresh-silent'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
-            $head = (& git -C $f.repo rev-parse HEAD).Trim()
-            $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
-            Write-WiringPassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head
+            Add-WiringCleanCampaignResult -Repo $f.repo -RunId 'run-fresh-silent'
             $out = Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff'
             $out | Should -BeNullOrEmpty
+        }
+
+        It '(b3) a human-authorized override is reachable through the wired gate and persisted' {
+            $f = New-WiringFeatureRepo 'on-human-override'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine $null
+            $override = [pscustomobject]@{
+                authorized_by = 'human-tester'
+                rationale = 'review provider is unavailable; defer independent review with explicit ownership'
+            }
+
+            $out = Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' -OverrideAuthorization $override
+
+            $out | Should -BeNullOrEmpty
+            $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
+            $latest.decision.decision | Should -Be 'allow'
+            $latest.decision.reason | Should -Be 'human-authorized-partial-override'
+            $latest.decision.override.authorized_by | Should -Be 'human-tester'
+            $latest.decision.override.rationale | Should -Match 'provider is unavailable'
+        }
+
+        It '(b4) a malformed wired override remains fail-closed and is persisted as a block' {
+            $f = New-WiringFeatureRepo 'on-malformed-override'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine $null
+            $override = [pscustomobject]@{ authorized_by = 'human-tester' }
+
+            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' -OverrideAuthorization $override } | Should -Throw
+
+            $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
+            $latest.decision.decision | Should -Be 'block'
+            $latest.decision.reason | Should -Be 'no-authoritative-campaign-result'
+            $latest.decision.override | Should -BeNullOrEmpty
         }
 
         It '(c) explicit false config still blocks without co-review evidence' {

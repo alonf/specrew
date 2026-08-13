@@ -8,8 +8,13 @@
 ```powershell
 # in a fresh consumer project
 specrew init                      # scaffolds .specrew/verification-plan.json (FR-012)
-specrew review                    # runs one campaign round
+specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round
+                                  # human-authorized provider spend: runs exactly one campaign round
 ```
+
+The full lifecycle walk is not unattended. It stops at review and waits for the command above; that
+pause is expected. Once a reviewer is selected for the project, later rounds may omit `--host`, but
+every round still needs its own `--approve-round` authorization.
 
 ## Try the canonical scenario (the pause)
 
@@ -31,6 +36,9 @@ specrew review                    # runs one campaign round
 - **OneDrive install**: with the module under a OneDrive path, a campaign runs
   (placeholders hydrate + verify); a junction inside the tree is still refused with a
   plain-language message.
-- **Banner**: session start shows `Specrew version 0.40.0-beta3` (full prerelease).
+- **Installed build marker**: after importing the installed module, `Get-Command
+  Get-SpecrewReviewCampaignEvidenceState` resolves from that module. Use this marker to prove the install
+  contains the beta3 campaign gate; the prerelease version string alone does not distinguish stale beta3
+  builds.
 - **Broken env_refs**: remove `PATH` from env_refs and run verification; the error
   names `env_refs` and shows the exact line to add.

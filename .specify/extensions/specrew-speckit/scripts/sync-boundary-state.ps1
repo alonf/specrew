@@ -10,7 +10,9 @@ param(
     [string]$IdentityFocusArea,
     [string]$IdentityActiveIssues,
     [string]$IdentityBody,
-    [string]$HandoffText
+    [string]$HandoffText,
+    [string]$ReviewSignoffOverrideAuthorizedBy,
+    [string]$ReviewSignoffOverrideRationale
 )
 
 Set-StrictMode -Version Latest
@@ -159,7 +161,9 @@ $result = Invoke-SpecrewBoundaryStateSync `
     -IdentityFocusArea $IdentityFocusArea `
     -IdentityActiveIssues $IdentityActiveIssues `
     -IdentityBody $IdentityBody `
-    -HandoffText $HandoffText
+    -HandoffText $HandoffText `
+    -ReviewSignoffOverrideAuthorizedBy $ReviewSignoffOverrideAuthorizedBy `
+    -ReviewSignoffOverrideRationale $ReviewSignoffOverrideRationale
 
 if ($null -ne $result) {
     $result | ConvertTo-Json -Depth 6 | Write-Output

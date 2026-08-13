@@ -499,7 +499,8 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
 
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
             $decision.reason | Should -Be 'campaign-packet-gate-failed'
-            $decision.stop_block | Should -Match 'review-campaign-active-feature-unresolved'
+            $decision.stop_block | Should -Match 'could not work out which feature this review is for'
+            $decision.stop_block | Should -Match 'specrew review --live --feature <feature-id> --approve-round'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }

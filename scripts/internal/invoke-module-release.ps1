@@ -267,6 +267,41 @@ function New-ReleaseStageRoot {
     return $stageRoot
 }
 
+function Get-ReleaseBuildId {
+    param([Parameter(Mandatory = $true)][string]$RepositoryRoot)
+
+    foreach ($candidate in @($env:SPECREW_BUILD_COMMIT, $env:GITHUB_SHA)) {
+        $value = ([string]$candidate).Trim()
+        if ($value -match '^[0-9a-fA-F]{7,40}$') {
+            return $value.Substring(0, [Math]::Min(8, $value.Length)).ToLowerInvariant()
+        }
+    }
+
+    if (Test-Path -LiteralPath (Join-Path $RepositoryRoot '.git')) {
+        $head = (& git -C $RepositoryRoot rev-parse --short=8 HEAD 2>$null)
+        if ($LASTEXITCODE -eq 0 -and ([string]$head).Trim() -match '^[0-9a-fA-F]{7,8}$') {
+            return ([string]$head).Trim().ToLowerInvariant()
+        }
+    }
+
+    throw 'Could not resolve the release build commit. Set SPECREW_BUILD_COMMIT or package from a git checkout.'
+}
+
+function Write-ReleaseBuildStamp {
+    param(
+        [Parameter(Mandatory = $true)][string]$StageRoot,
+        [Parameter(Mandatory = $true)][string]$Commit
+    )
+
+    $stampPath = Join-Path $StageRoot 'build-stamp.json'
+    $content = [ordered]@{
+        schema = 'specrew-build-stamp/v1'
+        commit = $Commit
+    } | ConvertTo-Json
+    [System.IO.File]::WriteAllText($stampPath, ($content + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    return $stampPath
+}
+
 function Write-ReleaseSummary {
     param(
         [AllowEmptyString()][string]$SummaryPath,
@@ -322,6 +357,10 @@ try {
 
     $stageRoot = New-ReleaseStageRoot -RepositoryRoot $resolvedRepositoryRoot -ScratchRoot $scratchRoot -ManifestPath $manifestPath
     $stagedManifestPath = Join-Path -Path $stageRoot -ChildPath 'Specrew.psd1'
+
+    $buildId = Get-ReleaseBuildId -RepositoryRoot $resolvedRepositoryRoot
+    $buildStampPath = Write-ReleaseBuildStamp -StageRoot $stageRoot -Commit $buildId
+    Write-ReleaseInfo ("Stamped staged build identity {0} in {1}." -f $buildId, (Split-Path -Leaf $buildStampPath))
 
     Set-SpecrewManifestReleaseMetadata -ManifestPath $stagedManifestPath -Version $moduleVersion -Prerelease $releaseStamp.ManifestPrerelease
     $stampedManifestInfo = Get-SpecrewManifestReleaseInfo -ManifestPath $stagedManifestPath

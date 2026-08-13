@@ -125,7 +125,7 @@ else { Write-Pass "deep new-cycle crossing asks the earliest cycle boundary firs
 
 Write-Host "Test 7: cycle-reset authorization does not throw backward + records kind"
 $fx = New-RatchetFixture -WorkingBoundary 'plan' -LastAuthorized 'iteration-closeout' -History @(New-HistoryEntry -From 'retro' -To 'iteration-closeout')
-Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -AuthCommitHash 'dddddddd' -EvidenceSource 'human-confirmed-at-resume' -Kind 'retroactive' | Out-Null
+Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -AuthCommitHash 'dddddddd' -EvidenceSource 'human-confirmed-at-resume' -OutOfBandReason 'fixture directly exercises the cycle-reset writer outside hook capture' -Kind 'retroactive' | Out-Null
 $state = Get-Content (Join-Path $fx '.specrew\start-context.json') -Raw | ConvertFrom-Json
 $newest = @($state.boundary_enforcement.verdict_history)[-1]
 if ($newest.to_boundary -ne 'plan' -or $newest.kind -ne 'retroactive') { Write-Fail "cycle-reset authorization must record to=plan kind=retroactive, got: $($newest | ConvertTo-Json -Compress)" }
@@ -133,7 +133,7 @@ else { Write-Pass "iteration-closeout -> plan authorization recorded with kind=r
 
 Write-Host "Test 8: re-fired authorization for the cursor boundary is a no-op (no duplicate entry)"
 $countBefore = @((Get-Content (Join-Path $fx '.specrew\start-context.json') -Raw | ConvertFrom-Json).boundary_enforcement.verdict_history).Count
-Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -EvidenceSource 'human-confirmed-at-resume' -Kind 'retroactive' | Out-Null
+Add-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -AuthorizedBoundary 'plan' -AuthorizingHuman 'fixture-human' -VerdictText 'approved for plan' -EvidenceSource 'human-confirmed-at-resume' -OutOfBandReason 'fixture replays the same direct cycle-reset authorization' -Kind 'retroactive' | Out-Null
 $countAfter = @((Get-Content (Join-Path $fx '.specrew\start-context.json') -Raw | ConvertFrom-Json).boundary_enforcement.verdict_history).Count
 if ($countAfter -ne $countBefore) { Write-Fail "re-fired authorization appended a duplicate ($countBefore -> $countAfter)" } else { Write-Pass "re-fired authorization is a no-op" }
 Remove-Item -Recurse -Force $fx

@@ -268,6 +268,7 @@
         'scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1',
         'scripts/internal/continuous-co-review/path-identity.ps1',
         'scripts/internal/continuous-co-review/reparse-tag-policy.ps1',
+        'scripts/internal/continuous-co-review/.specrew-runtime.json',
         'scripts/internal/continuous-co-review/review-antigravity-harness-port.ps1',
         'scripts/internal/continuous-co-review/review-authority-core.ps1',
         'scripts/internal/continuous-co-review/review-authority-cutover.ps1',

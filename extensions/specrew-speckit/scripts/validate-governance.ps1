@@ -3165,39 +3165,25 @@ function Test-ReviewArtifact {
         $Errors.Add("Complete iterations require review.md overall verdict 'accepted' (found '$overallVerdict')")
     }
 
-    # A REVIEW VERDICT IS CROSS-CHECKED AGAINST THE CAMPAIGN STORE, NOT ONLY AGAINST ITSELF.
+    # A REVIEW VERDICT IS CROSS-CHECKED AGAINST ITS ACTIVE CAMPAIGN, NOT ONLY AGAINST ITSELF.
     #
-    # Measured at C:\Devraces: three campaign runs, all preflight-failed, validation not-produced,
-    # ZERO spend facts - no reviewer ever ran - and review.md carrying 24 "| pass |" rows with Overall
-    # Verdict accepted. The implementer authored every verdict itself with
-    # (Get-Content $path -Raw) -replace '| needs-work |', '| pass |', and the scaffold's instruction to
-    # "replace default verdicts with the actual per-task review outcome" was satisfied by find-and-
-    # replace. The validator passed, because it checked the artifact's SHAPE - cells populated, Gap
-    # Ledger present - which a regex satisfies perfectly.
-    #
-    # This does not judge the review's CONTENT. It asks whether a review exists. A campaign holding no
-    # completed, valid result cannot support "accepted", however well-formed the table is.
-    #
-    # Fails OPEN on an unreadable or absent store, deliberately: a store-read problem must never become
-    # a governance failure. It errors only when it can positively determine that runs exist and none
-    # produced a valid result.
+    # Dogfood measured an accepted artifact after three preflight failures and zero reviewer spends.
+    # The first repair recursively counted every result.json under the entire store. That let a valid
+    # result from another feature make this feature look reviewed. Use the lifecycle-owned feature and
+    # iteration identities instead; once a campaign authority store exists, an absent, unreadable, or
+    # unusable active campaign cannot support "accepted". Projects with no campaign store at all remain
+    # grandfathered here; the pending review-signoff boundary independently fails closed for new work.
     if ($overallVerdict -eq 'accepted' -and -not (Test-IsNullish $ProjectRoot)) {
         $campaignStoreRoot = Join-Path $ProjectRoot '.specrew/review/authority'
         if (Test-Path -LiteralPath $campaignStoreRoot -PathType Container) {
-            $campaignResultFiles = @()
-            try { $campaignResultFiles = @(Get-ChildItem -LiteralPath $campaignStoreRoot -Recurse -File -Filter 'result.json' -ErrorAction Stop) }
-            catch { $campaignResultFiles = @() }
-            if (@($campaignResultFiles).Count -gt 0) {
-                $validCampaignResults = 0
-                foreach ($resultFile in $campaignResultFiles) {
-                    try { $resultFact = Get-Content -LiteralPath $resultFile.FullName -Raw | ConvertFrom-Json }
-                    catch { continue }
-                    if ($null -eq $resultFact) { continue }
-                    if ([string]$resultFact.completion -eq 'complete' -and [string]$resultFact.validation -eq 'valid') { $validCampaignResults++ }
-                }
-                if ($validCampaignResults -eq 0) {
-                    $Errors.Add(("review.md says the review was accepted, but no review has produced a result. The campaign has {0} recorded run(s) and none completed with a usable result, so there is no review for this verdict to rest on. If the reviewer could not run, that is a blocker to resolve - not a review to record. If these verdicts were written by hand, say so in review.md rather than presenting them as review outcomes." -f @($campaignResultFiles).Count))
-                }
+            $iterationsDirectory = Split-Path -Parent $IterationDirectory
+            $featureDirectory = Split-Path -Parent $iterationsDirectory
+            $featureRef = Split-Path -Leaf $featureDirectory
+            $iterationNumber = Split-Path -Leaf $IterationDirectory
+            $campaignEvidence = Get-SpecrewReviewCampaignEvidenceState -ProjectRoot $ProjectRoot `
+                -FeatureRef $featureRef -IterationNumber $iterationNumber
+            if (-not [bool]$campaignEvidence.Satisfied) {
+                $Errors.Add(("review.md says the review was accepted, but {0}. If the reviewer could not run, that is a blocker to resolve - not a review to record. If these verdicts were written by hand, say so in review.md rather than presenting them as review outcomes." -f [string]$campaignEvidence.Message))
             }
         }
     }

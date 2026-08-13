@@ -233,7 +233,7 @@ Initialize-SpecrewBoundaryEnforcementState -ProjectRoot '.' | Out-Null
 `$pc = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary `$cursor -WorkingBoundary 'specify'
 'DETECTOR pending=' + [bool]`$pc.HasPendingVerdict + ' from=' + [string]`$pc.PendingFromBoundary + ' markerFrom=' + [string]`$pc.PendingFromMarkerBoundary + ' to=' + [string]`$pc.PendingToBoundary
 Add-SpecrewBoundaryAuthorization -ProjectRoot '.' -CurrentBoundary `$pc.PendingFromBoundary -AuthorizedBoundary 'specify' ``
-    -AuthorizingHuman 'maintainer' -VerdictText 'approved for specify' -EvidenceSource 'human-confirmed-at-resume' -Kind 'standard' | Out-Null
+    -AuthorizingHuman 'maintainer' -VerdictText 'approved for specify' -EvidenceSource 'human-confirmed-at-resume' -OutOfBandReason 'fixture directly records the measured human verdict after the arrival stop' -Kind 'standard' | Out-Null
 'ENTRY_WRITTEN'
 `$gate = Test-SpecrewBoundaryAuthorization -ProjectRoot '.' -CurrentBoundary 'specify' -RequestedBoundary 'specify'
 'GATE authorized=' + [bool]`$gate.Authorized + ' decision=' + [string]`$gate.Decision + ' reason=' + ([string]`$gate.Reason -replace '\s+', ' ')

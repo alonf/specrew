@@ -1883,6 +1883,113 @@ function Get-SpecrewBoundaryStageEvidenceContract {
     )
 }
 
+function Get-SpecrewReviewCampaignId {
+    <#
+    Resolve the public campaign identity used by the review engine from the lifecycle-owned
+    feature and iteration identities. This intentionally mirrors the review engine's filesystem
+    identity contract so boundary/validator readers inspect only the active campaign, never an
+    unrelated valid result elsewhere in the store.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [Parameter(Mandatory = $true)][string]$IterationNumber
+    )
+
+    $feature = (Split-Path -Leaf $FeatureRef.Trim()).ToLowerInvariant()
+    $slug = ($feature -replace '[^a-z0-9]+', '-').Trim('-')
+    if ([string]::IsNullOrWhiteSpace($slug)) { $slug = 'review' }
+    if ($slug.Length -gt 44) {
+        $bytes = [Text.Encoding]::UTF8.GetBytes((Split-Path -Leaf $FeatureRef.Trim()))
+        $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant().Substring(0, 12)
+        $slug = $slug.Substring(0, 31).TrimEnd('-') + '-' + $hash
+    }
+    return 'cmp-{0}-i{1}' -f $slug, $IterationNumber
+}
+
+function Get-SpecrewReviewCampaignEvidenceState {
+    <#
+    Lightweight review-existence floor for boundary and artifact readers. It does not replace the
+    signoff gate's freshness, coverage, disposition, or finalization checks. It answers the narrower
+    question exposed by dogfood: did the active feature/iteration campaign produce even one completed,
+    valid result, or is review.md claiming outcomes for a review that never existed?
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [Parameter(Mandatory = $true)][string]$IterationNumber
+    )
+
+    $result = [pscustomobject][ordered]@{
+        Checked = $true
+        Satisfied = $false
+        Unverifiable = $false
+        CampaignId = $null
+        ResultCount = 0
+        ValidResultCount = 0
+        Reason = 'no-campaign-result'
+        Message = 'the active review campaign has no completed, valid campaign result'
+    }
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($FeatureRef) -or $IterationNumber -cnotmatch '^[0-9]{3,}$') {
+            $result.Unverifiable = $true
+            $result.Reason = 'campaign-scope-unresolvable'
+            $result.Message = 'the active feature or iteration identity is missing, so its review campaign cannot be verified'
+            return $result
+        }
+
+        $root = Resolve-ProjectPath -Path $ProjectRoot
+        $result.CampaignId = Get-SpecrewReviewCampaignId -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+        $runsRoot = Join-Path $root ('.specrew/review/authority/campaigns/{0}/runs' -f $result.CampaignId)
+        if (-not (Test-Path -LiteralPath $runsRoot -PathType Container)) { return $result }
+
+        $runDirectories = @(Get-ChildItem -LiteralPath $runsRoot -Directory -ErrorAction Stop)
+        foreach ($runDirectory in $runDirectories) {
+            $resultPath = Join-Path $runDirectory.FullName 'result.json'
+            if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) { continue }
+            $result.ResultCount++
+
+            try { $fact = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -AsHashtable -ErrorAction Stop }
+            catch {
+                $result.Unverifiable = $true
+                $result.Reason = 'campaign-result-unreadable'
+                $result.Message = "the active review campaign contains an unreadable result fact ('$($runDirectory.Name)')"
+                return $result
+            }
+
+            if ($null -eq $fact -or -not $fact.ContainsKey('campaign_id') -or -not $fact.ContainsKey('run_id') -or
+                [string]$fact['campaign_id'] -cne [string]$result.CampaignId -or
+                [string]$fact['run_id'] -cne [string]$runDirectory.Name) {
+                $result.Unverifiable = $true
+                $result.Reason = 'campaign-result-identity-invalid'
+                $result.Message = "the active review campaign contains a result whose campaign/run identity does not match its store path ('$($runDirectory.Name)')"
+                return $result
+            }
+
+            if ([string]$fact['completion'] -ceq 'complete' -and [string]$fact['validation'] -ceq 'valid') {
+                $result.ValidResultCount++
+            }
+        }
+
+        if ($result.ValidResultCount -gt 0) {
+            $result.Satisfied = $true
+            $result.Reason = 'completed-valid-campaign-result'
+            $result.Message = 'the active review campaign contains a completed, valid result'
+        }
+        elseif ($result.ResultCount -gt 0) {
+            $result.Reason = 'campaign-results-not-usable'
+            $result.Message = ("the active review campaign has {0} result(s), but none completed with validation=valid" -f $result.ResultCount)
+        }
+        return $result
+    }
+    catch {
+        $result.Unverifiable = $true
+        $result.Reason = 'campaign-store-unreadable'
+        $result.Message = 'the active review campaign store could not be read safely: ' + [string]$_.Exception.Message
+        return $result
+    }
+}
+
 function Get-SpecrewBoundaryStageEvidence {
     <#
     FR-068 (T090, re-cut T092). Does the stage being approved actually have its evidence in the tree
@@ -2016,6 +2123,15 @@ function Get-SpecrewBoundaryStageEvidence {
                     $desc = if ($mode -ceq 'any') { 'a Clarifications session block or a recorded clarify skip-with-rationale' } else { ($markers -join ' + ') }
                     $missing.Add(("{0} ({1})" -f $rel, $desc)) | Out-Null
                 }
+            }
+        }
+
+        if ([string]$Boundary -ceq 'review-signoff') {
+            $featureRef = if ([string]::IsNullOrWhiteSpace($FeaturePath)) { $null } else { Split-Path -Leaf $FeaturePath }
+            $campaignEvidence = Get-SpecrewReviewCampaignEvidenceState -ProjectRoot $root -FeatureRef $featureRef -IterationNumber $IterationNumber
+            if (-not [bool]$campaignEvidence.Satisfied) {
+                $missing.Add([string]$campaignEvidence.Message) | Out-Null
+                $result.Unverifiable = [bool]$campaignEvidence.Unverifiable
             }
         }
 

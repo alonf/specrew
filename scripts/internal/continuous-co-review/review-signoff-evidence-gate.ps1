@@ -1033,6 +1033,17 @@ function Get-ContinuousCoReviewSignoffGateDecision {
     if (-not $authority.valid -or [string]$authority.mode -ceq 'disabled') {
         return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason ('review-authority-disabled:' + [string]$authority.reason) -Message 'Review authority is missing, malformed, or disabled; neither legacy nor campaign evidence may authorize signoff.'
     }
+
+    # T067 / FR-025: the explicit human-authorized partial-coverage escape hatch applies
+    # to both authority models. Campaign cutover originally returned at line 1047 before
+    # reaching the legacy-positioned check below, which made the documented escape hatch
+    # unreachable precisely when the hard gate became the default. Keep authority config
+    # validation ahead of the override (a missing trust model is never bypassed), then let
+    # a complete, explicit authorization short-circuit either evidence evaluator.
+    if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $OverrideAuthorization) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'human-authorized-partial-override' -Message 'Signoff allowed under a recorded human-authorized partial-coverage override.' -OverrideAuthorization $OverrideAuthorization
+    }
+
     if ([bool]$authority.campaign_authority_enabled) {
         try {
             $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolvedRepoRoot -CampaignId $CampaignId -TargetLineage $TargetLineage -StoreRoot $CampaignStoreRoot -FeatureId $FeatureId -IterationNumber $IterationNumber -ExcludedPathPatterns $ExcludedPathPatterns
@@ -1045,12 +1056,6 @@ function Get-ContinuousCoReviewSignoffGateDecision {
             $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property
         }
         return $decision
-    }
-
-    # A well-formed human-authorized recorded override short-circuits, with the authorization
-    # captured in the decision evidence (auditable, never silent).
-    if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $OverrideAuthorization) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'human-authorized-partial-override' -Message 'Signoff allowed under a recorded human-authorized partial-coverage override.' -OverrideAuthorization $OverrideAuthorization
     }
 
     # 1. Current reviewed-state digest (fail-closed on any digest/git failure).
