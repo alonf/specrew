@@ -8,9 +8,8 @@ $ErrorActionPreference = 'Stop'
 # phase. The lens md is one shared catalog file; the conduct lives in the design-workshop skill,
 # deployed to the host-managed skill surfaces. Five supported hosts (Claude, Copilot/GitHub,
 # Codex/Agents, Cursor, Antigravity) map onto FOUR on-disk surfaces; the requirement is per supported
-# host, not per physical directory. This test proves the surfaces carry identical conduct with the
-# one intentional host-capability difference: Claude removes AskUserQuestion so its picker cannot
-# swallow the agenda that precedes confirmation.
+# host, not per physical directory. Every surface carries typed-turn conduct; Claude additionally
+# removes AskUserQuestion at capability level.
 
 function Write-Pass { param([string]$m) Write-Host "PASS: $m" -ForegroundColor Green }
 function Write-Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor Red; exit 1 }
@@ -42,6 +41,8 @@ foreach ($s in $surfaces) {
     Assert-True ($raw -match '(?im)^##\s+First stage\b.*product-domain phase') "surface carries the '## First stage — the product-domain phase' conduct"
     Assert-True ($raw -match '(?is)runs FIRST,\s+before any technical lens') "surface states the product-domain phase runs FIRST"
     Assert-True ($raw -match '(?i)No batch confirmation') "surface carries the FR-009 no-batch-confirmation rule"
+    Assert-True ($raw -match '(?i)typed-turn authority rule') "surface requires typed workshop replies"
+    Assert-True ($raw -match '(?i)Ctrl\+O') "surface treats picker dismissal as no authority"
 }
 
 # SC-007: each surface equals the deterministic host materialization of the same canonical template.

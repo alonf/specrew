@@ -16,6 +16,7 @@ $writer = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\confirm-worksh
 $mirror = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\confirm-workshop-agenda.ps1'
 $accessor = Join-Path $repoRoot 'scripts\internal\bootstrap\ProjectMetadataAccessor.ps1'
 $catalogSource = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\design-lenses\index.yml'
+$authoritySource = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\workshop-authority-store.ps1'
 
 Assert-True (Test-Path -LiteralPath $writer -PathType Leaf) 'agenda confirmation writer exists'
 Assert-True (Test-Path -LiteralPath $mirror -PathType Leaf) 'agenda confirmation deployed mirror exists'
@@ -25,12 +26,32 @@ $scratch = Join-Path ([IO.Path]::GetTempPath()) ('specrew-agenda-confirmation-' 
 try {
     New-Item -ItemType Directory -Path (Join-Path $scratch '.specrew') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $scratch '.specify\extensions\specrew-speckit\knowledge\design-lenses') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $scratch '.specrew\handover') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $scratch 'specs\001-url-checker') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch '.specrew\config.yml') -Value 'version: 1' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\spec.md') -Value '# URL Checker' -Encoding UTF8
     Copy-Item -LiteralPath $catalogSource -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\knowledge\design-lenses\index.yml') -Force
+    Copy-Item -LiteralPath $authoritySource -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\workshop-authority-store.ps1') -Force
+    . (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\workshop-authority-store.ps1')
+
+    function Add-TypedReply {
+        param([string]$FeatureRef, [ValidateSet('product-domain','agenda','lens')][string]$Phase, [string]$Lens, [string]$Reply)
+        $question = [ordered]@{ schema='v3'; status='workshop-active'; scope='feature'; feature_ref=$FeatureRef; iteration_number=''; lens=$Lens; phase=$Phase; agenda_status='pending-confirmation'; question='Fixture question?'; message_hash=(Get-SpecrewWorkshopAuthorityHash -Text ($FeatureRef + '|' + $Phase + '|' + $Lens)); artifact_path=(Join-Path $scratch "specs\$FeatureRef\lens-applicability.json") }
+        $question | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $scratch '.specrew\handover\workshop-question.json') -Encoding UTF8
+        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'test' -SourceEvent 'UserPromptSubmit'
+    }
 
     & $initializer -ProjectRoot $scratch -FeatureRef '001-url-checker'
+    $missingAuthorityRefused = $false
+    try { & $writer -ProjectRoot $scratch -FeatureRef '001-url-checker' -SelectedLens @('architecture-core') -SelectedDepth @('light') -SelectedDecision @('Choose structure.') -SkippedLens @() -SkippedReason @() | Out-Null }
+    catch { $missingAuthorityRefused = ($_.Exception.Message -match 'typed human reply receipt') }
+    Assert-True $missingAuthorityRefused 'writer refuses model-authored agenda state when no typed human response receipt exists'
+    $null = Add-TypedReply -FeatureRef '001-url-checker' -Phase 'product-domain' -Lens 'product-domain' -Reply 'The product framing matches.'
+    New-Item -ItemType Directory -Path (Join-Path $scratch 'specs\001-url-checker\workshop') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.md') -Value '# Product domain' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.yml') -Value 'depth: light' -Encoding UTF8
+    $null = Add-TypedReply -FeatureRef '001-url-checker' -Phase 'agenda' -Lens 'product-domain' -Reply 'Confirm this selected and skipped agenda.'
     $statePath = Join-Path $scratch 'specs\001-url-checker\lens-applicability.json'
     $before = [IO.File]::ReadAllBytes($statePath)
     $incompleteRefused = $false
@@ -86,6 +107,11 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$shellFeature") -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\spec.md") -Value '# Shell Call' -Encoding UTF8
     & $initializer -ProjectRoot $scratch -FeatureRef $shellFeature
+    $null = Add-TypedReply -FeatureRef $shellFeature -Phase 'product-domain' -Lens 'product-domain' -Reply 'The product framing matches.'
+    New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$shellFeature\workshop") -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\workshop\product-domain.md") -Value '# Product domain' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\workshop\product-domain.yml") -Value 'depth: light' -Encoding UTF8
+    $null = Add-TypedReply -FeatureRef $shellFeature -Phase 'agenda' -Lens 'product-domain' -Reply 'Confirm this selected and skipped agenda.'
     $shellOutput = @(& pwsh -NoProfile -File $writer -ProjectRoot $scratch -FeatureRef $shellFeature -AgendaJson $agendaJson -PassThru 2>&1)
     Assert-True ($LASTEXITCODE -eq 0) "pwsh -File accepts the single JSON agenda payload: $($shellOutput -join ' ')"
     $shellState = Get-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\lens-applicability.json") -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20

@@ -811,6 +811,11 @@ function Update-SpecrewRollingHandover {
     if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
 
     if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')) {
+        if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                -HostKind $fromHost -SourceEvent $Source | Out-Null
+        }
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
             -Source $Source -NowUtc $NowUtc | Out-Null

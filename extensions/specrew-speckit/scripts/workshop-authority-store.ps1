@@ -1,0 +1,178 @@
+Set-StrictMode -Version Latest
+
+function Get-SpecrewWorkshopAuthorityReceiptPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string] $ProjectRoot)
+
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-authority.jsonl'
+}
+
+function Get-SpecrewWorkshopResponseAuthority {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $Phase,
+        [Parameter(Mandatory)][string] $Response
+    )
+
+    $normalized = ($Response -replace '\s+', ' ').Trim().ToLowerInvariant()
+    $delegated = $normalized -match '^(?:please\s+)?(?:you decide|decide for me|choose for me|use your (?:best )?judg(?:e)?ment)(?:\b.*)?$'
+    $skipped = $normalized -match '^(?:skip(?:\s+(?:it|this|this lens|this question|the lens))?|not applicable|n/?a|move on without(?:\b.*)?)(?:[.!])?$'
+
+    if ($Phase -eq 'agenda') {
+        if ($delegated -or $skipped) {
+            return [pscustomobject]@{ confirmation = 'invalid'; confirmation_scope = 'lens-selection' }
+        }
+        return [pscustomobject]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-selection' }
+    }
+    if ($delegated) {
+        return [pscustomobject]@{ confirmation = 'human-delegated'; confirmation_scope = 'explicit-delegation' }
+    }
+    if ($skipped) {
+        return [pscustomobject]@{ confirmation = 'human-skipped'; confirmation_scope = 'explicit-skip' }
+    }
+    return [pscustomobject]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-question' }
+}
+
+function Get-SpecrewWorkshopAuthorityHash {
+    param([AllowEmptyString()][string] $Text)
+    $bytes = [Text.Encoding]::UTF8.GetBytes([string]$Text)
+    return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
+}
+
+function Write-SpecrewWorkshopAuthorityReceipt {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $Response,
+        [AllowNull()][string] $HostKind,
+        [AllowNull()][string] $SourceEvent
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Response)) { return $null }
+    $root = [IO.Path]::GetFullPath($ProjectRoot)
+    $questionPath = Join-Path $root '.specrew/handover/workshop-question.json'
+    if (-not (Test-Path -LiteralPath $questionPath -PathType Leaf)) { return $null }
+
+    try {
+        $questionItem = Get-Item -LiteralPath $questionPath -ErrorAction Stop
+        if ($questionItem.Length -le 0 -or $questionItem.Length -gt 65536) { return $null }
+        $question = Get-Content -LiteralPath $questionPath -Raw -Encoding UTF8 -ErrorAction Stop |
+            ConvertFrom-Json -Depth 10 -ErrorAction Stop
+        if ([string]$question.schema -cne 'v3' -or [string]$question.status -cne 'workshop-active') { return $null }
+        $featureRef = [string]$question.feature_ref
+        $phase = [string]$question.phase
+        $lens = [string]$question.lens
+        $questionHash = [string]$question.message_hash
+        if ($featureRef -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$' -or
+            $phase -cnotin @('product-domain', 'agenda', 'lens') -or
+            [string]::IsNullOrWhiteSpace($questionHash)) { return $null }
+        if ($phase -eq 'lens' -and $lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$') { return $null }
+        $controllerPath = Join-Path (Join-Path (Join-Path $root 'specs') $featureRef) 'lens-applicability.json'
+        if (-not (Test-Path -LiteralPath $controllerPath -PathType Leaf)) { return $null }
+        $controller = Get-Content -LiteralPath $controllerPath -Raw -Encoding UTF8 -ErrorAction Stop |
+            ConvertFrom-Json -Depth 20 -ErrorAction Stop
+        if ([string]$controller.human_turn_contract -cne 'typed-turns-v1' -or
+            [string]$controller.agenda_contract -cne 'complete-coverage-v1') { return $null }
+        if ($phase -in @('product-domain', 'agenda') -and [string]$controller.agenda_status -cne 'pending-confirmation') { return $null }
+        $featureRoot = Join-Path (Join-Path $root 'specs') $featureRef
+        $hasProductMarkdown = Test-Path -LiteralPath (Join-Path $featureRoot 'workshop/product-domain.md') -PathType Leaf
+        $hasProductStructured = Test-Path -LiteralPath (Join-Path $featureRoot 'workshop/product-domain.yml') -PathType Leaf
+        if ($phase -eq 'product-domain' -and $hasProductMarkdown -and $hasProductStructured) { return $null }
+        if ($phase -eq 'agenda' -and (-not $hasProductMarkdown -or -not $hasProductStructured)) { return $null }
+        if ($phase -eq 'lens') {
+            if ([string]$controller.agenda_status -cne 'confirmed' -or @($controller.selected) -cnotcontains $lens) { return $null }
+            $recordProperty = if ($controller.PSObject.Properties['workshop']) { $controller.workshop.PSObject.Properties[$lens] } else { $null }
+            if ($recordProperty -and $recordProperty.Value.PSObject.Properties['moved_on'] -and [bool]$recordProperty.Value.moved_on) { return $null }
+        }
+
+        $authority = Get-SpecrewWorkshopResponseAuthority -Phase $phase -Response $Response
+        $responseHash = Get-SpecrewWorkshopAuthorityHash -Text $Response
+        $receiptId = Get-SpecrewWorkshopAuthorityHash -Text ($featureRef + '|' + $phase + '|' + $lens + '|' + $questionHash + '|' + $responseHash)
+        $record = [ordered]@{
+            schema_version      = '1'
+            receipt_id         = $receiptId
+            feature_ref        = $featureRef
+            iteration_number   = [string]$question.iteration_number
+            phase              = $phase
+            lens               = $lens
+            question_hash      = $questionHash
+            response_hash      = $responseHash
+            confirmation       = [string]$authority.confirmation
+            confirmation_scope = [string]$authority.confirmation_scope
+            source_event       = [string]$SourceEvent
+            host_kind          = [string]$HostKind
+            recorded_at        = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+
+        $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $root
+        $dir = Split-Path -Parent $path
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        }
+        $line = ($record | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine
+        $lockPath = $path + '.lock'
+        $lockStream = $null
+        try {
+            $deadline = [DateTimeOffset]::UtcNow.AddSeconds(2)
+            do {
+                try { $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+                catch { if ([DateTimeOffset]::UtcNow -ge $deadline) { throw }; Start-Sleep -Milliseconds 25 }
+            } until ($null -ne $lockStream)
+            [IO.File]::AppendAllText($path, $line, [Text.UTF8Encoding]::new($false))
+        }
+        finally {
+            if ($null -ne $lockStream) { $lockStream.Dispose() }
+            Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
+        }
+        return [pscustomobject]$record
+    }
+    catch { return $null }
+}
+
+function Get-SpecrewWorkshopAuthorityReceipt {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $FeatureRef,
+        [Parameter(Mandatory)][ValidateSet('product-domain', 'agenda', 'lens')][string] $Phase,
+        [AllowNull()][string] $Lens,
+        [AllowNull()][string] $ReceiptId
+    )
+
+    $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    try {
+        $item = Get-Item -LiteralPath $path -ErrorAction Stop
+        if ($item.Length -le 0 -or $item.Length -gt 1048576) { return $null }
+        $lines = @(Get-Content -LiteralPath $path -Tail 256 -Encoding UTF8 -ErrorAction Stop)
+        for ($i = $lines.Count - 1; $i -ge 0; $i--) {
+            if ([string]::IsNullOrWhiteSpace([string]$lines[$i])) { continue }
+            try { $record = [string]$lines[$i] | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+            catch { continue }
+            if ([string]$record.schema_version -cne '1' -or [string]$record.feature_ref -cne $FeatureRef -or
+                [string]$record.phase -cne $Phase) { continue }
+            if (-not [string]::IsNullOrWhiteSpace($Lens) -and [string]$record.lens -cne $Lens) { continue }
+            if (-not [string]::IsNullOrWhiteSpace($ReceiptId) -and [string]$record.receipt_id -cne $ReceiptId) { continue }
+            return $record
+        }
+    }
+    catch { return $null }
+    return $null
+}
+
+function Test-SpecrewWorkshopAuthorityReceipt {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $FeatureRef,
+        [Parameter(Mandatory)][ValidateSet('product-domain', 'agenda', 'lens')][string] $Phase,
+        [AllowNull()][string] $Lens,
+        [Parameter(Mandatory)][string] $ReceiptId,
+        [Parameter(Mandatory)][string] $Confirmation,
+        [Parameter(Mandatory)][string] $ConfirmationScope
+    )
+
+    $record = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase $Phase -Lens $Lens
+    return ($null -ne $record -and [string]$record.receipt_id -ceq $ReceiptId -and [string]$record.confirmation -ceq $Confirmation -and
+        [string]$record.confirmation_scope -ceq $ConfirmationScope -and [string]$record.confirmation -cne 'invalid')
+}

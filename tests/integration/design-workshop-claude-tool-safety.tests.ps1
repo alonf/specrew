@@ -28,6 +28,8 @@ Assert-True ($canonical -eq $mirror) 'canonical and project-side design-workshop
 Assert-True ($canonical -match '(?m)^claude-disallowed-tools:\s*AskUserQuestion\s*$') 'canonical skill declares Claude-only AskUserQuestion removal'
 Assert-True ($canonical -notmatch '(?m)^disallowed-tools:\s*AskUserQuestion\s*$') 'canonical skill does not disable another host before materialization'
 Assert-True ($canonical -match '(?i)numbered prose list answered by typing') 'workshop conduct tells Claude to use visible typed choices'
+Assert-True ($canonical -match '(?i)typed-turn authority rule') 'workshop conduct requires typed replies on every host'
+Assert-True ($canonical -match '(?i)Ctrl\+O') 'workshop conduct names picker dismissal as no authority'
 Assert-True ($canonical -match 'initialize-workshop-controller-state\.ps1') 'workshop conduct initializes durable controller state before the first product-domain question'
 Assert-True ($canonical -match 'agenda_status:\s*pending-confirmation') 'workshop conduct names the strict pre-agenda state'
 Assert-True ($canonical -match 'agenda_status:\s*confirmed') 'workshop conduct requires an explicit confirmed-agenda transition'
@@ -68,7 +70,8 @@ try {
             Assert-True ($actual -match '(?m)^disallowed-tools:\s*AskUserQuestion\s*$') 'Claude cannot call the picker that swallows the rendered workshop agenda'
         }
         else {
-            Assert-True ($actual -notmatch '(?m)^disallowed-tools:\s*AskUserQuestion\s*$') "$($surface.Host) retains its structured-question capability"
+            Assert-True ($actual -notmatch '(?m)^disallowed-tools:\s*AskUserQuestion\s*$') "$($surface.Host) has no unsupported Claude-only capability metadata"
+            Assert-True ($actual -match '(?is)do not call a\s+structured question/menu tool') "$($surface.Host) disables workshop pickers through the typed-turn contract"
         }
     }
 }

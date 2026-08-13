@@ -69,12 +69,14 @@ $state = [ordered]@{
     workshop_intake       = $true
     confirmation_required = $true
     agenda_contract       = 'complete-coverage-v1'
+    human_turn_contract   = 'typed-turns-v1'
     agenda_status         = 'pending-confirmation'
     selected              = @()
     agenda                = [ordered]@{}
     skipped               = [ordered]@{}
     agenda_confirmation   = 'pending'
     agenda_confirmation_scope = 'lens-selection'
+    agenda_turn_receipt   = 'pending'
     workshop              = [ordered]@{}
 }
 $json = ($state | ConvertTo-Json -Depth 6) + [Environment]::NewLine

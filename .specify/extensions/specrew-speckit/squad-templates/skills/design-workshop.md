@@ -34,8 +34,8 @@ The per-lens *knowledge* is in the lens md; this skill is the *method* that ties
 both in view.
 
 **Render before you ask — the question may only reference what is on screen (A6/A7/FR-037).** Before you
-raise ANY confirm/approve question (a structured menu on hosts that preserve the preceding message, or a typed
-"does this work? / move on? / approve" prompt) about the lens **agenda + depths**, a per-lens diagram, the
+raise ANY confirm/approve question (as a typed "does this work? / move on? / approve" prompt) about the lens
+**agenda + depths**, a per-lens diagram, the
 component map, an options/trade-off set, or a design verdict — the thing you are asking about MUST already be
 **rendered in your assistant message in THIS exchange**, in prose / console-ASCII the human can see. The
 question may reference ONLY content that is on screen. **Never** ask from a count ("8 lenses", "13
@@ -44,13 +44,17 @@ shown. The failure mode this exists to stop is **menu-before-render**: render + 
 — explain the agenda / diagram / map / options fully in prose first, and make the question and choices
 self-explanatory (not a terse "does this work? — 8 lenses").
 
-**Claude safety rule:** the canonical `claude-disallowed-tools: AskUserQuestion` policy is materialized as
-`disallowed-tools: AskUserQuestion` only in the deployed Claude skill. Claude's picker can replace the preceding
-assistant message, so the workshop MUST use a visible prose question with numbered choices and wait for the
-human's typed answer. Do not try to re-enable, emulate, or call the picker. Other hosts retain their structured
-question UX when it preserves the rendered context. (testLenses8/11 and the Beta2 Article Amplifier manual test
-showed Claude asking the human to confirm an agenda/component map that never appeared, while Copilot and
-Antigravity rendered + explained the content first.)
+**Typed-turn authority rule — every host:** workshop questions are visible prose and the human answers by typing.
+Offer known choices as a **numbered prose list answered by typing** (or ask concise free-form prose); do not call a
+structured question/menu tool anywhere in the product-domain phase, agenda confirmation, or lens work. A picker
+can swallow rendered context. **Ctrl+O is no answer**: Copilot reports it as `User skipped question`, which a model
+then misread as delegation. Neither dismissal nor a picker selection is workshop authority. If one is invoked anyway,
+re-render the unanswered question as prose and wait: never infer defaults, `human-delegated`, or `human-skipped`.
+Claude additionally removes `AskUserQuestion` at capability level. The other hosts are held by the hook-owned
+typed-turn receipt: no typed reply means no receipt and the controller/boundary refuses the claimed agreement.
+After each typed reply, read the latest matching line from `.specrew/runtime/workshop-authority.jsonl` and copy
+its `receipt_id` into the record you are about to write. If there is no matching receipt, re-render the question
+and stop; never manufacture an id or edit the hook-owned store.
 
 **The `file:///` links go in your prose before the question, too (dogfood finding).** When a confirm/approve
 question references or asks the human to review an artifact — the spec, a lens workshop record, the
@@ -171,9 +175,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    while you load. The wait becomes preparation, and a prepared human engages per-lens (which is what keeps the
    integrity rule in step 6 honest). **Tell the human they can just talk (dogfood finding):** in the same
    framing, say plainly that at any lens, if a question is unclear, they want to open a file, or they need more
-   detail, they can simply *type* it (for example "explain more") — you will explain, then re-ask. On Claude,
-   typed conversation is the required path because `AskUserQuestion` is disabled for this skill; on other hosts
-   the human may still type instead of picking a menu option.
+   detail, they can simply *type* it (for example "explain more") instead of picking a menu option — you will
+   explain, then re-ask. Typed
+    conversation is the required path on every host; do not use the host's structured picker during the workshop.
 2. **Infer applicability, then confirm (A4/FR-025).** Propose which lenses apply WITH your reasoning; ask the
    human only to confirm or adjust. Never make them answer obvious yes/no applicability; never silently
    auto-resolve a material area. **Render the agenda IN-BAND before asking for confirmation — fill this
@@ -190,9 +194,8 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    ```
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
-   name); render the whole filled block in your message, THEN ask the human to confirm or adjust it. On Claude,
-   render numbered typed choices in prose and wait for the human; on another host, a structured confirm menu may
-   reference the already-visible block.
+   name); render the whole filled block in your message, THEN ask the human to confirm or adjust it as visible
+   prose. Wait for a typed response on every host.
    **Show the negative selection too.** One `Skipped:` line is required for **every** technical lens that is not
    selected, with a feature-specific reason. Then ask, in plain language, whether the human wants to confirm or
    change the selection. The first lens must not open on the same turn as the agenda: typed human confirmation is
@@ -203,7 +206,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    and invoke `& .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 -ProjectRoot . -FeatureRef <feature> -AgendaJson $agendaJson`.
    The writer changes `agenda_status` to `confirmed` only when selected + skipped cover the whole deployed
    technical-lens catalog and records `agenda_confirmation: human-confirmed` with
-   `agenda_confirmation_scope: lens-selection`. It refuses incomplete coverage. The per-lens `workshop` records
+   `agenda_confirmation_scope: lens-selection`. It also requires hook-owned typed reply receipts for product-domain
+   and the complete agenda; Ctrl+O or a picker result produces neither. It refuses incomplete coverage or missing
+   authority. The per-lens `workshop` records
    are added later, as each lens completes per step 6. A resume can only compute the remaining agenda if the agenda
    itself is on disk; an agenda that lives only in scrollback is lost on exit (observed: an unpersisted agenda made
    a resuming host re-run specify instead of continuing the workshop).
@@ -218,8 +223,8 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    "what are your constraints?"). Do **NOT** open a lens with an `AskUserQuestion` / structured menu: that is the
    move that lets the content collapse into the menu's question field and never get rendered (the A8
    `AskUserQuestion` tool-gravity failure). On Claude the tool is unavailable for the entire skill; use visible
-   prose and typed numbered choices. On other hosts, a structured menu remains useful only **after** the lens's
-   content is on screen, for a crisp discrete choice (e.g. the decomposition vocabulary in step 5). Binary
+   prose and typed numbered choices. On every other host the same choices remain visible prose with a typed reply;
+   do not switch to a structured menu after rendering. Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
    **One selected lens = one lens turn.** Do NOT bundle several selected lenses into one combined presentation
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
@@ -263,9 +268,8 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon.
    **Match the question FORM to the question**: for a discrete, enumerable choice (e.g. decomposition
    vocabulary — IDesign / Clean Architecture / modular; one service vs split; fixed vs open taxonomy), spell
-   out every option and an explicit "other / let me explain" path so the human can pick fast. On Claude this is
-   a numbered prose list answered by typing; elsewhere it may be a structured multiple-choice question after
-   the supporting content is visible. For a genuinely open question, discuss in prose. Both are fine — do not
+   out every option and an explicit "other / let me explain" path so the human can pick fast. This is a numbered
+   prose list answered by typing on every host. For a genuinely open question, discuss in prose. Both are fine — do not
    force a discrete pick into long prose, nor an open design question into a rigid one-shot MCQ. **Surface EVERY
    selected lens to the human and get a real answer before you record it (A7/FR-038):** intake is NOT "specific
    enough" until each selected lens has either the human's confirmation OR an explicit "you decide / skip" from
@@ -338,7 +342,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
      **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
      SC-026), plus **`confirmation_scope`** — `lens-question` for `human-confirmed`, `explicit-delegation` for
-      `human-delegated`, or `explicit-skip` for `human-skipped`. Exact shape — get it right the first time:
+     `human-delegated`, or `explicit-skip` for `human-skipped`; and **`human_turn_receipt`**, the receipt id from
+     the latest matching line in `.specrew/runtime/workshop-authority.jsonl`. No receipt means re-render and wait.
+     Exact shape — get it right the first time:
 
      Record every load-bearing or cross-lens decision in an optional `bindings` object using stable lowercase
      keys and token values. Reuse the same key whenever another lens touches that decision. Repeated values must
@@ -346,7 +352,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
 
       ```json
       { "workshop_intake": true, "confirmation_required": true, "agenda_status": "confirmed", "selected": ["architecture-core"],
-        "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question", "bindings": { "article-initiation": "on-demand" } } } }
+        "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question", "human_turn_receipt": "<matching receipt_id>", "bindings": { "article-initiation": "on-demand" } } } }
       ```
 
      It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and `decision` is a singular
@@ -367,7 +373,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      as "you decide the remaining lenses", record each affected lens as `human-delegated` +
      `explicit-delegation`, not `human-confirmed`. **Count self-check before you record:** you are about to write
      N lens records — you must have asked, or been explicitly told to decide/skip, N times, one lens at a time.
-     If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill in
+     A dismissed picker is an absence, never explicit delegation. If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill in
      the remaining lenses yourself. The SC-026 gate blocks the specify boundary until every selected lens carries
      a `confirmation` and matching `confirmation_scope` — but it cannot see transcript truthfulness; that
      integrity is on you, and the Squad re-dogfood checks it.

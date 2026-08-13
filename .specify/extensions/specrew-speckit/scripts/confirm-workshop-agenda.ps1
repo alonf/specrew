@@ -74,6 +74,23 @@ if ([string]$state.agenda_contract -cne 'complete-coverage-v1' -or [string]$stat
 if (@($state.selected).Count -ne 0 -or @($state.workshop.PSObject.Properties).Count -ne 0) {
     throw 'The pending workshop controller already contains decisions; refusing to overwrite it.'
 }
+if ([string]$state.human_turn_contract -cne 'typed-turns-v1') {
+    throw 'The workshop controller does not carry the typed-turn authority contract.'
+}
+$authorityStorePath = Join-Path $PSScriptRoot 'workshop-authority-store.ps1'
+if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+    throw "Workshop typed-turn authority helper is missing: '$authorityStorePath'."
+}
+. $authorityStorePath
+$productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'product-domain'
+if ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid') {
+    throw 'Product-domain has no typed human reply receipt. Re-render its question as prose and wait for a typed answer.'
+}
+$agendaReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'agenda'
+if ($null -eq $agendaReceipt -or [string]$agendaReceipt.confirmation -cne 'human-confirmed' -or
+    [string]$agendaReceipt.confirmation_scope -cne 'lens-selection') {
+    throw 'The complete selected + skipped agenda has no typed human confirmation receipt. Render it in full and wait for a typed confirm/change reply.'
+}
 
 $catalogPath = Join-Path $resolvedProjectRoot '.specify/extensions/specrew-speckit/knowledge/design-lenses/index.yml'
 if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
@@ -128,12 +145,14 @@ $confirmed = [ordered]@{
     workshop_intake           = $true
     confirmation_required     = $true
     agenda_contract           = 'complete-coverage-v1'
+    human_turn_contract       = 'typed-turns-v1'
     agenda_status             = 'confirmed'
     selected                  = @($SelectedLens)
     agenda                    = $agenda
     skipped                   = $skipped
     agenda_confirmation       = $Confirmation
     agenda_confirmation_scope = 'lens-selection'
+    agenda_turn_receipt       = [string]$agendaReceipt.receipt_id
     workshop                  = [ordered]@{}
 }
 Write-AtomicUtf8NoBom -Path $statePath -Content (($confirmed | ConvertTo-Json -Depth 10) + [Environment]::NewLine)

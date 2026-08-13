@@ -51,7 +51,7 @@ Set-Content -LiteralPath (Join-Path $dir 'spec.md') -Value '# Feature Specificat
     Assert-True ([string]$state.agenda_status -eq 'pending-confirmation') 'governed scaffold writes pending-confirmation controller state'
     Assert-True ([string]$state.agenda_contract -eq 'complete-coverage-v1' -and @($state.selected).Count -eq 0 -and
         @($state.agenda.PSObject.Properties).Count -eq 0 -and @($state.skipped.PSObject.Properties).Count -eq 0 -and
-        @($state.workshop.PSObject.Properties).Count -eq 0 -and [string]$state.agenda_confirmation -eq 'pending') 'governed scaffold writes no model or human decisions and requires complete agenda coverage before lens 1'
+        @($state.workshop.PSObject.Properties).Count -eq 0 -and [string]$state.agenda_confirmation -eq 'pending' -and [string]$state.human_turn_contract -eq 'typed-turns-v1' -and [string]$state.agenda_turn_receipt -eq 'pending') 'governed scaffold writes no model or human decisions and requires complete agenda plus typed authority before lens 1'
     Assert-True ([IO.Path]::GetFullPath([string]$result.WORKSHOP_STATE) -eq [IO.Path]::GetFullPath($statePath)) 'JSON output identifies the exact controller artifact'
 
     $missingInitializerRoot = Join-Path $scratch 'missing-initializer'

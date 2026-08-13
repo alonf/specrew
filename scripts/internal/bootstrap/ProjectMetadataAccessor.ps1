@@ -384,6 +384,25 @@ function Get-SpecrewWorkshopLifecycleState {
             }
             $agendaContract = [string]$agendaContractProperty.Value
         }
+        $humanTurnContract = $null
+        $humanTurnContractProperty = $applicability.PSObject.Properties['human_turn_contract']
+        if ($humanTurnContractProperty) {
+            if ($humanTurnContractProperty.Value -isnot [string] -or [string]$humanTurnContractProperty.Value -cne 'typed-turns-v1') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-human-turn-contract-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $humanTurnContract = [string]$humanTurnContractProperty.Value
+            $authorityStorePath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+            if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+                $moduleAuthorityPath = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+                if (Test-Path -LiteralPath $moduleAuthorityPath -PathType Leaf) { $authorityStorePath = $moduleAuthorityPath }
+            }
+            if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+                try { . $authorityStorePath } catch { $null = $_ }
+            }
+            if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-human-turn-helper-missing' -Selected $selected -AgendaStatus $agendaStatus
+            }
+        }
 
         $agenda = $null
         $skipped = $null
@@ -425,6 +444,12 @@ function Get-SpecrewWorkshopLifecycleState {
                 if ($agendaConfirmation -cne 'pending' -or $agendaConfirmationScope -cne 'lens-selection') {
                     return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-confirmation-invalid' -AgendaStatus $agendaStatus
                 }
+                if ($humanTurnContract -eq 'typed-turns-v1') {
+                    $pendingReceiptProperty = $applicability.PSObject.Properties['agenda_turn_receipt']
+                    if (-not $pendingReceiptProperty -or [string]$pendingReceiptProperty.Value -cne 'pending') {
+                        return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-turn-receipt-invalid' -AgendaStatus $agendaStatus
+                    }
+                }
             }
 
             $specPath = Join-Path $featureRoot 'spec.md'
@@ -453,6 +478,13 @@ function Get-SpecrewWorkshopLifecycleState {
         if ($agendaContract -eq 'complete-coverage-v1') {
             if ($agendaConfirmation -cne 'human-confirmed' -or $agendaConfirmationScope -cne 'lens-selection') {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-confirmation-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            if ($humanTurnContract -eq 'typed-turns-v1') {
+                $agendaReceiptProperty = $applicability.PSObject.Properties['agenda_turn_receipt']
+                if (-not $agendaReceiptProperty -or $agendaReceiptProperty.Value -isnot [string] -or
+                    -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase 'agenda' -ReceiptId ([string]$agendaReceiptProperty.Value) -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection')) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-turn-receipt-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
             }
 
             $catalogPath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/knowledge/design-lenses/index.yml'
@@ -563,6 +595,13 @@ function Get-SpecrewWorkshopLifecycleState {
             $recordText = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 -ErrorAction Stop
             if ([string]::IsNullOrWhiteSpace($recordText)) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-record-empty' -Selected $selected -Completed $completed.ToArray()
+            }
+            if ($humanTurnContract -eq 'typed-turns-v1') {
+                $receiptProperty = $entry.PSObject.Properties['human_turn_receipt']
+                if (-not $receiptProperty -or $receiptProperty.Value -isnot [string] -or
+                    -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase 'lens' -Lens $lens -ReceiptId ([string]$receiptProperty.Value) -Confirmation $confirmation -ConfirmationScope ([string]$entry.confirmation_scope))) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-human-turn-receipt-invalid' -Selected $selected -Completed $completed.ToArray()
+                }
             }
             if ($lens -eq 'code-implementation') {
                 # The manifest is the machine-consumed half of this lens. Marking the lens complete

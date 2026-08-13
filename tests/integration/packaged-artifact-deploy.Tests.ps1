@@ -92,6 +92,7 @@ exit `$LASTEXITCODE
         Test-Path -LiteralPath (Join-Path $deployed 'scripts/create-governed-feature.ps1') -PathType Leaf | Should -BeTrue
         Test-Path -LiteralPath (Join-Path $deployed 'scripts/initialize-workshop-controller-state.ps1') -PathType Leaf | Should -BeTrue
         Test-Path -LiteralPath (Join-Path $deployed 'scripts/confirm-workshop-agenda.ps1') -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $deployed 'scripts/workshop-authority-store.ps1') -PathType Leaf | Should -BeTrue -Because 'typed workshop confirmations must remain verifiable in a package-only consumer'
         Test-Path -LiteralPath (Join-Path $deployed 'knowledge/design-lenses/index.yml') -PathType Leaf | Should -BeTrue -Because 'the agenda writer validates selected+skipped coverage against the consumer-side catalog'
     }
 }

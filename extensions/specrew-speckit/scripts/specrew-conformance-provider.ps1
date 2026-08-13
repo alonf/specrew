@@ -553,9 +553,18 @@ function Update-SpecrewWorkshopQuestionHandover {
         }
         $dir = Split-Path -Parent $path
         if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $phase = 'lens'
+        if ([string]$Decision.agenda_status -eq 'pending-confirmation' -and [string]$Decision.lens -eq 'product-domain') {
+            $featureRoot = Join-Path (Join-Path $ProjectRoot 'specs') ([string]$Decision.feature_ref)
+            $productMarkdown = Join-Path $featureRoot 'workshop/product-domain.md'
+            $productStructured = Join-Path $featureRoot 'workshop/product-domain.yml'
+            $phase = if ((Test-Path -LiteralPath $productMarkdown -PathType Leaf) -and
+                (Test-Path -LiteralPath $productStructured -PathType Leaf)) { 'agenda' } else { 'product-domain' }
+        }
         $record = [ordered]@{
-            schema = 'v2'; status = 'workshop-active'; scope = [string]$Decision.scope; feature_ref = [string]$Decision.feature_ref
+            schema = 'v3'; status = 'workshop-active'; scope = [string]$Decision.scope; feature_ref = [string]$Decision.feature_ref
             iteration_number = [string]$Decision.iteration_number; lens = [string]$Decision.lens
+            phase = $phase; agenda_status = [string]$Decision.agenda_status
             question = [string]$Decision.question; message_hash = [string]$Decision.message_hash
             artifact_path = [string]$Decision.artifact_path
             recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
@@ -575,11 +584,17 @@ $hostKindArg = $null
 $sourceEventArg = $null
 $transcriptPathArg = $null
 $sessionIdArg = $null
+$structuredQuestionToolArg = $null
+$structuredQuestionOutcomeArg = $null
+$structuredQuestionTextArg = $null
 for ($i = 0; $i -lt $args.Count; $i++) {
     if ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKindArg = [string]$args[$i + 1] }
     elseif ($args[$i] -eq '--source-event' -and ($i + 1) -lt $args.Count) { $sourceEventArg = [string]$args[$i + 1] }
     elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
     elseif ($args[$i] -eq '--session-id' -and ($i + 1) -lt $args.Count) { $sessionIdArg = [string]$args[$i + 1] }
+    elseif ($args[$i] -eq '--structured-question-tool' -and ($i + 1) -lt $args.Count) { $structuredQuestionToolArg = [string]$args[$i + 1] }
+    elseif ($args[$i] -eq '--structured-question-outcome' -and ($i + 1) -lt $args.Count) { $structuredQuestionOutcomeArg = [string]$args[$i + 1] }
+    elseif ($args[$i] -eq '--structured-question-text' -and ($i + 1) -lt $args.Count) { $structuredQuestionTextArg = [string]$args[$i + 1] }
 }
 
 try {
@@ -624,6 +639,32 @@ try {
     # response afterwards and forcing a duplicate turn. Non-blocking, deduplicated, fail-open. ---
     if ($eventLower -eq 'posttooluse') {
         try {
+            if ([string]$structuredQuestionToolArg -ieq 'ask_user') {
+                $workshopQuestionContext = $false
+                $specsRoot = Join-Path $projectRoot 'specs'
+                if (-not (Test-Path -LiteralPath $specsRoot -PathType Container)) {
+                    $workshopQuestionContext = $true
+                }
+                else {
+                    $controllerPaths = @(Get-ChildItem -LiteralPath $specsRoot -Filter 'lens-applicability.json' -File -Recurse -ErrorAction SilentlyContinue)
+                    foreach ($controllerPath in $controllerPaths) {
+                        try {
+                            $controller = Get-Content -LiteralPath $controllerPath.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 10 -ErrorAction Stop
+                            if ([string]$controller.agenda_contract -eq 'complete-coverage-v1' -and [string]$controller.agenda_status -in @('pending-confirmation', 'confirmed')) {
+                                $selectedCount = @($controller.selected).Count
+                                $completedCount = if ($controller.PSObject.Properties['workshop']) { @($controller.workshop.PSObject.Properties | Where-Object { $_.Value.PSObject.Properties['moved_on'] -and [bool]$_.Value.moved_on }).Count } else { 0 }
+                                if ([string]$controller.agenda_status -eq 'pending-confirmation' -or $completedCount -lt $selectedCount) { $workshopQuestionContext = $true; break }
+                            }
+                        }
+                        catch { $null = $_ }
+                    }
+                }
+                if ($workshopQuestionContext) {
+                    $outcomeLabel = if ([string]::IsNullOrWhiteSpace($structuredQuestionOutcomeArg)) { 'unknown' } else { $structuredQuestionOutcomeArg }
+                    Write-Output ("Specrew: WORKSHOP QUESTION NEEDS A TYPED REPLY. The structured picker returned '{0}', which is not workshop authority. Ctrl+O/dismissal is no answer and grants no delegation or permission to choose defaults; a selected picker answer also has no typed-turn receipt. If the governed feature/controller does not exist yet, scaffold it and invoke specrew-design-workshop before asking. Render the unanswered question as visible prose, stop, and wait for the human to type a reply. Do not persist human-confirmed, human-delegated, or human-skipped from this picker result." -f $outcomeLabel)
+                    return
+                }
+            }
             if (-not $turnCoreAvailable) { return }
             $current = Get-SpecrewTurnSnapshot -ProjectRoot $projectRoot
             if ($null -eq $current -or -not [bool]$current.available) { return }
@@ -842,7 +883,7 @@ try {
     $workshopStateInProgress = $false
     $workshopConflictState = $false
     $workshopRepairState = $false
-    $workshopRepairReasons = @('workshop-decision-bindings-invalid', 'workshop-code-implementation-manifest-missing', 'workshop-code-implementation-manifest-invalid')
+    $workshopRepairReasons = @('workshop-decision-bindings-invalid', 'workshop-code-implementation-manifest-missing', 'workshop-code-implementation-manifest-invalid', 'workshop-human-turn-contract-invalid', 'workshop-human-turn-helper-missing', 'workshop-pre-agenda-turn-receipt-invalid', 'workshop-agenda-turn-receipt-invalid', 'workshop-completed-human-turn-receipt-invalid')
     $missingWorkshopController = $false
     $workshopAgendaPresentationMissing = $false
     if ($hasPending -or $anySpec -or $rawHit -or $materialStop) {

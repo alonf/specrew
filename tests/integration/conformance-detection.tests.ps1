@@ -1075,7 +1075,7 @@ try {
     $workshopHandoverPath = Join-Path $p16 '.specrew\handover\workshop-question.json'
     if (-not (Test-Path -LiteralPath $workshopHandoverPath -PathType Leaf)) { Fail 'Case 16: workshop-intermediate must persist bounded re-entry context' }
     $workshopHandover = Get-Content -LiteralPath $workshopHandoverPath -Raw | ConvertFrom-Json
-    if ([string]$workshopHandover.schema -ne 'v2' -or [string]$workshopHandover.feature_ref -ne '050-host-neutral-gate' -or [string]$workshopHandover.iteration_number -ne '001' -or [string]$workshopHandover.lens -ne 'architecture-core' -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.artifact_path) -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.question)) {
+    if ([string]$workshopHandover.schema -ne 'v3' -or [string]$workshopHandover.phase -ne 'lens' -or [string]$workshopHandover.feature_ref -ne '050-host-neutral-gate' -or [string]$workshopHandover.iteration_number -ne '001' -or [string]$workshopHandover.lens -ne 'architecture-core' -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.artifact_path) -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.question)) {
         Fail "Case 16: durable re-entry projection must retain exact artifact/feature/iteration/lens/question: $($workshopHandover | ConvertTo-Json -Compress)"
     }
     Write-Pass "Case 16: strict active iteration workshop state suppresses the generic packet without a model marker and retains durable re-entry context"

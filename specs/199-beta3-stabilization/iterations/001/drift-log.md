@@ -22,10 +22,38 @@
 
 ## Summary
 
-**Total drift events**: 38 (DRIFT-199-I001-001 through -038)
+**Total drift events**: 39 (DRIFT-199-I001-001 through -039)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-039 — a dismissed workshop picker was promoted to delegation (implementation resolved; manual walk pending)
+
+- **Observed**: Copilot CLI `1.0.79` emitted `textResultForLlm: "User skipped question"` when the
+  maintainer pressed `Ctrl+O` on a product-domain picker. The agent explicitly converted that absence
+  into delegation, chose Node.js, described the tool as too small for the full workshop, and later wrote
+  `human-confirmed` / `human-delegated` controller state without a typed human answer. A separate walk
+  also reproduced a generic material-work packet between workshop questions and an agenda that showed
+  only selected lenses, hiding the skipped set and never asking the human to confirm the selection.
+- **Root cause**: model-authored provenance in `lens-applicability.json` was accepted as authority. The
+  hook could observe a real `UserPromptSubmit`, but the workshop gate had no join from its confirmation
+  claims to that event. Host picker dismissal and typed delegation therefore collapsed into the same
+  agent-readable outcome.
+- **Resolution**: new workshops opt into `typed-turns-v1`. Only a real `UserPromptSubmit` appends a
+  question-bound receipt to `.specrew/runtime/workshop-authority.jsonl`; `Ctrl+O` writes nothing and
+  immediately surfaces a targeted unanswered-question recovery. Explicit typed delegation and skip are
+  distinct receipt scopes, the latest matching reply wins, completed-lens questions cannot be replayed,
+  and the specify gate joins product, agenda, and per-lens claims to those receipts. The agenda writer
+  also requires visible complete selected/skipped coverage plus a typed confirmation before lens 1.
+  Workshop-record-only changes retain question-path precedence; any outside path still invokes the
+  material-work packet.
+- **Measured automated evidence**: the production handover provider mints a receipt from a typed prompt
+  and no other event; exact Copilot dismissal telemetry produces the targeted recovery; all installed
+  host workshop surfaces carry the same visible-prose contract. The explicit F-198 registry completed
+  all **111 named suites green in 842.937 seconds**, including the 81-case conformance detector, typed
+  authority, complete agenda coverage, all five deterministic adapter vectors, signoff/override wiring,
+  package deployment, and host launch paths. This count covers those 111 printed registry entries only;
+  it is not the remaining fresh-project manual lifecycle walk.
 
 ### DRIFT-199-I001-038 — broad green count omitted the signoff gate; campaign override was unreachable (implementation resolved; manual walk pending)
 

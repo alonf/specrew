@@ -118,14 +118,15 @@ Assert-Match -Text $skill -Pattern '(?i)approves what\s+is on screen' 'skill FR-
 Assert-Match -Text $skill -Pattern '(?i)IN ADDITION TO the\s+in-band render' 'skill FR-037: the workshop file is written AFTER + in addition to the in-band render, never instead'
 # General mechanism rule (testLenses11: the lens AGENDA was confirmed by count without rendering — a list, not
 # a diagram, so the diagram-scoped rule missed it). Anchored on render-before-the-question; covers EVERY confirm
-# point incl. the agenda. Claude now removes the unsafe picker; other hosts retain structured questions.
+# point incl. the agenda. Claude removes the unsafe picker at capability level; every host uses typed turns.
 Assert-Match -Text $skill -Pattern '(?i)render \+ explain, THEN ask' 'skill FR-037 general: render+explain before the confirm menu (mechanism-anchored, not artifact-enumerated)'
 Assert-Match -Text $skill -Pattern '(?i)Be verbose' 'skill FR-037 general: be verbose — explain in prose first + self-explanatory menu wording'
 Assert-Match -Text $skill -Pattern '(?m)^claude-disallowed-tools:\s*AskUserQuestion\s*$' 'skill FR-037 general: canonical Claude deployment policy removes the picker that swallows rendered context'
-Assert-Match -Text $skill -Pattern '(?i)numbered prose list answered by typing' 'skill FR-037 general: Claude uses visible prose choices with a typed answer'
-Assert-Match -Text $skill -Pattern '(?i)Other hosts retain their structured\s+question UX' 'skill FR-037 general: non-Claude hosts retain structured questions'
+Assert-Match -Text $skill -Pattern '(?i)numbered\s+prose\s+list\s+answered\s+by\s+typing' 'skill FR-037 general: every host uses visible prose choices with a typed answer'
+Assert-Match -Text $skill -Pattern '(?i)Ctrl\+O.*no answer' 'skill beta3: picker dismissal cannot become delegation'
+Assert-Match -Text $skill -Pattern '(?i)do not call a\s+structured question/menu tool anywhere in the product-domain phase, agenda confirmation, or lens work' 'skill beta3: every host disables structured workshop questions'
 Assert-Match -Text $skill -Pattern '(?i)agenda \+ depths' 'skill FR-037 general: the lens agenda + depths is an explicit confirm-point (the testLenses11 gap the diagram-scoped rule missed)'
-Write-Pass 'skill FR-037: render+explain before every confirm point; Claude picker removed, typed choices visible, other-host structured UX preserved'
+Write-Pass 'skill FR-037: render+explain before every confirm point; Claude picker removed, typed workshop choices required on every host'
 # 165-retarget (2026-06-07 dogfood — the F-171 workshop on the current Claude model). Two host-neutral
 # conduct additions: (A) the human-facing chat-path orientation (humans hit dense menus they could not
 # follow + had to discover the free-text path themselves); (B) the file:///-links-before-the-menu rule

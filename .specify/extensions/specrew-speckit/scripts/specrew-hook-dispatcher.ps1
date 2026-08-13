@@ -1111,6 +1111,38 @@ try {
                         }
                         if (-not [string]::IsNullOrWhiteSpace($userPrompt)) { $commandArgs += @('--last-user-message', $userPrompt) }
                     }
+                    if ($providerId -eq 'conformance' -and $Event -eq 'PostToolUse') {
+                        $toolName = $null
+                        foreach ($k in @('toolName', 'tool_name')) {
+                            $pp = $evtObj.PSObject.Properties[$k]
+                            if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $toolName = [string]$pp.Value; break }
+                        }
+                        if ([string]$toolName -ieq 'ask_user') {
+                            $outcome = ''
+                            $question = ''
+                            $toolResultProperty = $evtObj.PSObject.Properties['toolResult']
+                            if ($toolResultProperty -and $null -ne $toolResultProperty.Value) {
+                                $telemetryProperty = $toolResultProperty.Value.PSObject.Properties['toolTelemetry']
+                                if ($telemetryProperty -and $null -ne $telemetryProperty.Value) {
+                                    $propertiesProperty = $telemetryProperty.Value.PSObject.Properties['properties']
+                                    if ($propertiesProperty -and $null -ne $propertiesProperty.Value) {
+                                        $outcomeProperty = $propertiesProperty.Value.PSObject.Properties['outcome']
+                                        if ($outcomeProperty) { $outcome = [string]$outcomeProperty.Value }
+                                    }
+                                    $restrictedProperty = $telemetryProperty.Value.PSObject.Properties['restrictedProperties']
+                                    if ($restrictedProperty -and $null -ne $restrictedProperty.Value) {
+                                        $questionProperty = $restrictedProperty.Value.PSObject.Properties['question']
+                                        if ($questionProperty) { $question = [string]$questionProperty.Value }
+                                    }
+                                }
+                            }
+                            $commandArgs += @('--structured-question-tool', 'ask_user', '--structured-question-outcome', $outcome)
+                            if (-not [string]::IsNullOrWhiteSpace($question)) {
+                                $boundedQuestion = if ($question.Length -gt 1000) { $question.Substring(0, 1000) } else { $question }
+                                $commandArgs += @('--structured-question-text', $boundedQuestion)
+                            }
+                        }
+                    }
                 }
                 catch { $null = $_ }
             }

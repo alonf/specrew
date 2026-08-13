@@ -11,6 +11,9 @@ clarification questions belong inside it rather than ahead of it, because it alr
 work. A spec written before the workshop skips the part that decides what the spec should say — including
 when the request already reads as complete, since a clear request is where that shortcut is most
 tempting and the assumptions it hides are the ones nobody notices.
+Workshop questions are visible prose answered by a typed human reply on every host. Closing or dismissing a
+question UI (including Copilot Ctrl+O / `User skipped question`) is an absence, not permission to choose defaults
+or record delegation. The governed feature/controller exists before the first grounding question.
 
 **The rest of the lifecycle runs through the governed commands.** Plan, tasks and implement go through
 the per-boundary speckit commands where the host exposes them, otherwise the governed lifecycle scripts:

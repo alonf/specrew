@@ -43,10 +43,10 @@ try {
     $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8
     Assert-True ($state.workshop_intake -eq $true -and $state.confirmation_required -eq $true -and
         [string]$state.agenda_status -eq 'pending-confirmation') 'initializer writes the required controller flags and pre-agenda status'
-    Assert-True ([string]$state.agenda_contract -eq 'complete-coverage-v1' -and
+    Assert-True ([string]$state.agenda_contract -eq 'complete-coverage-v1' -and [string]$state.human_turn_contract -eq 'typed-turns-v1' -and
         @($state.selected).Count -eq 0 -and @($state.agenda.PSObject.Properties).Count -eq 0 -and
         @($state.skipped.PSObject.Properties).Count -eq 0 -and @($state.workshop.PSObject.Properties).Count -eq 0 -and
-        [string]$state.agenda_confirmation -eq 'pending' -and [string]$state.agenda_confirmation_scope -eq 'lens-selection') 'pre-agenda state requires complete selected/skipped coverage and exact human confirmation before lens 1'
+        [string]$state.agenda_confirmation -eq 'pending' -and [string]$state.agenda_confirmation_scope -eq 'lens-selection' -and [string]$state.agenda_turn_receipt -eq 'pending') 'pre-agenda state requires complete selected/skipped coverage and typed human authority before lens 1'
 
     . $accessor
     $lifecycle = Get-SpecrewWorkshopLifecycleState -ProjectRoot $project -FeatureRef '001-article-amplifier'

@@ -411,8 +411,37 @@ function Test-SpecrewLensWorkshopRecords {
     # lens MUST declare both a provenance value (human-confirmed | human-delegated | human-skipped) and its scope.
     # This prevents a generic lens-agenda approval from being reused as per-lens workshop-question confirmation.
     # Grandfather-safe: pre-A7 artifacts lack the marker and no-op (the `workshop_intake` precedent). The floor
-    # enforces declared scoped evidence; it cannot verify transcript truthfulness (that is SC-027 dogfood/review).
+    # Historical records rely on declared scoped evidence. New typed-turns-v1 records additionally join each
+    # claimed agreement to the hook-owned receipt store, so picker dismissal or model-authored provenance cannot
+    # satisfy the gate; behavioral quality beyond that authority join remains a dogfood/review concern.
     $confirmationRequired = $doc.PSObject.Properties['confirmation_required'] -and [bool]$doc.confirmation_required
+    $typedTurnRequired = $doc.PSObject.Properties['human_turn_contract'] -and [string]$doc.human_turn_contract -eq 'typed-turns-v1'
+    $typedTurnProjectRoot = $null
+    if ($typedTurnRequired) {
+        $featureDir = Split-Path -Parent $ArtifactPath
+        $specsDir = if (-not [string]::IsNullOrWhiteSpace($featureDir)) { Split-Path -Parent $featureDir } else { '' }
+        $typedTurnProjectRoot = if (-not [string]::IsNullOrWhiteSpace($specsDir)) { Split-Path -Parent $specsDir } else { '' }
+        $authorityPath = if (-not [string]::IsNullOrWhiteSpace($typedTurnProjectRoot)) { Join-Path $typedTurnProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1' } else { '' }
+        if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($authorityPath) -and (Test-Path -LiteralPath $authorityPath -PathType Leaf)) {
+            try { . $authorityPath } catch { $null = $_ }
+        }
+        if (-not (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue)) {
+            $errors.Add('typed workshop authority cannot be verified because workshop-authority-store.ps1 is missing.') | Out-Null
+        }
+        else {
+            $featureRef = Split-Path -Leaf $featureDir
+            $agendaReceipt = if ($doc.PSObject.Properties['agenda_turn_receipt']) { [string]$doc.agenda_turn_receipt } else { '' }
+            if ([string]::IsNullOrWhiteSpace($agendaReceipt) -or
+                -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'agenda' -ReceiptId $agendaReceipt -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection')) {
+                $errors.Add('the workshop agenda has no matching typed human confirmation receipt; a picker result or model-authored agenda cannot authorize lens selection.') | Out-Null
+            }
+            $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'product-domain'
+            if ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid') {
+                $errors.Add('product-domain has no typed human reply receipt; Ctrl+O/dismissal is not delegation.') | Out-Null
+            }
+        }
+    }
     $validProvenance = @('human-confirmed', 'human-delegated', 'human-skipped')
     $requiredConfirmationScopes = @{
         'human-confirmed' = 'lens-question'
@@ -475,6 +504,17 @@ function Test-SpecrewLensWorkshopRecords {
                 if ($confirmationScope -ne $requiredScope) {
                     $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope (SC-026, #2212): set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
                 }
+            }
+        }
+
+        if ($typedTurnRequired -and (Get-Command Test-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue)) {
+            $featureRef = Split-Path -Leaf (Split-Path -Parent $ArtifactPath)
+            $receiptId = if ($rec.PSObject.Properties['human_turn_receipt']) { [string]$rec.human_turn_receipt } else { '' }
+            $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
+            $confirmationScope = if ($rec.PSObject.Properties['confirmation_scope']) { [string]$rec.confirmation_scope } else { '' }
+            if ([string]::IsNullOrWhiteSpace($receiptId) -or
+                -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'lens' -Lens $id -ReceiptId $receiptId -Confirmation $confirmation -ConfirmationScope $confirmationScope)) {
+                $errors.Add(("workshop record for selected lens '{0}' has no matching typed human reply receipt; dismissed/skipped picker output cannot become human-confirmed or human-delegated." -f $id)) | Out-Null
             }
         }
     }

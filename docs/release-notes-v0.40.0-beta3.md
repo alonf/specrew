@@ -52,6 +52,19 @@ Consumer surfaces no longer carry internal vocabulary, and identifiers no longer
 `T###` or `FR-###` in a message a human reads carries a short description on first use. An identifier
 you must look up is a sentence you cannot understand.
 
+## The workshop waits for your typed answer
+
+- **Workshop questions use visible prose on every supported host.** A host picker is not the authority
+  surface for product, agenda, or lens decisions. On Copilot CLI, pressing `Ctrl+O` dismisses a picker;
+  it supplies no answer and grants no delegation. Specrew re-renders the unanswered workshop question
+  instead of allowing the agent to choose the product framing or technical decisions itself.
+- **The complete technical-lens agenda is shown before lens 1.** Selected lenses include their depth and
+  purpose; every skipped lens is listed with a feature-specific reason. The workshop waits for a typed
+  confirmation of that exact selected/skipped set before continuing.
+- **Workshop-record-only lens transitions stay on the normal question path.** Persisting the previous
+  lens and asking the next one no longer produces a duplicate five-part material-work packet. If the
+  turn changes anything outside the workshop record set, the ordinary material-work packet still wins.
+
 ## What a review actually costs
 
 Stated as a receipt rather than an estimate, from the authority ledger of T067 (the dogfood feature whose review loop exposed these costs):

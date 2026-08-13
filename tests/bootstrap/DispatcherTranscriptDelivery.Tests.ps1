@@ -22,7 +22,7 @@ try {
     # Minimal catalog: ONE stub inject provider on Stop/UserPromptSubmit (the real dispatcher resolves it under the deployed tree).
     $catalog = @{
         schema_version = '1'
-        providers      = @(@{ id = 'stub'; kind = 'inject'; events = @('Stop', 'UserPromptSubmit', 'PreInvocation'); order = 30; budget_share = 1.0; command = 'stub-capture.ps1' })
+        providers      = @(@{ id = 'conformance'; kind = 'inject'; events = @('Stop', 'UserPromptSubmit', 'PreInvocation', 'PostToolUse'); order = 30; budget_share = 1.0; command = 'stub-capture.ps1' })
     } | ConvertTo-Json -Depth 6
     Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
 
@@ -91,6 +91,31 @@ exit 0
         Assert-True ($hostIndex -ge 0 -and $captured[$hostIndex + 1] -eq $normalizedHost) "$normalizedHost host identity reaches the provider"
         Assert-True ($promptIndex -ge 0 -and $captured[$promptIndex + 1] -eq $prompt) "$normalizedHost prompt reaches the provider through UserPromptSubmit"
     }
+
+    $pickerEvent = @{
+        sessionId = 'abc123'; toolName = 'ask_user'
+        toolResult = @{
+            textResultForLlm = 'User skipped question'
+            toolTelemetry = @{
+                properties = @{ outcome = 'dismissed' }
+                restrictedProperties = @{ question = 'What runtime should the tool use?' }
+            }
+        }
+    } | ConvertTo-Json -Depth 8 -Compress
+    Set-Content -LiteralPath $eventFile -Value $pickerEvent -Encoding UTF8 -NoNewline
+    Remove-Item -LiteralPath $argsPath -Force -ErrorAction SilentlyContinue
+    $p = Start-Process -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'PostToolUse', '-HostKind', 'copilot') `
+        -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+        -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+    Assert-True ($p.ExitCode -eq 0) 'dispatcher exits 0 for Copilot ask_user PostToolUse'
+    $captured = @(Get-Content -LiteralPath $argsPath -Raw | ConvertFrom-Json)
+    $toolIndex = [array]::IndexOf($captured, '--structured-question-tool')
+    $outcomeIndex = [array]::IndexOf($captured, '--structured-question-outcome')
+    $questionIndex = [array]::IndexOf($captured, '--structured-question-text')
+    Assert-True ($toolIndex -ge 0 -and $captured[$toolIndex + 1] -eq 'ask_user') 'Copilot picker use reaches conformance as a bounded clean arg'
+    Assert-True ($outcomeIndex -ge 0 -and $captured[$outcomeIndex + 1] -eq 'dismissed') 'Copilot Ctrl+O dismissal outcome reaches conformance exactly'
+    Assert-True ($questionIndex -ge 0 -and $captured[$questionIndex + 1] -eq 'What runtime should the tool use?') 'the unanswered picker question reaches conformance for targeted recovery'
 
     Set-Content -LiteralPath $eventFile -Value $promptEvent -Encoding UTF8 -NoNewline
     Remove-Item -LiteralPath $argsPath -Force -ErrorAction SilentlyContinue
