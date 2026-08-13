@@ -1017,7 +1017,7 @@ if ($Live) {
                 Write-Host ''
                 Write-Host 'If you are deliberately supplying your own label - a scripted run, or an approval you recorded elsewhere -'
                 Write-Host 'say what it is, and Specrew will record it as such rather than as a round you approved here:'
-                Write-Host '  specrew review --live --authorization-ref <label> --ack-reason "where this approval came from"' -ForegroundColor Cyan
+                Write-Host '  specrew review --live --authorization-ref external-approval-2026-08-13 --ack-reason "where this approval came from"' -ForegroundColor Cyan
                 exit 1
             }
             # PRECEDENCE: an explicit --authorization-ref wins, then --approve-round, then whatever the

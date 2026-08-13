@@ -1157,7 +1157,7 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
 
         $reviewerHostsPath = Join-Path $ProjectRoot '.specrew\reviewer-hosts.json'
         if (-not (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf)) {
-            $reviewerErrors.Add(("no reviewer is authorized in {0}. Run 'specrew review --list-hosts --code-writer-host <current-host>', present the choices, then run 'specrew review --host <chosen-host> --authorization-ref <workshop-ref>'." -f $reviewerHostsPath)) | Out-Null
+            $reviewerErrors.Add(("no reviewer is authorized in {0}. Run 'specrew review --list-hosts --code-writer-host <current-host>', present the choices, then run 'specrew review --host <chosen-host> --authorization-ref workshop-<feature>'." -f $reviewerHostsPath)) | Out-Null
         }
         elseif (-not [string]::IsNullOrWhiteSpace($reviewerHost) -and -not [string]::IsNullOrWhiteSpace($reviewerAuthorizationRef)) {
             try {

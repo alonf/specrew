@@ -192,6 +192,7 @@ $registry = @(
     @{ area = 'Beta3 manual-walk hook isolation - Claude project hooks stay silent on Copilot and still dispatch under Claude'; path = 'tests/integration/refocus-deploy.tests.ps1'; kind = 'script'; serial = $true }
     @{ area = 'Beta3 workshop-before-spec preflight - exact gate, no state mutation, malformed bindings refuse'; path = 'tests/integration/specify-workshop-routing.tests.ps1'; kind = 'script'; serial = $true }
     @{ area = 'Beta3 code-lens artifact floor - valid manifest plus command-written reviewer authorization required before specify'; path = 'tests/unit/design-gate-code-implementation-artifact.tests.ps1'; kind = 'script' }
+    @{ area = 'Beta3 review authorization UX - concrete setup labels and --approve-round guidance, never generic authorization-ref placeholders'; path = 'tests/unit/authorization-ref-not-the-advice.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 project-rules register - host-neutral launch path carries no coordinator persona assignment'; path = 'tests/integration/multi-host-launch-path.tests.ps1'; kind = 'script' }
     @{ area = 'DRIFT-198-I008-060 pre-agenda controller initialization - exact feature scope, atomic shape, no overwrite, governed complete scaffold only'; path = 'tests/integration/workshop-controller-initialization.tests.ps1'; kind = 'script' }
     @{ area = 'FR-056/SC-016 strict durable workshop lifecycle state - active/complete plus missing-record, out-of-order, and malformed denial'; path = 'tests/bootstrap/ProjectMetadataAccessor.Tests.ps1'; kind = 'script' }
