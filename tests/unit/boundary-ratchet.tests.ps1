@@ -86,6 +86,17 @@ Write-Host "Test 3: re-sync of the SAME unauthorized boundary passes (idempotent
 $gate = Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'tasks'
 if ($gate -ne $true) { Write-Fail "same-boundary re-sync must pass" } else { Write-Pass "same-boundary re-sync passes" }
 
+Write-Host "Test 3b: recognized v1 pre-bootstrap state reaches first-arrival recordability path"
+$legacy = Join-Path ([System.IO.Path]::GetTempPath()) ('ratchet-legacy-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path (Join-Path $legacy '.specrew') -Force | Out-Null
+[System.IO.File]::WriteAllText(
+    (Join-Path $legacy '.specrew\start-context.json'),
+    ([ordered]@{ schema = 'v1'; session_state = [ordered]@{ active = $true; boundary_type = 'specify' } } | ConvertTo-Json -Depth 8),
+    [System.Text.UTF8Encoding]::new($false))
+$gate = Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $legacy -RequestedBoundary 'specify'
+if ($gate -ne $true) { Write-Fail 'recognized v1 pre-bootstrap state must reach the first-arrival recordability path' } else { Write-Pass 'recognized v1 pre-bootstrap state is distinct from a malformed authorization ledger' }
+Remove-Item -Recurse -Force $legacy
+
 Write-Host "Test 4: a SECOND advance refuses loudly, consumer-legible (paired: abuse fails)"
 $threw = $false
 try { Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'before-implement' | Out-Null }

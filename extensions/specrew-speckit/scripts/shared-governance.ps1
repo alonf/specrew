@@ -3204,7 +3204,11 @@ function Invoke-SpecrewBoundaryRatchetGate {
     # could not use it and returned null, which accidentally made the malformed state look clean.
     $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
     if ($enforcementState.NeedsMigration) {
-        throw "Boundary enforcement state is missing. Run the Specrew start/bootstrap migration before crossing '$requestedCanonical'."
+        # A recognized v0/v1 pre-bootstrap state is not a malformed authorization ledger. Let the
+        # first crossing reach Set-SpecrewPendingBoundaryCrossingScope; boundary sync converts that
+        # recordability failure into the explicit, branchable `unrecordable` state. Malformed v2
+        # authorization state still refuses below.
+        return $true
     }
     if ($enforcementState.Issues.Count -gt 0) {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
