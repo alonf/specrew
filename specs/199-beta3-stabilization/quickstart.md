@@ -1,7 +1,8 @@
 # Quickstart: Beta3 Stabilization
 
 **Feature**: 199-beta3-stabilization
-**Last verified**: 2026-08-10 (pre-implementation draft; re-verify at review)
+**Last verified**: 2026-08-13 — all 103 committed-tree regression suites passed at `182db92b`;
+the fresh, blind consumer walk remains the release gate.
 
 ## Run it
 
@@ -47,5 +48,6 @@ That pause is expected, and every round needs its own authorization.
   . (Join-Path $specrewModuleRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
   Get-Command Get-SpecrewReviewCampaignEvidenceState -ErrorAction Stop
   ```
+
 - **Broken env_refs**: remove `PATH` from env_refs and run verification; the error
   names `env_refs` and shows the exact line to add.
