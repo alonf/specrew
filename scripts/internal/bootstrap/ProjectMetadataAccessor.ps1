@@ -475,6 +475,19 @@ function Get-SpecrewWorkshopLifecycleState {
             if ([string]::IsNullOrWhiteSpace($recordText)) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-completed-record-empty' -Selected $selected -Completed $completed.ToArray()
             }
+            if ($lens -eq 'code-implementation') {
+                # The manifest is the machine-consumed half of this lens. Marking the lens complete
+                # before it exists made the controller invalid only at the specify boundary, after two
+                # more workshop questions had already been asked. Keep the invariant local to the lens.
+                $implementationRulesPath = Join-Path $featureRoot 'implementation-rules.yml'
+                if (-not (Test-Path -LiteralPath $implementationRulesPath -PathType Leaf)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-code-implementation-manifest-missing' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray()
+                }
+                $implementationRulesItem = Get-Item -LiteralPath $implementationRulesPath -ErrorAction Stop
+                if ($implementationRulesItem.Length -le 0 -or $implementationRulesItem.Length -gt 262144) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-code-implementation-manifest-invalid' -Selected $selected -Completed $completed.ToArray() -Remaining $remaining.ToArray()
+                }
+            }
             $completed.Add($lens) | Out-Null
         }
 

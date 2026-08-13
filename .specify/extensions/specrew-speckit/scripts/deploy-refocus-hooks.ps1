@@ -209,6 +209,23 @@ function Get-SpecrewHookCommand {
             $target = $placeholder.TrimEnd('/', '\') + '/' + $dispatcherRelPath
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}' -f $target, $EventName, $HostKind, $hostBindingArg)
         }
+        'guarded-project-encoded' {
+            $projectRootVariables = @(Get-ManifestValue -Map $hookBindings -Key 'ProjectRootEnvironmentVariables' -Default @())
+            $projectRootVariable = @($projectRootVariables | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -First 1)
+            if ($projectRootVariable.Count -ne 1) {
+                throw "Host manifest '$hostManifestPath' uses CommandMode=guarded-project-encoded but does not declare exactly one usable ProjectRootEnvironmentVariables entry."
+            }
+            $escapedVariable = ([string]$projectRootVariable[0]).Replace("'", "''")
+            $escapedDispatcher = $dispatcherRelPath.Replace("'", "''")
+            $escapedEvent = $EventName.Replace("'", "''")
+            $hostBindingEncodedArg = ''
+            if (-not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
+                $hostBindingEncodedArg = " -HostBinding '" + ($hostRuntimeBinding.Replace("'", "''")) + "'"
+            }
+            $scriptText = ('$projectRoot = [Environment]::GetEnvironmentVariable(''{0}''); if ([string]::IsNullOrWhiteSpace($projectRoot)) {{ exit 0 }}; $dispatcher = Join-Path $projectRoot ''{1}''; if (-not (Test-Path -LiteralPath $dispatcher -PathType Leaf)) {{ throw "Specrew dispatcher not found at ''$dispatcher''." }}; & $dispatcher -Event ''{2}'' -HostKind {3}{4}' -f $escapedVariable, $escapedDispatcher, $escapedEvent, $HostKind, $hostBindingEncodedArg)
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($scriptText))
+            return ('pwsh -NoProfile -ExecutionPolicy Bypass -EncodedCommand {0}' -f $encoded)
+        }
         'launcher-file' {
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}{4}' -f $launcherPath, $EventName, $HostKind, $modulePathArg, $hostBindingArg)
         }

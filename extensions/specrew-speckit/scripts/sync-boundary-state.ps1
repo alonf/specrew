@@ -12,7 +12,8 @@ param(
     [string]$IdentityBody,
     [string]$HandoffText,
     [string]$ReviewSignoffOverrideAuthorizedBy,
-    [string]$ReviewSignoffOverrideRationale
+    [string]$ReviewSignoffOverrideRationale,
+    [switch]$PreflightOnly
 )
 
 Set-StrictMode -Version Latest
@@ -163,7 +164,8 @@ $result = Invoke-SpecrewBoundaryStateSync `
     -IdentityBody $IdentityBody `
     -HandoffText $HandoffText `
     -ReviewSignoffOverrideAuthorizedBy $ReviewSignoffOverrideAuthorizedBy `
-    -ReviewSignoffOverrideRationale $ReviewSignoffOverrideRationale
+    -ReviewSignoffOverrideRationale $ReviewSignoffOverrideRationale `
+    -PreflightOnly:$PreflightOnly
 
 if ($null -ne $result) {
     $result | ConvertTo-Json -Depth 6 | Write-Output
@@ -179,6 +181,10 @@ if ($null -ne $result) {
         Write-Output ([string]$result.pending_verdict_marker)
         Write-Output 'Render the full six-section boundary packet using this exact marker, then stop.'
     }
+}
+
+if ($PreflightOnly) {
+    return
 }
 
 # ----- Feature 171 (FR-006): channel-1 refocus emission ------------------------

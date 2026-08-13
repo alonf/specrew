@@ -57,6 +57,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
+**Specrew workshop preflight (before the Outline and before writing the spec)**:
+
+- When this project uses Specrew, run:
+  `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -ProjectPath . -BoundaryType specify -PreflightOnly`
+- This is validation only: it must not advance lifecycle state or record a crossing.
+- If it refuses, stop and repair the named workshop artifact through `specrew-design-workshop`; do not generate
+  the spec, do not commit a boundary, and do not hand-edit `.specrew/start-context.json`.
+- Continue to the Outline only after the preflight succeeds.
+
 ## Substantive Intake (Feature 049 Iteration 003)
 
 **Before generating the specification**, invoke the persona-driven substantive intake engine to gather depth-appropriate requirements:

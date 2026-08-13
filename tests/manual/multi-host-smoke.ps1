@@ -20,7 +20,7 @@
 #   3. Runs specrew start with --host <kind> --no-launch (default; -SkipLaunch keeps this even if you remove the switch)
 #   4. Verifies artifacts: .specrew/last-start-prompt.md + start-context.json
 #   5. Verifies the start-context.json has F-040's new fields (selected_host, available_hosts, crew_runtime_status)
-#   6. Verifies the coordinator-prompt body has the universal Crew header (FR-011)
+#   6. Verifies the coordinator-prompt body has the universal project-rules header (FR-011)
 #   7. For non-Copilot hosts: verifies the Squad-runtime-path directives are stripped (FR-012)
 #   8. For Codex: verifies pwsh-form boundary-advance directives (FR-014)
 #
@@ -216,14 +216,14 @@ foreach ($host in $Hosts) {
             }
         }
 
-        # Verify universal Crew header (FR-011)
+        # Verify universal project-rules header (FR-011)
         if (Test-Path -LiteralPath $promptPath -PathType Leaf) {
             $promptContent = Get-Content -LiteralPath $promptPath -Raw
-            if ($promptContent -match 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository\.') {
-                Write-Pass 'Universal Crew header present (FR-011)'
+            if ($promptContent -match 'This repository uses Specrew; work here follows the project lifecycle and its human-authorized boundaries\.') {
+                Write-Pass 'Universal project-rules header present (FR-011)'
             }
             else {
-                Write-Fail 'Universal Crew header MISSING from last-start-prompt.md'
+                Write-Fail 'Universal project-rules header MISSING from last-start-prompt.md'
                 $scenarioPass = $false
             }
 

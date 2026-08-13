@@ -8,13 +8,15 @@
 ```powershell
 # in a fresh consumer project
 specrew init                      # scaffolds .specrew/verification-plan.json (FR-012)
-specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round
-                                  # human-authorized provider spend: runs exactly one campaign round
+specrew review --host <claude|codex|copilot|cursor-agent|antigravity> --authorization-ref workshop-<feature>
+                                  # one-time reviewer setup; no provider spend
+specrew review --live --approve-round
+                                  # human-authorized provider spend: exactly one campaign round
 ```
 
-The full lifecycle walk is not unattended. It stops at review and waits for the command above; that
-pause is expected. Once a reviewer is selected for the project, later rounds may omit `--host`, but
-every round still needs its own `--approve-round` authorization.
+The full lifecycle walk is not unattended. The code-implementation workshop selects and authorizes the
+reviewer before specify; it stops again at review and waits for the `--approve-round` command above.
+That pause is expected, and every round needs its own authorization.
 
 ## Try the canonical scenario (the pause)
 

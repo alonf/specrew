@@ -1643,7 +1643,9 @@ function Invoke-SpecrewBoundaryStateSync {
         [string]$ReviewSignoffOverrideAuthorizedBy,
 
         [AllowNull()]
-        [string]$ReviewSignoffOverrideRationale
+        [string]$ReviewSignoffOverrideRationale,
+
+        [switch]$PreflightOnly
     )
 
     $aliasMap = @{
@@ -1741,6 +1743,21 @@ function Invoke-SpecrewBoundaryStateSync {
             -ProjectRoot $paths.ProjectRoot `
             -FeatureRef $effectiveFeatureRef `
             -IterationNumber $effectiveIterationNumber | Out-Null
+    }
+
+    # Beta3 stabilization: let the workshop run the exact boundary validation BEFORE it invokes
+    # the spec writer or creates a boundary commit. This deliberately returns before the ratchet,
+    # lifecycle truth gates, constraint ledger, and every state-file write. A successful preflight
+    # proves only that the current artifacts are structurally ready to enter the boundary command;
+    # it never records or authorizes a crossing.
+    if ($PreflightOnly) {
+        return [pscustomobject]@{
+            success          = $true
+            preflight_only   = $true
+            boundary_type    = $BoundaryType
+            feature_ref      = $effectiveFeatureRef
+            iteration_number = $effectiveIterationNumber
+        }
     }
 
     # F-198 FR-002: the boundary ratchet. The first unapproved crossing still records (F-174 -

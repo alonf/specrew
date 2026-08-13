@@ -840,11 +840,14 @@ try {
     $workshopQuestion = $null
     $workshopStateInProgress = $false
     $workshopConflictState = $false
+    $workshopRepairState = $false
+    $workshopRepairReasons = @('workshop-decision-bindings-invalid', 'workshop-code-implementation-manifest-missing', 'workshop-code-implementation-manifest-invalid')
     if ($hasPending -or $anySpec -or $rawHit -or $materialStop) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $null -HasPendingVerdict $hasPending
         $workshopStateInProgress = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
         $workshopConflictState = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
+        $workshopRepairState = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -in $workshopRepairReasons)
     }
 
     # --- EXPENSIVE transcript parse ONLY on a MATERIAL-TURN stop (T099/FR-040, design N3): the per-line
@@ -859,7 +862,7 @@ try {
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
     }
-    if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState) {
+    if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState -or $workshopRepairState) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
             $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
@@ -906,7 +909,8 @@ try {
     $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
     $workshopIntermediate = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
     $workshopConflict = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
-    if ($workshopIntermediate -or $workshopConflict) { $rawHit = $false }
+    $workshopRepair = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -in $workshopRepairReasons)
+    if ($workshopIntermediate -or $workshopConflict -or $workshopRepair) { $rawHit = $false }
     # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.
     # It was an UNCONFIRMED mitigation (the instrumented false-negative never reproduced) and it taxed every
     # material stop AND starved the navigator (order 50) of the shared 20s Stop budget, so co-review stopped firing.
@@ -990,7 +994,7 @@ try {
     # refusal composed, and the stale marker could feed verdict capture. The refusal now keys on
     # $hasPending directly: while the stage owes evidence it has not produced, the missing-evidence
     # block composes regardless of any marker already in the transcript.
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($materialBlock) { 'material' } else { 'none' }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -999,7 +1003,7 @@ try {
     # ($blockKind -eq 'material' -and $canAssess). BOUNDARY stops, 'none', an unavailable classifier, and EVERY error
     # leave $stopIntentOutcome at its 'real' default -> today's real-stop enforcement is preserved byte-for-byte. The
     # classifier is dot-sourced fail-open: the ONE pure, self-contained contract file (sibling of bootstrap; no _load).
-    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } else { 'real' }
+    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } else { 'real' }
     $stopIntentReason = $null
     $stopIntentContinueKey = $null
     $stopIntentContinueCount = 0
@@ -1110,6 +1114,9 @@ try {
         $conflict = $workshopQuestion.binding_conflict
         ("workshop-conflict|{0}|{1}|{2}|{3}" -f [string]$workshopQuestion.feature_ref, [string]$conflict.binding, [string]$conflict.prior_value, [string]$conflict.value)
     }
+    elseif ($blockKind -eq 'workshop-repair') {
+        ("workshop-repair|{0}|{1}" -f [string]$workshopQuestion.feature_ref, [string]$workshopQuestion.reason)
+    }
     # certify f3: boundary-evidence-absent and boundary-unrecordable get their OWN advance keys so
     # the cap tracks each refused surface distinctly instead of pooling them under 'na'.
     elseif ($blockKind -eq 'boundary-evidence-absent' -and $null -ne $pending) {
@@ -1138,7 +1145,7 @@ try {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
             $cappedKind = $blockKind
-            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } else { 'verdict marker' }
+            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } else { 'verdict marker' }
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
@@ -1185,6 +1192,15 @@ try {
             elseif ($blockKind -eq 'workshop-conflict') {
                 $conflict = $workshopQuestion.binding_conflict
                 [void]$sb.AppendLine(("Specrew: WORKSHOP DECISION CONFLICT - durable binding '{0}' was '{1}' in lens '{2}' but is now '{3}' in lens '{4}'. Do not move to another lens or render the generic five-part packet. If the later value was a delegated/default choice, restore it to the earlier human-confirmed value and continue. If the human intentionally changed the decision, ask one concise conversational reconciliation question and update every affected lens record to the same value before continuing." -f $conflict.binding, $conflict.prior_value, $conflict.prior_lens, $conflict.value, $conflict.lens))
+            }
+            elseif ($blockKind -eq 'workshop-repair') {
+                if ([string]$workshopQuestion.reason -eq 'workshop-decision-bindings-invalid') {
+                    $badBinding = $workshopQuestion.binding_conflict
+                    [void]$sb.AppendLine(("Specrew: WORKSHOP RECORD INVALID - binding '{0}' has value '{1}' in lens '{2}'. Binding keys and token values use lowercase stable tokens (for example `ihttpclientfactory`, not `IHttpClientFactory`). Repair lens-applicability.json, verify the durable workshop state, then present the current lens question again. Do not render the generic five-part packet and do not move to another lens first." -f $badBinding.binding, $badBinding.value, $badBinding.lens))
+                }
+                else {
+                    [void]$sb.AppendLine('Specrew: WORKSHOP RECORD INCOMPLETE - the code-implementation lens is marked complete but its required implementation-rules.yml manifest is missing or empty. Create the schema-valid manifest beside lens-applicability.json, verify the durable workshop state, then present the current lens question again. Do not render the generic five-part packet and do not move to another lens first.')
+                }
             }
             elseif ($blockKind -eq 'material') {
                 [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')
@@ -1243,6 +1259,9 @@ try {
             elseif ($cappedKind -eq 'boundary-unrecordable') {
                 $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE (FR-066) - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
             }
+            elseif ($cappedKind -eq 'workshop-repair') {
+                $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null
+            }
             else {
                 $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong (FR-011/FR-015) - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
             }
@@ -1261,7 +1280,7 @@ try {
             # FR-045a: a continuation directive is NOT a packet-render block - label it distinctly so the flush-race
             # forensic (which keys off 'stop-block' + a low dx_lat_hits to catch mid-flush truncation) does not treat a
             # by-design non-packet continue message as a partial-read suspect.
-            $evt = if ($workshopQuestionWins) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
+            $evt = if ($workshopQuestionWins) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } elseif ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
             # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.

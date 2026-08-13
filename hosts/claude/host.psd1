@@ -48,7 +48,9 @@
         OptOutMarkerFile    = '.specrew/runtime/refocus-hooks-optout'
         DispatcherPath      = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
         ConfigShape         = 'event-map'
-        CommandMode         = 'project-placeholder'
+        # Copilot also reads repo-local Claude settings. Guard the project-root lookup so the
+        # Claude hook is a silent no-op when another host has not supplied CLAUDE_PROJECT_DIR.
+        CommandMode         = 'guarded-project-encoded'
         ProjectDirPlaceholder = '${CLAUDE_PROJECT_DIR}'
         ProjectRootEnvironmentVariables = @('CLAUDE_PROJECT_DIR')
         DispatcherRuntime   = @{

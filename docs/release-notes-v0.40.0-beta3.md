@@ -118,13 +118,16 @@ approve as separate decisions — because that is what they are.
 ## Choose a reviewer before your first review
 
 Specrew does not pick a reviewer for you, and until you pick one there is nothing to run a review with.
-Approve one once, per project:
+Authorize one once, per project, without spending a review round:
 
 ```
-specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round
+specrew review --host <claude|codex|copilot|cursor-agent|antigravity> --authorization-ref workshop-<feature>
 ```
 
 Prefer a different tool from the one that wrote the code — a second opinion is the point of the review.
+The code-implementation workshop now presents the installed choices and performs this setup after the
+human picks one. A completed code workshop cannot pass specify preflight with an unresolved `auto-select`
+or without the matching command-written authorization.
 
 **This is a setup step, not a fault.** In a dogfood run a project with no reviewer configured reported
 `preflight-failed:harness`, which reads like broken tooling; the agent concluded the co-review was
@@ -138,10 +141,10 @@ The walkthrough is deliberately not unattended. When implementation reaches revi
 waits for a human to authorize one provider-spend round:
 
 ```
-specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round
+specrew review --live --approve-round
 ```
 
-If a reviewer is already selected for the project, omit `--host`. One approval authorizes one round.
+Reviewer setup already happened in the workshop. One `--approve-round` authorizes one round.
 The expected stop is the product working: no reviewer process starts, and no spend occurs, until the
 tester grants that round. A complete, valid result for the exact active campaign and current file digest
 is required before `review-signoff` can advance; a hand-written `review.md` is not review evidence.

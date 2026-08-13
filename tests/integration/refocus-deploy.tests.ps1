@@ -36,6 +36,13 @@ function Decode-EncodedPwshCommand {
     return [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($match.Groups[1].Value))
 }
 
+function Test-CommandTargetsSpecrewDispatcher {
+    param([AllowNull()][string]$Command)
+    if ([string]::IsNullOrWhiteSpace($Command)) { return $false }
+    if ($Command.Contains('specrew-hook-dispatcher.ps1')) { return $true }
+    return (Decode-EncodedPwshCommand -Command $Command).Contains('specrew-hook-dispatcher.ps1')
+}
+
 # --- 1. Fresh project: settings created with our entries, PreToolUse absent -------
 New-ScratchProject
 $out = Invoke-Deploy
@@ -43,14 +50,43 @@ Assert-True (Test-Path -LiteralPath $settingsPath -PathType Leaf) 'settings.loca
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $settings.hooks.SessionStart) 'SessionStart registered'
 Assert-True ($null -ne $settings.hooks.UserPromptSubmit) 'Claude UserPromptSubmit registered as the genuine per-turn baseline event'
-Assert-True (([string]$settings.hooks.UserPromptSubmit[0].hooks[0].command).Contains('-Event UserPromptSubmit')) 'Claude UserPromptSubmit reaches the real dispatcher path'
+$claudePromptCommand = [string]$settings.hooks.UserPromptSubmit[0].hooks[0].command
+$claudePromptDecoded = Decode-EncodedPwshCommand -Command $claudePromptCommand
+Assert-True ($claudePromptCommand.Contains('-EncodedCommand') -and $claudePromptDecoded.Contains("GetEnvironmentVariable('CLAUDE_PROJECT_DIR')") -and $claudePromptDecoded.Contains("-Event 'UserPromptSubmit'") -and $claudePromptDecoded.Contains('specrew-hook-dispatcher.ps1')) 'Claude UserPromptSubmit uses a guarded project-root dispatcher command'
 Assert-True ($null -ne $settings.hooks.Stop) 'Stop registered (F-174 iter-4: rolling handover)'
-Assert-True (([string]$settings.hooks.Stop[0].hooks[0].command).Contains('-Event Stop')) 'Stop command dispatches -Event Stop'
+$claudeStopDecoded = Decode-EncodedPwshCommand -Command ([string]$settings.hooks.Stop[0].hooks[0].command)
+Assert-True ($claudeStopDecoded.Contains("-Event 'Stop'")) 'Stop command dispatches -Event Stop'
 Assert-True (-not $settings.hooks.PSObject.Properties['SessionEnd']) 'SessionEnd NOT registered (iter-4 replaced it with the universal Stop)'
 Assert-True ($null -ne $settings.hooks.PostToolUse) 'PostToolUse registered (F-174 iter-9.1: mid-workshop rolling-handover refresh)'
-Assert-True (([string]$settings.hooks.PostToolUse[0].hooks[0].command).Contains('-Event PostToolUse')) 'PostToolUse command dispatches -Event PostToolUse'
+$claudePostToolDecoded = Decode-EncodedPwshCommand -Command ([string]$settings.hooks.PostToolUse[0].hooks[0].command)
+Assert-True ($claudePostToolDecoded.Contains("-Event 'PostToolUse'")) 'PostToolUse command dispatches -Event PostToolUse'
 Assert-True (-not $settings.hooks.PSObject.Properties['PreToolUse']) 'PreToolUse NOT registered (dormant F-165 seat)'
-Assert-True (([string]$settings.hooks.SessionStart[0].hooks[0].command).Contains('specrew-hook-dispatcher.ps1')) 'command points at the dispatcher'
+$claudeSessionDecoded = Decode-EncodedPwshCommand -Command ([string]$settings.hooks.SessionStart[0].hooks[0].command)
+Assert-True ($claudeSessionDecoded.Contains('specrew-hook-dispatcher.ps1')) 'command points at the dispatcher'
+
+# A project can carry Claude's repo-local settings while the active host is Copilot. Copilot v1.0.79
+# executes that repo hook too, but does not define CLAUDE_PROJECT_DIR. The old literal placeholder became
+# `/.specify/...` and failed the whole prompt-submit hook set before the real Copilot verdict capture ran.
+$savedClaudeProjectDir = $env:CLAUDE_PROJECT_DIR
+try {
+    Remove-Item Env:CLAUDE_PROJECT_DIR -ErrorAction SilentlyContinue
+    $crossHostOutput = @(& pwsh -NoProfile -NonInteractive -Command $claudePromptCommand 2>&1)
+    Assert-True ($LASTEXITCODE -eq 0 -and @($crossHostOutput | Where-Object { "$_" -match '\S' }).Count -eq 0) 'Claude project hook is a silent success on another host when CLAUDE_PROJECT_DIR is absent'
+
+    $stubDispatcher = Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\specrew-hook-dispatcher.ps1'
+    New-Item -ItemType Directory -Path (Split-Path -Parent $stubDispatcher) -Force | Out-Null
+    @'
+param([string]$Event, [string]$HostKind, [string]$HostBinding)
+"stub-dispatch event=$Event host=$HostKind"
+'@ | Set-Content -LiteralPath $stubDispatcher -Encoding UTF8
+    $env:CLAUDE_PROJECT_DIR = $projectRoot
+    $claudeHostOutput = @(& pwsh -NoProfile -NonInteractive -Command $claudePromptCommand 2>&1)
+    Assert-True ($LASTEXITCODE -eq 0 -and ($claudeHostOutput -join "`n") -match 'stub-dispatch event=UserPromptSubmit host=claude') 'Claude project hook still dispatches when Claude supplies its project root'
+}
+finally {
+    if ($null -eq $savedClaudeProjectDir) { Remove-Item Env:CLAUDE_PROJECT_DIR -ErrorAction SilentlyContinue }
+    else { $env:CLAUDE_PROJECT_DIR = $savedClaudeProjectDir }
+}
 
 # --- 2. Idempotence: re-deploy is byte-identical ------------------------------------
 $before = Get-Content -LiteralPath $settingsPath -Raw
@@ -82,15 +118,15 @@ $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 Assert-True ([string]$settings.permissions.allow[0] -eq 'Bash(npm test:*)') 'non-hook user settings preserved'
 $ssCommands = @($settings.hooks.SessionStart | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
 Assert-True ($ssCommands -contains 'echo user-session-hook') 'user SessionStart hook preserved'
-Assert-True (@($ssCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1) 'our SessionStart entry added exactly once'
+Assert-True (@($ssCommands | Where-Object { Test-CommandTargetsSpecrewDispatcher -Command $_ }).Count -eq 1) 'our SessionStart entry added exactly once'
 $ptuCommands = @($settings.hooks.PostToolUse | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
-Assert-True (($ptuCommands -contains 'echo user-ptu-hook') -and -not ($ptuCommands -like '*old/specrew-hook-dispatcher*') -and (@($ptuCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1)) 'mixed group: user hook kept, stale Specrew hook refreshed to exactly one current entry (PostToolUse now registered, F-174 iter-9.1)'
+Assert-True (($ptuCommands -contains 'echo user-ptu-hook') -and -not ($ptuCommands -like '*old/specrew-hook-dispatcher*') -and (@($ptuCommands | Where-Object { Test-CommandTargetsSpecrewDispatcher -Command $_ }).Count -eq 1)) 'mixed group: user hook kept, stale Specrew hook refreshed to exactly one current entry (PostToolUse now registered, F-174 iter-9.1)'
 
 # --- 4. Stale-entry refresh: our old command replaced, not duplicated ----------------
 $null = Invoke-Deploy
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 $ssCommands = @($settings.hooks.SessionStart | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
-Assert-True (@($ssCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1) 'repeat deploy never duplicates our entries'
+Assert-True (@($ssCommands | Where-Object { Test-CommandTargetsSpecrewDispatcher -Command $_ }).Count -eq 1) 'repeat deploy never duplicates our entries'
 
 # --- 5. Remove: only ours stripped; opt-out recorded ----------------------------------
 $out = Invoke-Deploy -DeployArgs @('-Remove')
@@ -109,7 +145,7 @@ Assert-True (-not ($ssCommands -like '*specrew-hook-dispatcher*')) 'opt-out: our
 $out = Invoke-Deploy -DeployArgs @('-Force')
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 $ssCommands = @($settings.hooks.SessionStart | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
-Assert-True (@($ssCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1) '-Force re-enables explicitly'
+Assert-True (@($ssCommands | Where-Object { Test-CommandTargetsSpecrewDispatcher -Command $_ }).Count -eq 1) '-Force re-enables explicitly'
 Assert-True (-not (Test-Path -LiteralPath $optOutMarker -PathType Leaf)) '-Force clears the opt-out marker'
 
 # --- 7. Unparsable settings: refuse, never clobber --------------------------------------

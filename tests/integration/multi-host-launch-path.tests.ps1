@@ -173,7 +173,7 @@ You are Squad running inside a Specrew-bootstrapped repository.
 50. The Crew should always do this.
 '@
 
-$expectedHeader = 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository.'
+$expectedHeader = 'This repository uses Specrew; work here follows the project lifecycle and its human-authorized boundaries.'
 
 foreach ($hk in 'copilot', 'claude', 'cursor', 'codex', 'antigravity') {
     $rewritten = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $samplePrompt -HostKind $hk
@@ -184,7 +184,7 @@ foreach ($hk in 'copilot', 'claude', 'cursor', 'codex', 'antigravity') {
         Write-Fail "FR-011 original Squad header still present after surgery for host=$hk"
     }
 }
-Write-Pass 'FR-011 universal header rewrite applied to all 5 hosts'
+Write-Pass 'FR-011 universal project-rules header rewrite applied to all 5 hosts'
 
 # Test 9b: host orientation block is selected-host, version, runtime-status, and lifecycle-position accurate
 $orientationPrompt = @'
@@ -528,19 +528,19 @@ finally {
 }
 Write-Pass 'start-context.json pre-F-040 schema v2 (without selected_host/available_hosts/crew_runtime_status) still parses (backwards-compatible)'
 
-# Test 18: Universal Crew header is the same literal across all hosts (FR-011 invariant)
+# Test 18: Universal project-rules header is the same literal across all hosts (FR-011 invariant)
 $header = Get-SpecrewUniversalCoordinatorHeader
-$expectedHeaderLiteral = 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository.'
+$expectedHeaderLiteral = 'This repository uses Specrew; work here follows the project lifecycle and its human-authorized boundaries.'
 if ($header -ne $expectedHeaderLiteral) {
-    Write-Fail "Universal Crew header literal drift. Got: $header"
+    Write-Fail "Universal project-rules header literal drift. Got: $header"
 }
 foreach ($hk in 'copilot', 'claude', 'codex') {
     $hostHeader = Get-SpecrewUniversalCoordinatorHeader
     if ($hostHeader -ne $expectedHeaderLiteral) {
-        Write-Fail "Universal Crew header should be identical across hosts; drift for $hk : $hostHeader"
+        Write-Fail "Universal project-rules header should be identical across hosts; drift for $hk : $hostHeader"
     }
 }
-Write-Pass 'Universal Crew-coordinator header literal is identical across all hosts (FR-011 invariant)'
+Write-Pass 'Universal project-rules header literal is identical across all hosts (FR-011 invariant)'
 
 # Test 18b: FR-014 (reproduce-first) — launch guidance must not leak another host's terminology
 # (SC-010). The approval-mode launch line printed by `specrew start` must be host-neutral, not

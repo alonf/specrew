@@ -505,7 +505,7 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'campaign intake: an explicit iteration number with a missing iteration still fails closed' {
+    It 'campaign intake: a stale explicit iteration number cannot turn specify into a review-campaign warning' {
         $root = script:New-NavigatorProject -BoundaryType 'specify' -FileContent 'base'
         try {
             $featureRoot = Join-Path $root 'specs/001-demo'
@@ -525,8 +525,9 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             }
 
             $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
-            $decision.reason | Should -Be 'campaign-packet-gate-failed'
-            $decision.stop_block | Should -Match 'review-campaign-active-iteration-unresolved'
+            $decision.action | Should -Be 'no-op'
+            $decision.reason | Should -Be 'campaign-not-applicable:pre-implement-stage (specify)'
+            $decision.stop_block | Should -BeNullOrEmpty
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }

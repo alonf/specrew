@@ -11,8 +11,8 @@ $ErrorActionPreference = 'Stop'
 # (implementation-rules.yml) — and the specify-boundary gate trusted the checkbox and authorized. The lens
 # COMPLETION signal was decoupled from the lens ARTIFACT: a code-writing lens could self-certify done having
 # produced nothing. This pins the fix: Test-SpecrewLensWorkshopRecords now ASSERTS the artifact's PRESENCE
-# (not its schema — that is the lens's own Test-SpecrewImplementationRulesManifest + Proposal-196 provenance,
-# a coupled follow-up), SCOPED to code-implementation (the only lens with a required on-disk manifest) and
+# and the real specify gate validates its schema/provenance through Test-SpecrewImplementationRulesManifest,
+# SCOPED to code-implementation (the only lens with a required on-disk manifest) and
 # gated on moved_on truthy (so it is grandfather-safe like the rest of the SC-021 floor).
 #
 # Test shape (advisor-guided, mirrors the i011 SC-026 proof): the pass/fail/grandfather/scoping cases run
@@ -113,13 +113,54 @@ try {
     Assert-True $wiringBlocked '(B) sync-specify is BLOCKED through the REAL gate entry when code-implementation is moved_on with no manifest (#2904, names the lens)'
     Write-Pass '(B) the #2904 floor is wired into Invoke-SpecrewSpecifyBoundaryLensGate (fails through the real entry)'
 
-    # --- (B2) the SAME real entry PASSES once the manifest exists (the manifest is what unblocks the gate;
+    # --- (B2) the SAME real entry PASSES once a VALID manifest exists (the manifest is what unblocks the gate;
     #          no product-domain lens in the map, so the entry passes cleanly — mirrors the existing FR-027 case). ---
     $b2Manifest = Get-SpecrewCodeManifestPath -FeatureDir $featDir
-    [System.IO.File]::WriteAllText($b2Manifest, "schema_version: 1`n", [System.Text.UTF8Encoding]::new($false))
+    $b2Yaml = ConvertTo-SpecrewImplementationRulesYaml -Manifest ([ordered]@{
+            schema_version = '1.0'
+            context_scope  = 'feature_standalone'
+            resolved_stack = 'csharp-dotnet'
+            selections     = @()
+            custom_rules   = @()
+            dependency_policy = [ordered]@{ stance = 'use-existing-no-new-dependency' }
+            reviewer_preference = [ordered]@{
+                mode = 'human-selected'
+                host = 'codex'
+                model = $null
+                effort = $null
+                source = 'code-implementation-workshop'
+                authorization_ref = 'workshop-001-test-feature'
+                rationale = 'Human selected the installed independent reviewer during the workshop.'
+            }
+            provenance     = [ordered]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-question' }
+        })
+    [System.IO.File]::WriteAllText($b2Manifest, $b2Yaml, [System.Text.UTF8Encoding]::new($false))
+    $reviewerDir = Join-Path $specifyRoot '.specrew'
+    $null = New-Item -ItemType Directory -Path $reviewerDir -Force
+    [System.IO.File]::WriteAllText(
+        (Join-Path $reviewerDir 'reviewer-hosts.json'),
+        '{"schema_version":"1.0","hosts":[{"host":"codex","model":null,"adapter_id":"reviewer-host-adapter-codex-prompt","allowed":true,"installed":true,"review_class_rank":100,"model_source":"human-entered","cost_class":"non-default","authorization_ref":"workshop-001-test-feature","fallback_allowed":false}]}',
+        [System.Text.UTF8Encoding]::new($false))
     $b2Ok = Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature'
     Assert-True ($null -ne $b2Ok -and $b2Ok.Valid -eq $true) '(B2) the real gate PASSES once implementation-rules.yml is persisted (the manifest is what unblocks it)'
-    Write-Pass '(B2) persisting the manifest unblocks the real specify gate'
+    Write-Pass '(B2) persisting a valid manifest unblocks the real specify gate'
+
+    # --- (B3) presence is not enough: a malformed hand-authored manifest is rejected before the boundary. ---
+    [System.IO.File]::WriteAllText($b2Manifest, "schema_version: `"1.0`"`ncontext_scope: `"invented`"`nresolved_stack: `"csharp-dotnet`"`nselections: []`ncustom_rules: []`nprovenance:`n  confirmation: `"human-confirmed`"`n  confirmation_scope: `"lens-question`"`n", [System.Text.UTF8Encoding]::new($false))
+    $b3Blocked = $false
+    try { Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature' | Out-Null }
+    catch { $b3Blocked = ($_.Exception.Message -match 'implementation-rules\.yml is invalid' -and $_.Exception.Message -match 'context_scope') }
+    Assert-True $b3Blocked '(B3) the real gate rejects a present but malformed implementation-rules.yml before specify'
+    Write-Pass '(B3) manifest presence cannot bypass schema/invariant validation'
+
+    # --- (B4) a valid preference without the command-written reviewer authorization is not runnable. ---
+    [System.IO.File]::WriteAllText($b2Manifest, $b2Yaml, [System.Text.UTF8Encoding]::new($false))
+    Remove-Item -LiteralPath (Join-Path $reviewerDir 'reviewer-hosts.json') -Force
+    $b4Blocked = $false
+    try { Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature' | Out-Null }
+    catch { $b4Blocked = ($_.Exception.Message -match 'continuous co-review is not runnable' -and $_.Exception.Message -match 'no reviewer is authorized') }
+    Assert-True $b4Blocked '(B4) the real gate rejects a code workshop that did not authorize its selected reviewer'
+    Write-Pass '(B4) reviewer preference cannot stand in for command-written reviewer authorization'
 }
 finally { Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue }
 

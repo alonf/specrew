@@ -283,6 +283,29 @@ if ($null -eq $un -or $un.Boundary -ne 'iteration-closeout') { Write-Fail "an un
 else { Write-Pass "unauthorized closeout stays unreconciled: the prior cycle's closeout cannot leak through the exit edge" }
 Remove-Item -Recurse -Force $fx
 
+Write-Host "Test 17: a hand-edited self-authorization is malformed state, not human authority"
+# Exact dogfood shape: prompt-submit capture failed, then the agent edited start-context.json itself,
+# writing specify -> specify and a boolean `authorizing_human`. Before this guard the shape reader
+# accepted it, the cursor advanced, and later packets claimed the human had authorized the crossing.
+$forged = [ordered]@{
+    from_boundary = 'specify'; to_boundary = 'specify'
+    verdict_text = 'approved for specify'; authorizing_human = $true
+    recorded_at = '2026-08-13T13:05:00Z'; auth_commit_hash = 'b506a09'
+}
+$fx = New-RatchetFixture -WorkingBoundary 'clarify' -LastAuthorized 'specify' -History @($forged)
+$forgedState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $fx
+$forgedIssues = @($forgedState.Issues)
+if (@($forgedIssues | Where-Object { $_ -match 'self-edge' }).Count -eq 0) { Write-Fail "a self-edge authorization was accepted: $($forgedIssues -join '; ')" }
+else { Write-Pass "self-edge authorization is rejected" }
+if (@($forgedIssues | Where-Object { $_ -match 'authorizing_human.*non-empty string' }).Count -eq 0) { Write-Fail "a boolean authorizing_human was accepted: $($forgedIssues -join '; ')" }
+else { Write-Pass "non-string authorizing_human is rejected" }
+$forgedGateThrew = $false
+try { Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'plan' | Out-Null }
+catch { $forgedGateThrew = ($_.Exception.Message -match 'malformed') }
+if (-not $forgedGateThrew) { Write-Fail 'ratchet did not fail closed on the forged authorization state' }
+else { Write-Pass 'ratchet fails closed before consuming a hand-edited authorization' }
+Remove-Item -Recurse -Force $fx
+
 Write-Host ""
 if ($script:failCount -gt 0) { Write-Host "$script:failCount test(s) FAILED" -ForegroundColor Red; exit 1 }
 Write-Host "All boundary-ratchet paired tests passed." -ForegroundColor Green

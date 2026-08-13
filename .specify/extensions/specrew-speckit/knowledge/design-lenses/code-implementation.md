@@ -105,6 +105,11 @@ The code rules are mostly **product-level and stable**:
 - **Resolve the stack**, then present the **grouped, pre-checked set/unset checklist** — baseline as a
   summary (exceptions only), decision-prompts paced (offer all-at-once or one-at-a-time on a dense set),
   applicability-filtered only when context applies. Never a flat wall.
+- **Keep defaults coherent**: "use the defaults" delegates choices; it does not select every familiar
+  mechanism. Check the bundle for contradictions before recording it. In .NET, for example, a manually
+  composed small CLI can own one shared `HttpClient`, while `IHttpClientFactory` implies factory/service-
+  provider composition; do not combine the factory with "manual `new()`, no DI container". Surface and
+  resolve any conflict in this lens.
 - **Dependency selection**: default-first "use existing project tools / no new dependency"; capture the
   fields for any chosen dependency into the manifest `dependency_policy`.
 - **Reviewer selection (INT-006 - present the list, do NOT ask blind)**: before closing this lens, RUN
@@ -115,7 +120,8 @@ The code rules are mostly **product-level and stable**:
   Then capture their pick into `reviewer_preference` as `mode=human-selected` with the chosen `host`. A human
   MAY pick their own code-writer - only they know each host's quota/token status; independence is the
   recommendation, not a rule. If they make no choice, record the DEFAULT the command marked (still
-  `mode=human-selected`). Do NOT show or pin a model - Specrew uses the host's own default model (no dynamic
+  `mode=human-selected`). A reply such as "use the defaults" chooses that displayed DEFAULT; it does NOT
+  permit an unresolved `auto-select` record. Do NOT show or pin a model - Specrew uses the host's own default model (no dynamic
   model discovery exists yet).
   - **AUTHORIZE the pick (bridge to the navigator)**: capturing `reviewer_preference` alone is NOT enough - the
     async navigator selects from `.specrew/reviewer-hosts.json`, NOT from the workshop manifest. After the human
@@ -126,7 +132,8 @@ The code rules are mostly **product-level and stable**:
     hand-authored file (e.g. an `authorizations[]` array) is INERT - the co-review silently finds no host and a
     different agent fills the vacuum with its own review that the lifecycle then accepts. If the command ERRORS,
     surface the error to the human and STOP; never fall back to writing the file by hand. WITHOUT a command-written
-    authorization the auto-fired co-review has no host and stays dark.
+    authorization the auto-fired co-review has no host and stays dark. Do not mark the lens `moved_on: true`
+    until the command succeeded and the same host + authorization reference are recorded in the manifest.
 - **Capture** the selections/decisions/custom-rules/dependency-policy into `implementation-rules.yml`
   (reference-by-ID) + the human-readable `workshop/code-implementation.md`; record the lens in
   `lens-applicability.json`.

@@ -58,7 +58,7 @@ Top-level: a PowerShell hashtable consumed via `Import-PowerShellDataFile`.
 | `OptOutMarkerFile` | string | yes | Project/runtime marker used by remove and status to record an explicit hook opt-out. |
 | `DispatcherPath` | string | yes | Project-relative dispatcher path used by command renderers and launcher resolution. |
 | `ConfigShape` | enum: `event-map` \| `named-definition` | yes | JSON layout written by deploy. |
-| `CommandMode` | enum: `project-placeholder` \| `launcher-file` \| `launcher-encoded` | yes | How hook commands name the dispatcher or launcher. |
+| `CommandMode` | enum: `project-placeholder` \| `guarded-project-encoded` \| `launcher-file` \| `launcher-encoded` | yes | How hook commands name the dispatcher or launcher. `guarded-project-encoded` exits successfully when the host-specific project-root environment variable is absent, so another host may safely read the same project config. |
 | `Registrations` | hashtable[] | yes | Ordered event rows. Each row declares `Event`, `DispatcherEvent`, `HandlerShape`, and optional timeout/matcher fields. |
 | `SettingsVersion` | int | no | Version added to config files that require it. |
 | `OwnsSettingsFile` | bool | no | True when Specrew owns the entire hook config file and may delete it on remove. |

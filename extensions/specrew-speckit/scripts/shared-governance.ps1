@@ -1636,6 +1636,18 @@ function Test-SpecrewBoundaryEnforcementStateShape {
             }
         }
 
+        if ($verdictMap.Contains('from_boundary') -and $verdictMap.Contains('to_boundary')) {
+            $fromBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['from_boundary'])
+            $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['to_boundary'])
+            if (-not [string]::IsNullOrWhiteSpace($fromBoundary) -and $fromBoundary -eq $toBoundary) {
+                $issues.Add("boundary_enforcement.verdict_history contains a self-edge '$fromBoundary -> $toBoundary'; a boundary cannot authorize itself.") | Out-Null
+            }
+        }
+        if ($verdictMap.Contains('authorizing_human') -and
+            ($verdictMap['authorizing_human'] -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$verdictMap['authorizing_human']))) {
+            $issues.Add('boundary_enforcement.verdict_history.authorizing_human must be a non-empty string.') | Out-Null
+        }
+
         if ($verdictMap.Contains('authorization_id') -and [string]$verdictMap['authorization_id'] -notmatch '^auth-[0-9a-f]{64}$') {
             $issues.Add("boundary_enforcement.verdict_history.authorization_id '$($verdictMap['authorization_id'])' is malformed.") | Out-Null
         }
@@ -3186,6 +3198,17 @@ function Invoke-SpecrewBoundaryRatchetGate {
     )
 
     $requestedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
+    # The ratchet consumes the authorization ledger, so malformed ledger state must be refused before
+    # the convenience projection below can collapse it to "nothing unreconciled". The dogfood failure
+    # was an agent-authored specify -> specify entry with a boolean authorizing_human; Get-Unreconciled
+    # could not use it and returned null, which accidentally made the malformed state look clean.
+    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($enforcementState.NeedsMigration) {
+        throw "Boundary enforcement state is missing. Run the Specrew start/bootstrap migration before crossing '$requestedCanonical'."
+    }
+    if ($enforcementState.Issues.Count -gt 0) {
+        throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
+    }
     $unreconciled = Get-SpecrewUnreconciledBoundary -ProjectRoot $ProjectRoot
     if ($null -eq $unreconciled) { return $true }
     if ($unreconciled.Boundary -eq $requestedCanonical) { return $true }

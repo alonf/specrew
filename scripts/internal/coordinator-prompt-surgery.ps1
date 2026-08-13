@@ -27,7 +27,7 @@ $script:CoordinatorRulesCache = @{}
 
 function Get-SpecrewUniversalCoordinatorHeader {
     # FR-011 invariant: same literal for every host.
-    return 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository.'
+    return 'This repository uses Specrew; work here follows the project lifecycle and its human-authorized boundaries.'
 }
 
 function Get-SpecrewOriginalCoordinatorHeaderPattern {
@@ -116,7 +116,7 @@ function Get-SpecrewHostOrientationBlock {
         "Welcome back - resuming $featurePart at $boundaryPart."
     }
     else {
-        "Welcome - I'm your Specrew Crew coordinator."
+        'Welcome - Specrew is active in this project.'
     }
     $lifecycleLine = if ($isResume) {
         "Lifecycle: $featurePart at $boundaryPart."

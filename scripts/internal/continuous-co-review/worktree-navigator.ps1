@@ -152,11 +152,39 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
         return [pscustomobject]@{ applicable = $false; reason = 'campaign-not-applicable:no-active-feature' }
     }
 
+    # Resolve lifecycle applicability BEFORE interpreting an iteration hint. A phase wrapper can carry a
+    # stale/spurious session_state.iteration_number during specify/clarify even though no iteration exists.
+    # Nothing is reviewable at those stages, so that hint must not manufacture a campaign-authority error.
+    # Unknown cursors still fail closed, and before-implement onward remains live.
+    $effectiveCursor = $sessionBoundaryCursor
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $crossingWorkingBoundary }
+    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $authorizedBoundaryCursor }
+    $cursorNorm = $null
+    $cursorIsQuietPreImplement = $false
+    if (-not [string]::IsNullOrWhiteSpace($effectiveCursor)) {
+        $cursorNorm = $effectiveCursor.Trim().ToLowerInvariant()
+        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
+            try { $cursorNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $effectiveCursor } catch { $cursorNorm = $null }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($cursorNorm) -and $cursorNorm -ne 'implement') {
+            $boundaryOrder = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
+            if (Get-Command -Name 'Get-SpecrewBoundaryOrder' -ErrorAction SilentlyContinue) {
+                try { $boundaryOrder = @(Get-SpecrewBoundaryOrder) } catch { $null = $_ }
+            }
+            $cursorIdx = [Array]::IndexOf($boundaryOrder, $cursorNorm)
+            $liveIdx = [Array]::IndexOf($boundaryOrder, 'before-implement')
+            $cursorIsQuietPreImplement = ($cursorIdx -ge 0 -and $liveIdx -ge 0 -and $cursorIdx -lt $liveIdx)
+        }
+    }
+
     $iterationsRoot = Join-Path $featureRoot 'iterations'
     $iterations = @(if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
             Get-ChildItem -LiteralPath $iterationsRoot -Directory | Where-Object { $_.Name -match '^\d{3,}$' }
         })
     if ($iterations.Count -eq 0) {
+        if ($activeIterationSignal -and $cursorIsQuietPreImplement) {
+            return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
+        }
         if ($activeIterationSignal) { return [pscustomobject]@{ applicable = $true; reason = 'active-iteration-unresolved' } }
         return [pscustomobject]@{ applicable = $false; reason = 'campaign-not-applicable:no-active-iteration' }
     }
@@ -178,25 +206,8 @@ function Get-ReviewCampaignNavigatorScopeApplicability {
     # window's edge (the v2 missing-iteration fail-closed case pins this). Unresolved or
     # non-canonical cursors stay applicable so the packet gate fails closed with the
     # authoritative reason (this function's standing philosophy).
-    $effectiveCursor = $sessionBoundaryCursor
-    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $crossingWorkingBoundary }
-    if ([string]::IsNullOrWhiteSpace($effectiveCursor)) { $effectiveCursor = $authorizedBoundaryCursor }
-    if (-not [string]::IsNullOrWhiteSpace($effectiveCursor)) {
-        $cursorNorm = $effectiveCursor.Trim().ToLowerInvariant()
-        if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
-            try { $cursorNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $effectiveCursor } catch { $cursorNorm = $null }
-        }
-        if (-not [string]::IsNullOrWhiteSpace($cursorNorm) -and $cursorNorm -ne 'implement') {
-            $boundaryOrder = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
-            if (Get-Command -Name 'Get-SpecrewBoundaryOrder' -ErrorAction SilentlyContinue) {
-                try { $boundaryOrder = @(Get-SpecrewBoundaryOrder) } catch { $null = $_ }
-            }
-            $cursorIdx = [Array]::IndexOf($boundaryOrder, $cursorNorm)
-            $liveIdx = [Array]::IndexOf($boundaryOrder, 'before-implement')
-            if ($cursorIdx -ge 0 -and $liveIdx -ge 0 -and $cursorIdx -lt $liveIdx) {
-                return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
-            }
-        }
+    if ($cursorIsQuietPreImplement) {
+        return [pscustomobject]@{ applicable = $false; reason = ('campaign-not-applicable:pre-implement-stage ({0})' -f $cursorNorm) }
     }
 
     # DRIFT-199-I001-006 (FR-007/FR-008; T003 landing early under the maintainer's 2026-08-10

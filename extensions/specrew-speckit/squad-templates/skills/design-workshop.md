@@ -1,9 +1,6 @@
 ---
 name: "specrew-design-workshop"
 description: "Run Specrew's per-lens design workshop and collaborative design-analysis. Use whenever you work the design lenses for a feature: at specify/intake (the lens workshop) and at the design-analysis stop (co-design the architecture), and RE-INVOKE at the start of EACH new lens (architecture, data, ui-ux, security, integration, devops, requirements/NFR, observability, component). Triggers: design, design lens, lens workshop, design-analysis, architecture, trade-offs, co-design, explore options, decompose, or moving from one lens to the next. Tells you to facilitate each lens as a discussion, surface diagrams the human can actually SEE (console ASCII inline; mermaid/html to a file with a clickable file:/// link), co-design components/responsibilities/flows WITH the human instead of handing over finished options, capture the agreements, and which per-lens md to load."
-domain: "lifecycle-design"
-confidence: "high"
-source: "Specrew Feature 141 Amendments A4/A5/A6 — per-lens workshop + visuals + collaborative co-design, relocated from the launch prompt into this skill (iteration 010) for point-of-use focus."
 claude-disallowed-tools: AskUserQuestion
 ---
 
@@ -138,6 +135,10 @@ run-cadence, and the full conduct. The conduct in brief:
 3. **Resolve the stack**, then present the **grouped, pre-checked set/unset checklist** — baseline stated
    as a summary (exceptions only), the consequential decision-prompts paced (offer all-at-once OR
    one-at-a-time), applicability-filtered rules shown only when their context applies. **Never a flat wall.**
+   **"Use the defaults" means one coherent bundle, not every familiar mechanism at once.** Check that the
+   chosen defaults can coexist before recording them. For example, a small manually composed .NET CLI may own
+   one shared `HttpClient`; choosing `IHttpClientFactory` implies factory/service-provider composition and must
+   not be paired with "manual `new()`, no DI container". Resolve contradictions with the human in this lens.
 4. **Dependency selection (FR-013)**: present **"use existing project tools / no new dependency" first**
    plus options; for any chosen dependency capture version, license, source org, canonical URL, maintenance
    signal, security/advisory status, compatibility, cost/quota, coupling weight, replaceability, and test
@@ -147,7 +148,10 @@ run-cadence, and the full conduct. The conduct in brief:
    `implementation-rules.schema.json` (beside the lens in the design-lens catalog), plus the human-readable
    `workshop/code-implementation.md`; record the lens in `lens-applicability.json`. (Like `product-domain`,
    you author the record by hand following the schema -- you do NOT call a PowerShell writer; the lens
-   helper validates, it is not invoked mid-workshop.)
+   helper validates, it is not invoked mid-workshop.) Reviewer setup is part of this capture: list the live
+   hosts, present the marked default, record one concrete host + authorization reference, and run the explicit
+   `specrew review --host ... --authorization-ref ...` setup command. Never leave a completed code lens with
+   an unresolved `auto-select`; that state cannot launch a reviewer in a fresh project.
 6. **Run cadence**: the rules are mostly product-level — decide once at a product-level workshop, inherit
    per feature, re-open only the parts a new technology or programming language changes
    (`context_scope` hooks; V1 `feature_standalone`; forward-compatible with Proposal 162).
@@ -381,6 +385,14 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    session that resumes then reads the handover + the `workshop/` folder and **continues from the next
    un-persisted lens instead of restarting the workshop**. A lens that lives only in the chat scrollback is lost
    on exit; a persisted lens is not. Then state which lens is next and reload this conduct + that lens's md.
+8. **Preflight the completed workshop before the spec writer or any boundary commit.** After the final lens is
+   durably complete, run exactly:
+   `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -ProjectPath . -BoundaryType specify -PreflightOnly`.
+   This invokes the real specify gate without advancing lifecycle state. It validates binding tokens,
+   product-domain shape/provenance, `implementation-rules.yml`, and runnable reviewer authorization. If it
+   refuses, repair the named workshop artifact, rerun the preflight, and re-ask the current question when the
+   durable decision changed. Only a successful preflight permits `speckit.specify`. Commit the boundary artifacts
+   only after the spec and checklist are written and the normal boundary sync succeeds.
 
 ## When to Use
 

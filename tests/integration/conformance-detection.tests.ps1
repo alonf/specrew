@@ -1087,6 +1087,26 @@ try {
     if (-not $r16a2.Blocked -or $r16a2.Out -notmatch 'five-part context packet') { Fail "Case 16a2: a proved workshop question that also changed a non-workshop path MUST still require the material packet. Out: $($r16a2.Out)" }
     Write-Pass "Case 16a2: material work outside the workshop record set wins over a proved workshop question"
 
+    # ---- Cases 16a3/16a4 / beta3 full-walk regressions: repairable controller mistakes get a
+    #      targeted workshop repair, not the generic five-part packet. This keeps the conversation
+    #      readable and forces the missing machine record to be fixed before the next lens proceeds.
+    $p16a3 = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16a3
+    New-LensApplicability -Proj $p16a3 -Selected @('architecture-core','code-implementation','security-compliance') -Done @('architecture-core','code-implementation') -BindingsByLens @{ 'code-implementation' = [ordered]@{ 'http-client' = 'IHttpClientFactory' } }
+    Set-Content -LiteralPath (Join-Path $p16a3 'specs\050-host-neutral-gate\implementation-rules.yml') -Value "schema_version: '1.0'" -Encoding UTF8
+    New-HandoverSnapshot -Proj $p16a3 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
+    $r16a3 = Invoke-Conformance -Proj $p16a3 -TranscriptPath (New-Transcript -Proj $p16a3 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
+    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'WORKSHOP RECORD INVALID' -or $r16a3.Out -notmatch 'lowercase stable tokens' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
+    Write-Pass "Case 16a3: mixed-case binding tokens are repaired in place before the next lens, with no generic packet"
+
+    $p16a4 = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16a4
+    New-LensApplicability -Proj $p16a4 -Selected @('architecture-core','code-implementation','security-compliance') -Done @('architecture-core','code-implementation')
+    New-HandoverSnapshot -Proj $p16a4 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
+    $r16a4 = Invoke-Conformance -Proj $p16a4 -TranscriptPath (New-Transcript -Proj $p16a4 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
+    if (-not $r16a4.Blocked -or $r16a4.Out -notmatch 'WORKSHOP RECORD INCOMPLETE' -or $r16a4.Out -notmatch 'implementation-rules.yml' -or $r16a4.Out -match 'five-part context packet') { Fail "Case 16a4: missing code manifest needs a targeted workshop repair, not a generic packet. Out: $($r16a4.Out)" }
+    Write-Pass "Case 16a4: a completed code lens cannot move on without its manifest, and no generic packet is rendered"
+
     # ---- Case 16b / FR-056(d): lifecycle boundary state has precedence even when every workshop-question signal
     #      is otherwise valid. The six-section packet and exact boundary marker remain mandatory.
     $p16b = New-Fixture -Working 'plan' -LastAuth 'clarify'

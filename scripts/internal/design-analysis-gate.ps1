@@ -7,6 +7,9 @@ $script:SpecrewDesignAnalysisDefaultIterationNumber = '001'
 if (-not (Get-Command -Name 'Test-SpecrewWorkshopDecisionBindings' -ErrorAction SilentlyContinue)) {
     . (Join-Path $PSScriptRoot 'bootstrap/ProjectMetadataAccessor.ps1')
 }
+if (-not (Get-Command -Name 'Test-SpecrewImplementationRulesManifest' -ErrorAction SilentlyContinue)) {
+    . (Join-Path $PSScriptRoot 'code-implementation-lens.ps1')
+}
 
 function Normalize-SpecrewDesignAnalysisFeatureRef {
     param([AllowNull()][string]$FeatureRef)
@@ -444,8 +447,10 @@ function Test-SpecrewLensWorkshopRecords {
         # (moved_on) was DECOUPLED from the artifact: a host marked the lens moved_on:true / human-confirmed
         # having written NO manifest and without asking the reviewer question, and this gate trusted the
         # checkbox and authorized. Assert the artifact's PRESENCE here. Its SCHEMA/provenance is the lens's own
-        # Test-SpecrewImplementationRulesManifest + Proposal-196 (event-backed provenance) territory - a COUPLED
-        # follow-up, deliberately NOT this gate, which must not fail-closed on a partial-but-legitimate manifest.
+        # Schema/provenance validation is applied by Invoke-SpecrewSpecifyBoundaryLensGate after this
+        # presence floor succeeds. Keeping the presence check here makes incomplete workshop state visible
+        # to the controller; validating at the real boundary gate prevents a malformed manifest from being
+        # committed as if specify were ready.
         # Scoped to code-implementation (the only lens with a required on-disk manifest) + gated on moved_on
         # truthy, so it is grandfather-safe exactly like the rest of this floor (a pre-A4 artifact never reaches
         # here; a lens that is not moved_on already fails above). Resolved INLINE: the gate is dot-sourced by
@@ -1090,6 +1095,94 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
         $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the per-lens workshop records are incomplete (SC-021). Record agenda + decision/agreement + depth + a moved_on marker for each selected lens in {1} before sync-specify." -f $feature, $artifact)) | Out-Null
         foreach ($wsErr in $workshopErrors) { $lines.Add(("  - {0}" -f $wsErr)) | Out-Null }
         throw ($lines -join [Environment]::NewLine)
+    }
+
+    # The live afcondemo3 walk wrote implementation-rules.yml only after the first boundary attempt, and
+    # hand-authored repairs could have passed the old presence-only floor. Validate the constrained YAML,
+    # schema, catalog references, dependency policy, reviewer selection and confirmation provenance here.
+    # This runs both for a normal sync and for -PreflightOnly, so the workshop can repair the artifact BEFORE
+    # invoking speckit.specify or creating a boundary commit.
+    $applicability = Get-Content -LiteralPath $artifact -Raw -Encoding UTF8 | ConvertFrom-Json
+    $selectedLenses = @()
+    if ($null -ne $applicability -and $applicability.PSObject.Properties['selected']) {
+        $selectedLenses = @($applicability.selected | ForEach-Object { [string]$_ })
+    }
+    if ($selectedLenses -contains 'code-implementation') {
+        $featureDir = Split-Path -Parent $artifact
+        $manifestPath = Get-SpecrewCodeManifestPath -FeatureDir $featureDir
+        $catalogDir = $null
+        foreach ($relativeCatalogDir in @(
+                'extensions\specrew-speckit\knowledge\design-lenses',
+                '.specify\extensions\specrew-speckit\knowledge\design-lenses')) {
+            $candidateCatalogDir = Join-Path $ProjectRoot $relativeCatalogDir
+            if (Test-Path -LiteralPath (Join-Path $candidateCatalogDir 'code-rules.yml') -PathType Leaf) {
+                $catalogDir = $candidateCatalogDir
+                break
+            }
+        }
+        $schemaPath = if ($null -ne $catalogDir) { Join-Path $catalogDir 'implementation-rules.schema.json' } else { $null }
+        $catalogPath = if ($null -ne $catalogDir) { Join-Path $catalogDir 'code-rules.yml' } else { $null }
+        $overlayPath = Join-Path $ProjectRoot 'code-rules.local.yml'
+        $manifestErrors = @(Test-SpecrewImplementationRulesManifest `
+                -Path $manifestPath `
+                -SchemaPath $schemaPath `
+                -CatalogPath $catalogPath `
+                -OverlayPath $overlayPath)
+        if ($manifestErrors.Count -gt 0) {
+            $lines = [System.Collections.Generic.List[string]]::new()
+            $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': implementation-rules.yml is invalid. Repair it before running speckit.specify or committing the boundary." -f $feature)) | Out-Null
+            foreach ($manifestError in $manifestErrors) { $lines.Add(("  - {0}" -f $manifestError)) | Out-Null }
+            throw ($lines -join [Environment]::NewLine)
+        }
+
+        # A preference is not an authorization. The braces/afcondemo3 walks both reached review with no
+        # command-written reviewer-hosts.json, so the campaign reported an opaque harness preflight failure
+        # and the implementer filled the review vacuum itself. Refuse that predictable wedge at specify:
+        # the workshop must name a reviewer and the catalog must contain the matching human authorization.
+        $manifestText = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
+        $manifest = ConvertFrom-SpecrewImplementationRulesYaml -Text $manifestText
+        $reviewerPreference = if ($null -ne $manifest) { Get-SpecrewCodeMember -Object $manifest -Key 'reviewer_preference' } else { $null }
+        $reviewerHost = [string](Get-SpecrewCodeMember -Object $reviewerPreference -Key 'host')
+        $reviewerAuthorizationRef = [string](Get-SpecrewCodeMember -Object $reviewerPreference -Key 'authorization_ref')
+        $reviewerErrors = [System.Collections.Generic.List[string]]::new()
+        if ($null -eq $reviewerPreference) {
+            $reviewerErrors.Add('reviewer_preference is required for a code-writing feature.') | Out-Null
+        }
+        if ([string]::IsNullOrWhiteSpace($reviewerHost)) {
+            $reviewerErrors.Add('reviewer_preference.host must name the reviewer chosen during the workshop; an unresolved auto-select is not runnable evidence.') | Out-Null
+        }
+        if ([string]::IsNullOrWhiteSpace($reviewerAuthorizationRef)) {
+            $reviewerErrors.Add('reviewer_preference.authorization_ref must record the workshop authorization reference.') | Out-Null
+        }
+
+        $reviewerHostsPath = Join-Path $ProjectRoot '.specrew\reviewer-hosts.json'
+        if (-not (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf)) {
+            $reviewerErrors.Add(("no reviewer is authorized in {0}. Run 'specrew review --list-hosts --code-writer-host <current-host>', present the choices, then run 'specrew review --host <chosen-host> --authorization-ref <workshop-ref>'." -f $reviewerHostsPath)) | Out-Null
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($reviewerHost) -and -not [string]::IsNullOrWhiteSpace($reviewerAuthorizationRef)) {
+            try {
+                $reviewerCatalog = Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
+                $matchingReviewer = @($reviewerCatalog.hosts | Where-Object {
+                        [string]::Equals([string]$_.host, $reviewerHost, [System.StringComparison]::OrdinalIgnoreCase) -and
+                        [bool]$_.allowed -and
+                        [bool]$_.installed -and
+                        [string]$_.authorization_ref -ceq $reviewerAuthorizationRef
+                    })
+                if ($matchingReviewer.Count -eq 0) {
+                    $reviewerErrors.Add(("reviewer '{0}' is not installed + allowed with authorization_ref '{1}' in {2}. Re-run the explicit reviewer authorization command; do not hand-write the catalog." -f $reviewerHost, $reviewerAuthorizationRef, $reviewerHostsPath)) | Out-Null
+                }
+            }
+            catch {
+                $reviewerErrors.Add(("reviewer authorization catalog is unreadable: {0}" -f $_.Exception.Message)) | Out-Null
+            }
+        }
+
+        if ($reviewerErrors.Count -gt 0) {
+            $lines = [System.Collections.Generic.List[string]]::new()
+            $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': continuous co-review is not runnable yet. Repair reviewer setup before running speckit.specify or committing the boundary." -f $feature)) | Out-Null
+            foreach ($reviewerError in $reviewerErrors) { $lines.Add(("  - {0}" -f $reviewerError)) | Out-Null }
+            throw ($lines -join [Environment]::NewLine)
+        }
     }
 
     # FR-010 (Feature 176): the product-domain record floor. When the product-domain lens is in the
