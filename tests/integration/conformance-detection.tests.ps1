@@ -193,11 +193,16 @@ function New-PreAgendaLensApplicability {
     $dir = Join-Path $Proj (Join-Path 'specs' $FeatureRef)
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $obj = [ordered]@{
-        schema_version = '1.0'
+        schema_version = '1.1'
         workshop_intake = $true
         confirmation_required = $true
+        agenda_contract = 'complete-coverage-v1'
         agenda_status = 'pending-confirmation'
         selected = $Selected
+        agenda = [ordered]@{}
+        skipped = [ordered]@{}
+        agenda_confirmation = 'pending'
+        agenda_confirmation_scope = 'lens-selection'
         workshop = $Workshop
     }
     Set-Content -LiteralPath (Join-Path $dir 'lens-applicability.json') -Value ($obj | ConvertTo-Json -Depth 8) -Encoding UTF8
@@ -1177,6 +1182,41 @@ if ([string]$preAgendaHandover.scope -ne 'feature' -or [string]$preAgendaHandove
     Fail "Case 16pa: pre-agenda handover must retain exact feature/product-domain authority: $($preAgendaHandover | ConvertTo-Json -Compress)"
 }
 Write-Pass "Case 16pa: strict pre-agenda product-domain state suppresses the generic packet and retains exact re-entry context"
+
+# ---- Case 16pa2 / beta3 blind-walk regression: the model scaffolded the feature and persisted
+#      product-domain.md but skipped the controller initializer before asking architecture lens 1.
+#      The read-only Stop detector must name the missing machine record and the exact repair, never
+#      demand a generic five-part packet or silently write lifecycle authority itself.
+$p16pa2 = New-Fixture -Working '' -LastAuth ''
+Set-Content -LiteralPath (Join-Path $p16pa2 '.specrew\config.yml') -Value 'version: 1' -Encoding UTF8
+New-Spec -Proj $p16pa2
+New-HandoverSnapshot -Proj $p16pa2 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/workshop/product-domain.md'
+$t16pa2 = New-Transcript -Proj $p16pa2 -Turns @(@{ role = 'assistant'; text = 'Architecture-core lens: would you like to take all three decisions at once, or one at a time?' })
+$r16pa2 = Invoke-Conformance -Proj $p16pa2 -TranscriptPath $t16pa2
+if (-not $r16pa2.Blocked -or $r16pa2.Out -match 'five-part context packet') { Fail "Case 16pa2: missing machine-owned pre-agenda state MUST get the targeted repair, never the generic packet. Out: $($r16pa2.Out)" }
+if ($r16pa2.Out -notmatch 'WORKSHOP CONTROLLER MISSING' -or $r16pa2.Out -notmatch 'initialize-workshop-controller-state\.ps1' -or $r16pa2.Out -notmatch 'Do not render the generic five-part packet') {
+    Fail "Case 16pa2: targeted repair must name the condition, exact initializer, and conversational retry. Out: $($r16pa2.Out)"
+}
+$autoControllerPath = Join-Path $p16pa2 'specs\050-host-neutral-gate\lens-applicability.json'
+if (Test-Path -LiteralPath $autoControllerPath) { Fail 'Case 16pa2: read-only conformance provider must not author workshop lifecycle state' }
+Write-Pass "Case 16pa2: absent workshop controller gets an exact repair, not a duplicate five-part packet or detector-authored state"
+
+# ---- Case 16pa3 / beta3 blind-walk regression: the empty controller exists, but the host skipped the
+#      complete selected+skipped agenda and typed human confirmation, then opened architecture lens 1.
+#      The targeted correction must restore that decision point without turning it into a generic packet.
+$p16pa3 = New-Fixture -Working '' -LastAuth ''
+Set-Content -LiteralPath (Join-Path $p16pa3 '.specrew\config.yml') -Value 'version: 1' -Encoding UTF8
+New-Spec -Proj $p16pa3
+New-PreAgendaLensApplicability -Proj $p16pa3
+New-HandoverSnapshot -Proj $p16pa3 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/workshop/product-domain.md'
+$t16pa3 = New-Transcript -Proj $p16pa3 -Turns @(@{ role = 'assistant'; text = "Preparing lens 1 of 4: architecture-core`n`nArchitecture-Core Lens`n`nWould you like all three decisions at once or one at a time?" })
+$r16pa3 = Invoke-Conformance -Proj $p16pa3 -TranscriptPath $t16pa3
+if (-not $r16pa3.Blocked -or $r16pa3.Out -match 'five-part context packet') { Fail "Case 16pa3: opening lens 1 before the agenda decision MUST get a targeted correction, never the generic packet. Out: $($r16pa3.Out)" }
+if ($r16pa3.Out -notmatch 'WORKSHOP AGENDA NOT CONFIRMED' -or $r16pa3.Out -notmatch 'every skipped technical lens' -or
+    $r16pa3.Out -notmatch 'whether to confirm or change' -or $r16pa3.Out -notmatch 'confirm-workshop-agenda\.ps1') {
+    Fail "Case 16pa3: correction must restore selected+skipped visibility, human choice, and governed persistence. Out: $($r16pa3.Out)"
+}
+Write-Pass "Case 16pa3: a premature technical lens restores the complete agenda decision without a duplicate packet"
 
 $p16pb = New-Fixture -Working 'plan' -LastAuth 'clarify'
 New-Spec -Proj $p16pb

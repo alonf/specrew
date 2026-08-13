@@ -81,4 +81,17 @@ exit `$LASTEXITCODE
         }
         ($missing -join ', ') | Should -BeNullOrEmpty -Because 'every deploy-squad-runtime source must be in the Specrew.psd1 FileList, else the packaged deploy fails or silently drops runtime files'
     }
+
+    It 'the staged package deploys the governed workshop scripts and complete technical-lens catalog into a clean consumer' {
+        $project = Join-Path $TestDrive ('extension-proj-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $project '.specify') -Force | Out-Null
+        $deploy = Join-Path $script:StageRoot 'extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1'
+        $out = & (Get-Process -Id $PID).Path -NoProfile -NonInteractive -File $deploy -ProjectPath $project 2>&1
+        $LASTEXITCODE | Should -Be 0 -Because "the packaged extension deploy must succeed (output: $($out -join ' | '))"
+        $deployed = Join-Path $project '.specify/extensions/specrew-speckit'
+        Test-Path -LiteralPath (Join-Path $deployed 'scripts/create-governed-feature.ps1') -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $deployed 'scripts/initialize-workshop-controller-state.ps1') -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $deployed 'scripts/confirm-workshop-agenda.ps1') -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $deployed 'knowledge/design-lenses/index.yml') -PathType Leaf | Should -BeTrue -Because 'the agenda writer validates selected+skipped coverage against the consumer-side catalog'
+    }
 }

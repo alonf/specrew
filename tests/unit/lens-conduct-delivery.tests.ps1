@@ -147,6 +147,9 @@ Write-Pass 'skill component-map: prescriptive fill-in template (diagram + vocabu
 # crammed the lens list into the menu question instead of rendering the agenda-with-decisions in-band). Same
 # template lever as the component map (prose skimmed -> template holds).
 Assert-Match -Text $skill -Pattern '(?i)Workshop agenda' 'skill agenda: a fill-in agenda template (rendered in-band before the confirm menu, not crammed into the menu question)'
+Assert-Match -Text $skill -Pattern '(?i)One `Skipped:` line is required for \*\*every\*\* technical lens' 'skill agenda: every omitted lens is visible with a reason, never hidden behind the selected count'
+Assert-Match -Text $skill -Pattern '(?i)whether the human wants to confirm or\s+change the selection' 'skill agenda: the selected and skipped set is a human decision before lens 1'
+Assert-Match -Text $skill -Pattern 'confirm-workshop-agenda\.ps1' 'skill agenda: confirmation uses the governed complete-coverage writer rather than hand-editing controller state'
 Assert-Match -Text $skill -Pattern '(?i)the decision this lens will ask' 'skill agenda: the agenda template carries each lens depth + the concrete decision it raises (not just the name)'
 Write-Pass 'skill agenda: prescriptive fill-in agenda template (lenses + depth + per-lens decision, render-before-menu) — the testLenses11 agenda-render fix'
 # A8 / FR-041 (i12 + Beta2 manual test): render-before-menu conduct is defeated on Claude by
@@ -183,6 +186,9 @@ $govPath = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\coord
 Assert-True (Test-Path -LiteralPath $govPath) "coordinator-governance template exists ($govPath)"
 $gov = Get-Content -LiteralPath $govPath -Raw
 Assert-Match -Text $gov -Pattern '(?i)every selected lens' 'governance A7: intake not complete until every selected lens is resolved (FR-038 stopping rule)'
+Assert-Match -Text $gov -Pattern '(?i)every omitted technical lens with a feature-specific reason' 'governance agenda: every skipped technical lens is rendered with its reason before lens 1'
+Assert-Match -Text $gov -Pattern '(?i)whether to confirm or change that selection' 'governance agenda: the human confirms or changes the selected and skipped set before lens 1'
+Assert-Match -Text $gov -Pattern '(?i)selected count alone is not an agenda' 'governance agenda: a selected lens count cannot stand in for the reviewable agenda'
 Assert-Match -Text $gov -Pattern '(?i)specific enough' 'governance A7: do not declare intake specific-enough early (the root-cause lever)'
 Assert-Match -Text $gov -Pattern '(?i)background sub-agent|backfill' 'governance A7: do not delegate to a background sub-agent / backfill'
 Assert-Match -Text $gov -Pattern '(?i)confirmation_scope' 'governance #2212: scoped confirmation field is documented'
@@ -192,6 +198,7 @@ Assert-True (Test-Path -LiteralPath $govMirrorPath) "project-local coordinator-g
 $govMirror = Get-Content -LiteralPath $govMirrorPath -Raw
 Assert-Match -Text $govMirror -Pattern '(?i)confirmation_scope' 'governance mirror #2212: scoped confirmation field is documented'
 Assert-Match -Text $govMirror -Pattern '(?i)Lens approval is not workshop-question approval' 'governance mirror #2212: lens/agenda approval cannot stand in for workshop-question approval'
+Assert-Match -Text $govMirror -Pattern '(?i)every omitted technical lens with a feature-specific reason' 'governance mirror agenda: every skipped technical lens is rendered with its reason before lens 1'
 Write-Pass 'governance A7/#2212: stopping-completeness rule plus scoped confirmation is in shipped and project-local coordinator guidance'
 
 # Rule 9a carries the A7 clause (the launch-prompt pointer names A7 + the provenance gate)

@@ -372,6 +372,42 @@ function Get-SpecrewWorkshopLifecycleState {
         }
         $records = $workshopProperty.Value
 
+        # New beta3 workshops opt into complete agenda coverage. This is intentionally marker-gated so historical
+        # v1/v2 workshop records stay readable, while every freshly initialized feature must account for the whole
+        # technical-lens catalog: selected lenses carry depth + a concrete decision, omitted lenses carry a visible
+        # reason, and the exact selection carries human confirmation before lens 1 can become current.
+        $agendaContract = $null
+        $agendaContractProperty = $applicability.PSObject.Properties['agenda_contract']
+        if ($agendaContractProperty) {
+            if ($agendaContractProperty.Value -isnot [string] -or [string]$agendaContractProperty.Value -cne 'complete-coverage-v1') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-contract-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $agendaContract = [string]$agendaContractProperty.Value
+        }
+
+        $agenda = $null
+        $skipped = $null
+        $agendaConfirmation = $null
+        $agendaConfirmationScope = $null
+        if ($agendaContract -eq 'complete-coverage-v1') {
+            foreach ($mapName in @('agenda', 'skipped')) {
+                $mapProperty = $applicability.PSObject.Properties[$mapName]
+                if (-not $mapProperty -or $null -eq $mapProperty.Value -or $mapProperty.Value -is [System.Array] -or
+                    $mapProperty.Value -is [string] -or $mapProperty.Value -is [ValueType]) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason ("workshop-{0}-map-invalid" -f $mapName) -Selected $selected -AgendaStatus $agendaStatus
+                }
+                if ($mapName -eq 'agenda') { $agenda = $mapProperty.Value } else { $skipped = $mapProperty.Value }
+            }
+            $agendaConfirmationProperty = $applicability.PSObject.Properties['agenda_confirmation']
+            $agendaConfirmationScopeProperty = $applicability.PSObject.Properties['agenda_confirmation_scope']
+            if (-not $agendaConfirmationProperty -or $agendaConfirmationProperty.Value -isnot [string] -or
+                -not $agendaConfirmationScopeProperty -or $agendaConfirmationScopeProperty.Value -isnot [string]) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-confirmation-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $agendaConfirmation = [string]$agendaConfirmationProperty.Value
+            $agendaConfirmationScope = [string]$agendaConfirmationScopeProperty.Value
+        }
+
         if ($agendaStatus -eq 'pending-confirmation') {
             if ($scope -ne 'feature') {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-iteration-invalid' -Selected $selected -AgendaStatus $agendaStatus
@@ -381,6 +417,14 @@ function Get-SpecrewWorkshopLifecycleState {
             }
             if (@($records.PSObject.Properties).Count -ne 0) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-records-invalid' -AgendaStatus $agendaStatus
+            }
+            if ($agendaContract -eq 'complete-coverage-v1') {
+                if (@($agenda.PSObject.Properties).Count -ne 0 -or @($skipped.PSObject.Properties).Count -ne 0) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-coverage-invalid' -AgendaStatus $agendaStatus
+                }
+                if ($agendaConfirmation -cne 'pending' -or $agendaConfirmationScope -cne 'lens-selection') {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-confirmation-invalid' -AgendaStatus $agendaStatus
+                }
             }
 
             $specPath = Join-Path $featureRoot 'spec.md'
@@ -403,6 +447,51 @@ function Get-SpecrewWorkshopLifecycleState {
         foreach ($lens in $selected) {
             if ($lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$' -or -not $seenSelected.Add($lens)) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-selected-lens-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+        }
+
+        if ($agendaContract -eq 'complete-coverage-v1') {
+            if ($agendaConfirmation -cne 'human-confirmed' -or $agendaConfirmationScope -cne 'lens-selection') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-confirmation-invalid' -Selected $selected -AgendaStatus $agendaStatus
+            }
+
+            $catalogPath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/knowledge/design-lenses/index.yml'
+            if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-lens-catalog-missing' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            $technicalCatalog = @(
+                Get-Content -LiteralPath $catalogPath -Encoding UTF8 -ErrorAction Stop |
+                    ForEach-Object {
+                        if ($_ -cmatch '^\s*-\s+id:\s*([a-z][a-z0-9-]{1,63})\s*$') { $Matches[1] }
+                    } |
+                    Where-Object { $_ -and $_ -cne 'product-domain' }
+            )
+            if ($technicalCatalog.Count -eq 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-lens-catalog-empty' -Selected $selected -AgendaStatus $agendaStatus
+            }
+
+            $agendaNames = @($agenda.PSObject.Properties | ForEach-Object { [string]$_.Name })
+            $skippedNames = @($skipped.PSObject.Properties | ForEach-Object { [string]$_.Name })
+            if ($agendaNames.Count -ne $selected.Count -or @(Compare-Object -ReferenceObject $selected -DifferenceObject $agendaNames -SyncWindow 0).Count -gt 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-selected-mismatch' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            foreach ($lens in $selected) {
+                $agendaEntry = $agenda.PSObject.Properties[$lens].Value
+                if ($agendaEntry -is [System.Array] -or $agendaEntry -is [string] -or $agendaEntry -is [ValueType] -or
+                    -not $agendaEntry.PSObject.Properties['depth'] -or [string]$agendaEntry.depth -cnotin @('full', 'medium', 'light') -or
+                    -not $agendaEntry.PSObject.Properties['decision'] -or [string]::IsNullOrWhiteSpace([string]$agendaEntry.decision)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-selected-entry-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+            foreach ($lens in $skippedNames) {
+                if ($lens -cin $selected -or [string]::IsNullOrWhiteSpace([string]$skipped.PSObject.Properties[$lens].Value)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-skipped-entry-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+            $coverageNames = @($agendaNames + $skippedNames)
+            if ($coverageNames.Count -ne $technicalCatalog.Count -or
+                @(Compare-Object -ReferenceObject $technicalCatalog -DifferenceObject $coverageNames).Count -gt 0) {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-coverage-incomplete' -Selected $selected -AgendaStatus $agendaStatus
             }
         }
 

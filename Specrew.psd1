@@ -110,6 +110,8 @@
         'extensions/specrew-speckit/scripts/capability-detector.ps1',
         'extensions/specrew-speckit/scripts/collision-detect.ps1',
         'extensions/specrew-speckit/scripts/conformance-turn-delta.ps1',
+        'extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1',
+        'extensions/specrew-speckit/scripts/create-governed-feature.ps1',
         'extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1',
         'extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1',
         'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1',

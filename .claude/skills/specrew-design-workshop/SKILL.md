@@ -193,13 +193,20 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    name); render the whole filled block in your message, THEN ask the human to confirm or adjust it. On Claude,
    render numbered typed choices in prose and wait for the human; on another host, a structured confirm menu may
    reference the already-visible block.
-   **The moment the human confirms the agenda, PERSIST it (F-174 — before opening lens 1):** write the
-   feature-level `lens-applicability.json` NOW by replacing the pre-agenda shape with
-   `workshop_intake: true`, `confirmation_required: true`, `agenda_status: confirmed`, and the confirmed
-   nonempty `selected` lens-id list (the per-lens `workshop` records are added later, as each lens completes per
-   step 6). A resume can only compute the remaining agenda if the agenda itself is on disk; an agenda that lives
-   only in the scrollback is lost on exit (observed: an unpersisted agenda made a resuming host re-run specify
-   instead of continuing the workshop).
+   **Show the negative selection too.** One `Skipped:` line is required for **every** technical lens that is not
+   selected, with a feature-specific reason. Then ask, in plain language, whether the human wants to confirm or
+   change the selection. The first lens must not open on the same turn as the agenda: typed human confirmation is
+   the transition. A count such as "5 lenses" is not reviewable unless the omitted set is visible too.
+   **The moment the human confirms the agenda, PERSIST it (F-174 — before opening lens 1):** use the governed
+   writer rather than hand-editing controller state. Build one JSON object shaped as
+   `{"selected":[{"lens":"architecture-core","depth":"medium","decision":"..."}],"skipped":[{"lens":"ui-ux","reason":"..."}]}`
+   and invoke `& .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 -ProjectRoot . -FeatureRef <feature> -AgendaJson $agendaJson`.
+   The writer changes `agenda_status` to `confirmed` only when selected + skipped cover the whole deployed
+   technical-lens catalog and records `agenda_confirmation: human-confirmed` with
+   `agenda_confirmation_scope: lens-selection`. It refuses incomplete coverage. The per-lens `workshop` records
+   are added later, as each lens completes per step 6. A resume can only compute the remaining agenda if the agenda
+   itself is on disk; an agenda that lives only in scrollback is lost on exit (observed: an unpersisted agenda made
+   a resuming host re-run specify instead of continuing the workshop).
    **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
    lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
    all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as

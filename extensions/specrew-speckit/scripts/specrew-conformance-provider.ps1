@@ -470,7 +470,7 @@ function Resolve-SpecrewWorkshopQuestionPause {
         [AllowNull()][string]$LastAssistantText,
         [bool]$HasPendingVerdict
     )
-    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; question = $null; message_hash = $null; artifact_path = $null; binding_conflict = $null }
+    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; agenda_status = $null; question = $null; message_hash = $null; artifact_path = $null; binding_conflict = $null }
     try {
         if ($HasPendingVerdict) { $result.reason = 'lifecycle-boundary-overrides-workshop'; return $result }
         if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef)) { return $result }
@@ -526,6 +526,7 @@ function Resolve-SpecrewWorkshopQuestionPause {
         $result.feature_ref = $ActiveFeatureRef
         $result.iteration_number = if ($scope -eq 'iteration') { $iteration } else { $null }
         $result.lens = [string]$state.current_lens
+        $result.agenda_status = [string]$state.agenda_status
         $result.question = $question
         $result.message_hash = Get-SpecrewFireIdentity -Parts @($scope, $ActiveFeatureRef, $iteration, [string]$state.current_lens, [string]$LastAssistantText)
         $result.artifact_path = [string]$state.artifact_path
@@ -842,12 +843,18 @@ try {
     $workshopConflictState = $false
     $workshopRepairState = $false
     $workshopRepairReasons = @('workshop-decision-bindings-invalid', 'workshop-code-implementation-manifest-missing', 'workshop-code-implementation-manifest-invalid')
+    $missingWorkshopController = $false
+    $workshopAgendaPresentationMissing = $false
     if ($hasPending -or $anySpec -or $rawHit -or $materialStop) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $null -HasPendingVerdict $hasPending
         $workshopStateInProgress = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
         $workshopConflictState = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
         $workshopRepairState = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -in $workshopRepairReasons)
+        $changedPathsForWorkshopRepair = @()
+        try { $changedPathsForWorkshopRepair = @($materialSignal.changed_paths | ForEach-Object { ([string]$_).Replace([char]92, [char]47) }) } catch { $changedPathsForWorkshopRepair = @() }
+        $productDomainRecordChanged = @($changedPathsForWorkshopRepair | Where-Object { $_ -match '(^|/)workshop/product-domain\.(md|yml)$' }).Count -gt 0
+        $missingWorkshopController = ($productDomainRecordChanged -and $materialStop -and -not $hasPending -and -not $hasActiveLifecycleBoundary -and [string]::IsNullOrWhiteSpace($activeIterationNumber) -and $null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-applicability-absent')
     }
 
     # --- EXPENSIVE transcript parse ONLY on a MATERIAL-TURN stop (T099/FR-040, design N3): the per-line
@@ -862,7 +869,7 @@ try {
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
     }
-    if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState -or $workshopRepairState) {
+    if ($hasPending -or $boundaryUnrecordable -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey) -or $workshopStateInProgress -or $workshopConflictState -or $workshopRepairState -or $missingWorkshopController) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
             $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
@@ -910,6 +917,13 @@ try {
     $workshopIntermediate = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
     $workshopConflict = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
     $workshopRepair = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -in $workshopRepairReasons)
+    if ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid -and
+        [string]$workshopQuestion.agenda_status -eq 'pending-confirmation' -and
+        [string]$workshopQuestion.lens -eq 'product-domain' -and
+        -not [string]::IsNullOrWhiteSpace($lastAssistantText)) {
+        $technicalLensHeading = $lastAssistantText -match '(?im)^\s*(?:preparing\s+)?(?:lens\s+\d+\s+of\s+\d+\s*[:—-]\s*)?(?:architecture-core|requirements-nfr|data-storage|ui-ux|devops-operations|integration-api|security-compliance|observability-resilience|component-design|code-implementation)(?:\s+lens)?\b'
+        if ($technicalLensHeading) { $workshopAgendaPresentationMissing = $true }
+    }
     if ($workshopIntermediate -or $workshopConflict -or $workshopRepair) { $rawHit = $false }
     # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.
     # It was an UNCONFIRMED mitigation (the instrumented false-negative never reproduced) and it taxed every
@@ -994,7 +1008,7 @@ try {
     # refusal composed, and the stale marker could feed verdict capture. The refusal now keys on
     # $hasPending directly: while the stage owes evidence it has not produced, the missing-evidence
     # block composes regardless of any marker already in the transcript.
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1003,7 +1017,7 @@ try {
     # ($blockKind -eq 'material' -and $canAssess). BOUNDARY stops, 'none', an unavailable classifier, and EVERY error
     # leave $stopIntentOutcome at its 'real' default -> today's real-stop enforcement is preserved byte-for-byte. The
     # classifier is dot-sourced fail-open: the ONE pure, self-contained contract file (sibling of bootstrap; no _load).
-    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } else { 'real' }
+    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing) { 'workshop-repair' } else { 'real' }
     $stopIntentReason = $null
     $stopIntentContinueKey = $null
     $stopIntentContinueCount = 0
@@ -1041,7 +1055,10 @@ try {
             $workshopRecordOnlyTurn = (@($outsideWorkshop).Count -eq 0)
         }
     }
-    $workshopQuestionWins = $workshopIntermediate -and (($blockKind -ne 'material') -or $workshopRecordOnlyTurn)
+    # A valid pre-agenda controller normally proves an intermediate question. It must not suppress the targeted
+    # repair when the visible turn nevertheless opened a technical lens before the agenda decision: the state is
+    # valid precisely because it still says product-domain/pending-confirmation, which is the evidence of drift.
+    $workshopQuestionWins = $workshopIntermediate -and (-not $workshopAgendaPresentationMissing) -and (($blockKind -ne 'material') -or $workshopRecordOnlyTurn)
     if ($workshopQuestionWins) {
         $stopIntentOutcome = 'workshop-intermediate'
         $stopIntentReason = [string]$workshopQuestion.reason
@@ -1115,7 +1132,8 @@ try {
         ("workshop-conflict|{0}|{1}|{2}|{3}" -f [string]$workshopQuestion.feature_ref, [string]$conflict.binding, [string]$conflict.prior_value, [string]$conflict.value)
     }
     elseif ($blockKind -eq 'workshop-repair') {
-        ("workshop-repair|{0}|{1}" -f [string]$workshopQuestion.feature_ref, [string]$workshopQuestion.reason)
+        $repairReason = if ($workshopAgendaPresentationMissing) { 'workshop-agenda-not-confirmed' } else { [string]$workshopQuestion.reason }
+        ("workshop-repair|{0}|{1}" -f [string]$workshopQuestion.feature_ref, $repairReason)
     }
     # certify f3: boundary-evidence-absent and boundary-unrecordable get their OWN advance keys so
     # the cap tracks each refused surface distinctly instead of pooling them under 'na'.
@@ -1197,6 +1215,12 @@ try {
                 if ([string]$workshopQuestion.reason -eq 'workshop-decision-bindings-invalid') {
                     $badBinding = $workshopQuestion.binding_conflict
                     [void]$sb.AppendLine(("Specrew: WORKSHOP RECORD INVALID - binding '{0}' has value '{1}' in lens '{2}'. Binding keys and token values use lowercase stable tokens (for example `ihttpclientfactory`, not `IHttpClientFactory`). Repair lens-applicability.json, verify the durable workshop state, then present the current lens question again. Do not render the generic five-part packet and do not move to another lens first." -f $badBinding.binding, $badBinding.value, $badBinding.lens))
+                }
+                elseif ([string]$workshopQuestion.reason -eq 'workshop-applicability-absent') {
+                    [void]$sb.AppendLine(("Specrew: WORKSHOP CONTROLLER MISSING - initialize the empty pre-agenda state now with `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/initialize-workshop-controller-state.ps1 -ProjectRoot . -FeatureRef {0}`, then present the current workshop question again. Do not render the generic five-part packet and do not move to another lens first." -f [string]$workshopQuestion.feature_ref))
+                }
+                elseif ($workshopAgendaPresentationMissing) {
+                    [void]$sb.AppendLine('Specrew: WORKSHOP AGENDA NOT CONFIRMED - do not open a technical lens yet. Show the complete agenda first: every selected lens with depth and its concrete decision, every skipped technical lens with a feature-specific reason, then ask the human whether to confirm or change that selection. After their typed confirmation, persist it with confirm-workshop-agenda.ps1; only then open lens 1. Do not render the generic five-part packet.')
                 }
                 else {
                     [void]$sb.AppendLine('Specrew: WORKSHOP RECORD INCOMPLETE - the code-implementation lens is marked complete but its required implementation-rules.yml manifest is missing or empty. Create the schema-valid manifest beside lens-applicability.json, verify the durable workshop state, then present the current lens question again. Do not render the generic five-part packet and do not move to another lens first.')

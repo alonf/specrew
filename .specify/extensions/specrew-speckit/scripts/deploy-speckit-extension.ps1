@@ -388,6 +388,7 @@ $itemsToCopy = @(
     @{ Name = 'refocus-scopes.json'; Optional = $false }
     # specrew-self-ok: Specrew's own update path - the module genuinely installs from this registry
     @{ Name = 'hooks';           Optional = $true  }   # PSGallery drops empty .gitkeep dirs
+    @{ Name = 'knowledge';       Optional = $false }
     @{ Name = 'scripts';         Optional = $false }
     @{ Name = 'templates';       Optional = $false }
     @{ Name = 'squad-templates'; Optional = $false }

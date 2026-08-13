@@ -14,7 +14,7 @@ tempting and the assumptions it hides are the ones nobody notices.
 
 **The rest of the lifecycle runs through the governed commands.** Plan, tasks and implement go through
 the per-boundary speckit commands where the host exposes them, otherwise the governed lifecycle scripts:
-`.specify/scripts/powershell/create-new-feature.ps1`, `validate-governance.ps1`, and the `sync-*`
+`.specify/extensions/specrew-speckit/scripts/create-governed-feature.ps1`, `validate-governance.ps1`, and the `sync-*`
 boundary wrappers. Those scripts and commands are the machinery of this project. The raw, un-governed
 `specify.exe workflow` and the bundled SDD automation bypass the boundary gates and are not used here —
 the Specrew-governed scripts above are not that.

@@ -65,11 +65,16 @@ if (Test-Path -LiteralPath $statePath) {
 }
 
 $state = [ordered]@{
-    schema_version        = '1.0'
+    schema_version        = '1.1'
     workshop_intake       = $true
     confirmation_required = $true
+    agenda_contract       = 'complete-coverage-v1'
     agenda_status         = 'pending-confirmation'
     selected              = @()
+    agenda                = [ordered]@{}
+    skipped               = [ordered]@{}
+    agenda_confirmation   = 'pending'
+    agenda_confirmation_scope = 'lens-selection'
     workshop              = [ordered]@{}
 }
 $json = ($state | ConvertTo-Json -Depth 6) + [Environment]::NewLine
