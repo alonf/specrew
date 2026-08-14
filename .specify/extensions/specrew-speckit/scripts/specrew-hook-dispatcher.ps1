@@ -79,6 +79,51 @@ function Write-DispatcherWarn {
     [Console]::Error.WriteLine(("{0} WARN {1} {2}" -f $script:Banner, $Code, $Message))
 }
 
+function Get-DispatcherHookOutputHash {
+    param([AllowEmptyString()][string]$Text)
+    $bytes = [Text.Encoding]::UTF8.GetBytes(([string]$Text).Trim())
+    return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
+}
+
+function Write-DispatcherHookOutputAuthorityRecord {
+    # SPECREW-AUTHORITY-CONTROL: workshop-hook-output-identity
+    # The workshop authority reader rejects UserPromptSubmit text whose hash was emitted by this
+    # dispatcher. Record both the human-visible payload/reason and the host envelope so replay remains
+    # non-authoritative whether a host submits the inner text or its transport representation.
+    param(
+        [AllowNull()][string]$ProjectRoot,
+        [AllowEmptyString()][string]$Text,
+        [string]$EventName,
+        [string]$OutputKind
+    )
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or [string]::IsNullOrWhiteSpace($Text)) { return }
+    $runtimeDir = Join-Path $ProjectRoot '.specrew/runtime'
+    $journalPath = Join-Path $runtimeDir 'hook-output-authority.jsonl'
+    $unhealthyPath = $journalPath + '.unhealthy'
+    try {
+        [IO.Directory]::CreateDirectory($runtimeDir) | Out-Null
+        $record = [ordered]@{
+            schema_version = '1.0'
+            output_hash = Get-DispatcherHookOutputHash -Text $Text
+            event = $EventName
+            host = $HostKind
+            output_kind = $OutputKind
+            observed_at = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        $line = ($record | ConvertTo-Json -Depth 4 -Compress) + [Environment]::NewLine
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes($line)
+        $stream = [IO.File]::Open($journalPath, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        try { $stream.Write($bytes, 0, $bytes.Length); $stream.Flush($true) }
+        finally { $stream.Dispose() }
+    }
+    catch {
+        # The reader treats this marker as fail-closed during an active workshop. A failed journal write
+        # therefore becomes visible and cannot silently turn replayed hook prose into human authority.
+        try { [IO.File]::WriteAllText($unhealthyPath, $_.Exception.Message, [Text.UTF8Encoding]::new($false)) } catch { $null = $_ }
+        Write-DispatcherWarn -Code 'HOOK_OUTPUT_AUTHORITY_JOURNAL_FAILED' -Message $_.Exception.Message
+    }
+}
+
 function Get-DispatcherFragmentPriority {
     param([string]$ProviderId)
     switch ($ProviderId) {
@@ -695,7 +740,7 @@ function Get-RefocusProviderArgs {
 }
 
 function Write-InjectionOutput {
-    param([string]$EventName, [string]$Payload, $Binding)
+    param([string]$EventName, [string]$Payload, $Binding, [AllowNull()][string]$ProjectRoot)
     # F-174 iter-11 (P2): cap-overflow observability. Every current hook host caps its output (claude STDOUT +
     # additionalContext at 10,000 chars on v2.1.177; codex drops oversized additionalContext; copilot/cursor
     # caps unverified-but-suspected). When the ASSEMBLED payload (all provider fragments joined - the bootstrap
@@ -711,39 +756,43 @@ function Write-InjectionOutput {
     # (RefocusHookBindings.DispatcherRuntime.OutputShape). The dispatcher only
     # knows generic envelope strategies; adding or changing a host updates the
     # manifest, not this core switch.
+    $renderedOutput = $null
     if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
-        @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
-        return
+        $renderedOutput = @{} | ConvertTo-Json -Depth 3 -Compress
     }
-
     $outputShape = [string](Get-DispatcherMapValue -Map $Binding -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
-    switch ($outputShape) {
+    if ($null -eq $renderedOutput) { switch ($outputShape) {
         'injectSteps' {
             if (-not [string]::IsNullOrWhiteSpace($Payload)) {
-                @{ injectSteps = @(@{ ephemeralMessage = $Payload }) } | ConvertTo-Json -Depth 6 -Compress | Write-Output
+                $renderedOutput = @{ injectSteps = @(@{ ephemeralMessage = $Payload }) } | ConvertTo-Json -Depth 6 -Compress
             }
             else {
-                @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
+                $renderedOutput = @{} | ConvertTo-Json -Depth 3 -Compress
             }
         }
         'hookSpecificOutput' {
-            @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
+            $renderedOutput = @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress
         }
         'additionalContext' {
-            @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+            $renderedOutput = @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress
         }
         'additional_context' {
-            @{ additional_context = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+            $renderedOutput = @{ additional_context = $Payload } | ConvertTo-Json -Depth 3 -Compress
         }
         default {
             if ($EventName -in @('PostToolUse', 'UserPromptSubmit')) {
-                @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
+                $renderedOutput = @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress
             }
             else {
-                Write-Output $Payload
+                $renderedOutput = $Payload
             }
         }
+    } }
+    Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Payload -EventName $EventName -OutputKind 'payload'
+    if (([string]$renderedOutput).Trim() -cne ([string]$Payload).Trim()) {
+        Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
     }
+    Write-Output $renderedOutput
 }
 
 function Write-DecisionOnlyNoopIfNeeded {
@@ -762,15 +811,18 @@ function Write-StopBlockOutput {
     # Per-host shape is the verified capability matrix (research/stop-block-capability-matrix.md). Writes ONLY the
     # envelope JSON (no return value - the caller guards $Shape against $script:SpecrewStopBlockShapes first, so a
     # leaked return cannot corrupt the hook stdout the host parses).
-    param([string]$Shape, [string]$Reason)
-    switch ($Shape) {
+    param([string]$Shape, [string]$Reason, [AllowNull()][string]$ProjectRoot)
+    $renderedOutput = switch ($Shape) {
         # claude / codex / copilot: a hard deny that prevents turn-end and force-continues using reason.
-        'decision-block' { @{ decision = 'block'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+        'decision-block' { @{ decision = 'block'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress }
         # antigravity: decision=continue re-enters the loop; any other value allows the stop (soft block).
-        'decision-continue' { @{ decision = 'continue'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+        'decision-continue' { @{ decision = 'continue'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress }
         # cursor: no same-turn hard block; followup_message auto-submits a NEW user turn (best-effort degrade).
-        'followup-message' { @{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+        'followup-message' { @{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress }
     }
+    Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $Event -OutputKind 'payload'
+    Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $Event -OutputKind 'envelope'
+    Write-Output $renderedOutput
 }
 
 # ---------------------------------------------------------------------------
@@ -1235,17 +1287,17 @@ try {
         $alreadyContinuing = [bool](Get-DispatcherMapValue -Map $hostEvent -Key 'stop_hook_active' -Default $false)
         $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
         if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
-            Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason
+            Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot
             exit 0
         }
         # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).
     }
 
     if ($fragments.Count -gt 0) {
-        Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -Binding $hostRuntimeBinding
+        Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
     }
     elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
-        Write-InjectionOutput -EventName $Event -Payload '' -Binding $hostRuntimeBinding
+        Write-InjectionOutput -EventName $Event -Payload '' -Binding $hostRuntimeBinding -ProjectRoot $projectRoot
     }
     exit 0
 }

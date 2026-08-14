@@ -22,10 +22,43 @@
 
 ## Summary
 
-**Total drift events**: 40 (DRIFT-199-I001-001 through -040)
+**Total drift events**: 42 (DRIFT-199-I001-001 through -042)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-042 — follow-up review found missing structural closure and instrument gaps (implementation resolved; exact-snapshot verification pending)
+
+- **Observed**: 2026-08-15, follow-up review after DRIFT-041. The workshop hook-output
+  journal had a reader but no production writer; continuous co-review still contained
+  bypasses around the shared path comparer; authority-control guards relied on a remembered
+  list; the provider-free Tier-2 harness dry run was absent from CI; no deterministic
+  boundary preflight joined push, dirty-writer, task/state, and owed-artifact facts; and new
+  drift records did not require a class-closure statement.
+- **Validated correction**: the claim that the default `AcceptPort` and `GateSyncPort` had
+  never executed was stale. `campaign-stop-here-real-ports.Tests.ps1` already exercises all
+  three default ports end to end, and its three cases remain green. No duplicate fixture was
+  added.
+- **Resolution**: the dispatcher now journals both semantic hook prose and its exact host
+  envelope before emission, with an unhealthy marker that makes journal-write failure loud;
+  the workshop authority reader rejects recorded replay independent of wording. Continuous
+  co-review hard-loads the volume-aware comparer through the remaining consumers and guards
+  against OS-family folding or hard-coded case-insensitive path sets. The authority guard
+  derives producer and consumer IDs from source markers and requires exact set equality.
+  The Tier-2 five-host dry run now runs in CI without provider invocation. A new boundary
+  preflight refuses deterministic push, dirty-product, task/state, and owed-artifact defects
+  before state mutation. New drift logs use schema v2 and require `Class closure`, including
+  a reason when the value is `NONE`.
+- **Focused proof**: the first focused batch finished 35 passed, 1 failed structural-shape
+  assertion, and 1 intentional skip; after normalizing that load shape the path suite passed
+  17 with 1 intentional skip. The deep focused batch then passed 294 with 2 intentional
+  skips and zero failures. It covers signoff evidence and wiring, campaign pause/budget,
+  corrupt-store handling, reparse admission, provider mirrors, all host code-rule copies,
+  hook health, verification-plan bootstrap, lifecycle sync, and the five-host dry run.
+- **Class closure**: source-discovered producer/consumer equality, canonical comparer-load
+  guards, mandatory v2 drift validation, CI execution of the provider-free host contract,
+  and boundary-time preflight make an omitted consumer, local path fallback, undocumented
+  recurrence, host contract drift, or deterministic pre-boundary contradiction fail loudly.
 
 ### DRIFT-199-I001-041 — deep review found authority controls that were computed but not consumed (implementation resolved; broad verification pending)
 
@@ -47,13 +80,16 @@ recorded maintainer ruling, so a single rate here would misstate them.
   `.specrew/verification-plan.json` plus the non-executable
   `.specrew/verification-plan.templates.md` sidecar. This preserves the closed JSON contract
   instead of adding unknown documentation-only fields to executable authority.
-- **Permanent class guard**: `authority-control-consumer-guard.Tests.ps1` inspects executable
-  AST nodes for the budget, absent-review, agenda-hash, human-override, and corrupt-store
-  consumers. It does not accept comments as proof.
+- **Permanent class guard**: `authority-control-consumer-guard.Tests.ps1` derives and joins
+  source markers for the budget, absent-review, agenda-hash, human-override, corrupt-store,
+  and hook-output-identity controls. It does not accept comments as proof.
 - **Focused proof**: pause core 37/37; public campaign command 22/22; signoff wiring 22/22;
-  authority-control guard 5/5; workshop typed-turn assertions 20/20; runtime-resolution
+  authority-control guard 7/7; workshop typed-turn assertions 20/20; runtime-resolution
   assertions all green. Broad registry/package/harness verification remains required before
   a manual-test project is created.
+- **Class closure**: each authority decision is paired with a production consumer marker;
+  the derived guard requires a nonzero floor and exact producer/consumer set equality, so a
+  newly computed control without an enforcement reader fails without editing a test list.
 
 ### DRIFT-199-I001-040 — the first workshop scaffold triggered a material packet that could authorize itself (implementation resolved; manual walk pending)
 

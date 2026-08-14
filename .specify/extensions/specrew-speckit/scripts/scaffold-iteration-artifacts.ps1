@@ -643,7 +643,7 @@ $baselineRef = Get-BaselineRef -SpecDirectory $resolvedSpecDirectory
 $stateContent = @"
 # Iteration State: $IterationNumber
 
-**Schema**: v1
+**Schema**: v2
 **Last Completed Task**: (none)
 **Tasks Remaining**: $tasksRemaining
 **In Progress**: (none)
@@ -679,7 +679,7 @@ $stateContent = @"
 $driftLogContent = @"
 # Drift Log: Iteration $IterationNumber
 
-**Schema**: v1
+**Schema**: v2
 
 <!--
   Markdown authoring note (Specrew lifecycle convention):
@@ -708,6 +708,15 @@ $driftLogContent = @"
 ## Events
 
 No specification drift detected during Iteration $IterationNumber execution to date.
+
+<!--
+  Every new `### DRIFT-...` event includes:
+
+  - **Class closure**: the executable mechanism that makes the next instance impossible or loud
+
+  If the change fixes only this instance, write `NONE — <why class closure is not in scope>`.
+  A bare `Resolution: FIXED` is not class closure.
+-->
 
 ### Resolution Strategies (Unused)
 

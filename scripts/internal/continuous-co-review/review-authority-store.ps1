@@ -460,6 +460,7 @@ function Publish-ReviewRunResultFact {
 }
 
 function Get-ReviewAuthorityCampaignRunResults {
+    # SPECREW-AUTHORITY-CONTROL: authority-store-read-failure
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$StoreRoot,

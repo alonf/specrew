@@ -22,7 +22,8 @@ This directive applies to all agents executing tasks within a Specrew-governed i
 
 2. **Report drift immediately**
    - If drift is detected, append or update `iterations/NNN/drift-log.md`
-   - Record the task ID, requirement reference, deviation, severity, and chosen resolution path
+   - Record the task ID, requirement reference, deviation, severity, chosen resolution path, and **Class closure**
+   - Class closure names the executable mechanism that makes the next instance impossible or loud; if there is none, record `NONE — <why>` rather than implying an instance fix closed the class
    - Notify the Spec Steward before treating the task as finished
 
 3. **Do not normalize deviations**

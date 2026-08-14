@@ -138,6 +138,7 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
         $treeId = [string]$decision.current_tree_id
         $campaignId = if ($decision.PSObject.Properties['campaign_id']) { [string]$decision.campaign_id } else { '' }
         if (-not [string]::IsNullOrWhiteSpace($treeId) -and -not [string]::IsNullOrWhiteSpace($campaignId)) {
+            # SPECREW-AUTHORITY-CONSUMER: partial-review-signoff
             $capturedOverride = Get-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $ProjectRoot `
                 -ExpectedTargetTreeId $treeId -ExpectedCampaignId $campaignId
             if ($null -ne $capturedOverride) {

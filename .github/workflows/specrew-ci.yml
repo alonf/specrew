@@ -220,6 +220,10 @@ jobs:
         timeout-minutes: 15
         run: pwsh -NoProfile -File ./tests/f198-regression-suite.ps1
 
+      - name: Tier-2 production harness contract dry run (zero provider spend)
+        shell: pwsh
+        run: pwsh -NoProfile -File ./tests/manual/review-production-harness-dry-run.ps1
+
       - name: Integration - bootstrap to iteration
         shell: pwsh
         run: ./tests/integration/bootstrap-to-iteration.ps1

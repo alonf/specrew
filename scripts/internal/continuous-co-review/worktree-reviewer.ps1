@@ -556,7 +556,9 @@ function Test-ContinuousCoReviewContainmentViolations {
     if ([string]::IsNullOrWhiteSpace($ObservedAt)) { $ObservedAt = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp }
     $roots = @($OriginRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     $violations = [System.Collections.Generic.List[object]]::new()
-    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $caseRoot = if ($roots.Count -gt 0) { [string]$roots[0] } else { (Get-Location).Path }
+    $seen = [System.Collections.Generic.HashSet[string]]::new(
+        (Get-ContinuousCoReviewPathComparer -Path $caseRoot -WhenUndetermined 'distinct'))
     foreach ($s in @($Samples)) {
         if ($null -eq $s) { continue }
         $path = try { [string]$s.path } catch { '' }
@@ -693,7 +695,8 @@ function New-ContinuousCoReviewStrippedWorktree {
     # too long", run fe3a695a). Semantics preserved: every collapsed sibling matches its parent
     # glob; an unmarked `specrew-*` dir under the same parent is machinery by naming anyway.
     $literalMachinery = [System.Collections.Generic.List[string]]::new()
-    $globParents = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $globParents = [System.Collections.Generic.HashSet[string]]::new(
+        (Get-ContinuousCoReviewPathComparer -Path $resolved -WhenUndetermined 'distinct'))
     foreach ($m in $machinery) {
         if ($m -eq '.git') { continue }
         if ($m -match '^(?<parent>.+)/(?<leaf>specrew-[^/]+)$') {

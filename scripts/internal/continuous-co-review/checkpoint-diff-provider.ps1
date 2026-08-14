@@ -1,6 +1,10 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# HARD dependency: excluded-path pattern identity follows the repository volume. A missing primitive
+# must be a load error, never a silent case-folding fallback.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
+
 function ConvertTo-ContinuousCoReviewRelativePath {
     param(
         [Parameter(Mandatory)]
@@ -96,11 +100,12 @@ function Get-ContinuousCoReviewDefaultExcludedPathPatterns {
     $add = & $splitList (Get-ContinuousCoReviewProviderConfigScalar -RepoRoot $RepoRoot -Key 'co_review_excluded_paths_add')
     $remove = & $splitList (Get-ContinuousCoReviewProviderConfigScalar -RepoRoot $RepoRoot -Key 'co_review_excluded_paths_remove')
 
-    $removeSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $pathComparer = Get-ContinuousCoReviewPathComparer -Path $RepoRoot -WhenUndetermined 'distinct'
+    $removeSet = [System.Collections.Generic.HashSet[string]]::new($pathComparer)
     foreach ($r in @($remove)) { [void]$removeSet.Add(([string]$r).Replace('\', '/').Trim()) }
 
     $merged = New-Object System.Collections.Generic.List[string]
-    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $seen = [System.Collections.Generic.HashSet[string]]::new($pathComparer)
     foreach ($p in (@($defaults) + @($add))) {
         $norm = ([string]$p).Replace('\', '/').Trim()
         if ([string]::IsNullOrWhiteSpace($norm)) { continue }

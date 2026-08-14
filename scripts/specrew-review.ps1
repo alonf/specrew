@@ -1179,6 +1179,7 @@ if ($Live) {
                         Write-Host ("What went wrong: {0}" -f $_.Exception.Message)
                         exit 1
                     }
+                    # SPECREW-AUTHORITY-CONSUMER: review-round-budget
                     if ([bool]$budgetState.budget_exhausted) {
                         Write-Host ("The round budget for this review is spent ({0} of {1} rounds used), so another round was not authorized." -f $budgetState.rounds_used, $budgetState.budget_total) -ForegroundColor Yellow
                         Write-Host 'Your answer was not recorded. Reset the allowance explicitly with: specrew review --remediate allowance-reset' -ForegroundColor Cyan

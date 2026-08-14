@@ -97,12 +97,12 @@ function Test-ContinuousCoReviewVerificationPlanCatalog {
         @{ name = 'quality_profiles'; identity = 'profile_id' },
         @{ name = 'providers'; identity = 'provider_id' }
     )
-    $entryIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $entryIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase) # specrew-identity-not-a-path
     foreach ($section in $sections) {
         $sectionResult = Get-ContinuousCoReviewSupplierRows -Catalog $Catalog -Name $section.name
         if (-not $sectionResult.valid) { return [pscustomobject]@{ valid = $false; reason = "supplier catalog '$($section.name)' must be an array" } }
         $rows = @($sectionResult.rows)
-        $identities = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+        $identities = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase) # specrew-identity-not-a-path
         foreach ($row in $rows) {
             $unknownRow = @(Get-ContinuousCoReviewUnknownProperties -Object $row -Allowed @('entry_id', $section.identity, 'plan'))
             if ($unknownRow.Count -gt 0) {

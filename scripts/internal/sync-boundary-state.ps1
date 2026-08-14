@@ -7,6 +7,12 @@ if (-not (Test-Path -LiteralPath $sharedGovernancePath -PathType Leaf)) {
 }
 . $sharedGovernancePath
 
+$gatePreflightHelperPath = Join-Path $PSScriptRoot 'gate-preflight.ps1'
+if (-not (Test-Path -LiteralPath $gatePreflightHelperPath -PathType Leaf)) {
+    throw "Missing gate preflight helper '$gatePreflightHelperPath'."
+}
+. $gatePreflightHelperPath
+
 $sessionManagementHelperPath = Join-Path $PSScriptRoot 'session-management.ps1'
 if (-not (Test-Path -LiteralPath $sessionManagementHelperPath -PathType Leaf)) {
     throw "Missing session-management helper '$sessionManagementHelperPath'."
@@ -1737,6 +1743,19 @@ function Invoke-SpecrewBoundaryStateSync {
             -ProjectRoot $paths.ProjectRoot `
             -FeatureRef $effectiveFeatureRef `
             -IterationNumber $effectiveIterationNumber | Out-Null
+    }
+
+    # Beta3 class closure for the "reviewer cannot catch the packet's own structural defect" class:
+    # the zero-spend checks run before the ratchet, provider work, or any state write. PreflightOnly is
+    # the workshop's pre-writer probe and intentionally does not demand a clean/committed artifact tree.
+    $repositoryGovernancePath = Join-Path $paths.ProjectRoot '.specrew/repository-governance.yml'
+    if (-not $PreflightOnly.IsPresent -and (Test-Path -LiteralPath $repositoryGovernancePath -PathType Leaf)) {
+        Invoke-SpecrewGatePreflight `
+            -ProjectRoot $paths.ProjectRoot `
+            -BoundaryType $BoundaryType `
+            -FeatureRef $effectiveFeatureRef `
+            -IterationNumber $effectiveIterationNumber `
+            -FailOnError | Out-Null
     }
 
     # Beta3 stabilization: let the workshop run the exact boundary validation BEFORE it invokes

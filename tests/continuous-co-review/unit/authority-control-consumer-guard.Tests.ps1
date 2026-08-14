@@ -80,4 +80,40 @@ Describe 'authority controls have production consumers' {
         $orchestrator = script:Get-ScriptAst 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1'
         (script:Get-CommandAsts $orchestrator 'New-ReviewCampaignAuthorityStoreRefusal').Count | Should -BeGreaterOrEqual 3
     }
+
+    It 'hook-output identity is written by the production dispatcher and consumed by workshop authority' {
+        $dispatcher = script:Get-ScriptAst 'scripts/internal/specrew-hook-dispatcher.ps1'
+        (script:Get-CommandAsts $dispatcher 'Write-DispatcherHookOutputAuthorityRecord').Count |
+            Should -BeGreaterOrEqual 4 -Because 'both payload/reason and host envelope must be journaled'
+
+        $workshop = script:Get-ScriptAst 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+        (script:Get-CommandAsts $workshop 'Test-SpecrewWorkshopResponseIsHookOutput').Count |
+            Should -BeGreaterThan 0
+    }
+
+    It 'DERIVED: every declared authority control has a production consumer' {
+        # A fixed list of five checks missed the sixth control because the list itself was the blind
+        # spot. Production declares controls/consumers beside executable code; this test discovers
+        # the set, asserts a floor, and requires set equality. Adding a control without its consumer
+        # is therefore red without anyone remembering to edit this suite.
+        $roots = @(
+            (Join-Path $script:RepoRoot 'scripts/internal'),
+            (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'),
+            (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts')
+        )
+        $controls = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $consumers = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($root in $roots) {
+            $files = if (Test-Path -LiteralPath $root -PathType Leaf) { @(Get-Item -LiteralPath $root) } else { @(Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.ps1') }
+            foreach ($file in $files) {
+                $source = Get-Content -LiteralPath $file.FullName -Raw
+                foreach ($match in [regex]::Matches($source, 'SPECREW-AUTHORITY-CONTROL:\s*([a-z0-9-]+)')) { [void]$controls.Add($match.Groups[1].Value) }
+                foreach ($match in [regex]::Matches($source, 'SPECREW-AUTHORITY-CONSUMER:\s*([a-z0-9-]+)')) { [void]$consumers.Add($match.Groups[1].Value) }
+            }
+        }
+
+        $controls.Count | Should -BeGreaterOrEqual 6 -Because 'the current authority-control surface has six independently named controls'
+        @($controls | Where-Object { -not $consumers.Contains($_) }) | Should -BeNullOrEmpty -Because 'a computed control without a consumer is a typed comment'
+        @($consumers | Where-Object { -not $controls.Contains($_) }) | Should -BeNullOrEmpty -Because 'a consumer without a declared control has no auditable authority contract'
+    }
 }

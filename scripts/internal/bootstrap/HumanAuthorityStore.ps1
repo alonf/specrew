@@ -82,6 +82,7 @@ function Read-SpecrewReviewSignoffOverrideRequest {
 }
 
 function Write-SpecrewReviewSignoffOverrideAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: partial-review-signoff
     <# Capture only from a genuine prompt-entry event and only while a tree-bound request exists. #>
     [CmdletBinding()]
     param(

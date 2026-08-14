@@ -115,6 +115,13 @@ rules:
     title: Make tests simple enough to trust
     default: "Prefer small deterministic tests for core logic, clear fixtures, readable assertions, focused integration tests for boundaries."
     enforcement_mode: [review, unit-tests]
+  - id: code-rule.derived-guard-scope
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Derive guard scope from the protected surface
+    default: "A structural/governance guard may not rely on an unbounded remembered file or case list. Discover the consuming set from production structure, assert a non-zero floor, pin load-bearing members, and include a positive/mutation half so deleting the protected capability cannot satisfy the guard."
+    enforcement_mode: [review, unit-tests]
   - id: code-rule.docs-as-api-test
     group: baseline-default
     scope: cross-language

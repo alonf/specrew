@@ -50,6 +50,27 @@ function New-MinimalProject {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+. (Join-Path $repoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+
+function Add-LifecycleCampaignResult {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $ProjectRoot -FeatureId '022-hotfix-schema-tests' -IterationNumber '001' -RunId 'run-lifecycle-sync'
+    $campaignId = [string]$identity.campaign_id
+    $targetLineage = [string]$identity.target_lineage
+    $runId = 'run-lifecycle-sync'
+    $store = Join-Path $ProjectRoot '.specrew/review/authority'
+    $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot).tree_id
+    Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaignId -RunId $runId -TargetLineage $targetLineage -ObservedAt '2026-08-15T00:00:00Z' | Out-Null
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; campaign_id = $campaignId; run_id = $runId; target_digest = $digest
+        harness_id = 'fixture'; completion = 'complete'; verdict = 'pass'; runtime_outcome = 'completed'
+        termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+        can_approve_current = $true; failure_reason = $null; summary = 'mechanical lifecycle sync fixture'
+        findings = @(); started_at = '2026-08-15T00:00:00Z'; ended_at = '2026-08-15T00:00:01Z'; duration_ms = 1000
+    }
+    Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaignId -RunId $runId -Fact $fact | Out-Null
+    Complete-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaignId -RunId $runId -TargetLineage $targetLineage -Disposition released -ObservedAt '2026-08-15T00:00:01Z' | Out-Null
+}
 
 $scratchRoot = Join-Path $repoRoot '.scratch\lifecycle-boundary-sync'
 if (Test-Path -LiteralPath $scratchRoot) {
@@ -61,6 +82,7 @@ $null = New-Item -ItemType Directory -Path $scratchRoot -Force
 $orderedProject = Join-Path $scratchRoot 'ordered'
 New-MinimalProject -ProjectRoot $orderedProject
 foreach ($boundary in @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout')) {
+    if ($boundary -eq 'review-signoff') { Add-LifecycleCampaignResult -ProjectRoot $orderedProject }
     $syncResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @('-ProjectPath', $orderedProject, '-BoundaryType', $boundary, '-FeatureRef', '022-hotfix-schema-tests', '-IterationNumber', '001')
     if ($syncResult.ExitCode -ne 0) {
         Write-Fail ("Boundary sync failed for '{0}':`n{1}" -f $boundary, ($syncResult.Output -join [Environment]::NewLine))

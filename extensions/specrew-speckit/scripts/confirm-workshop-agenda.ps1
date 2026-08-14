@@ -176,6 +176,7 @@ if ($null -eq $agendaReceipt -or [string]$agendaReceipt.confirmation -cne 'human
 # lens; it does not persist a current_lens field in the pre-agenda JSON. Bind to the same
 # value the conformance provider used when it hashed the rendered agenda question.
 $currentLens = 'product-domain'
+# SPECREW-AUTHORITY-CONSUMER: workshop-agenda-question-identity
 $expectedQuestionHash = Get-WorkshopAgendaQuestionHash -FeatureRef $FeatureRef -CurrentLens $currentLens -Text $canonicalAgendaText
 if ([string]$agendaReceipt.question_hash -cne $expectedQuestionHash) {
     throw 'The typed agenda confirmation belongs to different agenda text. Render this exact agenda with -RenderOnly, wait for a typed reply, then confirm without changing selected or skipped lenses.'

@@ -3203,6 +3203,11 @@ function Invoke-SpecrewBoundaryRatchetGate {
     # was an agent-authored specify -> specify entry with a boolean authorizing_human; Get-Unreconciled
     # could not use it and returned null, which accidentally made the malformed state look clean.
     $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if (-not $enforcementState.Exists) {
+        # A brand-new project has no authorization ledger until this first crossing is recorded.
+        # Absence before the first write is initialization, not malformed v2 state.
+        return $true
+    }
     if ($enforcementState.NeedsMigration) {
         # A recognized v0/v1 pre-bootstrap state is not a malformed authorization ledger. Let the
         # first crossing reach Set-SpecrewPendingBoundaryCrossingScope; boundary sync converts that

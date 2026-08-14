@@ -230,6 +230,50 @@ function Get-MarkdownMetadataValue {
     return $null
 }
 
+function Test-DriftLogClassClosure {
+    param(
+        [Parameter(Mandatory = $true)][string]$DriftPath,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors
+    )
+
+    if (-not (Test-Path -LiteralPath $DriftPath -PathType Leaf)) { return }
+
+    $lines = @(Get-MarkdownContent -Path $DriftPath)
+    $schema = [string](Get-MarkdownMetadataValue -Lines $lines -Label 'Schema')
+    if ($schema.Trim().ToLowerInvariant() -ne 'v2') {
+        # Existing v1 logs predate this contract. Newly scaffolded logs are v2.
+        return
+    }
+
+    $eventStarts = New-Object System.Collections.Generic.List[int]
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ([string]$lines[$index] -match '^###[ \t]+DRIFT-') { $eventStarts.Add($index) | Out-Null }
+    }
+
+    for ($eventIndex = 0; $eventIndex -lt $eventStarts.Count; $eventIndex++) {
+        $start = $eventStarts[$eventIndex]
+        $end = if (($eventIndex + 1) -lt $eventStarts.Count) { $eventStarts[$eventIndex + 1] - 1 } else { $lines.Count - 1 }
+        $eventId = ([string]$lines[$start]).TrimStart('#', ' ').Trim()
+        $closure = $null
+        for ($lineIndex = $start + 1; $lineIndex -le $end; $lineIndex++) {
+            if ([string]$lines[$lineIndex] -match '^\s*[-*]\s+\*\*Class closure\*\*:\s*(.*?)\s*$') {
+                $closure = [string]$Matches[1]
+                break
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($closure)) {
+            $Errors.Add("drift-log.md event '$eventId' is missing required Class closure (name the executable recurrence guard, or write 'NONE — <why>')")
+            continue
+        }
+
+        $trimmedClosure = $closure.Trim()
+        if ($trimmedClosure -match '^(?i:NONE)\b' -and $trimmedClosure -notmatch '^(?i:NONE)\s+[—-]\s+\S.+$') {
+            $Errors.Add("drift-log.md event '$eventId' records Class closure as NONE without a reason (expected 'NONE — <why>')")
+        }
+    }
+}
+
 function Get-NormalizedKeyword {
     param([AllowNull()][string]$Value)
 
@@ -4514,6 +4558,7 @@ function Test-IterationGovernance {
     $reviewPath = Join-Path -Path $IterationDirectory -ChildPath 'review.md'
     $retroPath = Join-Path -Path $IterationDirectory -ChildPath 'retro.md'
     $statePath = Join-Path -Path $IterationDirectory -ChildPath 'state.md'
+    Test-DriftLogClassClosure -DriftPath $driftPath -Errors $errors
     Test-ReviewDiagramsMermaidBlock -IterationDirectory $IterationDirectory -ProjectRoot $ProjectRoot
     $stateLines = @(if (Test-Path -Path $statePath -PathType Leaf) { Get-MarkdownContent -Path $statePath } else { @() })
     $reviewLines = @(if (Test-Path -Path $reviewPath -PathType Leaf) { Get-MarkdownContent -Path $reviewPath } else { @() })

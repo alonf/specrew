@@ -129,6 +129,8 @@ function Test-ReviewAuthorityIdentifier {
 }
 
 function Resolve-ReviewCampaignPauseDecision {
+    # SPECREW-AUTHORITY-CONTROL: review-round-budget
+    # SPECREW-AUTHORITY-CONTROL: review-result-produced
     # T001 / FR-001..FR-004. The PURE decision the pause surface renders from: what the round found,
     # what it has cost, whether anything actually gates, and which options the human may choose.
     #

@@ -1123,6 +1123,7 @@ function Format-ReviewCampaignOutstandingPause {
     $demoted = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'demoted_count')
     $recommendation = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'recommendation')
     $factNames = Get-ReviewAuthorityPropertyNames -Object $Fact
+    # SPECREW-AUTHORITY-CONSUMER: review-result-produced
     $resultProduced = if ($factNames -contains 'result_produced') { [bool](Get-ReviewAuthorityProperty -Object $Fact -Name 'result_produced') } else { $true }
 
     $lines.Add(('Review round {0} of {1} is still waiting for your answer.' -f $roundsUsed, $ProjectName))

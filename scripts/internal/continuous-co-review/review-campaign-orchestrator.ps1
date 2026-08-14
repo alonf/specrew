@@ -716,6 +716,7 @@ function Get-ReviewCampaignRoundBudgetState {
 }
 
 function New-ReviewCampaignAuthorityStoreRefusal {
+    # SPECREW-AUTHORITY-CONSUMER: authority-store-read-failure
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]$Identity,
@@ -1166,7 +1167,8 @@ function Test-ReviewCampaignTargetRootWritable {
 function Get-ReviewCampaignRepositoryToken {
     param([Parameter(Mandatory)][string]$GitRoot)
     $identity = [IO.Path]::GetFullPath($GitRoot)
-    if ([OperatingSystem]::IsWindows()) { $identity = $identity.ToUpperInvariant() }
+    $comparison = Get-ContinuousCoReviewPathComparison -Path $identity -WhenUndetermined 'distinct'
+    if ($comparison -eq [StringComparison]::OrdinalIgnoreCase) { $identity = $identity.ToUpperInvariant() }
     # Filesystem namespace only: immutable campaign/run identity remains full-length in authority
     # facts, while the workspace leaf is drawn from 96 independent random source bits (about 83
     # effective namespace bits after case-folding). Sixteen hex characters keep the repository

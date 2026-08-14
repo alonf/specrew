@@ -103,12 +103,17 @@ mechanism they describe — a restored slot that nothing surfaced — was verifi
 
 ## Named for beta4
 
-The **evidence-pipeline and path-identity consolidations named in the beta2 release claim ship in
-beta4**, not here. Beta3 deliberately did not take them: path identity is routed through a single shared
-primitive but that primitive is still the *recommended* path rather than the *only reachable* one, and
-making it unbypassable is the consolidation beta4 owns. Reading the real Windows reparse tag — which is
-the precise version of the discrimination beta3 approximates by attribute — belongs there too, since it
+The broader **evidence-pipeline consolidation** named in the beta2 release claim still belongs to beta4.
+The continuous-co-review path-identity seam no longer does: beta3 hard-loads the shared volume-aware
+comparer throughout that engine, and structural guards reject OS-family case folding and hard-coded
+case-insensitive path sets. The remaining beta4 work is outside that engine, plus reading the real
+Windows reparse tag (the precise version of the discrimination beta3 approximates by attribute), which
 requires P/Invoke on a safety-critical path.
+
+Boundary packets also run a provider-free preflight before state mutation: remote-delivered projects
+must have the current branch pushed at HEAD, ahead-count provenance is surfaced, dirty paths are
+classified by writer, task/status summaries must agree, and the boundary's owed artifact must exist.
+Local-only projects name the remote check as not applicable rather than inventing a forge obligation.
 
 ## What "continuous co-review" means in this release — read this before relying on it
 

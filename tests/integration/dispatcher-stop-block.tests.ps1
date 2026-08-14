@@ -9,6 +9,12 @@ $ErrorActionPreference = 'Stop'
 
 function Assert-True { param([bool]$Condition, [string]$Message) if (-not $Condition) { throw "FAIL: $Message" } ; Write-Host "PASS: $Message" -ForegroundColor Green }
 
+function Get-OutputHash {
+    param([string]$Text)
+    $bytes = [Text.Encoding]::UTF8.GetBytes(([string]$Text).Trim())
+    return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
+}
+
 $dispatcher = (Resolve-Path "$PSScriptRoot/../../scripts/internal/specrew-hook-dispatcher.ps1").Path
 
 function Invoke-Dispatcher {
@@ -58,10 +64,19 @@ function Invoke-Dispatcher {
             -ArgumentList $dispatcherArgs `
             -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
             -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        $journalPath = Join-Path $proj '.specrew/runtime/hook-output-authority.jsonl'
+        $journal = @(
+            if (Test-Path -LiteralPath $journalPath -PathType Leaf) {
+                [IO.File]::ReadLines($journalPath, [Text.Encoding]::UTF8) |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                    ForEach-Object { $_ | ConvertFrom-Json -Depth 5 }
+            }
+        )
         return [pscustomobject]@{
             ExitCode = $p.ExitCode
             Out      = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue)
             Err      = (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue)
+            Journal  = $journal
         }
     }
     finally { Remove-Item -LiteralPath $proj -Recurse -Force -ErrorAction SilentlyContinue }
@@ -82,6 +97,9 @@ foreach ($h in $hosts) {
     $compact = ($r.Out -replace '\s', '')
     Assert-True ($compact -match [regex]::Escape($h.ExpectField)) "$($h.Kind): the block sentinel becomes the host envelope ($($h.ExpectField))"
     Assert-True ($r.Out -match 'RENDER THE PACKET NOW') "$($h.Kind): the packet directive is carried as the envelope reason"
+    $hashes = @($r.Journal | ForEach-Object { [string]$_.output_hash })
+    Assert-True ($hashes -contains (Get-OutputHash 'RENDER THE PACKET NOW')) "$($h.Kind): dispatcher journals the human-visible Stop reason"
+    Assert-True ($hashes -contains (Get-OutputHash $r.Out)) "$($h.Kind): dispatcher journals the exact host envelope"
 }
 
 # Loop-guard: stop_hook_active=true (claude/codex built-in) -> the dispatcher does NOT block (allow), so the

@@ -66,6 +66,7 @@ function Test-SpecrewWorkshopHumanResponseText {
 }
 
 function Test-SpecrewWorkshopResponseIsHookOutput {
+    # SPECREW-AUTHORITY-CONSUMER: workshop-hook-output-identity
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
@@ -88,6 +89,7 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
 }
 
 function Write-SpecrewWorkshopAuthorityReceipt {
+    # SPECREW-AUTHORITY-CONTROL: workshop-agenda-question-identity
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $ProjectRoot,
