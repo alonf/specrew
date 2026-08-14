@@ -14,4 +14,3 @@ reviewed_at: 2026-06-07
 5. **After the go-ahead, run.** Once the human authorizes implementation, proceed through implement → review → retro without re-asking per phase — but every gate still preflights and every boundary still commits.
 
 Known traps: `Status: approved` / `in_progress` (invalid enums); `tbd` concern rows; capacity lines with trailing prose; starting T001 while the gate is still blocked.
-

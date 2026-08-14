@@ -413,6 +413,10 @@ if ($mainChecksPassed) {
 
 $sessionStateWorkspace = New-Workspace -WorkspaceName 'session-state-only'
 Initialize-GitWorkspace -WorkspaceRoot $sessionStateWorkspace
+$sessionPromptPath = Join-Path $sessionStateWorkspace '.specrew\last-start-prompt.md'
+if (-not (Test-Path -LiteralPath $sessionPromptPath -PathType Leaf)) {
+    Set-ContentUtf8 -Path $sessionPromptPath -Content "# Session prompt fixture`n"
+}
 Touch-RelativeFileForDiff -WorkspaceRoot $sessionStateWorkspace -RelativePath '.specrew\last-start-prompt.md'
 Remove-UntouchedStateArtifact -WorkspaceRoot $sessionStateWorkspace
 $sessionStateResult = Invoke-Validator -ProjectPath $sessionStateWorkspace -ChangedOnly -BaseBranch 'main'
