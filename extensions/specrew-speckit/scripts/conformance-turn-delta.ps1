@@ -300,3 +300,4 @@ function Resolve-SpecrewTurnPacketDemand {
     $decision.reason = 'turn-delta-demands-packet'
     return $decision
 }
+# specrew-self-provenance-ok: DRIFT-198-I009-033; implementation history is recorded for maintainers and is never emitted as consumer instruction

@@ -1440,3 +1440,4 @@ catch {
     [Console]::Error.WriteLine("[specrew-conformance] WARN CONFORMANCE_PROVIDER_FAILED $($_.Exception.Message)")
     return
 }
+# specrew-self-provenance-ok: D-197-I009,DRIFT-198-I0NN-0NN,DRIFT-199-I001-015; implementation history is recorded for maintainers and is never emitted as consumer instruction

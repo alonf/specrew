@@ -223,3 +223,4 @@ if ($PassThru) {
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Output ("Feature closeout dashboard scaffold {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $targetPath))
 exit 0
+# specrew-self-provenance-ok: F-023,F-040; implementation history is recorded for maintainers and is never emitted as consumer instruction

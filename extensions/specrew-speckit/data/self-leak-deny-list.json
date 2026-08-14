@@ -55,11 +55,12 @@
       "added": "2026-07-10"
     },
     {
-      "pattern": "(?i)\\bF-19[0-9]\\b",
-      "class": "feature-id",
-      "reason": "Specrew self feature identifiers read as consumer instruction; deployed teaching must stand on the abstract rule, not our feature history.",
-      "source": "proposal 205 W1 seed",
-      "added": "2026-07-10"
+      "pattern": "\\b(?:F-\\d{3}|DRIFT-\\d{3}(?:-I\\d{3})?-\\d{3}|[A-Z][A-Z0-9]*-\\d{3}-[A-Za-z0-9][A-Za-z0-9-]*)\\b",
+      "class": "self-provenance-id",
+      "reason": "A mechanically shaped Specrew feature, drift, decision, defer, note, observation, or future X-NNN-suffix identifier is self-provenance by construction. Deployed teaching must state the abstract rule rather than cite Specrew's internal history.",
+      "source": "proposal 205 W1 seed; DRIFT-199-I001-043 class closure replaces remembered F-19x and ledger-prefix alternations",
+      "added": "2026-08-15",
+      "derived": true
     },
     {
       "pattern": "(?i)\\biteration-010\\b",
@@ -73,13 +74,6 @@
       "class": "decision-ref",
       "reason": "Self-repo proposal paths as consumer instruction; consumers cannot and should not read Specrew's proposal tree.",
       "source": "proposal 205 W1 seed",
-      "added": "2026-07-10"
-    },
-    {
-      "pattern": "(?i)\\b(DEC|DEFER|NOTE)-19[0-9]-",
-      "class": "decision-ref",
-      "reason": "Specrew self decision-ledger identifiers; the generic .squad/decisions.md path is legitimate consumer layout, but OUR ledger entry ids are self-facts.",
-      "source": "F-198 seed (narrowed from the proposal's '.squad/decisions.md as consumer instruction' to avoid false positives on the consumer's own ledger)",
       "added": "2026-07-10"
     },
     {

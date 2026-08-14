@@ -1,7 +1,7 @@
 schema_version: "1.0"
 description: >-
   Canonical code-implementation rule catalog. The maintainer default rule set (Proposal 163 baseline)
-  plus the F-177 additions (Strategy/State, polymorphism-mechanism, SOLID) plus per-stack defaults.
+  plus later additions (Strategy/State, polymorphism-mechanism, SOLID) plus per-stack defaults.
   Each rule has a stable id, a group (baseline-default | decision-prompt | applicability-filtered),
   a scope (cross-language | language:<x> | framework:<y>), an applies predicate, a default posture,
   and informational enforcement_mode(s). The lens presents these via the grouping model; the per-feature
@@ -144,7 +144,7 @@ rules:
     default: "Decide input validation, output encoding, secret handling, authn/authz boundaries, dependency hygiene, least privilege, safe defaults, and failure behavior as part of implementation posture."
     enforcement_mode: [review]
 
-  # --- F-177 additions ---
+  # --- Structural design additions ---
   - id: code-rule.solid-baseline
     group: baseline-default
     scope: cross-language

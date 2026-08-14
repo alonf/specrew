@@ -22,10 +22,39 @@
 
 ## Summary
 
-**Total drift events**: 42 (DRIFT-199-I001-001 through -042)
+**Total drift events**: 43 (DRIFT-199-I001-001 through -043)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-043 — the self-leak firewall overstated its surface and enumerated only recent provenance IDs (resolved)
+
+- **Observed**: 2026-08-15, follow-up review of the blocking self-leak CI lane. The
+  script header claimed all 404 FileList entries while the executable scope correctly
+  selected the 204 consumer-project deployment entries (203 after excluding the rule file).
+  Its remembered patterns matched only `F-19x` and three recent ledger prefixes, leaving
+  28 DRIFT-bearing lines and 53 older `F-###` lines inside the scanned surface invisible.
+  A CRLF-sensitive first measurement also returned a false clean, reinforcing that the
+  instrument itself needed executable proof.
+- **Resolution**: the contract now explicitly names the FileList-derived init/update
+  surface rather than module-only internals. One case-sensitive, mechanically shaped
+  provenance rule covers `F-NNN`, `DRIFT-NNN-INNN-NNN`, and future uppercase
+  `X-NNN-suffix` identities without capturing consumer `FR-001` or bare task `T007`.
+  Governed command, lens, and workshop prose no longer cites Specrew history. Repeated
+  implementation comments and retained historical examples use an exact file-level token
+  allowlist with a reason; an unlisted new ID remains red.
+- **Measured proof**: the real firewall scans 203 existing deployed files with 12 rules,
+  reports 157 exact/reasoned sanctions, and has zero unannotated findings. Paired tests prove
+  historical and future ID shapes, exact allowlist behavior, `FR-001`/`T007` exclusions,
+  malformed annotation refusal, real-repository green, consumer advisory parity, and
+  canonical/deployed provider parity.
+- **T-number ruling**: bare `T###` remains outside automated provenance classification.
+  It is both the consumer task namespace and a self-host history shape; treating every use
+  as self-provenance would turn legitimate generated task guidance into false positives.
+  A future rule requires evidence that distinguishes those two meanings.
+- **Class closure**: one derived provenance regex replaces prefix-by-prefix additions, and
+  the paired test pins both new-shape detection and consumer-ID exclusions. Exact file-level
+  allowlists enumerate sanctioned tokens, so a new identifier cannot inherit an old reason.
 
 ### DRIFT-199-I001-042 — follow-up review found missing structural closure and instrument gaps (implementation resolved; exact-snapshot verification pending)
 

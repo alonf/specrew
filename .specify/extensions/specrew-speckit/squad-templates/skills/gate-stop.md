@@ -84,8 +84,7 @@ wins over phase inference, especially after a multi-boundary over-advance. If th
 there is NO controller truth for this stop: state that plainly — "no pending-verdict artifact exists, so no
 boundary crossing has been recorded for this stop" — and STOP WITHOUT a marker. Do NOT infer or invent a
 `<from> -> <to>` from the phase you are in: an invented marker captures the human's verdict against a
-crossing the controller never recorded (DRIFT-198-I011-012 — the July F1 `specify -> specify` signature was
-exactly this instruction firing at a first boundary). The recovery is to run the boundary's own sync skill so
+crossing the controller never recorded. The recovery is to run the boundary's own sync skill so
 the arrival is recorded and the artifact exists, then render this stop again FROM the artifact. The marker is
 how the hook records the human's ACTUAL typed verdict as the authorization (evidence-source
 `hook-captured-from-transcript`); with no recorded crossing there is nothing a verdict could legitimately

@@ -2798,3 +2798,4 @@ else {
 }
 
 exit 0
+# specrew-self-provenance-ok: DRIFT-198-I011-011,F-028,F-040; implementation history is recorded for maintainers and is never emitted as consumer instruction

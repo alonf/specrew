@@ -34,8 +34,8 @@ Surface `/speckit.analyze` at this before-implement boundary, but only after `/s
 
 After the readiness checks complete, record the boundary arrival FIRST — the sync mints the pending
 crossing and writes `.specrew/runtime/pending-verdict-stop.md`, the controller truth the verdict
-stop renders from (DRIFT-198-I011-012: this skill previously gated with NO arrival sync at all, so
-the pending ask depended entirely on off-skill machinery — the marker-invention precondition):
+stop renders from. This explicit arrival prevents the pending ask from depending on off-skill
+machinery:
 
 ```powershell
 $featureJson = Get-Content -LiteralPath .\.specify\feature.json -Raw -Encoding UTF8 | ConvertFrom-Json

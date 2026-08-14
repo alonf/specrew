@@ -1312,3 +1312,4 @@ catch {
     }
     exit 0
 }
+# specrew-self-provenance-ok: F-165,F-171,F-174,F-197; implementation history is recorded for maintainers and is never emitted as consumer instruction

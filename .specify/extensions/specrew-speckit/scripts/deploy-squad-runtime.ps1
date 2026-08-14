@@ -994,3 +994,4 @@ if ($PassThru) {
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Squad runtime deployment {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $resolvedProjectPath)) -ForegroundColor Green
 exit 0
+# specrew-self-provenance-ok: DRIFT-198-I009-011,DRIFT-198-I009-027,DRIFT-198-I009-031; implementation history is recorded for maintainers and is never emitted as consumer instruction

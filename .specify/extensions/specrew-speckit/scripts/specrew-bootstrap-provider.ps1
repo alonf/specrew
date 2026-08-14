@@ -560,3 +560,4 @@ catch {
     [Console]::Error.WriteLine("[specrew-bootstrap] WARN PROVIDER_FAILED $($_.Exception.Message)")
     exit 0
 }
+# specrew-self-provenance-ok: D-197-I009-012,F-171,F-174,F-184; implementation history is recorded for maintainers and is never emitted as consumer instruction

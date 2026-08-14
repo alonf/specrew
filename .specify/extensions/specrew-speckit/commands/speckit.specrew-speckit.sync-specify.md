@@ -22,9 +22,8 @@ if (-not $workshopRecords.Present) {
 
 After `/speckit.specify` writes `.specify/feature.json` and the active spec artifact, record the
 boundary arrival FIRST. At a first boundary this sync is what mints the pending crossing and writes
-`.specrew/runtime/pending-verdict-stop.md` — the controller truth the verdict stop renders from
-(DRIFT-198-I011-012: gating before this sync made FR-066's arrival state unreachable and left the
-stop with no artifact, the marker-invention precondition):
+`.specrew/runtime/pending-verdict-stop.md` — the controller truth the verdict stop renders from.
+This arrival-first order prevents a stop with no artifact:
 
 ```powershell
 $featureJson = Get-Content -LiteralPath .\.specify\feature.json -Raw -Encoding UTF8 | ConvertFrom-Json

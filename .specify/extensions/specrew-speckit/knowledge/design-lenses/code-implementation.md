@@ -231,5 +231,5 @@ provenance:
   Guidelines / LLVM / CERT / MISRA; TypeScript strict + ESLint/typescript-eslint + Prettier; ruff /
   Black / mypy / PEP 8; Effective Go + gofmt/vet/golangci-lint; Checkstyle / PMD / SpotBugs /
   google-java-format. (Sources catalogued in Proposal 163; checked 2026-06-08.)
-- F-177 additions (2026-06-10): SOLID baseline, Strategy/State over repeated conditionals, polymorphism
+- Later catalog additions (2026-06-10): SOLID baseline, Strategy/State over repeated conditionals, polymorphism
   mechanism choice, and example-project ingestion.

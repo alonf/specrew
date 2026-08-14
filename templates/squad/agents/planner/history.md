@@ -32,3 +32,4 @@ Project-specific learnings and patterns discovered during work.
 
 <!-- specrew-applicability: example-only; historical terminal-specific feature example, not downstream platform guidance -->
 - Historical example (2026-05-15): Feature 018 bounded repair R-018-V2 documented five environment-specific watchpoints, including that missing Windows VT support must force clean monochrome fallback. This is retained as history, not a platform mandate for downstream projects.
+<!-- specrew-self-provenance-ok: R-018-V2; historical self-host examples are retained as examples, not downstream instructions -->

@@ -807,3 +807,4 @@ if ($PassThru) {
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Iteration artifact scaffold {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $iterationDirectory)) -ForegroundColor Green
 exit 0
+# specrew-self-provenance-ok: F-033,F-040; implementation history is recorded for maintainers and is never emitted as consumer instruction

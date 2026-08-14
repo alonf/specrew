@@ -224,3 +224,4 @@ try {
 catch {
     [Console]::Error.WriteLine("[specrew-refocus] WARN PROVIDER_FAILED channel-1 emission skipped: $($_.Exception.Message)")
 }
+# specrew-self-provenance-ok: F-044; implementation history is recorded for maintainers and is never emitted as consumer instruction

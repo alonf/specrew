@@ -6327,3 +6327,4 @@ function Test-SpecrewWorkshopRecordsPresent {
         return [pscustomobject]@{ Present = $false; Reason = ("Workshop-records check could not complete ({0}) - blocking; verify the workshop ran and lens-applicability.json is valid." -f $_.Exception.Message) }
     }
 }
+# specrew-self-provenance-ok: DRIFT-198-I011-003,DRIFT-198-I011-005,DRIFT-198-I011-006,DRIFT-198-I011-012,F-028,F-040,F-047,F-174; implementation history is recorded for maintainers and is never emitted as consumer instruction

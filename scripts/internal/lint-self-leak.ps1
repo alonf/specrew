@@ -1,9 +1,10 @@
 # Self-leak firewall lint (F-198 / Proposal 205 W1, FR-033).
 #
-# Scans EXACTLY what ships to consumers - the module manifest's FileList
-# (the deploy allowlist) - against the versioned deny-list of Specrew-SELF
-# facts. A deny-listed term without an adjacent `specrew-self-ok: <reason>`
-# annotation is a red build.
+# Derives the consumer-project deployment surface from the module manifest's FileList,
+# then scans only the prefixes that init/update copies into a consumer tree. Module-only
+# engine, documentation, and packaging files remain outside this injection firewall because
+# downstream agents never receive them. A deny-listed term without an adjacent
+# `specrew-self-ok: <reason>` annotation is a red build.
 #
 # Exit-code contract (public, CI keys off it):
 #   0 = clean (annotated hits are listed with their reasons - visible, per
@@ -164,6 +165,38 @@ function Test-SelfLeakAnnotated {
     return $null
 }
 
+function Get-SelfProvenanceFileAnnotation {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][AllowEmptyCollection()][string[]]$Lines,
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string]$MatchedTerm
+    )
+
+    # Repeated implementation-provenance citations may use one file-level allowlist, but the
+    # allowlist is exact: it names every sanctioned token. A later F-/DRIFT-/X-NNN-suffix token
+    # is therefore red until somebody adds that exact identity with a reason. This reduces
+    # annotation noise without turning one historical sanction into a wildcard bypass.
+    $extension = [System.IO.Path]::GetExtension($FilePath)
+    $pattern = switch -Regex ($extension) {
+        '^\.(md|markdown)$' { '<!--\s*specrew-self-provenance-ok:\s*(?<terms>[^;]+);\s*(?<reason>([^-]|-(?!->))*)-->' ; break }
+        '^\.(ps1|psd1|psm1|yml|yaml|sh)$' { '^\s*#[^#]*?specrew-self-provenance-ok:\s*(?<terms>[^;]+);\s*(?<reason>.+)$' ; break }
+        '^$' { '^\s*#[^#]*?specrew-self-provenance-ok:\s*(?<terms>[^;]+);\s*(?<reason>.+)$' ; break }
+        default { $null }
+    }
+    if ($null -eq $pattern) { return $null }
+
+    $found = [System.Collections.ArrayList]::new()
+    foreach ($line in $Lines) {
+        foreach ($match in [regex]::Matches($line, $pattern)) { $null = $found.Add($match) }
+    }
+    if ($found.Count -ne 1) { return $null }
+    $terms = @($found[0].Groups['terms'].Value.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    $reason = $found[0].Groups['reason'].Value.Trim()
+    if ([string]::IsNullOrWhiteSpace($reason)) { return $null }
+    if (-not ($terms -ccontains $MatchedTerm)) { return $null }
+    return $reason
+}
+
 function Get-SelfLeakApplicabilityAnnotation {
     param(
         [Parameter(Mandatory = $true)][AllowEmptyString()][AllowEmptyCollection()][string[]]$Lines,
@@ -240,7 +273,12 @@ foreach ($file in $surface) {
                 if ($applicability.Valid) { '[{0}] {1}' -f $applicability.Kind, $applicability.Reason } else { $null }
             }
             else {
-                Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -FilePath $file.Full
+                $adjacentReason = Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -FilePath $file.Full
+                if ($null -ne $adjacentReason) { $adjacentReason }
+                elseif ($entry.Class -eq 'self-provenance-id') {
+                    Get-SelfProvenanceFileAnnotation -Lines $lines -FilePath $file.Full -MatchedTerm $match.Value
+                }
+                else { $null }
             }
             $record = [pscustomobject]@{
                 File             = $file.Relative
@@ -282,6 +320,7 @@ if (@($findings).Count -gt 0) {
     Write-Host ("[self-leak-lint] To sanction an intentional self-reference, annotate the hit line (or the line above):") -ForegroundColor Yellow
     Write-Host ("  .md:              <!-- specrew-self-ok: <reason> -->") -ForegroundColor Yellow
     Write-Host ("  .ps1/.psd1/.yml:  # specrew-self-ok: <reason>   (a WHOLE-LINE comment - the line must start with #)") -ForegroundColor Yellow
+    Write-Host ("  repeated exact provenance IDs may use one file-level 'specrew-self-provenance-ok: ID1,ID2; <reason>' whole-comment allowlist") -ForegroundColor Yellow
     Write-Host ("  assumption classes: specrew-applicability: project-detected|profile-selected|provider-gated|example-only; <reason>") -ForegroundColor Yellow
     Write-Host ("[self-leak-lint] The rule and the resolution-point teaching live in {0}." -f $ruleDoc) -ForegroundColor Yellow
     exit 1

@@ -204,7 +204,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    then invoke `& .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 -ProjectRoot . -FeatureRef <feature> -AgendaJson $agendaJson -RenderOnly`.
    Send the command's output as the **entire assistant message, unchanged** — no introduction, suffix, or
    differently worded duplicate. The hook binds the typed reply to that exact full agenda. Wait for the human's
-   typed response. **The moment they confirm, PERSIST it (F-174 — before opening lens 1)** by invoking the same
+   typed response. **The moment they confirm, PERSIST it before opening lens 1** by invoking the same
    command with the identical `$agendaJson` and without `-RenderOnly`. If the selected set, depths, decisions,
    skipped set, or reasons change, render the new canonical agenda and ask again; an older receipt cannot authorize it.
    The writer changes `agenda_status` to `confirmed` only when selected + skipped cover the whole deployed
@@ -385,7 +385,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      scope — the **agreed UI/screen layout** (the ASCII sketch the human approved). Set `co_design: true` in the
      iteration's `lens-applicability.json` so the deterministic co-design-record floor applies. An agreement
      that lives only in the chat scrollback is lost.
-7. **Checkpoint this lens durable, THEN re-invoke for the next (F-174 — survive a mid-workshop exit/switch).**
+7. **Checkpoint this lens durable, THEN re-invoke for the next so a mid-workshop exit/switch is recoverable.**
    The workshop is long, and an exit or host-switch mid-workshop is expected, not exceptional — so make each
    lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens:
    **(a) persist the Markdown decision record FIRST** at the exact current scope's

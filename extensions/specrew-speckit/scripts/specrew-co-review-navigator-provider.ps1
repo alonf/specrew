@@ -195,3 +195,4 @@ catch {
     [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_FAILED $($_.Exception.Message)")
     exit 0
 }
+# specrew-self-provenance-ok: D-197-I009-001,F-184,F-185; implementation history is recorded for maintainers and is never emitted as consumer instruction

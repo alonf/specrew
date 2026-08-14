@@ -54,6 +54,12 @@ Consumer surfaces no longer carry internal vocabulary, and identifiers no longer
 `T###` or `FR-###` in a message a human reads carries a short description on first use. An identifier
 you must look up is a sentence you cannot understand.
 
+The blocking self-leak firewall now derives Specrew provenance shapes instead of remembering only
+recent feature and decision prefixes. Governed commands and workshop teaching contain no Specrew
+history IDs; implementation provenance is allowed only through an exact token list with a recorded
+reason, so a newly added ID is red by default. The lane explicitly covers the FileList-derived files
+that init/update copies into consumer projects, not module-only engine internals.
+
 ## The workshop waits for your typed answer
 
 - **Workshop questions use visible prose on every supported host.** A host picker is not the authority
@@ -69,7 +75,9 @@ you must look up is a sentence you cannot understand.
 - **The first product-domain question stays conversational after feature scaffolding.** The untouched
   `spec.md` template created beside the workshop controller is not treated as authored material, while
   any real spec edit still requires the ordinary packet. Hook, task, system, and environment prompts
-  replayed by a host never count as a typed human answer and cannot authorize the workshop.
+  replayed by a host never count as a typed human answer and cannot authorize the workshop. The hook
+  dispatcher journals hashes of both the visible prose and exact host envelope, so this rejection does
+  not depend on remembering every consumer-facing prefix.
 
 ## What a review actually costs
 

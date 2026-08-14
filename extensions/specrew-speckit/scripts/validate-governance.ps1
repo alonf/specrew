@@ -5571,3 +5571,4 @@ catch {
     }
     Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1
 }
+# specrew-self-provenance-ok: DRIFT-198-I009-033,F-025,F-028,F-030,F-033,F-040,F-047,F-049; implementation history is recorded for maintainers and is never emitted as consumer instruction

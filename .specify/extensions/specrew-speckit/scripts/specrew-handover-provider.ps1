@@ -161,3 +161,4 @@ catch {
     [Console]::Error.WriteLine("[specrew-handover] WARN PROVIDER_FAILED $($_.Exception.Message)")
     exit 0
 }
+# specrew-self-provenance-ok: F-174; implementation history is recorded for maintainers and is never emitted as consumer instruction
