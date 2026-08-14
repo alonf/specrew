@@ -80,6 +80,16 @@ $reviewCli = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/specrew-revi
 if ($reviewCli -match "Alias\('authorization-ref'\)") { Write-Pass '--authorization-ref remains a supported flag for scripts and self-chosen labels' }
 else { Fail '--authorization-ref was removed; the ruling keeps it working and only stops it being the advice' }
 
+# Reviewer selection is project setup, not a review spend. The same flag has a stricter meaning when it
+# is carried into --live, so the help must name the distinction instead of making one branch look invalid.
+if ($reviewCli -match 'With --host and without --live' -and
+    $reviewCli -match 'When it authorizes a live round, --ack-reason is required') {
+    Write-Pass 'help distinguishes non-spending reviewer setup from out-of-band live-round authority'
+}
+else {
+    Fail 'help does not explain that pure reviewer setup needs no --ack-reason while live-round authority does'
+}
+
 if ($failures -gt 0) { Write-Host "$failures failure(s)" -ForegroundColor Red; exit 1 }
 Write-Host 'authorization-ref is no longer the advice; --approve-round is.' -ForegroundColor Green
 exit 0

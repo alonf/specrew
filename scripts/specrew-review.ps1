@@ -143,8 +143,9 @@ Options:
   --pause-choice <1|2|3> Answer a review round that is waiting for your decision:
                          1 run another round, 2 stop here and complete sign-off, 3 abandon
   --pause-rationale      Optional note recorded with a stop-here answer
-  --authorization-ref    Your own approval label, for scripts or an approval recorded elsewhere.
-                         Requires --ack-reason saying where that approval came from
+  --authorization-ref    Your own authorization label. With --host and without --live, this
+                         only records reviewer setup and needs no --ack-reason or review spend.
+                         When it authorizes a live round, --ack-reason is required.
   --code-writer-host     Host that produced the implementation, used to prefer an independent reviewer
   --design-context-ref   Design/spec artifact to include in the request bundle; repeatable
   --allowed-path         Path scope the reviewer may inspect; repeatable
