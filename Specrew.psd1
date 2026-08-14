@@ -14,7 +14,8 @@
         'Show-SpecrewVersion',
         'Show-SpecrewReview',
         'Invoke-SpecrewTeam',
-        'Show-SpecrewStatus'
+        'Show-SpecrewStatus',
+        'Get-SpecrewReviewCampaignEvidenceState'
     )
     CmdletsToExport = @()
     VariablesToExport = @()

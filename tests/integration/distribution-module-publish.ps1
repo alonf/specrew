@@ -98,6 +98,22 @@ if (Test-Path -LiteralPath $scratchRoot) {
 
 Reset-ReleaseWorkspace -SourceRoot $repoRoot -DestinationRoot $workspaceRoot
 
+$markerDriver = @"
+`$ErrorActionPreference = 'Stop'
+Import-Module '$((Join-Path $workspaceRoot 'Specrew.psd1') -replace "'", "''")' -Force
+`$command = Get-Command Get-SpecrewReviewCampaignEvidenceState -ErrorAction Stop
+`$state = Get-SpecrewReviewCampaignEvidenceState -ProjectRoot '$($workspaceRoot -replace "'", "''")' -FeatureRef '199-beta3-stabilization' -IterationNumber '001'
+if (`$command.Source -cne 'Specrew' -or `$state.Reason -cne 'no-campaign-result') { exit 3 }
+"@
+$markerDriverPath = Join-Path $scratchRoot 'marker-driver.ps1'
+[System.IO.File]::WriteAllText($markerDriverPath, $markerDriver, [System.Text.UTF8Encoding]::new($false))
+$markerOutput = @(& pwsh -NoProfile -NonInteractive -File $markerDriverPath 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail ("Packaged module did not export a working campaign-evidence marker. Output:`n{0}" -f ($markerOutput -join [Environment]::NewLine))
+    exit 1
+}
+Write-Pass 'Packaged module exports and invokes Get-SpecrewReviewCampaignEvidenceState.'
+
 if (-not (Get-Command -Name Publish-Module -ErrorAction SilentlyContinue)) {
     Write-Fail 'Publish-Module is unavailable in this environment.'
     exit 1
