@@ -811,7 +811,12 @@ function Write-StopBlockOutput {
     # Per-host shape is the verified capability matrix (research/stop-block-capability-matrix.md). Writes ONLY the
     # envelope JSON (no return value - the caller guards $Shape against $script:SpecrewStopBlockShapes first, so a
     # leaked return cannot corrupt the hook stdout the host parses).
-    param([string]$Shape, [string]$Reason, [AllowNull()][string]$ProjectRoot)
+    param(
+        [string]$Shape,
+        [string]$Reason,
+        [AllowNull()][string]$ProjectRoot,
+        [string]$EventName = 'Stop'
+    )
     $renderedOutput = switch ($Shape) {
         # claude / codex / copilot: a hard deny that prevents turn-end and force-continues using reason.
         'decision-block' { @{ decision = 'block'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress }
@@ -820,8 +825,10 @@ function Write-StopBlockOutput {
         # cursor: no same-turn hard block; followup_message auto-submits a NEW user turn (best-effort degrade).
         'followup-message' { @{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress }
     }
-    Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $Event -OutputKind 'payload'
-    Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $Event -OutputKind 'envelope'
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text $Reason -EventName $EventName -OutputKind 'payload'
+        Write-DispatcherHookOutputAuthorityRecord -ProjectRoot $ProjectRoot -Text ([string]$renderedOutput) -EventName $EventName -OutputKind 'envelope'
+    }
     Write-Output $renderedOutput
 }
 
@@ -1287,7 +1294,7 @@ try {
         $alreadyContinuing = [bool](Get-DispatcherMapValue -Map $hostEvent -Key 'stop_hook_active' -Default $false)
         $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
         if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
-            Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot
+            Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason -ProjectRoot $projectRoot -EventName $Event
             exit 0
         }
         # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).

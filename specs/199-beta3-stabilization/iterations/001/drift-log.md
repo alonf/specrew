@@ -22,10 +22,31 @@
 
 ## Summary
 
-**Total drift events**: 43 (DRIFT-199-I001-001 through -043)
+**Total drift events**: 44 (DRIFT-199-I001-001 through -044)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-044 — exact-tree census exposed an ambient hook variable and a stale mirror (resolved)
+
+- **Observed**: 2026-08-15, the first exhaustive run against detached commit
+  `cc53a325` rejected the candidate: 345 of 348 named PowerShell test files passed,
+  `codex-stop-gate-fail-open.Tests.ps1` and `workshop-agenda-confirmation.tests.ps1`
+  failed, and the 40-case public campaign command matrix exceeded the generic 300-second
+  per-file ceiling while four process-heavy suites ran concurrently.
+- **Cause**: the new stop-output journal used ambient `$Event` inside the independently
+  callable emitter instead of accepting the event explicitly. The agenda authority marker
+  was added only to the canonical writer, so its deployed mirror was no longer byte-identical.
+  The campaign suite was green alone (40/40 in 109 seconds); its timeout was resource
+  contention, not a failed assertion or campaign wedge.
+- **Resolution**: `Write-StopBlockOutput` now accepts `EventName` explicitly, defaults it
+  safely for isolated envelope tests, and the production caller passes the real host event.
+  The agenda marker is mirrored. The broad campaign matrix has a named 600-second ceiling,
+  leaving the generic 300-second bound unchanged for every other test file.
+- **Class closure**: the disk-wide census executes every discovered named test file from an
+  exact detached commit, canonical/deployed agenda parity is executable, and exceptional
+  timeout ceilings are path-specific. Ambient-variable or mirror-only regressions therefore
+  reject the candidate before packaging instead of disappearing behind a curated registry.
 
 ### DRIFT-199-I001-043 — the self-leak firewall overstated its surface and enumerated only recent provenance IDs (resolved)
 
