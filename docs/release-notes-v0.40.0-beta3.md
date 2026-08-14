@@ -64,6 +64,10 @@ you must look up is a sentence you cannot understand.
 - **Workshop-record-only lens transitions stay on the normal question path.** Persisting the previous
   lens and asking the next one no longer produces a duplicate five-part material-work packet. If the
   turn changes anything outside the workshop record set, the ordinary material-work packet still wins.
+- **The first product-domain question stays conversational after feature scaffolding.** The untouched
+  `spec.md` template created beside the workshop controller is not treated as authored material, while
+  any real spec edit still requires the ordinary packet. Hook, task, system, and environment prompts
+  replayed by a host never count as a typed human answer and cannot authorize the workshop.
 
 ## What a review actually costs
 

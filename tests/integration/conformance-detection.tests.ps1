@@ -1183,6 +1183,44 @@ if ([string]$preAgendaHandover.scope -ne 'feature' -or [string]$preAgendaHandove
 }
 Write-Pass "Case 16pa: strict pre-agenda product-domain state suppresses the generic packet and retains exact re-entry context"
 
+# ---- Cases 16pa0/16pa0b / beta3 manual-walk regression: the first governed-feature turn creates two paths:
+#      the strict controller plus an UNTOUCHED spec template. That scaffold is workshop setup, not authored spec
+#      work, so the product-domain question remains conversational. Any authored spec content restores the normal
+#      material packet immediately.
+$p16pa0 = New-Fixture -Working '' -LastAuth ''
+Set-Content -LiteralPath (Join-Path $p16pa0 '.specrew\config.yml') -Value 'version: 1' -Encoding UTF8
+New-Item -ItemType Directory -Path (Join-Path $p16pa0 '.specify\templates') -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'templates\specify\templates\spec-template.md') -Destination (Join-Path $p16pa0 '.specify\templates\spec-template.md')
+$null = & git -C $p16pa0 add -- .specrew/config.yml .specify/templates/spec-template.md
+$null = & git -C $p16pa0 -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture workshop machinery'
+$p16pa0Session = 'first-scaffold-question'
+$null = Invoke-Conformance -Proj $p16pa0 -TranscriptPath $null -Event SessionStart -SessionId $p16pa0Session
+$p16pa0Feature = Join-Path $p16pa0 'specs\050-host-neutral-gate'
+New-Item -ItemType Directory -Path $p16pa0Feature -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $p16pa0 '.specify\templates\spec-template.md') -Destination (Join-Path $p16pa0Feature 'spec.md')
+& pwsh -NoProfile -File (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -ProjectRoot $p16pa0 -FeatureRef '050-host-neutral-gate' | Out-Null
+$t16pa0 = New-Transcript -Proj $p16pa0 -Turns @(@{ role = 'assistant'; text = 'Does this product framing match what you have in mind?' })
+$r16pa0 = Invoke-Conformance -Proj $p16pa0 -TranscriptPath $t16pa0 -SessionId $p16pa0Session
+if ($r16pa0.Blocked -or $r16pa0.Out -match 'five-part context packet') { Fail "Case 16pa0: untouched feature+controller scaffold MUST NOT defeat the product-domain question. Out: $($r16pa0.Out)" }
+Write-Pass "Case 16pa0: untouched feature scaffold is workshop setup and the first product-domain question stays visible"
+
+$p16pa0b = New-Fixture -Working '' -LastAuth ''
+Set-Content -LiteralPath (Join-Path $p16pa0b '.specrew\config.yml') -Value 'version: 1' -Encoding UTF8
+New-Item -ItemType Directory -Path (Join-Path $p16pa0b '.specify\templates') -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'templates\specify\templates\spec-template.md') -Destination (Join-Path $p16pa0b '.specify\templates\spec-template.md')
+$null = & git -C $p16pa0b add -- .specrew/config.yml .specify/templates/spec-template.md
+$null = & git -C $p16pa0b -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'fixture workshop machinery'
+$p16pa0bSession = 'authored-spec-question'
+$null = Invoke-Conformance -Proj $p16pa0b -TranscriptPath $null -Event SessionStart -SessionId $p16pa0bSession
+$p16pa0bFeature = Join-Path $p16pa0b 'specs\050-host-neutral-gate'
+New-Item -ItemType Directory -Path $p16pa0bFeature -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $p16pa0bFeature 'spec.md') -Value '# Authored specification content' -Encoding UTF8
+& pwsh -NoProfile -File (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -ProjectRoot $p16pa0b -FeatureRef '050-host-neutral-gate' | Out-Null
+$t16pa0b = New-Transcript -Proj $p16pa0b -Turns @(@{ role = 'assistant'; text = 'Does this product framing match what you have in mind?' })
+$r16pa0b = Invoke-Conformance -Proj $p16pa0b -TranscriptPath $t16pa0b -SessionId $p16pa0bSession
+if (-not $r16pa0b.Blocked -or $r16pa0b.Out -notmatch 'five-part context packet') { Fail "Case 16pa0b: authored spec content during the question turn MUST retain material enforcement. Out: $($r16pa0b.Out)" }
+Write-Pass "Case 16pa0b: only the byte-identical scaffold is exempt; authored spec content still owes the material packet"
+
 # ---- Case 16pa2 / beta3 blind-walk regression: the model scaffolded the feature and persisted
 #      product-domain.md but skipped the controller initializer before asking architecture lens 1.
 #      The read-only Stop detector must name the missing machine record and the exact repair, never

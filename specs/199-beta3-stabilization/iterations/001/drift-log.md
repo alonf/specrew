@@ -22,10 +22,39 @@
 
 ## Summary
 
-**Total drift events**: 39 (DRIFT-199-I001-001 through -039)
+**Total drift events**: 40 (DRIFT-199-I001-001 through -040)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-040 — the first workshop scaffold triggered a material packet that could authorize itself (implementation resolved; manual walk pending)
+
+- **Observed**: the exact Copilot CLI / `claude-sonnet-5` walk entered the product-domain workshop and
+  asked a valid typed confirmation question, but the Stop hook replaced that conversational pause with
+  the generic five-part material-work packet. The same run then wrote two `human-confirmed` workshop
+  receipts even though the maintainer had typed no answer. Copilot had replayed the hook text as a
+  `userPromptSubmitted` event, and the authority writer treated the machinery prompt as human input.
+- **Root cause**: creating a governed feature changes both the workshop controller and the untouched
+  `spec.md` scaffold. The record-only classifier recognized the controller but treated the byte-for-byte
+  template as authored material. Independently, workshop authority proved that a prompt-submit event
+  existed but did not prove that its text came from the human rather than a hook envelope replayed by
+  the host.
+- **Resolution**: during the initial product-domain question only, an exact byte-identical deployed
+  `spec.md` template is part of the workshop record set; any authored spec content still takes the
+  material-work path. Workshop authority now accepts only prompt-submit/pre-invocation source events
+  with human-response text and rejects hook/task/system/environment envelopes plus known plain Specrew
+  machinery prefixes. Empty input, Stop events, and replayed hook prompts cannot mint authority;
+  explicit typed answers and delegation remain valid.
+- **Measured evidence before commit**: the typed-turn authority integration suite passes all 16
+  assertions, including exact plain and wrapped Copilot Stop prompts, invalid event provenance, the
+  production handover path, and real typed answers. The conformance detector passes the exact first-turn
+  scaffold case without a packet and proves that authored `spec.md` content restores the five-part
+  material-work block. Source/deployed script hashes match; packaged-artifact deployment is 3/3 green;
+  and the production harness dry-run validates all five installed adapters (`claude`, `codex`,
+  `copilot`, `cursor-agent`, and `antigravity`) with zero provider invocations. The explicit F-198
+  registry completed all **111 named suites green in 687.475 seconds**. That count covers only the 111
+  entries printed by `tests/f198-regression-suite.ps1`; the fresh Copilot lifecycle walk remains
+  separate acceptance evidence after the exact committed build is installed.
 
 ### DRIFT-199-I001-039 — a dismissed workshop picker was promoted to delegation (implementation resolved; manual walk pending)
 

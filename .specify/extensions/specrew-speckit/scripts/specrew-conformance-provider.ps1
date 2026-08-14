@@ -454,6 +454,22 @@ function Test-SpecrewWorkshopComplete {
     return $false
 }
 
+function Test-SpecrewUntouchedFeatureSpecScaffold {
+    param([string]$ProjectRoot, [AllowNull()][string]$FeatureRef)
+    try {
+        if ([string]::IsNullOrWhiteSpace($FeatureRef)) { return $false }
+        $specPath = Join-Path $ProjectRoot ("specs/{0}/spec.md" -f $FeatureRef)
+        $templatePath = Join-Path $ProjectRoot '.specify/templates/spec-template.md'
+        if (-not (Test-Path -LiteralPath $specPath -PathType Leaf) -or -not (Test-Path -LiteralPath $templatePath -PathType Leaf)) { return $false }
+        $specItem = Get-Item -LiteralPath $specPath -ErrorAction Stop
+        $templateItem = Get-Item -LiteralPath $templatePath -ErrorAction Stop
+        if ($specItem.Length -le 0 -or $specItem.Length -ne $templateItem.Length -or $specItem.Length -gt 1048576) { return $false }
+        return ([string](Get-FileHash -LiteralPath $specPath -Algorithm SHA256 -ErrorAction Stop).Hash -ceq
+            [string](Get-FileHash -LiteralPath $templatePath -Algorithm SHA256 -ErrorAction Stop).Hash)
+    }
+    catch { return $false }
+}
+
 function Resolve-SpecrewWorkshopQuestionPause {
     # FR-056: controller-owned durable state is the cross-host workshop authority. Model-authored comments and
     # question-tool payloads are intentionally irrelevant: hosts may omit or swallow them. The exact active feature /
@@ -1082,6 +1098,12 @@ try {
     # precedence. Unknown or empty paths, or any path outside the workshop record set, fall through to today's
     # material-work behavior (block), which is fail-closed.
     $workshopRecordOnlyTurn = $false
+    $preAgendaUntouchedScaffoldTurn = ($workshopIntermediate -and
+        [string]$workshopQuestion.scope -eq 'feature' -and
+        [string]$workshopQuestion.lens -eq 'product-domain' -and
+        [string]$workshopQuestion.agenda_status -eq 'pending-confirmation' -and
+        (Test-SpecrewUntouchedFeatureSpecScaffold -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref)))
+    $preAgendaSpecPath = if ($preAgendaUntouchedScaffoldTurn) { ("specs/{0}/spec.md" -f [string]$workshopQuestion.feature_ref) } else { $null }
     if ($blockKind -eq 'material' -and $canAssess -and $null -ne $materialSignal) {
         $turnPaths = @()
         try { $turnPaths = @($materialSignal.changed_paths | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) }
@@ -1091,7 +1113,8 @@ try {
                     $normalizedTurnPath = ([string]$_).Replace([char]92, [char]47)
                     -not ($normalizedTurnPath -match '(^|/)workshop/' -or
                         $normalizedTurnPath -match '(^|/)lens-applicability\.json$' -or
-                        $normalizedTurnPath -match '(^|/)\.specrew/handover/workshop-question\.json$')
+                        $normalizedTurnPath -match '(^|/)\.specrew/handover/workshop-question\.json$' -or
+                        ($preAgendaUntouchedScaffoldTurn -and $normalizedTurnPath.Equals($preAgendaSpecPath, [StringComparison]::OrdinalIgnoreCase)))
                 })
             $workshopRecordOnlyTurn = (@($outsideWorkshop).Count -eq 0)
         }

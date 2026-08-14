@@ -39,6 +39,21 @@ function Get-SpecrewWorkshopAuthorityHash {
     return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
 }
 
+function Test-SpecrewWorkshopHumanResponseText {
+    [CmdletBinding()]
+    param([AllowNull()][string] $Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $trimmed = $Text.Trim()
+
+    # Host stop-block output can be re-submitted by the host as a userPromptSubmitted event. It is still hook
+    # machinery, not a typed human answer. Codex gives that machinery an explicit envelope; Copilot 1.0.79
+    # replays the plain Specrew directive itself. Authority is fail-closed on both shapes.
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b)[\s\S]*</(?:hook_prompt|task-notification|turn_aborted|system-reminder|environment_context)>\s*$') { return $false }
+    if ($trimmed -match '(?is)^\s*(?:Specrew:|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)') { return $false }
+    return $true
+}
+
 function Write-SpecrewWorkshopAuthorityReceipt {
     [CmdletBinding()]
     param(
@@ -48,7 +63,8 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         [AllowNull()][string] $SourceEvent
     )
 
-    if ([string]::IsNullOrWhiteSpace($Response)) { return $null }
+    if ($SourceEvent -cnotin @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')) { return $null }
+    if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
     $questionPath = Join-Path $root '.specrew/handover/workshop-question.json'
     if (-not (Test-Path -LiteralPath $questionPath -PathType Leaf)) { return $null }
