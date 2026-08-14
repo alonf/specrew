@@ -248,6 +248,7 @@
         'scripts/internal/atomic-write.ps1',
         'scripts/internal/bootstrap/ClassificationEngine.ps1',
         'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1',
+        'scripts/internal/bootstrap/HumanAuthorityStore.ps1',
         'scripts/internal/bootstrap/DirectiveEngine.ps1',
         'scripts/internal/bootstrap/HandoverStore.ps1',
         'scripts/internal/bootstrap/HookJournalAccessor.ps1',

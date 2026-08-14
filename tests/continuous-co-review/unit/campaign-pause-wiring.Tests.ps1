@@ -255,6 +255,92 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         [bool]$second.invoked | Should -BeTrue
     }
 
+    It 'THE PUBLIC COMMAND refuses a fifth round even when the latest pause says fix-and-continue and the round is approved' {
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive 'budget-ceiling')
+        $config = script:New-PauseConfig -Root $root
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaign = 'cmp-001-demo-i007'
+
+        foreach ($round in 1..4) {
+            $runId = "run-budget-$round"
+            $observedAt = "2026-08-11T0$round`:00:00.0000000+00:00"
+            Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact (
+                New-ReviewCampaignPendingPauseFact -CampaignId $campaign -RunId $runId -TargetDigest "digest-$round" `
+                    -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() `
+                        -RoundsUsed $round -BudgetTotal 4 -ElapsedMinutes ($round * 5)) -ObservedAt $observedAt
+            ) | Out-Null
+        }
+        Write-ReviewCampaignPauseDecisionFact -StoreRoot $store -Fact (
+            New-ReviewCampaignPauseDecisionFact -CampaignId $campaign -RunId 'run-budget-4' `
+                -Choice 'fix-and-continue' -ObservedAt '2026-08-11T04:05:00.0000000+00:00'
+        ) | Out-Null
+
+        $fifth = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
+            -RunId 'run-budget-5' -AuthorityConfigPath $config -GrantAuthorizationRef 'human-approved-round-5' `
+            -Ports ([pscustomobject]@{
+                    target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive 'budget-ceiling-ext')
+                    harness = [pscustomobject]@{
+                        id = 'must-not-run'
+                        preflight = { param($invocation) throw 'budget-refusal-must-precede-harness-preflight' }
+                        invoke = { param($invocation, $environment) throw 'budget-refusal-must-precede-harness-invocation' }
+                    }
+                    runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort
+                    clock = New-ReviewSystemClockPort; prompt_path = (Join-Path $root 'prompt.txt')
+                })
+
+        [string]$fifth.status | Should -Be 'paused'
+        [bool]$fifth.invoked | Should -BeFalse
+        [string]$fifth.reason | Should -Be 'review-round-paused:review-round-budget-exhausted'
+        [string]$fifth.continuation_reason | Should -Be 'review-round-budget-exhausted'
+        (@($fifth.pause_surface) -join "`n") | Should -Match 'round budget|allowance-reset'
+    }
+
+    It 'THE PUBLIC COMMAND fails closed before harness work when the authority store is corrupt' -ForEach @(
+        @{ name = 'invalid-run-directory'; arrange = 'invalid-directory' }
+        @{ name = 'result-path-identity-mismatch'; arrange = 'identity-mismatch' }
+    ) {
+        $root = script:New-PauseRepo -Root (Join-Path $TestDrive "corrupt-$name")
+        $config = script:New-PauseConfig -Root $root
+        $store = Join-Path $root '.specrew/review/authority'
+        $campaign = 'cmp-001-demo-i007'
+        $runsRoot = Join-Path $store "campaigns/$campaign/runs"
+        New-Item -ItemType Directory -Path $runsRoot -Force | Out-Null
+
+        if ($arrange -ceq 'invalid-directory') {
+            New-Item -ItemType Directory -Path (Join-Path $runsRoot 'INVALID!') -Force | Out-Null
+        }
+        else {
+            $fact = [pscustomobject][ordered]@{
+                schema_version = '1.0'; campaign_id = $campaign; run_id = 'run-original'; target_digest = 'digest-corrupt'
+                harness_id = 'fixture'; completion = 'complete'; verdict = 'pass'; runtime_outcome = 'completed'
+                termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+                can_approve_current = $true; failure_reason = $null; summary = 'valid fact moved under a different run path'
+                findings = @(); started_at = '2026-08-11T01:00:00Z'; ended_at = '2026-08-11T01:01:00Z'; duration_ms = 60000
+            }
+            Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId 'run-original' -Fact $fact | Out-Null
+            Move-Item -LiteralPath (Join-Path $runsRoot 'run-original') -Destination (Join-Path $runsRoot 'run-other')
+        }
+
+        $attempt = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' `
+            -RunId "run-after-$name" -AuthorityConfigPath $config -GrantAuthorizationRef 'human-approved-corruption-test' `
+            -Ports ([pscustomobject]@{
+                    target = New-GitReviewTargetPort -OriginRepo $root -ExternalRoot (Join-Path $TestDrive "corrupt-$name-ext")
+                    harness = [pscustomobject]@{
+                        id = 'must-not-run'
+                        preflight = { param($invocation) throw 'corrupt-store-refusal-must-precede-harness-preflight' }
+                        invoke = { param($invocation, $environment) throw 'corrupt-store-refusal-must-precede-harness-invocation' }
+                    }
+                    runtime = New-ReviewFixtureRuntimePort; verification = New-ReviewFixtureVerificationPort
+                    clock = New-ReviewSystemClockPort; prompt_path = (Join-Path $root 'prompt.txt')
+                })
+
+        [string]$attempt.status | Should -Be 'paused'
+        [bool]$attempt.invoked | Should -BeFalse
+        [string]$attempt.reason | Should -Be 'review-authority-store-invalid'
+        [string]$attempt.continuation_reason | Should -Be 'review-authority-store-invalid'
+        (@($attempt.pause_surface) -join "`n") | Should -Match 'could not read its review authority safely'
+    }
+
     It 'ANSWERING stop-here or abandon does NOT authorize a further round' -ForEach @(
         @{ choice = 'stop-here' }
         @{ choice = 'abandon' }
@@ -309,19 +395,21 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
         $store = Join-Path $TestDrive 'sortstore'
         $campaign = 'cmp-sort-i001'
 
-        # Deliberately written OLDEST FIRST while sorting LAST lexicographically, so a lexicographic
-        # implementation returns the older pause and a chronological one returns the newer.
+        # Deliberately combines both ordering traps: the run ids sort backwards, and the older
+        # timestamp uses Z while the newer instant uses +00:00 with fractional seconds. Lexical
+        # timestamp ordering puts Z after '.', so only parsed-instant ordering gets both right.
         Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact (
             New-ReviewCampaignPendingPauseFact -CampaignId $campaign -RunId 'run-review-signoff-9' -TargetDigest 'digest-older' `
                 -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 1 -BudgetTotal 4 -ElapsedMinutes 1) `
-                -ObservedAt '2026-08-01T00:00:00.0000000+00:00') | Out-Null
+                -ObservedAt '2026-08-02T00:00:00Z') | Out-Null
         Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact (
             New-ReviewCampaignPendingPauseFact -CampaignId $campaign -RunId 'run-review-signoff-10' -TargetDigest 'digest-newer' `
                 -Decision (Resolve-ReviewCampaignPauseDecision -Findings @() -RoundsUsed 2 -BudgetTotal 4 -ElapsedMinutes 2) `
-                -ObservedAt '2026-08-02T00:00:00.0000000+00:00') | Out-Null
+                -ObservedAt '2026-08-02T00:00:00.5000000+00:00') | Out-Null
 
         # The premise, asserted so the test cannot quietly stop testing anything if the ids ever change.
         ('run-review-signoff-9' -gt 'run-review-signoff-10') | Should -BeTrue -Because 'these ids sort backwards as text; that is the entire trap'
+        ('2026-08-02T00:00:00Z' -gt '2026-08-02T00:00:00.5000000+00:00') | Should -BeTrue -Because 'valid equivalent-offset timestamp spellings also sort backwards as text'
 
         $pending = Get-ReviewCampaignPendingPause -StoreRoot $store -CampaignId $campaign
         [string]$pending.run_id | Should -Be 'run-review-signoff-10' -Because 'the newest pause is the one the human is actually being asked about'

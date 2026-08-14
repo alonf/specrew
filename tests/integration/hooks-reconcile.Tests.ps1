@@ -99,6 +99,26 @@ try {
         Fail 'a fully wired config still carries a drift detail'
     }
     else { Write-Pass 'status: a fully wired config reports installed with no drift note' }
+
+    # Named-definition parity: an unrelated definition carrying Stop must not hide that the
+    # Specrew-owned Antigravity definition is missing Stop.
+    $antiProject = Join-Path $scratch 'anti-project'
+    New-Item -ItemType Directory -Path (Join-Path $antiProject '.agents') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $antiProject '.specrew') -Force | Out-Null
+    $antiPath = Join-Path $antiProject '.agents/hooks.json'
+    $antiStale = [ordered]@{
+        'specrew-refocus' = [ordered]@{
+            PreInvocation = @{ hooks = @(@{ type = 'command'; command = 'pwsh -File specrew-hook-launch.ps1 -Event PreInvocation' }) }
+        }
+        'user-audit' = [ordered]@{
+            Stop = @{ hooks = @(@{ type = 'command'; command = 'echo user-stop' }) }
+        }
+    }
+    [IO.File]::WriteAllText($antiPath, ($antiStale | ConvertTo-Json -Depth 16), [Text.UTF8Encoding]::new($false))
+    $antiBindings = Get-SpecrewHookHealthBindings -HostKind antigravity
+    $antiMissing = @(Get-SpecrewHookMissingEventRegistrations -ParsedConfig ($antiStale | ConvertTo-Json -Depth 16 | ConvertFrom-Json) -Bindings $antiBindings)
+    if ($antiMissing -notcontains 'Stop') { Fail 'named-definition status let an unrelated Stop definition hide the missing Specrew Stop registration' }
+    else { Write-Pass 'status: named-definition events are checked inside the Specrew-owned definition' }
 }
 finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue

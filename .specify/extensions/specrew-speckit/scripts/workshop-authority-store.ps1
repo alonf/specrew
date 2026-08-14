@@ -39,6 +39,17 @@ function Get-SpecrewWorkshopAuthorityHash {
     return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
 }
 
+function ConvertTo-SpecrewWorkshopSourceEvent {
+    param([AllowNull()][string]$SourceEvent)
+    $key = ([string]$SourceEvent).Trim().ToLowerInvariant() -replace '[-_]', ''
+    switch ($key) {
+        'userpromptsubmit' { return 'UserPromptSubmit' }
+        'userpromptsubmitted' { return 'UserPromptSubmit' }
+        'preinvocation' { return 'PreInvocation' }
+        default { return $null }
+    }
+}
+
 function Test-SpecrewWorkshopHumanResponseText {
     [CmdletBinding()]
     param([AllowNull()][string] $Text)
@@ -50,8 +61,30 @@ function Test-SpecrewWorkshopHumanResponseText {
     # machinery, not a typed human answer. Codex gives that machinery an explicit envelope; Copilot 1.0.79
     # replays the plain Specrew directive itself. Authority is fail-closed on both shapes.
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b)[\s\S]*</(?:hook_prompt|task-notification|turn_aborted|system-reminder|environment_context)>\s*$') { return $false }
-    if ($trimmed -match '(?is)^\s*(?:Specrew:|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)') { return $false }
+    if ($trimmed -match '(?is)^\s*(?:Specrew:|Specrew\s+review\s+[-—]|\[specrew-|AWAITING YOUR VERDICT:|BOUNDARY NOT READY FOR A VERDICT:|Campaign review authority\b)') { return $false }
     return $true
+}
+
+function Test-SpecrewWorkshopResponseIsHookOutput {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response
+    )
+    $path = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/hook-output-authority.jsonl'
+    if (Test-Path -LiteralPath ($path + '.unhealthy') -PathType Leaf) { return $true }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $false }
+    $hash = Get-SpecrewWorkshopAuthorityHash -Text $Response.Trim()
+    foreach ($line in [IO.File]::ReadLines($path, [Text.Encoding]::UTF8)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        try { $record = $line | ConvertFrom-Json -Depth 5 -ErrorAction Stop }
+        catch { throw 'workshop-hook-output-authority-journal-invalid' }
+        if ([string]$record.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$record.output_hash)) {
+            throw 'workshop-hook-output-authority-record-invalid'
+        }
+        if ([string]$record.output_hash -ceq $hash) { return $true }
+    }
+    return $false
 }
 
 function Write-SpecrewWorkshopAuthorityReceipt {
@@ -63,9 +96,11 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         [AllowNull()][string] $SourceEvent
     )
 
-    if ($SourceEvent -cnotin @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')) { return $null }
-    if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
+    $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
+    if ($null -eq $canonicalSourceEvent) { return $null }
     $root = [IO.Path]::GetFullPath($ProjectRoot)
+    if (-not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
+    if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
     $questionPath = Join-Path $root '.specrew/handover/workshop-question.json'
     if (-not (Test-Path -LiteralPath $questionPath -PathType Leaf)) { return $null }
 
@@ -115,7 +150,7 @@ function Write-SpecrewWorkshopAuthorityReceipt {
             response_hash      = $responseHash
             confirmation       = [string]$authority.confirmation
             confirmation_scope = [string]$authority.confirmation_scope
-            source_event       = [string]$SourceEvent
+            source_event       = $canonicalSourceEvent
             host_kind          = [string]$HostKind
             recorded_at        = [DateTimeOffset]::UtcNow.ToString('o')
         }
@@ -158,22 +193,21 @@ function Get-SpecrewWorkshopAuthorityReceipt {
     $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $ProjectRoot
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
     try {
-        $item = Get-Item -LiteralPath $path -ErrorAction Stop
-        if ($item.Length -le 0 -or $item.Length -gt 1048576) { return $null }
-        $lines = @(Get-Content -LiteralPath $path -Tail 256 -Encoding UTF8 -ErrorAction Stop)
-        for ($i = $lines.Count - 1; $i -ge 0; $i--) {
-            if ([string]::IsNullOrWhiteSpace([string]$lines[$i])) { continue }
-            try { $record = [string]$lines[$i] | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
-            catch { continue }
+        $latest = $null
+        foreach ($line in [IO.File]::ReadLines($path, [Text.Encoding]::UTF8)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            if ([Text.Encoding]::UTF8.GetByteCount($line) -gt 65536) { throw 'workshop-authority-record-size-invalid' }
+            try { $record = [string]$line | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+            catch { throw 'workshop-authority-record-json-invalid' }
             if ([string]$record.schema_version -cne '1' -or [string]$record.feature_ref -cne $FeatureRef -or
                 [string]$record.phase -cne $Phase) { continue }
             if (-not [string]::IsNullOrWhiteSpace($Lens) -and [string]$record.lens -cne $Lens) { continue }
             if (-not [string]::IsNullOrWhiteSpace($ReceiptId) -and [string]$record.receipt_id -cne $ReceiptId) { continue }
-            return $record
+            $latest = $record
         }
+        return $latest
     }
-    catch { return $null }
-    return $null
+    catch { throw ('workshop-authority-store-invalid:' + $_.Exception.Message) }
 }
 
 function Test-SpecrewWorkshopAuthorityReceipt {

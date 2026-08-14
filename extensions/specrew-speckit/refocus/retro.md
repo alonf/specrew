@@ -15,4 +15,3 @@ reviewed_at: 2026-06-07
 6. **Stop at the boundary.** retro → iteration-closeout is human-judgment-required. Commit retro.md, packet, wait.
 
 Known traps: retro written from memory instead of the drift-log/journal/commits; lessons repeated verbatim from last iteration (the lesson didn't stick — that IS the finding); skipping calibration because the iteration "felt fine".
-

@@ -14,4 +14,3 @@ reviewed_at: 2026-06-07
 5. **After-tasks is readiness, not authorization.** The traceability check emits findings; it does NOT authorize skipping the human verdict. tasks → before-implement requires the explicit implementation go-ahead with a readiness summary (feature, clarify outcome, quality focus, team, hardening-gate status).
 
 Known traps: SC rows with no covering task; "misc/polish" tasks traceable to nothing; capacity that ignores test effort; treating after-tasks output as permission to start coding.
-

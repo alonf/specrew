@@ -148,9 +148,9 @@ T067-class environment with the proof line transcribed and scoped.
 
 ### User Story 5 - The fresh-project consumer bootstraps (Priority: P3)
 
-A consumer runs `specrew init` on a fresh project and gets a starter verification plan
-(governance validator plus dotnet/npm build-test templates, with a working env_refs
-allowlist). When verification fails, the error names the missing piece and the exact
+A consumer runs `specrew init` on a fresh project and gets a strict starter verification
+plan (governance validator plus a working env_refs allowlist) and a sibling guide containing
+copy-ready dotnet/npm build-test templates. When verification fails, the error names the missing piece and the exact
 next step instead of sealing the cause behind diagnostics.
 
 **Why this priority**: T067's agent reverse-engineered the plan schema by hand (ledger
@@ -164,10 +164,12 @@ format) and verify each error names it.
 **Acceptance Scenarios**:
 
 1. **Given** a fresh project, **When** `specrew init` completes, **Then**
-   `.specrew/verification-plan.json` exists with the governance validator, dotnet/npm
-   build-test templates, and the default env_refs allowlist (PATH, PATHEXT,
+   `.specrew/verification-plan.json` exists with the governance validator and the default
+   env_refs allowlist (PATH, PATHEXT,
    SYSTEMROOT, COMSPEC, TEMP, TMP, TMPDIR, HOME, USERPROFILE, APPDATA, LOCALAPPDATA,
-   PROGRAMFILES, PROGRAMFILES(X86), PROGRAMDATA), and a full campaign round completes
+   PROGRAMFILES, PROGRAMFILES(X86), PROGRAMDATA), while
+   `.specrew/verification-plan.templates.md` contains copy-ready dotnet/npm build-test
+   templates, and a full campaign round completes
    end to end (amended 2026-08-10 — preflight alone is not acceptance).
 2. **Given** a verification command failing because a needed environment variable is
    not in env_refs, **When** the error renders, **Then** it names `env_refs` and shows
@@ -370,9 +372,12 @@ OneDrive / reparse policy (durable):
 
 Campaign bootstrap (durable):
 
-- **FR-012**: `specrew init` MUST scaffold a starter verification-plan.json
-  (governance validator + dotnet/npm build-test templates) with the default env_refs
-  allowlist (N4 list including TMPDIR). Acceptance is a fresh project completing a FULL
+- **FR-012**: `specrew init` MUST scaffold a strict starter verification-plan.json
+  (governance validator) with the default env_refs allowlist (N4 list including TMPDIR),
+  plus a sibling verification-plan.templates.md carrying copy-ready dotnet/npm build-test
+  command templates. Templates stay outside JSON because the plan contract rejects unknown
+  and disabled fields rather than allowing documentation to masquerade as executable authority.
+  Acceptance is a fresh project completing a FULL
   campaign round, not merely passing preflight (amended 2026-08-10; see SC-007).
 - **FR-013**: Verification failures MUST name the missing piece (env_refs, plan
   schema, defer-record format) in the error with the exact next step, not seal it
@@ -458,8 +463,9 @@ Method (binding on every fix):
   must consult (`.specrew/review/signoff-gate/latest.json` + history).
 - **Pending pause decision**: sanctioned quiet state — round complete on current tree,
   surface rendered, human unanswered.
-- **Verification plan**: `.specrew/verification-plan.json` — commands, templates, and
-  the env_refs allowlist scaffolded by init.
+- **Verification plan**: `.specrew/verification-plan.json` — executable commands and the
+  env_refs allowlist scaffolded by init; `.specrew/verification-plan.templates.md` is the
+  non-executable guide for optional ecosystem commands.
 - **Reviewer-host catalog row**: per-host defaults including the review window.
 - **Gloss helper**: renders id + title for every ID in consumer prose.
 

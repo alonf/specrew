@@ -166,7 +166,7 @@ try {
     Assert-True ($composite.ExitCode -eq 0) '3: synthetic shipped SessionStart composite exits 0'
     Assert-True ($composite.StdOut.Length -gt 0) '3: synthetic shipped SessionStart composite emits host-facing output'
     Assert-True ($composite.StdOut.Length -le $cap) "3: synthetic shipped SessionStart composite is under the 10K host cap after dispatcher policy (got $($composite.StdOut.Length))"
-    Assert-True ($composite.StdOut -match 'MANDATORY FIRST ACTION') '3: bootstrap fragment survives dispatcher cap policy'
+    Assert-True ($composite.StdOut -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') '3: bootstrap fragment survives dispatcher cap policy'
     Assert-True ($composite.StdOut -match 'truncated to fit the session-start delivery cap') '3: bounded bootstrap resume context survives dispatcher cap policy'
     Assert-True (-not ($composite.StdOut -match 'SYNTHETIC-REFOCUS-END')) '3: lower-priority synthetic refocus tail is clipped before it can overrun the cap'
     Assert-True ($composite.StdErr -match 'PAYLOAD_CLIPPED') '3: dispatcher reports the lower-priority cap clipping'
@@ -197,7 +197,7 @@ finally {
 }
 
 # --- 4: the load-bearing content survives the bound (banner + resume context + the in-flight resume instruction). ---
-Assert-True ($directive -match 'MANDATORY FIRST ACTION')              '4: the orientation-banner mandate survives (the P2 user-visible deliverable)'
+Assert-True ($directive -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') '4: the session-state orientation survives (the P2 user-visible deliverable)'
 Assert-True ($directive -match 'Resolved for THIS session')           '4: the resolved version/branch line survives'
 Assert-True ($directive -notmatch 'BEGIN SPECREW LAUNCH CONTRACT')    '4: the 45KB contract is NOT inlined in pointer mode'
 Assert-True ($directive -match 'IN-FLIGHT WORK ON DISK')              '4: the in-flight resume scan survives'
@@ -234,7 +234,7 @@ foreach ($emptyShape in @{ name = 'untyped @()'; v = @() }, @{ name = 'typed [ob
     try { $d5 = Format-BootstrapDirective -Result $result -ContractBody '' -InFlight $inflightNoDecisions -PendingVerdict $null -SpecrewVersion '0.36.0' -Branch '001-atm-kids-simulator' }
     catch { Assert-True $false ("5: directive render MUST NOT throw on empty done_decisions [$($emptyShape.name)] - it did: $($_.Exception.Message)") }
     Assert-True ($d5 -and $d5.Length -gt 0)                  "5: directive renders non-empty with empty done_decisions [$($emptyShape.name)] (the real-host crash shape)"
-    Assert-True ($d5 -match 'MANDATORY FIRST ACTION')        "5: the banner survives with empty done_decisions [$($emptyShape.name)]"
+    Assert-True ($d5 -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') "5: the orientation survives with empty done_decisions [$($emptyShape.name)]"
     Assert-True ($d5 -match 'lenses already DONE')           "5: the bare-names fallback renders (no decision recap) [$($emptyShape.name)]"
     Assert-True ($d5 -notmatch 'DECISIONS recorded so far')  "5: the decisions-recap block is absent when there are no decisions [$($emptyShape.name)]"
 }

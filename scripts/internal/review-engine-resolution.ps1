@@ -67,10 +67,16 @@ function Assert-SpecrewReviewRuntimePathContained {
                     -Disposition $disposition.disposition -LinkType $disposition.link_type)
         }
     }
+    # The walk above proves each existing component is non-redirecting. Re-check lexical
+    # containment after the walk as promised by this function's contract; this also makes a future
+    # path-normalization change fail at the authorization seam instead of relying on the comment.
+    if (-not (Test-SpecrewReviewRuntimePathUnderRoot -Path $pathFull -Root $rootFull)) {
+        throw "review-runtime-managed-path-escapes-root:$Path"
+    }
     return $pathFull
 }
 
-function Get-SpecrewReviewRuntimeManagedTextSha256 {
+function Read-SpecrewReviewRuntimeManagedText {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
 
@@ -95,6 +101,14 @@ function Get-SpecrewReviewRuntimeManagedTextSha256 {
         }
     }
     else { [IO.File]::ReadAllText($item.FullName, [Text.Encoding]::UTF8) }
+    return $content
+}
+
+function Get-SpecrewReviewRuntimeManagedTextSha256 {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    $content = Read-SpecrewReviewRuntimeManagedText -Path $Path
     $normalized = $content.Replace("`r`n", "`n").Replace("`r", "`n")
     return [Convert]::ToHexString(
         [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($normalized))
@@ -169,7 +183,7 @@ function Get-SpecrewReviewRuntimeBundleSha256 {
     try {
         foreach ($entry in $manifest) {
             $relative = [string]$entry.path
-            $full = [IO.Path]::GetFullPath((Join-Path $root $relative))
+            $full = Assert-SpecrewReviewRuntimePathContained -Path ([IO.Path]::GetFullPath((Join-Path $root $relative))) -Root $root
             if (-not [IO.File]::Exists($full)) { throw "review-runtime-managed-file-missing:$relative" }
             $hash.AppendData([Text.Encoding]::UTF8.GetBytes($relative))
             $hash.AppendData([byte[]]@(0))
@@ -177,7 +191,9 @@ function Get-SpecrewReviewRuntimeBundleSha256 {
             # Normalize line endings so an otherwise identical deployed engine does
             # not fail the handshake solely because of host checkout conventions or
             # a stripped UTF-8 BOM.
-            $content = [IO.File]::ReadAllText($full, [Text.Encoding]::UTF8)
+            # Marker-provided manifests take this same reparse/hydration path as discovered
+            # manifests. The editable marker may name files; it cannot bypass the read policy.
+            $content = Read-SpecrewReviewRuntimeManagedText -Path $full
             $normalized = $content.Replace("`r`n", "`n").Replace("`r", "`n")
             $hash.AppendData([Text.Encoding]::UTF8.GetBytes($normalized))
             $hash.AppendData([byte[]]@(0))
@@ -215,7 +231,10 @@ function Resolve-SpecrewReviewEngineRoot {
     if ([IO.File]::Exists($markerPath)) {
         try { $marker = [IO.File]::ReadAllText($markerPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -Depth 8 }
         catch { throw "review-engine-marker-invalid:${markerPath}:$($_.Exception.Message)" }
-        if ([string]$marker.schema_version -cne '1.0' -or [string]::IsNullOrWhiteSpace([string]$marker.runtime_bundle_sha256)) {
+        $schemaProperty = $marker.PSObject.Properties['schema_version']
+        $bundleProperty = $marker.PSObject.Properties['runtime_bundle_sha256']
+        if (-not $schemaProperty -or -not $bundleProperty -or [string]$schemaProperty.Value -cne '1.0' -or
+            [string]::IsNullOrWhiteSpace([string]$bundleProperty.Value)) {
             throw "review-engine-marker-invalid:$markerPath"
         }
         if ($marker.PSObject.Properties['managed_files']) {
@@ -231,13 +250,14 @@ function Resolve-SpecrewReviewEngineRoot {
         Get-SpecrewReviewRuntimeBundleSha256 -RuntimeRoot $projectRuntime
     }
     if ($null -ne $marker) {
-        if ([string]$marker.runtime_bundle_sha256 -cne $projectHash) {
-            throw "review-engine-project-runtime-drifted: marker=$($marker.runtime_bundle_sha256); actual=$projectHash; run 'specrew update --project-path `"$project`"'"
+        if ([string]$bundleProperty.Value -cne $projectHash) {
+            throw "review-engine-project-runtime-drifted: marker=$($bundleProperty.Value); actual=$projectHash; run 'specrew update --project-path `"$project`"'"
         }
     }
 
     if ($projectHash -cne $installedHash) {
-        $markerVersion = if ($null -ne $marker -and -not [string]::IsNullOrWhiteSpace([string]$marker.specrew_version)) { [string]$marker.specrew_version } else { 'unversioned' }
+        $versionProperty = if ($null -ne $marker) { $marker.PSObject.Properties['specrew_version'] } else { $null }
+        $markerVersion = if ($versionProperty -and -not [string]::IsNullOrWhiteSpace([string]$versionProperty.Value)) { [string]$versionProperty.Value } else { 'unversioned' }
         throw "review-engine-version-mismatch: installed=$installedHash; project=$projectHash; project_version=$markerVersion; run 'specrew update --project-path `"$project`"' before review"
     }
 

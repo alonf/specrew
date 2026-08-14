@@ -117,7 +117,7 @@ try {
     if ($out -match 'PROVIDER_FAILED') {
         Fail "3: deployed self-host bootstrap provider failed instead of resolving project-local source components:`n$out"
     }
-    if ($out -notmatch 'MANDATORY FIRST ACTION') {
+    if ($out -notmatch 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') {
         Fail "3: deployed self-host bootstrap provider did not emit the visible orientation directive:`n$out"
     }
     if (-not (Test-Path -LiteralPath (Join-Path $proj '.specrew/last-start-prompt.md'))) {

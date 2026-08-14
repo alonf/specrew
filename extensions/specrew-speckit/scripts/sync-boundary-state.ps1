@@ -11,8 +11,6 @@ param(
     [string]$IdentityActiveIssues,
     [string]$IdentityBody,
     [string]$HandoffText,
-    [string]$ReviewSignoffOverrideAuthorizedBy,
-    [string]$ReviewSignoffOverrideRationale,
     [switch]$PreflightOnly
 )
 
@@ -163,8 +161,6 @@ $result = Invoke-SpecrewBoundaryStateSync `
     -IdentityActiveIssues $IdentityActiveIssues `
     -IdentityBody $IdentityBody `
     -HandoffText $HandoffText `
-    -ReviewSignoffOverrideAuthorizedBy $ReviewSignoffOverrideAuthorizedBy `
-    -ReviewSignoffOverrideRationale $ReviewSignoffOverrideRationale `
     -PreflightOnly:$PreflightOnly
 
 if ($null -ne $result) {

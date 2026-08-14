@@ -34,7 +34,7 @@ function Get-NamedFunctionTexts {
     return $texts
 }
 # dot-source each extracted function at SCRIPT scope so it is callable below (not trapped in a helper's scope).
-foreach ($fnText in (Get-NamedFunctionTexts -Path $deployScript -Names @('Add-DeploymentAction', 'Ensure-Directory', 'Set-ManagedFile', 'Copy-ManagedDirectory'))) {
+foreach ($fnText in (Get-NamedFunctionTexts -Path $deployScript -Names @('Add-DeploymentAction', 'Ensure-Directory', 'Assert-ManagedMutationAllowed', 'Set-ManagedFile', 'Copy-ManagedDirectory'))) {
     . ([scriptblock]::Create($fnText))
 }
 

@@ -968,6 +968,53 @@ try {
         }
     }
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
+    $transcriptRereadAttempted = $false
+    $transcriptRereadRecovered = $false
+    # DRIFT-199-I001-015: a transcript writer can expose a parseable but incomplete final assistant
+    # record while Stop is reading it. Do not tax every Stop with repeated tail-200 parsing. A 1-3 header
+    # near-miss is the measured signature, so only then wait one scheduler slice and re-read eight lines.
+    # This is a bounded recovery read, not a poll loop; an unreadable retry preserves fail-safe enforcement.
+    $initialHeaderHits = 0
+    foreach ($header in $script:SpecrewReentryHeaders) {
+        if (-not [string]::IsNullOrEmpty([string]$lastAssistantText) -and [string]$lastAssistantText -match [regex]::Escape($header)) { $initialHeaderHits++ }
+    }
+    if (-not $packetPresent -and $initialHeaderHits -ge 1 -and $initialHeaderHits -le 3 -and $ccLoaded -and
+        -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)) {
+        $transcriptRereadAttempted = $true
+        try {
+            Start-Sleep -Milliseconds 15
+            $retryTail = @(Get-Content -LiteralPath $transcriptPathArg -Tail 8 -Encoding UTF8 -ErrorAction Stop)
+            $retryAssistantText = $null
+            for ($retryIndex = $retryTail.Count - 1; $retryIndex -ge 0; $retryIndex--) {
+                $retryTurn = Get-SpecrewConversationTurnFromLine -Line $retryTail[$retryIndex]
+                if ($null -ne $retryTurn -and [string]$retryTurn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$retryTurn.text)) {
+                    $retryAssistantText = [string]$retryTurn.text
+                    break
+                }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($retryAssistantText) -and (Test-SpecrewReentryPacketPresent -Text $retryAssistantText)) {
+                $lastAssistantText = $retryAssistantText
+                $packetPresent = $true
+                $transcriptRereadRecovered = $true
+                # Boundary packets also owe an exact crossing marker. Re-run the canonical capture only
+                # after a recovered near-miss so the header and marker decisions see the same bytes.
+                if ($hasPending -and (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue)) {
+                    try {
+                        $retryPacket = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $transcriptPathArg
+                        if ($null -ne $retryPacket -and [bool]$retryPacket.Found -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
+                            $retryFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$retryPacket.FromBoundary)
+                            $retryTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$retryPacket.ToBoundary)
+                            $expectedRetryFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
+                            $expectedRetryTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
+                            if (-not [string]::IsNullOrWhiteSpace($retryTo) -and $retryFrom -eq $expectedRetryFrom -and $retryTo -eq $expectedRetryTo) { $markerForPendingCrossing = $true }
+                        }
+                    }
+                    catch { $null = $_ }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
     # Re-resolve only to enrich the non-authoritative handover projection with the visible question, if one exists.
     # Artifact classification remains identical whether the host emitted plain prose, a question tool, or a comment.
     $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
@@ -982,11 +1029,8 @@ try {
         if ($technicalLensHeading) { $workshopAgendaPresentationMissing = $true }
     }
     if ($workshopIntermediate -or $workshopConflict -or $workshopRepair) { $rawHit = $false }
-    # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.
-    # It was an UNCONFIRMED mitigation (the instrumented false-negative never reproduced) and it taxed every
-    # material stop AND starved the navigator (order 50) of the shared 20s Stop budget, so co-review stopped firing.
-    # If the flush-race double-render ever reproduces WITH a captured dx_ record, re-add a CHEAP variant (a tiny
-    # last-line re-read, not a full 200-line parse). The dx_* journal keeps the decision observable in the meantime.
+    # The old 4x tail-200 mitigation remains removed. The measured 2026-08-10 signature now triggers only the
+    # bounded tail-8 recovery above; diagnostics record both attempted and recovered so it cannot fail silently.
     $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
 
     # --- IDEMPOTENCY (duplicate-fire guard, 145 IDEMP-1 / SC-1): dedup a re-fired hook for the SAME observable DECISION
@@ -1377,7 +1421,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_reread_attempted = $transcriptRereadAttempted; dx_reread_recovered = $transcriptRereadRecovered; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

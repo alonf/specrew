@@ -147,6 +147,26 @@ function New-Workspace {
         }
     }
 
+    # This fixture exercises diff scoping, not campaign provenance. The source repository's live campaign store
+    # belongs to feature 199 and, when copied into this isolated Feature 013 workspace, correctly makes the legacy
+    # accepted review fail the beta3 feature/iteration evidence cross-check. Omit that unrelated authority state so
+    # the historical accepted artifact follows the validator's explicit no-store grandfathering arm.
+    $copiedAuthorityStore = Join-Path $workspaceRoot '.specrew\review\authority'
+    if (Test-Path -LiteralPath $copiedAuthorityStore) {
+        Remove-Item -LiteralPath $copiedAuthorityStore -Recurse -Force
+    }
+
+    # Keep iteration 001 in the copied closed-index so the unscoped cases also prove the newer default closed
+    # filter. Iteration 002 is this suite's deliberately invalid untouched target; remove only that historical
+    # closeout entry so deleting its state.md below makes it an open invalid iteration rather than a skipped one.
+    $closedIndexPath = Join-Path $workspaceRoot '.specrew\closed-iterations.yml'
+    if (Test-Path -LiteralPath $closedIndexPath) {
+        $closedIndex = Get-Content -LiteralPath $closedIndexPath -Raw -Encoding UTF8
+        $closedIndex = [regex]::Replace($closedIndex,
+            '(?ms)^\s*-\s*feature:\s*013-validator-hardening\s*\r?\n\s*iteration:\s*002\s*\r?\n\s*closed_at:.*?(?:\r?\n|$)', '')
+        Set-ContentUtf8 -Path $closedIndexPath -Content $closedIndex
+    }
+
     $featureDestination = Join-Path $workspaceRoot 'specs\013-validator-hardening'
     $featureParent = Split-Path -Parent $featureDestination
     if (-not (Test-Path -LiteralPath $featureParent)) {
@@ -359,9 +379,10 @@ Remove-UntouchedStateArtifact -WorkspaceRoot $fullRunWorkspace
 $fullRunResult = Invoke-Validator -ProjectPath $fullRunWorkspace -FullRun
 $fullRunChecksPassed = $true
 if (-not (Assert-True -Condition ($fullRunResult.ExitCode -ne 0) -FailureMessage '-FullRun should bypass auto-scope and continue to validate untouched invalid iterations.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
-if (-not (Assert-FirstLineMatch -Text $fullRunResult.Text -Pattern '^\[validator-scope\] full-repo \(-FullRun override; 2 iterations\)$' -FailureMessage '-FullRun should emit the full-repo override banner as the first informational line.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
+if (-not (Assert-FirstLineMatch -Text $fullRunResult.Text -Pattern '^\[validator-scope\] closed-iteration filter: 1 closed iterations skipped' -FailureMessage '-FullRun should first report that the valid closed fixture was excluded.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
+if (-not (Assert-Match -Text $fullRunResult.Text -Pattern '(?m)^\[validator-scope\] full-repo \(-FullRun override; 2 iterations\)$' -FailureMessage '-FullRun should emit the full-repo override banner.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
 if (-not (Assert-Match -Text $fullRunResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '-FullRun should still report untouched iteration failures.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
-if (-not (Assert-Match -Text $fullRunResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage '-FullRun should emit unscoped timing output.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
+if (-not (Assert-Match -Text $fullRunResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage '-FullRun should emit unscoped timing output for the one open iteration.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
 if ($fullRunChecksPassed) {
     Write-Pass '-FullRun bypasses auto-scope and emits the expected full-repo banner.'
 }
@@ -383,7 +404,8 @@ Remove-UntouchedStateArtifact -WorkspaceRoot $mainWorkspace
 $mainResult = Invoke-Validator -ProjectPath $mainWorkspace
 $mainChecksPassed = $true
 if (-not (Assert-True -Condition ($mainResult.ExitCode -ne 0) -FailureMessage 'Main-branch validation with no flags should stay full-repo and surface untouched iteration failures.')) { $allChecksPassed = $false; $mainChecksPassed = $false }
-if (-not (Assert-FirstLineMatch -Text $mainResult.Text -Pattern '^\[validator-scope\] full-repo \(on main; 2 iterations\)$' -FailureMessage 'Main-branch validation should emit the on-main full-repo banner first.')) { $allChecksPassed = $false; $mainChecksPassed = $false }
+if (-not (Assert-FirstLineMatch -Text $mainResult.Text -Pattern '^\[validator-scope\] closed-iteration filter: 1 closed iterations skipped' -FailureMessage 'Main-branch validation should first report the closed iteration it excludes.')) { $allChecksPassed = $false; $mainChecksPassed = $false }
+if (-not (Assert-Match -Text $mainResult.Text -Pattern '(?m)^\[validator-scope\] full-repo \(on main; 2 iterations\)$' -FailureMessage 'Main-branch validation should emit the on-main full-repo banner.')) { $allChecksPassed = $false; $mainChecksPassed = $false }
 if (-not (Assert-Match -Text $mainResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage 'Main-branch validation should still report untouched iteration failures.')) { $allChecksPassed = $false; $mainChecksPassed = $false }
 if ($mainChecksPassed) {
     Write-Pass 'Main-branch validation remains full-repo by default.'
@@ -424,7 +446,7 @@ $configChecksPassed = $true
 if (-not (Assert-True -Condition ($configResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .specrew\config.yml changes.')) { $allChecksPassed = $false; $configChecksPassed = $false }
 if (-not (Assert-Match -Text $configResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '.specrew\config.yml changes should still validate untouched iterations and surface their failures.')) { $allChecksPassed = $false; $configChecksPassed = $false }
 if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: global-state-changed' -FailureMessage '.specrew\config.yml changes should emit the expected full-validation fallback reason.')) { $allChecksPassed = $false; $configChecksPassed = $false }
-if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage '.specrew\config.yml changes should emit unscoped timing output.')) { $allChecksPassed = $false; $configChecksPassed = $false }
+if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage '.specrew\config.yml changes should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $configChecksPassed = $false }
 if ($configChecksPassed) {
     Write-Pass '.specrew\config.yml changes force unscoped validation so untouched iteration failures still surface.'
 }
@@ -438,7 +460,7 @@ $wisdomChecksPassed = $true
 if (-not (Assert-True -Condition ($wisdomResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .squad\identity\wisdom.md changes.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
 if (-not (Assert-Match -Text $wisdomResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '.squad\identity\wisdom.md changes should still validate untouched iterations and surface their failures.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
 if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: global-state-changed' -FailureMessage '.squad\identity\wisdom.md changes should emit the expected full-validation fallback reason.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
-if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage '.squad\identity\wisdom.md changes should emit unscoped timing output.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
+if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage '.squad\identity\wisdom.md changes should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
 if ($wisdomChecksPassed) {
     Write-Pass '.squad\identity\wisdom.md changes force unscoped validation so untouched iteration failures still surface.'
 }
@@ -451,7 +473,8 @@ Remove-OriginRemote -WorkspaceRoot $noRemoteWorkspace
 $noRemoteResult = Invoke-Validator -ProjectPath $noRemoteWorkspace
 $noRemoteChecksPassed = $true
 if (-not (Assert-True -Condition ($noRemoteResult.ExitCode -ne 0) -FailureMessage 'Feature-branch validation with no remote should fall back to full-repo validation.')) { $allChecksPassed = $false; $noRemoteChecksPassed = $false }
-if (-not (Assert-FirstLineMatch -Text $noRemoteResult.Text -Pattern '^\[validator-scope\] full-repo \(base-undetectable; 2 iterations\)$' -FailureMessage 'No-remote validation should emit the base-undetectable banner first.')) { $allChecksPassed = $false; $noRemoteChecksPassed = $false }
+if (-not (Assert-FirstLineMatch -Text $noRemoteResult.Text -Pattern '^\[validator-scope\] closed-iteration filter: 1 closed iterations skipped' -FailureMessage 'No-remote validation should first report the closed iteration it excludes.')) { $allChecksPassed = $false; $noRemoteChecksPassed = $false }
+if (-not (Assert-Match -Text $noRemoteResult.Text -Pattern '(?m)^\[validator-scope\] full-repo \(base-undetectable; 2 iterations\)$' -FailureMessage 'No-remote validation should emit the base-undetectable banner.')) { $allChecksPassed = $false; $noRemoteChecksPassed = $false }
 if (-not (Assert-Match -Text $noRemoteResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage 'No-remote validation should still report untouched iteration failures through the full-repo path.')) { $allChecksPassed = $false; $noRemoteChecksPassed = $false }
 if (-not (Assert-Match -Text $noRemoteResult.Text -Pattern '\[validator\] Auto-scope fallback to full validation: base-ref-undetectable' -FailureMessage 'No-remote validation should emit the verbose auto-scope fallback reason.')) { $allChecksPassed = $false; $noRemoteChecksPassed = $false }
 if ($noRemoteChecksPassed) {
@@ -467,7 +490,8 @@ Checkout-DetachedHead -WorkspaceRoot $detachedWorkspace
 $detachedResult = Invoke-Validator -ProjectPath $detachedWorkspace
 $detachedChecksPassed = $true
 if (-not (Assert-True -Condition ($detachedResult.ExitCode -ne 0) -FailureMessage 'Detached-HEAD validation without a detectable base should fall back to full-repo validation.')) { $allChecksPassed = $false; $detachedChecksPassed = $false }
-if (-not (Assert-FirstLineMatch -Text $detachedResult.Text -Pattern '^\[validator-scope\] full-repo \(base-undetectable; 2 iterations\)$' -FailureMessage 'Detached-HEAD validation without a detectable base should emit the base-undetectable banner first.')) { $allChecksPassed = $false; $detachedChecksPassed = $false }
+if (-not (Assert-FirstLineMatch -Text $detachedResult.Text -Pattern '^\[validator-scope\] closed-iteration filter: 1 closed iterations skipped' -FailureMessage 'Detached-HEAD validation should first report the closed iteration it excludes.')) { $allChecksPassed = $false; $detachedChecksPassed = $false }
+if (-not (Assert-Match -Text $detachedResult.Text -Pattern '(?m)^\[validator-scope\] full-repo \(base-undetectable; 2 iterations\)$' -FailureMessage 'Detached-HEAD validation without a detectable base should emit the base-undetectable banner.')) { $allChecksPassed = $false; $detachedChecksPassed = $false }
 if ($detachedChecksPassed) {
     Write-Pass 'Detached-HEAD validation without a detectable base falls back to full-repo with the base-undetectable banner.'
 }
@@ -480,11 +504,12 @@ Remove-OriginRemote -WorkspaceRoot $fallbackWorkspace
 $fallbackResult = Invoke-Validator -ProjectPath $fallbackWorkspace -ChangedOnly
 $fallbackChecksPassed = $true
 if (-not (Assert-True -Condition ($fallbackResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when the diff base cannot be resolved.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
-if (-not (Assert-FirstLineMatch -Text $fallbackResult.Text -Pattern '^\[validator-scope\] full-repo \(base-undetectable; 2 iterations\)$' -FailureMessage 'Explicit -ChangedOnly fallback should emit the base-undetectable full-repo banner first when the base cannot be resolved.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
-if (-not (Assert-Match -Text $fallbackResult.Text -Pattern 'iterations[/\\]001' -FailureMessage 'Base-resolution fallback should validate the touched iteration through the unscoped path.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
+if (-not (Assert-FirstLineMatch -Text $fallbackResult.Text -Pattern '^\[validator-scope\] closed-iteration filter: 1 closed iterations skipped' -FailureMessage 'Explicit -ChangedOnly fallback should first report the closed iteration it excludes.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
+if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '(?m)^\[validator-scope\] full-repo \(base-undetectable; 2 iterations\)$' -FailureMessage 'Explicit -ChangedOnly fallback should emit the base-undetectable full-repo banner when the base cannot be resolved.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
+if (-not (Assert-NotMatch -Text $fallbackResult.Text -Pattern '\[validator\].*validating .*iterations[/\\]001' -FailureMessage 'Base-resolution fallback should exclude the closed touched iteration from the unscoped validation loop.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if (-not (Assert-Match -Text $fallbackResult.Text -Pattern 'iterations[/\\]002' -FailureMessage 'Base-resolution fallback should validate untouched iterations through the unscoped path.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: base-ref-undetectable' -FailureMessage 'Base-resolution fallback should emit the expected verbose fallback reason.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
-if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=2 trigger_source=local' -FailureMessage 'Base-resolution fallback should emit unscoped timing output.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
+if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage 'Base-resolution fallback should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if ($fallbackChecksPassed) {
     Write-Pass 'Changed-only mode falls back to full validation with a base-undetectable banner when the PR base ref cannot be resolved.'
 }

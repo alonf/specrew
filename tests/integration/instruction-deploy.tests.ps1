@@ -50,7 +50,7 @@ try {
         )) {
         $onDisk = Get-Content -LiteralPath $pair.File -Raw -Encoding UTF8
         if ($onDisk -notmatch 'specrew-managed coordinator') { Write-Fail "$($pair.File) missing managed section" }
-        if ($onDisk -notmatch [regex]::Escape('Do NOT run the raw specify.exe workflow / bundled SDD engine')) { Write-Fail "$($pair.File) missing the exact FR-013 guard" }
+        if ($onDisk -notmatch 'The raw, un-governed\s+`specify\.exe workflow` and the bundled SDD automation bypass the boundary gates and are not used here\s+—\s+the Specrew-governed scripts above are not that\.') { Write-Fail "$($pair.File) missing the project-rule FR-013 guard" }
         if (-not $onDisk.StartsWith($pair.User)) { Write-Fail "$($pair.File) did not preserve user content byte-for-byte" }
     }
     Write-Pass "every InstructionsFile got the section + exact guard; user content byte-for-byte preserved (FR-011/FR-012/SC-013)"

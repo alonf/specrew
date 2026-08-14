@@ -1122,11 +1122,16 @@ function Format-ReviewCampaignOutstandingPause {
     $minor = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'minor_count')
     $demoted = [int](Get-ReviewAuthorityProperty -Object $Fact -Name 'demoted_count')
     $recommendation = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'recommendation')
+    $factNames = Get-ReviewAuthorityPropertyNames -Object $Fact
+    $resultProduced = if ($factNames -contains 'result_produced') { [bool](Get-ReviewAuthorityProperty -Object $Fact -Name 'result_produced') } else { $true }
 
     $lines.Add(('Review round {0} of {1} is still waiting for your answer.' -f $roundsUsed, $ProjectName))
     $lines.Add('')
     $gatingTotal = $blocking + $major
-    if ($gatingTotal -gt 0) {
+    if (-not $resultProduced) {
+        $lines.Add('That review did not finish, so it found nothing and cleared nothing. There is no review evidence either way.')
+    }
+    elseif ($gatingTotal -gt 0) {
         $lines.Add(('That round found {0} thing{1} that need your attention:' -f $gatingTotal, $(if ($gatingTotal -eq 1) { '' } else { 's' })))
         # Named with their locations, exactly as the live surface does. A count alone sends the reader
         # somewhere else to reconstruct what it was about, which for a returning consumer is the whole
@@ -1153,6 +1158,9 @@ function Format-ReviewCampaignOutstandingPause {
     }
     if ($budgetTotal -gt 0) {
         $lines.Add(('You have used {0} of {1} review rounds on this project.' -f $roundsUsed, $budgetTotal))
+        if ($roundsUsed -ge $budgetTotal) {
+            $lines.Add('The round budget is spent, so another review round cannot start. If more review is genuinely needed, add a new allowance explicitly with: specrew review --remediate allowance-reset')
+        }
     }
     if (-not [string]::IsNullOrWhiteSpace($recommendation)) {
         $lines.Add('')
@@ -1187,7 +1195,8 @@ function Format-ReviewCampaignOutstandingPause {
     # the number IS the answer channel - `--pause-choice 2` is read and acted on - so the numbers are
     # real. The ruling is about offering controls that cannot do what they name, not about digits.
     $lines.Add('Nothing runs and nothing is spent until you answer.')
-    $lines.Add(('Answer with:  specrew review --live --pause-choice <1|2|3>{0}' -f $(
+    $choiceIds = @($offered | ForEach-Object { [string]$_.id }) -join '|'
+    $lines.Add(('Answer with:  specrew review --live --pause-choice <{0}>{1}' -f $choiceIds, $(
                 $answerRun = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
                 if ([string]::IsNullOrWhiteSpace($answerRun)) { '' } else { "   (answering round $answerRun)" })))
     return $lines.ToArray()
@@ -1208,11 +1217,19 @@ function Format-ReviewCampaignPauseSurface {
     )
     $lines = [Collections.Generic.List[string]]::new()
     $roundWord = if ([int]$Decision.rounds_used -eq 1) { 'round' } else { 'rounds' }
-    $lines.Add(('Review round {0} of {1} complete.' -f $Decision.rounds_used, $ProjectName))
+    $resultProduced = if ($Decision.PSObject.Properties['result_produced']) { [bool]$Decision.result_produced } else { $true }
+    $lines.Add($(if ($resultProduced) {
+                'Review round {0} of {1} complete.' -f $Decision.rounds_used, $ProjectName
+            } else {
+                'Review round {0} of {1} did not finish.' -f $Decision.rounds_used, $ProjectName
+            }))
     $lines.Add('')
 
     $gatingTotal = [int]$Decision.blocking_count + [int]$Decision.major_count
-    if ($gatingTotal -gt 0) {
+    if (-not $resultProduced) {
+        $lines.Add('The review produced no valid result. It found nothing and cleared nothing, so this is not a clean review.')
+    }
+    elseif ($gatingTotal -gt 0) {
         $lines.Add(('Findings that need your attention ({0}):' -f $gatingTotal))
         foreach ($finding in @($Decision.gating_findings)) {
             $lines.Add(('  {0}  {1}  ({2})' -f ([string]$finding.severity).ToUpperInvariant(), $finding.title, $finding.location))

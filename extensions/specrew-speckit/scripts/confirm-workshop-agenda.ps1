@@ -10,6 +10,7 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'Fields')][AllowEmptyCollection()][string[]] $SkippedLens,
     [Parameter(Mandatory, ParameterSetName = 'Fields')][AllowEmptyCollection()][string[]] $SkippedReason,
     [ValidateSet('human-confirmed')][string] $Confirmation = 'human-confirmed',
+    [switch] $RenderOnly,
     [switch] $PassThru
 )
 
@@ -28,6 +29,36 @@ function Write-AtomicUtf8NoBom {
             Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
         }
     }
+}
+
+function Get-CanonicalWorkshopAgendaText {
+    param(
+        [Parameter(Mandatory)][Collections.IDictionary]$Agenda,
+        [Parameter(Mandatory)][Collections.IDictionary]$Skipped
+    )
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add('Workshop agenda') | Out-Null
+    $lines.Add('') | Out-Null
+    $lines.Add('Selected lenses:') | Out-Null
+    foreach ($entry in $Agenda.GetEnumerator()) {
+        $lines.Add(('- {0} ({1}): {2}' -f $entry.Key, $entry.Value.depth, $entry.Value.decision)) | Out-Null
+    }
+    $lines.Add('') | Out-Null
+    $lines.Add('Skipped lenses:') | Out-Null
+    if ($Skipped.Count -eq 0) { $lines.Add('- none') | Out-Null }
+    else { foreach ($entry in $Skipped.GetEnumerator()) { $lines.Add(('- {0}: {1}' -f $entry.Key, $entry.Value)) | Out-Null } }
+    $lines.Add('') | Out-Null
+    $lines.Add('Does this complete selected + skipped agenda look right? Reply with confirm or tell me what to change.') | Out-Null
+    return ($lines -join [Environment]::NewLine)
+}
+
+function Get-WorkshopAgendaQuestionHash {
+    param(
+        [Parameter(Mandatory)][string]$FeatureRef,
+        [AllowEmptyString()][string]$CurrentLens,
+        [Parameter(Mandatory)][string]$Text
+    )
+    return Get-SpecrewWorkshopAuthorityHash -Text ('feature|' + $FeatureRef + '||' + $CurrentLens + '|' + $Text)
 }
 
 $resolvedProjectRoot = [IO.Path]::GetFullPath($ProjectRoot).TrimEnd(
@@ -86,23 +117,14 @@ $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProj
 if ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid') {
     throw 'Product-domain has no typed human reply receipt. Re-render its question as prose and wait for a typed answer.'
 }
-$agendaReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'agenda'
-if ($null -eq $agendaReceipt -or [string]$agendaReceipt.confirmation -cne 'human-confirmed' -or
-    [string]$agendaReceipt.confirmation_scope -cne 'lens-selection') {
-    throw 'The complete selected + skipped agenda has no typed human confirmation receipt. Render it in full and wait for a typed confirm/change reply.'
-}
-
 $catalogPath = Join-Path $resolvedProjectRoot '.specify/extensions/specrew-speckit/knowledge/design-lenses/index.yml'
 if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
     throw "Design-lens catalog is missing: '$catalogPath'."
 }
-$catalog = @(
-    Get-Content -LiteralPath $catalogPath -Encoding UTF8 -ErrorAction Stop |
-        ForEach-Object {
-            if ($_ -cmatch '^\s*-\s+id:\s*([a-z][a-z0-9-]{1,63})\s*$') { $Matches[1] }
-        } |
-        Where-Object { $_ -and $_ -cne 'product-domain' }
-)
+$yamlReader = Join-Path $PSScriptRoot 'intake/helpers/Read-IntakeYaml.ps1'
+if (-not (Test-Path -LiteralPath $yamlReader -PathType Leaf)) { throw "Design-lens catalog parser is missing: '$yamlReader'." }
+. $yamlReader
+$catalog = @(Read-IntakeYamlDocument -Path $catalogPath -Kind lenses | ForEach-Object { [string]$_.id } | Where-Object { $_ -and $_ -cne 'product-domain' })
 if ($catalog.Count -eq 0) { throw 'The design-lens catalog contains no technical lenses.' }
 
 $selectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -138,6 +160,25 @@ if ($unknown.Count -gt 0) { throw ('Unknown technical lens(es): {0}.' -f ($unkno
 $missing = @($catalog | Where-Object { -not $selectedSet.Contains($_) -and -not $skippedSet.Contains($_) })
 if ($missing.Count -gt 0) {
     throw ('Every technical lens must be selected or visibly skipped with a reason. Missing: {0}.' -f ($missing -join ', '))
+}
+
+$canonicalAgendaText = Get-CanonicalWorkshopAgendaText -Agenda $agenda -Skipped $skipped
+if ($RenderOnly) {
+    Write-Output $canonicalAgendaText
+    exit 0
+}
+$agendaReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'agenda'
+if ($null -eq $agendaReceipt -or [string]$agendaReceipt.confirmation -cne 'human-confirmed' -or
+    [string]$agendaReceipt.confirmation_scope -cne 'lens-selection') {
+    throw 'The complete selected + skipped agenda has no typed human confirmation receipt. Render it in full and wait for a typed confirm/change reply.'
+}
+# During pending-confirmation the strict controller projects product-domain as the current
+# lens; it does not persist a current_lens field in the pre-agenda JSON. Bind to the same
+# value the conformance provider used when it hashed the rendered agenda question.
+$currentLens = 'product-domain'
+$expectedQuestionHash = Get-WorkshopAgendaQuestionHash -FeatureRef $FeatureRef -CurrentLens $currentLens -Text $canonicalAgendaText
+if ([string]$agendaReceipt.question_hash -cne $expectedQuestionHash) {
+    throw 'The typed agenda confirmation belongs to different agenda text. Render this exact agenda with -RenderOnly, wait for a typed reply, then confirm without changing selected or skipped lenses.'
 }
 
 $confirmed = [ordered]@{

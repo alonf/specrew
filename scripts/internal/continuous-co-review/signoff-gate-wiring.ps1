@@ -99,8 +99,7 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     #>
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [Parameter(Mandatory = $true)][string]$BoundaryType,
-        [AllowNull()] $OverrideAuthorization
+        [Parameter(Mandatory = $true)][string]$BoundaryType
     )
 
     if ($BoundaryType -ne 'review-signoff') {
@@ -119,6 +118,11 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
             throw "continuous-co-review gate loader not found at '$gateLoaderPath'."
         }
         . $gateLoaderPath
+        $humanAuthorityPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'bootstrap/HumanAuthorityStore.ps1'
+        if (-not (Test-Path -LiteralPath $humanAuthorityPath -PathType Leaf)) {
+            throw "human authority store not found at '$humanAuthorityPath'."
+        }
+        . $humanAuthorityPath
     }
     catch {
         throw ("[continuous-co-review-gate] review-signoff cannot be evaluated because the gate infrastructure failed to load: {0}" -f $_.Exception.Message)
@@ -129,7 +133,29 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     # pre-feature branch, else fail-closed with a config instruction), so a non-`main`-trunk repo no longer fails
     # closed and there is no 'main' default to pre-read here. The decision is persisted before either throw/allow
     # so a failed signoff leaves inspectable evidence.
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -OverrideAuthorization $OverrideAuthorization
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot
+    if ($decision.decision -eq 'block') {
+        $treeId = [string]$decision.current_tree_id
+        $campaignId = if ($decision.PSObject.Properties['campaign_id']) { [string]$decision.campaign_id } else { '' }
+        if (-not [string]::IsNullOrWhiteSpace($treeId) -and -not [string]::IsNullOrWhiteSpace($campaignId)) {
+            $capturedOverride = Get-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $ProjectRoot `
+                -ExpectedTargetTreeId $treeId -ExpectedCampaignId $campaignId
+            if ($null -ne $capturedOverride) {
+                $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -OverrideAuthorization $capturedOverride
+            }
+        }
+    }
+    if ($decision.decision -eq 'block') {
+        $treeId = [string]$decision.current_tree_id
+        $campaignId = if ($decision.PSObject.Properties['campaign_id']) { [string]$decision.campaign_id } else { '' }
+        if ($treeId -cmatch '^[a-f0-9]{40,64}$' -and $campaignId -cmatch '^cmp-[a-z0-9][a-z0-9-]{1,190}$') {
+            $request = Write-SpecrewReviewSignoffOverrideRequest -ProjectRoot $ProjectRoot -TargetTreeId $treeId `
+                -CampaignId $campaignId -RunId ([string]$decision.matched_run_id)
+            $decision | Add-Member -NotePropertyName override_request -NotePropertyValue $request -Force
+            $decision.message = [string]$decision.message +
+                ' If you intentionally accept partial coverage for this exact tree, type: approved for partial review signoff - <why accepting it is safe>. Specrew captures that typed reply before the next attempt; command-line identity fields are not authority.'
+        }
+    }
     Write-ContinuousCoReviewSignoffGateDecisionEvidence -ProjectRoot $ProjectRoot -BoundaryType $BoundaryType -Decision $decision
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"

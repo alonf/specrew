@@ -1163,6 +1163,27 @@ if ($Live) {
                     default { $pauseAnswer }
                 }
                 $answeredRunId = [string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')
+
+                # The menu withdrawing option 1 is presentation; this is enforcement. A caller can
+                # always type the flag directly, so fix-and-continue is refused before the immutable
+                # answer is written when the reviewer-invoked round budget is exhausted. A corrupt
+                # authority store fails the same way: no answer is consumed and no reviewer starts.
+                if ($choice -ceq 'fix-and-continue') {
+                    try {
+                        $budgetState = Get-ReviewCampaignRoundBudgetState -StoreRoot $campaignStoreRoot `
+                            -CampaignId $answerIdentity.campaign_id -RepoRoot $resolvedProjectPath
+                    }
+                    catch {
+                        Write-Host 'Specrew could not read its review authority safely, so it did not use your answer or start another reviewer.' -ForegroundColor Yellow
+                        Write-Host ("What went wrong: {0}" -f $_.Exception.Message)
+                        exit 1
+                    }
+                    if ([bool]$budgetState.budget_exhausted) {
+                        Write-Host ("The round budget for this review is spent ({0} of {1} rounds used), so another round was not authorized." -f $budgetState.rounds_used, $budgetState.budget_total) -ForegroundColor Yellow
+                        Write-Host 'Your answer was not recorded. Reset the allowance explicitly with: specrew review --remediate allowance-reset' -ForegroundColor Cyan
+                        exit 1
+                    }
+                }
                 $decisionFact = New-ReviewCampaignPauseDecisionFact -CampaignId $answerIdentity.campaign_id -RunId $answeredRunId `
                     -Choice $choice -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))
 

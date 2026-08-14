@@ -15,4 +15,3 @@ reviewed_at: 2026-06-07
 6. **Whole-file re-read before the packet.** Frontmatter, body prose, and internal consistency — closeout review goes one layer deeper than you think it needs to.
 
 Known traps: `Status: complete` with prose still saying "executing"; dashboard stale from a review-time capture; deferred tasks that appear nowhere in the next iteration's input; closing with unapplied stashes or uncommitted churn unaccounted.
-

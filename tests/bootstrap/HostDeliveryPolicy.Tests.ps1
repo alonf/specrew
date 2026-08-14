@@ -43,7 +43,7 @@ try {
     # durable reference; the lean directive + bounded resume context fit under the cap).
     $claude = Invoke-Provider -HostKind 'claude' -Root $tmp
     Assert-True ($claude -notmatch 'BEGIN SPECREW LAUNCH CONTRACT') 'claude does NOT inline the ~45KB contract (10K stdout cap disproved the inline premise)'
-    Assert-True ($claude -match 'MANDATORY FIRST ACTION') 'claude directive LEADS with the mandatory orientation banner'
+    Assert-True ($claude -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') 'claude directive carries the session-state orientation'
     Assert-True ($claude -match 'READ .*last-start-prompt') 'claude directive POINTS at the contract file'
     Assert-True (Test-Path -LiteralPath $promptFile) 'claude path writes last-start-prompt.md (the pointer is alive)'
     $contract = Get-Content -LiteralPath $promptFile -Raw
@@ -53,14 +53,14 @@ try {
     # CODEX: lean pointer - codex drops the oversized additionalContext and reads files.
     $codex = Invoke-Provider -HostKind 'codex' -Root $tmp
     Assert-True ($codex -notmatch 'BEGIN SPECREW LAUNCH CONTRACT') 'codex does NOT inline the ~45KB contract'
-    Assert-True ($codex -match 'MANDATORY FIRST ACTION') 'codex directive STILL leads with the mandatory banner'
+    Assert-True ($codex -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') 'codex directive still carries the session-state orientation'
     Assert-True ($codex -match 'READ .*last-start-prompt') 'codex directive POINTS at the contract file'
     Assert-True (Test-Path -LiteralPath $promptFile) 'codex path STILL writes last-start-prompt.md (the pointer is alive)'
 
     # ANTIGRAVITY: bounded verified hook path uses PreInvocation injectSteps, so keep it lean and point at disk.
     $antigravity = Invoke-Provider -HostKind 'antigravity' -Root $tmp
     Assert-True ($antigravity -notmatch 'BEGIN SPECREW LAUNCH CONTRACT') 'antigravity does NOT inline the ~45KB contract (bounded PreInvocation support uses a lean pointer)'
-    Assert-True ($antigravity -match 'MANDATORY FIRST ACTION') 'antigravity directive STILL leads with the mandatory banner'
+    Assert-True ($antigravity -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') 'antigravity directive still carries the session-state orientation'
     Assert-True ($antigravity -match 'READ .*last-start-prompt') 'antigravity directive POINTS at the contract file'
     Assert-True (Test-Path -LiteralPath $promptFile) 'antigravity path STILL writes last-start-prompt.md (the pointer is alive)'
 
@@ -73,7 +73,7 @@ try {
     Assert-True ($copilot -match 'BEGIN SPECREW LAUNCH CONTRACT') 'copilot remains INLINE (oversized-drop UNVERIFIED; only claude+codex are proven pointers)'
     $cursor = Invoke-Provider -HostKind 'cursor' -Root $tmp
     Assert-True ($cursor -match 'BEGIN SPECREW LAUNCH CONTRACT') 'cursor remains INLINE (oversized-drop UNVERIFIED; only claude+codex are proven pointers)'
-    Assert-True ($cursor -match 'MANDATORY FIRST ACTION') 'cursor directive still leads with the mandatory banner'
+    Assert-True ($cursor -match 'SESSION STATE, AND WHAT THIS PROJECT OPENS A SESSION WITH') 'cursor directive still carries the session-state orientation'
 
     # The pointer hosts (claude + codex) must be dramatically smaller than an inline host (copilot) - that size
     # gap IS the cap fix (the ~45KB contract is what overran the 10K hook-output cap).

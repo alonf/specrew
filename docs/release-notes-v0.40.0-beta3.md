@@ -17,7 +17,9 @@ anything back.
 
 - **Every review round now ends in a pause, never another round.** The loop that ran fifteen fix rounds
   on one target cannot happen: continuation is a numbered choice the human makes, each answer authorizes
-  exactly one round, and an agent cannot manufacture continuation from a previous approval.
+  exactly one round, and an agent cannot manufacture continuation from a previous approval. At four of
+  four rounds, the public command refuses before reviewer setup or spend; another round requires the
+  human to run the explicit allowance-reset ceremony.
 - **The pause surface says what it found, what it cost, and what happens next** — findings with their
   locations, minutes and rounds spent, the budget position, and three numbered options with their
   consequences. Nothing runs and nothing is spent until you answer.
@@ -92,6 +94,12 @@ mechanism they describe — a restored slot that nothing surfaced — was verifi
   behaviour change held for a later release.
 - **Cloud placeholder support is verified for reading and hashing**, not for every path. Symbolic links
   and junctions remain refused wherever Specrew verifies its own files or writes review records.
+- **Reviewer filesystem confinement is still instructional.** Specrew freezes and verifies the target
+  it reviews and contains reviewer processes, but beta3 does not claim an OS-enforced read boundary that
+  prevents a reviewer from reading other same-user files. That remains `DEFER-197-I010-003`.
+- **Historical lifecycle records are incomplete.** Feature 185 has no closeout and Feature 198 has no
+  feature-level closeout. Beta3 does not manufacture retroactive authorization for either; its release
+  claim is limited to the beta3 tree and evidence named here.
 
 ## Named for beta4
 
@@ -166,12 +174,13 @@ The expected stop is the product working: no reviewer process starts, and no spe
 tester grants that round. A complete, valid result for the exact active campaign and current file digest
 is required before `review-signoff` can advance; a hand-written `review.md` is not review evidence.
 
-For an exceptional case where the human deliberately accepts partial review coverage, the governed
-boundary wrapper exposes an explicit recorded escape hatch. Both fields are required, and the resulting
-allow decision (including the human and rationale) is written to `.specrew/review/signoff-gate/`:
+For an exceptional case where the human deliberately accepts partial review coverage, the blocked
+boundary first records a request bound to the exact campaign and tree. Only a typed prompt response in
+the following exact form can satisfy it; the resulting allow decision (including the human response and
+rationale) is written to `.specrew/review/signoff-gate/`:
 
 ```
-pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -ProjectPath . -BoundaryType review-signoff -ReviewSignoffOverrideAuthorizedBy "<human>" -ReviewSignoffOverrideRationale "<why proceeding with partial coverage is acceptable>"
+approved for partial review signoff - <why accepting partial coverage for this exact tree is safe>
 ```
 
 This is an explicit human disposition, not a recovery command for an agent to infer or issue itself.

@@ -39,10 +39,12 @@ function New-ScratchProject {
     # Project state: config (version matches dev tree so the stale-install guard
     # passes), start context, minimal squad ledger.
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\config.yml'), "specrew_version: `"$moduleVersion`"`n", [System.Text.UTF8Encoding]::new($false))
-    $startContext = @{ session_state = @{ boundary_type = ''; feature_ref = 'test-feature' }; boundary_enforcement = @{ enabled = $false } } | ConvertTo-Json -Depth 4
+    $startContext = @{ session_state = @{ boundary_type = ''; feature_ref = 'test-feature' }; boundary_enforcement = @{ enabled = $false; last_authorized_boundary = $null; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() } } | ConvertTo-Json -Depth 4
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $startContext, [System.Text.UTF8Encoding]::new($false))
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.squad\decisions.md'), "# Decisions`n", [System.Text.UTF8Encoding]::new($false))
     & git -C $projectRoot init --quiet 2>$null | Out-Null
+    & git -C $projectRoot -c user.email='test@specrew.local' -c user.name='Test User' add -A 2>$null | Out-Null
+    & git -C $projectRoot -c user.email='test@specrew.local' -c user.name='Test User' commit -m 'seed refocus fixture' --quiet 2>$null | Out-Null
 }
 
 function Invoke-Wrapper {
@@ -69,7 +71,7 @@ function Invoke-Wrapper {
 
 # --- 1. Golden path: sync specify -> wrapper stdout carries the CLARIFY digest ---
 New-ScratchProject
-$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'abc1234')
+$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'HEAD')
 Assert-True ($result.ExitCode -eq 0) "sync + emission exits 0 (stderr: $($result.StdErr.Substring(0, [Math]::Min(200, $result.StdErr.Length))))"
 Assert-True ($result.StdOut -match '\[specrew-refocus\] trigger=b3 scope=general\+boundary\.clarify ') 'emission banner names the INCOMING stage (specify -> clarify)'
 Assert-True ($result.StdOut.Contains('Clarify-stage discipline')) 'clarify digest body rides the wrapper stdout'
@@ -85,7 +87,7 @@ $catalogPath = Join-Path $projectRoot '.specify\extensions\specrew-speckit\refoc
 $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
 $catalog.triggers.b3.enabled = $false
 [System.IO.File]::WriteAllText($catalogPath, ($catalog | ConvertTo-Json -Depth 6), [System.Text.UTF8Encoding]::new($false))
-$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'abc1234')
+$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'HEAD')
 Assert-True ($result.ExitCode -eq 0) 'disabled-trigger sync exits 0'
 Assert-True (-not $result.StdOut.Contains('[specrew-refocus]')) 'catalog b3 disable yields NO emission (operator intent, silent)'
 Assert-True (-not (Test-Path -LiteralPath $fingerprintPath -PathType Leaf)) 'no fingerprint written when emission is disabled'
@@ -93,7 +95,7 @@ Assert-True (-not (Test-Path -LiteralPath $fingerprintPath -PathType Leaf)) 'no 
 # --- 3. Missing engine fails open (sync unaffected) -------------------------------
 New-ScratchProject
 Remove-Item -LiteralPath (Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\refocus.ps1') -Force
-$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'abc1234')
+$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'HEAD')
 Assert-True ($result.ExitCode -eq 0) 'missing engine: sync still exits 0 (fail-open)'
 Assert-True ($result.StdOut.Contains('"boundary_type"') -or $result.StdOut.Contains('boundary_type')) 'sync result JSON still emitted'
 Assert-True (-not $result.StdOut.Contains('[specrew-refocus]')) 'no emission without the engine'
@@ -101,7 +103,7 @@ Assert-True (-not $result.StdOut.Contains('[specrew-refocus]')) 'no emission wit
 # --- 4. Emission failure never fails the sync (engine present but broken) ---------
 New-ScratchProject
 [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\refocus.ps1'), "throw 'engine exploded'", [System.Text.UTF8Encoding]::new($false))
-$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'abc1234')
+$result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'HEAD')
 Assert-True ($result.ExitCode -eq 0) 'broken engine: sync still exits 0 (fail-open)'
 
 # --- 5. Channel 2: primer pointer in the coordinator governance template (FR-007) ---

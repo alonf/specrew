@@ -34,7 +34,7 @@
 | FR-009 | Commits touching only governance/records files MUST NOT stale a reviewed | — |
 | FR-010 | A leading recognized approval phrase MUST win over any instruction | — |
 | FR-011 | The review engine's integrity check MUST discriminate reparse tags: | — |
-| FR-012 | `specrew init` MUST scaffold a starter verification-plan.json | — |
+| FR-012 | `specrew init` MUST scaffold a strict starter verification-plan.json plus a non-executable templates sidecar | — |
 | FR-013 | Verification failures MUST name the missing piece (env_refs, plan | — |
 | FR-014 | Only rounds that actually invoked a reviewer consume the round | — |
 | FR-015 | Every human-visible sentence MUST be about the user's project and the | — |

@@ -84,7 +84,7 @@ try {
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }
-    foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor') { . (Join-Path $bdir "$f.ps1") }
+    foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor', 'HumanAuthorityStore') { . (Join-Path $bdir "$f.ps1") }
     $workshopAuthorityPath = Join-Path $root '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
     if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
     # F-174 iteration 011 (T004): load shared-governance so the Stop-hook Update-SpecrewRollingHandover can record

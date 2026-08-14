@@ -12,12 +12,14 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 
-# Test 1: Specrew.psm1 sets $env:SPECREW_MODULE_PATH on import (iter-006 T001)
+# Test 1: Specrew.psm1 announces the resolved CLI root to child processes (iter-006 T001).
+# The original direct `$ScriptRoot` assignment was extended to preserve an explicit valid dev-tree
+# override; `$cliRoot` defaults to `$ScriptRoot` and is the value child processes must inherit.
 $psm1Content = Get-Content -LiteralPath (Join-Path $repoRoot 'Specrew.psm1') -Raw -Encoding UTF8
-if ($psm1Content -notmatch '\$env:SPECREW_MODULE_PATH\s*=\s*\$ScriptRoot') {
-    Write-Fail "Specrew.psm1 must set \$env:SPECREW_MODULE_PATH = \$ScriptRoot on import so child processes dispatch to the active Dev tree (iter-006 T001)."
+if ($psm1Content -notmatch '\$cliRoot\s*=\s*\$ScriptRoot' -or $psm1Content -notmatch '\$env:SPECREW_MODULE_PATH\s*=\s*\$cliRoot') {
+    Write-Fail 'Specrew.psm1 must default the CLI root to $ScriptRoot and announce the resolved $cliRoot through $env:SPECREW_MODULE_PATH (iter-006 T001).'
 }
-Write-Pass "Specrew.psm1 sets \$env:SPECREW_MODULE_PATH on import (iter-006 T001)"
+Write-Pass 'Specrew.psm1 announces the resolved CLI root through $env:SPECREW_MODULE_PATH on import (iter-006 T001)'
 
 # Test 2: sync-boundary-state.ps1 shim honors $env:SPECREW_MODULE_PATH override
 $shimContent = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\sync-boundary-state.ps1') -Raw -Encoding UTF8

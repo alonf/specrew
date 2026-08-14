@@ -41,6 +41,11 @@ Describe 'Proposal 197 protected surface guard' {
         # the change lands on main and the authorization is consumed.
         $script:F197AuthorizedSurfaceExceptions = @(
             'scripts/internal/specrew-hook-dispatcher.ps1'
+            # Feature 199 maintainer-authorized stabilization (2026-08-14): the deep review found that
+            # Antigravity's named-definition hook shape still used the whole-file name search that the
+            # per-event health repair deliberately replaced. Keep the surface protected; authorize only
+            # this file for the scoped structural parity fix recorded in DRIFT-199-I001-041.
+            'scripts/internal/specrew-hook-health.ps1'
             # iter-007 (2026-06-25) maintainer-authorized: Fix 1 routes every Stop-time boundary reader through
             # ONE canonical v1/v2-tolerant reader. The start-context v1->v2 schema migration had stranded four
             # readers on the dead v1 field (session_state.boundary_type) -> the navigator never fired AND the

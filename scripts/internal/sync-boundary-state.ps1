@@ -1639,12 +1639,6 @@ function Invoke-SpecrewBoundaryStateSync {
         [AllowNull()]
         [string]$HandoffText,
 
-        [AllowNull()]
-        [string]$ReviewSignoffOverrideAuthorizedBy,
-
-        [AllowNull()]
-        [string]$ReviewSignoffOverrideRationale,
-
         [switch]$PreflightOnly
     )
 
@@ -1800,19 +1794,9 @@ function Invoke-SpecrewBoundaryStateSync {
     # enabled; when ON it refuses signoff (throws) on un-reviewed/stale/uncovered state. $BoundaryType
     # is canonical here (implement/review both alias to review-signoff). Out-Null guards the
     # boundary-sync result pipeline against the gate's allow-path return value.
-    $reviewSignoffOverride = $null
-    if (-not [string]::IsNullOrWhiteSpace($ReviewSignoffOverrideAuthorizedBy) -or
-        -not [string]::IsNullOrWhiteSpace($ReviewSignoffOverrideRationale)) {
-        $reviewSignoffOverride = [pscustomobject][ordered]@{
-            authorized_by = $ReviewSignoffOverrideAuthorizedBy
-            rationale     = $ReviewSignoffOverrideRationale
-        }
-    }
-
     Invoke-ContinuousCoReviewSignoffGateIfEnabled `
         -ProjectRoot $paths.ProjectRoot `
-        -BoundaryType $BoundaryType `
-        -OverrideAuthorization $reviewSignoffOverride | Out-Null
+        -BoundaryType $BoundaryType | Out-Null
 
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $expectedBoundaryType = if ($null -eq $latestBoundary) {

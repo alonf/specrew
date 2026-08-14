@@ -199,10 +199,14 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    selected, with a feature-specific reason. Then ask, in plain language, whether the human wants to confirm or
    change the selection. The first lens must not open on the same turn as the agenda: typed human confirmation is
    the transition. A count such as "5 lenses" is not reviewable unless the omitted set is visible too.
-   **The moment the human confirms the agenda, PERSIST it (F-174 — before opening lens 1):** use the governed
-   writer rather than hand-editing controller state. Build one JSON object shaped as
-   `{"selected":[{"lens":"architecture-core","depth":"medium","decision":"..."}],"skipped":[{"lens":"ui-ux","reason":"..."}]}`
-   and invoke `& .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 -ProjectRoot . -FeatureRef <feature> -AgendaJson $agendaJson`.
+   **Render the authority-bound agenda before asking.** Build one JSON object shaped as
+   `{"selected":[{"lens":"architecture-core","depth":"medium","decision":"..."}],"skipped":[{"lens":"ui-ux","reason":"..."}]}`,
+   then invoke `& .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 -ProjectRoot . -FeatureRef <feature> -AgendaJson $agendaJson -RenderOnly`.
+   Send the command's output as the **entire assistant message, unchanged** — no introduction, suffix, or
+   differently worded duplicate. The hook binds the typed reply to that exact full agenda. Wait for the human's
+   typed response. **The moment they confirm, PERSIST it (F-174 — before opening lens 1)** by invoking the same
+   command with the identical `$agendaJson` and without `-RenderOnly`. If the selected set, depths, decisions,
+   skipped set, or reasons change, render the new canonical agenda and ask again; an older receipt cannot authorize it.
    The writer changes `agenda_status` to `confirmed` only when selected + skipped cover the whole deployed
    technical-lens catalog and records `agenda_confirmation: human-confirmed` with
    `agenda_confirmation_scope: lens-selection`. It also requires hook-owned typed reply receipts for product-domain

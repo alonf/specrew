@@ -45,34 +45,47 @@ BeforeAll {
     )
 
     function script:Get-EngineScriptPaths {
-        Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal') -Recurse -File -Filter '*.ps1' |
-            ForEach-Object { $_.FullName }
+        foreach ($relativeRoot in @('scripts/internal', 'extensions/specrew-speckit/scripts')) {
+            Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot $relativeRoot) -Recurse -File -Filter '*.ps1' |
+                ForEach-Object { $_.FullName }
+        }
     }
 
     function script:Get-FunctionsCallingClassifier {
-        # Returns every FunctionDefinitionAst, across the engine, that reaches the classifier - excluding
-        # the policy file itself, which DEFINES the classifier rather than consuming its verdict.
+        # Returns the classifier functions themselves plus their DIRECT trust-boundary consumers.
+        # A transitive call-graph closure is too broad: it eventually reaches lifecycle entry points
+        # that legitimately launch unrelated validators. The premise is about functions that directly
+        # admit/read/hash/delete a governed path, so direct containment/hash callers are the correct
+        # taint boundary. This still discovers deploy-squad-runtime.ps1's delete-authorizing caller.
         $found = New-Object System.Collections.Generic.List[object]
+        $functions = New-Object System.Collections.Generic.List[object]
         foreach ($path in script:Get-EngineScriptPaths) {
             if ((Split-Path -Leaf $path) -eq 'reparse-tag-policy.ps1') { continue }
             $tokens = $null; $errors = $null
             $ast = [System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors)
             if ($null -eq $ast) { continue }
             foreach ($fn in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
-                $calls = $fn.FindAll({
-                        param($n)
-                        $n -is [System.Management.Automation.Language.CommandAst] -and
-                        $null -ne $n.GetCommandName() -and
-                        $script:ClassifierCommands -contains $n.GetCommandName()
-                    }, $true)
-                if (@($calls).Count -gt 0) {
-                    $found.Add([pscustomobject]@{
+                $functions.Add([pscustomobject]@{
                             File = (($path.Substring($script:RepoRoot.Length + 1)) -replace '\\', '/')
                             Name = $fn.Name
                             Ast  = $fn
                         }) | Out-Null
-                }
             }
+        }
+
+        $reachable = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($name in ($script:ClassifierCommands + @(
+                    'Assert-SpecrewReviewRuntimePathContained',
+                    'Get-SpecrewReviewRuntimeManagedTextSha256',
+                    'Get-SpecrewReviewRuntimeManagedFileManifest'
+                ))) { $null = $reachable.Add($name) }
+        foreach ($fn in $functions) {
+            $directConsumer = $reachable.Contains($fn.Name) -or @($fn.Ast.FindAll({
+                        param($n)
+                        $n -is [System.Management.Automation.Language.CommandAst] -and
+                        $null -ne $n.GetCommandName() -and $reachable.Contains($n.GetCommandName())
+                    }, $true)).Count -gt 0
+            if ($directConsumer) { $found.Add($fn) | Out-Null }
         }
         return $found
     }
@@ -99,6 +112,7 @@ Describe 'the reparse admission premise: admitted content is read, never execute
         $names | Should -Contain 'scripts/internal/review-engine-resolution.ps1::Assert-SpecrewReviewRuntimePathContained'
         $names | Should -Contain 'scripts/internal/review-engine-resolution.ps1::Get-SpecrewReviewRuntimeManagedTextSha256'
         $names | Should -Contain 'scripts/internal/continuous-co-review/review-authority-store.ps1::Get-ReviewAuthorityStorePath'
+        $names | Should -Contain 'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1::Remove-RetiredManagedRuntimeFiles'
     }
 
     It 'NO consuming function invokes anything via & or . (the operator form)' {
@@ -152,12 +166,20 @@ Describe 'the reparse admission premise: admitted content is read, never execute
     }
 
     It 'THE POSITIVE HALF: the admitted path still reads, hashes, and containment-checks' {
-        # Without this, the four prohibitions above are satisfied by deleting the code that reads the file.
-        $resolution = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/review-engine-resolution.ps1') -Raw
+        # Without this, the prohibitions above are satisfied by deleting the code that reads the file.
+        # Query executable AST nodes, not raw source text: a comment saying ReadAllText is not a read.
+        $memberNames = @($script:Consumers | ForEach-Object {
+                $_.Ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.InvokeMemberExpressionAst] }, $true) |
+                    ForEach-Object { ([string]$_.Member.Extent.Text).Trim('''"') }
+            })
+        $commandNames = @($script:Consumers | ForEach-Object {
+                $_.Ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandAst] }, $true) |
+                    ForEach-Object { $_.GetCommandName() } | Where-Object { $null -ne $_ }
+            })
 
-        $resolution | Should -Match 'ReadAllText' -Because 'the trust rests on the bytes actually read, so they must actually be read'
-        $resolution | Should -Match 'SHA256|Sha256' -Because 'the hash is what carries the trust the tag no longer does'
-        $resolution | Should -Match 'review-runtime-managed-path-escapes-root' -Because 'containment is the OTHER half of the boundary: read/hash is safe only while it is bounded'
+        $memberNames | Should -Contain 'ReadAllText' -Because 'the trust rests on the bytes actually read, so an executable read must remain'
+        @($memberNames | Where-Object { $_ -in @('HashData', 'AppendData') }).Count | Should -BeGreaterThan 0 -Because 'an executable hash operation must carry the trust'
+        @($commandNames | Where-Object { $_ -in @('Assert-SpecrewReviewRuntimePathContained', 'Test-SpecrewReviewRuntimePathUnderRoot') }).Count | Should -BeGreaterThan 0 -Because 'containment is the other half of the read boundary'
     }
 
     It 'the REFUSING dispositions still refuse - the ruling narrowed the refusal, it did not remove it' {

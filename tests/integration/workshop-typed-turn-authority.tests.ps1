@@ -28,6 +28,15 @@ try {
     Assert-True ($null -eq (Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -FeatureRef '001-link-checker' -Phase product-domain)) 'Ctrl+O/no UserPromptSubmit produces no workshop authority receipt'
     $syntheticStop = "Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet.`nRender the five-part context packet NOW as your message."
     Assert-True ($null -eq (Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $syntheticStop -HostKind copilot -SourceEvent UserPromptSubmit)) 'Copilot replay of plain Stop-hook output cannot mint workshop authority'
+    $campaignStop = 'Specrew review — your last review no longer covers these files.'
+    Assert-True ($null -eq (Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $campaignStop -HostKind copilot -SourceEvent userPromptSubmitted)) 'campaign review Stop prose cannot mint authority under the Copilot event spelling'
+    $unprefixedHookOutput = 'The hook rendered this text without a stable prose prefix.'
+    $journalPath = Join-Path $scratch '.specrew\runtime\hook-output-authority.jsonl'
+    [IO.File]::WriteAllText($journalPath, (([ordered]@{
+                    schema_version = '1.0'
+                    output_hash = Get-SpecrewWorkshopAuthorityHash -Text $unprefixedHookOutput
+                } | ConvertTo-Json -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+    Assert-True ($null -eq (Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $unprefixedHookOutput -HostKind copilot -SourceEvent UserPromptSubmit)) 'recorded hook-output identity blocks replay even when consumer prose changes'
     Assert-True ($null -eq (Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response '<hook_prompt hook_run_id="stop:test">looks good</hook_prompt>' -HostKind codex -SourceEvent UserPromptSubmit)) 'an enveloped hook prompt cannot mint workshop authority'
     Assert-True ($null -eq (Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response 'looks good' -HostKind copilot -SourceEvent Stop)) 'a non-prompt hook event cannot mint workshop authority'
     $delegated = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response 'you decide' -HostKind copilot -SourceEvent UserPromptSubmit
@@ -90,6 +99,24 @@ try {
     finally { $env:SPECREW_MODULE_PATH = $oldModulePath }
     $providerReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -FeatureRef '001-link-checker' -Phase product-domain
     Assert-True ($null -ne $providerReceipt -and [string]$providerReceipt.source_event -eq 'UserPromptSubmit') 'the production handover provider writes workshop authority only from a typed prompt event'
+
+    # The receipt reader used to inspect only the last 256 lines and silently return null once the
+    # append-only journal exceeded 1 MiB. A long workshop could therefore erase a genuine answer from
+    # the authority view without deleting a byte. Put this receipt behind both old caps and require it
+    # to remain reachable. Each filler record stays well below the per-record 64 KiB integrity bound.
+    $receiptPath = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $scratch
+    $padding = 'x' * 4096
+    foreach ($i in 1..300) {
+        $filler = [ordered]@{
+            schema_version = '1'; feature_ref = '999-filler'; phase = 'product-domain'
+            receipt_id = "filler-$i"; padding = $padding
+        }
+        [IO.File]::AppendAllText($receiptPath, (($filler | ConvertTo-Json -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+    }
+    Assert-True ((Get-Item -LiteralPath $receiptPath).Length -gt 1MB) 'the fixture crosses the former 1 MiB silent cap'
+    $oldReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -FeatureRef '001-link-checker' -Phase product-domain -ReceiptId ([string]$providerReceipt.receipt_id)
+    Assert-True ($null -ne $oldReceipt -and [string]$oldReceipt.receipt_id -eq [string]$providerReceipt.receipt_id) 'a genuine receipt remains reachable beyond 256 lines and after the journal exceeds 1 MiB'
+
     Remove-Item -LiteralPath (Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $scratch) -Force -ErrorAction SilentlyContinue
     try {
         $env:SPECREW_MODULE_PATH = $repoRoot

@@ -17,7 +17,9 @@ Set-StrictMode -Version Latest
 #
 # This is the DECISION logic only. Wiring it into Invoke-SpecrewBoundaryStateSync as a
 # throw-to-refuse gate stays deferred until the F-185 host-neutral gate-enforcement branch
-# merges; Assert-ContinuousCoReviewSignoffGate is the thin throw-wrapper that wiring will call.
+# merges; Assert-ContinuousCoReviewSignoffGate is the explicit throw-wrapper for direct callers and
+# forwards the complete decision contract. Production boundary wiring persists the decision first,
+# then throws itself so evidence cannot be skipped.
 
 # HARD dependency: the ONE path-identity primitive. Test-ReviewCampaignDeltaIsRecordsOnly asks it for
 # the volume's case rule, and without this load the call depended on whatever ambient load order the
@@ -1166,10 +1168,21 @@ function Assert-ContinuousCoReviewSignoffGate {
 
         [AllowNull()] $OverrideAuthorization,
 
-        [AllowNull()] $DegradedAcknowledgement
+        [AllowNull()] $DegradedAcknowledgement,
+
+        [string] $AuthorityConfigPath,
+        [string] $CampaignId,
+        [string] $TargetLineage,
+        [string] $FeatureId,
+        [string] $IterationNumber,
+        [string] $CampaignStoreRoot
     )
 
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -TrunkName $TrunkName -ExcludedPathPatterns $ExcludedPathPatterns -OverrideAuthorization $OverrideAuthorization -DegradedAcknowledgement $DegradedAcknowledgement
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -TrunkName $TrunkName `
+        -ExcludedPathPatterns $ExcludedPathPatterns -OverrideAuthorization $OverrideAuthorization `
+        -DegradedAcknowledgement $DegradedAcknowledgement -AuthorityConfigPath $AuthorityConfigPath `
+        -CampaignId $CampaignId -TargetLineage $TargetLineage -FeatureId $FeatureId `
+        -IterationNumber $IterationNumber -CampaignStoreRoot $CampaignStoreRoot
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"
     }

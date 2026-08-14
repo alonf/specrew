@@ -71,6 +71,45 @@ function Get-ReviewAuthorityProperty {
     return $property.Value
 }
 
+function ConvertTo-ReviewAuthorityTimestamp {
+    <#
+    Authority ordering is by instant, never by the spelling of an ISO-8601 value. `Z` and
+    `+00:00` describe the same zone but do not sort the same as strings. An absent or malformed
+    authority timestamp is corruption, not an invitation to choose a permissive default.
+    #>
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$Value,
+        [string]$FieldName = 'timestamp'
+    )
+
+    # ConvertFrom-Json materializes ISO values as DateTime on current PowerShell releases. Accept
+    # those typed values directly; their original JSON spelling has already passed the closed fact
+    # reader, and converting them back through the current culture would destroy the ISO shape.
+    if ($Value -is [DateTimeOffset]) { return ([DateTimeOffset]$Value).ToUniversalTime() }
+    if ($Value -is [DateTime]) {
+        $dateTime = [DateTime]$Value
+        if ($dateTime.Kind -eq [DateTimeKind]::Unspecified) { throw "review-authority-timestamp-invalid:$FieldName" }
+        return ([DateTimeOffset]$dateTime).ToUniversalTime()
+    }
+
+    $text = [string]$Value
+    $parsed = [DateTimeOffset]::MinValue
+    # Validate the shape before parsing so culture-permissive inputs such as local dates can
+    # never become authority. TryParse (rather than its string[] TryParseExact overload) is used
+    # deliberately: PowerShell 7.5 binds that by-ref overload inconsistently on Windows.
+    if ([string]::IsNullOrWhiteSpace($text) -or
+        $text -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$' -or
+        -not [DateTimeOffset]::TryParse(
+            $text,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$parsed)) {
+        throw "review-authority-timestamp-invalid:$FieldName"
+    }
+    return $parsed.ToUniversalTime()
+}
+
 function Test-ReviewAuthorityIdentifier {
     param(
         [AllowNull()]$Value,
@@ -197,7 +236,21 @@ function Resolve-ReviewCampaignPauseDecision {
         if (-not [string]::IsNullOrWhiteSpace($resultCompletion) -and $resultCompletion -cne 'complete') { $resultProduced = $false }
         if (-not [string]::IsNullOrWhiteSpace($resultValidation) -and $resultValidation -cne 'valid') { $resultProduced = $false }
     }
+    $budgetExhausted = $RoundsUsed -ge $BudgetTotal
+    $continuationAvailable = -not $budgetExhausted
+    $budgetRefusal = if ($budgetExhausted) {
+        ('The round budget for this review is spent ({0} of {1} rounds used), so another round is not on offer. ' -f $RoundsUsed, $BudgetTotal) +
+        'That limit exists because repeated rounds keep costing you time and money long after they stop finding much. ' +
+        'If this review genuinely needs more rounds, you can top the allowance up yourself with: specrew review --remediate allowance-reset'
+    }
+    else { $null }
+
     if (-not $resultProduced) {
+        $options = [Collections.Generic.List[object]]::new()
+        if ($continuationAvailable) {
+            $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Run the review again' })
+        }
+        $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' })
         return [pscustomobject][ordered]@{
             blocking_count         = 0
             major_count            = 0
@@ -206,27 +259,27 @@ function Resolve-ReviewCampaignPauseDecision {
             demoted_count          = 0
             demoted_from_blocking  = 0
             demoted_from_major     = 0
-            gating                 = $false
+            gating                 = $true
+            evidence_state          = 'not-produced'
             gating_locations       = @()
             gating_findings        = @()
             rounds_used            = $RoundsUsed
             budget_total           = $BudgetTotal
-            budget_exhausted       = ($RoundsUsed -ge $BudgetTotal)
-            continuation_available = ($RoundsUsed -lt $BudgetTotal)
+            budget_exhausted       = $budgetExhausted
+            continuation_available = $continuationAvailable
             elapsed_minutes        = $ElapsedMinutes
             result_produced        = $false
-            recommendation         = 'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Run it again: specrew review --live --approve-round'
-            budget_refusal         = $null
-            options                = @(
-                [pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Run the review again' }
-                [pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' }
-            )
+            recommendation         = $(if ($continuationAvailable) {
+                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Run it again: specrew review --live --approve-round'
+                } else {
+                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. The round budget is spent; reset it explicitly or abandon this campaign.'
+                })
+            budget_refusal         = $budgetRefusal
+            options                = @($options)
         }
     }
 
     $gating = ($blocking + $major) -gt 0
-    $budgetExhausted = $RoundsUsed -ge $BudgetTotal
-    $continuationAvailable = -not $budgetExhausted
 
     # A RECOMMENDATION MUST NOT SAY "NOTHING BLOCKS YOU" WHEN FINDINGS WERE DEMOTED.
     #
@@ -279,14 +332,6 @@ function Resolve-ReviewCampaignPauseDecision {
     $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' })
     $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' })
 
-    $budgetRefusal = $null
-    if ($budgetExhausted) {
-        $budgetRefusal = (
-            'The round budget for this review is spent ({0} of {1} rounds used), so another round is not on offer. ' -f $RoundsUsed, $BudgetTotal
-        ) + 'That limit exists because repeated rounds keep costing you time and money long after they stop finding much. ' +
-        'If this review genuinely needs more rounds, you can top the allowance up yourself with: specrew review --remediate allowance-reset'
-    }
-
     return [pscustomobject][ordered]@{
         blocking_count         = $blocking
         major_count            = $major
@@ -296,6 +341,7 @@ function Resolve-ReviewCampaignPauseDecision {
         demoted_from_blocking  = $demotedFromBlocking
         demoted_from_major     = $demotedFromMajor
         gating                 = $gating
+        evidence_state          = 'produced'
         gating_locations       = @($gatingLocations | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         gating_findings        = @($gatingFindings)
         rounds_used            = $RoundsUsed
@@ -303,6 +349,7 @@ function Resolve-ReviewCampaignPauseDecision {
         budget_exhausted       = $budgetExhausted
         continuation_available = $continuationAvailable
         elapsed_minutes        = $ElapsedMinutes
+        result_produced        = $true
         recommendation         = $recommendation
         budget_refusal         = $budgetRefusal
         options                = @($options)
@@ -359,6 +406,8 @@ function New-ReviewCampaignPendingPauseFact {
         # Carried into the RECORD, not only onto the surface: otherwise the pause a later reader finds
         # says "one minor finding" about a round in which the reviewer reported a blocking one.
         demoted_count    = [int]$Decision.demoted_count
+        evidence_state   = [string]$Decision.evidence_state
+        result_produced  = [bool]$Decision.result_produced
         rounds_used      = [int]$Decision.rounds_used
         budget_total     = [int]$Decision.budget_total
         elapsed_minutes  = [double]$Decision.elapsed_minutes
@@ -430,7 +479,9 @@ function Test-ReviewCampaignContinuationAuthorized {
     param(
         [Parameter(Mandatory)]$PendingPause,
         [AllowEmptyCollection()][object[]]$PauseDecisions = @(),
-        [int]$RoundsSinceDecision = 0
+        [int]$RoundsSinceDecision = 0,
+        [int]$RoundsUsed = 0,
+        [int]$BudgetTotal = 4
     )
     $runId = [string](Get-ReviewAuthorityProperty -Object $PendingPause -Name 'run_id')
     $answer = @($PauseDecisions | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -ceq $runId }) | Select-Object -First 1
@@ -440,6 +491,9 @@ function Test-ReviewCampaignContinuationAuthorized {
     $choice = [string](Get-ReviewAuthorityProperty -Object $answer -Name 'choice')
     if ($choice -cne 'fix-and-continue') {
         return [pscustomobject]@{ authorized = $false; reason = ('choice-does-not-continue:' + $choice); choice = $choice }
+    }
+    if ($BudgetTotal -le 0 -or $RoundsUsed -ge $BudgetTotal) {
+        return [pscustomobject]@{ authorized = $false; reason = 'review-round-budget-exhausted'; choice = $choice }
     }
     if ($RoundsSinceDecision -ge 1) {
         return [pscustomobject]@{ authorized = $false; reason = 'single-run-grant-already-spent'; choice = $choice }
@@ -671,7 +725,7 @@ function Test-ReviewAuthorityContractObject {
         'PendingPauseFact' { @(
             'schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_digest', 'blocking_count',
             'major_count', 'minor_count', 'demoted_count', 'rounds_used', 'budget_total', 'elapsed_minutes',
-            'recommendation', 'observed_at'
+            'evidence_state', 'result_produced', 'recommendation', 'observed_at'
         ) }
         'PauseDecisionFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'choice', 'observed_at') }
         # The round budget is topped up by RECORDING a decision, never by mutating a count. Rounds
@@ -789,6 +843,25 @@ function Test-ReviewAuthorityContractObject {
                 if (-not [string]::IsNullOrWhiteSpace($value) -and $value -cnotmatch '^[0-9a-f]{40,64}$') {
                     Add-ReviewAuthorityError -Errors $errors -Message "invalid-git-object-id:$name"
                 }
+            }
+        }
+        'PendingPauseFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 32 -Enum @('pending-pause')
+            foreach ($name in @('blocking_count', 'major_count', 'minor_count', 'demoted_count', 'rounds_used')) {
+                Test-ReviewAuthorityIntegerField -Object $InputObject -Name $name -Errors $errors -Minimum 0 -Maximum ([int]::MaxValue)
+            }
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'budget_total' -Errors $errors -Minimum 1 -Maximum ([int]::MaxValue)
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'recommendation' -Errors $errors -MaxLength 4000
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
+            $pauseNames = Get-ReviewAuthorityPropertyNames -Object $InputObject
+            if ($pauseNames -contains 'evidence_state') {
+                Test-ReviewAuthorityStringField -Object $InputObject -Name 'evidence_state' -Errors $errors -MaxLength 16 -Enum @('produced', 'not-produced')
+            }
+            if ($pauseNames -contains 'result_produced') {
+                Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'result_produced' -Errors $errors
+            }
+            if (($pauseNames -contains 'evidence_state') -xor ($pauseNames -contains 'result_produced')) {
+                Add-ReviewAuthorityError -Errors $errors -Message 'incomplete-group:pause-evidence-state'
             }
         }
         'RecoveryFact' {

@@ -174,6 +174,9 @@ function Read-ReviewAuthorityFactFile {
             'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact', 'RecoveryFact',
             'ReviewFinalizationFact', 'PendingPauseFact', 'PauseDecisionFact', 'RoundBudgetResetFact'
         )][string]$ContractName,
+        [AllowEmptyString()][string]$ExpectedCampaignId = '',
+        [AllowEmptyString()][string]$ExpectedRunId = '',
+        [AllowEmptyString()][string]$ExpectedTargetDigest = '',
         [int]$MaxBytes = 1048576
     )
     $stream = $null
@@ -190,7 +193,8 @@ function Read-ReviewAuthorityFactFile {
     try { $fact = $json | ConvertFrom-Json -Depth 30 -ErrorAction Stop }
     catch { throw "review-store-corruption:invalid-json:$Path" }
     if (-not [string]::IsNullOrWhiteSpace($ContractName)) {
-        $validation = Test-ReviewAuthorityContractObject -ContractName $ContractName -InputObject $fact
+        $validation = Test-ReviewAuthorityContractObject -ContractName $ContractName -InputObject $fact `
+            -ExpectedCampaignId $ExpectedCampaignId -ExpectedRunId $ExpectedRunId -ExpectedTargetDigest $ExpectedTargetDigest
         if (-not $validation.valid) { throw ('review-store-corruption:invalid-contract:{0}:{1}' -f $ContractName, ($validation.errors -join ',')) }
     }
     return $fact
@@ -353,16 +357,16 @@ function Get-ReviewCampaignLatestBudgetReset {
     # same standard as every other authority fact rather than at the standard of a config file.
     $facts = [Collections.Generic.List[object]]::new()
     foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.json')) {
-        try { $fact = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json } catch { continue }
-        if ($null -eq $fact) { continue }
-        $validation = Test-ReviewAuthorityContractObject -ContractName RoundBudgetResetFact -InputObject $fact -ExpectedCampaignId $CampaignId
-        if (-not $validation.valid) { continue }
+        $fact = Read-ReviewAuthorityFactFile -Path $file -ContractName RoundBudgetResetFact -ExpectedCampaignId $CampaignId
         # A human reset is the only kind there is; anything else is not an authority to spend.
-        if ([string](Get-ReviewAuthorityProperty -Object $fact -Name 'authority_kind') -cne 'human') { continue }
+        if ([string](Get-ReviewAuthorityProperty -Object $fact -Name 'authority_kind') -cne 'human') {
+            throw "review-store-corruption:budget-reset-not-human:$file"
+        }
+        $null = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $fact -Name 'observed_at') -FieldName 'round-budget-reset.observed_at'
         $facts.Add($fact) | Out-Null
     }
     if ($facts.Count -eq 0) { return $null }
-    return @($facts | Sort-Object -Property { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') })[-1]
+    return @($facts | Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'observed_at') -FieldName 'round-budget-reset.observed_at' })[-1]
 }
 
 function Get-ReviewCampaignPauseRecords {
@@ -372,9 +376,8 @@ function Get-ReviewCampaignPauseRecords {
     # plus "take the last" over this list, so a third ordering cannot quietly appear later - which is
     # how the two that existed came to disagree in the first place.
     #
-    # Ordered by observed_at. The facts carry ISO-8601 with a UTC offset, so lexicographic comparison
-    # over the string is chronological; a fact missing the field sorts first rather than throwing, and
-    # is therefore never mistaken for the newest.
+    # Ordered by parsed instant. `Z` and `+00:00` are both valid authority spellings and lexical
+    # comparison does not preserve time ordering across them. Missing or malformed time is corruption.
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)][string]$CampaignId)
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs'
@@ -385,20 +388,21 @@ function Get-ReviewCampaignPauseRecords {
     foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot)) {
         $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
         if (-not [IO.File]::Exists($pausePath)) { continue }
-        $pause = $null
-        try { $pause = Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json } catch { continue }
-        if ($null -eq $pause) { continue }
+        $runId = [IO.Path]::GetFileName($runDirectory)
+        $pause = Read-ReviewAuthorityFactFile -Path $pausePath -ContractName PendingPauseFact -ExpectedCampaignId $CampaignId -ExpectedRunId $runId
+        $pauseAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $pause -Name 'observed_at') -FieldName "pending-pause[$runId].observed_at"
         $decision = $null
         $decisionPath = [IO.Path]::Combine($runDirectory, 'pause-decision.json')
         if ([IO.File]::Exists($decisionPath)) {
-            try { $decision = Get-Content -LiteralPath $decisionPath -Raw | ConvertFrom-Json } catch { $decision = $null }
+            $decision = Read-ReviewAuthorityFactFile -Path $decisionPath -ContractName PauseDecisionFact -ExpectedCampaignId $CampaignId -ExpectedRunId $runId
+            $null = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $decision -Name 'observed_at') -FieldName "pause-decision[$runId].observed_at"
         }
         $records.Add([pscustomobject]@{
                 pause       = $pause
                 decision    = $decision
                 answered    = ($null -ne $decision)
                 run_id      = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'run_id')
-                observed_at = [string](Get-ReviewAuthorityProperty -Object $pause -Name 'observed_at')
+                observed_at = $pauseAt
             }) | Out-Null
     }
     return @($records | Sort-Object -Property observed_at)

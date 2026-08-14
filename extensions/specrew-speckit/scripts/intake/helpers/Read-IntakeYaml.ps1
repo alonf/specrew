@@ -342,7 +342,7 @@ function Read-IntakeYamlDocument {
         [string]$Path,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('personas', 'categories', 'questions', 'defaults', 'depth_rules', 'user_profile')]
+        [ValidateSet('personas', 'categories', 'questions', 'lenses', 'defaults', 'depth_rules', 'user_profile')]
         [string]$Kind
     )
 
@@ -356,6 +356,7 @@ function Read-IntakeYamlDocument {
         'personas' { return Convert-IntakeYamlObjectList -Content $content -RootKey 'personas' }
         'categories' { return Convert-IntakeYamlObjectList -Content $content -RootKey 'categories' }
         'questions' { return Convert-IntakeYamlObjectList -Content $content -RootKey 'questions' }
+        'lenses' { return Convert-IntakeYamlObjectList -Content $content -RootKey 'lenses' }
         'defaults' { return Convert-IntakeYamlMapSection -Content $content -RootKey 'defaults' }
         'depth_rules' { return Convert-IntakeDepthRules -Content $content }
         'user_profile' { return Convert-IntakeUserProfile -Content $content }

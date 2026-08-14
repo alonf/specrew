@@ -114,6 +114,27 @@ Describe 'Campaign pause core (T001)' {
             $decision.budget_exhausted | Should -BeFalse
             $decision.continuation_available | Should -BeTrue
         }
+
+        It 'a review that produced no valid result gates and never renders as clean at the budget ceiling' {
+            $result = [pscustomobject][ordered]@{
+                completion = 'none'; validation = 'not-produced'; verdict = 'incomplete'
+                failure_reason = 'review-timeout'; findings = @()
+            }
+            $decision = Resolve-ReviewCampaignPauseDecision -Result $result -Findings @() `
+                -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
+
+            $decision.gating | Should -BeTrue
+            $decision.evidence_state | Should -Be 'not-produced'
+            $decision.result_produced | Should -BeFalse
+            $decision.continuation_available | Should -BeFalse
+            @($decision.options | Where-Object { $_.id -eq 1 }).Count | Should -Be 0
+            $decision.budget_refusal | Should -Match '4 of 4'
+
+            $surface = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision $decision
+            $surface | Should -Match 'found nothing and cleared nothing'
+            $surface | Should -Match 'not a clean review|Do not read this as a clean result'
+            $surface | Should -Not -Match 'Nothing was found\. Stopping here completes your sign-off'
+        }
     }
 
     Context 'the rendered decision surface (what the human actually reads)' {

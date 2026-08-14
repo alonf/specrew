@@ -27,6 +27,34 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
+### DRIFT-199-I001-041 — deep review found authority controls that were computed but not consumed (implementation resolved; broad verification pending)
+
+- **Observed**: 2026-08-14, Claude deep review of the working tree rather than only `HEAD`.
+  Three blocking, six major, and ten minor findings were validated individually in
+  `quality/claude-deep-review-mitigation.md`. The common class was that an authority
+  decision was calculated, rendered, stamped, or documented without a production consumer.
+- **Blocking examples**: raw CLI strings could construct a partial-signoff override; the
+  four-round budget removed a menu option but did not refuse the public campaign command;
+  two authority-store exceptions were replaced by permissive null/zero values.
+- **Resolution**: partial signoff now requires an exact typed human phrase captured at a
+  prompt event and bound to campaign + tree; the public command refuses at 4/4 before
+  harness preflight even with a fresh round approval; malformed run directories and
+  result/path identity mismatches return `review-authority-store-invalid` before invocation.
+  Workshop authority also rejects structurally recorded hook output, agenda confirmation is
+  bound to the exact complete selected/skipped agenda, and non-produced review evidence gates
+  and renders as “found nothing and cleared nothing.”
+- **Spec reconciliation**: FR-012 and US5 now describe the strict executable
+  `.specrew/verification-plan.json` plus the non-executable
+  `.specrew/verification-plan.templates.md` sidecar. This preserves the closed JSON contract
+  instead of adding unknown documentation-only fields to executable authority.
+- **Permanent class guard**: `authority-control-consumer-guard.Tests.ps1` inspects executable
+  AST nodes for the budget, absent-review, agenda-hash, human-override, and corrupt-store
+  consumers. It does not accept comments as proof.
+- **Focused proof**: pause core 37/37; public campaign command 22/22; signoff wiring 22/22;
+  authority-control guard 5/5; workshop typed-turn assertions 20/20; runtime-resolution
+  assertions all green. Broad registry/package/harness verification remains required before
+  a manual-test project is created.
+
 ### DRIFT-199-I001-040 — the first workshop scaffold triggered a material packet that could authorize itself (implementation resolved; manual walk pending)
 
 - **Observed**: the exact Copilot CLI / `claude-sonnet-5` walk entered the product-domain workshop and
@@ -1707,7 +1735,7 @@ said the word closed.
   `tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1` and
   `tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1`.
 
-### DRIFT-199-I001-007 — the campaign engine rejects the run id it just minted (open)
+### DRIFT-199-I001-007 — the campaign engine rejects the run id it just minted (resolved)
 
 - **Observed**: 2026-08-10, first authorized campaign round
   (`authorization-ref: beta3-t003-activation-slice-1`). Exit 1 with
@@ -1764,7 +1792,7 @@ said the word closed.
 - **Resolution**: FIXED — file-scope guarded dot-source added, guarded on a name unique to the
   module (DRIFT-198-I009-027). `path-identity.Tests.ps1` and the activation fixture green.
 
-### DRIFT-199-I001-015 — the flush-race analyzer reopened on a signature captured TODAY (open)
+### DRIFT-199-I001-015 — the flush-race analyzer reopened on a signature captured TODAY (resolved)
 
 - **Observed**: 2026-08-10, wider-suite regression. `T109 flush-race forensic analyzer
   (D-197-I009-003 refuted; reopens on a real signature)` failed with the captured record:
@@ -1783,10 +1811,12 @@ said the word closed.
   feature caused the signature; the session's own stop traffic captured it.
 - **Standing consequence**: the suite will keep reporting this while the corpus holds the record,
   so it needs a disposition rather than silence.
-- **Resolution**: pending maintainer ruling. The analyzer's own note names the remedy (a cheap
-  re-read variant, per the iteration-009 revert note), which is conformance-provider work outside
-  this feature's ten items — so the default routing is beta4, unless the spurious-block behaviour
-  is judged to hit the acceptance bar's wedged-gate clause.
+- **Resolution (2026-08-14, beta3 stabilization)**: the manual-walk acceptance bar includes duplicate
+  packets during workshops, so the maintainer brought the measured defect into beta3. The provider now
+  performs one bounded `-Tail 8` recovery read only when the initial assistant record contains 1–3 of
+  the re-entry headers; it does not restore the removed 4x tail-200 polling loop. The journal records
+  `dx_reread_attempted` and `dx_reread_recovered`, and the forensic keeps the five historical records
+  as evidence while failing on any post-mitigation partial block that was not recovered.
 
 ### DRIFT-199-I001-016 — the records-only predicate asked the machinery resolver with no root, and failed OPEN (resolved)
 

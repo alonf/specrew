@@ -359,10 +359,11 @@ Describe 'Reparse-tag policy (T006/FR-011)' {
             $message | Should -Not -Match '(?i)junction'
         }
 
-        It 'an unknown tag says so plainly rather than guessing a family' {
+        It 'describes a junction case-insensitively' {
             $message = Get-SpecrewReparseRefusalMessage -Code 'review-store-path-link-unsupported' `
-                -Path 'campaigns/x' -Disposition 'refuse-unknown' -LinkType $null
-            $message | Should -Match '(?i)does not recognise'
+                -Path 'campaigns/x' -Disposition 'refuse-link' -LinkType 'junction'
+            $message | Should -Match '(?i)junction'
+            $message | Should -Not -Match '(?i)symbolic link'
         }
 
         It 'a placeholder that cannot be downloaded says THAT, not a raw file error' {

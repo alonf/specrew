@@ -56,9 +56,9 @@ Write-Pass "preserves an unrelated GEMINI.md-style block outside the section"
 
 # 6. exact FR-013 guard text in the single-source fragment (SC-013/FR-018)
 $frag = Get-SpecrewCoordinatorFragment
-if ($frag -notmatch [regex]::Escape('You are the Specrew Crew coordinator.')) { Write-Fail "fragment missing coordinator sentence" }
-if ($frag -notmatch [regex]::Escape('Do NOT run the raw specify.exe workflow / bundled SDD engine - it bypasses the governed boundary gates.')) { Write-Fail "fragment missing exact FR-013 guard text" }
-Write-Pass "fragment carries the exact FR-013 anti-specify.exe guard text (single source)"
+if ($frag -notmatch [regex]::Escape('## How this project works')) { Write-Fail "fragment missing project-rules heading" }
+if ($frag -notmatch 'The raw, un-governed\s+`specify\.exe workflow` and the bundled SDD automation bypass the boundary gates and are not used here\s+—\s+the Specrew-governed scripts above are not that\.') { Write-Fail "fragment missing project-rule FR-013 guard text" }
+Write-Pass "fragment carries the project-rule FR-013 anti-specify.exe guard (single source)"
 
 # 7. lean size budget vs the Codex 32 KiB AGENTS.md concatenation cap
 $bytes = [System.Text.Encoding]::UTF8.GetByteCount($frag)

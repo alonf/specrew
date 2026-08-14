@@ -21,6 +21,9 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         # The wiring functions under test.
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1')
+        # Prompt-entry capture runs in a separate hook process in production. Load the same store
+        # explicitly here so the fixture can model that second process between gate attempts.
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
     
 
         # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
@@ -224,27 +227,34 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
         It '(b3) a human-authorized override is reachable through the wired gate and persisted' {
             $f = New-WiringFeatureRepo 'on-human-override'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
-            $override = [pscustomobject]@{
-                authorized_by = 'human-tester'
-                rationale = 'review provider is unavailable; defer independent review with explicit ownership'
-            }
+            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
+            $request = Read-SpecrewReviewSignoffOverrideRequest -ProjectRoot $f.repo
+            $request.target_tree_id | Should -Match '^[a-f0-9]{40,64}$'
 
-            $out = Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' -OverrideAuthorization $override
+            $captured = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $f.repo `
+                -Response 'approved for partial review signoff - review provider is unavailable; defer independent review with explicit ownership' `
+                -HostKind 'fixture' -SourceEvent 'UserPromptSubmit'
+            $captured.authority_kind | Should -Be 'human'
+
+            $out = Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff'
 
             $out | Should -BeNullOrEmpty
             $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
             $latest.decision.decision | Should -Be 'allow'
             $latest.decision.reason | Should -Be 'human-authorized-partial-override'
-            $latest.decision.override.authorized_by | Should -Be 'human-tester'
+            $latest.decision.override.authorized_by | Should -Be 'unattributed-human'
             $latest.decision.override.rationale | Should -Match 'provider is unavailable'
         }
 
-        It '(b4) a malformed wired override remains fail-closed and is persisted as a block' {
+        It '(b4) an uncaptured or malformed typed override remains fail-closed and is persisted as a block' {
             $f = New-WiringFeatureRepo 'on-malformed-override'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
-            $override = [pscustomobject]@{ authorized_by = 'human-tester' }
+            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
+            $captured = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $f.repo `
+                -Response 'approved for partial review signoff' -HostKind 'fixture' -SourceEvent 'UserPromptSubmit'
+            $captured | Should -BeNullOrEmpty
 
-            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' -OverrideAuthorization $override } | Should -Throw
+            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
 
             $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
             $latest.decision.decision | Should -Be 'block'

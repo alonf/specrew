@@ -33,7 +33,7 @@ function Resolve-SpecrewReparseDisposition {
     # decision from the filesystem read makes it testable by attribute synthesis, and leaves the
     # END-TO-END hydration leg as the human measurement it has to be.
     #
-    # Returns: none | refuse-link | hydrate-cloud | refuse-unknown.
+    # Returns: none | refuse-link | hydrate-cloud | admit-nonlinking.
     [OutputType([pscustomobject])]
     [CmdletBinding()]
     param(
@@ -183,15 +183,10 @@ function Get-SpecrewReparseRefusalMessage {
     param(
         [Parameter(Mandatory)][string]$Code,
         [Parameter(Mandatory)][AllowEmptyString()][string]$Path,
-        [Parameter(Mandatory)][ValidateSet('refuse-link', 'refuse-unknown')][string]$Disposition,
+        [Parameter(Mandatory)][ValidateSet('refuse-link')][string]$Disposition,
         [AllowNull()][AllowEmptyString()][string]$LinkType
     )
-    $what = if ($Disposition -ceq 'refuse-link') {
-        $kind = if ([string]$LinkType -ceq 'Junction') { 'a junction' } else { 'a symbolic link' }
-        "This path is $kind, so writing through it would put your review's records somewhere other than where they appear to be."
-    }
-    else {
-        'This path is a kind of link this version does not recognise, and it is refused rather than followed blindly.'
-    }
+    $kind = if ([string]$LinkType -ieq 'Junction') { 'a junction' } else { 'a symbolic link' }
+    $what = "This path is $kind, so writing through it would put your review's records somewhere other than where they appear to be."
     return ('{0}:{1} - {2} Move the folder onto ordinary storage, or point the review at a path that is not a link, and run the command again. A cloud-synced folder such as OneDrive is fine; this refusal is specifically about links.' -f $Code, $Path, $what)
 }

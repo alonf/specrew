@@ -116,6 +116,10 @@ $registry = @(
     # constraint-edit visibility in the explicit registry so future counts name what they cover.
     @{ area = 'T067 campaign-authority signoff decision - current complete valid result, stale/missing state, and human-authorized override'; path = 'tests/continuous-co-review/unit/review-signoff-evidence-gate.Tests.ps1'; kind = 'pester' }
     @{ area = 'T073/T074 review-signoff boundary wiring - fail-closed block, clean allow, override persistence, silent allow pipeline'; path = 'tests/continuous-co-review/unit/signoff-gate-wiring.Tests.ps1'; kind = 'pester' }
+    @{ area = 'beta3 human-captured partial-signoff authority - exact typed phrase, tree/campaign binding, immutable tamper detection'; path = 'tests/continuous-co-review/unit/human-authority-store.Tests.ps1'; kind = 'pester' }
+    @{ area = 'beta3 pause economics core - absent-review honesty and structural round budget'; path = 'tests/continuous-co-review/unit/campaign-pause-core.Tests.ps1'; kind = 'pester' }
+    @{ area = 'beta3 public campaign command - pause, budget, corrupt-store refusal before harness work'; path = 'tests/continuous-co-review/unit/campaign-pause-wiring.Tests.ps1'; kind = 'pester' }
+    @{ area = 'beta3 authority-control class guard - computed controls have executable production consumers'; path = 'tests/continuous-co-review/unit/authority-control-consumer-guard.Tests.ps1'; kind = 'pester' }
     @{ area = 'beta3 exact active-campaign evidence state consumed by review boundary'; path = 'tests/continuous-co-review/unit/review-boundary-campaign-evidence.Tests.ps1'; kind = 'pester' }
     @{ area = 'beta3 capacity and baseline constraint changes are recorded before signoff evaluation'; path = 'tests/unit/constraint-change-visibility.Tests.ps1'; kind = 'pester' }
     # Shared co-review engine that F-198 modifies (T012/T014/T020 touch the orchestrator run path):

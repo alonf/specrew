@@ -176,9 +176,31 @@ function Get-SpecrewHookMissingEventRegistrations {
 
     $missing = New-Object System.Collections.Generic.List[string]
     if ($null -eq $ParsedConfig -or $null -eq $Bindings) { return $missing.ToArray() }
+    $configShape = [string](Get-ManifestValue -Map $Bindings -Key 'ConfigShape' -Default 'event-map')
     $eventMap = $null
-    if ($ParsedConfig.PSObject.Properties['hooks'] -and $null -ne $ParsedConfig.hooks -and -not ($ParsedConfig.hooks -is [System.Array])) {
-        $eventMap = $ParsedConfig.hooks
+    if ($configShape -eq 'event-map') {
+        if ($ParsedConfig.PSObject.Properties['hooks'] -and $null -ne $ParsedConfig.hooks -and -not ($ParsedConfig.hooks -is [System.Array])) {
+            $eventMap = $ParsedConfig.hooks
+        }
+    }
+    elseif ($configShape -eq 'named-definition') {
+        # Named-definition hosts (Antigravity) keep registrations below one owned property.
+        # Search the declared primary and collision-safe names, then verify each event inside
+        # that exact definition. A whole-file event-name search lets an unrelated user definition
+        # counterfeit a healthy Specrew registration.
+        foreach ($definitionKey in @(
+                [string](Get-ManifestValue -Map $Bindings -Key 'DefinitionName' -Default ''),
+                [string](Get-ManifestValue -Map $Bindings -Key 'DefinitionNameWhenOccupied' -Default '')
+            ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
+            $definitionProperty = $ParsedConfig.PSObject.Properties[$definitionKey]
+            if ($definitionProperty -and $null -ne $definitionProperty.Value) {
+                $candidateText = Get-SpecrewHookInspectionText -Value $definitionProperty.Value
+                if ($candidateText.Contains('specrew-hook-dispatcher.ps1') -or $candidateText.Contains('specrew-hook-launch.ps1')) {
+                    $eventMap = $definitionProperty.Value
+                    break
+                }
+            }
+        }
     }
 
     foreach ($registration in @(Get-ManifestValue -Map $Bindings -Key 'Registrations')) {
@@ -252,6 +274,13 @@ function Get-SpecrewHooksStatus {
                             $placeholder = [string](Get-ManifestValue -Map $bindings -Key 'ProjectDirPlaceholder' -Default '')
                             if (-not [string]::IsNullOrWhiteSpace($placeholder)) { $requiredTokens.Add($placeholder) | Out-Null }
                         }
+                        'guarded-project-encoded' {
+                            $requiredTokens.Add('specrew-hook-dispatcher.ps1') | Out-Null
+                            $projectVariables = @(Get-ManifestValue -Map $bindings -Key 'ProjectRootEnvironmentVariables' -Default @())
+                            foreach ($variable in $projectVariables) {
+                                if (-not [string]::IsNullOrWhiteSpace([string]$variable)) { $requiredTokens.Add([string]$variable) | Out-Null }
+                            }
+                        }
                         'launcher-file' { $requiredTokens.Add('specrew-hook-launch.ps1') | Out-Null }
                         'launcher-encoded' { $requiredTokens.Add('specrew-hook-launch.ps1') | Out-Null }
                         default {
@@ -271,13 +300,9 @@ function Get-SpecrewHooksStatus {
 
                     if ($state -ne 'failed') {
                         $missingRequired = @($requiredTokens.ToArray() | Where-Object { -not $inspectionText.Contains($_) })
-                        # Wiring drift: every event the manifest REGISTERS must actually carry a Specrew entry.
-                        # Only event-map shapes need this extra pass - named-definition shapes already fold their
-                        # event names into $requiredTokens above, and their events live inside one owned block.
-                        $missingEvents = @()
-                        if ($configShape -eq 'event-map') {
-                            $missingEvents = @(Get-SpecrewHookMissingEventRegistrations -ParsedConfig $parsedConfig -Bindings $bindings)
-                        }
+                        # Wiring drift: every event the manifest REGISTERS must actually carry a Specrew entry,
+                        # both for event maps and inside the exact owned named definition.
+                        $missingEvents = @(Get-SpecrewHookMissingEventRegistrations -ParsedConfig $parsedConfig -Bindings $bindings)
                         if ($missingRequired.Count -eq 0 -and $requiredTokens.Count -gt 0 -and $missingEvents.Count -gt 0) {
                             # The dispatcher IS wired, just not for everything the manifest now registers - the
                             # exact shape a config written by an older Specrew takes. Reported as `stale`, which

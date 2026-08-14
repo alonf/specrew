@@ -211,8 +211,8 @@ Describe 'Proposal 197 T026 TG-011 non-convergence escalation obeys implementati
         $f.kind | Should -Be 'escalation'
         $f.disposition | Should -Be 'escalated_to_human'   # parked -> gate does not deadlock, but it IS surfaced
         $f.comment | Should -Match '(?i)not reviewed'
-        $f.comment | Should -Match '(?i)ceiling'
-        $f.comment | Should -Match '(?i)false-green'
+        $f.comment | Should -Match '(?i)spending limit'
+        $f.comment | Should -Match '(?i)treating it as .no findings. would be wrong'
         # schema-conformant (no D-002-style additionalProperties violation)
         (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $obj).Valid | Should -Be $true
     }

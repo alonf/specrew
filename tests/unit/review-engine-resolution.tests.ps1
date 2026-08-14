@@ -43,6 +43,18 @@ try {
     Assert-True ($matched.bundle_sha256 -ceq $hash) 'selection reports the exact compared bundle hash'
     Assert-True (-not $marker.Contains('managed_files')) 'legacy schema 1.0 markers remain supported during upgrade'
 
+    $markerWithoutSchema = [ordered]@{
+        specrew_version = '0.40.0'
+        runtime_bundle_sha256 = $hash
+        source = 'test'
+    }
+    [IO.File]::WriteAllText((Join-Path $projectRuntime '.specrew-runtime.json'), ($markerWithoutSchema | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+    $missingSchemaMessage = ''
+    try { Resolve-SpecrewReviewEngineRoot -ProjectRoot $project -InstalledRuntimeRoot $installed | Out-Null }
+    catch { $missingSchemaMessage = $_.Exception.Message }
+    Assert-True ($missingSchemaMessage -like 'review-engine-marker-invalid:*') 'a marker missing schema_version fails with the named marker contract error'
+    [IO.File]::WriteAllText((Join-Path $projectRuntime '.specrew-runtime.json'), ($marker | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+
     $installedEngine = Join-Path $installed 'engine.ps1'
     $projectEngine = Join-Path $projectRuntime 'engine.ps1'
     [IO.File]::WriteAllText($installedEngine, "line-one`nline-two`n", [Text.UTF8Encoding]::new($false))

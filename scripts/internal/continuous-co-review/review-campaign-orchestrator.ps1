@@ -661,6 +661,91 @@ function Get-ReviewCampaignRoundBudgetTotal {
     return $default
 }
 
+function Get-ReviewCampaignRoundBudgetState {
+    <#
+    One production counter for the runaway fuse. A round counts only when a reviewer was
+    invoked (FR-014), and an immutable human reset moves the counting origin. Authority-store
+    corruption and malformed timestamps throw: callers must refuse before any reservation or
+    reviewer launch rather than substitute a permissive zero.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [AllowEmptyString()][string]$ExcludeRunId = '',
+        [AllowEmptyString()][string]$RepoRoot = ''
+    )
+
+    $budgetTotal = Get-ReviewCampaignRoundBudgetTotal -RepoRoot $RepoRoot
+    $reset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
+    $resetAt = if ($null -eq $reset) { $null } else {
+        ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $reset -Name 'observed_at') -FieldName 'round-budget-reset.observed_at'
+    }
+    $runIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $invokedResults = [Collections.Generic.List[object]]::new()
+
+    foreach ($result in @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
+        $runId = [string](Get-ReviewAuthorityProperty -Object $result -Name 'run_id')
+        if ((-not [string]::IsNullOrWhiteSpace($ExcludeRunId)) -and $runId -ceq $ExcludeRunId) { continue }
+        if ([string](Get-ReviewAuthorityProperty -Object $result -Name 'runtime_outcome') -in @('preflight-failed', 'claim-contended', 'launch-failed')) { continue }
+        $startedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $result -Name 'started_at') -FieldName "review-result[$runId].started_at"
+        if ($null -ne $resetAt -and $startedAt -le $resetAt) { continue }
+        $null = $runIds.Add($runId)
+        $invokedResults.Add($result) | Out-Null
+    }
+
+    # A valid pending-pause fact is a second durable proof that a round reached the reviewer
+    # terminal. This covers a result that was lost after invocation without silently accepting a
+    # malformed pause; Get-ReviewCampaignPauseRecords validates and throws on corruption.
+    foreach ($record in @(Get-ReviewCampaignPauseRecords -StoreRoot $StoreRoot -CampaignId $CampaignId)) {
+        $runId = [string](Get-ReviewAuthorityProperty -Object $record.pause -Name 'run_id')
+        if ((-not [string]::IsNullOrWhiteSpace($ExcludeRunId)) -and $runId -ceq $ExcludeRunId) { continue }
+        $pausedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $record.pause -Name 'observed_at') -FieldName "pending-pause[$runId].observed_at"
+        if ($null -ne $resetAt -and $pausedAt -le $resetAt) { continue }
+        $null = $runIds.Add($runId)
+    }
+
+    return [pscustomobject][ordered]@{
+        rounds_used            = $runIds.Count
+        budget_total           = $budgetTotal
+        budget_exhausted       = ($runIds.Count -ge $budgetTotal)
+        continuation_available = ($runIds.Count -lt $budgetTotal)
+        invoked_results        = @($invokedResults)
+        reset_at               = $resetAt
+    }
+}
+
+function New-ReviewCampaignAuthorityStoreRefusal {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Identity,
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [AllowNull()]$DesignContext,
+        [AllowEmptyCollection()][object[]]$Diagnostics = @(),
+        [Parameter(Mandatory)][string]$FailureReason
+    )
+    return [pscustomobject][ordered]@{
+        status = 'paused'; reason = 'review-authority-store-invalid'
+        invoked = $false; result = $null
+        campaign_id = [string]$Identity.campaign_id; run_id = [string]$Identity.run_id; target_lineage = [string]$Identity.target_lineage
+        store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+        design_context = if ($null -ne $DesignContext) { [string]$DesignContext.classification } else { '' }
+        resolved_design_context = if ($null -ne $DesignContext) { @($DesignContext.resolved_refs) } else { @() }
+        unresolved_design_context = @()
+        pause = $null; pause_decision = $null
+        pause_surface = @(
+            'Specrew could not read its review authority safely, so it will not start another reviewer.',
+            '',
+            ('What went wrong: ' + $FailureReason),
+            '',
+            'Repair or restore the files under .specrew/review/authority, then run the review again.'
+        )
+        continuation_authorized = $false
+        continuation_reason = 'review-authority-store-invalid'
+        diagnostics = @($Diagnostics)
+    }
+}
+
 function Add-ReviewCampaignRoundPause {
     # T001 / FR-001. THE ROUND TERMINAL. Every round ends here: the engine records what it found and
     # what it cost, then hands the decision back to the human. It never starts another round on its
@@ -684,48 +769,9 @@ function Add-ReviewCampaignRoundPause {
     # A prior ROUND is one that reached a terminal: it published a result, or it recorded a pause,
     # or both. Infrastructure failures are excluded here for the same reason FR-014 keeps them off
     # the allowance - a consumer must not be charged a round for an engine defect.
-    $priorResults = @()
-    try { $priorResults = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId) } catch { $priorResults = @() }
-    # A recorded budget reset moves where counting STARTS. Rounds before it stay on the record - they
-    # are immutable facts and the campaign's history is the point - they simply no longer count against
-    # the allowance the human just topped up. Absent, this is $null and nothing is excluded.
-    $budgetResetAt = $null
-    try {
-        $budgetReset = Get-ReviewCampaignLatestBudgetReset -StoreRoot $StoreRoot -CampaignId $CampaignId
-        if ($null -ne $budgetReset) { $budgetResetAt = [string](Get-ReviewAuthorityProperty -Object $budgetReset -Name 'observed_at') }
-    }
-    catch { $budgetResetAt = $null }
-    $invokedPrior = @($priorResults | Where-Object {
-            $priorStartedAt = [string](Get-ReviewAuthorityProperty -Object $_ -Name 'started_at')
-            [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -cne $RunId -and
-            [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') -and
-            ([string]::IsNullOrWhiteSpace($budgetResetAt) -or ([string]::IsNullOrWhiteSpace($priorStartedAt)) -or $priorStartedAt -gt $budgetResetAt)
-        })
-    $priorRunIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
-    foreach ($prior in $invokedPrior) { $null = $priorRunIds.Add([string](Get-ReviewAuthorityProperty -Object $prior -Name 'run_id')) }
-    try {
-        $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath ((Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs')
-        if ([IO.Directory]::Exists($runsRoot)) {
-            foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot)) {
-                $name = [IO.Path]::GetFileName($runDirectory)
-                if ($name -ceq $RunId) { continue }
-                $pausePath = [IO.Path]::Combine($runDirectory, 'pending-pause.json')
-                if (-not [IO.File]::Exists($pausePath)) { continue }
-                # This second source exists because a round that paused counts even if its result is
-                # unreadable. It must honour the reset for the same reason the first one does - counting
-                # a pre-reset round here would silently undo the top-up the human just recorded.
-                if (-not [string]::IsNullOrWhiteSpace($budgetResetAt)) {
-                    $pausedAt = ''
-                    try { $pausedAt = [string](Get-ReviewAuthorityProperty -Object (Get-Content -LiteralPath $pausePath -Raw | ConvertFrom-Json) -Name 'observed_at') }
-                    catch { $pausedAt = '' }
-                    if (-not [string]::IsNullOrWhiteSpace($pausedAt) -and $pausedAt -le $budgetResetAt) { continue }
-                }
-                $null = $priorRunIds.Add($name)
-            }
-        }
-    }
-    catch { $null = $_ }
-    $roundsUsed = $priorRunIds.Count + 1
+    $budgetState = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $CampaignId -ExcludeRunId $RunId -RepoRoot $RepoRoot
+    $invokedPrior = @($budgetState.invoked_results)
+    $roundsUsed = [int]$budgetState.rounds_used + 1
 
     $elapsedMs = [double]([long](Get-ReviewAuthorityProperty -Object $Result -Name 'duration_ms'))
     foreach ($prior in $invokedPrior) {
@@ -742,7 +788,7 @@ function Add-ReviewCampaignRoundPause {
     # -Result carried so an unfinished review cannot render as a clean one: findings=0 on a timed-out
     # run means WE DO NOT KNOW, not NOTHING WAS FOUND.
     $decision = Resolve-ReviewCampaignPauseDecision -Result $Result -Findings @($resultFindings) `
-        -RoundsUsed $roundsUsed -BudgetTotal (Get-ReviewCampaignRoundBudgetTotal -RepoRoot $RepoRoot) `
+        -RoundsUsed $roundsUsed -BudgetTotal ([int]$budgetState.budget_total) `
         -ElapsedMinutes ([Math]::Round($elapsedMs / 60000, 0))
 
     $fact = New-ReviewCampaignPendingPauseFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -Decision $decision -ObservedAt $ObservedAt
@@ -1448,7 +1494,10 @@ function Invoke-ReviewCampaignCommand {
     # spend: fixing the code is not answering the question. Only the human's numbered reply is.
     $latestPause = $null
     try { $latestPause = Get-ReviewCampaignLatestPause -StoreRoot $StoreRoot -CampaignId $identity.campaign_id }
-    catch { $latestPause = $null }
+    catch {
+        return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+            -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+    }
 
     # A PAUSE THAT COULD NOT BE WRITTEN MUST NOT READ AS "NO PAUSE".
     #
@@ -1472,9 +1521,12 @@ function Invoke-ReviewCampaignCommand {
         try {
             $newestInvoked = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
                     Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') } |
-                    Sort-Object -Property { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') }) | Select-Object -Last 1
+                    Sort-Object -Property { ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at' }) | Select-Object -Last 1
         }
-        catch { $newestInvoked = $null }
+        catch {
+            return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+                -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+        }
         if ($null -ne $newestInvoked) {
             return [pscustomobject][ordered]@{
                 status = 'paused'; reason = 'review-round-paused:pause-record-missing-for-completed-round'
@@ -1500,6 +1552,14 @@ function Invoke-ReviewCampaignCommand {
         }
     }
     if ($null -ne $latestPause) {
+        try {
+            $budgetState = Get-ReviewCampaignRoundBudgetState -StoreRoot $StoreRoot -CampaignId $identity.campaign_id `
+                -ExcludeRunId $identity.run_id -RepoRoot $RepoRoot
+        }
+        catch {
+            return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+                -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+        }
         $pauseDecisions = @()
         if ($null -ne $latestPause.decision) { $pauseDecisions = @($latestPause.decision) }
         $roundsSinceDecision = 0
@@ -1518,21 +1578,26 @@ function Invoke-ReviewCampaignCommand {
             # the two cannot drift apart: a run whose runtime_outcome is preflight-failed,
             # claim-contended, or launch-failed never reached a reviewer and therefore never spent the
             # round the human authorized.
-            $decidedAt = [string](Get-ReviewAuthorityProperty -Object $latestPause.decision -Name 'observed_at')
-            if (-not [string]::IsNullOrWhiteSpace($decidedAt)) {
+            $decidedAtValue = Get-ReviewAuthorityProperty -Object $latestPause.decision -Name 'observed_at'
+            if ($null -ne $decidedAtValue) {
                 try {
+                    $decidedAt = ConvertTo-ReviewAuthorityTimestamp -Value $decidedAtValue -FieldName 'pause-decision.observed_at'
                     $roundsSinceDecision = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $identity.campaign_id |
                             Where-Object {
-                                $startedAt = [string](Get-ReviewAuthorityProperty -Object $_ -Name 'started_at')
-                                -not [string]::IsNullOrWhiteSpace($startedAt) -and $startedAt -gt $decidedAt -and
+                                $startedAt = ConvertTo-ReviewAuthorityTimestamp -Value (Get-ReviewAuthorityProperty -Object $_ -Name 'started_at') -FieldName 'review-result.started_at'
+                                $startedAt -gt $decidedAt -and
                                 [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed')
                             }).Count
                 }
-                catch { $roundsSinceDecision = 0 }
+                catch {
+                    return New-ReviewCampaignAuthorityStoreRefusal -Identity $identity -StoreRoot $StoreRoot -DesignContext $designContext `
+                        -Diagnostics (Get-ReviewProgressDiagnostics -Events @($progressCollector.events)) -FailureReason $_.Exception.Message
+                }
             }
         }
         $continuation = Test-ReviewCampaignContinuationAuthorized -PendingPause $latestPause.pause `
-            -PauseDecisions $pauseDecisions -RoundsSinceDecision $roundsSinceDecision
+            -PauseDecisions $pauseDecisions -RoundsSinceDecision $roundsSinceDecision `
+            -RoundsUsed ([int]$budgetState.rounds_used) -BudgetTotal ([int]$budgetState.budget_total)
         if (-not $continuation.authorized) {
             # The findings come from the RESULT, not from the pause fact - the fact stores counts only,
             # which is exactly why the resumed surface had nothing to show. Read defensively and
