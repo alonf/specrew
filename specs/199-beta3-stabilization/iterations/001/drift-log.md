@@ -22,10 +22,38 @@
 
 ## Summary
 
-**Total drift events**: 47 (DRIFT-199-I001-001 through -047)
+**Total drift events**: 48 (DRIFT-199-I001-001 through -048)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-048 — the safety preflight made valid Windows paths invalid and the census overlapped process-heavy instruments (resolved; census rerun pending)
+
+- **Observed**: 2026-08-15, the exact `71c78576` census returned 347/349 green.
+  `boundary-authorization-prompt-truth.tests.ps1` failed while creating its fourth
+  disposable project; `validate-governance-changed-only.tests.ps1` completed 11 cases and
+  timed out at 1,200 seconds. The latter passed all 14 cases alone in 677.8 seconds. The
+  boundary suite also failed alone from the long detached-worktree path.
+- **Cause**: `Test-SpecifyInitPreflight` nested a complete disposable Spec Kit install below
+  `<consumer>/.specrew-specify-probe-<GUID>`. At a 198-character probe root, Spec Kit's own
+  atomic `.check-prerequisites.ps1.<suffix>` path exceeded the Windows limit and failed,
+  even though the real consumer target would fit. Separately, the disk census overlapped
+  nested-project and process-containment suites whose machine-resource use makes their
+  result or duration change under four-way execution.
+- **Resolution**: the CLI/template compatibility probe now uses a short unique directory
+  under the system temp root; the real initialization still runs against the actual
+  consumer path immediately afterward. The disk census drains its parallel lane around the
+  three measured process-heavy suites (changed-only governance, boundary prompt truth, and
+  isolated task launcher). The preflight regression is registered in the F-198 suite.
+- **Measured proof**: an exact 198-character nested probe reproduced Spec Kit's missing
+  atomic-temp-file failure; the shorter temp probe succeeded. The new unit test proves the
+  production helper uses a non-nested short root and removes it. The formerly failing
+  boundary suite passes all nine groups in 191.5 seconds, and changed-only passes all 14
+  cases alone in 677.8 seconds. The serial-lane source guard is green.
+- **Class closure**: the preflight path length is independent of the consumer path length,
+  so the safety check cannot become stricter than the real operation it guards. The census
+  scheduler records resource-sensitive files as an executable serial lane and a registered
+  guard refuses removal of its drain semantics or measured members.
 
 ### DRIFT-199-I001-047 — complete census rejected two retired fixtures and one dictionary-unsafe verdict reader (resolved; census rerun pending)
 

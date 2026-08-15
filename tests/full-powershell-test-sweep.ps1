@@ -39,6 +39,19 @@ $fileTimeoutOverrides = @{
     'tests\continuous-co-review\unit\review-public-campaign-command.Tests.ps1' = 600
 }
 
+# These suites launch enough nested repositories/processes that overlapping them with three other
+# files changes the thing being measured: Spec Kit init can fail transiently, process-containment
+# tests can race machine-wide resources, and the changed-only matrix can cross its otherwise ample
+# 20-minute ceiling. Keep the default parallel lane for the rest of the census, but drain it before
+# each measured process-heavy suite and run that suite alone.
+$serialRelativePaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+foreach ($relativePath in @(
+        'tests\integration\validate-governance-changed-only.tests.ps1',
+        'tests\unit\boundary-authorization-prompt-truth.tests.ps1',
+        'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1')) {
+    [void]$serialRelativePaths.Add($relativePath)
+}
+
 function Start-SweepFile {
     param([Parameter(Mandatory)]$File, [int]$Index)
     $source = Get-Content -LiteralPath $File.FullName -Raw -Encoding UTF8
@@ -59,6 +72,7 @@ function Start-SweepFile {
     $stderr = Join-Path ([IO.Path]::GetTempPath()) "specrew-full-sweep-$token.err"
     $start = Get-Date
     $relativePath = $File.FullName.Substring($repoRoot.Length + 1)
+    $isSerial = $serialRelativePaths.Contains($relativePath)
     $timeoutSeconds = if ($fileTimeoutOverrides.ContainsKey($relativePath)) {
         [int]$fileTimeoutOverrides[$relativePath]
     }
@@ -67,7 +81,7 @@ function Start-SweepFile {
         -WorkingDirectory $repoRoot -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
     return [pscustomobject]@{
         index = $Index; file = $File; kind = $kind; process = $process; started = $start
-        stdout = $stdout; stderr = $stderr; timeout_seconds = $timeoutSeconds
+        stdout = $stdout; stderr = $stderr; timeout_seconds = $timeoutSeconds; serial = $isSerial
     }
 }
 
@@ -95,8 +109,13 @@ $results = [Collections.Generic.List[object]]::new()
 $next = 0
 while ($next -lt $files.Count -or $active.Count -gt 0) {
     while ($next -lt $files.Count -and $active.Count -lt $MaxParallel) {
+        $nextRelativePath = $files[$next].FullName.Substring($repoRoot.Length + 1)
+        $nextIsSerial = $serialRelativePaths.Contains($nextRelativePath)
+        $serialIsRunning = @($active | Where-Object { $_.serial }).Count -gt 0
+        if ($serialIsRunning -or ($nextIsSerial -and $active.Count -gt 0)) { break }
         $active.Add((Start-SweepFile -File $files[$next] -Index $next)) | Out-Null
         $next++
+        if ($nextIsSerial) { break }
     }
     $progress = $false
     foreach ($running in @($active.ToArray())) {

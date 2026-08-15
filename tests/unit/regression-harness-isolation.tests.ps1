@@ -15,6 +15,7 @@ function Fail {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $runner = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\f198-regression-suite.ps1') -Raw
+$censusRunner = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\full-powershell-test-sweep.ps1') -Raw
 $fixture = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\integration\pending-verdict-stop-artifact.tests.ps1') -Raw
 $distributionFixture = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\integration\distribution-module-update.ps1') -Raw
 
@@ -54,6 +55,20 @@ if ($runner -notmatch '\$running\.timeout_seconds' -or
     $runner -notmatch '\$started\.timeout_seconds' -or
     @([regex]::Matches($runner, 'timeout_seconds\s*=\s*420')).Count -ne 2) {
     Fail 'Measured slow suites must retain explicit bounded timeout overrides in both parallel and serial lanes.'
+}
+
+foreach ($serialCensusPath in @(
+        'tests\integration\validate-governance-changed-only.tests.ps1',
+        'tests\unit\boundary-authorization-prompt-truth.tests.ps1',
+        'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1')) {
+    if (-not $censusRunner.Contains($serialCensusPath)) {
+        Fail "Disk-wide census lost measured serial path '$serialCensusPath'."
+    }
+}
+foreach ($serialLaneToken in @('$serialIsRunning', '$nextIsSerial -and $active.Count -gt 0', 'if ($nextIsSerial) { break }')) {
+    if (-not $censusRunner.Contains($serialLaneToken)) {
+        Fail "Disk-wide census no longer drains parallel work around its serial lane ('$serialLaneToken')."
+    }
 }
 
 if ($fixture -notmatch '\[System\.IO\.Path\]::GetTempPath\(\)' -or

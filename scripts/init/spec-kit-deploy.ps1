@@ -121,7 +121,12 @@ function Test-SpecifyInitPreflight {
         [string]$SpecKitVersion
     )
 
-    $probeDirectory = Join-Path $ProjectPath ('.specrew-specify-probe-{0}' -f [guid]::NewGuid().ToString('N'))
+    # The probe installs a complete Spec Kit tree. Nesting that tree below the consumer project adds
+    # roughly 55 characters before Spec Kit creates its own atomic temp filenames and can make the
+    # preflight fail on Windows even though the real target path fits. The probe tests the installed
+    # CLI/template contract, not the target filesystem, so keep its disposable root short and outside
+    # the consumer project. The real init below still exercises the actual target path.
+    $probeDirectory = Join-Path ([IO.Path]::GetTempPath()) ('specrew-specify-probe-{0}' -f [guid]::NewGuid().ToString('N'))
     New-Item -Path $probeDirectory -ItemType Directory -Force | Out-Null
 
     try {
