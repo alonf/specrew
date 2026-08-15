@@ -22,10 +22,25 @@
 
 ## Summary
 
-**Total drift events**: 44 (DRIFT-199-I001-001 through -044)
+**Total drift events**: 45 (DRIFT-199-I001-001 through -045)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-045 — the curated registry outgrew both CI timeout ceilings (resolved)
+
+- **Observed**: 2026-08-15, the exact `0ad486b0` release candidate passed all 118
+  explicitly registered F-198 suites in 1,153.271 seconds (19.22 minutes). The workflow
+  allowed 15 minutes for that step and only 20 minutes for the entire deterministic job,
+  which also installs toolchains and runs additional integration gates. CI would kill a
+  healthy registry before it could report its result.
+- **Resolution**: the registry step now has a 30-minute ceiling and its containing job has
+  a 60-minute ceiling. The suite retains its own per-entry timeouts, so this adds job-level
+  headroom without turning a wedged child into an unbounded run.
+- **Class closure**: `ci-registry-lane-tooling.Tests.ps1` derives every workflow job that
+  invokes the registry and requires both a job bound of at least 60 minutes and a registry
+  step bound of at least 30 minutes. Moving or renaming the job cannot silently restore the
+  stale limits.
 
 ### DRIFT-199-I001-044 — exact-tree census exposed an ambient hook variable and a stale mirror (resolved)
 

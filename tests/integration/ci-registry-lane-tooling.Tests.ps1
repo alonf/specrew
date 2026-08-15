@@ -54,6 +54,27 @@ Describe 'CI jobs running the honesty registry carry its tooling (T013 / FR-022)
         }
     }
 
+    It 'every registry job and step carry measured runtime headroom' {
+        $blocks = script:Get-WorkflowJobBlocks -Path $script:WorkflowPath
+        $registryJobs = @($blocks.Keys | Where-Object { $blocks[$_] -match 'f198-regression-suite\.ps1' })
+
+        $registryJobs.Count | Should -BeGreaterThan 0
+        foreach ($job in $registryJobs) {
+            $jobTimeout = [regex]::Match($blocks[$job], '(?m)^    timeout-minutes:\s*(?<minutes>\d+)\s*$')
+            $jobTimeout.Success | Should -BeTrue -Because "job '$job' must have a bounded timeout"
+            [int]$jobTimeout.Groups['minutes'].Value | Should -BeGreaterOrEqual 60 -Because "the registry measured 19.22 minutes before setup and the remaining deterministic gates"
+
+            $registryStep = [regex]::Match(
+                $blocks[$job],
+                '(?ms)^      - name: F-198 honesty regression suite.*?(?=^      - name:|\z)'
+            )
+            $registryStep.Success | Should -BeTrue
+            $stepTimeout = [regex]::Match($registryStep.Value, '(?m)^        timeout-minutes:\s*(?<minutes>\d+)\s*$')
+            $stepTimeout.Success | Should -BeTrue -Because 'the broad registry needs its own reviewable bound'
+            [int]$stepTimeout.Groups['minutes'].Value | Should -BeGreaterOrEqual 30 -Because 'the measured registry runtime is 19.22 minutes'
+        }
+    }
+
     It 'the parity suite still refuses to fake a pass when the tool is absent' {
         # The third-outcome rule is the reason this chore matters; pin that it survives.
         $suite = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'tests/integration/generator-markdown-parity.tests.ps1') -Raw

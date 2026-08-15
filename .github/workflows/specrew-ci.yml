@@ -182,7 +182,9 @@ jobs:
     name: Deterministic gate
     runs-on: ubuntu-latest
     needs: lint
-    timeout-minutes: 20
+    # The explicit F-198 registry alone measured 19.22 minutes on the beta3 release tree.
+    # This job also installs three toolchains and runs the remaining deterministic integration gates.
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -217,7 +219,7 @@ jobs:
         # run with a per-test timeout and clear failure output. These paired tests must not merge as
         # manual-only; this lane is their CI enforcement.
         shell: pwsh
-        timeout-minutes: 15
+        timeout-minutes: 30
         run: pwsh -NoProfile -File ./tests/f198-regression-suite.ps1
 
       - name: Tier-2 production harness contract dry run (zero provider spend)
