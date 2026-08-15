@@ -78,6 +78,11 @@ that init/update copies into consumer projects, not module-only engine internals
   replayed by a host never count as a typed human answer and cannot authorize the workshop. The hook
   dispatcher journals hashes of both the visible prose and exact host envelope, so this rejection does
   not depend on remembering every consumer-facing prefix.
+- **Workshop ordering is enforced where an answer is produced.** A product question shown before feature
+  setup is refused before the human can answer it. The technical agenda cannot be rendered until the
+  product grounding has been recorded, and an agenda shown early is stopped with the real prerequisite
+  instead of inviting confirmations that can never count. Recovery says whether an answer was actually
+  preserved, proposes one action, and does not diagnose or blame Specrew.
 
 ## What a review actually costs
 

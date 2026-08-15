@@ -330,7 +330,9 @@ function Invoke-Conformance {
         if ($banned.Count -gt 0) { Fail "Workshop refusal leaked internal vocabulary [$($banned -join ', ')]: $rendered" }
         $blame = @(Get-SpecrewUnprovenFaultAttribution -Text $rendered)
         if ($blame.Count -gt 0) { Fail "Workshop refusal assigned unsupported fault [$($blame -join ' | ')]: $rendered" }
-        if ($rendered -notmatch '(?i)answers are safe' -or $rendered -notmatch '(?i)one concrete next action' -or $rendered -notmatch '(?i)ask the human for approval') {
+        $answerStateHonest = (($rendered -match '(?i)answers are safe') -and ($rendered -match '(?i)nothing has been lost')) -or
+            ($rendered -match '(?i)no answer was recorded yet')
+        if (-not $answerStateHonest -or $rendered -notmatch '(?i)one concrete next action' -or $rendered -notmatch '(?i)ask the human for approval') {
             Fail "Workshop refusal did not carry the calm recovery contract: $rendered"
         }
     }

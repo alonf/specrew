@@ -41,11 +41,20 @@ function Get-SpecrewWorkshopAuthorityHash {
 
 function Get-SpecrewWorkshopRefusalContractText {
     [CmdletBinding()]
-    param()
+    param(
+        [ValidateSet('preserved', 'none')][string]$AnswerState = 'preserved'
+    )
 
+    $answerStatus = if ($AnswerState -eq 'preserved') {
+        'Tell the human calmly what you were doing, that their answers are safe and nothing has been lost, and what you could not complete without assigning blame.'
+    }
+    else {
+        'Tell the human calmly what you were doing, that no answer was recorded yet, and what you could not complete without assigning blame.'
+    }
     return @(
         'Try the action above once. If it does not resolve the situation, do not retry and do not edit this project''s workshop records by hand.'
-        'Tell the human calmly what you were doing, that their answers are safe and nothing has been lost, what you could not complete without assigning blame, and one concrete next action you can take. Ask the human for approval before taking that action.'
+        $answerStatus
+        'Give one concrete next action you can take and ask the human for approval before taking it.'
     ) -join ' '
 }
 

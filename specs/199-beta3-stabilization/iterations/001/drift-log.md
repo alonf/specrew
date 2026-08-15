@@ -22,10 +22,38 @@
 
 ## Summary
 
-**Total drift events**: 51 (DRIFT-199-I001-001 through -051)
+**Total drift events**: 52 (DRIFT-199-I001-001 through -052)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-052 — workshop ordering was detected silently and failed later with an impossible agenda retry (resolved; census rerun pending)
+
+- **Observed**: 2026-08-16, the fresh Copilot CLI 1.0.80 / Sonnet 4.6 walk asked the
+  product-domain question before the governed feature existed, then rendered a technical agenda before
+  `workshop/product-domain.md` and `workshop/product-domain.yml` existed. Four typed confirmations were
+  stored as `phase: product-domain`; none could become agenda authority, and the later refusal prescribed
+  rendering and confirming the agenda again.
+- **Cause**: the receipt phase correctly derives from durable product records, but `-RenderOnly` did not
+  require those records before emitting the agenda. The optimized Stop path also skipped transcript
+  inspection when no feature existed and treated a premature agenda as an ordinary product-domain
+  question. The system detected the missing prerequisites but neither producer consumed them at the
+  point where recovery was still cheap.
+- **Resolution**: the first product-domain question now gets a targeted Stop refusal when no feature
+  exists, instructing the agent to use the project-provided feature setup and then show the same question.
+  Agenda `-RenderOnly` refuses until both product records exist and names them. If an agent renders its
+  own agenda early, Stop blocks that turn and says to record the product grounding first; it explicitly
+  forbids asking for another agenda confirmation before that prerequisite exists. The shared refusal
+  contract now distinguishes preserved answers from the honest `no answer was recorded yet` case.
+- **Measured proof**: both new production-path fixtures were RED on `de11559e`: the agenda writer reported
+  only missing lens coverage, and the pre-scaffold Stop emitted nothing. After the repair,
+  `workshop-agenda-confirmation.tests.ps1`, `workshop-refusal-contract.tests.ps1`, and the complete
+  89-case `conformance-detection.tests.ps1` pass; the latter completed in 366.6 seconds.
+- **Class closure**: every authoritative workshop phase now has an executable predecessor: feature setup
+  before the first product question, both product records before agenda rendering, and the exact canonical
+  agenda before its typed receipt. Paired tests exercise the legitimate conversational question plus both
+  ordering abuses through the shipped provider/writer, so a missing consumer becomes loud at the earliest
+  producer rather than at a later gate.
 
 ### DRIFT-199-I001-051 — the complete census bound expired before a valid slow matrix completed (resolved; census rerun pending)
 

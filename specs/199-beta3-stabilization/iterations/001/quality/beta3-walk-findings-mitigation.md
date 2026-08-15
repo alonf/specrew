@@ -1,10 +1,14 @@
 # Beta3 two-host walk findings — validation and mitigation
 
-**Evidence baseline**: `ada7c793`; Copilot CLI 1.0.79 and Claude Code walks.
+**Evidence baseline**: `ada7c793` plus the `de11559e` Copilot CLI 1.0.80 / Sonnet 4.6 walk.
 
 **Preserved evidence**: `C:\Dev\specrew-beta3-manual-ada7c793\copilot-lifecycle` and
 `C:\Dev\specrew-beta3-manual-ada7c793\claude-workshop`. These projects are read-only and
 were not used as repair targets.
+
+The failed `de11559e` Copilot project at
+`C:\Dev\specrew-beta3-manual-de11559e\copilot-lifecycle` is also preserved read-only; it was
+inspected for controller and receipt evidence, never repaired in place.
 
 | Finding | Validation | Mitigation and implementation | Acceptance proof |
 | --- | --- | --- | --- |
@@ -14,6 +18,7 @@ were not used as repair targets.
 | W3/W4/W8 — product-domain receipt covers technical decisions | **True at the instruction layer.** Copilot harvested runtime/reachability/output under one product receipt; Claude kept the boundary. | Product-domain may discover an externally fixed technology constraint only. Runtime/stack, output, timeout/reachability, concurrency, and dependencies remain in their own selected technical lens and typed turn. | Deployed workshop and lens contracts are pinned structurally; behavioral acceptance is the fresh two-host walk. Authority-layer persistence enforcement remains the recorded beta4 extension. |
 | W5/W6/W8 — intake menu is impossible/decorative | **True.** Pick-feature was offered with no feature and the instruction never required a wait. | Show choices only with at least two executable actions and end the turn. With one action, announce and proceed. A concrete request in a fresh project deterministically starts New. | Bootstrap-provider test exercises the generated directive consumed by every host adapter. |
 | W7 — depth selected silently | **True; ambiguous contract.** Both hosts selected different depths and merely reported them. | Crew proposes risk-based depth; the human confirms or adjusts it in the typed product-domain reply; do not persist it first. | Product lens plus deployed workshop contract carry the ruling; fresh two-host walk checks behavior. |
+| W10 — product discussion and agenda outran their durable prerequisites | **True.** Copilot asked the first product question before feature setup, then showed an agenda while both product-domain records were absent. All four typed confirmations therefore remained product-domain receipts and the agenda retry could not converge. | The Stop hook refuses the first question until feature setup exists; `confirm-workshop-agenda -RenderOnly` refuses until both product records exist; a prose agenda shown early gets a targeted Stop correction to record product grounding first. Refusal language distinguishes preserved answers from “no answer recorded yet.” | RED-first production fixtures prove the original silence and wrong late error. The full conformance suite, agenda writer suite, refusal contract, typed-turn authority, initialization, consumer-language, and mirror-parity checks pass after repair. |
 | R1 — `review.md` absent | **True and unchanged.** This repair must not manufacture independent evidence. | A real review of the fixed committed tree must produce the artifact. | Lifecycle boundary remains fail-closed until independent review exists. |
 | R2 — campaign evidence stale | **True and unchanged.** The last campaign predates the candidate. | After the tree is committed and deterministic validation is green, request a fresh authorized provider round. | Current-tree campaign evidence must be valid and complete before review signoff. |
 | R3 — employer in shipped comment | **True.** `review-engine-resolution.ps1` named the maintainer employer. | Preserve the OneDrive provenance using `OneDrive - <Org>`. | Review-engine test rejects the employer literal and requires the generic example. |

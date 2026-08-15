@@ -34,10 +34,13 @@ $provider = Get-Content -LiteralPath $providerPath -Raw -Encoding UTF8
 $authority = Get-Content -LiteralPath $authorityPath -Raw -Encoding UTF8
 . $authorityPath
 $refusalContract = Get-SpecrewWorkshopRefusalContractText
+$noAnswerRefusalContract = Get-SpecrewWorkshopRefusalContractText -AnswerState none
 
 Assert-True (Test-AgendaRefusalCoverage -SourceText $agenda) 'every discovered actionable agenda refusal uses the convergent refusal contract'
 Assert-True ($refusalContract -match '(?i)try the (?:named )?action.*once' -and $refusalContract -match '(?i)do not retry') 'canonical workshop refusal contract permits one recovery attempt and no retry loop'
 Assert-True ($refusalContract -match '(?i)answers are safe' -and $refusalContract -match '(?i)nothing has been lost') 'canonical workshop refusal contract reassures the human about preserved answers'
+Assert-True ($noAnswerRefusalContract -match '(?i)no answer was recorded yet' -and
+    $noAnswerRefusalContract -notmatch '(?i)answers are safe|nothing has been lost') 'canonical refusal reports no answer instead of claiming preservation when the question outran its record'
 Assert-True ($refusalContract -match '(?i)one concrete next action' -and $refusalContract -match '(?i)ask (?:the human )?for approval') 'canonical workshop refusal contract ends in a proposed action the human approves'
 Assert-True ($refusalContract -match '(?i)without assigning (?:blame|fault)') 'canonical workshop refusal contract forbids unsupported fault attribution'
 Assert-True ($refusalContract -match '(?i)do not edit this project''s workshop records by hand') 'canonical workshop refusal contract keeps governed records out of manual repair'

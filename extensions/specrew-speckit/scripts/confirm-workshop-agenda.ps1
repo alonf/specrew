@@ -125,6 +125,17 @@ if ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'inva
     throw (New-SpecrewWorkshopAgendaRefusal -Summary 'Product-domain has no typed human reply receipt.' `
         -Action 'Re-render its question as prose once and wait for a typed answer.')
 }
+$missingProductRecords = [Collections.Generic.List[string]]::new()
+foreach ($relativeProductRecord in @('workshop/product-domain.md', 'workshop/product-domain.yml')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $featureRoot $relativeProductRecord) -PathType Leaf)) {
+        $missingProductRecords.Add($relativeProductRecord) | Out-Null
+    }
+}
+if ($missingProductRecords.Count -gt 0) {
+    throw (New-SpecrewWorkshopAgendaRefusal `
+        -Summary ('The product-domain records must be persisted before the technical agenda can be rendered or confirmed. Missing: {0}.' -f ($missingProductRecords -join ', ')) `
+        -Action 'Persist both product-domain records from the typed answer already on record, validate them, then run this same agenda command with -RenderOnly once.')
+}
 $catalogPath = Join-Path $resolvedProjectRoot '.specify/extensions/specrew-speckit/knowledge/design-lenses/index.yml'
 if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
     throw "Design-lens catalog is missing: '$catalogPath'."
