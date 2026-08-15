@@ -79,9 +79,14 @@ The deterministic consumer guard now covers the authority-bearing decisions adde
 - Signoff abuse/legitimate paths: raw CLI override removed; exact human phrase, campaign/tree binding, tamper rejection, stale binding rejection, budget 3/4 allow, 4/4 refusal, reset, and corrupt-store refusal are green.
 - Reparse, hook-health, verification-plan, multi-host instruction, legacy migration, recovery, and containment proof suites are green.
 
-These measurements establish implementation correctness before packaging. The exact committed tree will be run once more through the complete census and release-facing validation before it is installed.
+These measurements establish implementation correctness before packaging. The final
+code-bearing commit `862da048` was then run through the complete census and the curated
+registry: **348/348** discovered PowerShell entry files and **118/118** registered suites
+passed. Release-facing Markdown, self-leak, distribution, mirror, and five-host provider-free
+checks also passed. The subsequent record-only commit reconciles these evidence statuses and
+changes no executable or packaged consumer file.
 
-## Manual-test gate
+## Manual-test gate — satisfied
 
 No new manual-test environment is created until:
 
@@ -90,3 +95,6 @@ No new manual-test environment is created until:
 3. every PowerShell test file is executed, with named failures rather than only a count;
 4. the F-198 registry, governance validation, markdown lint, packaging, deployed-mirror parity, and five harness dry runs pass without provider invocation;
 5. the exact resulting commit is packaged, installed, and identified by both build id and a new-code marker.
+
+All five conditions were satisfied on 2026-08-15 before the fresh Copilot and Claude manual
+fixtures were created. No provider round was invoked during validation or fixture creation.

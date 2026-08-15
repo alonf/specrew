@@ -95,7 +95,7 @@ recorded maintainer ruling, so a single rate here would misstate them.
   the paired test pins both new-shape detection and consumer-ID exclusions. Exact file-level
   allowlists enumerate sanctioned tokens, so a new identifier cannot inherit an old reason.
 
-### DRIFT-199-I001-042 — follow-up review found missing structural closure and instrument gaps (implementation resolved; exact-snapshot verification pending)
+### DRIFT-199-I001-042 — follow-up review found missing structural closure and instrument gaps (resolved)
 
 - **Observed**: 2026-08-15, follow-up review after DRIFT-041. The workshop hook-output
   journal had a reader but no production writer; continuous co-review still contained
@@ -123,12 +123,17 @@ recorded maintainer ruling, so a single rate here would misstate them.
   skips and zero failures. It covers signoff evidence and wiring, campaign pause/budget,
   corrupt-store handling, reparse admission, provider mirrors, all host code-rule copies,
   hook health, verification-plan bootstrap, lifecycle sync, and the five-host dry run.
+- **Exact proof**: detached code-bearing commit `862da048` passed the complete 348-file
+  PowerShell census and all 118 entries in the curated F-198 registry. Markdown lint, the
+  203-file consumer self-leak firewall, the distribution publish harness, and all five
+  provider-free production harness specifications also passed. The later record-only commit
+  changes no executable or packaged consumer file.
 - **Class closure**: source-discovered producer/consumer equality, canonical comparer-load
   guards, mandatory v2 drift validation, CI execution of the provider-free host contract,
   and boundary-time preflight make an omitted consumer, local path fallback, undocumented
   recurrence, host contract drift, or deterministic pre-boundary contradiction fail loudly.
 
-### DRIFT-199-I001-041 — deep review found authority controls that were computed but not consumed (implementation resolved; broad verification pending)
+### DRIFT-199-I001-041 — deep review found authority controls that were computed but not consumed (resolved)
 
 - **Observed**: 2026-08-14, Claude deep review of the working tree rather than only `HEAD`.
   Three blocking, six major, and ten minor findings were validated individually in
@@ -151,10 +156,12 @@ recorded maintainer ruling, so a single rate here would misstate them.
 - **Permanent class guard**: `authority-control-consumer-guard.Tests.ps1` derives and joins
   source markers for the budget, absent-review, agenda-hash, human-override, corrupt-store,
   and hook-output-identity controls. It does not accept comments as proof.
-- **Focused proof**: pause core 37/37; public campaign command 22/22; signoff wiring 22/22;
+- **Proof**: pause core 37/37; public campaign command 22/22; signoff wiring 22/22;
   authority-control guard 7/7; workshop typed-turn assertions 20/20; runtime-resolution
-  assertions all green. Broad registry/package/harness verification remains required before
-  a manual-test project is created.
+  assertions all green. Detached code-bearing commit `862da048` then passed the complete
+  348-file PowerShell census, all 118 curated F-198 registry entries, package and deployed
+  mirror checks, Markdown lint, the consumer self-leak firewall, and all five provider-free
+  production harness specifications.
 - **Class closure**: each authority decision is paired with a production consumer marker;
   the derived guard requires a nonzero floor and exact producer/consumer set equality, so a
   newly computed control without an enforcement reader fails without editing a test list.
