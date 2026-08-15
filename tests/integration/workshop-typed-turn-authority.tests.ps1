@@ -49,7 +49,12 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $scratch 'specs\001-link-checker\workshop') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-link-checker\workshop\product-domain.md') -Value '# Product domain' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-link-checker\workshop\product-domain.yml') -Value 'depth: light' -Encoding UTF8
+    $visibleAgenda = [ordered]@{ 'architecture-core' = [ordered]@{ depth='light'; decision='choose the pipeline boundaries' } }
+    $visibleSkipped = [ordered]@{}
+    $visibleBinding = ConvertTo-SpecrewWorkshopAgendaBinding -Agenda $visibleAgenda -Skipped $visibleSkipped
     $question.phase = 'agenda'; $question.lens = 'product-domain'; $question.message_hash = 'q-agenda'
+    $question.agenda_binding = $visibleBinding
+    $question.agenda_digest = Get-SpecrewWorkshopAgendaDigest -Binding $visibleBinding
     $question | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $scratch '.specrew\handover\workshop-question.json') -Encoding UTF8
     $agendaDelegation = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response 'you decide' -HostKind copilot -SourceEvent UserPromptSubmit
     Assert-True ([string]$agendaDelegation.confirmation -eq 'invalid') 'delegating the whole agenda cannot fabricate selected/skipped confirmation'
@@ -58,13 +63,15 @@ try {
 
     $state.agenda_status = 'confirmed'
     $state.selected = @('architecture-core')
-    $state.agenda = [ordered]@{ 'architecture-core' = [ordered]@{ depth='light'; decision='choose the pipeline boundaries' } }
-    $state.skipped = [ordered]@{}
+    $state.agenda = $visibleAgenda
+    $state.skipped = $visibleSkipped
     $state.agenda_confirmation = 'human-confirmed'
     $state.agenda_turn_receipt = 'fixture-agenda'
     $state.workshop = [ordered]@{}
     $state | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $scratch 'specs\001-link-checker\lens-applicability.json') -Encoding UTF8
     $question.phase = 'lens'; $question.lens = 'architecture-core'; $question.agenda_status = 'confirmed'; $question.message_hash = 'q-architecture'
+    $question.Remove('agenda_binding')
+    $question.Remove('agenda_digest')
     $question | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $scratch '.specrew\handover\workshop-question.json') -Encoding UTF8
     $lensAnswer = Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response 'Use a single pipeline with bounded concurrency.' -HostKind copilot -SourceEvent UserPromptSubmit
     Assert-True ($null -ne $lensAnswer -and [string]$lensAnswer.lens -eq 'architecture-core') 'a typed reply binds to the selected incomplete lens'

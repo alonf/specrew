@@ -50,15 +50,17 @@ Describe 'authority controls have production consumers' {
         ([regex]::Matches($source, "Get-ReviewAuthorityProperty\s+-Object\s+\`$Fact\s+-Name\s+'result_produced'")).Count | Should -BeGreaterThan 0
     }
 
-    It 'agenda authority compares the captured question hash with the exact canonical agenda' {
+    It 'agenda authority compares the captured structured digest with the exact proposed agenda' {
         $agenda = script:Get-ScriptAst 'extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1'
         $comparisons = @($agenda.FindAll({
                     param($node)
                     $node -is [Management.Automation.Language.BinaryExpressionAst] -and
                     $node.Operator -eq [Management.Automation.Language.TokenKind]::Cne -and
-                    $node.Extent.Text -match 'question_hash' -and $node.Extent.Text -match 'expectedQuestionHash'
+                    $node.Extent.Text -match 'receiptDigestProperty' -and $node.Extent.Text -match 'agendaDigest'
                 }, $true))
         $comparisons.Count | Should -Be 1
+        (script:Get-CommandAsts $agenda 'Get-SpecrewWorkshopAgendaChangedLenses').Count |
+            Should -Be 1 -Because 'a changed selection must produce a concrete refusal, not a generic hash mismatch'
     }
 
     It 'partial signoff has only the captured human-authority production path' {

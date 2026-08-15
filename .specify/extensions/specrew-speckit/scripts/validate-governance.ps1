@@ -1697,10 +1697,8 @@ function Test-ApprovedFeatureStatusVerdictEvidence {
         }
         $hasVerdictHistoryEvidence = @($effectiveVerdictHistory | Where-Object {
                 $null -ne $_ -and
-                $null -ne $_.PSObject.Properties['authorizing_human'] -and
-                -not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value) -and
-                $null -ne $_.PSObject.Properties['verdict_text'] -and
-                ([string]$_.PSObject.Properties['verdict_text'].Value -match '(?i)\bapprov')
+                -not [string]::IsNullOrWhiteSpace((Get-ObjectPropertyString -InputObject $_ -PropertyNames 'authorizing_human')) -and
+                ((Get-ObjectPropertyString -InputObject $_ -PropertyNames 'verdict_text') -match '(?i)\bapprov')
             }).Count -gt 0
     }
 

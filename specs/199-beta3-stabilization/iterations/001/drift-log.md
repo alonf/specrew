@@ -22,10 +22,37 @@
 
 ## Summary
 
-**Total drift events**: 46 (DRIFT-199-I001-001 through -046)
+**Total drift events**: 47 (DRIFT-199-I001-001 through -047)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-047 — complete census rejected two retired fixtures and one dictionary-unsafe verdict reader (resolved; census rerun pending)
+
+- **Observed**: 2026-08-15, the first complete 349-file census against exact detached
+  commit `cc00c504` returned 345 passed / 4 failed. One process-heavy isolated-launcher
+  suite passed alone (4/4), identifying a concurrency-only census flake. The other three
+  failures reproduced alone: the authority-consumer guard still searched for the retired
+  question-hash comparison, the typed-turn integration fixture presented an agenda without
+  the new structured binding, and `Status: Approved` validation rejected a real verdict.
+- **Cause**: the first two tests encoded the pre-W1 authority contract. The production
+  validator defect was separate: `Get-SpecrewBoundaryEnforcementState` deliberately returns
+  effective verdict entries as ordered dictionaries, while the approved-status reader used
+  `PSObject.Properties[...]`; valid human evidence therefore became invisible even though
+  state-shape validation was clean.
+- **Resolution**: the consumer guard now proves the executable receipt-digest comparison and
+  changed-lens refusal call. The integration fixture produces the same agenda binding and
+  digest as production. Both canonical and deployed validators use the existing
+  dictionary-safe `Get-ObjectPropertyString` accessor for effective verdict evidence.
+- **Measured proof**: the authority guard passes 7/7; the typed-turn integration script
+  passes all 20 assertions including the >1 MiB journal case; boundary authorization prompt
+  truth passes all nine groups, including both missing-verdict refusal and valid-verdict
+  acceptance. The isolated launcher independently passes 4/4. A new exact-tree census is
+  still required before packaging.
+- **Class closure**: authority tests bind to the current executable structured control rather
+  than a retired field name, the integration fixture calls the production binding primitive,
+  and effective-state readers use a representation-neutral accessor. A future reducer that
+  returns dictionaries or JSON objects therefore has the same evidence semantics.
 
 ### DRIFT-199-I001-046 — two-host beta3 walk found an unsatisfiable agenda crossing and advisory intake authority (resolved; fresh walk pending)
 
