@@ -17,7 +17,11 @@ try {
     Assert-True ($text -match '\[specrew-bootstrap\]') 'B2 emits the bootstrap banner'
     Assert-True ($text -match 'Bootstrap mode: full') 'fresh project resolves full mode'
     Assert-True ($text -match 'VISIBLE PROSE') 'directive carries the render-first instruction'
-    Assert-True ($text -match 'Resume / New / Pick-feature') 'directive names the menu'
+    Assert-True ($text -match '(?i)at least two executable actions') 'bootstrap only offers a menu when two real actions exist'
+    Assert-True ($text -match '(?i)Pick-feature.*only.*feature') 'Pick-feature is conditional on an existing feature'
+    Assert-True ($text -match '(?i)end the turn and wait') 'a rendered intake menu waits for a typed human reply'
+    Assert-True ($text -match '(?i)only one executable action.*announce.*proceed') 'a single real intake action is an announcement, not a decorative menu'
+    Assert-True ($text -match '(?i)concrete.*request.*no existing feature.*New') 'a concrete fresh-project request deterministically starts New without asking an impossible menu'
 
     # B1 (compact) -> silent so F-171 B1 is unchanged.
     $out2 = & pwsh -NoProfile -File $provider --event-json '{"source":"compact","session_id":"s1"}' --project-root $tmp

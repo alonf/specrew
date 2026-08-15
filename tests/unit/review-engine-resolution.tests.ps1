@@ -9,6 +9,10 @@ function Assert-True {
     Write-Host "PASS: $Message" -ForegroundColor Green
 }
 
+$resolutionSource = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/review-engine-resolution.ps1') -Raw
+Assert-True ($resolutionSource -notmatch 'Zionet') 'shipped runtime provenance does not disclose the maintainer employer'
+Assert-True ($resolutionSource -match 'OneDrive - <Org>') 'the useful OneDrive provenance example remains generic'
+
 function New-RuntimeFixture {
     param([string]$Root, [string]$Content = 'v1')
     New-Item -ItemType Directory -Path $Root -Force | Out-Null

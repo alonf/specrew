@@ -98,6 +98,9 @@ Assert-Match -Text $skill -Pattern '(?i)Lens approval is not workshop-question a
 Assert-Match -Text $skill -Pattern '(?i)Agenda confirmation is not lens-question confirmation' 'skill #2212 dogfood: agenda confirmation selects lens/depth only, not lens answers'
 Assert-Match -Text $skill -Pattern '(?is)Do NOT offer or accept a batch shortcut such as "Confirm\s+all as proposed"' 'skill #2212 dogfood: batch "Confirm all as proposed" shortcut is forbidden for lens decisions'
 Assert-Match -Text $skill -Pattern '(?i)One selected lens = one lens turn' 'skill #2212 dogfood: every selected lens needs its own lens-specific turn'
+Assert-Match -Text $skill -Pattern '(?is)product-domain.*must not.*(?:runtime|stack).*output.*(?:timeout|reachability)' 'skill beta3 walk: product-domain cannot harvest technical-lens decisions under one receipt'
+Assert-Match -Text $skill -Pattern '(?is)propose.*product-domain depth.*human.*confirm|human.*confirm.*product-domain depth' 'skill beta3 walk: product-domain depth is proposed by Crew and confirmed or adjusted by the human'
+Assert-Match -Text $skill -Pattern '(?is)do not persist.*product-domain.*before.*typed.*confirm' 'skill beta3 walk: selected product-domain depth is not persisted as model-authored authority'
 Assert-Match -Text $skill -Pattern '(?i)A batch confirmation is not valid provenance' 'skill #2212 dogfood: batch confirmation cannot become human-confirmed provenance'
 Assert-Match -Text $skill -Pattern '(?is)record each affected lens as `human-delegated` \+\s+`explicit-delegation`, not `human-confirmed`' 'skill #2212 dogfood: explicit batch shortcut is delegation, not confirmation'
 Assert-Match -Text $skill -Pattern 'lens-question' 'skill #2212: confirmation_scope value lens-question is documented'
@@ -111,6 +114,11 @@ Assert-Match -Text $skill -Pattern '(?i)preparing the workshop' 'skill A7: the p
 Assert-Match -Text $skill -Pattern '(?i)agenda as an assignment' 'skill A7: the agenda assignment (FR-040)'
 Assert-Match -Text $skill -Pattern '(?i)preparing lens' 'skill A7: the per-lens lazy-load progress cue (FR-040)'
 Write-Pass 'skill A7: confirmation-integrity invariant + count + delegate/skip exception + provenance field + intake UX (presence-locked; SC-027 dogfood is the behavioral gate)'
+
+$productDomain = Get-Content -LiteralPath (Join-Path $lensDir 'product-domain.md') -Raw
+Assert-Match -Text $productDomain -Pattern '(?is)technology.*externally fixed.*constraint' 'product-domain lens: technology is elicited only as an externally fixed constraint'
+Assert-Match -Text $productDomain -Pattern '(?is)must not.*(?:runtime|stack).*output.*(?:timeout|reachability)' 'product-domain lens: solution menus remain owned by their technical lenses'
+Assert-Match -Text $productDomain -Pattern '(?is)propose.*depth.*human.*confirm|human.*confirm.*depth' 'product-domain lens: depth authority is explicit'
 # FR-037 in-band-at-approval tightening (testLenses8 Claude fix): at any approval point the map MUST be rendered
 # in-band in the same message, never referenced by a file path or a bare count; the file is written after, not
 # instead. Copilot + Antigravity already render in-band; this pulls Claude up to the same bar.
