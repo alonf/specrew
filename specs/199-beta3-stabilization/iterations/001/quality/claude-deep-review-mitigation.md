@@ -80,6 +80,10 @@ The deterministic consumer guard now covers the authority-bearing decisions adde
   `product-domain-multihost.tests.ps1`; both rejected stale tracked workshop-skill copies.
 - The canonical refusal instruction, project mirror, four host copies, and census serial lane
   are now under repair. A new exact commit must pass both complete instruments before packaging.
+- The first exact `adce6ff5` rerun completed **349/350** with only the changed-only
+  governance matrix timing out at its historical 1,200-second ceiling. That matrix passed
+  all 14 cases alone in 1,333.9 seconds; its explicit serial bound is now 1,800 seconds and
+  the complete exact-commit census remains required.
 
 ## Manual-test gate — not yet satisfied
 

@@ -22,10 +22,29 @@
 
 ## Summary
 
-**Total drift events**: 50 (DRIFT-199-I001-001 through -050)
+**Total drift events**: 51 (DRIFT-199-I001-001 through -051)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-051 — the complete census bound expired before a valid slow matrix completed (resolved; census rerun pending)
+
+- **Observed**: 2026-08-15, the clean exact `adce6ff5` census completed 349/350
+  files and timed out only `validate-governance-changed-only.tests.ps1` at its
+  1,200-second file ceiling. The same file then passed all 14 cases alone in 1,333.9
+  seconds on the same detached commit.
+- **Cause**: the named exceptional bound was based on earlier 677-834 second measurements
+  and no longer covered the current measured machine/runtime cost. The serial lane worked:
+  no other test overlapped the matrix, and the caller worktree remained uncontaminated.
+- **Resolution**: raise only this named matrix's ceiling to 1,800 seconds while retaining
+  the generic 300-second bound for every other unlisted file. Keep it in the drained serial
+  lane.
+- **Measured proof**: the failed full census named exactly one timeout and zero assertion
+  failures; the standalone run passed all 14 cases in 1,333.9 seconds. A new exact-commit
+  complete census is required before packaging.
+- **Class closure**: the regression-harness isolation guard now pins both the matrix's serial
+  membership and its measured 30-minute exception. Future removal or silent contraction of
+  either control fails the registered guard.
 
 ### DRIFT-199-I001-050 — parallel census masked stale workshop distribution and the canonical skill retained the rejected refusal (resolved; census rerun pending)
 

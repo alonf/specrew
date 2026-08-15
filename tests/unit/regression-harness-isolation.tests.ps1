@@ -72,6 +72,9 @@ foreach ($serialLaneToken in @('$serialIsRunning', '$nextIsSerial -and $active.C
         Fail "Disk-wide census no longer drains parallel work around its serial lane ('$serialLaneToken')."
     }
 }
+if ($censusRunner -notmatch "'tests\\integration\\validate-governance-changed-only\.tests\.ps1'\s*=\s*1800") {
+    Fail 'Disk-wide census lost the measured 30-minute bound for the changed-only governance matrix.'
+}
 
 if ($fixture -notmatch '\[System\.IO\.Path\]::GetTempPath\(\)' -or
     $fixture -match 'Join-Path\s+\$repoRoot\s+''\.scratch\\pending-verdict-stop-artifact''') {
