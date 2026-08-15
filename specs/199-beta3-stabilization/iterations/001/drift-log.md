@@ -42,7 +42,10 @@ recorded maintainer ruling, so a single rate here would misstate them.
 - **Resolution**: `Write-StopBlockOutput` now accepts `EventName` explicitly, defaults it
   safely for isolated envelope tests, and the production caller passes the real host event.
   The agenda marker is mirrored. The broad campaign matrix has a named 600-second ceiling,
-  leaving the generic 300-second bound unchanged for every other test file.
+  leaving the generic 300-second bound unchanged for every other test file. A second exact
+  census returned 347/348 green and timed out only the changed-only matrix at 900 seconds;
+  that file then passed all 14 assertions alone in 833.74 seconds. Its named ceiling is now
+  1,200 seconds, with the old "about six minutes" comment corrected to the measured runtime.
 - **Class closure**: the disk-wide census executes every discovered named test file from an
   exact detached commit, canonical/deployed agenda parity is executable, and exceptional
   timeout ceilings are path-specific. Ambient-variable or mirror-only regressions therefore

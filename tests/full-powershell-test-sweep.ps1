@@ -28,12 +28,13 @@ $files = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tests') -Recurse -Fi
         Sort-Object FullName)
 
 # A file-level bound prevents wedges, but the default must not misclassify known, intentionally broad integration
-# matrices. This suite creates fourteen isolated repositories and runs the full validator in each one; measured on
-# this branch it needs about six minutes. The cross-host conformance matrix normally takes about four minutes by
-# itself but can exceed the generic five-minute bound while three other processes are active. Keep exceptional
-# ceilings explicit and reviewable instead of weakening the default for every other file.
+# matrices. The changed-only suite creates fourteen isolated repositories and runs the full validator in each one;
+# measured on this branch it needs about fourteen minutes alone and crossed fifteen minutes under normal four-way
+# overlap. The cross-host conformance matrix normally takes about four minutes by itself but can exceed the generic
+# five-minute bound while three other processes are active. Keep exceptional ceilings explicit and reviewable
+# instead of weakening the default for every other file.
 $fileTimeoutOverrides = @{
-    'tests\integration\validate-governance-changed-only.tests.ps1' = 900
+    'tests\integration\validate-governance-changed-only.tests.ps1' = 1200
     'tests\integration\conformance-detection.tests.ps1' = 600
     'tests\continuous-co-review\unit\review-public-campaign-command.Tests.ps1' = 600
 }
