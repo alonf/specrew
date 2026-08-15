@@ -18,6 +18,7 @@ function Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor Red; ex
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $provider = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
 if (-not (Test-Path -LiteralPath $provider)) { Fail "conformance provider not found at $provider" }
+. (Join-Path $repoRoot 'scripts\internal\specrew-consumer-language.ps1')
 
 $priorModulePath = $env:SPECREW_MODULE_PATH
 $env:SPECREW_MODULE_PATH = $repoRoot  # so the provider resolves ConversationCaptureAccessor + the false-positive guard
@@ -320,7 +321,20 @@ function Invoke-Conformance {
     $sessionArg = if ([string]::IsNullOrWhiteSpace($SessionId)) { '' } else { " --session-id '$SessionId'" }
     $cmd = "Set-Location -LiteralPath '$Proj'; & '$provider' --host-kind claude --source-event $Event$sessionArg$tpArg"
     $out = & pwsh -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1
-    return [pscustomobject]@{ Out = (@($out) -join "`n"); Code = $LASTEXITCODE; Blocked = ((@($out) -join "`n") -match '<<<SPECREW-STOP-BLOCK>>>') }
+    $rendered = (@($out) -join "`n")
+    # Discover workshop refusal surfaces by what they EMIT, not by a remembered list of cases or files.
+    # Every such surface carries the shared one-attempt sentence. When a new repair reason reaches this
+    # harness it is checked automatically, which is the class closure the earlier hand-listed guard lacked.
+    if ($rendered -match '(?i)Try the action above once') {
+        $banned = @(Get-SpecrewBannedConsumerNoun -Text $rendered)
+        if ($banned.Count -gt 0) { Fail "Workshop refusal leaked internal vocabulary [$($banned -join ', ')]: $rendered" }
+        $blame = @(Get-SpecrewUnprovenFaultAttribution -Text $rendered)
+        if ($blame.Count -gt 0) { Fail "Workshop refusal assigned unsupported fault [$($blame -join ' | ')]: $rendered" }
+        if ($rendered -notmatch '(?i)answers are safe' -or $rendered -notmatch '(?i)one concrete next action' -or $rendered -notmatch '(?i)ask the human for approval') {
+            Fail "Workshop refusal did not carry the calm recovery contract: $rendered"
+        }
+    }
+    return [pscustomobject]@{ Out = $rendered; Code = $LASTEXITCODE; Blocked = ($rendered -match '<<<SPECREW-STOP-BLOCK>>>') }
 }
 
 function Get-TestSessionStatePath {
@@ -1101,7 +1115,7 @@ try {
     Set-Content -LiteralPath (Join-Path $p16a3 'specs\050-host-neutral-gate\implementation-rules.yml') -Value "schema_version: '1.0'" -Encoding UTF8
     New-HandoverSnapshot -Proj $p16a3 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
     $r16a3 = Invoke-Conformance -Proj $p16a3 -TranscriptPath (New-Transcript -Proj $p16a3 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
-    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'WORKSHOP RECORD INVALID' -or $r16a3.Out -notmatch 'lowercase stable tokens' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
+    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'could not be recorded cleanly' -or $r16a3.Out -notmatch 'lowercase stable values' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
     Write-Pass "Case 16a3: mixed-case binding tokens are repaired in place before the next lens, with no generic packet"
 
     $p16a4 = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -1109,7 +1123,7 @@ try {
     New-LensApplicability -Proj $p16a4 -Selected @('architecture-core','code-implementation','security-compliance') -Done @('architecture-core','code-implementation')
     New-HandoverSnapshot -Proj $p16a4 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
     $r16a4 = Invoke-Conformance -Proj $p16a4 -TranscriptPath (New-Transcript -Proj $p16a4 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
-    if (-not $r16a4.Blocked -or $r16a4.Out -notmatch 'WORKSHOP RECORD INCOMPLETE' -or $r16a4.Out -notmatch 'implementation-rules.yml' -or $r16a4.Out -match 'five-part context packet') { Fail "Case 16a4: missing code manifest needs a targeted workshop repair, not a generic packet. Out: $($r16a4.Out)" }
+    if (-not $r16a4.Blocked -or $r16a4.Out -notmatch 'agreed coding rules have not been recorded' -or $r16a4.Out -notmatch 'project-provided workshop action' -or $r16a4.Out -match 'five-part context packet') { Fail "Case 16a4: missing code manifest needs a targeted workshop repair, not a generic packet. Out: $($r16a4.Out)" }
     Write-Pass "Case 16a4: a completed code lens cannot move on without its manifest, and no generic packet is rendered"
 
     # ---- Case 16b / FR-056(d): lifecycle boundary state has precedence even when every workshop-question signal
@@ -1232,8 +1246,8 @@ New-HandoverSnapshot -Proj $p16pa2 -ChangedUserFiles 1 -FileList 'specs/050-host
 $t16pa2 = New-Transcript -Proj $p16pa2 -Turns @(@{ role = 'assistant'; text = 'Architecture-core lens: would you like to take all three decisions at once, or one at a time?' })
 $r16pa2 = Invoke-Conformance -Proj $p16pa2 -TranscriptPath $t16pa2
 if (-not $r16pa2.Blocked -or $r16pa2.Out -match 'five-part context packet') { Fail "Case 16pa2: missing machine-owned pre-agenda state MUST get the targeted repair, never the generic packet. Out: $($r16pa2.Out)" }
-if ($r16pa2.Out -notmatch 'WORKSHOP CONTROLLER MISSING' -or $r16pa2.Out -notmatch 'initialize-workshop-controller-state\.ps1' -or $r16pa2.Out -notmatch 'Do not render the generic five-part packet') {
-    Fail "Case 16pa2: targeted repair must name the condition, exact initializer, and conversational retry. Out: $($r16pa2.Out)"
+if ($r16pa2.Out -notmatch 'workshop setup is not ready' -or $r16pa2.Out -notmatch 'project-provided setup action' -or $r16pa2.Out -notmatch 'show the current question again') {
+    Fail "Case 16pa2: targeted repair must name the situation, a project-owned recovery, and the conversational retry. Out: $($r16pa2.Out)"
 }
 $autoControllerPath = Join-Path $p16pa2 'specs\050-host-neutral-gate\lens-applicability.json'
 if (Test-Path -LiteralPath $autoControllerPath) { Fail 'Case 16pa2: read-only conformance provider must not author workshop lifecycle state' }
@@ -1250,9 +1264,9 @@ New-HandoverSnapshot -Proj $p16pa3 -ChangedUserFiles 1 -FileList 'specs/050-host
 $t16pa3 = New-Transcript -Proj $p16pa3 -Turns @(@{ role = 'assistant'; text = "Preparing lens 1 of 4: architecture-core`n`nArchitecture-Core Lens`n`nWould you like all three decisions at once or one at a time?" })
 $r16pa3 = Invoke-Conformance -Proj $p16pa3 -TranscriptPath $t16pa3
 if (-not $r16pa3.Blocked -or $r16pa3.Out -match 'five-part context packet') { Fail "Case 16pa3: opening lens 1 before the agenda decision MUST get a targeted correction, never the generic packet. Out: $($r16pa3.Out)" }
-if ($r16pa3.Out -notmatch 'WORKSHOP AGENDA NOT CONFIRMED' -or $r16pa3.Out -notmatch 'every skipped technical lens' -or
-    $r16pa3.Out -notmatch 'whether to confirm or change' -or $r16pa3.Out -notmatch 'confirm-workshop-agenda\.ps1') {
-    Fail "Case 16pa3: correction must restore selected+skipped visibility, human choice, and governed persistence. Out: $($r16pa3.Out)"
+if ($r16pa3.Out -notmatch 'cannot start until the human has seen and confirmed its agenda' -or $r16pa3.Out -notmatch 'every skipped topic' -or
+    $r16pa3.Out -notmatch 'whether to confirm or change' -or $r16pa3.Out -notmatch 'recorded through the workshop flow') {
+    Fail "Case 16pa3: correction must restore selected+skipped visibility, human choice, and governed persistence without exposing machinery. Out: $($r16pa3.Out)"
 }
 Write-Pass "Case 16pa3: a premature technical lens restores the complete agenda decision without a duplicate packet"
 
@@ -1306,7 +1320,7 @@ New-LensApplicability -Proj $p16e3 -Selected @('architecture-core','integration-
 New-HandoverSnapshot -Proj $p16e3 -ChangedUserFiles 2
 $t16e3 = New-Transcript -Proj $p16e3 -Turns @(@{ role = 'assistant'; text = 'Preparing the DevOps lens now.' })
 $r16e3 = Invoke-Conformance -Proj $p16e3 -TranscriptPath $t16e3
-if (-not $r16e3.Blocked -or $r16e3.Out -notmatch 'WORKSHOP DECISION CONFLICT' -or $r16e3.Out -notmatch 'article-initiation' -or $r16e3.Out -match '## What I Just Did') { Fail "Case 16e3: contradictory durable bindings MUST produce only the targeted workshop reconciliation. Out: $($r16e3.Out)" }
+if (-not $r16e3.Blocked -or $r16e3.Out -notmatch 'two recorded answers disagree' -or $r16e3.Out -notmatch 'article-initiation' -or $r16e3.Out -match '## What I Just Did') { Fail "Case 16e3: contradictory durable bindings MUST produce only the targeted workshop reconciliation. Out: $($r16e3.Out)" }
 Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation without the generic packet"
 
 # ---- Case 16f: a stale feature marker cannot redirect controller scope. The active iteration artifact wins.

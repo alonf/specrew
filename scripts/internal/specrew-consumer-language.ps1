@@ -68,7 +68,8 @@ function Get-SpecrewUnglossedId {
 # make the approval instruction unspeakable.
 $script:SpecrewBannedConsumerNouns = @(
     'crossing', 'mint', 'marker', 'digest', 'boundary sync', 'verdict capture',
-    'controller truth', 'ratchet', 'claim-ordered', 'terminalize'
+    'controller truth', 'workshop controller', 'controller plumbing', 'governed controller state',
+    'lens-applicability.json', 'ratchet', 'claim-ordered', 'terminalize'
 )
 
 function Get-SpecrewBannedConsumerNoun {
@@ -90,6 +91,29 @@ function Get-SpecrewBannedConsumerNoun {
     foreach ($noun in $script:SpecrewBannedConsumerNouns) {
         $pattern = '\b' + [regex]::Escape($noun) + '(?:e?s|ed|ing)?\b'
         if ([regex]::IsMatch($Text, $pattern, 'IgnoreCase')) { $found.Add($noun) | Out-Null }
+    }
+    return @($found)
+}
+
+function Get-SpecrewUnprovenFaultAttribution {
+    # A refusal may state what the agent could not complete. It may not diagnose Specrew as broken or
+    # at fault in the message shown to the human: the emitting agent does not have enough evidence to
+    # distinguish its own missed step from inconsistent project records or a product defect. Diagnosis
+    # belongs in the drift record, where evidence can support it.
+    [OutputType([string[]])]
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
+    $patterns = @(
+        '\bSpecrew\b.{0,100}\b(?:broken|buggy|at fault|has (?:a )?problem|failed)\b',
+        '\b(?:broken|bug|fault|problem|failure)\b.{0,100}\b(?:in|with)\s+Specrew\b'
+    )
+    $found = [Collections.Generic.List[string]]::new()
+    foreach ($pattern in $patterns) {
+        foreach ($match in [regex]::Matches($Text, $pattern, 'IgnoreCase')) {
+            $found.Add($match.Value) | Out-Null
+        }
     }
     return @($found)
 }

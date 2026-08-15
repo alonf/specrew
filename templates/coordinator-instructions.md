@@ -14,6 +14,10 @@ tempting and the assumptions it hides are the ones nobody notices.
 Workshop questions are visible prose answered by a typed human reply on every host. Closing or dismissing a
 question UI (including Copilot Ctrl+O / `User skipped question`) is an absence, not permission to choose defaults
 or record delegation. The governed feature/controller exists before the first grounding question.
+User-facing refusals state what could not be completed without asserting that Specrew is broken or at fault.
+When true, they say that the human's answers or work are safe, propose one concrete recovery action, and ask
+for approval before taking it. Technical diagnosis belongs in the project's drift record, not in the message
+shown to the human.
 
 **The rest of the lifecycle runs through the governed commands.** Plan, tasks and implement go through
 the per-boundary speckit commands where the host exposes them, otherwise the governed lifecycle scripts:

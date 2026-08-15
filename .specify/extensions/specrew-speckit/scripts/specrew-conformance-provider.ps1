@@ -1360,7 +1360,7 @@ try {
             }
             elseif ($blockKind -eq 'workshop-conflict') {
                 $conflict = $workshopQuestion.binding_conflict
-                [void]$sb.AppendLine(("Specrew: WORKSHOP DECISION CONFLICT - durable binding '{0}' was '{1}' in lens '{2}' but is now '{3}' in lens '{4}'. Do not move to another lens or render the generic five-part packet. If the later value was a delegated/default choice, restore it to the earlier human-confirmed value and continue. If the human intentionally changed the decision, ask one concise conversational reconciliation question and update every affected lens record to the same value before continuing." -f $conflict.binding, $conflict.prior_value, $conflict.prior_lens, $conflict.value, $conflict.lens))
+                [void]$sb.AppendLine(("Specrew paused this workshop because two recorded answers disagree: decision '{0}' was '{1}' in '{2}' and is now '{3}' in '{4}'. Do not continue to another topic yet. If the later answer came from a default, keep the earlier human-confirmed answer. If the human intentionally changed it, ask one concise question to confirm which answer should apply, then update the affected workshop records consistently." -f $conflict.binding, $conflict.prior_value, $conflict.prior_lens, $conflict.value, $conflict.lens))
                 if (-not (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue)) {
                     $workshopAuthorityPath = Join-Path $projectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
                     if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
@@ -1369,25 +1369,25 @@ try {
                     [void]$sb.AppendLine((Get-SpecrewWorkshopRefusalContractText))
                 }
                 else {
-                    [void]$sb.AppendLine('If reconciliation does not clear this refusal on the next attempt, stop and tell the human that the workshop controller plumbing is broken; do not retry again. Never write lens-applicability.json or any governed controller state by hand to clear a refusal.')
+                    [void]$sb.AppendLine('Try the action above once. If it does not resolve the situation, do not retry and do not edit this project''s workshop records by hand. Tell the human calmly what you were doing, that their answers are safe and nothing has been lost, what you could not complete without assigning blame, and one concrete next action you can take. Ask the human for approval before taking that action.')
                 }
             }
             elseif ($blockKind -eq 'workshop-repair') {
                 if ([string]$workshopQuestion.reason -eq 'workshop-decision-bindings-invalid') {
                     $badBinding = $workshopQuestion.binding_conflict
-                    [void]$sb.AppendLine(("Specrew: WORKSHOP RECORD INVALID - binding '{0}' has value '{1}' in lens '{2}'. Binding keys and token values use lowercase stable tokens (for example `ihttpclientfactory`, not `IHttpClientFactory`). Repair lens-applicability.json, verify the durable workshop state, then present the current lens question again. Do not render the generic five-part packet and do not move to another lens first." -f $badBinding.binding, $badBinding.value, $badBinding.lens))
+                    [void]$sb.AppendLine(("This workshop answer could not be recorded cleanly: decision '{0}' has value '{1}' in '{2}'. Use lowercase stable values (for example `ihttpclientfactory`, not `IHttpClientFactory`), record the corrected answer through the workshop flow, then show the current question again. Do not continue to another topic first." -f $badBinding.binding, $badBinding.value, $badBinding.lens))
                 }
                 elseif ([string]$workshopQuestion.reason -eq 'workshop-applicability-absent') {
-                    [void]$sb.AppendLine(("Specrew: WORKSHOP CONTROLLER MISSING - initialize the empty pre-agenda state now with `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/initialize-workshop-controller-state.ps1 -ProjectRoot . -FeatureRef {0}`, then present the current workshop question again. Do not render the generic five-part packet and do not move to another lens first." -f [string]$workshopQuestion.feature_ref))
+                    [void]$sb.AppendLine(("This project's workshop setup is not ready for feature '{0}'. Initialize the workshop records with the project-provided setup action, then show the current question again. Do not continue to another topic first." -f [string]$workshopQuestion.feature_ref))
                 }
                 elseif ($workshopAgendaPresentationMissing) {
-                    [void]$sb.AppendLine('Specrew: WORKSHOP AGENDA NOT CONFIRMED - do not open a technical lens yet. Show the complete agenda first: every selected lens with depth and its concrete decision, every skipped technical lens with a feature-specific reason, then ask the human whether to confirm or change that selection. After their typed confirmation, persist it with confirm-workshop-agenda.ps1; only then open lens 1. Do not render the generic five-part packet.')
+                    [void]$sb.AppendLine('The technical workshop cannot start until the human has seen and confirmed its agenda. Show every selected topic with its depth and concrete decision, plus every skipped topic with a feature-specific reason, then ask whether to confirm or change the selection. After the typed answer is recorded through the workshop flow, open the first topic.')
                 }
                 elseif ([string]$workshopQuestion.reason -in @('workshop-agenda-selected-entry-invalid','workshop-agenda-skipped-entry-invalid','workshop-agenda-digest-mismatch','workshop-agenda-turn-receipt-invalid')) {
-                    [void]$sb.AppendLine(("Specrew: WORKSHOP CONTROLLER INVALID - the confirmed agenda cannot be traced to the governed writer ({0}). Stop this workshop and tell the human the controller must be restarted through Specrew; another confirm or retry cannot repair it. Do not render the generic five-part packet." -f [string]$workshopQuestion.reason))
+                    [void]$sb.AppendLine("This project's workshop records no longer match the agenda the human confirmed. The answers remain safe. Another confirmation of the unchanged agenda cannot resolve the mismatch. Propose restarting the workshop from its agenda so one consistent selection can be recorded.")
                 }
                 else {
-                    [void]$sb.AppendLine('Specrew: WORKSHOP RECORD INCOMPLETE - the code-implementation lens is marked complete but its required implementation-rules.yml manifest is missing or empty. Create the schema-valid manifest beside lens-applicability.json, verify the durable workshop state, then present the current lens question again. Do not render the generic five-part packet and do not move to another lens first.')
+                    [void]$sb.AppendLine('The implementation discussion is marked complete, but its agreed coding rules have not been recorded. Record those rules through the project-provided workshop action, then show the current question again. Do not continue to another topic first.')
                 }
                 if (-not (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue)) {
                     $workshopAuthorityPath = Join-Path $projectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
@@ -1397,7 +1397,7 @@ try {
                     [void]$sb.AppendLine((Get-SpecrewWorkshopRefusalContractText))
                 }
                 else {
-                    [void]$sb.AppendLine('If the named action does not clear this refusal on the next attempt, stop and tell the human that the workshop controller plumbing is broken; do not retry again. Never write lens-applicability.json or any governed controller state by hand to clear a refusal.')
+                    [void]$sb.AppendLine('Try the action above once. If it does not resolve the situation, do not retry and do not edit this project''s workshop records by hand. Tell the human calmly what you were doing, that their answers are safe and nothing has been lost, what you could not complete without assigning blame, and one concrete next action you can take. Ask the human for approval before taking that action.')
                 }
             }
             elseif ($blockKind -eq 'material') {

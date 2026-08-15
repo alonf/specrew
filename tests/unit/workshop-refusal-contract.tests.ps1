@@ -32,10 +32,20 @@ $authorityPath = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/worksho
 $agenda = Get-Content -LiteralPath $agendaPath -Raw -Encoding UTF8
 $provider = Get-Content -LiteralPath $providerPath -Raw -Encoding UTF8
 $authority = Get-Content -LiteralPath $authorityPath -Raw -Encoding UTF8
+. $authorityPath
+$refusalContract = Get-SpecrewWorkshopRefusalContractText
 
 Assert-True (Test-AgendaRefusalCoverage -SourceText $agenda) 'every discovered actionable agenda refusal uses the convergent refusal contract'
-Assert-True ($authority -match '(?i)do not retry again' -and $authority -match '(?i)Never write lens-applicability\.json or any governed controller state by hand') 'canonical workshop refusal contract carries terminal escalation and the controller-write prohibition'
+Assert-True ($refusalContract -match '(?i)try the (?:named )?action.*once' -and $refusalContract -match '(?i)do not retry') 'canonical workshop refusal contract permits one recovery attempt and no retry loop'
+Assert-True ($refusalContract -match '(?i)answers are safe' -and $refusalContract -match '(?i)nothing has been lost') 'canonical workshop refusal contract reassures the human about preserved answers'
+Assert-True ($refusalContract -match '(?i)one concrete next action' -and $refusalContract -match '(?i)ask (?:the human )?for approval') 'canonical workshop refusal contract ends in a proposed action the human approves'
+Assert-True ($refusalContract -match '(?i)without assigning (?:blame|fault)') 'canonical workshop refusal contract forbids unsupported fault attribution'
+Assert-True ($refusalContract -match '(?i)do not edit this project''s workshop records by hand') 'canonical workshop refusal contract keeps governed records out of manual repair'
+Assert-True ($refusalContract -notmatch '(?i)controller|plumbing|lens-applicability\.json|governed writer') 'canonical workshop refusal contract contains no workshop machinery vocabulary'
+Assert-True ($refusalContract -notmatch '(?i)Specrew.{0,80}(?:broken|bug|fault|problem)|(?:broken|bug|fault|problem).{0,80}Specrew') 'canonical workshop refusal contract never tells the human that Specrew is at fault'
 Assert-True ($provider -match '(?is)workshop-repair.*Get-SpecrewWorkshopRefusalContractText') 'provider workshop-repair surfaces append the same convergent refusal contract'
+Assert-True ($provider -match '(?is)workshop-conflict.*Get-SpecrewWorkshopRefusalContractText') 'provider workshop-conflict surfaces append the same convergent refusal contract'
+Assert-True ($provider -notmatch '(?i)controller plumbing is broken|Never write lens-applicability\.json|WORKSHOP CONTROLLER (?:MISSING|INVALID)|WORKSHOP RECORD (?:INVALID|INCOMPLETE)') 'provider carries no legacy blame or workshop-machinery refusal fallback'
 foreach ($reason in @('workshop-agenda-selected-entry-invalid','workshop-agenda-skipped-entry-invalid','workshop-agenda-digest-mismatch')) {
     Assert-True ($provider -match [regex]::Escape($reason)) "provider consumes strict controller failure '$reason' as a targeted repair"
 }

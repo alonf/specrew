@@ -22,10 +22,43 @@
 
 ## Summary
 
-**Total drift events**: 48 (DRIFT-199-I001-001 through -048)
+**Total drift events**: 49 (DRIFT-199-I001-001 through -049)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-049 — the convergent workshop refusal blamed Specrew and exposed its machinery (resolved; census rerun pending)
+
+- **Observed**: 2026-08-15, maintainer review of the W9 repair found that the shared refusal
+  told the agent to tell the human that "the workshop controller plumbing is broken" and
+  named `lens-applicability.json` plus governed controller state. The retry ceiling and
+  manual-write prohibition were correct, but the message a human would receive violated
+  the consumer-language requirement and ended with a problem rather than a proposed action.
+- **Cause**: one string mixed two audiences. An agent-facing terminal rule was written as
+  the human-facing diagnosis, so it assigned fault without enough evidence to distinguish
+  an agent mistake, inconsistent project records, or a product defect. The FR-015 test
+  discovered co-review messages by their emission point but did not discover the shared
+  workshop-refusal contract or its callers; the new file was outside the remembered scope.
+- **Resolution**: the shared contract now permits one recovery attempt, forbids retries and
+  hand-editing workshop records, reassures the human that their answers are safe, describes
+  what could not be completed without blame, proposes one concrete next action, and asks
+  for approval. Every workshop repair/conflict message was translated from internal file
+  and controller vocabulary into the user's project terms. The coordinator template now
+  states the standing no-fault-attribution rule; technical diagnosis belongs in the drift
+  record rather than the message shown to the human.
+- **Measured proof**: the refusal-contract suite was RED on the former text and is now green
+  for all eight language/recovery properties plus its existing mutation proof. The
+  consumer-language suite passes 43 cases, including a detector that catches both
+  "Specrew ... is broken" and "a problem with Specrew" while admitting a factual
+  first-person inability. The full conformance provider matrix passes and checks every
+  exercised output carrying the shared recovery sentence automatically.
+- **Class closure**: shipped callers of the shared contract are AST-discovered with a floor,
+  not named by path. The behavioral harness identifies workshop refusals by their emitted
+  recovery contract and applies the vocabulary, attribution, reassurance, proposal, and
+  approval checks automatically, so adding another exercised repair reason inherits the
+  guard. Both guards are registered in the release regression suite. The coordinator rule
+  prevents future refusal authors from treating fault attribution as acceptable user-facing
+  diagnosis.
 
 ### DRIFT-199-I001-048 — the safety preflight made valid Windows paths invalid and the census overlapped process-heavy instruments (resolved; census rerun pending)
 
@@ -106,8 +139,8 @@ recorded maintainer ruling, so a single rate here would misstate them.
   `agenda_digest` through the question handover and typed receipt. The governed writer
   persists the same digest; strict controller readers reject nested skipped entries,
   receipt substitution, and content drift. All actionable agenda refusals use one terminal
-  contract: one named retry, then human escalation, with an explicit prohibition on writing
-  controller state by hand. Provider repair routing consumes the new strict-reader reasons.
+  contract: one named retry, then a calm human-approved recovery proposal, with an explicit
+  prohibition on writing workshop records by hand. Provider repair routing consumes the new strict-reader reasons.
   Bootstrap and workshop instructions carry the two product rulings, and the private
   OneDrive example is generic.
 - **Measured proof**: `workshop-agenda-confirmation.tests.ps1` is green through the real

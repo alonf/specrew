@@ -44,8 +44,8 @@ function Get-SpecrewWorkshopRefusalContractText {
     param()
 
     return @(
-        'If the named action does not clear this refusal on the next attempt, stop and tell the human that the workshop controller plumbing is broken; do not retry again.'
-        'Never write lens-applicability.json or any governed controller state by hand to clear a refusal.'
+        'Try the action above once. If it does not resolve the situation, do not retry and do not edit this project''s workshop records by hand.'
+        'Tell the human calmly what you were doing, that their answers are safe and nothing has been lost, what you could not complete without assigning blame, and one concrete next action you can take. Ask the human for approval before taking that action.'
     ) -join ' '
 }
 

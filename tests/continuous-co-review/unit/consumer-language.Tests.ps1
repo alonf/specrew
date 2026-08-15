@@ -262,6 +262,8 @@ Describe 'Consumer language layer (T010)' {
         It 'flags machinery nouns' -ForEach @(
             @{ noun = 'crossing' }, @{ noun = 'digest' }, @{ noun = 'ratchet' }
             @{ noun = 'terminalize' }, @{ noun = 'claim-ordered' }, @{ noun = 'controller truth' }
+            @{ noun = 'workshop controller' }, @{ noun = 'controller plumbing' }, @{ noun = 'governed controller state' }
+            @{ noun = 'lens-applicability.json' }
         ) {
             @(Get-SpecrewBannedConsumerNoun -Text "The $noun is recorded.") | Should -Contain $noun
         }
@@ -292,6 +294,54 @@ Describe 'Consumer language layer (T010)' {
             # which guards nothing. These must NOT fire.
             @(Get-SpecrewBannedConsumerNoun -Text 'The mintage of coins is unrelated.') | Should -BeNullOrEmpty
             @(Get-SpecrewBannedConsumerNoun -Text 'Cross the boundary when ready.') | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'workshop refusal language is guarded by its emission property' {
+        BeforeAll {
+            $script:WorkshopScriptRoot = Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts'
+            $script:WorkshopRefusalConsumers = @(
+                Get-ChildItem -LiteralPath $script:WorkshopScriptRoot -Filter '*.ps1' -File -Recurse |
+                    Where-Object {
+                        $source = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8
+                        $tokens = $null
+                        $errors = $null
+                        $ast = [Management.Automation.Language.Parser]::ParseInput($source, [ref]$tokens, [ref]$errors)
+                        @($errors).Count -eq 0 -and @($ast.FindAll({
+                                    param($node)
+                                    $node -is [Management.Automation.Language.CommandAst] -and
+                                    $node.GetCommandName() -ceq 'Get-SpecrewWorkshopRefusalContractText'
+                                }, $true)).Count -gt 0
+                    }
+            )
+            . (Join-Path $script:WorkshopScriptRoot 'workshop-authority-store.ps1')
+            $script:WorkshopRefusalText = Get-SpecrewWorkshopRefusalContractText
+        }
+
+        It 'discovers every shipped caller instead of naming files from memory' {
+            @($script:WorkshopRefusalConsumers).Count | Should -BeGreaterOrEqual 2 -Because 'a property-derived guard that matches nothing or loses a caller must fail loudly'
+        }
+
+        It 'the shared human recovery contract contains no internal workshop machinery' {
+            @(Get-SpecrewBannedConsumerNoun -Text $script:WorkshopRefusalText) |
+                Should -BeNullOrEmpty
+        }
+
+        It 'the shared human recovery contract never blames Specrew' {
+            @(Get-SpecrewUnprovenFaultAttribution -Text $script:WorkshopRefusalText) |
+                Should -BeNullOrEmpty
+        }
+
+        It 'the fault-attribution detector catches the wording that escaped the old guard' {
+            @(Get-SpecrewUnprovenFaultAttribution -Text 'Tell the human that the Specrew workshop plumbing is broken.') |
+                Should -Not -BeNullOrEmpty
+            @(Get-SpecrewUnprovenFaultAttribution -Text 'There is a problem with Specrew.') |
+                Should -Not -BeNullOrEmpty
+        }
+
+        It 'allows a factual first-person report without assigning fault' {
+            @(Get-SpecrewUnprovenFaultAttribution -Text 'I was not able to record your workshop answer cleanly.') |
+                Should -BeNullOrEmpty
         }
     }
 }
