@@ -82,7 +82,7 @@ function Read-SpecrewReviewRuntimeManagedText {
 
     $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
     # T006/FR-011 and DRIFT-199-I001-005's exact line. This is the check that refused
-    # `...\OneDrive - Zionet LTD\Documents\PowerShell\Modules\Specrew\0.40.0\...\_load.ps1` and took the
+    # `...\OneDrive - <Org>\Documents\PowerShell\Modules\Specrew\0.40.0\...\_load.ps1` and took the
     # whole remediation door down with it. A link here is still refused; a placeholder is read.
     $disposition = Get-SpecrewReparseDispositionForItem -Item $item
     if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) {

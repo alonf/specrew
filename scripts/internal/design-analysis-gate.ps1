@@ -432,8 +432,9 @@ function Test-SpecrewLensWorkshopRecords {
         else {
             $featureRef = Split-Path -Leaf $featureDir
             $agendaReceipt = if ($doc.PSObject.Properties['agenda_turn_receipt']) { [string]$doc.agenda_turn_receipt } else { '' }
-            if ([string]::IsNullOrWhiteSpace($agendaReceipt) -or
-                -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'agenda' -ReceiptId $agendaReceipt -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection')) {
+            $agendaDigest = if ($doc.PSObject.Properties['agenda_digest']) { [string]$doc.agenda_digest } else { '' }
+            if ([string]::IsNullOrWhiteSpace($agendaReceipt) -or $agendaDigest -cnotmatch '^[a-f0-9]{64}$' -or
+                -not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'agenda' -ReceiptId $agendaReceipt -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection' -AgendaDigest $agendaDigest)) {
                 $errors.Add('the workshop agenda has no matching typed human confirmation receipt; a picker result or model-authored agenda cannot authorize lens selection.') | Out-Null
             }
             $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $typedTurnProjectRoot -FeatureRef $featureRef -Phase 'product-domain'

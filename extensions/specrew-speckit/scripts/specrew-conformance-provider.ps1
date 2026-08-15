@@ -486,7 +486,7 @@ function Resolve-SpecrewWorkshopQuestionPause {
         [AllowNull()][string]$LastAssistantText,
         [bool]$HasPendingVerdict
     )
-    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; agenda_status = $null; question = $null; message_hash = $null; artifact_path = $null; binding_conflict = $null }
+    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; phase = $null; agenda_status = $null; question = $null; message_hash = $null; agenda_digest = $null; agenda_binding = $null; artifact_path = $null; binding_conflict = $null }
     try {
         if ($HasPendingVerdict) { $result.reason = 'lifecycle-boundary-overrides-workshop'; return $result }
         if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef)) { return $result }
@@ -543,9 +543,41 @@ function Resolve-SpecrewWorkshopQuestionPause {
         $result.iteration_number = if ($scope -eq 'iteration') { $iteration } else { $null }
         $result.lens = [string]$state.current_lens
         $result.agenda_status = [string]$state.agenda_status
+        $result.phase = 'lens'
+        if ([string]$state.agenda_status -eq 'pending-confirmation' -and [string]$state.current_lens -eq 'product-domain') {
+            $productMarkdown = Join-Path $featureRoot 'workshop/product-domain.md'
+            $productStructured = Join-Path $featureRoot 'workshop/product-domain.yml'
+            $result.phase = if ((Test-Path -LiteralPath $productMarkdown -PathType Leaf) -and
+                (Test-Path -LiteralPath $productStructured -PathType Leaf)) { 'agenda' } else { 'product-domain' }
+        }
         $result.question = $question
         $result.message_hash = Get-SpecrewFireIdentity -Parts @($scope, $ActiveFeatureRef, $iteration, [string]$state.current_lens, [string]$LastAssistantText)
         $result.artifact_path = [string]$state.artifact_path
+        if ($result.phase -eq 'agenda') {
+            # Host transcript accessors may normalize assistant prose, so the transcript hash cannot also be the
+            # agenda-decision identity. RenderOnly writes the immutable agenda content separately. Bind that digest
+            # only when the visible assistant turn contains the canonical agenda block.
+            $proposalPath = Join-Path $ProjectRoot '.specrew/handover/workshop-agenda-proposal.json'
+            $authorityPath = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+            if ((Test-Path -LiteralPath $proposalPath -PathType Leaf) -and (Test-Path -LiteralPath $authorityPath -PathType Leaf)) {
+                try {
+                    if (-not (Get-Command Get-SpecrewWorkshopAgendaDigest -ErrorAction SilentlyContinue)) { . $authorityPath }
+                    $proposal = Get-Content -LiteralPath $proposalPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 12 -ErrorAction Stop
+                    $digestProperty = $proposal.PSObject.Properties['agenda_digest']
+                    $bindingProperty = $proposal.PSObject.Properties['agenda_binding']
+                    $textProperty = $proposal.PSObject.Properties['canonical_text']
+                    if ([string]$proposal.schema_version -ceq '1.0' -and [string]$proposal.feature_ref -ceq $ActiveFeatureRef -and
+                        [string]$proposal.lens -ceq 'product-domain' -and $digestProperty -and $bindingProperty -and $textProperty -and
+                        [string]$digestProperty.Value -cmatch '^[a-f0-9]{64}$' -and
+                        (Get-SpecrewWorkshopAgendaDigest -Binding $bindingProperty.Value) -ceq [string]$digestProperty.Value -and
+                        (Test-SpecrewWorkshopAgendaVisibleInText -Text $LastAssistantText -CanonicalAgendaText ([string]$textProperty.Value))) {
+                        $result.agenda_digest = [string]$digestProperty.Value
+                        $result.agenda_binding = $bindingProperty.Value
+                    }
+                }
+                catch { $result.agenda_digest = $null; $result.agenda_binding = $null }
+            }
+        }
         return $result
     }
     catch { $result.reason = 'workshop-question-state-unreadable'; return $result }
@@ -569,14 +601,7 @@ function Update-SpecrewWorkshopQuestionHandover {
         }
         $dir = Split-Path -Parent $path
         if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        $phase = 'lens'
-        if ([string]$Decision.agenda_status -eq 'pending-confirmation' -and [string]$Decision.lens -eq 'product-domain') {
-            $featureRoot = Join-Path (Join-Path $ProjectRoot 'specs') ([string]$Decision.feature_ref)
-            $productMarkdown = Join-Path $featureRoot 'workshop/product-domain.md'
-            $productStructured = Join-Path $featureRoot 'workshop/product-domain.yml'
-            $phase = if ((Test-Path -LiteralPath $productMarkdown -PathType Leaf) -and
-                (Test-Path -LiteralPath $productStructured -PathType Leaf)) { 'agenda' } else { 'product-domain' }
-        }
+        $phase = if ($Decision.PSObject.Properties['phase'] -and [string]$Decision.phase -in @('product-domain','agenda','lens')) { [string]$Decision.phase } else { 'lens' }
         $record = [ordered]@{
             schema = 'v3'; status = 'workshop-active'; scope = [string]$Decision.scope; feature_ref = [string]$Decision.feature_ref
             iteration_number = [string]$Decision.iteration_number; lens = [string]$Decision.lens
@@ -584,6 +609,12 @@ function Update-SpecrewWorkshopQuestionHandover {
             question = [string]$Decision.question; message_hash = [string]$Decision.message_hash
             artifact_path = [string]$Decision.artifact_path
             recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        if ($phase -eq 'agenda' -and $Decision.PSObject.Properties['agenda_digest'] -and
+            [string]$Decision.agenda_digest -cmatch '^[a-f0-9]{64}$' -and $Decision.PSObject.Properties['agenda_binding'] -and
+            $null -ne $Decision.agenda_binding) {
+            $record['agenda_digest'] = [string]$Decision.agenda_digest
+            $record['agenda_binding'] = $Decision.agenda_binding
         }
         $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
         try {
@@ -899,7 +930,19 @@ try {
     $workshopStateInProgress = $false
     $workshopConflictState = $false
     $workshopRepairState = $false
-    $workshopRepairReasons = @('workshop-decision-bindings-invalid', 'workshop-code-implementation-manifest-missing', 'workshop-code-implementation-manifest-invalid', 'workshop-human-turn-contract-invalid', 'workshop-human-turn-helper-missing', 'workshop-pre-agenda-turn-receipt-invalid', 'workshop-agenda-turn-receipt-invalid', 'workshop-completed-human-turn-receipt-invalid')
+    $workshopRepairReasons = @(
+        'workshop-decision-bindings-invalid',
+        'workshop-code-implementation-manifest-missing',
+        'workshop-code-implementation-manifest-invalid',
+        'workshop-human-turn-contract-invalid',
+        'workshop-human-turn-helper-missing',
+        'workshop-pre-agenda-turn-receipt-invalid',
+        'workshop-agenda-turn-receipt-invalid',
+        'workshop-agenda-selected-entry-invalid',
+        'workshop-agenda-skipped-entry-invalid',
+        'workshop-agenda-digest-mismatch',
+        'workshop-completed-human-turn-receipt-invalid'
+    )
     $missingWorkshopController = $false
     $workshopAgendaPresentationMissing = $false
     if ($hasPending -or $anySpec -or $rawHit -or $materialStop) {
@@ -1318,6 +1361,16 @@ try {
             elseif ($blockKind -eq 'workshop-conflict') {
                 $conflict = $workshopQuestion.binding_conflict
                 [void]$sb.AppendLine(("Specrew: WORKSHOP DECISION CONFLICT - durable binding '{0}' was '{1}' in lens '{2}' but is now '{3}' in lens '{4}'. Do not move to another lens or render the generic five-part packet. If the later value was a delegated/default choice, restore it to the earlier human-confirmed value and continue. If the human intentionally changed the decision, ask one concise conversational reconciliation question and update every affected lens record to the same value before continuing." -f $conflict.binding, $conflict.prior_value, $conflict.prior_lens, $conflict.value, $conflict.lens))
+                if (-not (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue)) {
+                    $workshopAuthorityPath = Join-Path $projectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+                    if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
+                }
+                if (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue) {
+                    [void]$sb.AppendLine((Get-SpecrewWorkshopRefusalContractText))
+                }
+                else {
+                    [void]$sb.AppendLine('If reconciliation does not clear this refusal on the next attempt, stop and tell the human that the workshop controller plumbing is broken; do not retry again. Never write lens-applicability.json or any governed controller state by hand to clear a refusal.')
+                }
             }
             elseif ($blockKind -eq 'workshop-repair') {
                 if ([string]$workshopQuestion.reason -eq 'workshop-decision-bindings-invalid') {
@@ -1330,8 +1383,21 @@ try {
                 elseif ($workshopAgendaPresentationMissing) {
                     [void]$sb.AppendLine('Specrew: WORKSHOP AGENDA NOT CONFIRMED - do not open a technical lens yet. Show the complete agenda first: every selected lens with depth and its concrete decision, every skipped technical lens with a feature-specific reason, then ask the human whether to confirm or change that selection. After their typed confirmation, persist it with confirm-workshop-agenda.ps1; only then open lens 1. Do not render the generic five-part packet.')
                 }
+                elseif ([string]$workshopQuestion.reason -in @('workshop-agenda-selected-entry-invalid','workshop-agenda-skipped-entry-invalid','workshop-agenda-digest-mismatch','workshop-agenda-turn-receipt-invalid')) {
+                    [void]$sb.AppendLine(("Specrew: WORKSHOP CONTROLLER INVALID - the confirmed agenda cannot be traced to the governed writer ({0}). Stop this workshop and tell the human the controller must be restarted through Specrew; another confirm or retry cannot repair it. Do not render the generic five-part packet." -f [string]$workshopQuestion.reason))
+                }
                 else {
                     [void]$sb.AppendLine('Specrew: WORKSHOP RECORD INCOMPLETE - the code-implementation lens is marked complete but its required implementation-rules.yml manifest is missing or empty. Create the schema-valid manifest beside lens-applicability.json, verify the durable workshop state, then present the current lens question again. Do not render the generic five-part packet and do not move to another lens first.')
+                }
+                if (-not (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue)) {
+                    $workshopAuthorityPath = Join-Path $projectRoot '.specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+                    if (Test-Path -LiteralPath $workshopAuthorityPath -PathType Leaf) { . $workshopAuthorityPath }
+                }
+                if (Get-Command Get-SpecrewWorkshopRefusalContractText -ErrorAction SilentlyContinue) {
+                    [void]$sb.AppendLine((Get-SpecrewWorkshopRefusalContractText))
+                }
+                else {
+                    [void]$sb.AppendLine('If the named action does not clear this refusal on the next attempt, stop and tell the human that the workshop controller plumbing is broken; do not retry again. Never write lens-applicability.json or any governed controller state by hand to clear a refusal.')
                 }
             }
             elseif ($blockKind -eq 'material') {

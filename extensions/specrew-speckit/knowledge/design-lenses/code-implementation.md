@@ -34,8 +34,9 @@ Surfaced via the **grouping model** (see below); the catalog holds the full rule
 - **Source of code-rules truth** — does the human have an existing coding guideline OR one or more
   example projects (GitHub / local / other) to emulate for style, constructs, and patterns? (Ingest by
   assisted mapping; otherwise use the Specrew defaults.)
-- **Resolved stack** — the language/runtime baseline (drives which catalog slice + applicability-filtered
-  rules apply); asked at the lens turn with repo inference as a hint.
+- **Resolved stack** — an inherited stack is an input only when repository evidence or the human already
+  fixed it as a constraint. Otherwise the language/runtime baseline is decided in this lens turn (with repo
+  inference as a hint), never harvested under the product-domain receipt.
 - **Baseline craft posture** — the `baseline-default` group (intent-revealing names, short methods, low
   nesting, DI, no magic numbers, guard invariants, no leaky internals, SOLID, …) stated as defaults;
   the human toggles exceptions only.

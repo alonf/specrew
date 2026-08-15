@@ -1,0 +1,28 @@
+# Beta3 two-host walk findings — validation and mitigation
+
+**Evidence baseline**: `ada7c793`; Copilot CLI 1.0.79 and Claude Code walks.
+
+**Preserved evidence**: `C:\Dev\specrew-beta3-manual-ada7c793\copilot-lifecycle` and
+`C:\Dev\specrew-beta3-manual-ada7c793\claude-workshop`. These projects are read-only and
+were not used as repair targets.
+
+| Finding | Validation | Mitigation and implementation | Acceptance proof |
+| --- | --- | --- | --- |
+| W1 — agenda confirmation cannot converge | **True.** The writer and provider hashed different inputs; the transcript accessor collapses all whitespace, so CRLF normalization was not a fix. | Bind the ordered agenda content to `agenda_digest`; require the complete canonical block to be visible without making prose identity the authority. | Real provider path passes LF and CRLF with preamble/suffix; agenda A cannot authorize changed agenda B and the refusal names the lens. |
+| W2 — confirmed controller is hand-writable | **True.** The Copilot evidence carries nested skipped objects no governed writer emits. | Require flat skipped strings, exact agenda entries, matching typed receipt, and the receipt-bound digest at every controller reader. Route every new invalid reason to a targeted terminal provider refusal. | Nested controller and flat content-substitution fixtures both return named invalid states. |
+| W9 — refusal remedy cannot converge | **True.** The prior remedy could never produce the provider-side hash and prompted repeated forensics/bypass. | One canonical refusal contract permits one named retry, then stops with human escalation; it explicitly forbids writing governed controller state by hand. | AST discovery covers actionable agenda refusals with a floor; mutation of one helper call makes the guard fail. Provider repair surfaces append the same contract. |
+| W3/W4/W8 — product-domain receipt covers technical decisions | **True at the instruction layer.** Copilot harvested runtime/reachability/output under one product receipt; Claude kept the boundary. | Product-domain may discover an externally fixed technology constraint only. Runtime/stack, output, timeout/reachability, concurrency, and dependencies remain in their own selected technical lens and typed turn. | Deployed workshop and lens contracts are pinned structurally; behavioral acceptance is the fresh two-host walk. Authority-layer persistence enforcement remains the recorded beta4 extension. |
+| W5/W6/W8 — intake menu is impossible/decorative | **True.** Pick-feature was offered with no feature and the instruction never required a wait. | Show choices only with at least two executable actions and end the turn. With one action, announce and proceed. A concrete request in a fresh project deterministically starts New. | Bootstrap-provider test exercises the generated directive consumed by every host adapter. |
+| W7 — depth selected silently | **True; ambiguous contract.** Both hosts selected different depths and merely reported them. | Crew proposes risk-based depth; the human confirms or adjusts it in the typed product-domain reply; do not persist it first. | Product lens plus deployed workshop contract carry the ruling; fresh two-host walk checks behavior. |
+| R1 — `review.md` absent | **True and unchanged.** This repair must not manufacture independent evidence. | A real review of the fixed committed tree must produce the artifact. | Lifecycle boundary remains fail-closed until independent review exists. |
+| R2 — campaign evidence stale | **True and unchanged.** The last campaign predates the candidate. | After the tree is committed and deterministic validation is green, request a fresh authorized provider round. | Current-tree campaign evidence must be valid and complete before review signoff. |
+| R3 — employer in shipped comment | **True.** `review-engine-resolution.ps1` named the maintainer employer. | Preserve the OneDrive provenance using `OneDrive - <Org>`. | Review-engine test rejects the employer literal and requires the generic example. |
+
+## Release sequence
+
+1. Keep both old manual projects untouched.
+2. Finish deterministic source, mirror, controller, instruction, refusal, privacy, and registry validation.
+3. Commit the exact candidate and run complete discovered-test census plus the named F-198 registry.
+4. Package and install that exact commit; verify with a newest-work marker, not only the version string.
+5. Only then scaffold two new build-specific projects, one for Copilot and one for Claude.
+6. Run the fresh walks. The provider round at review requires explicit maintainer authorization.

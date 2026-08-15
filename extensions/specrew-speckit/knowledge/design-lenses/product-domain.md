@@ -25,7 +25,9 @@ the technical lenses is untouched; this phase precedes it.
 
 ## Applicability Signals
 
-- Always. The only decision is the depth (see Depth Model), chosen by risk and novelty.
+- Always. The Crew proposes the depth from risk and novelty (see Depth Model), states the reason,
+  and the human confirms or adjusts that product-domain depth in the typed product-domain reply.
+  The selected depth is not persisted before that typed confirmation.
 
 ## Design Decision Points
 
@@ -111,7 +113,14 @@ depth**.
 ## Workshop Conduct
 
 - **Run this phase FIRST**, before the technical-lens applicability agenda. Announce it; load
-  this lens; select the depth and state the reason.
+  this lens; propose the depth and state the reason, then let the human confirm or adjust it.
+  Do not persist a model-selected product-domain depth before the typed human reply.
+- **Keep technical decisions in their technical lenses.** Product-domain may ask whether a
+  technology or platform is already externally fixed as a binding constraint. It must not offer
+  runtime/stack choices, output-format choices, timeout/reachability semantics, concurrency, or
+  dependency menus. Those decisions belong to code-implementation, ui-ux, requirements-nfr,
+  architecture-core, or integration-api, each with its own lens turn and typed receipt. One
+  product-domain reply never authorizes decisions harvested for another lens.
 - **Reframe a solution-first request into the problem.** When the human asks to "build X",
   surface the problem, user, pain, MVP, and constraints before proceeding to design. If the
   requested feature is not aligned to the pain, MVP, constraints, or alternatives, surface

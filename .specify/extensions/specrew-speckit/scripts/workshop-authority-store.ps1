@@ -39,6 +39,112 @@ function Get-SpecrewWorkshopAuthorityHash {
     return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
 }
 
+function Get-SpecrewWorkshopRefusalContractText {
+    [CmdletBinding()]
+    param()
+
+    return @(
+        'If the named action does not clear this refusal on the next attempt, stop and tell the human that the workshop controller plumbing is broken; do not retry again.'
+        'Never write lens-applicability.json or any governed controller state by hand to clear a refusal.'
+    ) -join ' '
+}
+
+function ConvertTo-SpecrewWorkshopAgendaBinding {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][Collections.IDictionary]$Agenda,
+        [Parameter(Mandatory)][Collections.IDictionary]$Skipped
+    )
+
+    $selectedRecords = [Collections.Generic.List[object]]::new()
+    foreach ($entry in $Agenda.GetEnumerator()) {
+        $value = $entry.Value
+        $selectedRecords.Add([ordered]@{
+            lens = [string]$entry.Key
+            depth = [string]$value.depth
+            decision = ([string]$value.decision).Trim()
+        }) | Out-Null
+    }
+    $skippedRecords = [Collections.Generic.List[object]]::new()
+    foreach ($entry in $Skipped.GetEnumerator()) {
+        $skippedRecords.Add([ordered]@{
+            lens = [string]$entry.Key
+            reason = ([string]$entry.Value).Trim()
+        }) | Out-Null
+    }
+    return [ordered]@{
+        schema_version = '1.0'
+        selected = $selectedRecords.ToArray()
+        skipped = $skippedRecords.ToArray()
+    }
+}
+
+function Get-SpecrewWorkshopAgendaDigest {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Binding)
+
+    $json = $Binding | ConvertTo-Json -Depth 8 -Compress
+    return Get-SpecrewWorkshopAuthorityHash -Text $json
+}
+
+function Get-SpecrewWorkshopAgendaChangedLenses {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$ExpectedBinding,
+        [Parameter(Mandatory)]$ActualBinding
+    )
+
+    $expected = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+    $actual = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+    $position = 0
+    foreach ($entry in @($ExpectedBinding.selected)) {
+        $expected[[string]$entry.lens] = ('selected|{0}|{1}|{2}' -f $position, [string]$entry.depth, ([string]$entry.decision).Trim())
+        $position++
+    }
+    $position = 0
+    foreach ($entry in @($ExpectedBinding.skipped)) {
+        $expected[[string]$entry.lens] = ('skipped|{0}|{1}' -f $position, ([string]$entry.reason).Trim())
+        $position++
+    }
+    $position = 0
+    foreach ($entry in @($ActualBinding.selected)) {
+        $actual[[string]$entry.lens] = ('selected|{0}|{1}|{2}' -f $position, [string]$entry.depth, ([string]$entry.decision).Trim())
+        $position++
+    }
+    $position = 0
+    foreach ($entry in @($ActualBinding.skipped)) {
+        $actual[[string]$entry.lens] = ('skipped|{0}|{1}' -f $position, ([string]$entry.reason).Trim())
+        $position++
+    }
+
+    $all = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($lens in $expected.Keys) { [void]$all.Add($lens) }
+    foreach ($lens in $actual.Keys) { [void]$all.Add($lens) }
+    return @($all | Where-Object {
+            -not $expected.ContainsKey($_) -or -not $actual.ContainsKey($_) -or $expected[$_] -cne $actual[$_]
+        } | Sort-Object)
+}
+
+function Test-SpecrewWorkshopAgendaVisibleInText {
+    [CmdletBinding()]
+    param(
+        [AllowNull()][string]$Text,
+        [AllowNull()][string]$CanonicalAgendaText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text) -or [string]::IsNullOrWhiteSpace($CanonicalAgendaText)) { return $false }
+    # ConversationCaptureAccessor intentionally collapses host transcript whitespace. The binding is the
+    # structured agenda digest; this visibility check only proves that the complete canonical content appeared
+    # in the assistant turn, independent of CRLF/LF and accessor whitespace normalization.
+    $normalize = {
+        param([string]$Value)
+        return (($Value -replace '\s+', ' ').Trim())
+    }
+    $visible = & $normalize $Text
+    $agenda = & $normalize $CanonicalAgendaText
+    return ($visible.IndexOf($agenda, [StringComparison]::Ordinal) -ge 0)
+}
+
 function ConvertTo-SpecrewWorkshopSourceEvent {
     param([AllowNull()][string]$SourceEvent)
     $key = ([string]$SourceEvent).Trim().ToLowerInvariant() -replace '[-_]', ''
@@ -66,6 +172,7 @@ function Test-SpecrewWorkshopHumanResponseText {
 }
 
 function Test-SpecrewWorkshopResponseIsHookOutput {
+    # SPECREW-AUTHORITY-CONSUMER: workshop-hook-output-identity
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
@@ -88,6 +195,7 @@ function Test-SpecrewWorkshopResponseIsHookOutput {
 }
 
 function Write-SpecrewWorkshopAuthorityReceipt {
+    # SPECREW-AUTHORITY-CONTROL: workshop-agenda-question-identity
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string] $ProjectRoot,
@@ -114,10 +222,21 @@ function Write-SpecrewWorkshopAuthorityReceipt {
         $phase = [string]$question.phase
         $lens = [string]$question.lens
         $questionHash = [string]$question.message_hash
+        $agendaDigest = ''
+        $agendaBinding = $null
         if ($featureRef -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$' -or
             $phase -cnotin @('product-domain', 'agenda', 'lens') -or
             [string]::IsNullOrWhiteSpace($questionHash)) { return $null }
         if ($phase -eq 'lens' -and $lens -cnotmatch '^[a-z][a-z0-9-]{1,63}$') { return $null }
+        if ($phase -eq 'agenda') {
+            $digestProperty = $question.PSObject.Properties['agenda_digest']
+            $bindingProperty = $question.PSObject.Properties['agenda_binding']
+            if (-not $digestProperty -or [string]$digestProperty.Value -cnotmatch '^[a-f0-9]{64}$' -or
+                -not $bindingProperty -or $null -eq $bindingProperty.Value) { return $null }
+            $agendaDigest = [string]$digestProperty.Value
+            $agendaBinding = $bindingProperty.Value
+            if ((Get-SpecrewWorkshopAgendaDigest -Binding $agendaBinding) -cne $agendaDigest) { return $null }
+        }
         $controllerPath = Join-Path (Join-Path (Join-Path $root 'specs') $featureRef) 'lens-applicability.json'
         if (-not (Test-Path -LiteralPath $controllerPath -PathType Leaf)) { return $null }
         $controller = Get-Content -LiteralPath $controllerPath -Raw -Encoding UTF8 -ErrorAction Stop |
@@ -138,7 +257,7 @@ function Write-SpecrewWorkshopAuthorityReceipt {
 
         $authority = Get-SpecrewWorkshopResponseAuthority -Phase $phase -Response $Response
         $responseHash = Get-SpecrewWorkshopAuthorityHash -Text $Response
-        $receiptId = Get-SpecrewWorkshopAuthorityHash -Text ($featureRef + '|' + $phase + '|' + $lens + '|' + $questionHash + '|' + $responseHash)
+        $receiptId = Get-SpecrewWorkshopAuthorityHash -Text ($featureRef + '|' + $phase + '|' + $lens + '|' + $questionHash + '|' + $agendaDigest + '|' + $responseHash)
         $record = [ordered]@{
             schema_version      = '1'
             receipt_id         = $receiptId
@@ -153,6 +272,10 @@ function Write-SpecrewWorkshopAuthorityReceipt {
             source_event       = $canonicalSourceEvent
             host_kind          = [string]$HostKind
             recorded_at        = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        if ($phase -eq 'agenda') {
+            $record['agenda_digest'] = $agendaDigest
+            $record['agenda_binding'] = $agendaBinding
         }
 
         $path = Get-SpecrewWorkshopAuthorityReceiptPath -ProjectRoot $root
@@ -219,10 +342,14 @@ function Test-SpecrewWorkshopAuthorityReceipt {
         [AllowNull()][string] $Lens,
         [Parameter(Mandatory)][string] $ReceiptId,
         [Parameter(Mandatory)][string] $Confirmation,
-        [Parameter(Mandatory)][string] $ConfirmationScope
+        [Parameter(Mandatory)][string] $ConfirmationScope,
+        [AllowNull()][string] $AgendaDigest
     )
 
     $record = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase $Phase -Lens $Lens
-    return ($null -ne $record -and [string]$record.receipt_id -ceq $ReceiptId -and [string]$record.confirmation -ceq $Confirmation -and
-        [string]$record.confirmation_scope -ceq $ConfirmationScope -and [string]$record.confirmation -cne 'invalid')
+    if ($null -eq $record) { return $false }
+    $digestMatches = [string]::IsNullOrWhiteSpace($AgendaDigest) -or
+        ($record.PSObject.Properties['agenda_digest'] -and [string]$record.agenda_digest -ceq $AgendaDigest)
+    return ([string]$record.receipt_id -ceq $ReceiptId -and [string]$record.confirmation -ceq $Confirmation -and
+        [string]$record.confirmation_scope -ceq $ConfirmationScope -and [string]$record.confirmation -cne 'invalid' -and $digestMatches)
 }

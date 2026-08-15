@@ -177,7 +177,13 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    framing, say plainly that at any lens, if a question is unclear, they want to open a file, or they need more
    detail, they can simply *type* it (for example "explain more") instead of picking a menu option — you will
    explain, then re-ask. Typed
-    conversation is the required path on every host; do not use the host's structured picker during the workshop.
+   conversation is the required path on every host; do not use the host's structured picker during the workshop.
+   **Product-domain owns product facts, not technical decisions.** The Crew proposes the product-domain depth
+   from risk and novelty and the human confirms or adjusts that depth in their typed product-domain reply; do not persist
+   the selected product-domain depth before that typed human confirmation. Product-domain may ask whether a
+   technology is already externally fixed as a constraint. It must not ask the human to choose runtime/stack,
+   output format, timeout/reachability semantics, concurrency, or dependencies: those belong to their selected
+   technical lens, where each receives its own turn and typed receipt.
 2. **Infer applicability, then confirm (A4/FR-025).** Propose which lenses apply WITH your reasoning; ask the
    human only to confirm or adjust. Never make them answer obvious yes/no applicability; never silently
    auto-resolve a material area. **Render the agenda IN-BAND before asking for confirmation — fill this
@@ -203,8 +209,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    **Render the authority-bound agenda before asking.** Build one JSON object shaped as
    `{"selected":[{"lens":"architecture-core","depth":"medium","decision":"..."}],"skipped":[{"lens":"ui-ux","reason":"..."}]}`,
    then invoke `& .specify/extensions/specrew-speckit/scripts/confirm-workshop-agenda.ps1 -ProjectRoot . -FeatureRef <feature> -AgendaJson $agendaJson -RenderOnly`.
-   Send the command's output as the **entire assistant message, unchanged** — no introduction, suffix, or
-   differently worded duplicate. The hook binds the typed reply to that exact full agenda. Wait for the human's
+   Send the command's complete output as one unchanged, contiguous block. A short introduction or closing is
+   allowed, but may not replace, paraphrase, or split the canonical block. The hook binds the typed reply to the
+   structured agenda digest after proving that complete block was visible. Wait for the human's
    typed response. **The moment they confirm, PERSIST it before opening lens 1** by invoking the same
    command with the identical `$agendaJson` and without `-RenderOnly`. If the selected set, depths, decisions,
    skipped set, or reasons change, render the new canonical agenda and ask again; an older receipt cannot authorize it.
@@ -216,6 +223,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    are added later, as each lens completes per step 6. A resume can only compute the remaining agenda if the agenda
    itself is on disk; an agenda that lives only in scrollback is lost on exit (observed: an unpersisted agenda made
    a resuming host re-run specify instead of continuing the workshop).
+   If a controller refusal remains after the one named retry, stop and tell the human that the workshop plumbing
+   is broken; do not retry again. Never write `lens-applicability.json` or any governed controller state by hand
+   to clear a refusal.
    **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
    lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
    all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as
@@ -234,6 +244,9 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
    and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
+   This is also a question-content boundary: a product-domain turn must not harvest runtime/stack, output,
+   timeout/reachability, concurrency, or dependency decisions owned by later technical lenses. A receipt for
+   one lens cannot authorize another lens's answer.
    **Keep the controller-owned workshop state durable and complete (FR-055/FR-056).** Before you stop and wait
    for an answer, ensure the applicability artifact for the CURRENT workshop scope exists and reflects either
    the strict feature-level pre-agenda state or the current confirmed agenda. During specify/intake, authority is

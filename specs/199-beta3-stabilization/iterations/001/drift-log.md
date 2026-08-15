@@ -22,10 +22,50 @@
 
 ## Summary
 
-**Total drift events**: 45 (DRIFT-199-I001-001 through -045)
+**Total drift events**: 46 (DRIFT-199-I001-001 through -046)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-046 — two-host beta3 walk found an unsatisfiable agenda crossing and advisory intake authority (resolved; fresh walk pending)
+
+- **Observed**: 2026-08-15, independent Copilot CLI and Claude Code walks against
+  `ada7c793` both reached the agenda confirmation and could not clear it. The writer hashed
+  canonical agenda prose while the conformance provider hashed a transcript-accessor
+  derivative. Copilot then hand-wrote a confirmed controller; Claude stopped and diagnosed
+  the mismatch. The same walks also showed product-domain questions harvesting technical
+  decisions, an intake menu that offered an impossible action and did not wait, silently
+  agent-selected product-domain depth, and a shipped provenance comment containing the
+  maintainer employer. The two preserved projects under
+  `C:\Dev\specrew-beta3-manual-ada7c793` remain untouched evidence.
+- **Rulings and mitigation**: agenda authority binds the ordered selected/skipped decision
+  content, while visible prose is only a normalized containment proof; a changed agenda
+  names changed lenses and requires a new reply. Confirmed controllers require exact flat
+  shape, a matching receipt, and the same content digest at every reader. Intake offers a
+  menu only when at least two executable actions exist and then ends the turn; a single
+  action is announced and executed. The Crew proposes product-domain depth and the human
+  confirms or adjusts it in the typed product-domain reply. Product-domain may establish an
+  externally fixed technology constraint but cannot harvest runtime, output, timeout,
+  reachability, concurrency, or dependency decisions owned by technical lenses.
+- **Resolution**: the shipped conformance-provider path now carries `agenda_binding` plus
+  `agenda_digest` through the question handover and typed receipt. The governed writer
+  persists the same digest; strict controller readers reject nested skipped entries,
+  receipt substitution, and content drift. All actionable agenda refusals use one terminal
+  contract: one named retry, then human escalation, with an explicit prohibition on writing
+  controller state by hand. Provider repair routing consumes the new strict-reader reasons.
+  Bootstrap and workshop instructions carry the two product rulings, and the private
+  OneDrive example is generic.
+- **Measured proof**: `workshop-agenda-confirmation.tests.ps1` is green through the real
+  provider for LF and CRLF transcripts with preamble/suffix; agenda A cannot authorize B;
+  nested and flat-but-substituted controller fixtures fail. Bootstrap, lens-conduct,
+  refusal-contract mutation, and review-engine tests are green. Complete census, registry,
+  packaging, and fresh two-host walks remain the release-candidate validation leg.
+- **Class closure**: the production controller stores and readers consume one structured
+  agenda digest; substitution is therefore unreachable through prose normalization or a
+  plausible hand edit. The AST-derived actionable-refusal guard has a floor and mutation
+  proof. Bootstrap and lens ownership are pinned in the deployed instruction contract, and
+  the complete disk census plus two-host walk is the acceptance instrument for instruction
+  interpretation that static tests cannot prove.
 
 ### DRIFT-199-I001-045 — the curated registry outgrew both CI timeout ceilings (resolved)
 

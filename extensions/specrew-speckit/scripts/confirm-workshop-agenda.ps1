@@ -31,6 +31,24 @@ function Write-AtomicUtf8NoBom {
     }
 }
 
+function New-SpecrewWorkshopAgendaRefusal {
+    param(
+        [Parameter(Mandatory)][string]$Summary,
+        [AllowEmptyString()][string]$Action
+    )
+    $parts = [Collections.Generic.List[string]]::new()
+    $parts.Add($Summary.Trim()) | Out-Null
+    if (-not [string]::IsNullOrWhiteSpace($Action)) { $parts.Add($Action.Trim()) | Out-Null }
+    $parts.Add((Get-SpecrewWorkshopRefusalContractText)) | Out-Null
+    return ($parts -join ' ')
+}
+
+$authorityStorePath = Join-Path $PSScriptRoot 'workshop-authority-store.ps1'
+if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
+    throw "Workshop typed-turn authority helper is missing: '$authorityStorePath'."
+}
+. $authorityStorePath
+
 function Get-CanonicalWorkshopAgendaText {
     param(
         [Parameter(Mandatory)][Collections.IDictionary]$Agenda,
@@ -52,21 +70,13 @@ function Get-CanonicalWorkshopAgendaText {
     return ($lines -join [Environment]::NewLine)
 }
 
-function Get-WorkshopAgendaQuestionHash {
-    param(
-        [Parameter(Mandatory)][string]$FeatureRef,
-        [AllowEmptyString()][string]$CurrentLens,
-        [Parameter(Mandatory)][string]$Text
-    )
-    return Get-SpecrewWorkshopAuthorityHash -Text ('feature|' + $FeatureRef + '||' + $CurrentLens + '|' + $Text)
-}
-
 $resolvedProjectRoot = [IO.Path]::GetFullPath($ProjectRoot).TrimEnd(
     [IO.Path]::DirectorySeparatorChar,
     [IO.Path]::AltDirectorySeparatorChar
 )
 if (-not (Test-Path -LiteralPath (Join-Path $resolvedProjectRoot '.specrew/config.yml') -PathType Leaf)) {
-    throw 'Workshop agenda confirmation requires a Specrew-governed project.'
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'Workshop agenda confirmation requires a Specrew-governed project.' `
+        -Action 'Run the agenda command from the project root that contains .specrew/config.yml.')
 }
 if ($FeatureRef -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$') {
     throw "FeatureRef must be an exact Specrew feature reference such as '001-article-amplifier'."
@@ -100,22 +110,20 @@ if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
 }
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 20 -ErrorAction Stop
 if ([string]$state.agenda_contract -cne 'complete-coverage-v1' -or [string]$state.agenda_status -cne 'pending-confirmation') {
-    throw 'The workshop agenda can only be confirmed from the complete-coverage-v1 pending-confirmation state.'
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The workshop agenda can only be confirmed from the complete-coverage-v1 pending-confirmation state.' `
+        -Action 'Stop and ask the human to restart this feature workshop from its current governed state; do not overwrite the controller.')
 }
 if (@($state.selected).Count -ne 0 -or @($state.workshop.PSObject.Properties).Count -ne 0) {
-    throw 'The pending workshop controller already contains decisions; refusing to overwrite it.'
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The pending workshop controller already contains decisions; refusing to overwrite it.' `
+        -Action 'Stop and tell the human the controller is inconsistent; this state cannot be cleared by another agenda confirmation attempt.')
 }
 if ([string]$state.human_turn_contract -cne 'typed-turns-v1') {
     throw 'The workshop controller does not carry the typed-turn authority contract.'
 }
-$authorityStorePath = Join-Path $PSScriptRoot 'workshop-authority-store.ps1'
-if (-not (Test-Path -LiteralPath $authorityStorePath -PathType Leaf)) {
-    throw "Workshop typed-turn authority helper is missing: '$authorityStorePath'."
-}
-. $authorityStorePath
 $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'product-domain'
 if ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid') {
-    throw 'Product-domain has no typed human reply receipt. Re-render its question as prose and wait for a typed answer.'
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'Product-domain has no typed human reply receipt.' `
+        -Action 'Re-render its question as prose once and wait for a typed answer.')
 }
 $catalogPath = Join-Path $resolvedProjectRoot '.specify/extensions/specrew-speckit/knowledge/design-lenses/index.yml'
 if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
@@ -163,23 +171,45 @@ if ($missing.Count -gt 0) {
 }
 
 $canonicalAgendaText = Get-CanonicalWorkshopAgendaText -Agenda $agenda -Skipped $skipped
+$agendaBinding = ConvertTo-SpecrewWorkshopAgendaBinding -Agenda $agenda -Skipped $skipped
+$agendaDigest = Get-SpecrewWorkshopAgendaDigest -Binding $agendaBinding
+$proposalPath = Join-Path $resolvedProjectRoot '.specrew/handover/workshop-agenda-proposal.json'
 if ($RenderOnly) {
+    $proposal = [ordered]@{
+        schema_version = '1.0'
+        feature_ref = $FeatureRef
+        lens = 'product-domain'
+        agenda_digest = $agendaDigest
+        agenda_binding = $agendaBinding
+        canonical_text = $canonicalAgendaText
+        recorded_at = [DateTimeOffset]::UtcNow.ToString('o')
+    }
+    $proposalDir = Split-Path -Parent $proposalPath
+    if (-not (Test-Path -LiteralPath $proposalDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $proposalDir -Force | Out-Null
+    }
+    Write-AtomicUtf8NoBom -Path $proposalPath -Content (($proposal | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
     Write-Output $canonicalAgendaText
     exit 0
 }
 $agendaReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'agenda'
 if ($null -eq $agendaReceipt -or [string]$agendaReceipt.confirmation -cne 'human-confirmed' -or
     [string]$agendaReceipt.confirmation_scope -cne 'lens-selection') {
-    throw 'The complete selected + skipped agenda has no typed human confirmation receipt. Render it in full and wait for a typed confirm/change reply.'
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The complete selected + skipped agenda has no typed human confirmation receipt.' `
+        -Action 'Run this command with -RenderOnly once, send its complete output, and wait for a typed confirm or change reply.')
 }
-# During pending-confirmation the strict controller projects product-domain as the current
-# lens; it does not persist a current_lens field in the pre-agenda JSON. Bind to the same
-# value the conformance provider used when it hashed the rendered agenda question.
-$currentLens = 'product-domain'
 # SPECREW-AUTHORITY-CONSUMER: workshop-agenda-question-identity
-$expectedQuestionHash = Get-WorkshopAgendaQuestionHash -FeatureRef $FeatureRef -CurrentLens $currentLens -Text $canonicalAgendaText
-if ([string]$agendaReceipt.question_hash -cne $expectedQuestionHash) {
-    throw 'The typed agenda confirmation belongs to different agenda text. Render this exact agenda with -RenderOnly, wait for a typed reply, then confirm without changing selected or skipped lenses.'
+$receiptDigestProperty = $agendaReceipt.PSObject.Properties['agenda_digest']
+$receiptBindingProperty = $agendaReceipt.PSObject.Properties['agenda_binding']
+if (-not $receiptDigestProperty -or -not $receiptBindingProperty -or $null -eq $receiptBindingProperty.Value) {
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The typed agenda confirmation is not bound to agenda content.' `
+        -Action 'Run this command with -RenderOnly once, send its complete output, and wait for one new typed reply.')
+}
+if ([string]$receiptDigestProperty.Value -cne $agendaDigest) {
+    $changedLenses = @(Get-SpecrewWorkshopAgendaChangedLenses -ExpectedBinding $receiptBindingProperty.Value -ActualBinding $agendaBinding)
+    $changedLabel = if ($changedLenses.Count -gt 0) { $changedLenses -join ', ' } else { '(content digest changed)' }
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary ("The agenda decisions changed after the human reply. Changed lenses: {0}." -f $changedLabel) `
+        -Action 'Render the current complete agenda once with -RenderOnly and wait for a new typed confirmation.')
 }
 
 $confirmed = [ordered]@{
@@ -195,9 +225,13 @@ $confirmed = [ordered]@{
     agenda_confirmation       = $Confirmation
     agenda_confirmation_scope = 'lens-selection'
     agenda_turn_receipt       = [string]$agendaReceipt.receipt_id
+    agenda_digest             = $agendaDigest
     workshop                  = [ordered]@{}
 }
 Write-AtomicUtf8NoBom -Path $statePath -Content (($confirmed | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
+if (Test-Path -LiteralPath $proposalPath -PathType Leaf) {
+    Remove-Item -LiteralPath $proposalPath -Force -ErrorAction SilentlyContinue
+}
 
 if ($PassThru) {
     [pscustomobject]@{

@@ -516,7 +516,8 @@ function Get-SpecrewWorkshopLifecycleState {
                 }
             }
             foreach ($lens in $skippedNames) {
-                if ($lens -cin $selected -or [string]::IsNullOrWhiteSpace([string]$skipped.PSObject.Properties[$lens].Value)) {
+                $skippedValue = $skipped.PSObject.Properties[$lens].Value
+                if ($lens -cin $selected -or $skippedValue -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$skippedValue)) {
                     return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-skipped-entry-invalid' -Selected $selected -AgendaStatus $agendaStatus
                 }
             }
@@ -524,6 +525,31 @@ function Get-SpecrewWorkshopLifecycleState {
             if ($coverageNames.Count -ne $technicalCatalog.Count -or
                 @(Compare-Object -ReferenceObject $technicalCatalog -DifferenceObject $coverageNames).Count -gt 0) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-coverage-incomplete' -Selected $selected -AgendaStatus $agendaStatus
+            }
+            if ($humanTurnContract -eq 'typed-turns-v1') {
+                $agendaDigestProperty = $applicability.PSObject.Properties['agenda_digest']
+                if (-not $agendaDigestProperty -or $agendaDigestProperty.Value -isnot [string] -or
+                    [string]$agendaDigestProperty.Value -cnotmatch '^[a-f0-9]{64}$') {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-digest-missing' -Selected $selected -AgendaStatus $agendaStatus
+                }
+                if (-not (Get-Command ConvertTo-SpecrewWorkshopAgendaBinding -ErrorAction SilentlyContinue) -or
+                    -not (Get-Command Get-SpecrewWorkshopAgendaDigest -ErrorAction SilentlyContinue)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-digest-helper-missing' -Selected $selected -AgendaStatus $agendaStatus
+                }
+                $agendaMap = [ordered]@{}
+                foreach ($property in $agenda.PSObject.Properties) { $agendaMap[[string]$property.Name] = $property.Value }
+                $skippedMap = [ordered]@{}
+                foreach ($property in $skipped.PSObject.Properties) { $skippedMap[[string]$property.Name] = [string]$property.Value }
+                $binding = ConvertTo-SpecrewWorkshopAgendaBinding -Agenda $agendaMap -Skipped $skippedMap
+                $computedDigest = Get-SpecrewWorkshopAgendaDigest -Binding $binding
+                if ($computedDigest -cne [string]$agendaDigestProperty.Value) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-digest-mismatch' -Selected $selected -AgendaStatus $agendaStatus
+                }
+                $agendaReceiptId = [string]$applicability.PSObject.Properties['agenda_turn_receipt'].Value
+                if (-not (Test-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -Phase 'agenda' `
+                        -ReceiptId $agendaReceiptId -Confirmation 'human-confirmed' -ConfirmationScope 'lens-selection' -AgendaDigest $computedDigest)) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-agenda-turn-receipt-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
             }
         }
 
