@@ -89,6 +89,26 @@ try {
     catch { $missingAuthorityRefused = ($_.Exception.Message -match 'typed human reply receipt') }
     Assert-True $missingAuthorityRefused 'writer refuses model-authored agenda state when no typed human response receipt exists'
     $null = Add-TypedReply -FeatureRef '001-url-checker' -Phase 'product-domain' -Lens 'product-domain' -Reply 'The product framing matches.'
+
+    # Beta3 Copilot walk regression (2026-08-15): the model showed the technical agenda before it persisted the
+    # product-domain records. Every subsequent typed "confirmed" was therefore correctly classified as another
+    # product-domain answer and the later agenda writer prescribed an impossible retry. RenderOnly owns the earliest
+    # deterministic boundary: it must not show an agenda that the prompt hook cannot classify as agenda authority.
+    $prematureAgendaRefused = $false
+    $prematureAgendaMessage = ''
+    try {
+        & $writer -ProjectRoot $scratch -FeatureRef '001-url-checker' `
+            -SelectedLens @('architecture-core') -SelectedDepth @('light') -SelectedDecision @('Choose structure.') `
+            -SkippedLens @() -SkippedReason @() -RenderOnly | Out-Null
+    }
+    catch {
+        $prematureAgendaMessage = $_.Exception.Message
+        $prematureAgendaRefused = ($prematureAgendaMessage -match 'product-domain\.md' -and
+            $prematureAgendaMessage -match 'product-domain\.yml' -and
+            $prematureAgendaMessage -match '(?i)before.*agenda|agenda.*before')
+    }
+    Assert-True $prematureAgendaRefused "render-only refuses before both product-domain records exist and names the real prerequisite: $prematureAgendaMessage"
+
     New-Item -ItemType Directory -Path (Join-Path $scratch 'specs\001-url-checker\workshop') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.md') -Value '# Product domain' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.yml') -Value 'depth: light' -Encoding UTF8

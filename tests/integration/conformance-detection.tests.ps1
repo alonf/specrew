@@ -1181,6 +1181,22 @@ Write-Pass "Case 16e: feature-level intake question stops once without a generic
 # ---- Cases 16pa-16pd / issue #3104: product-domain runs before an informed technical agenda exists. The exact
 # feature-level pending-confirmation artifact is valid only in its narrow empty shape and only before lifecycle
 # activation. It must keep the first question conversational without weakening boundary or stale-scope checks.
+
+# ---- Case 16p0 / beta3 Copilot 1.0.80 walk regression: the model asked the first product-domain question before
+#      creating the feature. With no feature/controller the hook cannot retain the typed answer. Refuse at that
+#      first Stop and name the convergent ordering repair; do not let the human answer a question that cannot count.
+$p16p0 = New-Fixture -Working '' -LastAuth ''
+$t16p0 = New-Transcript -Proj $p16p0 -Turns @(@{ role = 'assistant'; text = "Product-domain — Light pass`n`nDoes this product framing match what you want?" })
+$r16p0 = Invoke-Conformance -Proj $p16p0 -TranscriptPath $t16p0
+if (-not $r16p0.Blocked -or $r16p0.Out -match 'five-part context packet') { Fail "Case 16p0: a product question before feature setup MUST get a targeted ordering correction. Out: $($r16p0.Out)" }
+if ($r16p0.Out -notmatch '(?i)create the feature.*project-provided' -or
+    $r16p0.Out -notmatch '(?i)show the same product question again' -or
+    $r16p0.Out -match '(?i)lens-applicability|controller') {
+    Fail "Case 16p0: correction must give the project-level repair without exposing workshop machinery. Out: $($r16p0.Out)"
+}
+if (Test-Path -LiteralPath (Join-Path $p16p0 'specs') -PathType Container) { Fail 'Case 16p0: the read-only hook must not create the feature itself' }
+Write-Pass "Case 16p0: the first product question cannot outrun the feature setup needed to retain its answer"
+
 $p16pa = New-Fixture -Working '' -LastAuth ''
 New-Spec -Proj $p16pa
 New-PreAgendaLensApplicability -Proj $p16pa
@@ -1196,6 +1212,24 @@ if ([string]$preAgendaHandover.scope -ne 'feature' -or [string]$preAgendaHandove
     Fail "Case 16pa: pre-agenda handover must retain exact feature/product-domain authority: $($preAgendaHandover | ConvertTo-Json -Compress)"
 }
 Write-Pass "Case 16pa: strict pre-agenda product-domain state suppresses the generic packet and retains exact re-entry context"
+
+# ---- Case 16pa-agenda / beta3 Copilot 1.0.80 walk regression: the model rendered a technical agenda while the
+#      product-domain files were still absent. The state therefore remained product-domain and three confirmations
+#      could never mint an agenda receipt. Stop on the premature agenda itself and name the missing prior action.
+$p16paAgenda = New-Fixture -Working '' -LastAuth ''
+New-Spec -Proj $p16paAgenda
+New-PreAgendaLensApplicability -Proj $p16paAgenda
+New-HandoverSnapshot -Proj $p16paAgenda -ChangedUserFiles 0
+$t16paAgenda = New-Transcript -Proj $p16paAgenda -Turns @(@{ role = 'assistant'; text = "Workshop agenda`n`nSelected lenses:`n- architecture-core (medium): choose structure`n`nSkipped lenses:`n- data-storage: no durable data`n`nDoes this agenda look right?" })
+$r16paAgenda = Invoke-Conformance -Proj $p16paAgenda -TranscriptPath $t16paAgenda
+if (-not $r16paAgenda.Blocked -or $r16paAgenda.Out -match 'five-part context packet') { Fail "Case 16pa-agenda: a technical agenda before product records exist MUST get a targeted ordering correction. Out: $($r16paAgenda.Out)" }
+if ($r16paAgenda.Out -notmatch '(?i)product grounding.*recorded' -or
+    $r16paAgenda.Out -notmatch '(?i)before.*technical' -or
+    $r16paAgenda.Out -notmatch '(?i)do not ask.*agenda confirmation.*first' -or
+    $r16paAgenda.Out -match '(?i)lens-applicability|controller') {
+    Fail "Case 16pa-agenda: correction must name the true earlier prerequisite and forbid the impossible confirmation retry. Out: $($r16paAgenda.Out)"
+}
+Write-Pass "Case 16pa-agenda: an agenda cannot outrun the product record that changes receipt phase"
 
 # ---- Cases 16pa0/16pa0b / beta3 manual-walk regression: the first governed-feature turn creates two paths:
 #      the strict controller plus an UNTOUCHED spec template. That scaffold is workshop setup, not authored spec
