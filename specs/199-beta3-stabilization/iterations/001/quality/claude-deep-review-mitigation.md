@@ -70,23 +70,18 @@ The deterministic consumer guard now covers the authority-bearing decisions adde
 
 ## Verification evidence before packaging
 
-- Complete PowerShell census at detached commit `0ad486b0`: **348/348 named files green** — 120 Pester containers plus 228 direct scripts, zero failures, and no caller-worktree contamination.
-- F-198 curated registry at the same commit: **118/118 registered suites green** in 1,153.271 seconds. This is reported only as the explicit registry contract, not as the complete test corpus.
-- Changed-only governance integration: **14/14 green** in 833.74 seconds when measured alone; its path-specific census ceiling is 1,200 seconds.
-- Full Markdown lint, the 203-file self-leak firewall, distribution publish harness, and all five installed production-harness process specifications are green; provider invocations: zero.
-- Workshop typed-turn and replay defenses: campaign Stop prose, recorded hook-output replay, case-normalized events, stores beyond 256 lines and 1 MiB, and genuine typed answers all covered and green.
-- Workshop question precedence: proved workshop questions recover from the bounded Copilot flush race and do not render duplicate five-part packets; low-header recovery records its bounded reread attempt/result.
-- Signoff abuse/legitimate paths: raw CLI override removed; exact human phrase, campaign/tree binding, tamper rejection, stale binding rejection, budget 3/4 allow, 4/4 refusal, reset, and corrupt-store refusal are green.
-- Reparse, hook-health, verification-plan, multi-host instruction, legacy migration, recovery, and containment proof suites are green.
+- Historical complete evidence at `0ad486b0` and `862da048` is superseded by later beta3
+  stabilization changes and is not release evidence for the current candidate.
+- The exact detached `745cf37d` census reported **350/350**, but that result is rejected as
+  release evidence: the serialized F-198 registry returned **119/121** and proved the census
+  had observed transiently materialized host-skill bytes while distribution readers ran in
+  parallel.
+- The two failures were `code-rules-skill-multihost.tests.ps1` and
+  `product-domain-multihost.tests.ps1`; both rejected stale tracked workshop-skill copies.
+- The canonical refusal instruction, project mirror, four host copies, and census serial lane
+  are now under repair. A new exact commit must pass both complete instruments before packaging.
 
-These measurements establish implementation correctness before packaging. The final
-code-bearing commit `862da048` was then run through the complete census and the curated
-registry: **348/348** discovered PowerShell entry files and **118/118** registered suites
-passed. Release-facing Markdown, self-leak, distribution, mirror, and five-host provider-free
-checks also passed. The subsequent record-only commit reconciles these evidence statuses and
-changes no executable or packaged consumer file.
-
-## Manual-test gate — satisfied
+## Manual-test gate — not yet satisfied
 
 No new manual-test environment is created until:
 
@@ -96,5 +91,5 @@ No new manual-test environment is created until:
 4. the F-198 registry, governance validation, markdown lint, packaging, deployed-mirror parity, and five harness dry runs pass without provider invocation;
 5. the exact resulting commit is packaged, installed, and identified by both build id and a new-code marker.
 
-All five conditions were satisfied on 2026-08-15 before the fresh Copilot and Claude manual
-fixtures were created. No provider round was invoked during validation or fixture creation.
+The preserved `ada7c793` evidence projects are untouched. No fresh Copilot or Claude manual
+fixture will be created until all five conditions pass for the same exact installed commit.

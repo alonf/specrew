@@ -41,14 +41,17 @@ $fileTimeoutOverrides = @{
 
 # These suites launch enough nested repositories/processes that overlapping them with three other
 # files changes the thing being measured: Spec Kit init can fail transiently, process-containment
-# tests can race machine-wide resources, and the changed-only matrix can cross its otherwise ample
-# 20-minute ceiling. Keep the default parallel lane for the rest of the census, but drain it before
-# each measured process-heavy suite and run that suite alone.
+# tests can race machine-wide resources, and distribution-parity readers can observe another test's
+# temporary deploy instead of the committed host surfaces. Keep the default parallel lane for the
+# rest of the census, but drain it before each measured process-heavy or shared-surface suite and run
+# that suite alone.
 $serialRelativePaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 foreach ($relativePath in @(
         'tests\integration\validate-governance-changed-only.tests.ps1',
         'tests\unit\boundary-authorization-prompt-truth.tests.ps1',
-        'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1')) {
+        'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1',
+        'tests\integration\code-rules-skill-multihost.tests.ps1',
+        'tests\integration\product-domain-multihost.tests.ps1')) {
     [void]$serialRelativePaths.Add($relativePath)
 }
 

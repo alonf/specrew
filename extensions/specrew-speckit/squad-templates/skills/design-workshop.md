@@ -223,9 +223,11 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    are added later, as each lens completes per step 6. A resume can only compute the remaining agenda if the agenda
    itself is on disk; an agenda that lives only in scrollback is lost on exit (observed: an unpersisted agenda made
    a resuming host re-run specify instead of continuing the workshop).
-   If a controller refusal remains after the one named retry, stop and tell the human that the workshop plumbing
-   is broken; do not retry again. Never write `lens-applicability.json` or any governed controller state by hand
-   to clear a refusal.
+   If the named action does not clear a refusal on the next attempt, stop; do not retry again and do not write
+   workshop records by hand to get past it. Report calmly in the user's project terms: what you were doing; that
+   their answers are safe and nothing has been lost (only when that is true); what you could not complete without
+   diagnosing or assigning fault; one concrete next action you can perform; and ask the human for their approval.
+   Keep machinery diagnosis in the drift record, not in the message the human must act on.
    **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
    lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
    all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as

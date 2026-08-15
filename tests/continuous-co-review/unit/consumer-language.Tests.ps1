@@ -344,4 +344,42 @@ Describe 'Consumer language layer (T010)' {
                 Should -BeNullOrEmpty
         }
     }
+
+    Context 'every shipped design-workshop instruction carries the calm refusal contract' {
+        BeforeAll {
+            $script:WorkshopInstructionSurfaces = @(
+                & git -C $script:RepoRoot ls-files '*design-workshop*' |
+                    ForEach-Object { Join-Path $script:RepoRoot $_ } |
+                    Where-Object {
+                        if (-not (Test-Path -LiteralPath $_ -PathType Leaf)) { return }
+                        $source = Get-Content -LiteralPath $_ -Raw -Encoding UTF8
+                        $source -match '(?ms)^---\s.*?^name:\s*["'']?specrew-design-workshop["'']?\s*$.*?^---\s*$'
+                    }
+            )
+        }
+
+        It 'discovers the canonical, project mirror, and four host-materialized surfaces' {
+            @($script:WorkshopInstructionSurfaces).Count | Should -BeGreaterOrEqual 6 -Because 'distribution parity must be discovered from the skill identity, not remembered host paths'
+        }
+
+        It 'each surface tells the agent to report safely, avoid blame, propose one action, and ask approval' {
+            $offenders = [Collections.Generic.List[string]]::new()
+            foreach ($path in $script:WorkshopInstructionSurfaces) {
+                $source = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+                foreach ($required in @(
+                        '(?i)answers? (?:are|is) safe|nothing (?:has been|was) lost',
+                        '(?is)without\s+(?:diagnosing|assigning|asserting).*(?:fault|blame)|do not blame',
+                        '(?i)one concrete next action',
+                        '(?i)ask (?:the human )?for (?:their )?approval')) {
+                    if ($source -notmatch $required) {
+                        $offenders.Add(("missing /{0}/ in {1}" -f $required, $path.Substring($script:RepoRoot.Length + 1))) | Out-Null
+                    }
+                }
+                if ($source -match '(?i)(?:workshop )?plumbing\s+is\s+broken|write `?lens-applicability\.json`?.*clear a refusal') {
+                    $offenders.Add(("blaming or hand-edit wording remains in {0}" -f $path.Substring($script:RepoRoot.Length + 1))) | Out-Null
+                }
+            }
+            @($offenders) -join "`n" | Should -BeNullOrEmpty
+        }
+    }
 }

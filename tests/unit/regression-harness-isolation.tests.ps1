@@ -60,7 +60,9 @@ if ($runner -notmatch '\$running\.timeout_seconds' -or
 foreach ($serialCensusPath in @(
         'tests\integration\validate-governance-changed-only.tests.ps1',
         'tests\unit\boundary-authorization-prompt-truth.tests.ps1',
-        'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1')) {
+        'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1',
+        'tests\integration\code-rules-skill-multihost.tests.ps1',
+        'tests\integration\product-domain-multihost.tests.ps1')) {
     if (-not $censusRunner.Contains($serialCensusPath)) {
         Fail "Disk-wide census lost measured serial path '$serialCensusPath'."
     }
