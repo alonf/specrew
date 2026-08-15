@@ -18,6 +18,7 @@ $accessor = Join-Path $repoRoot 'scripts\internal\bootstrap\ProjectMetadataAcces
 $catalogSource = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\design-lenses\index.yml'
 $authoritySource = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\workshop-authority-store.ps1'
 $yamlReaderSource = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\intake\helpers\Read-IntakeYaml.ps1'
+$provider = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
 
 Assert-True (Test-Path -LiteralPath $writer -PathType Leaf) 'agenda confirmation writer exists'
 Assert-True (Test-Path -LiteralPath $mirror -PathType Leaf) 'agenda confirmation deployed mirror exists'
@@ -46,6 +47,42 @@ try {
         return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'test' -SourceEvent 'UserPromptSubmit'
     }
 
+    function Add-AgendaReplyThroughShippedProvider {
+        param(
+            [Parameter(Mandatory)][string]$AssistantText,
+            [Parameter(Mandatory)][string]$Reply,
+            [ValidateSet('lf','crlf')][string]$LineEnding = 'lf'
+        )
+        $visible = if ($LineEnding -eq 'crlf') {
+            (($AssistantText -replace "`r`n", "`n") -replace "`n", "`r`n")
+        }
+        else { $AssistantText -replace "`r`n", "`n" }
+        $transcriptPath = Join-Path $scratch ('.specrew\runtime\agenda-' + [guid]::NewGuid().ToString('N') + '.jsonl')
+        New-Item -ItemType Directory -Path (Split-Path -Parent $transcriptPath) -Force | Out-Null
+        $line = [pscustomobject]@{
+            type = 'assistant'
+            message = [pscustomobject]@{
+                content = @([pscustomobject]@{ type = 'text'; text = $visible })
+            }
+        } | ConvertTo-Json -Depth 8 -Compress
+        [IO.File]::WriteAllText($transcriptPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+
+        $priorModulePath = $env:SPECREW_MODULE_PATH
+        $env:SPECREW_MODULE_PATH = $repoRoot
+        try {
+            Push-Location $scratch
+            try { $providerOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --host-kind claude --source-event Stop --transcript-path $transcriptPath 2>&1) }
+            finally { Pop-Location }
+        }
+        finally { $env:SPECREW_MODULE_PATH = $priorModulePath }
+        Assert-True ($LASTEXITCODE -eq 0 -and ($providerOutput -join "`n") -notmatch 'SPECREW-STOP-BLOCK') 'real conformance provider accepts the visible agenda as the active workshop question'
+        $questionPath = Join-Path $scratch '.specrew\handover\workshop-question.json'
+        Assert-True (Test-Path -LiteralPath $questionPath -PathType Leaf) 'real conformance provider writes the agenda question handover'
+        $question = Get-Content -LiteralPath $questionPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+        Assert-True ([string]$question.phase -eq 'agenda' -and -not [string]::IsNullOrWhiteSpace([string]$question.agenda_digest)) 'real conformance provider binds the rendered agenda content independently of transcript prose hashing'
+        return Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $scratch -Response $Reply -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+    }
+
     & $initializer -ProjectRoot $scratch -FeatureRef '001-url-checker'
     $missingAuthorityRefused = $false
     try { & $writer -ProjectRoot $scratch -FeatureRef '001-url-checker' -SelectedLens @('architecture-core') -SelectedDepth @('light') -SelectedDecision @('Choose structure.') -SkippedLens @() -SkippedReason @() | Out-Null }
@@ -55,7 +92,6 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $scratch 'specs\001-url-checker\workshop') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.md') -Value '# Product domain' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.yml') -Value 'depth: light' -Encoding UTF8
-    $null = Add-TypedReply -FeatureRef '001-url-checker' -Phase 'agenda' -Lens 'product-domain' -Reply 'Confirm this selected and skipped agenda.'
     $statePath = Join-Path $scratch 'specs\001-url-checker\lens-applicability.json'
     $before = [IO.File]::ReadAllBytes($statePath)
     $incompleteRefused = $false
@@ -96,14 +132,14 @@ try {
 
     $renderedAgenda = @(& $writer -ProjectRoot $scratch -FeatureRef '001-url-checker' -AgendaJson $agendaJson -RenderOnly) -join [Environment]::NewLine
     Assert-True ($renderedAgenda -match 'Selected lenses:' -and $renderedAgenda -match 'Skipped lenses:' -and $renderedAgenda -match 'ui-ux: The interface is terminal-only') 'render-only emits the complete canonical selected + skipped agenda the human must see'
-    $null = Add-TypedReply -FeatureRef '001-url-checker' -Phase 'agenda' -Lens 'product-domain' `
-        -Reply 'Confirm this selected and skipped agenda.' -MessageText $renderedAgenda
+    $null = Add-AgendaReplyThroughShippedProvider -AssistantText ("Agenda follows.`n`n" + $renderedAgenda + "`n`nPlease answer above.") `
+        -Reply 'Confirm this selected and skipped agenda.' -LineEnding lf
 
     $changedAgenda = $agendaJson.Replace('Choose the processing pipeline and concurrency boundary.', 'Choose a different architecture.')
     $mismatchRefused = $false
     try { & $writer -ProjectRoot $scratch -FeatureRef '001-url-checker' -AgendaJson $changedAgenda | Out-Null }
-    catch { $mismatchRefused = ($_.Exception.Message -match 'belongs to different agenda text') }
-    Assert-True $mismatchRefused 'a receipt for agenda A cannot authorize changed agenda B'
+    catch { $mismatchRefused = ($_.Exception.Message -match 'architecture-core' -and $_.Exception.Message -match 'changed') }
+    Assert-True $mismatchRefused 'a receipt for agenda A cannot authorize changed agenda B and names the changed lens'
 
     $result = & $writer -ProjectRoot $scratch -FeatureRef '001-url-checker' -AgendaJson $agendaJson -PassThru
     Assert-True ([string]$result.state -eq 'confirmed' -and $result.selected_count -eq 4 -and $result.skipped_count -eq 6) 'writer reports the exact confirmed agenda coverage'
@@ -119,6 +155,25 @@ try {
     $lifecycle = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef '001-url-checker'
     Assert-True ($lifecycle.status -eq 'active' -and $lifecycle.current_lens -eq 'architecture-core') 'strict controller opens lens 1 only after complete coverage and human confirmation'
 
+    $validStateJson = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+    $forgedShape = $validStateJson | ConvertFrom-Json -Depth 20
+    $forgedShape.skipped.'ui-ux' = [pscustomobject]@{ reason = 'The interface is terminal-only.' }
+    $forgedShape | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $statePath -Encoding UTF8
+    $forgedShapeResult = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef '001-url-checker'
+    Assert-True ($forgedShapeResult.status -eq 'invalid' -and $forgedShapeResult.reason -eq 'workshop-agenda-skipped-entry-invalid') 'a hand-written nested skipped entry is rejected by the production controller reader'
+
+    [IO.File]::WriteAllText($statePath, $validStateJson, [Text.UTF8Encoding]::new($false))
+    $forgedContent = $validStateJson | ConvertFrom-Json -Depth 20
+    $forgedContent.agenda.'architecture-core'.decision = 'Choose an architecture the human did not confirm.'
+    $forgedContent | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $statePath -Encoding UTF8
+    $forgedContentResult = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef '001-url-checker'
+    Assert-True ($forgedContentResult.status -eq 'invalid' -and $forgedContentResult.reason -eq 'workshop-agenda-digest-mismatch') 'a plausible flat controller whose content does not match its receipt is rejected'
+    [IO.File]::WriteAllText($statePath, $validStateJson, [Text.UTF8Encoding]::new($false))
+
+    # Keep the shipped provider's active-feature discovery unambiguous for the independent
+    # CRLF/external-shell case below. The first feature's assertions and authority facts are
+    # already complete; removing this scratch-only controller cannot affect their evidence.
+    Remove-Item -LiteralPath (Join-Path $scratch 'specs\001-url-checker') -Recurse -Force
     $shellFeature = '002-shell-call'
     New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$shellFeature") -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\spec.md") -Value '# Shell Call' -Encoding UTF8
@@ -128,7 +183,7 @@ try {
     Set-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\workshop\product-domain.md") -Value '# Product domain' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\workshop\product-domain.yml") -Value 'depth: light' -Encoding UTF8
     $shellRenderedAgenda = @(& $writer -ProjectRoot $scratch -FeatureRef $shellFeature -AgendaJson $agendaJson -RenderOnly) -join [Environment]::NewLine
-    $null = Add-TypedReply -FeatureRef $shellFeature -Phase 'agenda' -Lens 'product-domain' -Reply 'Confirm this selected and skipped agenda.' -MessageText $shellRenderedAgenda
+    $null = Add-AgendaReplyThroughShippedProvider -AssistantText ("`r`n" + $shellRenderedAgenda + "`r`n") -Reply 'Confirm this selected and skipped agenda.' -LineEnding crlf
     $shellOutput = @(& pwsh -NoProfile -File $writer -ProjectRoot $scratch -FeatureRef $shellFeature -AgendaJson $agendaJson -PassThru 2>&1)
     Assert-True ($LASTEXITCODE -eq 0) "pwsh -File accepts the single JSON agenda payload: $($shellOutput -join ' ')"
     $shellState = Get-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\lens-applicability.json") -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
