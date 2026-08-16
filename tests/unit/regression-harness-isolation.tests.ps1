@@ -52,9 +52,18 @@ if ($runner -notmatch '\[switch\]\$Serial' -or
     Fail 'Bounded parallel dispatch must retain an explicit serial lane and per-suite timeout enforcement.'
 }
 if ($runner -notmatch '\$running\.timeout_seconds' -or
-    $runner -notmatch '\$started\.timeout_seconds' -or
-    @([regex]::Matches($runner, 'timeout_seconds\s*=\s*420')).Count -ne 2) {
-    Fail 'Measured slow suites must retain explicit bounded timeout overrides in both parallel and serial lanes.'
+    $runner -notmatch '\$started\.timeout_seconds') {
+    Fail 'Measured slow suites must retain per-row timeout enforcement in both parallel and serial lanes.'
+}
+foreach ($measuredRegistryBound in @(
+        @{ Path = 'review-campaign-verification\.Tests\.ps1'; Seconds = 420 },
+        @{ Path = 'review-public-campaign-command\.Tests\.ps1'; Seconds = 600 },
+        @{ Path = 'conformance-detection\.tests\.ps1'; Seconds = 600 },
+        @{ Path = 'verification-plan-end-to-end\.Tests\.ps1'; Seconds = 1200 })) {
+    $pattern = "{0}';\s*kind\s*=\s*'[^']+';\s*timeout_seconds\s*=\s*{1}" -f $measuredRegistryBound.Path, $measuredRegistryBound.Seconds
+    if ($runner -notmatch $pattern) {
+        Fail "Feature 198 registry lost the measured $($measuredRegistryBound.Seconds)-second bound for '$($measuredRegistryBound.Path)'."
+    }
 }
 
 foreach ($serialCensusPath in @(
@@ -79,10 +88,6 @@ if ($censusRunner -notmatch "'tests\\bootstrap\\Sc012to015Acceptance\.Tests\.ps1
     $censusRunner -notmatch "'tests\\continuous-co-review\\integration\\verification-plan-end-to-end\.Tests\.ps1'\s*=\s*1200") {
     Fail 'Disk-wide census lost the measured bounds for its nested SC and verification-plan acceptance matrices.'
 }
-if ($runner -notmatch "verification-plan-end-to-end\.Tests\.ps1';\s*kind\s*=\s*'pester';\s*timeout_seconds\s*=\s*1200") {
-    Fail 'Feature 198 registry lost the measured 20-minute bound for the verification-plan end-to-end matrix.'
-}
-
 if ($fixture -notmatch '\[System\.IO\.Path\]::GetTempPath\(\)' -or
     $fixture -match 'Join-Path\s+\$repoRoot\s+''\.scratch\\pending-verdict-stop-artifact''') {
     Fail 'Pending-verdict fixture must live outside the caller repository.'

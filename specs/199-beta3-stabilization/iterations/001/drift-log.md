@@ -22,10 +22,32 @@
 
 ## Summary
 
-**Total drift events**: 54 (DRIFT-199-I001-001 through -054)
+**Total drift events**: 55 (DRIFT-199-I001-001 through -055)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-055 — three valid release suites exceeded bounds that had no measured operating margin (resolved; exact rerun pending)
+
+- **Observed**: 2026-08-16, the clean `7d72ae9c` registry ran alone at the measured-safe four
+  lanes. Of 121 suites, 118 passed and three reported only timeout failures:
+  `review-campaign-verification.Tests.ps1` at 300.132 seconds against 300,
+  `review-public-campaign-command.Tests.ps1` at 422.054 seconds against 420, and
+  `conformance-detection.tests.ps1` at 420.089 seconds against 420. No assertion failure or caller
+  contamination was reported.
+- **Cause**: the generic campaign-verification bound had no margin above its earlier 280.8-second
+  registry measurement; the public-command bound was based on an older 278–300-second range; and the
+  conformance bound was already below the 453.1 seconds measured in the prior exact green registry.
+- **Resolution**: keep the 300-second global default. Give only the measured rows explicit ceilings:
+  campaign verification 420 seconds, public campaign 600 seconds, and conformance 600 seconds. The
+  existing verification-plan end-to-end exception remains 1,200 seconds. No lane-count increase and
+  no global timeout inflation are authorized by this correction.
+- **Measured proof**: the source guard was RED before the registry rows changed and now pins all four
+  named bounds. The complete 121-suite registry and 350-file census must rerun sequentially at the
+  resulting exact commit before manual fixtures are created.
+- **Class closure**: exceptional release bounds are named per suite, derived from complete-run timing,
+  and guarded individually. Crossing one is reported as timing evidence and cannot be converted into
+  an assertion failure or hidden by increasing every suite's timeout.
 
 ### DRIFT-199-I001-054 — bootstrap told consumers not to use the hook-first launch path it had just installed (resolved)
 

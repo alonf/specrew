@@ -147,7 +147,7 @@ $registry = @(
     @{ area = 'T046 ReviewTargetPort - external linked Git worktree, exact dirty-state digest/currentness, origin immutability, non-code neutrality'; path = 'tests/continuous-co-review/unit/review-target-port.Tests.ps1'; kind = 'pester' }
     @{ area = 'T047 strict candidate ingress - bounded identity validation, timeout-after-kill ordering, immutable controller JSON + Markdown, partial/moved lineage'; path = 'tests/continuous-co-review/unit/review-result-ingestor.Tests.ps1'; kind = 'pester' }
     @{ area = 'T048 synchronous campaign orchestration - production Git + fixture ports, preflight-before-spend, timeout/crash/recovery/moved/visible-rerun flows, live clock'; path = 'tests/continuous-co-review/unit/review-campaign-orchestrator.Tests.ps1'; kind = 'pester' }
-    @{ area = 'T064 frozen-target verification execution, exact-digest evidence join/injection, and pre-spend refusal'; path = 'tests/continuous-co-review/unit/review-campaign-verification.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T064 frozen-target verification execution, exact-digest evidence join/injection, and pre-spend refusal'; path = 'tests/continuous-co-review/unit/review-campaign-verification.Tests.ps1'; kind = 'pester'; timeout_seconds = 420 }
     @{ area = 'T021 consumer methodology workflow - generic advisory checks, deployed validator path, provider-keyed scratch deployment'; path = 'tests/unit/methodology-gate-template.tests.ps1'; kind = 'script' }
     @{ area = 'T022 consumer work-kind workflow - deployed-only validator path and advisory default'; path = 'tests/unit/work-kind-deployed-resolution.tests.ps1'; kind = 'script' }
     @{ area = 'T023 deny-by-default consumer workflow allowlist - source, package manifest, repository CI, and real deploy'; path = 'tests/unit/consumer-workflow-allowlist.tests.ps1'; kind = 'script' }
@@ -166,10 +166,11 @@ $registry = @(
     @{ area = 'T059 all-adapter deterministic fake-provider matrix - native containment, strict ingress, no hidden retry, timeout-after-tree-death; NEVER live-support evidence'; path = 'tests/continuous-co-review/integration/review-cross-platform-fault-matrix.Tests.ps1'; kind = 'pester' }
     @{ area = 'T060 local macOS execution package - pinned clean clone, explicit one-slot invocation, local-machine provenance, digest/hash/authority validation'; path = 'tests/continuous-co-review/unit/t060-local-macos-evidence.Tests.ps1'; kind = 'pester' }
     @{ area = 'T060 local Windows/Linux execution package - fixed allocations, no-spend preflight, one explicit invocation, fail-closed evidence'; path = 'tests/continuous-co-review/unit/t060-local-platform-smoke.Tests.ps1'; kind = 'pester' }
-    # These two integration-heavy suites measured 278–300 seconds in clean
-    # detached review worktrees. Preserve the 300-second default for all other
-    # suites, but give the known slow paths a bounded 40% environment margin.
-    @{ area = 'T051 public campaign delegation + one-way cutover + exact-digest verdict-packet route matrix'; path = 'tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'; kind = 'pester'; timeout_seconds = 420 }
+    # Safe four-lane release measurement on 2026-08-16 reached 300.132 seconds for
+    # review-campaign-verification above and 422.054 seconds for this public-command
+    # matrix. Preserve the 300-second default for all other suites; these rows carry
+    # explicit bounded environment margin instead of making the whole registry looser.
+    @{ area = 'T051 public campaign delegation + one-way cutover + exact-digest verdict-packet route matrix'; path = 'tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'; kind = 'pester'; timeout_seconds = 600 }
     @{ area = 'beta2 release blocker - packaged-artifact Squad-runtime deploy (FileList completeness + contracts deployed)'; path = 'tests/integration/packaged-artifact-deploy.Tests.ps1'; kind = 'pester' }
     @{ area = 'shared trunk resolver - 6-level precedence, no branch mutation (CLI/navigator/gate/baseline/lineage)'; path = 'tests/continuous-co-review/unit/trunk-resolver.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-048 verification-plan seam contract - plan/command validation, path safety, auditable provenance, bounded timeout, evidence-join'; path = 'tests/continuous-co-review/unit/verification-plan-contract.Tests.ps1'; kind = 'pester' }
@@ -193,7 +194,10 @@ $registry = @(
     @{ area = 'Pre-tag slice #2 smalls (testbeta3) - six-section packet counts as handoff evidence; bare resolver invocation binds the feature via feature.json; iteration scaffold emits the claimed quality/ subtree unconditionally'; path = 'tests/unit/pretag-slice2-smalls.tests.ps1'; kind = 'script' }
     @{ area = 'Pre-tag slice #3 certify findings - a pre-rendered marker cannot bypass the stage-evidence refusal; capped refused boundaries are never instructed to emit a marker; git-tree evidence matching is case-sensitive; feature.json containment holds; the launch contract stopped claiming a ready gate'; path = 'tests/unit/pretag-slice3-certify-findings.tests.ps1'; kind = 'script' }
     @{ area = 'Pre-tag slice #4 certify findings - prompt-submit verdict capture refuses an evidence-less crossing loudly (marker-first, approval-reply, journaled refusal); the evidence gate resolves the feature via canonical relative containment with a separator boundary'; path = 'tests/unit/pretag-slice4-capture-containment.tests.ps1'; kind = 'script' }
-    @{ area = 'FR-055 Stop-packet classification honesty - session-baseline turn-delta, long-turn lane, PostToolUse pre-arrangement nudge, boundary contract untouched, maintainer fixtures (a)-(f)'; path = 'tests/integration/conformance-detection.tests.ps1'; kind = 'script'; timeout_seconds = 420 }
+    # The parallel tail measured 453.066 seconds at e0363ea1 and hit the old
+    # 420-second ceiling at 7d72ae9c after every other parallel suite had finished.
+    # Give that measured valid runtime a bounded 600-second ceiling.
+    @{ area = 'FR-055 Stop-packet classification honesty - session-baseline turn-delta, long-turn lane, PostToolUse pre-arrangement nudge, boundary contract untouched, maintainer fixtures (a)-(f)'; path = 'tests/integration/conformance-detection.tests.ps1'; kind = 'script'; timeout_seconds = 600 }
     @{ area = 'FR-056/SC-016 workshop question delivery - shared conduct with deterministic host-specific capability materialization'; path = 'tests/integration/code-rules-skill-multihost.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 workshop typed-turn delivery - Claude capability removal plus universal visible prose; no host picker can authorize workshop state'; path = 'tests/integration/design-workshop-claude-tool-safety.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 workshop conduct on every installed host - product-domain first, typed replies, Ctrl+O no-authority, exact host materialization'; path = 'tests/integration/product-domain-multihost.tests.ps1'; kind = 'script' }
