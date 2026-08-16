@@ -27,22 +27,28 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
-### DRIFT-199-I001-055 — three valid release suites exceeded bounds that had no measured operating margin (resolved; exact rerun pending)
+### DRIFT-199-I001-055 — valid release suites exceeded bounds that had no measured operating margin (resolved; exact rerun pending)
 
 - **Observed**: 2026-08-16, the clean `7d72ae9c` registry ran alone at the measured-safe four
   lanes. Of 121 suites, 118 passed and three reported only timeout failures:
   `review-campaign-verification.Tests.ps1` at 300.132 seconds against 300,
   `review-public-campaign-command.Tests.ps1` at 422.054 seconds against 420, and
   `conformance-detection.tests.ps1` at 420.089 seconds against 420. No assertion failure or caller
-  contamination was reported.
+  contamination was reported. The next clean registry at `3d8311b5` proved those three corrections:
+  they completed in 354.087, 501.832, and 482.427 seconds within their named bounds. It also exposed
+  the same timing-only condition in `verification-plan-runner.Tests.ps1`: 300.133 seconds against
+  the generic 300-second ceiling after completing in 286.596 seconds on the prior run. The remaining
+  120 suites passed.
 - **Cause**: the generic campaign-verification bound had no margin above its earlier 280.8-second
   registry measurement; the public-command bound was based on an older 278–300-second range; and the
   conformance bound was already below the 453.1 seconds measured in the prior exact green registry.
+  The verification-plan runner likewise had no operating margin above its measured runtime.
 - **Resolution**: keep the 300-second global default. Give only the measured rows explicit ceilings:
-  campaign verification 420 seconds, public campaign 600 seconds, and conformance 600 seconds. The
-  existing verification-plan end-to-end exception remains 1,200 seconds. No lane-count increase and
-  no global timeout inflation are authorized by this correction.
-- **Measured proof**: the source guard was RED before the registry rows changed and now pins all four
+  campaign verification 420 seconds, public campaign 600 seconds, verification-plan runner 420
+  seconds, and conformance 600 seconds. The existing verification-plan end-to-end exception remains
+  1,200 seconds. No lane-count increase and no global timeout inflation are authorized by this
+  correction.
+- **Measured proof**: the source guard was RED before each registry correction and now pins all five
   named bounds. The complete 121-suite registry and 350-file census must rerun sequentially at the
   resulting exact commit before manual fixtures are created.
 - **Class closure**: exceptional release bounds are named per suite, derived from complete-run timing,

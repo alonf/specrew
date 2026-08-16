@@ -58,6 +58,7 @@ if ($runner -notmatch '\$running\.timeout_seconds' -or
 foreach ($measuredRegistryBound in @(
         @{ Path = 'review-campaign-verification\.Tests\.ps1'; Seconds = 420 },
         @{ Path = 'review-public-campaign-command\.Tests\.ps1'; Seconds = 600 },
+        @{ Path = 'verification-plan-runner\.Tests\.ps1'; Seconds = 420 },
         @{ Path = 'conformance-detection\.tests\.ps1'; Seconds = 600 },
         @{ Path = 'verification-plan-end-to-end\.Tests\.ps1'; Seconds = 1200 })) {
     $pattern = "{0}';\s*kind\s*=\s*'[^']+';\s*timeout_seconds\s*=\s*{1}" -f $measuredRegistryBound.Path, $measuredRegistryBound.Seconds

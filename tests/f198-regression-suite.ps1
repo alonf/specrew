@@ -174,7 +174,11 @@ $registry = @(
     @{ area = 'beta2 release blocker - packaged-artifact Squad-runtime deploy (FileList completeness + contracts deployed)'; path = 'tests/integration/packaged-artifact-deploy.Tests.ps1'; kind = 'pester' }
     @{ area = 'shared trunk resolver - 6-level precedence, no branch mutation (CLI/navigator/gate/baseline/lineage)'; path = 'tests/continuous-co-review/unit/trunk-resolver.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-048 verification-plan seam contract - plan/command validation, path safety, auditable provenance, bounded timeout, evidence-join'; path = 'tests/continuous-co-review/unit/verification-plan-contract.Tests.ps1'; kind = 'pester' }
-    @{ area = 'T019 FR-048 verification-plan runner - ordered execution, record-every-attempt, engine-bounded timeout, never clean-on-failure'; path = 'tests/continuous-co-review/unit/verification-plan-runner.Tests.ps1'; kind = 'pester' }
+    # The clean 3d8311b5 release registry measured 300.133 seconds against the
+    # generic 300-second ceiling after this suite had completed in 286.596
+    # seconds on the prior run. Keep the global ceiling strict and give only
+    # this measured runner a bounded scheduling margin.
+    @{ area = 'T019 FR-048 verification-plan runner - ordered execution, record-every-attempt, engine-bounded timeout, never clean-on-failure'; path = 'tests/continuous-co-review/unit/verification-plan-runner.Tests.ps1'; kind = 'pester'; timeout_seconds = 420 }
     @{ area = 'T062 FR-049 deterministic verification-plan supplier - strict precedence, bounded catalog, stable identity, no inferred default'; path = 'tests/continuous-co-review/unit/verification-plan-supplier.Tests.ps1'; kind = 'pester' }
     @{ area = 'T063 FR-049 verification-plan materialization - real source capture, explicit preservation, hash-guarded refresh, actionable no-source'; path = 'tests/continuous-co-review/unit/verification-plan-materializer.Tests.ps1'; kind = 'pester' }
     @{ area = 'T029/FR-039/SC-012 Squad 0.11.0 live-console init - probe and production call receive immediate stdin EOF'; path = 'tests/integration/squad-init-closed-stdin.tests.ps1'; kind = 'script' }
