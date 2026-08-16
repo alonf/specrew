@@ -22,10 +22,43 @@
 
 ## Summary
 
-**Total drift events**: 66 (DRIFT-199-I001-001 through -066)
+**Total drift events**: 67 (DRIFT-199-I001-001 through -067)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-067 — picker-consumed workshop answers minted nothing and the guard stayed silent (resolved)
+
+- **Observed**: 2026-08-17, the Sonnet 5 Copilot CLI walk (`C:\Temp\URLCheckerTool`). Eleven
+  workshop questions were consumed through the host's `ask_user` structured picker. Picker
+  responses are tool results — they never fire `userPromptSubmitted` — so the typed-turn
+  store correctly minted zero receipts. Both product-domain records were persisted with no
+  authority behind them, the agenda writer refused as designed, and no surface said why.
+- **Cause**: two layered gaps. (1) The `ask_user` PostToolUse guard added by
+  `require typed workshop authority` is unreachable on the Copilot CLI host, whose hook
+  registrations are `sessionStart` / `userPromptSubmitted` / `agentStop` only — per-tool-call
+  delivery was latency-rejected, so the one host that owns `ask_user` never delivers the
+  event that guard listens on. (2) At Stop, the state (records persisted, receipts absent,
+  `agenda_status` pending) resolved as a valid `durable-workshop-active` question pause and
+  classified as `workshop-intermediate`, ending the turn silently. The agent then reasoned
+  its way past the documented picker prohibition, misdiagnosed the silence as unwired hooks,
+  and proposed hand-writing the records "honestly" — the prohibited act with a caveat.
+- **Resolution**: producer-level Stop detection. Phase `agenda` proves both product-domain
+  records are on disk, so the typed pre-agenda receipt that authorized them must exist;
+  when the store has none for the feature, Stop blocks with reason
+  `workshop-product-records-unreceipted` and names the selection channel: the answers are
+  preserved, they must be re-given as typed replies, the unauthorized records are set aside
+  only with human approval, and each question is re-asked as visible prose. The flag also
+  excludes the state from `workshop-intermediate` classification so the silence cannot recur.
+- **Measured proof**: the shipped provider refuses the walk state (records without receipt)
+  at Stop with the selection-channel correction and no machinery vocabulary; the same state
+  behind a genuine typed receipt (receipt first, records second) stays quiet.
+- **Class closure**: fifth instance of "a guard that computes the right answer stays
+  silent" (W10 ordering, W16 visibility, now the receipt mint). The dismissal case
+  (Ctrl+O) already had targeted recovery; this closes the selection case — a picker the
+  human genuinely answers. Open design question recorded for the maintainer: whether a
+  workshop record may ever be persisted before its receipt exists (today it can, which is
+  how a file can claim decisions the receipt system never witnessed).
 
 ### DRIFT-199-I001-066 — a reformatted agenda failed silently and surfaced as a missing receipt (resolved)
 

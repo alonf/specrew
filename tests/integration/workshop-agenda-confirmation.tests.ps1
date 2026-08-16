@@ -265,6 +265,41 @@ try {
     Assert-True ($LASTEXITCODE -eq 0) "pwsh -File accepts the single JSON agenda payload: $($shellOutput -join ' ')"
     $shellState = Get-Content -LiteralPath (Join-Path $scratch "specs\$shellFeature\lens-applicability.json") -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
     Assert-True ([string]$shellState.agenda_status -eq 'confirmed' -and @($shellState.skipped.PSObject.Properties).Count -eq 6) 'external shell invocation preserves complete selected/skipped coverage'
+
+    # Beta3 Sonnet-5 Copilot walk regression (2026-08-17, W17): eleven workshop questions were consumed
+    # through the host's structured picker, so the typed-turn store correctly minted nothing - and then
+    # said nothing. Both product records were persisted with zero authority behind them, and the next
+    # turn misdiagnosed the silence as broken hook wiring. Picker-only hosts never fire a per-tool-call
+    # event that could catch this earlier, so the Stop lane must name the selection channel itself.
+    Remove-Item -LiteralPath (Join-Path $scratch "specs\$shellFeature") -Recurse -Force
+    $pickerFeature = '003-picker-walk'
+    New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$pickerFeature") -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$pickerFeature\spec.md") -Value '# Picker Walk' -Encoding UTF8
+    & $initializer -ProjectRoot $scratch -FeatureRef $pickerFeature
+    New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$pickerFeature\workshop") -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$pickerFeature\workshop\product-domain.md") -Value '# Product domain' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$pickerFeature\workshop\product-domain.yml") -Value 'depth: light' -Encoding UTF8
+    $unreceipted = Invoke-ShippedWorkshopProvider -AssistantText 'Product grounding captured. Preparing the technical agenda next.'
+    Assert-True ($unreceipted.ExitCode -eq 0 -and $unreceipted.Output -match 'SPECREW-STOP-BLOCK') 'product records persisted without any typed receipt are refused at the Stop instead of passing as an intermediate workshop turn'
+    Assert-True ($unreceipted.Output -match '(?i)selection channel' -and
+        $unreceipted.Output -match '(?i)type their answer' -and
+        $unreceipted.Output -match '(?i)visible prose') 'unreceipted-records refusal names the selection channel and the typed prose re-ask'
+    Assert-True ($unreceipted.Output -match '(?i)answers are preserved' -and
+        $unreceipted.Output -match '(?i)ask approval') 'unreceipted-records refusal keeps the answers safe and routes the record set-aside through human approval'
+    Assert-True ($unreceipted.Output -notmatch '(?i)lens-applicability|controller|digest|jsonl|hook') 'unreceipted-records refusal keeps workshop machinery out of the correction'
+
+    # The same durable state behind a genuine typed turn stays quiet: receipt first, records second.
+    Remove-Item -LiteralPath (Join-Path $scratch "specs\$pickerFeature") -Recurse -Force
+    $typedFeature = '004-typed-walk'
+    New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$typedFeature") -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$typedFeature\spec.md") -Value '# Typed Walk' -Encoding UTF8
+    & $initializer -ProjectRoot $scratch -FeatureRef $typedFeature
+    Assert-True ($null -ne (Add-TypedReply -FeatureRef $typedFeature -Phase 'product-domain' -Lens 'product-domain' -Reply 'The product framing matches.')) 'typed-walk fixture mints a genuine product-domain receipt before the records exist'
+    New-Item -ItemType Directory -Path (Join-Path $scratch "specs\$typedFeature\workshop") -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$typedFeature\workshop\product-domain.md") -Value '# Product domain' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$typedFeature\workshop\product-domain.yml") -Value 'depth: light' -Encoding UTF8
+    $typedRecords = Invoke-ShippedWorkshopProvider -AssistantText 'Product grounding captured. Preparing the technical agenda next.'
+    Assert-True ($typedRecords.ExitCode -eq 0 -and $typedRecords.Output -notmatch '(?i)selection channel') 'product records backed by a typed receipt are not accused of arriving through a selection channel'
 }
 finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue

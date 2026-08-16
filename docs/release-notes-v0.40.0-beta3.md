@@ -83,8 +83,11 @@ that init/update copies into consumer projects, not module-only engine internals
   product grounding has been recorded, and an agenda shown early is stopped with the real prerequisite
   instead of inviting confirmations that can never count. If the agenda is shown with rewritten bullets
   or spacing, that Stop says so immediately and asks for the command output unchanged; the check is not
-  relaxed. Recovery says whether an answer was actually preserved, proposes one action, and does not
-  diagnose or blame Specrew.
+  relaxed. Answers consumed through a structured picker or a dismissed question UI mint no workshop
+  authority; when product records were persisted that way, the next Stop names the selection channel
+  and requires each question re-asked as visible prose with a typed reply — on every host, including
+  ones with no per-tool-call hook event. Recovery says whether an answer was actually preserved,
+  proposes one action, and does not diagnose or blame Specrew.
 
 ## What a review actually costs
 

@@ -941,6 +941,7 @@ try {
     $preScaffoldWorkshopAttempt = $false
     $workshopProductRecordMissingAgenda = $false
     $workshopAgendaReformatted = $false
+    $workshopProductRecordsUnreceipted = $false
     $workshopRepairReasons = @(
         'workshop-decision-bindings-invalid',
         'workshop-code-implementation-manifest-missing',
@@ -1105,6 +1106,27 @@ try {
             $lastAssistantText -match '(?is)\bSelected lenses\s*:' -or
             $lastAssistantText -match '(?im)^\s*[-*•]\s+(?:architecture-core|requirements-nfr|data-storage|ui-ux|devops-operations|integration-api|security-compliance|observability-resilience|component-design|code-implementation)\b')
     }
+    if ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid -and
+        [string]$workshopQuestion.agenda_status -eq 'pending-confirmation' -and
+        [string]$workshopQuestion.phase -eq 'agenda') {
+        # Phase 'agenda' means both product-domain records are already persisted, so the typed pre-agenda
+        # turn that authorized them must have minted a receipt. None on file means the answers arrived
+        # through a channel that mints nothing - a structured picker selection or a dismissed question UI
+        # (hosts without a per-tool-call event never reach the PostToolUse picker guard, so this Stop is
+        # the first surface that can speak). The store is right to refuse; silence here is the defect:
+        # the next turn misreads the refusal as broken hook wiring and proposes hand-written records.
+        try {
+            if (-not (Get-Command Get-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue)) {
+                $authorityStoreBeside = Join-Path $PSScriptRoot 'workshop-authority-store.ps1'
+                if (Test-Path -LiteralPath $authorityStoreBeside -PathType Leaf) { . $authorityStoreBeside }
+            }
+            if (Get-Command Get-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) {
+                $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref) -Phase 'product-domain'
+                $workshopProductRecordsUnreceipted = ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid')
+            }
+        }
+        catch { $null = $_ }  # a corrupt store already surfaces through its own receipt-invalid repair reasons
+    }
     if ($workshopIntermediate -or $workshopConflict -or $workshopRepair) { $rawHit = $false }
     # The old 4x tail-200 mitigation remains removed. The measured 2026-08-10 signature now triggers only the
     # bounded tail-8 recovery above; diagnostics record both attempted and recovered so it cannot fail silently.
@@ -1186,7 +1208,7 @@ try {
     # refusal composed, and the stale marker could feed verdict capture. The refusal now keys on
     # $hasPending directly: while the stage owes evidence it has not produced, the missing-evidence
     # block composes regardless of any marker already in the transcript.
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1195,7 +1217,7 @@ try {
     # ($blockKind -eq 'material' -and $canAssess). BOUNDARY stops, 'none', an unavailable classifier, and EVERY error
     # leave $stopIntentOutcome at its 'real' default -> today's real-stop enforcement is preserved byte-for-byte. The
     # classifier is dot-sourced fail-open: the ONE pure, self-contained contract file (sibling of bootstrap; no _load).
-    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted) { 'workshop-repair' } else { 'real' }
+    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } else { 'real' }
     $stopIntentReason = $null
     $stopIntentContinueKey = $null
     $stopIntentContinueCount = 0
@@ -1245,6 +1267,7 @@ try {
     # valid precisely because it still says product-domain/pending-confirmation, which is the evidence of drift.
     $workshopQuestionWins = $workshopIntermediate -and (-not $workshopAgendaPresentationMissing) -and
         (-not $workshopProductRecordMissingAgenda) -and (-not $workshopAgendaReformatted) -and
+        (-not $workshopProductRecordsUnreceipted) -and
         (($blockKind -ne 'material') -or $workshopRecordOnlyTurn)
     if ($workshopQuestionWins) {
         $stopIntentOutcome = 'workshop-intermediate'
@@ -1319,7 +1342,7 @@ try {
         ("workshop-conflict|{0}|{1}|{2}|{3}" -f [string]$workshopQuestion.feature_ref, [string]$conflict.binding, [string]$conflict.prior_value, [string]$conflict.value)
     }
     elseif ($blockKind -eq 'workshop-repair') {
-        $repairReason = if ($preScaffoldWorkshopAttempt) { 'workshop-feature-not-created' } elseif ($workshopProductRecordMissingAgenda) { 'workshop-product-records-not-persisted' } elseif ($workshopAgendaReformatted) { 'workshop-agenda-reformatted' } elseif ($workshopAgendaPresentationMissing) { 'workshop-agenda-not-confirmed' } else { [string]$workshopQuestion.reason }
+        $repairReason = if ($preScaffoldWorkshopAttempt) { 'workshop-feature-not-created' } elseif ($workshopProductRecordMissingAgenda) { 'workshop-product-records-not-persisted' } elseif ($workshopProductRecordsUnreceipted) { 'workshop-product-records-unreceipted' } elseif ($workshopAgendaReformatted) { 'workshop-agenda-reformatted' } elseif ($workshopAgendaPresentationMissing) { 'workshop-agenda-not-confirmed' } else { [string]$workshopQuestion.reason }
         $repairFeature = if ($preScaffoldWorkshopAttempt) { 'unscaffolded' } else { [string]$workshopQuestion.feature_ref }
         ("workshop-repair|{0}|{1}" -f $repairFeature, $repairReason)
     }
@@ -1415,6 +1438,9 @@ try {
                 }
                 elseif ($workshopProductRecordMissingAgenda) {
                     [void]$sb.AppendLine('The technical topics were shown before the product grounding was recorded. Record the product grounding from its typed answer first, then show the complete technical-topic selection once. Do not ask for another agenda confirmation first; it cannot be retained until that earlier record exists.')
+                }
+                elseif ($workshopProductRecordsUnreceipted) {
+                    [void]$sb.AppendLine('The recorded product answers arrived through a selection channel (a structured picker or a dismissed question UI), so no typed human reply stands behind them and they cannot authorize the workshop. Workshop questions need the human to type their answer so it can be recorded. Tell the human their answers are preserved but must be re-given as typed replies, ask approval to set the unauthorized product records aside, then ask each product question again as visible prose and wait for the typed response before recording it.')
                 }
                 elseif ($workshopAgendaReformatted) {
                     [void]$sb.AppendLine('The agenda you showed was reformatted, so the confirmation could not be recorded against it. Send the command''s output exactly as printed, without changing bullets or spacing, then ask again.')
