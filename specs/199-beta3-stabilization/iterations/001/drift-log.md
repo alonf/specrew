@@ -22,10 +22,34 @@
 
 ## Summary
 
-**Total drift events**: 52 (DRIFT-199-I001-001 through -052)
+**Total drift events**: 53 (DRIFT-199-I001-001 through -053)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-053 — exact registry and disk census were run concurrently and converted resource contention into false failures (resolved; sequential rerun pending)
+
+- **Observed**: 2026-08-16, the exact `aedec4dd` disk census and F-198 registry were launched
+  together. The census executed all 350 files but reported 13 timeouts; the registry reported four
+  timeouts among 121 suites. No assertion failure was reported. After the registry released the
+  machine, the remaining 200 census files completed without another timeout.
+- **Cause**: both release lanes use bounded parallel child processes and were individually measured,
+  but nothing in the release procedure prohibited running the two heavy lanes concurrently. The
+  census also gave several known broad or nested matrices its generic 300-second file ceiling.
+- **Resolution**: exact release verification runs the registry and census sequentially. The census
+  keeps its strict 300-second default but carries explicit, reviewable bounds for the measured slow
+  population. The registry gives only `verification-plan-end-to-end.Tests.ps1` a 1,200-second row
+  bound: it completed 11/11 in 744.2 seconds alone. `review-campaign-verification.Tests.ps1` completed
+  14/14 in 127.7 seconds alone and `review-public-campaign-command.Tests.ps1` completed 40/40 in
+  184.4 seconds alone, so their existing 600/420-second bounds remain unchanged.
+- **Measured proof**: `Sc012to015Acceptance.Tests.ps1` completed green in 543.1 seconds alone;
+  registry timing identified the full slow-suite population instead of relying on the first timeout.
+  Source-contract tests pin the two exceptional nested-matrix bounds. Final sequential exact-commit
+  registry and census reruns remain required before packaging.
+- **Class closure**: exact release lanes may not compete for the same machine. File bounds remain
+  per-suite and measurement-backed, and the guard pins the exceptional matrices whose nested work
+  cannot fit the generic ceiling. A concurrent exploratory run is timing evidence, never release
+  certification.
 
 ### DRIFT-199-I001-052 — workshop ordering was detected silently and failed later with an impossible agenda retry (resolved; census rerun pending)
 

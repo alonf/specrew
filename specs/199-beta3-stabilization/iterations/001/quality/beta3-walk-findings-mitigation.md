@@ -27,7 +27,7 @@ inspected for controller and receipt evidence, never repaired in place.
 
 1. Keep both old manual projects untouched.
 2. Finish deterministic source, mirror, controller, instruction, refusal, privacy, and registry validation.
-3. Commit the exact candidate and run complete discovered-test census plus the named F-198 registry.
+3. Commit the exact candidate and run the named F-198 registry, then the complete discovered-test census, sequentially on that same commit.
 4. Package and install that exact commit; verify with a newest-work marker, not only the version string.
 5. Only then scaffold two new build-specific projects, one for Copilot and one for Claude.
 6. Run the fresh walks. The provider round at review requires explicit maintainer authorization.

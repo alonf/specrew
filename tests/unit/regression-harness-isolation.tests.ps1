@@ -75,6 +75,13 @@ foreach ($serialLaneToken in @('$serialIsRunning', '$nextIsSerial -and $active.C
 if ($censusRunner -notmatch "'tests\\integration\\validate-governance-changed-only\.tests\.ps1'\s*=\s*1800") {
     Fail 'Disk-wide census lost the measured 30-minute bound for the changed-only governance matrix.'
 }
+if ($censusRunner -notmatch "'tests\\bootstrap\\Sc012to015Acceptance\.Tests\.ps1'\s*=\s*900" -or
+    $censusRunner -notmatch "'tests\\continuous-co-review\\integration\\verification-plan-end-to-end\.Tests\.ps1'\s*=\s*1200") {
+    Fail 'Disk-wide census lost the measured bounds for its nested SC and verification-plan acceptance matrices.'
+}
+if ($runner -notmatch "verification-plan-end-to-end\.Tests\.ps1';\s*kind\s*=\s*'pester';\s*timeout_seconds\s*=\s*1200") {
+    Fail 'Feature 198 registry lost the measured 20-minute bound for the verification-plan end-to-end matrix.'
+}
 
 if ($fixture -notmatch '\[System\.IO\.Path\]::GetTempPath\(\)' -or
     $fixture -match 'Join-Path\s+\$repoRoot\s+''\.scratch\\pending-verdict-stop-artifact''') {

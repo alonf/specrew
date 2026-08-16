@@ -92,7 +92,7 @@ No new manual-test environment is created until:
 1. every row above is fixed or explicitly corrected as a false/stale claim;
 2. focused abuse/legitimate tests pass;
 3. every PowerShell test file is executed, with named failures rather than only a count;
-4. the F-198 registry, governance validation, markdown lint, packaging, deployed-mirror parity, and five harness dry runs pass without provider invocation;
+4. the F-198 registry and complete disk census run **sequentially** on the same exact commit, then governance validation, markdown lint, packaging, deployed-mirror parity, and five harness dry runs pass without provider invocation;
 5. the exact resulting commit is packaged, installed, and identified by both build id and a new-code marker.
 
 The preserved `ada7c793` evidence projects are untouched. No fresh Copilot or Claude manual
