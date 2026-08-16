@@ -228,6 +228,12 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    their answers are safe and nothing has been lost (only when that is true); what you could not complete without
    diagnosing or assigning fault; one concrete next action you can perform; and ask the human for their approval.
    Keep machinery diagnosis in the drift record, not in the message the human must act on.
+   When the human approves preparing a repair for inconsistent pre-agenda progress, use the governed recovery
+   surface instead of editing `lens-applicability.json`: run
+   `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/repair-workshop-controller-state.ps1 -ProjectRoot . -FeatureRef <exact-feature-ref> -Request`,
+   render its complete proposal, and wait for the exact typed authorization it names. Only after that reply has
+   been captured may you run the same command with `-Apply`. The repair is state-hash-bound, preserves the saved
+   product-domain records, writes an audit record, and refuses if anything changed after authorization.
    **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
    lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
    all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as

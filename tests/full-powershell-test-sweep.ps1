@@ -33,7 +33,9 @@ $files = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'tests') -Recurse -Fi
 # overlap. The cross-host conformance matrix normally takes about four minutes by itself but can exceed the generic
 # five-minute bound while three other processes are active. The nested SC-012..015 proof matrix measured 543.1
 # seconds alone, and the verification-plan end-to-end matrix measured 744.2 seconds alone; the pause/signoff
-# matrices crossed five minutes in the independent registry. The changed-only matrix measured 1,333.9 seconds
+# matrices crossed five minutes in the independent registry. The baseline-hygiene matrix measured 225.4 seconds
+# alone but crossed the generic five-minute bound under the four-way disk census; conformance measured 427.4
+# seconds alone and likewise needs a nine-minute overlap margin. The changed-only matrix measured 1,333.9 seconds
 # alone on the beta3 candidate, so its serial ceiling is 30 minutes. Keep exceptional ceilings explicit and reviewable
 # instead of weakening the default for every other file.
 $fileTimeoutOverrides = @{
@@ -53,7 +55,8 @@ $fileTimeoutOverrides = @{
     'tests\continuous-co-review\unit\trunk-resolver.Tests.ps1' = 600
     'tests\continuous-co-review\unit\verification-plan-runner.Tests.ps1' = 900
     'tests\integration\validate-governance-changed-only.tests.ps1' = 1800
-    'tests\integration\conformance-detection.tests.ps1' = 600
+    'tests\integration\baseline-hygiene.tests.ps1' = 600
+    'tests\integration\conformance-detection.tests.ps1' = 900
     'tests\continuous-co-review\unit\review-public-campaign-command.Tests.ps1' = 900
 }
 
@@ -68,6 +71,7 @@ foreach ($relativePath in @(
         'tests\integration\validate-governance-changed-only.tests.ps1',
         'tests\unit\boundary-authorization-prompt-truth.tests.ps1',
         'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1',
+        'tests\bootstrap\HookRenderDedupe.Tests.ps1',
         'tests\integration\code-rules-skill-multihost.tests.ps1',
         'tests\integration\product-domain-multihost.tests.ps1')) {
     [void]$serialRelativePaths.Add($relativePath)

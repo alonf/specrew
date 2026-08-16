@@ -431,10 +431,25 @@ function Get-SpecrewWorkshopLifecycleState {
             if ($scope -ne 'feature') {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-iteration-invalid' -Selected $selected -AgendaStatus $agendaStatus
             }
+            if (Get-Command Resolve-SpecrewWorkshopStateTransition -ErrorAction SilentlyContinue) {
+                $readTransition = Resolve-SpecrewWorkshopStateTransition -Controller $applicability -Operation 'read'
+                if (-not $readTransition.allowed) {
+                    return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-transition-invalid' -Selected $selected -AgendaStatus $agendaStatus
+                }
+            }
+            elseif ($humanTurnContract -eq 'typed-turns-v1') {
+                return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-state-transition-helper-missing' -Selected $selected -AgendaStatus $agendaStatus
+            }
             if ($selected.Count -ne 0) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-selected-invalid' -Selected $selected -AgendaStatus $agendaStatus
             }
-            if (@($records.PSObject.Properties).Count -ne 0) {
+            # product-domain is a pre-agenda phase whose durable authority remains its two records plus the
+            # typed-turn receipt. Some hosts also project that completed phase into the workshop map before
+            # rendering the technical agenda. Treat that one redundant key as harmless; it is never consumed as
+            # technical-lens authority and the agenda writer removes it when it writes the confirmed state.
+            $preAgendaRecordKeys = @($records.PSObject.Properties | ForEach-Object { [string]$_.Name })
+            $unexpectedPreAgendaRecords = @($preAgendaRecordKeys | Where-Object { $_ -cne 'product-domain' })
+            if ($unexpectedPreAgendaRecords.Count -ne 0) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-pre-agenda-records-invalid' -AgendaStatus $agendaStatus
             }
             if ($agendaContract -eq 'complete-coverage-v1') {

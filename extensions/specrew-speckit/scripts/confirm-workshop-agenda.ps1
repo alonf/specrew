@@ -106,19 +106,21 @@ if ($SkippedLens.Count -ne $SkippedReason.Count) {
 $featureRoot = Join-Path (Join-Path $resolvedProjectRoot 'specs') $FeatureRef
 $statePath = Join-Path $featureRoot 'lens-applicability.json'
 if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
-    throw "Workshop controller state is missing: '$statePath'."
+    throw "The feature's workshop progress record is missing: '$statePath'."
 }
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -Depth 20 -ErrorAction Stop
 if ([string]$state.agenda_contract -cne 'complete-coverage-v1' -or [string]$state.agenda_status -cne 'pending-confirmation') {
-    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The workshop agenda can only be confirmed from the complete-coverage-v1 pending-confirmation state.' `
-        -Action 'Stop and ask the human to restart this feature workshop from its current governed state; do not overwrite the controller.')
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The technical agenda can only be confirmed while this feature is awaiting agenda confirmation.' `
+        -Action 'Resume the feature from its saved workshop progress. Do not replace saved decisions.')
 }
-if (@($state.selected).Count -ne 0 -or @($state.workshop.PSObject.Properties).Count -ne 0) {
-    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'The pending workshop controller already contains decisions; refusing to overwrite it.' `
-        -Action 'Stop and tell the human the controller is inconsistent; this state cannot be cleared by another agenda confirmation attempt.')
+$transitionOperation = if ($RenderOnly) { 'render-agenda' } else { 'confirm-agenda' }
+$transition = Resolve-SpecrewWorkshopStateTransition -Controller $state -Operation $transitionOperation
+if (-not $transition.allowed) {
+    throw (New-SpecrewWorkshopAgendaRefusal -Summary 'This feature''s saved workshop progress includes technical decisions before the agenda was confirmed, so the agenda cannot be replaced safely.' `
+        -Action 'Propose the governed workshop repair described in the design-workshop skill. It preserves saved product answers and requires typed human approval before changing the unfinished agenda.')
 }
 if ([string]$state.human_turn_contract -cne 'typed-turns-v1') {
-    throw 'The workshop controller does not carry the typed-turn authority contract.'
+    throw 'The feature workshop cannot prove a typed human reply for this agenda.'
 }
 $productReceipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'product-domain'
 if ($null -eq $productReceipt -or [string]$productReceipt.confirmation -eq 'invalid') {

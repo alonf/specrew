@@ -816,6 +816,11 @@ function Update-SpecrewRollingHandover {
             Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
                 -HostKind $fromHost -SourceEvent $Source | Out-Null
         }
+        if ((Get-Command Write-SpecrewWorkshopRepairAuthorization -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            Write-SpecrewWorkshopRepairAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                -HostKind $fromHost -SourceEvent $Source | Out-Null
+        }
         if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
             Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `

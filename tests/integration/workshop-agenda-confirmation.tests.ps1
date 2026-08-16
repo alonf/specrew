@@ -113,6 +113,20 @@ try {
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.md') -Value '# Product domain' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $scratch 'specs\001-url-checker\workshop\product-domain.yml') -Value 'depth: light' -Encoding UTF8
     $statePath = Join-Path $scratch 'specs\001-url-checker\lens-applicability.json'
+    # Walk 4 / W14 (2026-08-16): a weaker host redundantly projected the completed product-domain phase into the
+    # pre-agenda workshop map. The durable authority is still the two product records plus the typed receipt. This
+    # projection must neither wedge agenda rendering nor become technical-lens authority; the canonical writer
+    # discards it when the human-confirmed agenda is persisted.
+    $preAgendaWithProductProjection = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
+    $preAgendaWithProductProjection.workshop | Add-Member -NotePropertyName 'product-domain' -NotePropertyValue ([pscustomobject]@{
+        moved_on = $true
+        confirmation = 'human-confirmed'
+        human_turn_receipt = 'pending'
+    })
+    $preAgendaWithProductProjection | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $statePath -Encoding UTF8
+    . $accessor
+    $preAgendaLifecycle = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef '001-url-checker'
+    Assert-True ($preAgendaLifecycle.status -eq 'active' -and $preAgendaLifecycle.reason -eq 'workshop-pre-agenda-active') 'redundant product-domain projection remains a valid pre-agenda state and is never treated as a technical decision'
     $before = [IO.File]::ReadAllBytes($statePath)
     $incompleteRefused = $false
     try {
@@ -169,9 +183,9 @@ try {
         [string]$state.agenda_confirmation_scope -eq 'lens-selection') 'confirmed state records typed human authority for the lens selection'
     Assert-True (@($state.selected).Count -eq 4 -and @($state.agenda.PSObject.Properties).Count -eq 4 -and
         @($state.skipped.PSObject.Properties).Count -eq 6) 'confirmed state makes both selected and skipped sets reviewable'
+    Assert-True (@($state.workshop.PSObject.Properties).Count -eq 0) 'confirmed agenda discards the redundant product-domain projection instead of promoting it to technical authority'
     Assert-True ([string]$state.skipped.'ui-ux' -eq 'The interface is terminal-only.') 'each skipped lens carries its feature-specific reason'
 
-    . $accessor
     $lifecycle = Get-SpecrewWorkshopLifecycleState -ProjectRoot $scratch -FeatureRef '001-url-checker'
     Assert-True ($lifecycle.status -eq 'active' -and $lifecycle.current_lens -eq 'architecture-core') 'strict controller opens lens 1 only after complete coverage and human confirmation'
 

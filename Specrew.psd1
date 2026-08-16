@@ -133,6 +133,7 @@
         'extensions/specrew-speckit/scripts/provider-generic.ps1',
         'extensions/specrew-speckit/scripts/provider-github.ps1',
         'extensions/specrew-speckit/scripts/refocus.ps1',
+        'extensions/specrew-speckit/scripts/repair-workshop-controller-state.ps1',
         'extensions/specrew-speckit/scripts/resolve-quality-profile.ps1',
         'extensions/specrew-speckit/scripts/resume-iteration.ps1',
         'extensions/specrew-speckit/scripts/run-hardening-gate.ps1',

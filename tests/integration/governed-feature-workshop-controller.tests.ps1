@@ -33,6 +33,7 @@ Set-Content -LiteralPath (Join-Path $dir 'spec.md') -Value '# Feature Specificat
 [pscustomobject]@{ BRANCH_NAME=$ref; SPEC_FILE=(Join-Path $dir 'spec.md'); FEATURE_NUM='001'; HAS_GIT=$true } | ConvertTo-Json -Compress
 '@
     Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\workshop-authority-store.ps1') -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\workshop-authority-store.ps1') -Force
     Copy-Item -LiteralPath $source -Destination (Join-Path $scratch '.specify\extensions\specrew-speckit\scripts\create-governed-feature.ps1') -Force
 
     Push-Location $scratch

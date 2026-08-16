@@ -22,10 +22,80 @@
 
 ## Summary
 
-**Total drift events**: 61 (DRIFT-199-I001-001 through -061)
+**Total drift events**: 64 (DRIFT-199-I001-001 through -064)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-064 — disk census mixed one stale fixture with three load artifacts (resolved)
+
+- **Observed**: 2026-08-16, the first 352-file disk census reported four failures after the
+  clean 123-suite registry: `HookRenderDedupe.Tests.ps1` failed only under broad concurrent
+  machine load, `baseline-hygiene.tests.ps1` and `conformance-detection.tests.ps1` crossed their
+  process ceilings, and `pr-review-integration.tests.ps1` expected a historical Feature 038
+  validator run to remain green after the current hard campaign-evidence gate was added.
+- **Cause**: the journal test deliberately measures contention and full-census overlap changed the
+  condition it was measuring. Baseline hygiene and conformance completed green alone in 225.4 and
+  427.4 seconds, proving timing rather than assertion failures. The PR fixture used the current
+  full validator to prove a historical soft-warning property, so a newer unrelated hard gate made
+  its expected exit code stale.
+- **Resolution**: run only the contention-sensitive hook journal suite in the census serial lane;
+  give baseline hygiene 600 seconds and conformance 900 seconds under four-lane overlap while
+  retaining the 300-second default. The PR fixture now drives the current validator far enough to
+  prove the soft warning is reached, then structurally proves that warning cannot change the hard
+  result or exit behavior instead of requiring every later gate to pass.
+- **Measured proof**: all four files passed alone; the harness source guard pins the serial member
+  and both named timeout margins. The final four-lane disk census completed all 352 named files
+  (121 Pester containers and 231 direct scripts) with zero failures and
+  `caller_contaminated=False` in 4,203.6 seconds. The independent curated registry had already
+  completed 123/123 suites green in 1,980.335 seconds.
+- **Class closure**: the runner separates contention-sensitive measurements from ordinary parallel
+  files, keeps exceptional bounds named and source-guarded, and historical warning fixtures prove
+  only their owned behavior. A new hard validator cannot silently turn a soft-warning proof into a
+  false product regression.
+
+### DRIFT-199-I001-063 — workshop refusal had no governed recovery operation (resolved)
+
+- **Observed**: 2026-08-16, manual Copilot walk 4 stopped correctly when saved workshop progress
+  could not advance. The refusal prohibited hand-writing the progress record, but the initializer had
+  no reset/repair mode and no other governed recovery existed. The agent therefore asked permission
+  to perform the same manual replacement the refusal prohibited.
+- **Cause**: the refusal contract closed the unsafe bypass without giving the stopped state a
+  satisfiable, human-authorized transition. A terminal refusal with no escalation or repair is a
+  wedge even when its wording is correct.
+- **Resolution**: add `repair-workshop-controller-state.ps1`. Its request phase creates an immutable
+  proposal bound to the exact feature and controller SHA-256. Its apply phase requires the exact
+  typed `approved for workshop repair` reply captured on UserPromptSubmit/PreInvocation, preserves
+  product-domain records by hash, refuses changed state or changed records, writes an audit fact, and
+  returns only the unfinished agenda to canonical pending state. The workshop skill now names this
+  governed path; it still prohibits hand edits.
+- **Measured proof**: `workshop-state-transition-table.tests.ps1` proves no-authorization refusal,
+  non-exact-reply refusal, state-change refusal after authorization, byte-identical product record
+  preservation, canonical repaired state, audit creation, and one-time proposal consumption.
+- **Class closure**: every repair is proposal/state-hash-bound and the hook is a pinned production
+  consumer of the authorization writer. A refusal that cannot converge now has a sanctioned terminal
+  escalation rather than an agent-invented filesystem edit.
+
+### DRIFT-199-I001-062 — redundant product-domain projection wedged agenda confirmation (resolved)
+
+- **Observed**: 2026-08-16, manual Copilot walk 4 correctly created the feature, captured the product
+  answers, and persisted both product-domain records. The weaker host also added
+  `workshop.product-domain` while `agenda_status` remained `pending-confirmation`. The agenda writer
+  rejected every workshop property as an out-of-order technical decision, so compliance made the
+  next transition unreachable.
+- **Cause**: producer and consumer classified the same pre-agenda projection differently. Durable
+  product authority already lives in the Markdown/YAML records plus typed receipt; the redundant
+  controller projection was neither required nor safe to treat as a technical decision.
+- **Resolution**: the shared transition contract tolerates only the exact `product-domain` key in a
+  pending state. It never consumes that projection as technical authority, the canonical agenda
+  writer drops it on confirmation, and any technical key/selection/coverage before confirmation
+  still refuses. The initializer, reader, agenda writer, and governed repair use the same resolver.
+- **Measured proof**: the real agenda integration test constructs the walk-4 state, proves rendering
+  and confirmation succeed, proves the product projection is removed, and retains the technical-key
+  refusal. The new transition suite evaluates all 8 states x 6 operations (48 cells) in 1.3 seconds.
+- **Class closure**: `Resolve-SpecrewWorkshopStateTransition` is the production contract, not a
+  test-only model. A membership guard pins all four state consumers, and the exhaustive 48-cell table
+  makes the next illegal-transition member loud before a manual walk.
 
 ### DRIFT-199-I001-061 — public campaign suite exceeded its four-lane contention margin (resolved)
 

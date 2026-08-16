@@ -39,6 +39,175 @@ function Get-SpecrewWorkshopAuthorityHash {
     return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
 }
 
+function Get-SpecrewWorkshopRepairProposalPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/handover/workshop-controller-repair-proposal.json'
+}
+
+function Get-SpecrewWorkshopRepairAuthorityPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/runtime/workshop-controller-repair-authority.jsonl'
+}
+
+function Get-SpecrewWorkshopFileSha256 {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($Path)))).ToLowerInvariant()
+}
+
+function Resolve-SpecrewWorkshopStateTransition {
+    # This is the finite pre-agenda transition contract shared by the writer, reader, and governed repair path.
+    # Keep the state population closed and test every state x operation cell; a new state or operation must extend
+    # that table before it can become reachable in production.
+    [CmdletBinding()]
+    param(
+        [AllowNull()][object]$Controller,
+        [Parameter(Mandatory)]
+        [ValidateSet('initialize', 'read', 'render-agenda', 'confirm-agenda', 'request-repair', 'apply-repair')]
+        [string]$Operation
+    )
+
+    $stateClass = 'missing'
+    if ($null -ne $Controller) {
+        $agendaStatus = if ($Controller.PSObject.Properties['agenda_status']) { [string]$Controller.agenda_status } else { '' }
+        if ($agendaStatus -eq 'pending-confirmation') {
+            $selectedCount = if ($Controller.PSObject.Properties['selected']) { @($Controller.selected).Count } else { -1 }
+            $workshopKeys = @()
+            if ($Controller.PSObject.Properties['workshop'] -and $null -ne $Controller.workshop) {
+                $workshopKeys = @($Controller.workshop.PSObject.Properties | ForEach-Object { [string]$_.Name })
+            }
+            else { $workshopKeys = @('__invalid__') }
+            $technicalKeys = @($workshopKeys | Where-Object { $_ -cne 'product-domain' })
+            $agendaCount = if ($Controller.PSObject.Properties['agenda'] -and $null -ne $Controller.agenda) { @($Controller.agenda.PSObject.Properties).Count } else { -1 }
+            $skippedCount = if ($Controller.PSObject.Properties['skipped'] -and $null -ne $Controller.skipped) { @($Controller.skipped.PSObject.Properties).Count } else { -1 }
+            $confirmation = if ($Controller.PSObject.Properties['agenda_confirmation']) { [string]$Controller.agenda_confirmation } else { '' }
+            $confirmationScope = if ($Controller.PSObject.Properties['agenda_confirmation_scope']) { [string]$Controller.agenda_confirmation_scope } else { '' }
+            $receipt = if ($Controller.PSObject.Properties['agenda_turn_receipt']) { [string]$Controller.agenda_turn_receipt } else { '' }
+            $canonicalPending = ($selectedCount -eq 0 -and $technicalKeys.Count -eq 0 -and $agendaCount -eq 0 -and
+                $skippedCount -eq 0 -and $confirmation -eq 'pending' -and $confirmationScope -eq 'lens-selection' -and $receipt -eq 'pending')
+            if ($selectedCount -lt 0 -or $agendaCount -lt 0 -or $skippedCount -lt 0 -or $workshopKeys -contains '__invalid__') { $stateClass = 'invalid' }
+            elseif ($canonicalPending -and $workshopKeys.Count -eq 0) { $stateClass = 'pending-empty' }
+            elseif ($canonicalPending -and $workshopKeys.Count -eq 1 -and $workshopKeys[0] -ceq 'product-domain') { $stateClass = 'pending-product-projection' }
+            else { $stateClass = 'pending-inconsistent' }
+        }
+        elseif ($agendaStatus -eq 'confirmed') {
+            $selectedCount = if ($Controller.PSObject.Properties['selected']) { @($Controller.selected).Count } else { 0 }
+            $agendaCount = if ($Controller.PSObject.Properties['agenda'] -and $null -ne $Controller.agenda) { @($Controller.agenda.PSObject.Properties).Count } else { 0 }
+            $confirmation = if ($Controller.PSObject.Properties['agenda_confirmation']) { [string]$Controller.agenda_confirmation } else { '' }
+            $stateClass = if ($selectedCount -gt 0 -and $agendaCount -eq $selectedCount -and $confirmation -eq 'human-confirmed') {
+                'confirmed-complete'
+            }
+            else { 'confirmed-incomplete' }
+        }
+        else { $stateClass = 'invalid' }
+    }
+
+    $allowed = switch ($Operation) {
+        'initialize' { $stateClass -eq 'missing' }
+        'read' { $stateClass -in @('pending-empty', 'pending-product-projection', 'confirmed-complete') }
+        'render-agenda' { $stateClass -in @('pending-empty', 'pending-product-projection') }
+        'confirm-agenda' { $stateClass -in @('pending-empty', 'pending-product-projection') }
+        'request-repair' { $stateClass -eq 'pending-inconsistent' }
+        'apply-repair' { $stateClass -eq 'pending-inconsistent' }
+    }
+    return [pscustomobject]@{
+        state_class = $stateClass
+        operation   = $Operation
+        allowed     = [bool]$allowed
+        reason      = if ($allowed) { 'allowed' } else { 'workshop-transition-not-allowed' }
+    }
+}
+
+function Get-SpecrewWorkshopRepairAuthorization {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$ProposalId
+    )
+
+    $path = Get-SpecrewWorkshopRepairAuthorityPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $latest = $null
+    foreach ($line in [IO.File]::ReadLines($path, [Text.Encoding]::UTF8)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        try { $record = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop }
+        catch { throw 'workshop-repair-authority-store-invalid' }
+        if ([string]$record.schema_version -cne '1' -or [string]$record.proposal_id -cne $ProposalId) { continue }
+        if ([string]$record.authorization -cne 'human-approved') { throw 'workshop-repair-authority-record-invalid' }
+        $latest = $record
+    }
+    return $latest
+}
+
+function Write-SpecrewWorkshopRepairAuthorization {
+    # A repair is destructive to controller projections even though durable workshop files remain. It is therefore
+    # authorized only by an exact typed human reply bound to the immutable proposal and current controller bytes.
+    # SPECREW-AUTHORITY-CONTROL: workshop-repair-human-authorization
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent
+    )
+
+    if ($Response.Trim() -cne 'approved for workshop repair') { return $null }
+    $canonicalSourceEvent = ConvertTo-SpecrewWorkshopSourceEvent -SourceEvent $SourceEvent
+    if ($null -eq $canonicalSourceEvent -or -not (Test-SpecrewWorkshopHumanResponseText -Text $Response)) { return $null }
+    $root = [IO.Path]::GetFullPath($ProjectRoot)
+    if (Test-SpecrewWorkshopResponseIsHookOutput -ProjectRoot $root -Response $Response) { return $null }
+    $proposalPath = Get-SpecrewWorkshopRepairProposalPath -ProjectRoot $root
+    if (-not (Test-Path -LiteralPath $proposalPath -PathType Leaf)) { return $null }
+
+    try {
+        $proposal = Get-Content -LiteralPath $proposalPath -Raw -Encoding UTF8 -ErrorAction Stop |
+            ConvertFrom-Json -Depth 8 -ErrorAction Stop
+        if ([string]$proposal.schema_version -cne '1.0' -or [string]$proposal.feature_ref -cnotmatch '^[0-9]{3}-[a-z0-9][a-z0-9-]{0,63}$' -or
+            [string]$proposal.proposal_id -cnotmatch '^[a-f0-9]{64}$' -or [string]$proposal.controller_sha256 -cnotmatch '^[a-f0-9]{64}$') { return $null }
+        $controllerPath = Join-Path (Join-Path (Join-Path $root 'specs') ([string]$proposal.feature_ref)) 'lens-applicability.json'
+        if (-not (Test-Path -LiteralPath $controllerPath -PathType Leaf) -or
+            (Get-SpecrewWorkshopFileSha256 -Path $controllerPath) -cne [string]$proposal.controller_sha256) { return $null }
+        $existing = Get-SpecrewWorkshopRepairAuthorization -ProjectRoot $root -ProposalId ([string]$proposal.proposal_id)
+        if ($null -ne $existing) { return $existing }
+
+        $record = [ordered]@{
+            schema_version   = '1'
+            proposal_id      = [string]$proposal.proposal_id
+            feature_ref      = [string]$proposal.feature_ref
+            controller_sha256 = [string]$proposal.controller_sha256
+            authorization    = 'human-approved'
+            response_hash    = Get-SpecrewWorkshopAuthorityHash -Text $Response.Trim()
+            source_event     = $canonicalSourceEvent
+            host_kind        = [string]$HostKind
+            recorded_at      = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        $path = Get-SpecrewWorkshopRepairAuthorityPath -ProjectRoot $root
+        $dir = Split-Path -Parent $path
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $lockPath = $path + '.lock'
+        $lockStream = $null
+        try {
+            $deadline = [DateTimeOffset]::UtcNow.AddSeconds(2)
+            do {
+                try { $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None) }
+                catch { if ([DateTimeOffset]::UtcNow -ge $deadline) { throw }; Start-Sleep -Milliseconds 25 }
+            } until ($null -ne $lockStream)
+            [IO.File]::AppendAllText($path, (($record | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+        }
+        finally {
+            if ($null -ne $lockStream) { $lockStream.Dispose() }
+            Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
+        }
+        return [pscustomobject]$record
+    }
+    catch { return $null }
+}
+
 function Get-SpecrewWorkshopRefusalContractText {
     [CmdletBinding()]
     param(

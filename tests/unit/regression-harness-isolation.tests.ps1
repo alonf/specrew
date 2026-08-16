@@ -75,6 +75,7 @@ foreach ($serialCensusPath in @(
         'tests\integration\validate-governance-changed-only.tests.ps1',
         'tests\unit\boundary-authorization-prompt-truth.tests.ps1',
         'tests\continuous-co-review\unit\isolated-task-launcher.Tests.ps1',
+        'tests\bootstrap\HookRenderDedupe.Tests.ps1',
         'tests\integration\code-rules-skill-multihost.tests.ps1',
         'tests\integration\product-domain-multihost.tests.ps1')) {
     if (-not $censusRunner.Contains($serialCensusPath)) {
@@ -88,6 +89,10 @@ foreach ($serialLaneToken in @('$serialIsRunning', '$nextIsSerial -and $active.C
 }
 if ($censusRunner -notmatch "'tests\\integration\\validate-governance-changed-only\.tests\.ps1'\s*=\s*1800") {
     Fail 'Disk-wide census lost the measured 30-minute bound for the changed-only governance matrix.'
+}
+if ($censusRunner -notmatch "'tests\\integration\\baseline-hygiene\.tests\.ps1'\s*=\s*600" -or
+    $censusRunner -notmatch "'tests\\integration\\conformance-detection\.tests\.ps1'\s*=\s*900") {
+    Fail 'Disk-wide census lost the measured overlap margins for baseline hygiene or conformance detection.'
 }
 if ($censusRunner -notmatch "'tests\\bootstrap\\Sc012to015Acceptance\.Tests\.ps1'\s*=\s*900" -or
     $censusRunner -notmatch "'tests\\continuous-co-review\\integration\\verification-plan-end-to-end\.Tests\.ps1'\s*=\s*1200") {
