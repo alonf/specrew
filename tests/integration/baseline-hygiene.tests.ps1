@@ -115,10 +115,11 @@ function Get-PromptContent {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $internalScript = Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1'
+$humanAuthorityScript = Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1'
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 $syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
 
-foreach ($requiredPath in @($internalScript, $startScript, $syncScript)) {
+foreach ($requiredPath in @($internalScript, $humanAuthorityScript, $startScript, $syncScript)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         Write-Fail "Missing required script: $requiredPath"
         exit 1
@@ -126,6 +127,7 @@ foreach ($requiredPath in @($internalScript, $startScript, $syncScript)) {
 }
 
 . $internalScript
+. $humanAuthorityScript
 Invoke-Expression ((Get-FunctionDefinitionsText -Path $startScript -FunctionNames @('Get-BaselineCommitHash')) -join [Environment]::NewLine)
 
 $scratchRoot = Join-Path $repoRoot '.scratch\baseline-hygiene'
@@ -249,7 +251,7 @@ Write-Pass 'Baseline helper fails closed on write errors and leaves the prompt u
 
 # Integration: sequence, false-positive elimination, genuine detection, idempotency, closeout
 $lifecycleProject = New-TestProject -ProjectRoot (Join-Path $scratchRoot 'lifecycle') -FeatureRef '029-baseline-hygiene-lifecycle'
-$boundaries = @('specify', 'clarify', 'plan', 'tasks', 'review-signoff', 'iteration-closeout', 'feature-closeout')
+$boundaries = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
 
 for ($index = 0; $index -lt $boundaries.Count; $index++) {
     $boundary = $boundaries[$index]
@@ -266,6 +268,25 @@ for ($index = 0; $index -lt $boundaries.Count; $index++) {
         '-FeatureRef', $lifecycleProject.FeatureRef,
         '-IterationNumber', '001'
     )
+    if ($syncResult.ExitCode -ne 0 -and
+        $boundary -eq 'review-signoff' -and
+        ($syncResult.Output -join "`n") -match 'no-authoritative-campaign-result') {
+        $captured = Write-SpecrewReviewSignoffOverrideAuthorization `
+            -ProjectRoot $lifecycleProject.ProjectRoot `
+            -Response 'approved for partial review signoff - baseline fixture accepts missing provider evidence to isolate baseline refresh' `
+            -HostKind 'fixture' `
+            -SourceEvent 'UserPromptSubmit'
+        if ($null -eq $captured) {
+            Write-Fail 'Review-signoff refusal did not leave a capturable tree-bound override request.'
+            exit 1
+        }
+        $syncResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
+            '-ProjectPath', $lifecycleProject.ProjectRoot,
+            '-BoundaryType', $boundary,
+            '-FeatureRef', $lifecycleProject.FeatureRef,
+            '-IterationNumber', '001'
+        )
+    }
     if ($syncResult.ExitCode -ne 0) {
         Write-Fail ("Boundary sync failed for '{0}':`n{1}" -f $boundary, ($syncResult.Output -join [Environment]::NewLine))
         exit 1
@@ -355,6 +376,34 @@ for ($index = 0; $index -lt $boundaries.Count; $index++) {
             exit 1
         }
     }
+
+    # This fixture measures baseline refresh, not whether a lifecycle approval may be skipped.
+    # Authorize the exact pending crossing before the next boundary so the hard ratchet remains
+    # production-real instead of weakening the gate for a test that predates it.
+    if ($boundary -ne 'feature-closeout') {
+        $authorityContext = Get-Content -LiteralPath $lifecycleProject.ContextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
+        $pendingCrossing = $authorityContext.boundary_enforcement.pending_crossing
+        if ($null -eq $pendingCrossing) {
+            if ($boundary -eq 'specify') {
+                continue
+            }
+            Write-Fail ("Boundary '{0}' did not leave an exact crossing for the fixture authorization." -f $boundary)
+            exit 1
+        }
+        $authorization = Add-SpecrewBoundaryAuthorization `
+            -ProjectRoot $lifecycleProject.ProjectRoot `
+            -CurrentBoundary ([string]$pendingCrossing.from_boundary) `
+            -AuthorizedBoundary ([string]$pendingCrossing.to_boundary) `
+            -AuthorizingHuman 'baseline-hygiene-fixture' `
+            -VerdictText ("approved for {0}" -f [string]$pendingCrossing.to_boundary) `
+            -AuthCommitHash ([string]$pendingCrossing.boundary_commit_hash) `
+            -EvidenceSource 'human-confirmed-at-resume' `
+            -OutOfBandReason 'fixture authorizes each exact crossing so it can isolate baseline refresh behavior'
+        if ($null -eq $authorization -or $authorization.AuthorizedBoundary -ne [string]$pendingCrossing.to_boundary) {
+            Write-Fail ("Boundary '{0}' did not record the fixture authorization for '{1}'." -f $boundary, [string]$pendingCrossing.to_boundary)
+            exit 1
+        }
+    }
 }
 
 $closeoutContext = Get-Content -LiteralPath $lifecycleProject.ContextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
@@ -364,27 +413,30 @@ if ($closeoutContext.session_state.active -or $closeoutContext.session_state.bou
 }
 Write-Pass 'Boundary sync refreshes baseline at every lifecycle boundary, preserves genuine-change detection, and keeps feature closeout inactive'
 
-# Error handling: git HEAD unavailable should warn and continue without corrupting prompt state
+# Error handling: a boundary cannot bind to an exact tree when git HEAD is unavailable.
+# The hard boundary ratchet must refuse, while leaving the prompt uncorrupted. Fresh-project
+# guidance remains the responsibility of `specrew start`, exercised by SC-009 below.
 $warningProject = New-TestProject -ProjectRoot (Join-Path $scratchRoot 'warning') -FeatureRef '029-baseline-hygiene-warning' -SkipInitialCommit
 $warningResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
     '-ProjectPath', $warningProject.ProjectRoot,
     '-BoundaryType', 'specify',
     '-FeatureRef', $warningProject.FeatureRef
 )
-if ($warningResult.ExitCode -ne 0) {
-    Write-Fail ("Boundary sync should continue when HEAD is unavailable:`n{0}" -f ($warningResult.Output -join [Environment]::NewLine))
+if ($warningResult.ExitCode -eq 0) {
+    Write-Fail 'Boundary sync should fail closed when HEAD is unavailable.'
     exit 1
 }
 $warningOutput = $warningResult.Output -join [Environment]::NewLine
-if ($warningOutput -notmatch 'WARNING: Boundary sync ''specify'' could not refresh baseline_commit_hash') {
-    Write-Fail 'Boundary sync did not emit the expected warning when HEAD could not be resolved.'
+if ($warningOutput -notmatch 'Failed to resolve the current HEAD commit hash') {
+    Write-Fail ("Boundary sync did not name the missing HEAD identity:`n{0}" -f $warningOutput)
     exit 1
 }
-if ((Get-PromptContent -PromptPath $warningProject.PromptPath) -match 'baseline_commit_hash:') {
+if ((Test-Path -LiteralPath $warningProject.PromptPath -PathType Leaf) -and
+    (Get-PromptContent -PromptPath $warningProject.PromptPath) -match 'baseline_commit_hash:') {
     Write-Fail 'Boundary sync should not stamp baseline_commit_hash when HEAD cannot be resolved.'
     exit 1
 }
-Write-Pass 'Boundary sync warns clearly and leaves the prompt uncorrupted when HEAD cannot be resolved'
+Write-Pass 'Boundary sync fails closed and leaves the prompt uncorrupted when HEAD cannot be resolved'
 
 # SC-009 (Feature 141 FR-013): fresh-greenfield baseline-commit handling.
 # Prove-first outcome (maintainer C+nudge decision 2026-06-03): preserve the Feature-029

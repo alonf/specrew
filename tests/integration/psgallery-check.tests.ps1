@@ -24,6 +24,10 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $initScript = Join-Path $repoRoot 'scripts\specrew-init.ps1'
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 $updateScript = Join-Path $repoRoot 'scripts\specrew-update.ps1'
+$manifest = Import-PowerShellDataFile -LiteralPath (Join-Path $repoRoot 'Specrew.psd1')
+$currentVersion = [version][string]$manifest.ModuleVersion
+$fakeLatestVersion = [version]::new($currentVersion.Major + 1, 0, 0).ToString()
+$fakeUncachedVersion = [version]::new($currentVersion.Major + 1, 0, 1).ToString()
 
 $scratchRoot = Join-Path $repoRoot '.scratch\psgallery-check'
 if (Test-Path -LiteralPath $scratchRoot) {
@@ -36,13 +40,13 @@ $null = & git -C $projectRoot init --quiet 2>&1
 $null = & git -C $projectRoot config user.email 'test@specrew.local' 2>&1
 $null = & git -C $projectRoot config user.name 'Test User' 2>&1
 
-$env:SPECREW_PSGALLERY_LATEST_VERSION = '0.20.0'
+$env:SPECREW_PSGALLERY_LATEST_VERSION = $fakeLatestVersion
 $env:SPECREW_PSGALLERY_FORCE_FAILURE = $null
 $env:SPECREW_SKIP_UPDATE_CHECK = $null
 
 $initResult = Invoke-TestScript -ScriptPath $initScript -ArgumentList @('-ProjectPath', $projectRoot, '-Force', '-NoAgents')
 $initOutput = $initResult.Output -join [Environment]::NewLine
-if ($initResult.ExitCode -ne 0 -or $initOutput -notmatch 'WARN: Newer version available: 0\.20\.0' -or $initOutput -notmatch 'Update-Module Specrew') {
+if ($initResult.ExitCode -ne 0 -or $initOutput -notmatch ("WARN: Newer version available: {0}" -f [regex]::Escape($fakeLatestVersion)) -or $initOutput -notmatch 'Update-Module Specrew') {
     Write-Fail ("Init did not surface the PSGallery update warning:`n{0}" -f $initOutput)
     exit 1
 }
@@ -54,10 +58,12 @@ if (-not (Test-Path -LiteralPath $cachePath -PathType Leaf)) {
     exit 1
 }
 
-$env:SPECREW_PSGALLERY_LATEST_VERSION = '0.21.0'
+$env:SPECREW_PSGALLERY_LATEST_VERSION = $fakeUncachedVersion
 $startResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $projectRoot, '-NoLaunch')
 $startOutput = $startResult.Output -join [Environment]::NewLine
-if ($startResult.ExitCode -ne 0 -or $startOutput -notmatch 'WARN: Newer version available: 0\.20\.0' -or $startOutput -match '0\.21\.0') {
+if ($startResult.ExitCode -ne 0 -or
+    $startOutput -notmatch ("WARN: Newer version available: {0}" -f [regex]::Escape($fakeLatestVersion)) -or
+    $startOutput -match [regex]::Escape($fakeUncachedVersion)) {
     Write-Fail ("specrew start did not reuse the cached PSGallery value:`n{0}" -f $startOutput)
     exit 1
 }
@@ -65,7 +71,7 @@ Write-Pass 'specrew start reuses the shared PSGallery cache'
 
 $updateResult = Invoke-TestScript -ScriptPath $updateScript -ArgumentList @('-ProjectPath', $projectRoot)
 $updateOutput = $updateResult.Output -join [Environment]::NewLine
-if ($updateResult.ExitCode -ne 0 -or $updateOutput -notmatch 'WARN: Newer version available: 0\.20\.0') {
+if ($updateResult.ExitCode -ne 0 -or $updateOutput -notmatch ("WARN: Newer version available: {0}" -f [regex]::Escape($fakeLatestVersion))) {
     Write-Fail ("specrew update did not surface the shared PSGallery warning:`n{0}" -f $updateOutput)
     exit 1
 }

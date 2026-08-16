@@ -55,6 +55,10 @@ if ($runner -notmatch '\$running\.timeout_seconds' -or
     $runner -notmatch '\$started\.timeout_seconds') {
     Fail 'Measured slow suites must retain per-row timeout enforcement in both parallel and serial lanes.'
 }
+if ($censusRunner -match 'try \{ & ''\$quoted''; exit 0 \}' -or
+    $censusRunner -notmatch "'-File'") {
+    Fail 'Disk-wide census must execute direct assertion scripts with pwsh -File semantics so exit 1 cannot be overwritten by a wrapper.'
+}
 foreach ($measuredRegistryBound in @(
         @{ Path = 'review-campaign-verification\.Tests\.ps1'; Seconds = 420 },
         @{ Path = 'review-public-campaign-command\.Tests\.ps1'; Seconds = 600 },

@@ -77,17 +77,19 @@ function Start-SweepFile {
     param([Parameter(Mandatory)]$File, [int]$Index)
     $source = Get-Content -LiteralPath $File.FullName -Raw -Encoding UTF8
     $kind = if ($source -match '(?m)^\s*Describe\s+[''"]') { 'pester' } else { 'script' }
-    $quoted = $File.FullName.Replace("'", "''")
-    $command = if ($kind -ceq 'pester') {
-        "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.Exit=`$true; `$c.Output.Verbosity='None'; Invoke-Pester -Configuration `$c"
+    $processArguments = if ($kind -ceq 'pester') {
+        $quoted = $File.FullName.Replace("'", "''")
+        $command = "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.Exit=`$true; `$c.Output.Verbosity='None'; Invoke-Pester -Configuration `$c"
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+        @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
     }
     else {
-        # Direct assertion scripts often invoke a child that is EXPECTED to fail and then prove its
-        # output. LASTEXITCODE therefore describes the last child, not the suite. If the script
-        # returns normally it passed; throw/exit 1 still terminates this isolated process non-zero.
-        "try { & '$quoted'; exit 0 } catch { Write-Error `$_; exit 1 }"
+        # Run direct assertion scripts with the -File semantics promised by this runner's contract.
+        # An invoked child script's `exit 1` returns control to a PowerShell wrapper, so wrapping it
+        # and then issuing `exit 0` converts a real failure into a false green.
+        $quotedFileArgument = '"{0}"' -f $File.FullName.Replace('"', '\"')
+        @('-NoProfile', '-NonInteractive', '-File', $quotedFileArgument)
     }
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
     $token = '{0:D4}-{1}' -f $Index, ([guid]::NewGuid().ToString('N'))
     $stdout = Join-Path ([IO.Path]::GetTempPath()) "specrew-full-sweep-$token.out"
     $stderr = Join-Path ([IO.Path]::GetTempPath()) "specrew-full-sweep-$token.err"
@@ -98,7 +100,7 @@ function Start-SweepFile {
         [int]$fileTimeoutOverrides[$relativePath]
     }
     else { $PerFileTimeoutSeconds }
-    $process = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded) `
+    $process = Start-Process pwsh -ArgumentList $processArguments `
         -WorkingDirectory $repoRoot -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
     return [pscustomobject]@{
         index = $Index; file = $File; kind = $kind; process = $process; started = $start

@@ -85,6 +85,7 @@ $registry = @(
     @{ area = 'append-only scoped authorization correction ledger (FR-004/SC-014)'; path = 'tests/unit/boundary-correction-ledger.tests.ps1'; kind = 'script' }
     @{ area = 'current commit/tree pending-crossing binding (FR-041/FR-042/FR-044/FR-045)'; path = 'tests/integration/pending-verdict-stop-artifact.tests.ps1'; kind = 'script' }
     @{ area = 'DRIFT-198-I008-056–058 caller isolation, Pester container honesty, and closed automation stdin'; path = 'tests/unit/regression-harness-isolation.tests.ps1'; kind = 'script' }
+    @{ area = 'Beta3 disk-census honesty - direct assertion exit 1 remains a failed file'; path = 'tests/unit/full-sweep-direct-exit.tests.ps1'; kind = 'script' }
     @{ area = 'F6 review-engine version handshake - project/runtime identity, drift refusal, deployed marker'; path = 'tests/unit/review-engine-resolution.tests.ps1'; kind = 'script' }
     @{ area = 'F6/F197 deployed review-engine identity and complete fire path'; path = 'tests/continuous-co-review/integration/co-review-deploy-completeness.Tests.ps1'; kind = 'pester' }
     @{ area = 'F15 consumer runtime file classification - ignore evidence, preserve contracts'; path = 'tests/unit/feature-051-file-classification.tests.ps1'; kind = 'script' }

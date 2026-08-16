@@ -22,10 +22,58 @@
 
 ## Summary
 
-**Total drift events**: 56 (DRIFT-199-I001-001 through -056)
+**Total drift events**: 58 (DRIFT-199-I001-001 through -058)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-058 — corrected census semantics exposed three stale integration fixtures (resolved; corrected census pending)
+
+- **Observed**: 2026-08-16, once direct assertion scripts retained their real exit codes, three
+  integration files failed on both `c623d205` and the help-only `837ca23e` tree:
+  `baseline-hygiene.tests.ps1`, `non-specrew-session-bypass.tests.ps1`, and
+  `psgallery-check.tests.ps1`. The paired result proved these were inherited fixture failures, not
+  regressions from the help correction.
+- **Cause**: the baseline fixture skipped the canonical `before-implement` and `retro` lifecycle
+  steps, supplied no tree-bound human authorization, expected review signoff without campaign
+  evidence, and expected a boundary to proceed without a resolvable Git tree. The closeout fixture
+  still required a universal PR workflow after delivery became release-model-driven. The gallery
+  fixture's fake "latest" versions (`0.20.0` and `0.21.0`) were older than beta3 and therefore could
+  not exercise an update warning.
+- **Resolution**: the baseline fixture now walks every canonical boundary, authorizes each exact
+  pending crossing, records the existing prompt-style partial-review override solely to isolate its
+  baseline concern, and expects a missing tree identity to fail closed. The closeout assertions now
+  require the resolved delivery contract and its no-invented-forge rule. Gallery versions are
+  derived above the module manifest version instead of frozen literals.
+- **Measured proof**: all three files now pass when run directly with native `pwsh -File` semantics.
+  The baseline file proves the complete lifecycle plus zero-commit start guidance; the closeout file
+  proves all five governance pillars; the gallery file proves init/start/update cache behavior,
+  opt-out paths, and bounded offline behavior. The census-honesty structural and behavioral proofs
+  also pass.
+- **Class closure**: lifecycle fixtures use the canonical boundary vocabulary and exact pending
+  crossing facts; closeout tests assert the release-model contract rather than one delivery topology;
+  version-order fixtures derive their inputs from the shipped manifest. The corrected census makes
+  any future direct-script fixture drift loud instead of laundering it into a green count.
+
+### DRIFT-199-I001-057 — the disk census overwrote direct-script exit failures with exit 0 (resolved; corrected census pending)
+
+- **Observed**: 2026-08-16, the exact `c623d205` census reported 350/350 green. A subsequent
+  source-impact run executed three of those named files directly and they exited 1. All three failures
+  reproduced unchanged on a fresh `c623d205` worktree, proving the help-only `837ca23e` change did not
+  introduce them and the earlier census result was false.
+- **Cause**: `full-powershell-test-sweep.ps1` claimed direct `-File` semantics but actually invoked a
+  direct assertion script inside `try { & script; exit 0 }`. In PowerShell, the invoked script's
+  `exit 1` returned control to the wrapper, whose unconditional `exit 0` erased the failure.
+- **Resolution**: direct assertion files now run as native `pwsh -File <path>` children. Pester files
+  retain their encoded configuration path. A structural guard rejects the retired wrapper and a
+  nested behavioral census proves that a direct `exit 1` is named, counted, and returned non-zero.
+- **Measured proof**: both new proofs were RED before the runner changed and GREEN afterward. The
+  behavioral proof is registered in the release suite so the census cannot certify itself using the
+  broken path it is meant to guard. A corrected disk census must now expose the real failing
+  population before the final manual environment is created.
+- **Class closure**: the census's direct-script exit contract is tested by an independent nested
+  fixture and carried in the curated registry. A future wrapper that launders the exit code becomes
+  loud before either verification surface can claim green.
 
 ### DRIFT-199-I001-056 — start help said two production-supported hosts were rejected (resolved)
 
@@ -70,9 +118,10 @@ recorded maintainer ruling, so a single rate here would misstate them.
   correction.
 - **Measured proof**: the source guard was RED before each registry correction and now pins all five
   named bounds. On exact commit `c623d205`, the isolated four-lane registry passed 121/121 suites in
-  1,818.930 seconds and the sequentially-started disk census passed all 350 named files (121 Pester +
-  229 scripts) in 4,348.8 seconds with no caller contamination. Manual fixtures were not created until
-  both completed.
+  1,818.930 seconds. The old census then *reported* 350/350 green in 4,348.8 seconds, but
+  DRIFT-199-I001-057 subsequently proved that direct-script failures were being overwritten; that
+  census is not acceptance evidence. Its canary manual fixtures are intentionally not the final
+  environment.
 - **Class closure**: exceptional release bounds are named per suite, derived from complete-run timing,
   and guarded individually. Crossing one is reported as timing evidence and cannot be converted into
   an assertion failure or hidden by increasing every suite's timeout.
