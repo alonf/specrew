@@ -81,8 +81,10 @@ that init/update copies into consumer projects, not module-only engine internals
 - **Workshop ordering is enforced where an answer is produced.** A product question shown before feature
   setup is refused before the human can answer it. The technical agenda cannot be rendered until the
   product grounding has been recorded, and an agenda shown early is stopped with the real prerequisite
-  instead of inviting confirmations that can never count. Recovery says whether an answer was actually
-  preserved, proposes one action, and does not diagnose or blame Specrew.
+  instead of inviting confirmations that can never count. If the agenda is shown with rewritten bullets
+  or spacing, that Stop says so immediately and asks for the command output unchanged; the check is not
+  relaxed. Recovery says whether an answer was actually preserved, proposes one action, and does not
+  diagnose or blame Specrew.
 
 ## What a review actually costs
 

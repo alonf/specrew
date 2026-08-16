@@ -22,10 +22,32 @@
 
 ## Summary
 
-**Total drift events**: 65 (DRIFT-199-I001-001 through -065)
+**Total drift events**: 66 (DRIFT-199-I001-001 through -066)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-066 — a reformatted agenda failed silently and surfaced as a missing receipt (resolved)
+
+- **Observed**: 2026-08-17, the Copilot walk after W14/W15 rendered the agenda with `•`
+  in place of the canonical `-`. The proposal existed, phase was `agenda`, and four
+  product-domain receipts were already on disk. No agenda receipt was minted.
+- **Cause**: `Test-SpecrewWorkshopAgendaVisibleInText` correctly refused to bind
+  identity to a block the human did not see verbatim. Whitespace normalization does
+  not repair a dash-to-bullet substitution. The guard stayed silent, so the failure
+  appeared one turn later as "no receipt" and the agent diagnosed the receipt system.
+- **Resolution**: keep the exact visibility check. When phase is agenda, a valid
+  proposal exists, and the assistant turn shows an agenda that is not the canonical
+  block, Stop names the rewrite immediately and tells the agent to send the command
+  output unchanged. Do not relax the check, and do not treat the workshop-state
+  repair probe as a receipt mint.
+- **Measured proof**: the live RenderOnly path with a `•` substitution is refused at
+  that Stop and does not bind confirmation identity; the exact canonical block still
+  binds. The visibility helper itself rejects the bullet rewrite.
+- **Class closure**: a workshop guard that computes the right answer must speak at
+  the producer. W12 closed this for ordering; this sibling closes it for agenda
+  visibility. Paired tests keep the legitimate exact-output path and the rewrite
+  abuse loud at the same Stop.
 
 ### DRIFT-199-I001-065 — Copilot's populated nested skill catalog was reported empty (resolved)
 

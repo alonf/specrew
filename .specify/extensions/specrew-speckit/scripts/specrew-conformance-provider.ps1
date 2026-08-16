@@ -486,7 +486,7 @@ function Resolve-SpecrewWorkshopQuestionPause {
         [AllowNull()][string]$LastAssistantText,
         [bool]$HasPendingVerdict
     )
-    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; phase = $null; agenda_status = $null; question = $null; message_hash = $null; agenda_digest = $null; agenda_binding = $null; artifact_path = $null; binding_conflict = $null }
+    $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; phase = $null; agenda_status = $null; question = $null; message_hash = $null; agenda_digest = $null; agenda_binding = $null; agenda_visibility = $null; artifact_path = $null; binding_conflict = $null }
     try {
         if ($HasPendingVerdict) { $result.reason = 'lifecycle-boundary-overrides-workshop'; return $result }
         if ([string]::IsNullOrWhiteSpace($ActiveFeatureRef)) { return $result }
@@ -569,10 +569,13 @@ function Resolve-SpecrewWorkshopQuestionPause {
                     if ([string]$proposal.schema_version -ceq '1.0' -and [string]$proposal.feature_ref -ceq $ActiveFeatureRef -and
                         [string]$proposal.lens -ceq 'product-domain' -and $digestProperty -and $bindingProperty -and $textProperty -and
                         [string]$digestProperty.Value -cmatch '^[a-f0-9]{64}$' -and
-                        (Get-SpecrewWorkshopAgendaDigest -Binding $bindingProperty.Value) -ceq [string]$digestProperty.Value -and
-                        (Test-SpecrewWorkshopAgendaVisibleInText -Text $LastAssistantText -CanonicalAgendaText ([string]$textProperty.Value))) {
-                        $result.agenda_digest = [string]$digestProperty.Value
-                        $result.agenda_binding = $bindingProperty.Value
+                        (Get-SpecrewWorkshopAgendaDigest -Binding $bindingProperty.Value) -ceq [string]$digestProperty.Value) {
+                        $agendaVisible = Test-SpecrewWorkshopAgendaVisibleInText -Text $LastAssistantText -CanonicalAgendaText ([string]$textProperty.Value)
+                        $result.agenda_visibility = if ($agendaVisible) { 'visible' } else { 'not-visible' }
+                        if ($agendaVisible) {
+                            $result.agenda_digest = [string]$digestProperty.Value
+                            $result.agenda_binding = $bindingProperty.Value
+                        }
                     }
                 }
                 catch { $result.agenda_digest = $null; $result.agenda_binding = $null }
@@ -937,6 +940,7 @@ try {
     $workshopRepairState = $false
     $preScaffoldWorkshopAttempt = $false
     $workshopProductRecordMissingAgenda = $false
+    $workshopAgendaReformatted = $false
     $workshopRepairReasons = @(
         'workshop-decision-bindings-invalid',
         'workshop-code-implementation-manifest-missing',
@@ -1090,6 +1094,17 @@ try {
         $technicalLensHeading = $lastAssistantText -match '(?im)^\s*(?:preparing\s+)?(?:lens\s+\d+\s+of\s+\d+\s*[:—-]\s*)?(?:architecture-core|requirements-nfr|data-storage|ui-ux|devops-operations|integration-api|security-compliance|observability-resilience|component-design|code-implementation)(?:\s+lens)?\b'
         if ($technicalLensHeading) { $workshopAgendaPresentationMissing = $true }
     }
+    if ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid -and
+        [string]$workshopQuestion.phase -eq 'agenda' -and
+        [string]$workshopQuestion.agenda_visibility -eq 'not-visible' -and
+        -not [string]::IsNullOrWhiteSpace($lastAssistantText)) {
+        # The visibility check is right: a bullet or spacing rewrite is not the block the human saw.
+        # Silence here is the defect. Name the rewrite on this Stop so the agent re-sends the command
+        # output instead of diagnosing a missing receipt one turn later.
+        $workshopAgendaReformatted = ($lastAssistantText -match '(?is)\bWorkshop agenda\b' -or
+            $lastAssistantText -match '(?is)\bSelected lenses\s*:' -or
+            $lastAssistantText -match '(?im)^\s*[-*•]\s+(?:architecture-core|requirements-nfr|data-storage|ui-ux|devops-operations|integration-api|security-compliance|observability-resilience|component-design|code-implementation)\b')
+    }
     if ($workshopIntermediate -or $workshopConflict -or $workshopRepair) { $rawHit = $false }
     # The old 4x tail-200 mitigation remains removed. The measured 2026-08-10 signature now triggers only the
     # bounded tail-8 recovery above; diagnostics record both attempted and recovered so it cannot fail silently.
@@ -1171,7 +1186,7 @@ try {
     # refusal composed, and the stale marker could feed verdict capture. The refusal now keys on
     # $hasPending directly: while the stage owes evidence it has not produced, the missing-evidence
     # block composes regardless of any marker already in the transcript.
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1180,7 +1195,7 @@ try {
     # ($blockKind -eq 'material' -and $canAssess). BOUNDARY stops, 'none', an unavailable classifier, and EVERY error
     # leave $stopIntentOutcome at its 'real' default -> today's real-stop enforcement is preserved byte-for-byte. The
     # classifier is dot-sourced fail-open: the ONE pure, self-contained contract file (sibling of bootstrap; no _load).
-    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda) { 'workshop-repair' } else { 'real' }
+    $stopIntentOutcome = if ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted) { 'workshop-repair' } else { 'real' }
     $stopIntentReason = $null
     $stopIntentContinueKey = $null
     $stopIntentContinueCount = 0
@@ -1229,7 +1244,8 @@ try {
     # repair when the visible turn nevertheless opened a technical lens before the agenda decision: the state is
     # valid precisely because it still says product-domain/pending-confirmation, which is the evidence of drift.
     $workshopQuestionWins = $workshopIntermediate -and (-not $workshopAgendaPresentationMissing) -and
-        (-not $workshopProductRecordMissingAgenda) -and (($blockKind -ne 'material') -or $workshopRecordOnlyTurn)
+        (-not $workshopProductRecordMissingAgenda) -and (-not $workshopAgendaReformatted) -and
+        (($blockKind -ne 'material') -or $workshopRecordOnlyTurn)
     if ($workshopQuestionWins) {
         $stopIntentOutcome = 'workshop-intermediate'
         $stopIntentReason = [string]$workshopQuestion.reason
@@ -1303,7 +1319,7 @@ try {
         ("workshop-conflict|{0}|{1}|{2}|{3}" -f [string]$workshopQuestion.feature_ref, [string]$conflict.binding, [string]$conflict.prior_value, [string]$conflict.value)
     }
     elseif ($blockKind -eq 'workshop-repair') {
-        $repairReason = if ($preScaffoldWorkshopAttempt) { 'workshop-feature-not-created' } elseif ($workshopProductRecordMissingAgenda) { 'workshop-product-records-not-persisted' } elseif ($workshopAgendaPresentationMissing) { 'workshop-agenda-not-confirmed' } else { [string]$workshopQuestion.reason }
+        $repairReason = if ($preScaffoldWorkshopAttempt) { 'workshop-feature-not-created' } elseif ($workshopProductRecordMissingAgenda) { 'workshop-product-records-not-persisted' } elseif ($workshopAgendaReformatted) { 'workshop-agenda-reformatted' } elseif ($workshopAgendaPresentationMissing) { 'workshop-agenda-not-confirmed' } else { [string]$workshopQuestion.reason }
         $repairFeature = if ($preScaffoldWorkshopAttempt) { 'unscaffolded' } else { [string]$workshopQuestion.feature_ref }
         ("workshop-repair|{0}|{1}" -f $repairFeature, $repairReason)
     }
@@ -1399,6 +1415,9 @@ try {
                 }
                 elseif ($workshopProductRecordMissingAgenda) {
                     [void]$sb.AppendLine('The technical topics were shown before the product grounding was recorded. Record the product grounding from its typed answer first, then show the complete technical-topic selection once. Do not ask for another agenda confirmation first; it cannot be retained until that earlier record exists.')
+                }
+                elseif ($workshopAgendaReformatted) {
+                    [void]$sb.AppendLine('The agenda you showed was reformatted, so the confirmation could not be recorded against it. Send the command''s output exactly as printed, without changing bullets or spacing, then ask again.')
                 }
                 elseif ([string]$workshopQuestion.reason -eq 'workshop-decision-bindings-invalid') {
                     $badBinding = $workshopQuestion.binding_conflict

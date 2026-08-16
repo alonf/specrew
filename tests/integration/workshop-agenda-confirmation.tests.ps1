@@ -166,6 +166,49 @@ try {
 
     $renderedAgenda = @(& $writer -ProjectRoot $scratch -FeatureRef '001-url-checker' -AgendaJson $agendaJson -RenderOnly) -join [Environment]::NewLine
     Assert-True ($renderedAgenda -match 'Selected lenses:' -and $renderedAgenda -match 'Skipped lenses:' -and $renderedAgenda -match 'ui-ux: The interface is terminal-only') 'render-only emits the complete canonical selected + skipped agenda the human must see'
+    Assert-True (Test-SpecrewWorkshopAgendaVisibleInText -Text ("Agenda follows.`n`n" + $renderedAgenda) -CanonicalAgendaText $renderedAgenda) 'whitespace-normalized exact agenda remains visible'
+    $bulletSwappedAgenda = [regex]::Replace($renderedAgenda, '(?m)^- ', ([string][char]0x2022 + ' '))
+    Assert-True ($bulletSwappedAgenda -ne $renderedAgenda -and $bulletSwappedAgenda -match ([string][char]0x2022)) 'fixture actually substitutes the canonical dash bullets'
+    Assert-True (-not (Test-SpecrewWorkshopAgendaVisibleInText -Text $bulletSwappedAgenda -CanonicalAgendaText $renderedAgenda)) 'a dash-to-bullet rewrite is not the visible canonical agenda'
+
+    function Invoke-ShippedWorkshopProvider {
+        param([Parameter(Mandatory)][string]$AssistantText)
+        $transcriptPath = Join-Path $scratch ('.specrew\runtime\agenda-' + [guid]::NewGuid().ToString('N') + '.jsonl')
+        New-Item -ItemType Directory -Path (Split-Path -Parent $transcriptPath) -Force | Out-Null
+        $line = [pscustomobject]@{
+            type = 'assistant'
+            message = [pscustomobject]@{
+                content = @([pscustomobject]@{ type = 'text'; text = $AssistantText })
+            }
+        } | ConvertTo-Json -Depth 8 -Compress
+        [IO.File]::WriteAllText($transcriptPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+        $priorModulePath = $env:SPECREW_MODULE_PATH
+        $env:SPECREW_MODULE_PATH = $repoRoot
+        try {
+            Push-Location $scratch
+            try { $providerOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --host-kind claude --source-event Stop --transcript-path $transcriptPath 2>&1) }
+            finally { Pop-Location }
+        }
+        finally { $env:SPECREW_MODULE_PATH = $priorModulePath }
+        return [pscustomobject]@{
+            ExitCode = $LASTEXITCODE
+            Output = ($providerOutput -join "`n")
+            QuestionPath = (Join-Path $scratch '.specrew\handover\workshop-question.json')
+        }
+    }
+
+    $reformatted = Invoke-ShippedWorkshopProvider -AssistantText ("Agenda follows.`n`n" + $bulletSwappedAgenda + "`n`nPlease answer above.")
+    Assert-True ($reformatted.ExitCode -eq 0 -and $reformatted.Output -match 'SPECREW-STOP-BLOCK') 'reformatted agenda is refused at the Stop that showed it'
+    Assert-True ($reformatted.Output -match '(?i)agenda you showed was reformatted' -and
+        $reformatted.Output -match '(?i)send the command''s output exactly as printed' -and
+        $reformatted.Output -match '(?i)without changing bullets or spacing') 'reformatted-agenda refusal names the rewrite and the exact-output retry'
+    Assert-True ($reformatted.Output -notmatch '(?i)lens-applicability|controller|digest') 'reformatted-agenda refusal keeps workshop machinery out of the human-facing correction'
+    $reformattedQuestion = Get-Content -LiteralPath $reformatted.QuestionPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+    Assert-True ([string]$reformattedQuestion.phase -eq 'agenda' -and -not $reformattedQuestion.PSObject.Properties['agenda_digest']) 'reformatted agenda does not bind confirmation identity'
+
+    $notYetShown = Invoke-ShippedWorkshopProvider -AssistantText 'Product grounding is recorded. I will show the technical topics next.'
+    Assert-True ($notYetShown.ExitCode -eq 0 -and $notYetShown.Output -notmatch 'agenda you showed was reformatted') 'an agenda-phase turn that has not shown the agenda is not accused of reformatting it'
+
     $null = Add-AgendaReplyThroughShippedProvider -AssistantText ("Agenda follows.`n`n" + $renderedAgenda + "`n`nPlease answer above.") `
         -Reply 'Confirm this selected and skipped agenda.' -LineEnding lf
 
