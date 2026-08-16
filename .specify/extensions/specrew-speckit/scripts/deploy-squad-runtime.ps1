@@ -230,6 +230,59 @@ function Copy-ManagedDirectory {
     }
 }
 
+function Remove-RetiredManagedRuntimeFiles {
+    param(
+        [Parameter(Mandatory = $true)][string]$TargetRoot,
+        [AllowEmptyCollection()][Parameter(Mandatory = $true)][object[]]$PreviousManagedFiles,
+        [AllowEmptyCollection()][Parameter(Mandatory = $true)][object[]]$CurrentManagedFiles,
+        [AllowEmptyCollection()][Parameter(Mandatory = $true)][System.Collections.ArrayList]$Actions
+    )
+
+    $root = [IO.Path]::GetFullPath($TargetRoot)
+    $currentPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($entry in @($CurrentManagedFiles)) { $null = $currentPaths.Add([string]$entry.path) }
+
+    foreach ($entry in @($PreviousManagedFiles)) {
+        $relative = [string]$entry.path
+        if ($currentPaths.Contains($relative)) { continue }
+        $full = [IO.Path]::GetFullPath((Join-Path $root $relative))
+        if (-not (Test-SpecrewReviewRuntimePathUnderRoot -Path $full -Root $root) -or $full -ceq $root) {
+            throw "managed-runtime-retirement-path-unsafe:$relative"
+        }
+        if (-not (Test-Path -LiteralPath $full)) { continue }
+        # Contain EVERY existing component before touching the file. A reparse-point ancestor passes
+        # the lexical under-root test above while Get-Item/hash/Delete follow it outside the project,
+        # and the marker supplying this path and hash is editable in the target project. Preserve
+        # rather than delete when any component is a link.
+        try { $full = Assert-SpecrewReviewRuntimePathContained -Path $full -Root $root }
+        catch {
+            Add-DeploymentAction -Actions $Actions -Action 'preserved-uncontained-retired-runtime-file' -Path $full
+            continue
+        }
+        $item = Get-Item -LiteralPath $full -Force
+        if ($item.PSIsContainer -or (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+            Add-DeploymentAction -Actions $Actions -Action 'preserved-modified-retired-runtime-file' -Path $full
+            continue
+        }
+        $actualHash = Get-SpecrewReviewRuntimeManagedTextSha256 -Path $full
+        if ($actualHash -cne [string]$entry.sha256) {
+            Add-DeploymentAction -Actions $Actions -Action 'preserved-modified-retired-runtime-file' -Path $full
+            continue
+        }
+        Add-DeploymentAction -Actions $Actions -Action $(if ($DryRun) { 'would-remove-retired-runtime-file' } else { 'removed-retired-runtime-file' }) -Path $full
+        if ($DryRun) { continue }
+        [IO.File]::Delete($full)
+        for ($parent = Split-Path -Parent $full;
+            -not [string]::IsNullOrWhiteSpace($parent) -and
+            (Test-SpecrewReviewRuntimePathUnderRoot -Path $parent -Root $root) -and
+            $parent -cne $root;
+            $parent = Split-Path -Parent $parent) {
+            if (-not [IO.Directory]::Exists($parent) -or [IO.Directory]::GetFileSystemEntries($parent).Count -ne 0) { break }
+            [IO.Directory]::Delete($parent, $false)
+        }
+    }
+}
+
 function Get-ManagedBlock {
     param(
         [Parameter(Mandatory = $true)]
@@ -858,7 +911,61 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
 
 $continuousReviewRuntimeSource = Join-Path $repositoryRoot 'scripts\internal\continuous-co-review'
 $continuousReviewRuntimeTarget = Join-Path $resolvedProjectPath 'scripts\internal\continuous-co-review'
+$reviewEngineResolutionPath = Join-Path $repositoryRoot 'scripts\internal\review-engine-resolution.ps1'
+if (-not (Test-Path -LiteralPath $reviewEngineResolutionPath -PathType Leaf)) {
+    throw "Missing review-engine resolution helper: $reviewEngineResolutionPath"
+}
+. $reviewEngineResolutionPath
+$currentRuntimeManagedFiles = @(Get-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $continuousReviewRuntimeSource)
+$previousRuntimeManagedFiles = @()
+$reviewRuntimeMarkerPath = Join-Path $continuousReviewRuntimeTarget '.specrew-runtime.json'
+if (Test-Path -LiteralPath $reviewRuntimeMarkerPath -PathType Leaf) {
+    try {
+        $previousMarker = Get-Content -LiteralPath $reviewRuntimeMarkerPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
+        if ($previousMarker.PSObject.Properties['managed_files']) {
+            $previousRuntimeManagedFiles = @(
+                ConvertTo-SpecrewReviewRuntimeManagedFileManifest -RuntimeRoot $continuousReviewRuntimeTarget -ManagedFiles $previousMarker.managed_files
+            )
+        }
+    }
+    catch {
+        # An old or damaged marker is not deletion authority. Preserve unknown files,
+        # replace the marker with current provenance, and converge identity safely.
+        Add-DeploymentAction -Actions $actions -Action 'preserved-untrusted-runtime-retirement-state' -Path $reviewRuntimeMarkerPath
+        $previousRuntimeManagedFiles = @()
+    }
+}
+Remove-RetiredManagedRuntimeFiles -TargetRoot $continuousReviewRuntimeTarget `
+    -PreviousManagedFiles $previousRuntimeManagedFiles -CurrentManagedFiles $currentRuntimeManagedFiles -Actions $actions
 Copy-ManagedDirectory -SourcePath $continuousReviewRuntimeSource -TargetPath $continuousReviewRuntimeTarget -Actions $actions
+$sourceManifestPath = Join-Path $repositoryRoot 'Specrew.psd1'
+$sourceVersion = 'unknown'
+if (Test-Path -LiteralPath $sourceManifestPath -PathType Leaf) {
+    $sourceManifest = Import-PowerShellDataFile -LiteralPath $sourceManifestPath
+    $sourceVersion = [string]$sourceManifest.ModuleVersion
+}
+$reviewRuntimeMarker = [ordered]@{
+    schema_version = '1.0'
+    # Content identity is authoritative. Version is diagnostic and may be
+    # unavailable in legacy/update fixture layouts that deploy supported
+    # surfaces without copying the package manifest.
+    specrew_version = $sourceVersion
+    # Bind the marker to the files that were actually deployed. The logical hash
+    # normalizes managed-text encoding and line endings, while still detecting any
+    # executable content drift.
+    runtime_bundle_sha256 = Get-SpecrewReviewRuntimeBundleSha256 `
+        -RuntimeRoot $continuousReviewRuntimeSource -ManagedFiles $currentRuntimeManagedFiles
+    managed_files = @($currentRuntimeManagedFiles)
+    source = 'specrew-init-or-update'
+} | ConvertTo-Json -Depth 12
+if (-not $DryRun) {
+    $deployedRuntimeHash = Get-SpecrewReviewRuntimeBundleSha256 `
+        -RuntimeRoot $continuousReviewRuntimeTarget -ManagedFiles $currentRuntimeManagedFiles
+    $expectedRuntimeHash = Get-SpecrewReviewRuntimeBundleSha256 `
+        -RuntimeRoot $continuousReviewRuntimeSource -ManagedFiles $currentRuntimeManagedFiles
+    if ($deployedRuntimeHash -cne $expectedRuntimeHash) { throw 'managed-runtime-deployment-identity-mismatch' }
+}
+Set-ManagedFile -TargetPath $reviewRuntimeMarkerPath -Content ($reviewRuntimeMarker + [Environment]::NewLine) -Actions $actions
 
 $continuousReviewContractsSource = Join-Path $repositoryRoot 'specs\197-continuous-co-review\contracts'
 $continuousReviewContractsTarget = Join-Path $resolvedProjectPath '.specrew\review\contracts'

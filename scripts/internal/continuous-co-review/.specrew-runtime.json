@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "eedd74f67ec4be902d555c6932236baefaa3feaca1dee860516cabfd10d2f37a",
+  "runtime_bundle_sha256": "e71a8fe1ca1bf515648ce7ffca95c8c49e3914a0a00d59f2bc4377561f47cb40",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -9,7 +9,7 @@
     },
     {
       "path": "checkpoint-diff-provider.ps1",
-      "sha256": "7ae7af8c25227dff466abf74c5a099c9cecfb121a30bd0883d2371493abe9c06"
+      "sha256": "a9d1c961b76df567b39f0ce4537586ff0af1d8d6ddf20b97642c585d27139ab6"
     },
     {
       "path": "co-review-lineage-lease.ps1",
@@ -25,7 +25,7 @@
     },
     {
       "path": "continuous-co-review-navigator.ps1",
-      "sha256": "965e21ea05469a541f6fe66bb6b8c2d7e8dc10bba13064c0dfd5b6b9b0a4e746"
+      "sha256": "a9c1a59c0090092fc6a336c89734cd619e7bc88d869a58e0ce7e147ba5291aa1"
     },
     {
       "path": "escalation-latch.ps1",
@@ -53,7 +53,7 @@
     },
     {
       "path": "reparse-tag-policy.ps1",
-      "sha256": "0774e485c780686dfb36327e91441acba3f782228b7b637bb36bc369ae3e2baa"
+      "sha256": "833cd59869835f87dbb969d9e0384eb0192614f834918b7c21687f27906c6b38"
     },
     {
       "path": "review-antigravity-harness-port.ps1",
@@ -61,7 +61,7 @@
     },
     {
       "path": "review-authority-core.ps1",
-      "sha256": "5adc4ca59ef5ef54664d98d40a78527eaea4110e54aadb36c98cab3c2b4e6948"
+      "sha256": "c6d64a93d7496275705f25971dcfb4977948da9a00ca4fceea23e20d76d819eb"
     },
     {
       "path": "review-authority-cutover.ps1",
@@ -73,7 +73,7 @@
     },
     {
       "path": "review-authority-store.ps1",
-      "sha256": "848b8a522f25d70ac2852c1a4971fa420013835be42c3e9191bb7fc6712a5560"
+      "sha256": "ffc5f036892f57009b72832644244ffafc89c4014d674345f378d374b4ba43ca"
     },
     {
       "path": "review-blackboard-writer.ps1",
@@ -81,7 +81,7 @@
     },
     {
       "path": "review-campaign-orchestrator.ps1",
-      "sha256": "fe544b085be0a3b51ae55085d28dd38ba1e7fa133dd4be822789f45ff90fe4aa"
+      "sha256": "7c011bdb8041733e33c0f6c730504ac944497dbf78565f66205d80cc7f251c4e"
     },
     {
       "path": "review-claude-harness-port.ps1",
@@ -157,7 +157,7 @@
     },
     {
       "path": "review-signoff-evidence-gate.ps1",
-      "sha256": "d3b2c1d9ad5d1bca6367c69ee1174faaa1de87fbe9fabaa84d39d0481af159f3"
+      "sha256": "653ec4e2d5120eb8e7646d58c3a0ebb6ba20c0f16444e542731be752f4b4aa2f"
     },
     {
       "path": "review-target-port.ps1",
@@ -185,7 +185,7 @@
     },
     {
       "path": "reviewer-host-catalog.ps1",
-      "sha256": "996de175549e1f5d8ff49dd7b47d23a3ded43b03f4f5e7735fbe8e7f934375c9"
+      "sha256": "1de234804d87c06018e34c333c57ff946ad571a2d0f049e29ae8ca8b39846dc3"
     },
     {
       "path": "reviewer-host-presentation.ps1",
@@ -201,7 +201,7 @@
     },
     {
       "path": "signoff-gate-wiring.ps1",
-      "sha256": "7da49a015d68099b7a36e8670a2a49abe849bb04cd96685182e6b9442da666d2"
+      "sha256": "22e6be2a095fa7f3d072eb99992932812b7a70293e8ef8053db79a99d28903a7"
     },
     {
       "path": "stop-intent-contract.ps1",
@@ -229,11 +229,11 @@
     },
     {
       "path": "verification-plan-supplier.ps1",
-      "sha256": "b7352c766e38f5cf0921ea444d30822b2b8b4ff6e3990ee5507d8af8bb594069"
+      "sha256": "831b8db915fdf162b5aedf43f0e0fffcd41635cd2c70e4b36510c5259b77a53d"
     },
     {
       "path": "worktree-navigator.ps1",
-      "sha256": "203f2619b2f08e7b64d2002d8fd4f051bd729eaa6ddeae8e8f9ce0884dd1cb04"
+      "sha256": "6477d9cc660ab8d04e64c9d7ce5621465735d6985b1cf5aad376ae072ee59e01"
     },
     {
       "path": "worktree-review-detached-entry.ps1",
@@ -241,11 +241,11 @@
     },
     {
       "path": "worktree-review-orchestrator.ps1",
-      "sha256": "7522be2056290ac34df37453020f1b856dd0ce2f3a069625a5f00accc4a58065"
+      "sha256": "65c36f0e5bc41e1e98af263e5e8a91709898da22f5acf250f983e99b3b64cd5c"
     },
     {
       "path": "worktree-reviewer.ps1",
-      "sha256": "0385f6820c94ea19e4c46aa51f8b18972141ab29d6a39876ea0130df7038a944"
+      "sha256": "85500ee0b53588eca2a2f56865615681d94acd59a6489903c6eff8e572530fc4"
     }
   ],
   "source": "specrew-init-or-update"
