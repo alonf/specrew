@@ -54,7 +54,7 @@ $fileTimeoutOverrides = @{
     'tests\continuous-co-review\unit\verification-plan-runner.Tests.ps1' = 900
     'tests\integration\validate-governance-changed-only.tests.ps1' = 1800
     'tests\integration\conformance-detection.tests.ps1' = 600
-    'tests\continuous-co-review\unit\review-public-campaign-command.Tests.ps1' = 600
+    'tests\continuous-co-review\unit\review-public-campaign-command.Tests.ps1' = 900
 }
 
 # These suites launch enough nested repositories/processes that overlapping them with three other

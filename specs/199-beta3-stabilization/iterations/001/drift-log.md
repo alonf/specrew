@@ -22,10 +22,29 @@
 
 ## Summary
 
-**Total drift events**: 60 (DRIFT-199-I001-001 through -060)
+**Total drift events**: 61 (DRIFT-199-I001-001 through -061)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-061 — public campaign suite exceeded its four-lane contention margin (resolved; registry pending)
+
+- **Observed**: 2026-08-16, after the exact `b0d2c0c3` disk census passed 351/351, the
+  four-lane release registry passed 121/122 suites. `review-public-campaign-command.Tests.ps1`
+  alone timed out above its 600-second row; no assertion failure or caller contamination was
+  reported.
+- **Cause**: the 40-case suite completed green in 216.261 seconds when rerun alone. Its earlier
+  four-lane measurements were 422.054 and 501.832 seconds, so nested process/repository contention
+  can inflate the isolated duration past the 600-second margin even at the proven-safe lane count.
+- **Resolution**: raise only this named row from 600 to 900 seconds in both registry and disk-census
+  runners. Keep the global 300-second default and four-lane ceiling unchanged; eight lanes already
+  produced multiple timeout failures and is not authorized.
+- **Measured proof**: isolated Pester completed 40/40, zero failed/skipped, in 215.45 Pester seconds
+  (216.261 wall seconds). The structural harness test pins the 900-second row in both runners. The
+  exact registry must rerun 122/122 before acceptance.
+- **Class closure**: exceptional timeouts remain per-suite, source-guarded, and based on both isolated
+  and full-load measurements. A slow assertion still fails normally; only the process ceiling gains
+  measured contention margin.
 
 ### DRIFT-199-I001-060 — token-budget repair dropped the quick-discussion packet exemption (resolved; corrected census pending)
 
@@ -207,7 +226,9 @@ recorded maintainer ruling, so a single rate here would misstate them.
   population. The registry gives only `verification-plan-end-to-end.Tests.ps1` a 1,200-second row
   bound: it completed 11/11 in 744.2 seconds alone. `review-campaign-verification.Tests.ps1` completed
   14/14 in 127.7 seconds alone and `review-public-campaign-command.Tests.ps1` completed 40/40 in
-  184.4 seconds alone, so their existing 600/420-second bounds remain unchanged.
+  184.4 seconds alone, so their then-current 600/420-second bounds remained unchanged. The later
+  four-lane contention evidence that raised the public-command row to 900 seconds is recorded in
+  DRIFT-199-I001-061.
 - **Measured proof**: `Sc012to015Acceptance.Tests.ps1` completed green in 543.1 seconds alone;
   registry timing identified the full slow-suite population instead of relying on the first timeout.
   Source-contract tests pin the two exceptional nested-matrix bounds. At `e0363ea1`, the registry ran

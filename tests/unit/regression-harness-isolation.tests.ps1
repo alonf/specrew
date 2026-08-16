@@ -61,7 +61,7 @@ if ($censusRunner -match 'try \{ & ''\$quoted''; exit 0 \}' -or
 }
 foreach ($measuredRegistryBound in @(
         @{ Path = 'review-campaign-verification\.Tests\.ps1'; Seconds = 420 },
-        @{ Path = 'review-public-campaign-command\.Tests\.ps1'; Seconds = 600 },
+        @{ Path = 'review-public-campaign-command\.Tests\.ps1'; Seconds = 900 },
         @{ Path = 'verification-plan-runner\.Tests\.ps1'; Seconds = 420 },
         @{ Path = 'conformance-detection\.tests\.ps1'; Seconds = 600 },
         @{ Path = 'verification-plan-end-to-end\.Tests\.ps1'; Seconds = 1200 })) {

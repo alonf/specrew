@@ -169,9 +169,12 @@ $registry = @(
     @{ area = 'T060 local Windows/Linux execution package - fixed allocations, no-spend preflight, one explicit invocation, fail-closed evidence'; path = 'tests/continuous-co-review/unit/t060-local-platform-smoke.Tests.ps1'; kind = 'pester' }
     # Safe four-lane release measurement on 2026-08-16 reached 300.132 seconds for
     # review-campaign-verification above and 422.054 seconds for this public-command
-    # matrix. Preserve the 300-second default for all other suites; these rows carry
+    # matrix. The public-command matrix later completed 40/40 in 216.261 seconds alone
+    # but crossed 600 seconds under the same safe four-lane release load, so its row
+    # carries a 900-second contention margin. Preserve the 300-second default for all
+    # other suites; these rows carry
     # explicit bounded environment margin instead of making the whole registry looser.
-    @{ area = 'T051 public campaign delegation + one-way cutover + exact-digest verdict-packet route matrix'; path = 'tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'; kind = 'pester'; timeout_seconds = 600 }
+    @{ area = 'T051 public campaign delegation + one-way cutover + exact-digest verdict-packet route matrix'; path = 'tests/continuous-co-review/unit/review-public-campaign-command.Tests.ps1'; kind = 'pester'; timeout_seconds = 900 }
     @{ area = 'beta2 release blocker - packaged-artifact Squad-runtime deploy (FileList completeness + contracts deployed)'; path = 'tests/integration/packaged-artifact-deploy.Tests.ps1'; kind = 'pester' }
     @{ area = 'shared trunk resolver - 6-level precedence, no branch mutation (CLI/navigator/gate/baseline/lineage)'; path = 'tests/continuous-co-review/unit/trunk-resolver.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-048 verification-plan seam contract - plan/command validation, path safety, auditable provenance, bounded timeout, evidence-join'; path = 'tests/continuous-co-review/unit/verification-plan-contract.Tests.ps1'; kind = 'pester' }
