@@ -27,7 +27,7 @@
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
-### DRIFT-199-I001-061 — public campaign suite exceeded its four-lane contention margin (resolved; registry pending)
+### DRIFT-199-I001-061 — public campaign suite exceeded its four-lane contention margin (resolved)
 
 - **Observed**: 2026-08-16, after the exact `b0d2c0c3` disk census passed 351/351, the
   four-lane release registry passed 121/122 suites. `review-public-campaign-command.Tests.ps1`
@@ -41,12 +41,13 @@ recorded maintainer ruling, so a single rate here would misstate them.
   produced multiple timeout failures and is not authorized.
 - **Measured proof**: isolated Pester completed 40/40, zero failed/skipped, in 215.45 Pester seconds
   (216.261 wall seconds). The structural harness test pins the 900-second row in both runners. The
-  exact registry must rerun 122/122 before acceptance.
+  exact `d3dbf6e3` four-lane registry then completed 122/122 suites in 2,036.276 runner seconds
+  (2,037.578 wall seconds), with no caller contamination.
 - **Class closure**: exceptional timeouts remain per-suite, source-guarded, and based on both isolated
   and full-load measurements. A slow assertion still fails normally; only the process ceiling gains
   measured contention margin.
 
-### DRIFT-199-I001-060 — token-budget repair dropped the quick-discussion packet exemption (resolved; corrected census pending)
+### DRIFT-199-I001-060 — token-budget repair dropped the quick-discussion packet exemption (resolved)
 
 - **Observed**: 2026-08-16, the second honest census at `66a0dd8f` passed 350/351 files in
   3,655.128 seconds. `every-stop-packet.tests.ps1` alone failed because the shortened always-on
@@ -58,12 +59,13 @@ recorded maintainer ruling, so a single rate here would misstate them.
 - **Resolution**: restore both constraints compactly in source and deployed mirrors: quick discussion
   without material work stays conversational and omits the packet; clarify-stage ambiguity questions
   are not packet stops. The digest remains below its 600-token ceiling.
-- **Measured proof**: `every-stop-packet.tests.ps1` and `refocus-digests.tests.ps1` must both pass on
-  the exact correction commit before the third disk census.
+- **Measured proof**: `every-stop-packet.tests.ps1` and `refocus-digests.tests.ps1` passed on the
+  exact correction commit. The subsequent exact `b0d2c0c3` disk census completed 351/351 files
+  green (121 Pester plus 230 direct scripts) in 4,568.810 seconds.
 - **Class closure**: packet exemptions and token budgets have independent executable consumers. Any
   future compression must satisfy both instead of treating a smaller digest as sufficient evidence.
 
-### DRIFT-199-I001-059 — the first honest disk census exposed seven more hidden failures (resolved; corrected census pending)
+### DRIFT-199-I001-059 — the first honest disk census exposed seven more hidden failures (resolved)
 
 - **Observed**: 2026-08-16, the corrected clean-tree census at `d63e12b3` discovered 351 files
   and reported 344 pass / 7 fail in 3,577.354 seconds. The failures were
@@ -85,13 +87,14 @@ recorded maintainer ruling, so a single rate here would misstate them.
 - **Measured proof**: all seven files pass directly. Refocus validation proves all 11 digests, every
   pointer, source existence, placeholder substitution, and token composition; host-neutral parity
   proves the corrected source/deployed pair; the live-review whitelist proof exits nonzero before a
-  reviewer is invoked.
+  reviewer is invoked. The subsequent exact `b0d2c0c3` disk census completed 351/351 files green
+  (121 Pester plus 230 direct scripts) in 4,568.810 seconds.
 - **Class closure**: fixtures consume current mandatory parameters and canonical state writers;
   slash-command absence checks enumerate the retired command catalog rather than punctuation; the
-  refocus contract validates pointer resolution and budgets. The corrected disk census remains the
-  release gate and must rerun green on the next exact commit.
+  refocus contract validates pointer resolution and budgets. The corrected disk census is the
+  release gate and now fails loudly if any of those contracts regresses.
 
-### DRIFT-199-I001-058 — corrected census semantics exposed three stale integration fixtures (resolved; corrected census pending)
+### DRIFT-199-I001-058 — corrected census semantics exposed three stale integration fixtures (resolved)
 
 - **Observed**: 2026-08-16, once direct assertion scripts retained their real exit codes, three
   integration files failed on both `c623d205` and the help-only `837ca23e` tree:
@@ -113,13 +116,14 @@ recorded maintainer ruling, so a single rate here would misstate them.
   The baseline file proves the complete lifecycle plus zero-commit start guidance; the closeout file
   proves all five governance pillars; the gallery file proves init/start/update cache behavior,
   opt-out paths, and bounded offline behavior. The census-honesty structural and behavioral proofs
-  also pass.
+  also pass. The subsequent exact `b0d2c0c3` disk census completed 351/351 files green (121 Pester
+  plus 230 direct scripts) in 4,568.810 seconds.
 - **Class closure**: lifecycle fixtures use the canonical boundary vocabulary and exact pending
   crossing facts; closeout tests assert the release-model contract rather than one delivery topology;
   version-order fixtures derive their inputs from the shipped manifest. The corrected census makes
   any future direct-script fixture drift loud instead of laundering it into a green count.
 
-### DRIFT-199-I001-057 — the disk census overwrote direct-script exit failures with exit 0 (resolved; corrected census pending)
+### DRIFT-199-I001-057 — the disk census overwrote direct-script exit failures with exit 0 (resolved)
 
 - **Observed**: 2026-08-16, the exact `c623d205` census reported 350/350 green. A subsequent
   source-impact run executed three of those named files directly and they exited 1. All three failures
@@ -133,8 +137,9 @@ recorded maintainer ruling, so a single rate here would misstate them.
   nested behavioral census proves that a direct `exit 1` is named, counted, and returned non-zero.
 - **Measured proof**: both new proofs were RED before the runner changed and GREEN afterward. The
   behavioral proof is registered in the release suite so the census cannot certify itself using the
-  broken path it is meant to guard. A corrected disk census must now expose the real failing
-  population before the final manual environment is created.
+  broken path it is meant to guard. The subsequent exact `b0d2c0c3` disk census completed 351/351
+  files green (121 Pester plus 230 direct scripts) in 4,568.810 seconds, with
+  `caller_contaminated=False`.
 - **Class closure**: the census's direct-script exit contract is tested by an independent nested
   fixture and carried in the curated registry. A future wrapper that launders the exit code becomes
   loud before either verification surface can claim green.
