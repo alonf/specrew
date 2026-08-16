@@ -60,7 +60,7 @@ foreach ($commandName in @('where', 'status', 'update', 'review', 'version')) {
 
 Write-Host ''
 Write-Host '--- Test 5: active runtime surfaces publish hyphenated commands only ---'
-Assert-True -Condition ($specrewContent -notmatch '/specrew\.') -Message 'dispatcher help no longer publishes dot-form slash commands'
+Assert-True -Condition ($specrewContent -notmatch '/specrew\.(?:where|status|help|review|team|update|version)\b') -Message 'dispatcher help no longer publishes dot-form slash commands'
 
 Write-Host ''
 Write-Host '--- Test 6 (F-054 US2): before-implement surface surfaces /speckit.analyze as additive after complete tasks.md ---'

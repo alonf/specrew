@@ -14,3 +14,7 @@ reviewed_at: 2026-06-07
 5. **Stop at the boundary.** The clarify → plan transition is human-judgment-required: planning converts the spec into architecture and task direction, so spec mistakes become downstream work. Emit the packet; wait.
 
 Known traps: re-asking what the repo already answers; burying scope changes in clarify prose; advancing to plan because clarify "found nothing" without the human's verdict.
+
+Deep sources:
+
+- {{project_root}}/docs/methodology/lifecycle-discipline.md

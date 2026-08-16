@@ -122,10 +122,16 @@ Write-Host '--- Test 7: review accepts live-mode arguments ---'
 # repo, so on any machine with an authorized reviewer it fired a REAL review (minutes of runtime,
 # quota burn, evidence writes) - and its 'required for live review' assertion text predates the
 # iter-008 worktree cutover (the refusal now reads no-authorized-reviewer-host). A pristine scratch
-# project has no authorized reviewer, so the run is refused loudly BEFORE any evidence write.
+# project has an active feature/iteration but no verification plan, so the run is refused loudly
+# at deterministic preflight with Invoked: False — before any provider or review evidence write.
 $liveScratch = Join-Path ([System.IO.Path]::GetTempPath()) ('whitelist-live-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path (Join-Path $liveScratch '.specrew') -Force | Out-Null
+$liveFeature = '001-whitelist-live'
+$liveIteration = '001'
+New-Item -ItemType Directory -Path (Join-Path $liveScratch "specs\$liveFeature\iterations\$liveIteration") -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $liveScratch '.specrew\config.yml') -Value 'project_name: whitelist-live' -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $liveScratch "specs\$liveFeature\spec.md") -Value '# Whitelist live fixture' -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $liveScratch "specs\$liveFeature\iterations\$liveIteration\state.md") -Value '# State' -Encoding UTF8
 & git -C $liveScratch init --initial-branch=main 2>$null | Out-Null
 & git -C $liveScratch config user.email 'specrew-test@example.invalid' 2>$null | Out-Null
 & git -C $liveScratch config user.name 'Specrew Test' 2>$null | Out-Null
@@ -133,10 +139,14 @@ Set-Content -LiteralPath (Join-Path $liveScratch 'README.md') -Value 'scratch' -
 & git -C $liveScratch add . 2>$null | Out-Null
 & git -C $liveScratch commit -m baseline 2>$null | Out-Null
 try {
-    $result = Invoke-Specrew -CommandArgs @('review', '--live', '--project-path', $liveScratch)
+    $result = Invoke-Specrew -CommandArgs @('review', '--live', '--project-path', $liveScratch, '--feature', $liveFeature, '--iteration', $liveIteration, '--approve-round')
     Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --live passes whitelist check'
-    Assert-True -Condition ($result.ExitCode -ne 0) -Message 'specrew review --live with no authorized reviewer exits non-zero (refused, never silently substituted)'
-    Assert-Contains -Text $result.Output -Substring 'no-authorized-reviewer-host' -Message 'specrew review --live reaches live-review validation (reviewer required, no evidence written)'
+    Assert-True -Condition ($result.ExitCode -ne 0) -Message 'specrew review --live with incomplete deterministic preflight exits non-zero'
+    if ($result.Output -notlike '*verification-not-configured*' -or $result.Output -notlike '*Invoked: False*') {
+        Write-Fail ("specrew review --live did not reach the expected provider-free preflight refusal. Output:`n{0}" -f $result.Output)
+        exit 1
+    }
+    Write-Pass 'specrew review --live reaches deterministic preflight without invoking a reviewer'
 }
 finally {
     Remove-Item -LiteralPath $liveScratch -Recurse -Force -ErrorAction SilentlyContinue

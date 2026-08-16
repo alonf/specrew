@@ -22,10 +22,38 @@
 
 ## Summary
 
-**Total drift events**: 58 (DRIFT-199-I001-001 through -058)
+**Total drift events**: 59 (DRIFT-199-I001-001 through -059)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-059 — the first honest disk census exposed seven more hidden failures (resolved; corrected census pending)
+
+- **Observed**: 2026-08-16, the corrected clean-tree census at `d63e12b3` discovered 351 files
+  and reported 344 pass / 7 fail in 3,577.354 seconds. The failures were
+  `closeout-lifecycle-sync-commands`, `host-neutral-gate-cleaning`, `prose-alias-sync`,
+  `refocus-digests`, `slash-command-coexistence`, `slash-command-compatibility`, and
+  `slash-command-arg-whitelist`.
+- **Cause**: four fixtures lagged production contracts: a new mandatory `ProjectRoot`, the v2
+  boundary-authorization ledger and review-signoff evidence gate, two broad regexes that mistook the
+  filename `specrew.ps1` for a dot-form slash command, and a live-review fixture with no active
+  feature/iteration or verification plan. Two shipped refocus surfaces were genuinely stale: the
+  `.specify` specify digest lacked the typed-turn receipt contract, eight boundary digests had no
+  resolvable deep-source pointer, and the always-on digest exceeded its 600-token budget.
+- **Resolution**: fixtures now supply the mandatory project identity, initialize governed authority
+  state through the canonical writer, capture the existing tree-bound partial-review path where the
+  test intentionally isolates an alias, match only actual retired command names, and assert the
+  provider-free `verification-not-configured` / `Invoked: False` preflight. The deployed specify
+  digest now matches source; all boundary digests carry deep-source pointers; the always-on digest is
+  536 estimated tokens.
+- **Measured proof**: all seven files pass directly. Refocus validation proves all 11 digests, every
+  pointer, source existence, placeholder substitution, and token composition; host-neutral parity
+  proves the corrected source/deployed pair; the live-review whitelist proof exits nonzero before a
+  reviewer is invoked.
+- **Class closure**: fixtures consume current mandatory parameters and canonical state writers;
+  slash-command absence checks enumerate the retired command catalog rather than punctuation; the
+  refocus contract validates pointer resolution and budgets. The corrected disk census remains the
+  release gate and must rerun green on the next exact commit.
 
 ### DRIFT-199-I001-058 — corrected census semantics exposed three stale integration fixtures (resolved; corrected census pending)
 

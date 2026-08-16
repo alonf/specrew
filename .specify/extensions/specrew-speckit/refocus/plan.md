@@ -16,3 +16,7 @@ reviewed_at: 2026-06-07
 7. **Stop at the boundary.** plan → tasks is human-judgment-required. Commit, sync, packet, wait.
 
 Known traps: plans that quietly re-litigate the design option; declared-vs-summed capacity mismatch; Wave B authored as placeholders; quality profile pasted without feature-specific reconciliation.
+
+Deep sources:
+
+- {{project_root}}/docs/methodology/lifecycle-discipline.md

@@ -23,6 +23,10 @@ function Invoke-TestScript {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $env:SPECREW_MODULE_PATH = $repoRoot
 $syncScript = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
+$sharedGovernance = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
+$humanAuthority = Join-Path $repoRoot 'scripts\internal\bootstrap\HumanAuthorityStore.ps1'
+. $sharedGovernance
+. $humanAuthority
 $scratchRoot = Join-Path $repoRoot '.scratch\prose-alias-sync'
 $projectRoot = Join-Path $scratchRoot 'project'
 
@@ -70,6 +74,7 @@ $seededContext = [ordered]@{
     }
 }
 [System.IO.File]::WriteAllText($contextPath, ($seededContext | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
+Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $projectRoot -CurrentBoundary 'before-implement' | Out-Null
 $null = & git -C $projectRoot add -A 2>&1
 $null = & git -C $projectRoot commit -m 'Seed start-context.json' --quiet 2>&1
 
@@ -81,6 +86,24 @@ $syncResult1 = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
     '-IterationNumber', '001',
     '-AuthCommitHash', 'HEAD'
 )
+if ($syncResult1.ExitCode -ne 0 -and ($syncResult1.Output -join "`n") -match 'no-authoritative-campaign-result') {
+    $captured = Write-SpecrewReviewSignoffOverrideAuthorization `
+        -ProjectRoot $projectRoot `
+        -Response 'approved for partial review signoff - alias fixture isolates canonical boundary resolution without provider evidence' `
+        -HostKind 'fixture' `
+        -SourceEvent 'UserPromptSubmit'
+    if ($null -eq $captured) {
+        Write-Fail 'Alias fixture could not capture the tree-bound partial review-signoff override.'
+        exit 1
+    }
+    $syncResult1 = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
+        '-ProjectPath', $projectRoot,
+        '-BoundaryType', 'implement',
+        '-FeatureRef', '046-046-bug-bash',
+        '-IterationNumber', '001',
+        '-AuthCommitHash', 'HEAD'
+    )
+}
 
 if ($syncResult1.ExitCode -ne 0) {
     Write-Fail ("Prose alias 'implement' sync failed:`n{0}" -f ($syncResult1.Output -join [Environment]::NewLine))
@@ -98,6 +121,7 @@ Write-Pass "Scenario 1: Alias 'implement' successfully maps to canonical 'review
 # Seed start-context back to retro for sequencing
 $context1.session_state.boundary_type = 'retro'
 [System.IO.File]::WriteAllText($contextPath, ($context1 | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
+Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $projectRoot -CurrentBoundary 'retro' | Out-Null
 $null = & git -C $projectRoot add -A 2>&1
 $null = & git -C $projectRoot commit -m 'Reset context' --quiet 2>&1
 

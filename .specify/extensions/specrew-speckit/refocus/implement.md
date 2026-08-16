@@ -18,3 +18,7 @@ reviewed_at: 2026-06-07
 8. **Co-review fires at CHECKPOINTS, not only at the end (host-neutral).** The continuous co-reviewer fires on the Stop hook — but a host that runs many tasks without yielding never checkpoints, so the review collapses to a single late pass (or none, as on a straight-through host). So ACTIVELY fire it: after each ~5 SP of COMPLETED, committed tasks, run `specrew review --live` (the co-review of the committed state, in a read-only worktree). This is a CO-REVIEW run, NOT a human gate — do NOT stop for human approval at the checkpoint; commit and continue UNLESS it returns a BLOCKING finding (surface that to the human and pause). If it exits non-zero reporting no authorized reviewer host, STOP and surface the remediation (`specrew review --live --host <host> --approve-round`) — NEVER substitute your own review (a host-internal reviewer, a manual read) for the co-review; an improvised review is not co-review evidence.
 
 Known traps: tests written but never run; state.md frozen at T001 while code is at T009; "while I'm here" refactors with no task; tool-contract failures papered over instead of stopped on.
+
+Deep sources:
+
+- {{project_root}}/docs/methodology/lifecycle-discipline.md
