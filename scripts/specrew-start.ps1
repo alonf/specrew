@@ -329,10 +329,9 @@ Options:
   -ResumeFeature | --resume-feature <path|auto>
                                            Resume an existing feature directory, or use "auto"
   -Agent | --agent <name>                  Crew runtime agent label (default: Squad — required by Copilot host's --agent flag; non-Squad hosts ignore this since they don't have a host-side --agent surface)
-  -HostKind | --host <copilot|claude|codex>
-                                           Select the agent host runtime (default: copilot). 'antigravity' and
-                                           'auto' are reserved but rejected with deferred-guidance pointing to
-                                           Proposal 069 follow-up / Proposal 104 respectively.
+  -HostKind | --host <copilot|claude|codex|cursor|antigravity>
+                                           Select the agent host runtime (default: copilot). 'auto' remains
+                                           reserved and is rejected with Proposal 104 deferred guidance.
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch the host CLI
   -NewWindow | --new-window                Launch the host CLI in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode

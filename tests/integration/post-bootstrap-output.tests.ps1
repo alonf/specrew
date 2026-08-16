@@ -12,9 +12,13 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $postBootstrapScript = Join-Path $repoRoot 'scripts\init\post-bootstrap-output.ps1'
+$startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 
 if (-not (Test-Path -LiteralPath $postBootstrapScript -PathType Leaf)) {
     Write-Fail "Missing post-bootstrap-output.ps1 at expected path"
+}
+if (-not (Test-Path -LiteralPath $startScript -PathType Leaf)) {
+    Write-Fail "Missing specrew-start.ps1 at expected path"
 }
 
 $content = Get-Content -LiteralPath $postBootstrapScript -Raw -Encoding UTF8
@@ -63,5 +67,17 @@ if ($content -notmatch 'specrew start.*(?:optional|select|switch|recover|recover
     Write-Fail "post-bootstrap-output.ps1 must explain specrew start as the optional host-selection or recovery path."
 }
 Write-Pass "Bootstrap message agrees with the hook-first direct-launch contract"
+
+# Test 7: The recovery command advertised above must agree with specrew start's own help.
+# Cursor and Antigravity are production-supported start hosts; stale deferred guidance makes a
+# working recovery path look unavailable to the consumer.
+$startContent = Get-Content -LiteralPath $startScript -Raw -Encoding UTF8
+if ($startContent -notmatch '--host <copilot\|claude\|codex\|cursor\|antigravity>') {
+    Write-Fail "specrew start help must list all five production-supported host values."
+}
+if ($startContent -match "'antigravity' and\s+'auto' are reserved but rejected") {
+    Write-Fail "specrew start help still claims the supported Antigravity host is rejected."
+}
+Write-Pass "specrew start help agrees with the five-host bootstrap recovery contract"
 
 Write-Host "`nPost-bootstrap output content: all assertions pass" -ForegroundColor Green

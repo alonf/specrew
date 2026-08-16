@@ -22,12 +22,32 @@
 
 ## Summary
 
-**Total drift events**: 55 (DRIFT-199-I001-001 through -055)
+**Total drift events**: 56 (DRIFT-199-I001-001 through -056)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
-### DRIFT-199-I001-055 — valid release suites exceeded bounds that had no measured operating margin (resolved; exact rerun pending)
+### DRIFT-199-I001-056 — start help said two production-supported hosts were rejected (resolved)
+
+- **Observed**: 2026-08-16, the provider-free five-host manual-environment readiness pass selected
+  Claude, Codex, Copilot, Cursor, and Antigravity correctly and generated the expected native command
+  for each. The same candidate's `specrew start --help` listed only the first three and claimed
+  Antigravity was reserved and rejected, contradicting both production behavior and the bootstrap
+  recovery instructions.
+- **Cause**: the help here-string retained the pre-Cursor/Antigravity host set after the production
+  `ValidateSet` and launch packages added both hosts. Existing multi-host tests exercised the behavior
+  but did not compare the help surface to the bootstrap recovery contract.
+- **Resolution**: help now lists all five supported host values and reserves only `auto`. The shared
+  bootstrap-output contract test reads both consumer surfaces and rejects either a missing supported
+  host or the retired Antigravity-rejection sentence.
+- **Measured proof**: the new cross-surface assertion was RED on `c623d205`. After the help correction,
+  `post-bootstrap-output.tests.ps1` and the five-host no-launch route matrix must pass before a final
+  manual environment is created.
+- **Class closure**: the help surface and bootstrap recovery surface now share an executable
+  consistency check; adding a production host without updating the consumer-visible selector becomes
+  loud in the disk-wide test census.
+
+### DRIFT-199-I001-055 — valid release suites exceeded bounds that had no measured operating margin (resolved)
 
 - **Observed**: 2026-08-16, the clean `7d72ae9c` registry ran alone at the measured-safe four
   lanes. Of 121 suites, 118 passed and three reported only timeout failures:
@@ -49,8 +69,10 @@ recorded maintainer ruling, so a single rate here would misstate them.
   1,200 seconds. No lane-count increase and no global timeout inflation are authorized by this
   correction.
 - **Measured proof**: the source guard was RED before each registry correction and now pins all five
-  named bounds. The complete 121-suite registry and 350-file census must rerun sequentially at the
-  resulting exact commit before manual fixtures are created.
+  named bounds. On exact commit `c623d205`, the isolated four-lane registry passed 121/121 suites in
+  1,818.930 seconds and the sequentially-started disk census passed all 350 named files (121 Pester +
+  229 scripts) in 4,348.8 seconds with no caller contamination. Manual fixtures were not created until
+  both completed.
 - **Class closure**: exceptional release bounds are named per suite, derived from complete-run timing,
   and guarded individually. Crossing one is reported as timing evidence and cannot be converted into
   an assertion failure or hidden by increasing every suite's timeout.
