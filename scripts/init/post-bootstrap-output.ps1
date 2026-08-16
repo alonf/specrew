@@ -190,20 +190,20 @@ function Write-PostBootstrapGuidance {
     Write-Host ''
     Write-Host '=== Usage Flow ===' -ForegroundColor Cyan
     Write-Host ''
-    Write-Host 'Baseline Crew → specrew start → the Crew drives specify → clarify for new specs (or recorded skip on resumed clarified work) → plan → tasks → implement → review → retro' -ForegroundColor Yellow
+    Write-Host 'Baseline Crew → launch your host directly (or use specrew start) → the Crew drives specify → clarify for new specs (or recorded skip on resumed clarified work) → plan → tasks → implement → review → retro' -ForegroundColor Yellow
     Write-Host ''
     Write-Host '=== Next Steps ===' -ForegroundColor Cyan
     Write-Host ''
     Write-Host '1. Start spec authoring (Spec Kit workflows):' -ForegroundColor Yellow
-    Write-Host '   - Run specrew start from the project root (optionally add a short feature request)' -ForegroundColor White
-    Write-Host '   - Specrew launches the selected host CLI (default: Copilot; `--host claude`, `--host codex`, `--host antigravity`, or `--host cursor` available) from the project directory in the current terminal by default, stays out of autopilot until intake is grounded, and supports --new-window or --prompt-approvals when you want them' -ForegroundColor White
-    Write-Host '   - Specrew hands off to the selected host CLI with full lifecycle context auto-loaded' -ForegroundColor White
+    Write-Host '   - Launch your host directly from the project root (`copilot`, `claude`, `codex`, `cursor-agent`, or `agy`) and type your feature request' -ForegroundColor White
+    Write-Host '   - The installed session hook refreshes the lifecycle handoff before the host answers' -ForegroundColor White
+    Write-Host '   - Use specrew start when you want explicit host selection (`--host claude`, `--host codex`, `--host copilot`, `--host cursor`, or `--host antigravity`), a new window, prompt approvals, or a recovery launch' -ForegroundColor White
     Write-Host '   - The Crew drives specify -> clarify -> plan -> tasks -> implement (skip clarify only for resumed clarified work with a recorded rationale)' -ForegroundColor White
     Write-Host ''
     Write-Host '2. Resuming work later:' -ForegroundColor Yellow
-    Write-Host '   - Every later session also starts with specrew start from the project root' -ForegroundColor White
-    Write-Host '   - specrew start regenerates the runtime handoff before launch' -ForegroundColor White
-    Write-Host '   - Do not run the host CLI directly (e.g., `copilot ...` / `claude ...` / `codex ...`); going around `specrew start` skips the bootstrap refresh and leaves the launch contract stale' -ForegroundColor White
+    Write-Host '   - Launch your host directly from the project root; the installed session hook refreshes the handoff automatically' -ForegroundColor White
+    Write-Host '   - specrew start is the optional host-selection, host-switching, and recovery path' -ForegroundColor White
+    Write-Host '   - If the Specrew orientation banner does not appear, run specrew start --host <kind> from the project root' -ForegroundColor White
     Write-Host ''
     Write-Host '3. Run the iteration lifecycle:' -ForegroundColor Yellow
     Write-Host '   - Materialize iteration artifacts under specs/<feature>/iterations/<NNN>/' -ForegroundColor White

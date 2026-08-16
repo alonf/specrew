@@ -22,12 +22,34 @@
 
 ## Summary
 
-**Total drift events**: 53 (DRIFT-199-I001-001 through -053)
+**Total drift events**: 54 (DRIFT-199-I001-001 through -054)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
 
-### DRIFT-199-I001-053 — exact registry and disk census were run concurrently and converted resource contention into false failures (resolved; sequential rerun pending)
+### DRIFT-199-I001-054 — bootstrap told consumers not to use the hook-first launch path it had just installed (resolved)
+
+- **Observed**: 2026-08-16, the first fresh manual-environment canary initialized successfully from
+  `e0363ea1`, then printed both that Specrew had deployed session hooks and that every later session
+  must use `specrew start`; it explicitly prohibited direct `copilot`, `claude`, and `codex` launches.
+  The public getting-started contract says the opposite: direct host launch is primary and
+  `specrew start` is optional.
+- **Cause**: `scripts/init/post-bootstrap-output.ps1` retained pre-hook launch guidance after the
+  SessionStart path became the normal entry point. Existing output tests checked host neutrality and
+  named host options but did not compare the message to the launch contract.
+- **Resolution**: the shared bootstrap renderer now tells consumers to launch any installed host
+  directly from the project root, explains that the installed hook refreshes lifecycle context, and
+  keeps `specrew start` as the explicit host-selection, host-switching, new-window, approval-mode, and
+  recovery path. The focused output contract rejects the old prohibition and requires both halves.
+- **Measured proof**: the new assertion failed on the old message, then
+  `post-bootstrap-output.tests.ps1`, the 45-case consumer-language suite, and the complete self-leak
+  firewall passed after the repair. The canary had already proved the exact source import and deployed
+  campaign-evidence marker before this wording inconsistency was surfaced.
+- **Class closure**: bootstrap launch guidance is tested against the installed hook-first contract,
+  including the supported direct path and the optional recovery path. A future message may not silently
+  re-promote the wrapper to a mandatory gateway or remove a named supported host.
+
+### DRIFT-199-I001-053 — exact registry and disk census were run concurrently and converted resource contention into false failures (resolved; sequential proof complete)
 
 - **Observed**: 2026-08-16, the exact `aedec4dd` disk census and F-198 registry were launched
   together. The census executed all 350 files but reported 13 timeouts; the registry reported four
@@ -44,14 +66,15 @@ recorded maintainer ruling, so a single rate here would misstate them.
   184.4 seconds alone, so their existing 600/420-second bounds remain unchanged.
 - **Measured proof**: `Sc012to015Acceptance.Tests.ps1` completed green in 543.1 seconds alone;
   registry timing identified the full slow-suite population instead of relying on the first timeout.
-  Source-contract tests pin the two exceptional nested-matrix bounds. Final sequential exact-commit
-  registry and census reruns remain required before packaging.
+  Source-contract tests pin the two exceptional nested-matrix bounds. At `e0363ea1`, the registry ran
+  first and passed all 121 suites in 1,716.5 seconds; the census then passed all 350 files (121 Pester,
+  229 script suites) with zero failures and zero caller contamination in 3,748.8 seconds.
 - **Class closure**: exact release lanes may not compete for the same machine. File bounds remain
   per-suite and measurement-backed, and the guard pins the exceptional matrices whose nested work
   cannot fit the generic ceiling. A concurrent exploratory run is timing evidence, never release
   certification.
 
-### DRIFT-199-I001-052 — workshop ordering was detected silently and failed later with an impossible agenda retry (resolved; census rerun pending)
+### DRIFT-199-I001-052 — workshop ordering was detected silently and failed later with an impossible agenda retry (resolved; exact proof complete)
 
 - **Observed**: 2026-08-16, the fresh Copilot CLI 1.0.80 / Sonnet 4.6 walk asked the
   product-domain question before the governed feature existed, then rendered a technical agenda before
@@ -79,7 +102,7 @@ recorded maintainer ruling, so a single rate here would misstate them.
   ordering abuses through the shipped provider/writer, so a missing consumer becomes loud at the earliest
   producer rather than at a later gate.
 
-### DRIFT-199-I001-051 — the complete census bound expired before a valid slow matrix completed (resolved; census rerun pending)
+### DRIFT-199-I001-051 — the complete census bound expired before a valid slow matrix completed (resolved; exact proof complete)
 
 - **Observed**: 2026-08-15, the clean exact `adce6ff5` census completed 349/350
   files and timed out only `validate-governance-changed-only.tests.ps1` at its
@@ -98,7 +121,7 @@ recorded maintainer ruling, so a single rate here would misstate them.
   membership and its measured 30-minute exception. Future removal or silent contraction of
   either control fails the registered guard.
 
-### DRIFT-199-I001-050 — parallel census masked stale workshop distribution and the canonical skill retained the rejected refusal (resolved; census rerun pending)
+### DRIFT-199-I001-050 — parallel census masked stale workshop distribution and the canonical skill retained the rejected refusal (resolved; exact proof complete)
 
 - **Observed**: 2026-08-15, the exact detached `745cf37d` disk census reported
   350/350 files green, but the separately serialized F-198 registry returned 119/121.

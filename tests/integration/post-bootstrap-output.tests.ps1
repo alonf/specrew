@@ -49,4 +49,19 @@ if ($content -notmatch 're-translated to each host' -and $content -notmatch 're-
 }
 Write-Pass "Bootstrap message explains canonical-to-host translation flow"
 
+# Test 6: The bootstrap guidance must agree with the installed SessionStart hooks and public docs.
+# A direct host launch from the project root is the primary path; specrew start remains the explicit
+# host-selection and recovery path. Contradicting that contract here sends a manual tester down the
+# wrong entry point even though the deployed hooks are healthy.
+if ($content -match 'Do not run the host CLI directly') {
+    Write-Fail "post-bootstrap-output.ps1 must not prohibit the direct host launch that its installed SessionStart hooks support."
+}
+if ($content -notmatch 'launch (?:your|the) host directly' -and $content -notmatch 'run (?:copilot|claude|codex|cursor-agent|agy) directly') {
+    Write-Fail "post-bootstrap-output.ps1 must name direct host launch from the project root as a supported path."
+}
+if ($content -notmatch 'specrew start.*(?:optional|select|switch|recover|recovery)') {
+    Write-Fail "post-bootstrap-output.ps1 must explain specrew start as the optional host-selection or recovery path."
+}
+Write-Pass "Bootstrap message agrees with the hook-first direct-launch contract"
+
 Write-Host "`nPost-bootstrap output content: all assertions pass" -ForegroundColor Green
