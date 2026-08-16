@@ -22,10 +22,27 @@
 
 ## Summary
 
-**Total drift events**: 59 (DRIFT-199-I001-001 through -059)
+**Total drift events**: 60 (DRIFT-199-I001-001 through -060)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-060 — token-budget repair dropped the quick-discussion packet exemption (resolved; corrected census pending)
+
+- **Observed**: 2026-08-16, the second honest census at `66a0dd8f` passed 350/351 files in
+  3,655.128 seconds. `every-stop-packet.tests.ps1` alone failed because the shortened always-on
+  refocus digest no longer said that a quick discussion without material work remains conversational.
+- **Cause**: DRIFT-199-I001-059 reduced the digest from about 620 to 536 estimated tokens by
+  compressing its packet rule, but treated the exemption and the exact clarify-stage distinction as
+  redundant prose. They are behavioral constraints: without them a model can render heavyweight
+  packets on ordinary discussion turns, the workshop symptom this stabilization is meant to remove.
+- **Resolution**: restore both constraints compactly in source and deployed mirrors: quick discussion
+  without material work stays conversational and omits the packet; clarify-stage ambiguity questions
+  are not packet stops. The digest remains below its 600-token ceiling.
+- **Measured proof**: `every-stop-packet.tests.ps1` and `refocus-digests.tests.ps1` must both pass on
+  the exact correction commit before the third disk census.
+- **Class closure**: packet exemptions and token budgets have independent executable consumers. Any
+  future compression must satisfy both instead of treating a smaller digest as sufficient evidence.
 
 ### DRIFT-199-I001-059 — the first honest disk census exposed seven more hidden failures (resolved; corrected census pending)
 
