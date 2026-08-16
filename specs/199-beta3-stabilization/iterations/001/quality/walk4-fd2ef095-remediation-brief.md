@@ -70,7 +70,9 @@ repair operation. The typed repair authorization must be consumed by the prompt-
 - The transition table passed all 48 cells in 1.3 seconds.
 - The focused workshop, authority, hook, refusal, agenda, controller, signoff, and multihost suites
   passed, including the real W14 state and the nonce-bound W15 repair lifecycle.
-- The curated release registry passed 123/123 suites in 1,980.335 seconds.
+- The final curated release registry passed 124/124 suites in 2,123.351 seconds, including the
+  deployed Copilot nested-skill detector added after the first walk-5 canary exposed a false
+  empty-catalog warning.
 - The final disk-wide census passed all 352 named PowerShell test files (121 Pester containers and
   231 direct scripts) in 4,203.6 seconds, with zero failures and no caller-tree contamination.
 

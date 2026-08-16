@@ -22,10 +22,29 @@
 
 ## Summary
 
-**Total drift events**: 64 (DRIFT-199-I001-001 through -064)
+**Total drift events**: 65 (DRIFT-199-I001-001 through -065)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-065 — Copilot's populated nested skill catalog was reported empty (resolved)
+
+- **Observed**: 2026-08-16, the first exact-commit walk-5 canary installed 33 Copilot skill
+  files under `.github/skills/<skill>/SKILL.md`, but `specrew start --no-launch` warned that
+  `.github/skills` contained no skill files. The same false warning was present in walk 4.
+- **Cause**: `Test-HostSkillRoot` retained Copilot's retired flat `*.md` convention while init now
+  deploys the shared nested `SKILL.md` layout. The detector inspected only the root directory and
+  therefore contradicted the installed bytes.
+- **Resolution**: Copilot detection accepts both its legacy root-level Markdown files and recursively
+  deployed `SKILL.md` files. Other hosts retain their existing nested contract. A disposable fixture
+  with the current deployed shape must return one skill and no empty-catalog warning.
+- **Measured proof**: the new fixture was RED on the old detector and GREEN after the correction.
+  Host detection, the five-host registry, and the complete launch-path matrix passed directly. The
+  final four-lane curated registry completed 124/124 suites green in 2,123.351 seconds, including
+  the new registered case.
+- **Class closure**: the release registry now constructs the installed Copilot directory shape and
+  consumes the production detector. A future deploy/detector convention mismatch becomes loud
+  before another manual environment is handed to a tester.
 
 ### DRIFT-199-I001-064 — disk census mixed one stale fixture with three load artifacts (resolved)
 

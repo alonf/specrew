@@ -217,6 +217,7 @@ $registry = @(
     @{ area = 'Beta3 installed module wrapper - GNU equals form preserves Windows drive paths across pwsh -File'; path = 'tests/unit/module-wrapper-windows-drive-equals.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 Windows init preflight - disposable Spec Kit probe stays short and outside long consumer paths'; path = 'tests/unit/spec-kit-preflight-path.Tests.ps1'; kind = 'pester' }
     @{ area = 'Beta3 project-rules register - host-neutral launch path carries no coordinator persona assignment'; path = 'tests/integration/multi-host-launch-path.tests.ps1'; kind = 'script' }
+    @{ area = 'Beta3 Copilot deployed-skill detection - nested SKILL.md catalog is not reported empty'; path = 'tests/integration/host-detection-ux.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 project-rules governed-command precision - routes feature creation through the coupled workshop-controller scaffold, never the raw Spec Kit script'; path = 'tests/integration/coordinator-guard-precision.tests.ps1'; kind = 'script' }
     @{ area = 'DRIFT-198-I008-060 pre-agenda controller initialization - exact feature scope, atomic shape, no overwrite, governed complete scaffold only'; path = 'tests/integration/workshop-controller-initialization.tests.ps1'; kind = 'script' }
     @{ area = 'Beta3 workshop controller arrival - governed feature scaffold couples spec creation to empty pre-agenda state before the first question'; path = 'tests/integration/governed-feature-workshop-controller.tests.ps1'; kind = 'script' }
