@@ -1241,6 +1241,10 @@ try {
     # precedence. Unknown or empty paths, or any path outside the workshop record set, fall through to today's
     # material-work behavior (block), which is fail-closed.
     $workshopRecordOnlyTurn = $false
+    # The paths that cost this turn its workshop exemption. The enforcement decision does not need them;
+    # the human does. Without them the correction says "render a packet" in the middle of a design
+    # conversation and names nothing the human can act on.
+    $workshopOutsidePaths = @()
     $preAgendaUntouchedScaffoldTurn = ($workshopIntermediate -and
         [string]$workshopQuestion.scope -eq 'feature' -and
         [string]$workshopQuestion.lens -eq 'product-domain' -and
@@ -1260,6 +1264,7 @@ try {
                         ($preAgendaUntouchedScaffoldTurn -and $normalizedTurnPath.Equals($preAgendaSpecPath, [StringComparison]::OrdinalIgnoreCase)))
                 })
             $workshopRecordOnlyTurn = (@($outsideWorkshop).Count -eq 0)
+            if ($workshopIntermediate) { $workshopOutsidePaths = @($outsideWorkshop | Select-Object -First 3) }
         }
     }
     # A valid pre-agenda controller normally proves an intermediate question. It must not suppress the targeted
@@ -1473,6 +1478,26 @@ try {
                     $answerStatus = if ($preScaffoldWorkshopAttempt) { 'that no answer was recorded yet' } else { 'that their answers are safe and nothing has been lost' }
                     [void]$sb.AppendLine(("Try the action above once. If it does not resolve the situation, do not retry and do not edit this project's workshop records by hand. Tell the human calmly what you were doing, {0}, and what you could not complete without assigning blame. Give one concrete next action you can take and ask the human for approval before taking it." -f $answerStatus))
                 }
+            }
+            elseif ($blockKind -eq 'material' -and $workshopIntermediate) {
+                # A DESIGN CONVERSATION IS STILL OPEN, so the generic packet demand lands as an
+                # engineering interrupt mid-question and takes the human's place in the workshop with
+                # it. Enforcement is unchanged - work outside the workshop notes still owes the packet -
+                # but the correction now names WHICH work cost the exemption and requires the pending
+                # question to survive the packet, so the human is not left re-finding the conversation.
+                $topicLabel = if ([string]::IsNullOrWhiteSpace([string]$workshopQuestion.lens)) { 'current' } else { [string]$workshopQuestion.lens }
+                if (@($workshopOutsidePaths).Count -gt 0) {
+                    [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also changed work outside the workshop notes: {1}. That work owes the human a short summary before the conversation continues." -f $topicLabel, (@($workshopOutsidePaths) -join ', ')))
+                }
+                else {
+                    [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also changed work outside the workshop notes. That work owes the human a short summary before the conversation continues." -f $topicLabel))
+                }
+                [void]$sb.AppendLine('Render the five-part context packet NOW as your message:')
+                [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You')
+                [void]$sb.AppendLine('END that message by asking the SAME workshop question again, in full, so the human keeps their place in the conversation and can simply answer it. Do not replace the question with the packet, and do not open the next topic.')
+                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
+                [void]$sb.AppendLine('This is a NON-BOUNDARY material-work stop; do NOT emit a SPECREW-VERDICT-BOUNDARY marker.')
+                [void]$sb.AppendLine('If that outside work was the feature specification, say so plainly: the specification is written after the workshop finishes, so its content is not settled yet and the human should not read it as agreed.')
             }
             elseif ($blockKind -eq 'material') {
                 [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')

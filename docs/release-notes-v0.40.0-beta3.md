@@ -86,8 +86,11 @@ that init/update copies into consumer projects, not module-only engine internals
   relaxed. Answers consumed through a structured picker or a dismissed question UI mint no workshop
   authority; when product records were persisted that way, the next Stop names the selection channel
   and requires each question re-asked as visible prose with a typed reply — on every host, including
-  ones with no per-tool-call hook event. Recovery says whether an answer was actually preserved,
-  proposes one action, and does not diagnose or blame Specrew.
+  ones with no per-tool-call hook event. Work outside the workshop notes still owes the ordinary
+  material-work summary, but during a workshop that request now names the open topic and the work
+  that triggered it, and the summary has to end by asking the same question again, so a design
+  conversation is never replaced by an engineering interrupt. Recovery says whether an answer was
+  actually preserved, proposes one action, and does not diagnose or blame Specrew.
 
 ## What a review actually costs
 

@@ -22,10 +22,41 @@
 
 ## Summary
 
-**Total drift events**: 67 (DRIFT-199-I001-001 through -067)
+**Total drift events**: 68 (DRIFT-199-I001-001 through -068)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-068 — a correct material block read as an engineering interrupt mid-workshop (resolved)
+
+- **Observed**: 2026-08-17, the retro-calculator Copilot walk (`C:\Temp\testSquad`). Mid design
+  workshop, at the first technical topic, the human received the generic five-heading
+  material-work packet demand. Journal: `block_kind=material`, `stop_intent=real` at
+  12:18 and 12:43, then quiet `workshop-intermediate` at lens `architecture-core` once the
+  packet was rendered at 12:43:50.
+- **Cause**: the enforcement was RIGHT and the surface was wrong. During the product-domain
+  turn the agent edited the feature `spec.md`. The workshop-record-only exemption covers that
+  file only while it is byte-identical to the template (`Test-SpecrewUntouchedFeatureSpecScaffold`),
+  so the edit correctly cost the turn its exemption and material-work won — exactly as the
+  exemption's own ruling says it must. But the directive then said only "render the packet":
+  it named no file, did not say the workshop was still open, and did not require the pending
+  question to survive. The human, mid-conversation about a calculator for their kids, got an
+  engineering interrupt and lost their place.
+- **Resolution**: keep the exemption and the enforcement byte-for-byte. When a material stop
+  fires while a durable workshop is active, the correction now names the open topic, names the
+  work outside the workshop notes that cost the exemption (bounded to three paths), requires the
+  packet to END by re-asking the SAME question in full, forbids opening the next topic, and — when
+  the outside work was the feature specification — says plainly that the spec is written after the
+  workshop finishes, so its content is not yet agreed.
+- **Measured proof**: the shipped provider, against a git-backed fixture reproducing the walk
+  (confirmed agenda, genuine typed-turn receipts, edited `spec.md`), still blocks and now names the
+  topic, the path, and the re-ask, with no machinery vocabulary; the identical stop with no workshop
+  open keeps the ordinary material directive unchanged.
+- **Class closure**: sixth instance of "a guard computes the right answer and explains itself
+  badly", and the first where the guard was not silent but *mis-registered* — correct enforcement
+  delivered in a register the human could not act on. The exemption was not widened: softening it
+  would drop material-work enforcement for genuine spec authoring during intake, which is the drift
+  the workshop exists to prevent.
 
 ### DRIFT-199-I001-067 — picker-consumed workshop answers minted nothing and the guard stayed silent (resolved)
 
