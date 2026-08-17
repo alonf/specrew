@@ -1033,7 +1033,17 @@ if ($Live) {
             #
             # A RECORDED VALUE MUST NEVER OUTRANK AN ACT PERFORMED NOW. That is the same shape as the
             # consent gate: what is on file describes the past, and the human is deciding in the present.
-            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and -not [bool]$parsedArgs.ApproveRound) {
+            # ONE GUARD WAS DOING TWO JOBS, and only one of them was the point (2026-08-17 walk).
+            # Skipping this block under --approve-round correctly stops a SPENT reference from
+            # pre-empting a fresh approval. But this block is ALSO the only place the reviewer HOST is
+            # resolved from .specrew/reviewer-hosts.json, so `--live --approve-round` reached the harness
+            # with no host at all and died as `unselected-harness` - whose consumer text then asserts
+            # "no reviewer has been chosen for this project yet" at a project that had one configured,
+            # authorized, and demonstrably running clean rounds minutes earlier. Seven and a half minutes
+            # of preflight to be told to fix something that was not broken.
+            # Resolve the HOST always; take the REFERENCE from the file only when no approval is being
+            # performed now. The property the guard protects is unchanged.
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef)) {
                 $configuredReviewer = Resolve-ContinuousCoReviewConfiguredReviewerCandidate -RepoRoot $resolvedProjectPath `
                     -ReviewerConfigPath ([string]$parsedArgs.ReviewerConfigPath) -RequestedHost $campaignHost `
                     -RequestedModel $campaignModel -CodeWriterHost ([string]$parsedArgs.CodeWriterHost)
@@ -1046,7 +1056,14 @@ if ($Live) {
                     # production-harness-model-override-unsupported, so a project that recorded a
                     # reviewer model - the state `--host X --authorization-ref Y` itself writes - could
                     # not run a campaign review at all. Only an explicit --model request is an override.
-                    $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
+                    #
+                    # The REFERENCE half keeps the original narrow guard: what is on file describes the
+                    # past, and --approve-round is the human deciding in the present, so a recorded (and
+                    # possibly already spent) reference must never outrank it. Only the HOST is read
+                    # unconditionally above; approving a round does not re-ask which reviewer to use.
+                    if (-not [bool]$parsedArgs.ApproveRound) {
+                        $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
+                    }
                 }
             }
 

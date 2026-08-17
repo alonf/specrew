@@ -22,10 +22,57 @@
 
 ## Summary
 
-**Total drift events**: 68 (DRIFT-199-I001-001 through -068)
+**Total drift events**: 70 (DRIFT-199-I001-001 through -070)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-070 — the recorded countermeasure for a thrice-repeated class had never been written (resolved)
+
+- **Observed**: 2026-08-17, while verifying -069. `scripts/specrew.ps1` states that
+  `tests/unit/review-flag-whitelist-parity.tests.ps1` *"now DERIVES the expected set from
+  specrew-review.ps1's own parameter aliases, so the next flag is covered by the invariant
+  instead of by whoever remembers this line."* **That file did not exist** — not in the
+  working tree, and no entry for the path in git history.
+- **Cause**: the round-5 fix recorded its countermeasure in a comment and shipped without it.
+  The comment then read as evidence the class was closed, which is worse than no comment: the
+  next reader (twice: -069's author and this one) had no reason to check.
+- **Resolution**: write the invariant the comment describes. It derives the expected flag set
+  from the review script's own parameter aliases via AST and asserts every one is reachable
+  through the front door, so a flag nobody has written yet is already covered. A mutation proof
+  adds an un-whitelisted alias and requires the guard to fail.
+- **Measured proof**: 20 declared aliases derived, all 20 present in the front door's 37-entry
+  whitelist; the mutation fixture is caught.
+- **Class closure**: a countermeasure that exists only as prose is not a countermeasure. Same
+  shape as the gate-preflight beta4 item ("the preflight exists as PROSE, not as a guard"), and
+  the reason this feature's method rule 2 kept catching repeats: the guard was never runnable.
+
+### DRIFT-199-I001-069 — approving a round threw away the configured reviewer (resolved)
+
+- **Observed**: 2026-08-17, running the maintainer-directed additional rounds.
+  `specrew review --live --approve-round` failed after 449 s with `preflight-failed:harness`,
+  and the consumer text asserted *"No reviewer has been chosen for this project yet"* — at a
+  project whose `.specrew/reviewer-hosts.json` had copilot `allowed`, authorized, and running
+  clean rounds twenty minutes earlier. Re-running the identical command with an explicit
+  `--host copilot` passed preflight and completed clean, isolating the cause to the flag.
+- **Cause**: `scripts/specrew-review.ps1` gated ONE block on `-not ApproveRound` that was doing
+  TWO jobs. The intended job is right: a recorded authorization reference may be already spent,
+  so it must never pre-empt an approval the human is performing now. But the same block is the
+  only place the reviewer HOST is resolved from the project config, so approving a round also
+  discarded the host and reached the harness with an empty one.
+- **Resolution**: split the two. The HOST is resolved unconditionally; the REFERENCE is still
+  taken from the file only when no approval is being performed now, so the protected property
+  is unchanged. Approving a round no longer re-asks which reviewer to use.
+- **Measured proof**: a structural guard reads the enclosing conditions of the host-resolution
+  assignment via AST and requires none to reference `ApproveRound`, while requiring the
+  reference assignment to stay gated; it FAILS against the pre-fix file at `HEAD` and passes
+  after, and a mutation reintroducing the coupling is caught.
+- **Class closure**: third instance of "a round-decision flag does not carry what the ordinary
+  path carries" (2026-07-09 and 2026-08-12 were the whitelist rejections), and the second of
+  "ONE VALUE WAS SERVING TWO READERS" in this iteration. The consumer-facing half is the
+  `preflight-failed:harness` text asserting an unverified cause — same family as the beta4
+  item on `requested-host-not-available` collapsing three conditions into one sentence, now
+  with a measured cost of 7.5 minutes and an instruction to fix something that was not broken.
 
 ### DRIFT-199-I001-068 — a correct material block read as an engineering interrupt mid-workshop (resolved)
 
