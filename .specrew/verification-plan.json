@@ -40,9 +40,9 @@
       "arguments": [
         "-NoProfile",
         "-Command",
-        "$r = Invoke-Pester -Path tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1,tests/continuous-co-review/unit/campaign-default-run-id-mint.Tests.ps1,tests/continuous-co-review/unit/review-window-codex-default.Tests.ps1,tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1,tests/bootstrap/BannerPrereleaseVersion.Tests.ps1,tests/integration/ci-registry-lane-tooling.Tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0) { exit 1 } else { exit 0 }"
+        "$fail = 0; foreach ($s in @('tests/integration/workshop-agenda-confirmation.tests.ps1','tests/integration/workshop-typed-turn-authority.tests.ps1','tests/integration/workshop-material-packet-language.tests.ps1','tests/unit/workshop-refusal-contract.tests.ps1')) { & pwsh -NoProfile -NonInteractive -File $s *> $null; if ($LASTEXITCODE -ne 0) { $fail = 1; Write-Host \"workshop-suite FAILED: $s\" } }; $r = Invoke-Pester -Path tests/continuous-co-review/unit/campaign-activation-implementation-premise.Tests.ps1,tests/continuous-co-review/unit/campaign-default-run-id-mint.Tests.ps1,tests/continuous-co-review/unit/review-window-codex-default.Tests.ps1,tests/continuous-co-review/unit/continuous-co-review-navigator.Tests.ps1,tests/bootstrap/BannerPrereleaseVersion.Tests.ps1,tests/integration/ci-registry-lane-tooling.Tests.ps1 -PassThru -Output None; if ($r.FailedCount -gt 0) { $fail = 1 }; exit $fail"
       ],
-      "timeout_seconds": 300,
+      "timeout_seconds": 480,
       "env_refs": [
         "PATH",
         "PATHEXT",
@@ -64,7 +64,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "SLICE lane: the suites this slice touches. The full deterministic registry is the RELEASE GATE lane and runs at the certification round, not on every slice (maintainer ruling 2026-08-10). Sized well under half the round window so the reviewer keeps the remainder."
+      "label": "SLICE lane: the suites this slice touches, plus the workshop-authority suites added 2026-08-17. The beta3 workshop fixes (W10-W18) shipped with no lane covering them, so a walk regression could only be caught by someone remembering to run them by hand - the same 'a guard only guards code whose author runs it' shape the class-guard lane exists to prevent. The full deterministic registry is the RELEASE GATE lane and runs at the certification round, not on every slice (maintainer ruling 2026-08-10)."
     },
     {
       "command_id": "iteration-001-governance",
