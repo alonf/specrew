@@ -28941,3 +28941,13 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Rationale**: Round-5 major finding (run-20260811-213318650-9ab64f34): the orientation banner still emits bare requirement IDs and the gloss helper has no production call sites. Deferred to beta4; recorded as the `deferred` entry in the iteration 001 review.md Gap Ledger.
 - **Next Action**: beta4 backlog carries the banner gloss call-site work.
 - **Recorded At**: 2026-08-17T07:55:00Z
+
+## 2026-08-17T22:30:00Z — Superseded: FR-016 deferral replaced by a fix
+
+- **Type**: supersede
+- **Affected Requirement**: FR-016
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (directive 2026-08-17: "We cannot complete until we fix all issues... do additional rounds to fix the issues")
+- **Rationale**: The 2026-08-17T07:55:00Z defer entry parked the FR-016 banner gloss gap for beta4 under the 2026-08-11 triage ruling. Campaign round run-20260817-220959812-f183b4d8 raised it again against the frozen UI/UX design context, which requires every requirement reference in human-visible prose to carry both the identifier and a short description. The gap is now fixed in all three shipped banner copies and enforced by a detector-based guard, so the deferral no longer applies and the review Gap Ledger records it as fixed-now.
+- **Next Action**: none; the deferral is closed by the fix.
+- **Recorded At**: 2026-08-17T22:30:00Z

@@ -22,10 +22,37 @@
 
 ## Summary
 
-**Total drift events**: 71 (DRIFT-199-I001-001 through -071)
+**Total drift events**: 72 (DRIFT-199-I001-001 through -072)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-072 — FR-016 fixed after a second finding, not deferred a second time (resolved)
+
+- **Observed**: 2026-08-17, campaign round `run-20260817-220959812-f183b4d8` raised the FR-016
+  banner gap again — the reviewer reported it as blocking; the gate demoted it to minor for
+  stating no concrete failure scenario, which is the demotion rule working correctly. It was
+  already a round-5 major deferred to beta4 on 2026-08-11 as *"does not block the bar"*.
+- **Cause**: the consumer-language layer shipped complete and wired to nothing. Its own header
+  names the defect it exists to prevent — *"a bare `T006` or `FR-013` is an identifier the reader
+  must go and look up before the sentence means anything"* — while the orientation banner, the
+  first prose a human reads in any hook-started session, emitted bare `FR-004`, `FR-020`,
+  `FR-022`, `FR-023`, `FR-025`, `FR-027`. A helper with no caller guards nothing.
+- **Resolution**: fixed rather than deferred again, on the maintainer directive to fix all issues
+  before completing. Every requirement ID the banner shows now carries a short description of
+  what that requirement means, taken from the owning spec rather than invented, in all three
+  shipped copies (module source, extension source, deployed mirror). The recorded deferral is
+  superseded by a ledger entry rather than deleted.
+- **Measured proof**: a guard runs the project's OWN detector over the banner's emitted string
+  literals (381 of them, read structurally so a comment mentioning an ID is not mistaken for
+  output) and requires zero bare IDs across all three copies; it FAILS against the pre-fix
+  banners at `HEAD`, naming each bare ID, and a mutation adding one is caught while the same
+  line with a real description passes.
+- **Class closure**: enforcement over convention. Wiring the helper at each call site would guard
+  only the strings someone remembered to route through it; running the detector over the emitted
+  surface covers the strings nobody has written yet. This is the fourth item this session whose
+  root cause was a guard that existed without reaching anything (-070 the missing parity test,
+  -071 the unchecked allowance, -068 the correct-but-mis-registered block).
 
 ### DRIFT-199-I001-071 — the pause menu offered a round it could not grant, and ate the answer (resolved)
 
