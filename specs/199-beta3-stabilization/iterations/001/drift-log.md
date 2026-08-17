@@ -22,10 +22,42 @@
 
 ## Summary
 
-**Total drift events**: 70 (DRIFT-199-I001-001 through -070)
+**Total drift events**: 71 (DRIFT-199-I001-001 through -071)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-071 — the pause menu offered a round it could not grant, and ate the answer (resolved)
+
+- **Observed**: 2026-08-17, three times in one session. The pause surface offers
+  `1. Fix these and run another review round` and names `--pause-choice` as the way to answer.
+  Answering `1` failed in 0.2 s with the bare token `allowance-exhausted` — no sentence, no next
+  action. The third occurrence wrote `pause-decision.json` (`fix-and-continue`, 21:57:16) one
+  second before the failure, leaving the campaign with **no pending pause and no round run**.
+- **Cause**: TWO COUNTERS, ONE CHECKED. The pause path checks the per-campaign round BUDGET
+  (which had room: 1 of 4) and refuses with real guidance when it is spent. It never checks the
+  per-grant ALLOWANCE. A grant carries one slot and is derived from the authorization reference,
+  so once that round is spent the same reference mints nothing — by design. Option 1 took the
+  config path, found the spent reference, passed the budget check, recorded the immutable answer,
+  and only then hit the allowance. The code comment above the approval exemption stated the
+  belief that broke: option 1 *"falls through to the approval check below on its own"*. It fell
+  through and was **exempted** there, so it reached the store with no grant at all.
+- **Resolution**: the file's own philosophy already answers it — *approving a round is a decision,
+  not an identifier*. Choosing "run another round" from the menu IS that decision, so option 1
+  now carries its own round approval and mints the derived one-slot reference exactly as
+  `--approve-round` does. The round budget still caps it and is still checked before any answer
+  is consumed; options 2 and 3 keep spending nothing and are never asked to authorize a spend.
+- **Measured proof**: a structural guard requires the approval predicate to be satisfied by both
+  spellings of option 1 (`1` and `fix-and-continue`) and by neither of the spend-nothing answers,
+  requires the mint to stay gated on an approval, and requires the budget refusal to precede
+  construction of the immutable pause decision. It FAILS against the pre-fix file at `HEAD`,
+  passes after, and a mutation removing option 1 from the predicate is caught.
+- **Class closure**: the wedge shape this file already documents — *"A REFUSED ATTEMPT MUST NOT
+  CONSUME THE ANSWER"* — was fixed for `stop-here` and left reachable through `fix-and-continue`
+  via a different resource. A protection written for one branch of a menu is not a protection of
+  the menu. Whether the fall-through path should also defer its decision-fact write until the
+  round actually starts is left as a maintainer ruling: it belongs with the recorded beta4
+  architectural item that an immutable fact written by buggy logic is permanently wrong.
 
 ### DRIFT-199-I001-070 — the recorded countermeasure for a thrice-repeated class had never been written (resolved)
 

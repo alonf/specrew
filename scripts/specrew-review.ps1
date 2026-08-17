@@ -971,6 +971,25 @@ if ($Live) {
             $campaignModel = [string]$parsedArgs.Model
             $campaignGrantAuthorizationRef = [string]$parsedArgs.AuthorizationRef
 
+            # CHOOSING "RUN ANOTHER ROUND" IS APPROVING ONE (FR-003, 2026-08-17 walk).
+            #
+            # The pause menu offers `1. Fix these and run another review round`, and the surface tells the
+            # human to answer it with --pause-choice. That answer is the same act --approve-round names,
+            # arrived at from the menu instead of the flag - the file already says so: approving a round is
+            # a decision, and the identifier is filing.
+            #
+            # Without this, option 1 could not do what it offered. The answer passed the round-BUDGET check
+            # (which had room), was written as an immutable decision, and the run then died on a spent
+            # ALLOWANCE - a different counter with no check on this path - reporting the bare token
+            # `allowance-exhausted` with no sentence and no next action. Measured three times in one
+            # session; the third consumed the answer and left the campaign with no pending pause AND no
+            # round run, which is precisely the wedge the stop-here ordering below exists to prevent.
+            #
+            # The round budget still caps this: fix-and-continue is refused below when the budget is spent,
+            # before any answer is consumed. This makes the offered option deliverable, not unbounded.
+            $roundApprovalRequested = ([bool]$parsedArgs.ApproveRound -or
+                ([string]$parsedArgs.PauseChoice -cin @('1', 'fix-and-continue')))
+
             # AN AUTHORIZATION THE HUMAN DID NOT GIVE FOR *THIS* ACT MUST NOT LOOK LIKE ONE THEY DID.
             #
             # Measured on both dogfood runs. Each agent passed the reviewer-HOST authorization reference
@@ -1061,7 +1080,7 @@ if ($Live) {
                     # past, and --approve-round is the human deciding in the present, so a recorded (and
                     # possibly already spent) reference must never outrank it. Only the HOST is read
                     # unconditionally above; approving a round does not re-ask which reviewer to use.
-                    if (-not [bool]$parsedArgs.ApproveRound) {
+                    if (-not $roundApprovalRequested) {
                         $campaignGrantAuthorizationRef = [string]$configuredReviewer.authorization_ref
                     }
                 }
@@ -1078,7 +1097,7 @@ if ($Live) {
             #
             # An explicit --authorization-ref still wins, untouched.
             $approvalMinted = $false
-            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and [bool]$parsedArgs.ApproveRound) {
+            if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and $roundApprovalRequested) {
                 $approvalIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath `
                     -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
                 # THE ROUND NUMBER IS ROUNDS ALREADY RUN, NOT APPROVALS ALREADY MINTED.
@@ -1107,8 +1126,13 @@ if ($Live) {
             # ANSWERING A PAUSE IS NOT RUNNING A ROUND. Found by the end-to-end walk on a fresh install,
             # after every fixture passed: `--pause-choice 2` - stop here - was refused for lack of
             # APPROVAL, so a human declining to spend was asked to authorize the spend they were
-            # declining. Same for 3, abandon. Only option 1 leads to a round, and it falls through to the
-            # approval check below on its own.
+            # declining. Same for 3, abandon. Only option 1 leads to a round.
+            #
+            # This exemption used to be the WHOLE story for option 1, on the belief that it "falls through
+            # to the approval check on its own". It did not: it fell through and was EXEMPTED here, so it
+            # reached the store with no grant and died on a spent allowance. Option 1 now carries its own
+            # approval (see $roundApprovalRequested above), so this exemption serves only 2 and 3 - the two
+            # answers that spend nothing and must never be asked to authorize a spend.
             #
             # This is the ordering half of round 4's "the rendered pause reply command does not enter the
             # reply handler". I fixed the wiring and left the order, and no fixture could see it: each

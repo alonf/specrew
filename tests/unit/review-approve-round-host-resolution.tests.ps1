@@ -74,17 +74,33 @@ $refAssignments = @($cliAst.FindAll({
             $node.Right.Extent.Text -match 'configuredReviewer\.authorization_ref'
         }, $true))
 Assert-True (@($refAssignments).Count -ge 1) 'the CLI still reads a configured authorization reference when one applies'
+# The gate is named by whatever variable holds the round-approval decision, so resolve that name rather
+# than pinning a spelling: this guard once failed on a rename that made the behaviour STRICTER.
+$approvalPredicateNames = [Collections.Generic.List[string]]::new()
+$approvalPredicateNames.Add('ApproveRound') | Out-Null
+foreach ($assignment in @($cliAst.FindAll({
+                param($node)
+                $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+                $node.Right.Extent.Text -match 'ApproveRound' -and $node.Right.Extent.Text -match 'PauseChoice' -and
+                $node.Right.Extent.Text -match '-or'
+            }, $true))) {
+    $approvalPredicateNames.Add(([string]$assignment.Left.Extent.Text).TrimStart('$')) | Out-Null
+}
 $refGuarded = $false
 foreach ($assignment in $refAssignments) {
     $node = $assignment
     while ($null -ne $node) {
         if ($node -is [System.Management.Automation.Language.IfStatementAst]) {
-            foreach ($clause in $node.Clauses) { if ([string]$clause.Item1.Extent.Text -match 'ApproveRound') { $refGuarded = $true } }
+            foreach ($clause in $node.Clauses) {
+                foreach ($name in $approvalPredicateNames) {
+                    if ([string]$clause.Item1.Extent.Text -match [regex]::Escape($name)) { $refGuarded = $true }
+                }
+            }
         }
         $node = $node.Parent
     }
 }
-Assert-True $refGuarded 'a recorded authorization reference is still never taken while --approve-round is performing the decision now'
+Assert-True $refGuarded 'a recorded authorization reference is still never taken while a round approval is being performed now'
 
 # MUTATION PROOF: reintroduce the original coupling and the guard must fail. Without this the assertions
 # above pass for a file that no longer contains the code they claim to describe.
