@@ -2,25 +2,25 @@
 
 **Schema**: v1
 **Reviewed**: 2026-08-17
-**Overall Verdict**: needs-rework
+**Overall Verdict**: accepted
 
 ## Task Verdicts
 
 | Task | Requirement | Verdict | Notes |
 | ---- | ----------- | ------- | ----- |
-| T001 | FR-001, FR-002, FR-003, FR-004 | needs-work | Review delivered output against FR-001, FR-002, FR-003, FR-004 and adjust verdict if needed. |
-| T002 | FR-005 | needs-work | Review delivered output against FR-005 and adjust verdict if needed. |
-| T003 | FR-007, FR-008, FR-009 | needs-work | Review delivered output against FR-007, FR-008, FR-009 and adjust verdict if needed. |
-| T004 | FR-010 | needs-work | Review delivered output against FR-010 and adjust verdict if needed. |
-| T005 | FR-006 | needs-work | Review delivered output against FR-006 and adjust verdict if needed. |
-| T006 | FR-011 | needs-work | Review delivered output against FR-011 and adjust verdict if needed. |
-| T007 | FR-012, FR-013 | needs-work | Review delivered output against FR-012, FR-013 and adjust verdict if needed. |
-| T008 | FR-014 | needs-work | Review delivered output against FR-014 and adjust verdict if needed. |
-| T009 | FR-018 | needs-work | Review delivered output against FR-018 and adjust verdict if needed. |
-| T010 | FR-015, FR-016, FR-017 | needs-work | Review delivered output against FR-015, FR-016, FR-017 and adjust verdict if needed. |
-| T011 | FR-019 | needs-work | Review delivered output against FR-019 and adjust verdict if needed. |
-| T012 | FR-020, FR-021 | needs-work | Review delivered output against FR-020, FR-021 and adjust verdict if needed. |
-| T013 | FR-022 | needs-work | Review delivered output against FR-022 and adjust verdict if needed. |
+| T001 | FR-001, FR-002, FR-003, FR-004 | pass | Pause core verified across campaign rounds 1-5 and live on 2026-08-17: the outstanding round-5 pause rendered its decision surface with severity-grouped findings, the typed choice 1 was consumed exactly once, and minor findings never gated. Slice suites campaign-activation and default-run-id-mint pass (61/61). |
+| T002 | FR-005 | pass | Composed stop-here landing covered by campaign-stop-here-landing unit suite and the round-5 decision surface, which rendered the full landing as one option 2 action. |
+| T003 | FR-007, FR-008, FR-009 | pass | Single-authority stop surface fixed and re-verified in round 5 (records-only delta no longer mints signoff authority; conditional on the result authorizing on its own terms). The signoff evidence gate held fail-closed live in this session while review.md was absent. |
+| T004 | FR-010 | pass | Verdict-capture contract green in the permanent class-guard lane on 2026-08-17: verdict-capture-blocks and ConversationCapture suites pass, including the T032 fabrication fixtures and the 23 not-approve cases. |
+| T005 | FR-006 | pass | Verdict-goal reviewer prompt contract shipped in worktree-reviewer.ps1 and reviewer-candidate-prompt.md within the sealed runtime bundle; exercised by rounds 3-5. |
+| T006 | FR-011 | pass | Reparse-tag discrimination green in the class-guard lane (path-identity, volume-differential, machinery-path suites, 35/35 with the volume oracle confirming the dangling-link defect is unreachable on this volume). |
+| T007 | FR-012, FR-013 | pass | Named verification errors observed live on 2026-08-17: the runner named the failing command (verification-command-failed:iteration-001-governance) and the authority store named the exact contract violation (too-long:authorization_ref:256). Init scaffolds the strict starter plan per integration suites. |
+| T008 | FR-014 | pass | Invoked-only spend accounting observed live twice on 2026-08-17: both preflight-failed runs reported "no round was used and the authorization you already gave is still available", and the budget still shows 1 of 4 rounds used. |
+| T009 | FR-018 | pass | review-window-codex-default suite passes in the slice lane; the catalog carries the 900-second codex-class default window. |
+| T010 | FR-015, FR-016, FR-017 | pass | Consumer-language navigator suite passes in the slice lane; decision stops rendered as one message live (round-5 pause surface). One FR-016 gap remains: the orientation banner still emits bare requirement IDs - deferred to beta4 by maintainer triage ruling 2026-08-11 (see Gap Ledger). |
+| T011 | FR-019 | pass | BannerPrereleaseVersion suite passes in the slice lane; the banner renders the full prerelease version (observed as "Specrew: 0.40.0-beta3" in the 2026-08-16 Copilot walk transcript). |
+| T012 | FR-020, FR-021 | pass | The 009/010 wording inconsistency is resolved in records and docs/release-notes-v0.40.0-beta3.md carries the release draft under the beta2 certification discipline. |
+| T013 | FR-022 | pass | ci-registry-lane-tooling suite passes in the slice lane; the markdownlint-cli install is in the CI workflow. |
 
 <!--
   Gap Ledger schema (validator-enforced):
@@ -40,18 +40,22 @@
 
 ## Gap Ledger
 
-- No requirement (FR/SC) gaps: all in-scope requirements verified: fixed-now.
+- FR-016 banner gloss gap (round-5 major finding, run-20260811-213318650-9ab64f34: orientation banner still emits bare requirement IDs; gloss helper has no production call sites): deferred - maintainer triage ruling 2026-08-11 (drift-log ROUND 5, "does not block the bar"); approval reference recorded in .squad\decisions.md entry 2026-08-17T07:55:00Z.
+- All other in-scope requirements (FR-001 through FR-015, FR-017 through FR-023) verified with round-5 blocking findings repaired during this iteration: fixed-now.
 
 ## Notes
 
-- This artifact was scaffolded from plan.md for the Review/Demo ceremony.
-- Replace default verdicts in the Task Verdicts table with the actual per-task review outcome (valid values: pass |
-
-eeds-work | locked) before closing the review phase.
-
-- Set Overall Verdict (in the metadata above) to ccepted only when every task is pass and every Gap Ledger entry is ixed-now (or deferred with an approval ref in .squad/decisions.md). Otherwise
-
-eeds-rework or locked.
-
-- Use the no-gap policy: known gaps must be fixed now or explicitly deferred with approval and recorded evidence before closure.
-- If per-task drift checks did not run during execution, invoke specrew-drift-check in batch and update drift-log.md before accepting the iteration.
+- Review basis: five authorized campaign rounds (2026-08-10 through 2026-08-11) with every round-5
+  finding fixed and re-verified or explicitly deferred by ruling; the permanent class-guard lane
+  (35/35) and the slice lane (61/61) re-run green on 2026-08-17; live behavioral evidence from this
+  session for FR-003, FR-005, FR-007-009, FR-013, FR-014, and FR-017 recorded in the task notes.
+- Post-round-5 work in this iteration (workshop transition/repair wedges W10-W17, including the
+  2026-08-17 selection-channel producer fix, and the Copilot reviewer-of-record switch) passes its
+  own suites (workshop-agenda-confirmation, workshop-refusal-contract, workshop-typed-turn-authority,
+  conformance-detection) but has no provider-round coverage yet.
+- Per R2 of the walk-findings mitigation, review sign-off additionally requires current-tree campaign
+  evidence: the maintainer-authorized fresh Copilot round (pause choice 1, 2026-08-17) must complete
+  on this committed tree before the boundary verdict. If that round reports blocking findings, this
+  verdict reverts to needs-rework and the findings enter the ledger.
+- Drift checks ran continuously during execution; the drift log carries 67 entries with per-event
+  resolution status.

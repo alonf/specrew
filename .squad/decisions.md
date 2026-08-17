@@ -28820,3 +28820,124 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 943e455f7042bc16944c1df31c457775909c4285
 - **Recorded At**: 2026-08-02T13:21:48Z
+
+## 2026-08-10T00:35:53Z — Boundary sync warning: specify
+
+- **Boundary Type**: specify
+- **Latest Recorded Boundary**: clarify
+- **Recorded At**: 2026-08-10T00:35:53Z
+- **Warning**: Expected next boundary 'plan' but received 'specify'.
+
+## 2026-08-10T00:35:54Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 472fa5e2ec96b244629fa17091345739a9d6fcb8
+- **Recorded At**: 2026-08-10T00:35:54Z
+
+## 2026-08-10T00:45:24Z — Boundary enforcement: clarify
+
+- **Feature**: 199-beta3-stabilization
+- **Boundary Type**: clarify
+- **Current Boundary**: specify
+- **Requested Boundary**: clarify
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Ratchet refusal: 'specify' is recorded but not human-approved; a second advance to 'clarify' is refused until it is reconciled.
+
+## 2026-08-10T00:55:26Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 78f68e4563c612c7cf1bd1d0cecadd826c887f6c
+- **Recorded At**: 2026-08-10T00:55:26Z
+
+## 2026-08-10T01:15:51Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d9b1cc851586c8c3e65b2a3dd164eec55053e6cf
+- **Recorded At**: 2026-08-10T01:15:50Z
+
+## 2026-08-10T01:18:20Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-08-10T01:18:20Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-08-10T01:18:21Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: ffeea7755f8afd53c3a84d90331077fd2be0241b
+- **Recorded At**: 2026-08-10T01:18:21Z
+
+## 2026-08-10T01:31:19Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-08-10T01:31:19Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-08-10T01:31:20Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 769382ed9eb5a2dfac77a6620a1dbe4d3934cc2d
+- **Recorded At**: 2026-08-10T01:31:19Z
+
+## 2026-08-10T01:45:51Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 4ce684291daac0733ab071ac3c7d99f01f5a358b
+- **Recorded At**: 2026-08-10T01:45:50Z
+
+## 2026-08-10T01:51:17Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: b9e25ad1fba3eacfdbd4dfa1e90ef69d05e86ac6
+- **Recorded At**: 2026-08-10T01:51:16Z
+
+## 2026-08-10T08:02:26Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-08-10T08:02:26Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'before-implement'.
+
+## 2026-08-10T08:02:27Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8ed3313d1ec114e33e1696e37e937649ed57afbb
+- **Recorded At**: 2026-08-10T08:02:26Z
+
+## 2026-08-17T07:55:00Z — Defer: FR-016 banner gloss gap to beta4
+
+- **Type**: defer
+- **Affected Requirement**: FR-016
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (maintainer triage ruling 2026-08-11, drift-log ROUND 5: a repeat class routes to beta4 unless it blocks the acceptance bar; the round-5 table records this finding as "BETA4 — does not block the bar")
+- **Rationale**: Round-5 major finding (run-20260811-213318650-9ab64f34): the orientation banner still emits bare requirement IDs and the gloss helper has no production call sites. Deferred to beta4; recorded as the `deferred` entry in the iteration 001 review.md Gap Ledger.
+- **Next Action**: beta4 backlog carries the banner gloss call-site work.
+- **Recorded At**: 2026-08-17T07:55:00Z
