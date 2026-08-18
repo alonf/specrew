@@ -1309,7 +1309,25 @@ try {
                     -not ($normalizedTurnPath -match '(^|/)workshop/' -or
                         $normalizedTurnPath -match '(^|/)lens-applicability\.json$' -or
                         $normalizedTurnPath -match '(^|/)\.specrew/handover/workshop-question\.json$' -or
-                        ($preAgendaUntouchedScaffoldTurn -and $normalizedTurnPath.Equals($preAgendaSpecPath, [StringComparison]::OrdinalIgnoreCase)))
+                        ($preAgendaUntouchedScaffoldTurn -and $normalizedTurnPath.Equals($preAgendaSpecPath, [StringComparison]::OrdinalIgnoreCase)) -or
+                        # W26: PROJECT DOCUMENTATION THE HUMAN ASKED FOR IS NOT A SURPRISE EITHER.
+                        #
+                        # The exemption's own ruling says a workshop-record turn is exempt because "the
+                        # material that moved IS the workshop record for the question just answered, and it
+                        # cannot surprise the human who co-authored it". A README the human asked for in
+                        # that same conversation cannot surprise them either - but the rule proxied
+                        # "co-authored" as "path is a workshop record", so asking for a README mid-workshop
+                        # produced a five-heading re-entry packet about a file the human had just requested.
+                        # Measured 2026-08-19 (KeyContextAI walk): correct enforcement, wrong proportion.
+                        #
+                        # Scoped to an ACTIVE WORKSHOP and to ordinary repo documentation. Everything the
+                        # guard exists for is untouched: `specs/` stays outside (premature spec authoring is
+                        # the drift it catches), and so does every source, test, script and machinery path.
+                        ($workshopIntermediate -and
+                            $normalizedTurnPath -notmatch '^specs/' -and
+                            ($normalizedTurnPath -match '(?i)(^|/)(README|LICENSE|LICENCE|NOTICE|CHANGELOG|CONTRIBUTING|CODE_OF_CONDUCT|SECURITY|SUPPORT)(\.[A-Za-z0-9]+)?$' -or
+                             $normalizedTurnPath -match '(?i)(^|/)\.(gitignore|gitattributes|editorconfig)$' -or
+                             $normalizedTurnPath -match '(?i)^docs/')))
                 })
             $workshopRecordOnlyTurn = (@($outsideWorkshop).Count -eq 0)
             if ($workshopIntermediate) { $workshopOutsidePaths = @($outsideWorkshop | Select-Object -First 3) }

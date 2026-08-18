@@ -22,10 +22,44 @@
 
 ## Summary
 
-**Total drift events**: 75 (DRIFT-199-I001-001 through -075)
+**Total drift events**: 76 (DRIFT-199-I001-001 through -076)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-076 — a README the human asked for produced a re-entry packet (resolved)
+
+- **Observed**: 2026-08-19, `C:\Dev\KeyContextAI` workshop. The human asked for the README to state
+  that the project is built on the Microsoft Agent Framework and Azure AI Foundry. The agent made
+  that edit mid-workshop, and W18's workshop-aware material stop fired: a five-heading re-entry
+  packet about a file the human had requested one turn earlier. The maintainer's report: *"from the
+  user point of view, it looks strange behavior"* — while also noting, correctly, that a genuinely
+  large change mid-workshop probably should still stop.
+- **Cause**: the exemption's own ruling explains why a workshop-record turn is exempt — *"the
+  material that moved IS the workshop record for the question just answered, and it cannot surprise
+  the human who co-authored it"*. The **principle is right and the proxy was wrong**: "co-authored"
+  was implemented as "the path is a workshop record", so anything else the human explicitly asked
+  for was treated as an unannounced change. W18 fixed the register of that message; it did not
+  question whether the message was owed.
+- **Resolution**: widen the exemption, during an ACTIVE WORKSHOP only, to ordinary project
+  documentation — `README`, `LICENCE`/`LICENSE`, `NOTICE`, `CHANGELOG`, `CONTRIBUTING`,
+  `CODE_OF_CONDUCT`, `SECURITY`, `SUPPORT`, the dotfiles `.gitignore`/`.gitattributes`/
+  `.editorconfig`, and anything under `docs/`. Everything the guard exists for is untouched:
+  `specs/` stays outside it, because premature spec authoring is the drift it was built to catch,
+  and so does every source, test, script and machinery path.
+- **Why documentation and not size.** The maintainer's instinct was proportionality — small change,
+  no stop; large change, stop. Size is the wrong axis: one file written to `src/` mid-workshop is
+  more surprising than three markdown files, and a byte threshold would have to be defended
+  forever. **What the file IS** answers the question the exemption actually asks: a README can be
+  requested at any point in a conversation without changing what is being designed; a spec or a
+  source file cannot.
+- **Measured proof**: with the fixture baseline committed so the only outside path is the one under
+  test, a README turn is not blocked at all, and a `src/engine.js` turn still blocks and still names
+  the file. The four Stop-lane regression suites pass unchanged.
+- **Class closure**: second correction to the same guard in two days, and both were about
+  proportion rather than correctness — W18 fixed how it spoke, W26 fixed when it speaks at all. The
+  underlying lesson is that "did the human already know?" is the real question, and every cheap
+  proxy for it will be wrong at some edge; the file's kind is the least-wrong proxy available.
 
 ### DRIFT-199-I001-075 — instruction alone did not make the orientation appear; the check is built (resolved)
 

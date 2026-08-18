@@ -163,6 +163,29 @@ For pacing, choose one: 1) all at once, or 2) one by one. Which do you prefer?
     Assert-True ($blocked -notmatch 'SPECREW-VERDICT-BOUNDARY: ') 'a non-boundary material stop still emits no boundary verdict marker'
     Assert-True ($blocked -notmatch '(?i)lens-applicability|controller|digest|material surface') 'the workshop-aware correction keeps machinery vocabulary out of the human-facing text'
 
+    # W26: a README the human asked for during the workshop is not a surprise, so it does not owe a
+    # re-entry packet. The exemption's own rationale is "it cannot surprise the human who co-authored
+    # it"; the rule proxied that as "path is a workshop record", which this corrects.
+    #
+    # Commit the fixture baseline first so the ONLY outside-workshop path in the turn is the one under
+    # test - otherwise the still-uncommitted spec.md blocks and the case proves nothing.
+    Push-Location $scratch
+    try { & git add -A 2>&1 | Out-Null; & git -c user.email='t@t' -c user.name='t' commit -m baseline --quiet 2>&1 | Out-Null }
+    finally { Pop-Location }
+
+    Set-Content -LiteralPath (Join-Path $scratch 'README.md') -Value "# Retro Calculator`n`nBuilt on the Microsoft Agent Framework." -Encoding UTF8
+    $readmeTurn = Invoke-ProviderStop -AssistantText $lensQuestion
+    Assert-True ($readmeTurn -notmatch '(?i)design workshop is still open') 'project documentation asked for during the workshop does not trigger a re-entry packet'
+    Assert-True ($readmeTurn -notmatch 'SPECREW-STOP-BLOCK') 'the README turn is not blocked at all'
+
+    # The guard the exemption exists for is untouched: source code mid-workshop is still premature.
+    New-Item -ItemType Directory -Path (Join-Path $scratch 'src') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $scratch 'src\engine.js') -Value 'export const add = (a, b) => a + b;' -Encoding UTF8
+    $codeTurn = Invoke-ProviderStop -AssistantText $lensQuestion
+    Assert-True ($codeTurn -match '(?i)design workshop is still open') 'source code written during the workshop still owes the packet'
+    Assert-True ($codeTurn -match [regex]::Escape('src/engine.js')) 'the packet still names the code that triggered it'
+    Remove-Item -LiteralPath (Join-Path $scratch 'src') -Recurse -Force
+    Remove-Item -LiteralPath (Join-Path $scratch 'README.md') -Force
     # The generic material directive must survive untouched where no workshop is open: this change is a
     # surface for the workshop case only, never a softening of ordinary material-work enforcement.
     Remove-Item -LiteralPath (Join-Path $scratch "specs\$feature") -Recurse -Force
