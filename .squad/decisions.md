@@ -28961,3 +28961,13 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Rationale**: The casiocalculator walk received the full session orientation and never showed it to the human (DRIFT-199-I001-073). Three remedies were weighed. A Stop-side check is the only mechanical one and was declined: it runs on every stop to catch a first-turn omission, and adding a block class at release time is the wrong trade. A start-loaded skill was declined: something must still instruct the agent to invoke it, so it inherits the same starting problem one hop further out. The obligation therefore lives in the two always-in-context channels - the host-materialized project instructions and the session directive.
 - **Next Action**: If a later walk skips the orientation with this text in place, treat that as evidence the mechanical check is required and revisit this ruling rather than sharpening the wording again.
 - **Recorded At**: 2026-08-18T18:15:00Z
+
+## 2026-08-18T19:30:00Z — Ruling reversed by its own trigger: the orientation check is built
+
+- **Type**: ruling
+- **Affected Requirement**: FR-020
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (2026-08-18 walk report: "No start banner", on the deployed build with both instruction channels in place)
+- **Rationale**: The 2026-08-18T18:15:00Z ruling declined a Stop-side check and carried its own reversal condition: a later walk skipping the orientation with that text in place would be the evidence to build it rather than sharpen the wording again. The KeyContextAI walk met that condition on the first controlled test - deployed provider carrying the directive, CLAUDE.md carrying the obligation, SessionStart delivered in full mode, banner still absent. The objection that made the check declinable (it would run on every stop to catch a first-turn omission) is answered by scope rather than by argument: it evaluates only while the session has no orientation receipt, only when a bootstrap was actually delivered, never displaces a higher-priority block, and fails open. After the human has seen it, every later stop costs one Test-Path.
+- **Next Action**: Watch the next walk. If the banner appears, the class is closed; if it does not, the defect is in delivery rather than compliance and the lane's detection needs re-examining, not further hardening.
+- **Recorded At**: 2026-08-18T19:30:00Z

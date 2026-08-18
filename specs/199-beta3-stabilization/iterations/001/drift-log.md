@@ -22,10 +22,46 @@
 
 ## Summary
 
-**Total drift events**: 74 (DRIFT-199-I001-001 through -074)
+**Total drift events**: 75 (DRIFT-199-I001-001 through -075)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-075 — instruction alone did not make the orientation appear; the check is built (resolved)
+
+- **Observed**: 2026-08-18, `C:\Dev\KeyContextAI`, a fresh Claude session on the deployed build
+  `4b929764` — the FIRST controlled test of the W23 remedy. The agent opened with
+  *"Feature 001-keycontext-ai is scaffolded … Opening the design workshop now"* and no orientation.
+  The human's report was two words: **"No start banner"**.
+- **The test was valid, which is what makes it decisive.** The deployed provider carries the
+  sharpened directive, the project's `CLAUDE.md` carries the orientation obligation, and
+  SessionStart fired in `full` mode with `no active session anchor`. Both always-in-context
+  channels were in place and the banner was still skipped — the third instance across two hosts.
+- **Ruling reversed on its own terms.** DRIFT-199-I001-073 recorded: *"If a later walk skips the
+  orientation again with this text in place, that is the evidence that the Stop check has to be
+  built, and the ruling should be revisited rather than the wording sharpened a second time."*
+  That condition fired on the first attempt. Sharpening the wording a third time would be the
+  behaviour this feature keeps recording in other people.
+- **Resolution**: a Stop-side orientation lane, scoped to answer the objection that made it
+  declinable. It evaluates ONLY while the session has no orientation receipt; it requires that a
+  bootstrap was actually delivered (the hook's render claim), so nothing is demanded that was
+  never handed over; it is the LOWEST-priority block, so it never displaces a boundary, workshop
+  or material demand and instead rides along as one added line; and it fails OPEN on every error,
+  missing path and unassessable turn. Once the human has seen it, every later stop costs one
+  `Test-Path`.
+- **The check reads for substance, not wording.** A rendered orientation names the product AND at
+  least one fact only the orientation carries — the resolved version, what the crew believes about
+  the human, or the profile command. A paraphrased banner in the agent's own words passes; a reply
+  that goes straight to work does not. Demanding fixed phrasing would have made the banner a
+  recitation instead of an orientation.
+- **Measured proof**: twelve cases against the shipped provider on a real git-backed project —
+  standalone block, correction content, no verdict marker, a paraphrased banner satisfying it, the
+  per-session receipt, silence on every later stop, a second session owing its own, and the
+  ride-along on a material block that is not displaced. The six Stop-lane regression suites pass
+  unchanged.
+- **Class closure**: the cost objection was right and the remedy was wrong. A first-turn obligation
+  does not need a per-stop check — it needs a per-stop `Test-Path` and one evaluation. That
+  distinction is what made this buildable at release time after all.
 
 ### DRIFT-199-I001-074 — a clean review could not be signed off (resolved)
 

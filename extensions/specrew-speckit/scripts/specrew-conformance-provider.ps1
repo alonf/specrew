@@ -366,6 +366,10 @@ function Get-SpecrewMaterialRuntimeState {
         BlockPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-stop-block.json' } else { 'stop-block.json' })
         ContinueGuardPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-continue-guard.json' } else { 'continue-guard.json' })
         LastFirePath = Join-Path $stateRoot $(if ($legacy) { 'conformance-last-fire.json' } else { 'last-fire.json' })
+        # W25: once the human has actually SEEN this session's orientation, the check is over. Every later
+        # stop early-exits on this one Test-Path, which is what keeps a first-turn obligation from becoming
+        # a per-stop cost (the maintainer's objection to a Stop-side check, 2026-08-18).
+        OrientationPath = Join-Path $stateRoot $(if ($legacy) { 'conformance-orientation-rendered.json' } else { 'orientation-rendered.json' })
         AttributionPath = Join-Path $runtimeRoot 'conformance-material-owner.json'
     }
 }
@@ -1208,7 +1212,51 @@ try {
     # refusal composed, and the stale marker could feed verdict capture. The refusal now keys on
     # $hasPending directly: while the stage owes evidence it has not produced, the missing-evidence
     # block composes regardless of any marker already in the transcript.
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($materialBlock) { 'material' } else { 'none' }
+    # --- W25 ORIENTATION LANE: THE HUMAN MUST ACTUALLY SEE THE SESSION ORIENTATION -------------------
+    #
+    # W23 tried instruction alone - the session directive AND the always-loaded project instructions both
+    # carry the obligation - and the very next controlled walk skipped it anyway, with both texts deployed
+    # and SessionStart delivered in full mode. The recorded ruling named that outcome as the trigger to
+    # build this check rather than sharpen the wording a second time.
+    #
+    # SCOPED SO IT IS NOT A PER-STOP COST, which was the objection to building it at all:
+    #   - it only evaluates while this session has no orientation receipt (one Test-Path once satisfied),
+    #   - it only evaluates when a bootstrap was actually DELIVERED to this session (a render claim exists),
+    #   - it is the LOWEST-priority block, so it never displaces a boundary, workshop or material demand -
+    #     it rides along as an extra line on those, and only stands alone when nothing else blocks,
+    #   - and it fails OPEN on every error, unreadable path and unassessable turn.
+    $orientationOwed = $false
+    $orientationSatisfiedNow = $false
+    if ($canAssess -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.OrientationPath)) {
+        try {
+            if (-not (Test-Path -LiteralPath ([string]$materialRuntime.OrientationPath) -PathType Leaf)) {
+                # A bootstrap was delivered to THIS session when its render claim exists. Without one there
+                # is nothing the agent was handed to show, so nothing is owed.
+                $claimDelivered = $false
+                try {
+                    $runtimeDir = Join-Path $projectRoot '.specrew/runtime'
+                    if (Test-Path -LiteralPath $runtimeDir -PathType Container) {
+                        $claimDelivered = @(Get-ChildItem -LiteralPath $runtimeDir -Filter 'hook-bootstrap-render-*.json' -File -ErrorAction SilentlyContinue).Count -gt 0
+                    }
+                }
+                catch { $claimDelivered = $false }
+                if ($claimDelivered) {
+                    # A rendered orientation names the product AND at least one thing only the orientation
+                    # carries: the resolved version, or what the crew believes about the human. Deliberately
+                    # a LOW bar - any genuine banner clears it, and a reply that goes straight to work does
+                    # not. It never demands particular wording, because the banner is free prose.
+                    $namesProduct = $lastAssistantText -match '(?i)\bspecrew\b'
+                    $namesOrientationFact = ($lastAssistantText -match '(?i)what I know about you') -or
+                        ($lastAssistantText -match '(?i)/specrew-user-profile') -or
+                        ($lastAssistantText -match '(?i)\bspecrew\b[^\n]{0,40}\b\d+\.\d+\.\d+')
+                    if ($namesProduct -and $namesOrientationFact) { $orientationSatisfiedNow = $true }
+                    else { $orientationOwed = $true }
+                }
+            }
+        }
+        catch { $orientationOwed = $false }
+    }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1356,7 +1404,10 @@ try {
     elseif ($blockKind -eq 'boundary-evidence-absent' -and $null -ne $pending) {
         ("evidence-absent|{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary)
     }
-    elseif ($blockKind -eq 'boundary-unrecordable' -and $null -ne $pending) {
+    elseif ($blockKind -eq 'orientation') {
+        # Keyed per session so the cap counts THIS session's unshown orientation, not a pooled 'na'.
+        ("orientation|{0}" -f [string]$materialRuntime.Owner)
+    }    elseif ($blockKind -eq 'boundary-unrecordable' -and $null -ne $pending) {
         ("unrecordable|{0}" -f [string]$pending.WorkingBoundary)
     }
     else { 'na' }
@@ -1379,7 +1430,7 @@ try {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
             $cappedKind = $blockKind
-            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } else { 'verdict marker' }
+            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } elseif ($blockKind -eq 'orientation') { 'session orientation' } else { 'verdict marker' }
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
@@ -1505,7 +1556,13 @@ try {
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
                 [void]$sb.AppendLine('This is a NON-BOUNDARY material-work stop; do NOT emit a SPECREW-VERDICT-BOUNDARY marker.')
             }
-            if ($intakeHit) { [void]$sb.AppendLine('Also: an active feature already exists - do NOT ask what to build; continue it.') }
+            if ($blockKind -eq 'orientation') {
+                [void]$sb.AppendLine('Specrew: this session''s orientation was handed to you and the human never saw it. Render it NOW as visible prose: that Specrew is active with its version and host, where this project stands in the lifecycle, where their artifacts live, what will be asked of them at boundaries, and what you believe about them so they can correct it. Then continue what you were doing.')
+                [void]$sb.AppendLine('Reading it to orient yourself is not rendering it. Do not summarise it as having happened; show it.')
+            }
+            elseif ($orientationOwed) {
+                [void]$sb.AppendLine('Also: this session''s orientation was never shown to the human - include it in this same message, before the rest, so they learn what this project asks of them now rather than at a boundary they did not expect.')
+            }            if ($intakeHit) { [void]$sb.AppendLine('Also: an active feature already exists - do NOT ask what to build; continue it.') }
             if ($rawHit) { [void]$sb.AppendLine('Also: do NOT run the raw `specify workflow` SDD engine - route through the governed Specrew flow.') }
             $blockReason = $sb.ToString().TrimEnd()
         }
@@ -1517,7 +1574,16 @@ try {
     }
     else {
         # Packet present, or nothing owed -> the agent complied; clear the loop-guard counter.
-        if ($materialStop -and $packetPresent -and -not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) {
+        # W25: record that this session's orientation reached the human, so every later stop costs one
+        # Test-Path instead of a transcript inspection. Written on the compliant path only.
+        if ($orientationSatisfiedNow -and -not [string]::IsNullOrWhiteSpace([string]$materialRuntime.OrientationPath)) {
+            try {
+                $orientationDir = Split-Path -Parent ([string]$materialRuntime.OrientationPath)
+                if ($orientationDir -and -not (Test-Path -LiteralPath $orientationDir)) { New-Item -ItemType Directory -Path $orientationDir -Force | Out-Null }
+                [IO.File]::WriteAllText([string]$materialRuntime.OrientationPath, (([ordered]@{ schema_version = '1.0'; rendered_at = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+            }
+            catch { $null = $_ }
+        }        if ($materialStop -and $packetPresent -and -not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) {
             Set-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath -Key ([string]$materialSignal.key)
         }
         Reset-SpecrewBlockCount -Path $blockStatePath
