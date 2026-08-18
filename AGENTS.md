@@ -1,3 +1,4 @@
+<!-- >>> specrew-managed coordinator >>> -->
 ## How this project works
 
 This project uses Specrew. Work here runs through a spec → plan → implement → review → retro lifecycle,
@@ -45,3 +46,4 @@ written without one is outside the process this project follows.
 `.specrew/start-context.json` holds the lifecycle position — the active feature, the last authorized
 boundary, and what is pending. Both are read from the project root before acting, because they describe
 where this project currently is rather than what it does in general.
+<!-- <<< specrew-managed coordinator <<< -->

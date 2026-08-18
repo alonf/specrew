@@ -120,7 +120,7 @@ function Format-BootstrapDirective {
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
     $stateRead = if ($reads.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$reads[1])) { [string]$reads[1] } else { '.specrew/start-context.json' }
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004 (questions are shown as prose before any picker) and FR-020 (that rule is enforced mechanically, not by instruction alone)).')
+    $lines.Add('[specrew-bootstrap] SessionStart B2 - the orientation below is written to be SHOWN to the human, not merely read by you. Render it as VISIBLE PROSE in your FIRST reply, before any structured picker and before starting work: reading it to orient yourself is not rendering it, and a human who never sees it cannot correct what you believe about them. A concrete request in their first message does not replace it - announce what is starting and render the orientation with it (render-first; FR-004 (questions are shown as prose before any picker) and FR-020 (that rule is enforced mechanically, not by instruction alone)).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
     # F-184 iter-002 (T004, FR-013/FR-014/FR-018): FRONT-LOAD the coordinator posture + the exact anti-
     # specify.exe guard from the SINGLE packaged source (the caller resolves it via

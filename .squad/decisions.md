@@ -28951,3 +28951,13 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Rationale**: The 2026-08-17T07:55:00Z defer entry parked the FR-016 banner gloss gap for beta4 under the 2026-08-11 triage ruling. Campaign round run-20260817-220959812-f183b4d8 raised it again against the frozen UI/UX design context, which requires every requirement reference in human-visible prose to carry both the identifier and a short description. The gap is now fixed in all three shipped banner copies and enforced by a detector-based guard, so the deferral no longer applies and the review Gap Ledger records it as fixed-now.
 - **Next Action**: none; the deferral is closed by the fix.
 - **Recorded At**: 2026-08-17T22:30:00Z
+
+## 2026-08-18T18:15:00Z — Ruling: session-orientation enforcement stays instruction-level
+
+- **Type**: ruling
+- **Affected Requirement**: FR-020
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\001
+- **Approving Human**: Alon Fliess (2026-08-18: "a stop is heavy since it runs on any stop, not just on the first time, so maybe we should just have a better instructions... put it in AGENT.md or Claude.md")
+- **Rationale**: The casiocalculator walk received the full session orientation and never showed it to the human (DRIFT-199-I001-073). Three remedies were weighed. A Stop-side check is the only mechanical one and was declined: it runs on every stop to catch a first-turn omission, and adding a block class at release time is the wrong trade. A start-loaded skill was declined: something must still instruct the agent to invoke it, so it inherits the same starting problem one hop further out. The obligation therefore lives in the two always-in-context channels - the host-materialized project instructions and the session directive.
+- **Next Action**: If a later walk skips the orientation with this text in place, treat that as evidence the mechanical check is required and revisit this ruling rather than sharpening the wording again.
+- **Recorded At**: 2026-08-18T18:15:00Z

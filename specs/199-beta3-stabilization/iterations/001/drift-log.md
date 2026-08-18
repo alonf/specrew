@@ -22,10 +22,57 @@
 
 ## Summary
 
-**Total drift events**: 72 (DRIFT-199-I001-001 through -072)
+**Total drift events**: 73 (DRIFT-199-I001-001 through -073)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-073 — the session orientation was delivered and never shown (resolved)
+
+- **Observed**: 2026-08-18 manual walk, `C:\Dev\casiocalculator`, fresh Claude session. The
+  human's first message was a concrete request; the agent replied *"I'll read the project's
+  Specrew state files first, then get oriented"*, read two files, announced the feature was
+  scaffolded, and opened the workshop. The welcome banner was never rendered — the human never
+  saw that Specrew was active, its version and host, where their artifacts would live, what
+  would be asked of them at boundaries, or what the crew believed about their expertise.
+- **Delivery was not the failure.** SessionStart fired at 07:47:11 in `full` mode with finding
+  `no active session anchor`, the payload is recorded in `hook-output-authority.jsonl`, and the
+  fire won its render claim. Banner items (1)-(7) and the FR-025 resolved expertise line are
+  INLINE in the directive on every host. The agent had everything it needed and oriented itself
+  instead of the human.
+- **Why it is easy here.** Claude runs the POINTER branch for the launch contract (its
+  hook-output cap drops the ~45KB body), and this codebase already measured that class:
+  *"the iter-6 directive told the agent to READ last-start-prompt.md BEFORE acting; the
+  side-by-side disproof showed the agent never read it — a file is a skip the agent self-orients
+  past."* The remedy then was to inline the contract, which is exactly what Claude does not get.
+  The Copilot walk rendered its banner because Copilot's delivery mode is `inline`.
+- **Nothing mechanical catches a missing banner.** `hook-bootstrap-render-*.json` is a DELIVERY
+  claim — an atomic single-winner election so two concurrent fires cannot render twice — not
+  evidence the human saw anything. The Stop lane has no banner check, and the tests that mention
+  render-first assert the directive is PRODUCED, never that it was SHOWN. FR-020's mechanical
+  enforcement covers the picker-collapses-prose case (the disallowed AskUserQuestion tool), not
+  the banner.
+- **Maintainer ruling (2026-08-18)**: do NOT add a Stop-side check. It would run on every stop to
+  catch a first-turn omission, and adding a block class at release time is the wrong trade. A
+  start-loaded skill was also rejected: something must still tell the agent to invoke it, so it
+  inherits the same "will it start?" problem one hop further out.
+- **Resolution**: carry the obligation in the two channels that are always in context. (1) The
+  host-materialized project instructions (`templates/coordinator-instructions.md`, from which
+  `CLAUDE.md`, `AGENTS.md` and `.github/copilot-instructions.md` are cut) now open with the
+  orientation obligation, stated BEFORE the workshop instruction the walk jumped to, and name the
+  user-profile dials so the human can correct what is believed about them. (2) The session
+  directive now says the orientation is written to be SHOWN, not merely read, names the exact
+  failure (*"reading it to orient yourself is not rendering it"*), and closes the shortcut a
+  concrete first request creates.
+- **Measured proof**: a guard pins both channels — the template's five obligations plus their
+  ordering, every materialized host surface, all three provider copies, and that the sharpened
+  directive still glosses its requirement ids so FR-016 does not regress through this edit.
+  Prose is matched whitespace-normalized so a reflow that changes nothing cannot fail it.
+- **Class closure**: instruction, not enforcement — recorded honestly as such. This is the
+  weakest remedy shape in this feature's vocabulary, chosen deliberately because the mechanical
+  option costs more than the defect. If a later walk skips the orientation again with this text
+  in place, that is the evidence that the Stop check has to be built, and the ruling should be
+  revisited rather than the wording sharpened a second time.
 
 ### DRIFT-199-I001-072 — FR-016 fixed after a second finding, not deferred a second time (resolved)
 
