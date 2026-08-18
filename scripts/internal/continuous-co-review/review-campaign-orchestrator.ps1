@@ -1712,7 +1712,18 @@ function Add-ReviewCampaignHumanDisposition {
     if ([string]$result.completion -cne 'complete' -or [string]$result.validation -cne 'valid' -or [string]$result.currentness -cne 'current') {
         throw 'review-human-disposition-requires-complete-current-valid-result'
     }
-    if ($Decision -ceq 'accept-current' -and [string]$result.verdict -cne 'findings') { throw 'review-human-disposition-accept-requires-findings-result' }
+    # A CLEAN REVIEW MUST NOT BE HARDER TO CLOSE THAN A DIRTY ONE (2026-08-18 walk, W24).
+    #
+    # This guard exists so a human cannot "accept" a result that is not a real reviewed outcome. The
+    # check above already enforces complete + valid + current, so the only verdict this line still
+    # excluded was `pass` - the BEST outcome. The surface meanwhile RECOMMENDS closing on it
+    # ("Nothing was found. Stopping here completes your sign-off"), so a consumer who followed the
+    # engine's own advice on a clean round got `accept-requires-findings-result` and could not sign
+    # off at all. Measured in the calculator walk and reproduced on this project's own campaign.
+    #
+    # `accept-current` was named for accepting outstanding findings, and nobody modelled having none.
+    # Accepting a pass is strictly safer than accepting findings: there is nothing left outstanding.
+    if ($Decision -ceq 'accept-current' -and [string]$result.verdict -cnotin @('findings', 'pass')) { throw 'review-human-disposition-accept-requires-reviewed-result' }
     if ([string]::IsNullOrWhiteSpace($AuthorizedBy) -or [string]::IsNullOrWhiteSpace($AuthorizationRef) -or [string]::IsNullOrWhiteSpace($Rationale)) {
         throw 'review-human-disposition-requires-explicit-human-evidence'
     }

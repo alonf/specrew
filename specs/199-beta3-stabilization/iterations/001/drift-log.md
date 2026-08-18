@@ -22,10 +22,43 @@
 
 ## Summary
 
-**Total drift events**: 73 (DRIFT-199-I001-001 through -073)
+**Total drift events**: 74 (DRIFT-199-I001-001 through -074)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-074 — a clean review could not be signed off (resolved)
+
+- **Observed**: 2026-08-18 calculator walk. At the before-implement boundary the Stop hook asked for
+  a co-review; round 1 completed with verdict `pass` and `validated-findings=0`; answering it with
+  `--pause-choice 2` ("stop here") was refused with
+  `review-human-disposition-accept-requires-findings-result`. **Reproduced against this project's
+  own campaign**, which is also sitting on a clean `pass` — so the same wall was one keystroke away
+  from blocking this feature's own sign-off.
+- **Cause**: `Invoke-ReviewCampaignStopHereLanding` records an `accept-current` human disposition,
+  and that writer required `verdict -ceq 'findings'`. The check immediately above already enforces
+  complete + valid + current, so the verdict clause only ever excluded `pass`. **The better the
+  review result, the harder it was to close** — and the pause surface RECOMMENDS closing on it
+  ("Nothing was found. Stopping here completes your sign-off"), so a consumer following the engine's
+  own advice hit a refusal. `accept-current` was named for accepting outstanding findings and nobody
+  modelled having none.
+- **Resolution**: accept `pass` alongside `findings`, and rename the reason to
+  `accept-requires-reviewed-result`, which is what the guard actually checks. Accepting a pass is
+  strictly safer than accepting findings: nothing is left outstanding. Every other refusal is
+  unchanged — a non-reviewed verdict, an incomplete/invalid/stale result, and a missing result all
+  still refuse.
+- **Measured proof**: five cases against REAL authority-store facts on disk rather than a mocked
+  reader, because the reader is part of what the guard depends on and the walk failed through it.
+  The suite FAILS against the pre-fix orchestrator at `HEAD` with the walk's exact error string.
+- **Two fixture defects worth recording, because each reads exactly like a product defect.** An
+  `if` block whose value is `@()` emits nothing, so `findings` landed as `$null` and the store
+  refused `wrong-type:findings:array`; and a `findings` result may not claim
+  `can_approve_current`, which the contract enforces as `approval-prerequisites-not-proven` — open
+  findings are precisely why "stop here" exists. Both were the store being right.
+- **Class closure**: fourth instance this session of a surface offering what the machinery refuses
+  (W19 host, W21 allowance, W24 verdict), and the second where the recommended action was the
+  refused one. The pattern is a guard written for the failure case that never enumerated the
+  success case.
 
 ### DRIFT-199-I001-073 — the session orientation was delivered and never shown (resolved)
 
