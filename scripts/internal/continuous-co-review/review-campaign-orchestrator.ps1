@@ -1723,7 +1723,16 @@ function Add-ReviewCampaignHumanDisposition {
     #
     # `accept-current` was named for accepting outstanding findings, and nobody modelled having none.
     # Accepting a pass is strictly safer than accepting findings: there is nothing left outstanding.
-    if ($Decision -ceq 'accept-current' -and [string]$result.verdict -cnotin @('findings', 'pass')) { throw 'review-human-disposition-accept-requires-reviewed-result' }
+    # W27 REVERSES W24, because W24 treated a symptom. W24 widened this to accept `pass` after a walk
+    # showed a human unable to close a clean review. The real defect was upstream: the signoff gate
+    # ALREADY releases the boundary on a complete, current, approvable `pass` with no disposition in the
+    # path at all, so the human was being asked to answer a menu the machinery never consulted. The menu
+    # is gone (W27); accepting a clean result is therefore unreachable through any surface, and allowing
+    # it only kept a forgeable `authorized_by: human` record reachable by typing the flag.
+    #
+    # `accept-current` means "I accept these findings". With no findings there is nothing to accept and
+    # nothing for the record to mean.
+    if ($Decision -ceq 'accept-current' -and [string]$result.verdict -cne 'findings') { throw 'review-human-disposition-accept-requires-findings-to-accept' }
     if ([string]::IsNullOrWhiteSpace($AuthorizedBy) -or [string]::IsNullOrWhiteSpace($AuthorizationRef) -or [string]::IsNullOrWhiteSpace($Rationale)) {
         throw 'review-human-disposition-requires-explicit-human-evidence'
     }

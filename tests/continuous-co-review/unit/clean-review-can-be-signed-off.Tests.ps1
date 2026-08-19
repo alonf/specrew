@@ -2,20 +2,21 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# W24 (2026-08-18 calculator walk, reproduced against this project's own campaign): a CLEAN review
-# could not be signed off. `--pause-choice 2` ("stop here") records an `accept-current` human
-# disposition, and that writer refused any result whose verdict was not `findings`, so a round that
-# found nothing threw and left the human unable to close.
+# W24 then W27 (2026-08-18/19): what a clean review requires of the human, and what it does not.
 #
-# The surface makes it worse by recommending exactly that action on a clean round: "Nothing was found.
-# Stopping here completes your sign-off." Engine advice the machinery then refuses.
+# W24 came from a walk where a human could not close a clean review: `--pause-choice 2` records an
+# `accept-current` disposition, and that writer refused any verdict that was not `findings`. W24 widened
+# it to accept `pass`.
 #
-# The guard's real job is to stop a human accepting something that is not a reviewed outcome. The
-# complete + valid + current check immediately above already does that, so the verdict clause only
-# ever excluded `pass` - the best possible result was the one you could not close on.
+# W27 reverses that, because W24 fixed a symptom. The signoff gate ALREADY releases the boundary on a
+# complete, current, approvable `pass` - the pause stops conferring quiet for that shape and the
+# boundary-clean route renders with no disposition anywhere in the path. The human was being asked to
+# answer a menu the machinery never consulted, and because the answer is stored as `authorized_by:
+# human`, an unnecessary question became a forgeable authority record - which a 2026-08-19 walk then
+# produced without the human. The menu is gone; accepting a clean result decides nothing and is refused.
 #
 # Written against REAL authority-store facts on disk rather than a mocked reader: the reader is part
-# of what this guard depends on, and the walk's failure surfaced through it.
+# of what this guard depends on, and the original walk's failure surfaced through it.
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
@@ -82,11 +83,16 @@ BeforeAll {
     }
 }
 
-Describe 'W24 a clean review is closeable' {
-    It 'accepts a pass verdict, so a round that found nothing can still be signed off' {
+Describe 'W24/W27 what a clean review does and does not require' {
+    # W27 reverses W24 deliberately. W24 let a pass be accepted because a walk showed a human unable to
+    # close a clean review; the real defect was that the surface ASKED at all. The signoff gate already
+    # releases the boundary on a complete, current, approvable pass with no disposition anywhere in the
+    # path, so accepting one decides nothing - and leaving it reachable kept a forgeable
+    # `authorized_by: human` record, which the 2026-08-19 walk then produced without the human.
+    It 'refuses to accept a clean result, because there are no findings to accept' {
         $outcome = Invoke-Disposition -Fixture (New-DispositionFixture -Verdict 'pass')
-        $outcome.reason | Should -Not -Match 'requires-findings'
-        $outcome.threw | Should -BeFalse
+        $outcome.threw | Should -BeTrue
+        $outcome.reason | Should -Match 'accept-requires-findings-to-accept'
     }
 
     It 'still accepts a findings verdict, which is the case the guard was written for' {
@@ -96,13 +102,13 @@ Describe 'W24 a clean review is closeable' {
     It 'still refuses a verdict that is not a reviewed outcome' {
         $outcome = Invoke-Disposition -Fixture (New-DispositionFixture -Verdict 'failed')
         $outcome.threw | Should -BeTrue
-        $outcome.reason | Should -Match 'accept-requires-reviewed-result'
+        $outcome.reason | Should -Match 'accept-requires-findings-to-accept'
     }
 
     It 'still refuses an incomplete, invalid or stale result whatever its verdict' {
         # These are refused by the store's own ReviewResult contract before the verdict clause is
         # reached, which is correct and worth pinning: the refusal is what matters, not which layer
-        # produced it. Widening `accept-current` to `pass` did not open any of these.
+        # produced it, and no verdict widening ever opened them.
         foreach ($fixture in @(
                 (New-DispositionFixture -Verdict 'pass' -Completion 'partial'),
                 (New-DispositionFixture -Verdict 'pass' -Validation 'invalid'),

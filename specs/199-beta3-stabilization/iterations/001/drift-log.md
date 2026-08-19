@@ -22,10 +22,44 @@
 
 ## Summary
 
-**Total drift events**: 76 (DRIFT-199-I001-001 through -076)
+**Total drift events**: 77 (DRIFT-199-I001-001 through -077)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-077 — a clean review asked for a decision the machinery never consulted (resolved)
+
+- **Observed**: 2026-08-19, the KeyContextAI walk. The agent ran `--approve-round` (which the Stop hook
+  told it to run), the round returned `pass` with zero findings, and the agent then answered the human's
+  pause with "stop here". The store therefore holds a `grant` with `authority_kind: human`, a
+  `pause-decision` of `stop-here`, and a `human-disposition` with `authorized_by: "human"` — for a round
+  the human never authorised and a decision the human never made.
+- **Cause, in three layers.** (1) The signoff gate **already** releases the boundary on a complete,
+  current, approvable `pass`: `Test-ReviewCampaignResultReleasesBoundary` cancels pause-quiet for that
+  shape and the `boundary-clean` route renders the packet with no disposition anywhere in the path. So
+  the decision was never required. (2) The pause surface was nevertheless rendered after every terminal
+  round, and its option 1 read *"Fix these and run another review round"* against an empty finding set —
+  the surface asked for an answer the machinery ignored. (3) The Stop hook's `review-required` message
+  carried `ImplementerAction: 'request-authorized-review'` — *request* — while its text handed the agent
+  the approval command itself, so the agent minted the human's authorisation by following instructions.
+- **W24 was the wrong fix for the right complaint.** W24 widened `accept-current` to accept `pass`
+  because a walk showed a human unable to close a clean review. That was a real complaint about a
+  ceremonial path, and widening the writer made the ceremony work instead of removing it — and opened the
+  forgery surface in the process. **W27 reverses W24** and removes the question.
+- **Resolution**: on a complete, current, approvable `pass` the CLI renders no menu and prints that no
+  decision is needed, naming the boundary approval as the thing that still requires them; a human who
+  answers such a round anyway is told it was unnecessary rather than refused opaquely, with nothing
+  recorded and nothing spent; `accept-current` again requires a `findings` verdict, so accepting a clean
+  result is unreachable through any surface; and the hook message now tells the agent to ASK for a round,
+  matching its own `request-authorized-review` intent. The findings path is untouched.
+- **Measured proof**: five cases against real authority-store facts pin the new semantics (a clean result
+  refused with `accept-requires-findings-to-accept`, a findings result still accepted, non-reviewed and
+  incomplete/invalid/stale still refused, missing result still refused). The four review-flag suites and
+  106 Pester assertions across the signoff, pause, campaign and stop-here suites pass unchanged.
+- **Class closure**: the first defect this feature has fixed by DELETING a human prompt rather than
+  improving one. It also names the general rule now recorded as a ruling: ceremony is not merely
+  annoying, it manufactures forgeable authority, because a question nobody needed still gets stored as a
+  human decision.
 
 ### DRIFT-199-I001-076 — a README the human asked for produced a re-entry packet (resolved)
 

@@ -1198,6 +1198,20 @@ if ($Live) {
                     Write-Host 'Start one with:  specrew review --live --approve-round' -ForegroundColor Cyan
                     exit 1
                 }
+                # W27: a human who answers a clean round out of habit gets told it was unnecessary, not
+                # an opaque refusal from the disposition writer. Nothing is recorded and nothing is spent,
+                # because the clean result already covers their files and the boundary packet is what
+                # actually awaits them.
+                $outstandingResult = $null
+                try { $outstandingResult = Get-ReviewRunAuthorityFact -StoreRoot $campaignStoreRoot -CampaignId $answerIdentity.campaign_id -RunId ([string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')) -Stage result }
+                catch { $outstandingResult = $null }
+                if ($null -ne $outstandingResult -and [string]$outstandingResult.verdict -ceq 'pass' -and
+                    [string]$outstandingResult.completion -ceq 'complete' -and [string]$outstandingResult.validation -ceq 'valid' -and
+                    [string]$outstandingResult.currentness -ceq 'current' -and [bool]$outstandingResult.can_approve_current) {
+                    Write-Host 'That review found nothing, so there was no decision waiting for you and nothing needed answering.' -ForegroundColor Green
+                    Write-Host 'It already covers your files as they are now. What still needs you is the boundary approval, where this result is cited.'
+                    exit 0
+                }
                 $choice = switch ($pauseAnswer) {
                     '1' { 'fix-and-continue' }
                     '2' { 'stop-here' }
@@ -1353,14 +1367,40 @@ if ($Live) {
                 # decision, findings and options in hand); a round walked back into later carries
                 # pause_surface (built from the recorded fact, which knows less). Rendering here from
                 # whichever object happened to arrive is how the two would drift apart.
-                $pauseObject = Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause'
+                # W27: A CLEAN REVIEW ASKS THE HUMAN NOTHING, BECAUSE NOTHING IS BEING DECIDED.
+                #
+                # The signoff gate already treats a complete, current, approvable `pass` as releasing the
+                # boundary on its own: an unanswered pause stops conferring quiet for that shape, and the
+                # boundary-clean route renders the packet with no human disposition anywhere in the path.
+                # The 1/2/3 menu was therefore the ONLY thing implying a decision was owed - and its own
+                # option 1 read "Fix these" against an empty finding set.
+                #
+                # Two costs came out of that ceremony. It asked the human to retype an answer the surface
+                # had just recommended, and because the answer is stored as an `authorized_by: human`
+                # fact, a question nobody needed to ask became an authority record that could be - and in
+                # the 2026-08-19 walk WAS - produced without the human. Removing the question removes
+                # both. The findings path is untouched: that menu decides something real.
+                $resultReleasesBoundary = $false
+                if ($null -ne $campaignRun.result) {
+                    $resultReleasesBoundary = ([string]$campaignRun.result.verdict -ceq 'pass' -and
+                        [string]$campaignRun.result.completion -ceq 'complete' -and
+                        [string]$campaignRun.result.validation -ceq 'valid' -and
+                        [string]$campaignRun.result.currentness -ceq 'current' -and
+                        [bool]$campaignRun.result.can_approve_current)
+                }
+                if ($resultReleasesBoundary -and -not $Json -and -not $Quiet) {
+                    Write-Host ''
+                    Write-Host 'Nothing was found, and this review covers your files exactly as they are now.' -ForegroundColor Green
+                    Write-Host 'No decision is needed from you here: a clean review completes on its own, and the boundary packet follows with this result cited in it. Your approval is still what advances the boundary.'
+                }
+                $pauseObject = if ($resultReleasesBoundary) { $null } else { Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause' }
                 $pauseLines = @()
                 if ($null -ne $pauseObject) {
                     $embedded = Get-ReviewAuthorityProperty -Object $pauseObject -Name 'surface'
                     if ($null -ne $embedded) { $pauseLines = @($embedded) }
                 }
                 if ($pauseLines.Count -eq 0) {
-                    $carried = Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_surface'
+                    $carried = if ($resultReleasesBoundary) { $null } else { Get-ReviewAuthorityProperty -Object $campaignRun -Name 'pause_surface' }
                     if ($null -ne $carried) { $pauseLines = @($carried) }
                 }
                 if ($pauseLines.Count -gt 0) {
