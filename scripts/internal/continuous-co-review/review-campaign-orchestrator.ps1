@@ -1597,9 +1597,55 @@ function Invoke-ReviewCampaignCommand {
                 }
             }
         }
-        $continuation = Test-ReviewCampaignContinuationAuthorized -PendingPause $latestPause.pause `
-            -PauseDecisions $pauseDecisions -RoundsSinceDecision $roundsSinceDecision `
-            -RoundsUsed ([int]$budgetState.rounds_used) -BudgetTotal ([int]$budgetState.budget_total)
+        # W28: A PAUSE ANSWER GOVERNS THE SNAPSHOT IT WAS ABOUT, NOT THE CAMPAIGN FOREVER.
+        #
+        # Test-ReviewCampaignPendingPauseQuiet already states the rule this gate was missing: "a pause
+        # whose target no longer matches the current tree is SUPERSEDED - it describes work that has
+        # moved on". The quiet rule honoured that; this gate did not, and read the old answer as binding
+        # whatever the tree now contains.
+        #
+        # Measured 2026-08-19 (KeyContextAI): a review of the PLANNING artifacts was answered "stop
+        # here" - correctly, nothing was found and nothing needed fixing - and the whole iteration's
+        # code was then written. Every attempt to review that code was refused with
+        # choice-does-not-continue:stop-here, so the signoff gate said "your last review no longer
+        # covers these files, run a fresh review" while the campaign said "you already said stop". The
+        # only documented escape was an allowance reset, which asks the human to REPAIR the machinery
+        # rather than to decide anything - and the code went unreviewed.
+        #
+        # Superseding does not weaken FR-003. Continuation still needs an explicit human act; that act
+        # is the fresh round approval rather than an answer about a snapshot that no longer exists.
+        # FAIL-CLOSED: if the current digest cannot be resolved the gate applies exactly as before,
+        # because "I could not tell whether the tree moved" must never open a round.
+        $pauseSuperseded = $false
+        try {
+            $pauseDigest = [string](Get-ReviewAuthorityProperty -Object $latestPause.pause -Name 'target_digest')
+            if (-not [string]::IsNullOrWhiteSpace($pauseDigest)) {
+                $currentState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root
+                if ($null -ne $currentState -and [bool]$currentState.ok -and
+                    -not [string]::IsNullOrWhiteSpace([string]$currentState.tree_id) -and
+                    [string]$currentState.tree_id -cne $pauseDigest) {
+                    $pauseSuperseded = $true
+                }
+            }
+        }
+        catch { $pauseSuperseded = $false }
+
+        # The budget is a SEPARATE cap and supersession must not lift it. Caught by the existing
+        # public-command fixture, which refuses a fifth round even on an authorized continuation: the
+        # first version of this branch returned authorized without consulting the budget at all.
+        $continuation = if ($pauseSuperseded) {
+            if ([int]$budgetState.budget_total -le 0 -or [int]$budgetState.rounds_used -ge [int]$budgetState.budget_total) {
+                [pscustomobject]@{ authorized = $false; reason = 'review-round-budget-exhausted'; choice = $null }
+            }
+            else {
+                [pscustomobject]@{ authorized = $true; reason = 'pause-superseded-by-moved-tree'; choice = $null }
+            }
+        }
+        else {
+            Test-ReviewCampaignContinuationAuthorized -PendingPause $latestPause.pause `
+                -PauseDecisions $pauseDecisions -RoundsSinceDecision $roundsSinceDecision `
+                -RoundsUsed ([int]$budgetState.rounds_used) -BudgetTotal ([int]$budgetState.budget_total)
+        }
         if (-not $continuation.authorized) {
             # The findings come from the RESULT, not from the pause fact - the fact stores counts only,
             # which is exactly why the resumed surface had nothing to show. Read defensively and

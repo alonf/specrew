@@ -22,10 +22,43 @@
 
 ## Summary
 
-**Total drift events**: 77 (DRIFT-199-I001-001 through -077)
+**Total drift events**: 78 (DRIFT-199-I001-001 through -078)
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
+
+### DRIFT-199-I001-078 — a pause answer about one snapshot closed the campaign forever (resolved)
+
+- **Observed**: 2026-08-19, KeyContextAI iteration 001. Round 1 reviewed the PLANNING artifacts before
+  any code existed, returned clean, and its pause was answered "stop here" — a correct answer to that
+  question. The whole iteration's code was then written. Every attempt to review that code was refused
+  with `choice-does-not-continue:stop-here`, so **the code shipped to the review-signoff boundary with
+  no independent review at all**, and the agent wrote a self-labelled self-review in its place.
+- **Cause**: `Test-ReviewCampaignContinuationAuthorized` looks up the answer to the pending pause and
+  refuses anything that is not `fix-and-continue`, with no regard for whether the tree still matches
+  the snapshot that pause described. The codebase already holds the correct rule one function away —
+  `Test-ReviewCampaignPendingPauseQuiet` says *"a pause whose target no longer matches the current tree
+  is SUPERSEDED - it describes work that has moved on"* — but only the QUIET rule honoured it. So the
+  two surfaces contradicted each other in the same breath: the signoff gate said *"your last review no
+  longer covers these files, run a fresh review"* while the campaign said *"you already said stop"*.
+- **The escape made it worse.** The only documented way out was `--remediate allowance-reset`, which is
+  human-approved by design because it replenishes SPEND. Here it was not authorising a spend, it was
+  asking the human to REPAIR machinery an agent had wedged — a repair dressed as an authorisation,
+  which is precisely the shape the 2026-08-19 balance ruling forbids.
+- **Resolution**: a pause answer governs the snapshot it was about. When the current reviewed-state
+  digest differs from the pause's `target_digest`, the pause is superseded and no longer gates
+  continuation; a fresh round approval is the explicit human act FR-003 requires, and it is about work
+  that actually exists. Fail-closed: an unresolvable digest applies the gate exactly as before, because
+  "I could not tell whether the tree moved" must never open a round.
+- **Measured proof**: 122 assertions across the pause-core, pause-wiring, authority-control,
+  public-command, signoff-gate and clean-review suites. The first version of the fix short-circuited the
+  ROUND BUDGET as well as the pause, and the existing public-command fixture caught it — it refuses a
+  fifth round even on an authorized continuation. Supersession now lifts the stale answer and nothing
+  else.
+- **Class closure**: the same rule existed, correct and written down, one function away from the code
+  that needed it. That is the fourth instance this session of a guard that computes the right answer in
+  one place and is not consulted in another — and the most expensive, because its cost was an entire
+  iteration of code reaching a sign-off boundary unreviewed.
 
 ### DRIFT-199-I001-077 — a clean review asked for a decision the machinery never consulted (resolved)
 
