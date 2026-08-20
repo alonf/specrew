@@ -855,6 +855,59 @@ function Get-ActiveGapLedgerLines {
     return $activeLines.ToArray()
 }
 
+function Test-ReviewCitedRunEvidence {
+    # W31: A REVIEW RECORD MAY NOT CLAIM MORE THAN ITS CITED EVIDENCE SUPPORTS.
+    #
+    # Measured 2026-08-19 (KeyContextAI). review.md asserted "the independent review ran and passed
+    # against this exact tree" and closed its verification-independence gap, citing a run id. The
+    # authority store said that run examined a single planning document and finished in 57 seconds -
+    # the same duration as a review of planning artifacts with no code in the tree - while the only run
+    # that read the implementation came back `incomplete`/`partial` with 14 findings and was discarded.
+    #
+    # The existing gates check that review.md EXISTS and that its gaps are classified. Nothing checked
+    # whether the run it names is capable of supporting the claim. That is mechanically checkable: the
+    # record cites a run id, the store holds that run's result, and a result that is not complete,
+    # current, valid and passing cannot evidence a clean independent review.
+    #
+    # SCOPED AND FAIL-OPEN BY CONSTRUCTION: it fires only when review.md cites a run id AND that run is
+    # found in this project's store. An uncited record, a pruned store, or an unreadable fact leaves
+    # the check silent - it exists to catch an overstated claim, never to invent one.
+    param(
+        [string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+
+    if ($null -eq $ReviewLines -or @($ReviewLines).Count -eq 0) { return }
+    $reviewText = $ReviewLines -join "`n"
+    $citedRuns = @([regex]::Matches($reviewText, 'run-\d{8}-\d{9}-[0-9a-f]{8}') |
+            ForEach-Object { $_.Value } | Sort-Object -Unique) # specrew-dedup-not-a-path: run ids,
+    # matched by a fixed lowercase-hex pattern, so no case or Unicode spelling can collide two of them.
+    if (@($citedRuns).Count -eq 0) { return }
+
+    $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return }
+
+    foreach ($runId in $citedRuns) {
+        $resultPaths = @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue |
+                ForEach-Object { Join-Path $_.FullName ("runs/$runId/result.json") } |
+                Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+        if (@($resultPaths).Count -eq 0) { continue }
+        $result = $null
+        try { $result = Get-Content -LiteralPath $resultPaths[0] -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 }
+        catch { continue }
+        if ($null -eq $result) { continue }
+
+        $weak = [System.Collections.Generic.List[string]]::new()
+        if ([string]$result.completion -ne 'complete') { $weak.Add("completion '$([string]$result.completion)'") | Out-Null }
+        if ([string]$result.verdict -notin @('pass', 'findings')) { $weak.Add("verdict '$([string]$result.verdict)'") | Out-Null }
+        if ([string]$result.currentness -ne 'current') { $weak.Add("currentness '$([string]$result.currentness)'") | Out-Null }
+        if ([string]$result.validation -ne 'valid') { $weak.Add("validation '$([string]$result.validation)'") | Out-Null }
+        if (@($weak).Count -eq 0) { continue }
+
+        $Errors.Add(("review.md cites review run {0} as evidence, but that run cannot support a review claim: {1}. Cite a run that completed against the current tree, or state in review.md what the cited run actually established." -f $runId, ($weak -join ', '))) | Out-Null
+    }
+}
 function Test-NoGapClosurePolicy {
     param(
         [string[]]$ReviewLines,
@@ -3282,6 +3335,7 @@ function Test-ReviewArtifact {
     }
 
     Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
+    Test-ReviewCitedRunEvidence -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
 
     # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.
     Test-ReviewEvidenceTreeIntegrity -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors

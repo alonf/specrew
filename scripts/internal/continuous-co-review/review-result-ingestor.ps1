@@ -262,6 +262,16 @@ function Invoke-ReviewResultIngress {
     elseif ($candidateRead.valid -and $classification.reason -ceq 'complete-result') { $null }
     elseif (-not $candidateRead.valid) { '{0}: {1}' -f $candidateRead.category, ($candidateRead.errors -join ',') }
     else { [string]$classification.reason }
+    # W32: A FAILURE FIELD MUST NOT CARRY A SUCCESS TOKEN.
+    #
+    # `$classification.reason` is the classifier's verdict word, not a fault, so a completed run whose
+    # candidate merely declared partial coverage landed `failure_reason: "completed"` in the immutable
+    # store. Read back later that is worse than empty: it invites "the run failed with 'completed'".
+    # Partiality is already carried honestly by `completion` and `verdict`; this field is for faults.
+    if (-not [string]::IsNullOrWhiteSpace($derivedFailure) -and
+        ([string]$derivedFailure -ceq [string]$effectiveOutcome -or [string]$derivedFailure -ceq 'completed')) {
+        $derivedFailure = $null
+    }
     $derivedFailure = ConvertTo-ReviewAuthorityBoundedText -Value $derivedFailure -MaximumLength 2000
     $summary = if ($candidateRead.valid) { [string]$candidateRead.candidate.summary } else { [string]$classification.reason }
     $completion = [string]$classification.completion

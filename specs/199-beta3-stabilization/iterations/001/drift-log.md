@@ -455,6 +455,54 @@ recorded maintainer ruling, so a single rate here would misstate them.
   consumes the production detector. A future deploy/detector convention mismatch becomes loud
   before another manual environment is handed to a tester.
 
+### DRIFT-199-I001-079 — a review was recorded as clean and independent while its frame held one planning document (resolved)
+
+- **Observed**: 2026-08-19/20, auditing the `C:\Dev\KeyContextAI` walk of feature
+  `001-layout-autocorrect`. `review.md` asserted that an independent review ran and passed
+  against the exact tree, and closed its verification-independence gap on that basis. The
+  authority store disagreed with all three parts of the claim. Four defects compose into it:
+  - **W29** `--design-context-ref` is documented as "artifact to INCLUDE in the review request
+    context" and the resolver REPLACED the resolved context with the named files. The walk's
+    agent correctly diagnosed that the reviewer lacked iteration scope and passed the iteration
+    plan through the flag; spec, design analysis and every contract silently vanished. The
+    reviewer returned "no review-blocking issues found in the frozen iteration 001 plan" in 57
+    seconds — the same duration as a review of planning artifacts with no code in the tree — and
+    that run became the recorded independent review of the implementation.
+  - **W30** Nothing would have supplied the iteration plan automatically: auto-resolution knew the
+    finished-feature spec but not the iteration's own scope. Reaching for the flag was the correct
+    response to a real gap, which is what made W29 reachable by a careful operator.
+  - **W32** The resulting run recorded `failure_reason: "completed"` beside `runtime_outcome:
+    completed` — the classifier's verdict word routed into a fault field, so the immutable record
+    says a successful run failed with success.
+  - **W31** `review.md` then cited a `partial`/`incomplete` run as its evidence, and no gate
+    compared the citation to the run it named. Existing gates check that the record EXISTS and
+    that its gaps are CLASSIFIED, never that its cited evidence can carry its claim.
+- **Citation**: evidence rule (claims need runtime evidence, not artifact existence); honest-state
+  rule (count-claims must match artifacts). FR-012 / FR-017 for design-context resolution.
+- **Resolution**: implementation-reverted (all four fixed in this iteration).
+  - `review-design-context.ps1` merges explicit refs with auto-resolved context instead of
+    replacing it, de-duplicated with the VOLUME's comparer, and resolves the latest iteration
+    `plan.md` as part of the frame.
+  - `review-result-ingestor.ps1` no longer routes a verdict word into `failure_reason`;
+    `completion` and `verdict` keep carrying partiality honestly.
+  - `validate-governance.ps1` gains `Test-ReviewCitedRunEvidence`, scoped and fail-open: it fires
+    only when the record cites a run id AND that run is in this project's store, so it catches an
+    overstated claim without making citation mandatory paperwork.
+- **Verification**: `tests/continuous-co-review/unit/review-frame-and-evidence-honesty.Tests.ps1`,
+  10 cases, joined to the slice lane. All four are mutation-proven — each fails against the
+  pre-fix code and passes after — and W31 was additionally proven against the real KeyContextAI
+  `review.md` on disk, where it names `run-20260819-210747148-9bd5980b` and its `partial`/
+  `incomplete` status.
+- **Note on the class-guard lane**: the first version of the W29 fix de-duplicated paths with a
+  hard-coded `OrdinalIgnoreCase`, and the permanent path-identity class guard failed the lane and
+  named the line. That is the lane doing exactly what it exists for — on a case-sensitive volume
+  the fold would have dropped one of two genuinely different artifacts from the reviewer's frame,
+  which is the same class of loss W29 itself is about. Corrected to the volume comparer before
+  landing.
+- **Not a reviewer-host problem**: the round that produced these records ran on Copilot, and
+  Copilot reported accurately given the frame it was handed and declared its partial coverage
+  honestly. Every defect above is in the machinery that builds the frame and records the result.
+
 ### DRIFT-199-I001-064 — disk census mixed one stale fixture with three load artifacts (resolved)
 
 - **Observed**: 2026-08-16, the first 352-file disk census reported four failures after the

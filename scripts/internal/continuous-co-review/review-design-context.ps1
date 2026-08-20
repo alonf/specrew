@@ -111,6 +111,22 @@ function Resolve-ContinuousCoReviewWorktreeDesignContext {
             [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, (Join-Path $latest[0].FullName 'design-analysis.md')).Replace('\', '/')))
         }
     }
+    # W30: THE ITERATION'S OWN SCOPE, so a SLICE is not reviewed against the finished feature.
+    #
+    # Measured 2026-08-19 (KeyContextAI): iteration 001 deliberately shipped engines and tests, with the
+    # managers, accessors and UI sliced into 002-004 by a human-approved plan. The reviewer was handed
+    # spec.md plus the whole-feature design-analysis and nothing that said which parts THIS iteration
+    # promised, so it reported 13 components "not implemented" - every finding true of the feature and
+    # none of them a defect of the increment. The iteration plan states the requirement scope and the
+    # explicit deferrals, which is exactly the missing frame.
+    if (Test-Path -LiteralPath $iterRoot -PathType Container) {
+        $latestPlan = @(Get-ChildItem -LiteralPath $iterRoot -Directory -EA SilentlyContinue |
+            Where-Object { $_.Name -match '^\d+$' -and (Test-Path -LiteralPath (Join-Path $_.FullName 'plan.md') -PathType Leaf) } |
+            Sort-Object { [int]$_.Name } -Descending | Select-Object -First 1)
+        if ($latestPlan) {
+            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, (Join-Path $latestPlan[0].FullName 'plan.md')).Replace('\', '/')))
+        }
+    }
     $contractsDir = Join-Path $RepoRoot (Join-Path $featureDir 'contracts')
     if (Test-Path -LiteralPath $contractsDir -PathType Container) {
         foreach ($cf in @(Get-ChildItem -LiteralPath $contractsDir -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '(?i)^\.(json|ya?ml|proto|graphql|avsc|xsd)$' })) {
@@ -127,16 +143,42 @@ function Resolve-ContinuousCoReviewDesignContextSelection {
         [AllowEmptyCollection()][string[]]$DesignContextFiles = @(),
         [ValidatePattern('^[0-9]+-[a-z0-9][a-z0-9-]*$')][string]$FeatureId
     )
+    # W29: EXPLICIT REFS ADD TO THE RESOLVED CONTEXT. THEY DO NOT REPLACE IT.
+    #
+    # The documented contract for --design-context-ref is "Design or lifecycle artifact to INCLUDE in
+    # the review request context". This resolved `if ($explicit) { @($DesignContextFiles) }` instead,
+    # so supplying one file silently discarded the spec, the design analysis and every contract.
+    #
+    # Measured 2026-08-19 (KeyContextAI): an agent correctly diagnosed that the reviewer lacked
+    # iteration scope and passed the iteration plan through this flag. The reviewer's whole frame
+    # collapsed to that single planning document; it returned "no review-blocking issues found in the
+    # frozen iteration 001 plan" in 57 seconds - the same duration as a review of planning artifacts
+    # with no code in the tree - and that run was then recorded as the independent review of the
+    # implementation. The obvious, correct use of the flag destroyed the review.
     $explicit = ($null -ne $DesignContextFiles -and @($DesignContextFiles).Count -gt 0)
-    $resolved = if ($explicit) {
-        @($DesignContextFiles)
-    }
-    elseif ([string]::IsNullOrWhiteSpace($FeatureId)) {
+    $auto = if ([string]::IsNullOrWhiteSpace($FeatureId)) {
         @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot)
     }
     else {
         @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot -FeatureId $FeatureId)
     }
+    # Explicit refs come FIRST so a caller-supplied frame leads, then everything the resolver found,
+    # de-duplicated on the repo-relative path so naming an already-resolved artifact is harmless.
+    #
+    # The comparer is the VOLUME's, not a hard-coded case fold: on a case-sensitive volume `Spec.md`
+    # and `spec.md` are two different artifacts, and folding them here would silently drop one from
+    # the reviewer's frame - the same class of loss this function was rewritten to stop. `distinct`
+    # when the volume cannot be determined, because a duplicate design document costs the reviewer
+    # nothing and a missing one costs it the review.
+    $seen = [System.Collections.Generic.HashSet[string]]::new(
+        (Get-ContinuousCoReviewPathComparer -Path $RepoRoot -WhenUndetermined 'distinct'))
+    $merged = [System.Collections.Generic.List[string]]::new()
+    foreach ($candidate in (@($DesignContextFiles) + @($auto))) {
+        $text = [string]$candidate
+        if ([string]::IsNullOrWhiteSpace($text)) { continue }
+        if ($seen.Add($text.Replace('\', '/'))) { [void]$merged.Add($text) }
+    }
+    $resolved = @($merged)
     $resolved = @($resolved)
     $unresolved = [System.Collections.Generic.List[string]]::new()
     if ($explicit) {
