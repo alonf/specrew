@@ -1001,14 +1001,19 @@ function Test-ReviewCitedRunEvidence {
     # a block, warning for records that predate it and refusing for records written after.
     if ($null -eq $ReviewLines -or @($ReviewLines).Count -eq 0) { return }
     $reviewText = ($ReviewLines -join "`n").Replace("`r`n", "`n")
-    $declared = [System.Collections.Generic.List[string]]::new()
+    # PROVENANCE IS KEPT, not merged away. The first version collapsed both sources into one list of
+    # ids and then told every reader to "remove it from the SPECREW-REVIEW-EVIDENCE marker" - which for
+    # a block-sourced run names an edit that is both impossible (there is no marker) and forbidden (the
+    # block is recomputed and must not be hand-edited). That is the painted-on-door shape W35 had just
+    # fixed one layer up: the only offered action is the one the reader must not take.
+    $declaredSources = [ordered]@{}
 
     # 1. The explicit marker. An HTML comment so it is invisible in rendered markdown, and a fixed
     #    shape so reading it needs no judgement:
     #        <!-- SPECREW-REVIEW-EVIDENCE: run-20260820-150735904-458c5888 -->
     foreach ($markerMatch in [regex]::Matches($reviewText, '(?i)<!--\s*SPECREW-REVIEW-EVIDENCE\s*:(?<ids>[^>]*?)-->')) {
         foreach ($idMatch in [regex]::Matches([string]$markerMatch.Groups['ids'].Value, 'run-\d{8}-\d{9}-[0-9a-f]{8}')) {
-            if (-not $declared.Contains([string]$idMatch.Value)) { [void]$declared.Add([string]$idMatch.Value) }
+            $declaredSources[[string]$idMatch.Value] = 'marker'
         }
     }
 
@@ -1018,12 +1023,15 @@ function Test-ReviewCitedRunEvidence {
         $blockText = Get-SpecrewEmbeddedIndependenceBlock -ReviewLines $ReviewLines
         if (-not [string]::IsNullOrWhiteSpace($blockText)) {
             foreach ($idMatch in [regex]::Matches([string]$blockText, 'run-\d{8}-\d{9}-[0-9a-f]{8}')) {
-                if (-not $declared.Contains([string]$idMatch.Value)) { [void]$declared.Add([string]$idMatch.Value) }
+                # The block WINS when a run is in both. Removing it from the marker would not remove it
+                # from the block, so telling the reader to edit the marker would still be a door that
+                # opens onto nothing.
+                $declaredSources[[string]$idMatch.Value] = 'derived-block'
             }
         }
     }
 
-    $citedRuns = @($declared)
+    $citedRuns = @($declaredSources.Keys)
     if (@($citedRuns).Count -eq 0) { return }
 
     $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
@@ -1065,10 +1073,18 @@ function Test-ReviewCitedRunEvidence {
         }
         if (@($weak).Count -eq 0) { continue }
 
-        # The old message ended "or state in review.md what the cited run actually established" - a
-        # remedy no code path implemented, so a reader who followed it got the same refusal again. Every
-        # remedy named here is one this function actually honours.
-        $Errors.Add(("review.md declares review run {0} as the evidence it rests on, but that run cannot support a review claim: {1}. Either obtain a run that completed against the current tree, or - if this run is named as history rather than relied upon - remove it from the SPECREW-REVIEW-EVIDENCE marker. Run ids appearing only in prose are treated as narrative and are not checked, so a retraction can name a failed run freely." -f $runId, ($weak -join ', '))) | Out-Null
+        # Every remedy named here is one this function honours AND the reader can perform. The old
+        # message ended "or state in review.md what the cited run actually established" - which no code
+        # path implemented - and its replacement then told every reader to edit a marker, including the
+        # readers whose weak run came from the do-not-hand-edit block and who have no marker at all.
+        $declaredFrom = [string]$declaredSources[$runId]
+        $remedy = if ($declaredFrom -ceq 'marker') {
+            'Either obtain a run that completed against the current tree, or - if this run is named as history rather than relied upon - remove it from the SPECREW-REVIEW-EVIDENCE marker.'
+        }
+        else {
+            'This run is named by the DERIVED independent-review block, which is computed from the review store and recomputed at validation, so it cannot be edited out by hand. The way forward is to obtain a run that completed against the current tree; the block will then name that run instead.'
+        }
+        $Errors.Add(("review.md declares review run {0} as the evidence it rests on, but that run cannot support a review claim: {1}. {2} Run ids appearing only in prose are treated as narrative and are not checked, so a retraction can name a failed run freely." -f $runId, ($weak -join ', '), $remedy)) | Out-Null
     }
 }
 function Test-NoGapClosurePolicy {

@@ -300,6 +300,32 @@ foreach ($task in $tasks) {
     $verdictRows += ('| {0} | {1} | {2} | {3} |' -f $taskId.Trim(), $requirementRef.Trim(), $DefaultTaskVerdict, ($note -replace '\|', '\|'))
 }
 
+# W35: THE EVIDENCE MARKER NEEDS A PRODUCER, or it is a comment rather than a control.
+#
+# The validator honours <!-- SPECREW-REVIEW-EVIDENCE: run-... --> as the authored half of the evidence
+# union, and nothing emitted it or mentioned it anywhere an agent would read - so no review record
+# could ever declare its own evidence and the union was always a union of one. This emits it, already
+# populated when a qualifying run exists.
+#
+# FAIL-OPEN IN EVERY DIRECTION: no shared-governance beside us, or no qualifying run, emits the marker
+# EMPTY. An empty marker declares nothing, which is precisely today's behaviour.
+$evidenceRunId = ''
+try {
+    $sharedGovernanceForEvidence = Join-Path $PSScriptRoot 'shared-governance.ps1'
+    if (Test-Path -LiteralPath $sharedGovernanceForEvidence -PathType Leaf) {
+        if (-not (Get-Command -Name 'Get-SpecrewQualifyingIndependentRun' -ErrorAction SilentlyContinue)) {
+            . $sharedGovernanceForEvidence
+        }
+        if (Get-Command -Name 'Get-SpecrewQualifyingIndependentRun' -ErrorAction SilentlyContinue) {
+            # specs/<feature>/iterations/<N> -> the project root is four levels up.
+            $projectRootForEvidence = (Resolve-Path -LiteralPath (Join-Path $resolvedIterationDirectory '..\..\..\..') -ErrorAction Stop).Path
+            $qualifyingForEvidence = Get-SpecrewQualifyingIndependentRun -ProjectRoot $projectRootForEvidence
+            if ($null -ne $qualifyingForEvidence) { $evidenceRunId = [string]$qualifyingForEvidence.result.run_id }
+        }
+    }
+}
+catch { $evidenceRunId = '' }
+
 $reviewContent = @"
 # Review: Iteration $iterationLabel
 
@@ -310,6 +336,16 @@ $reviewContent = @"
 ## Task Verdicts
 
 $($verdictRows -join [Environment]::NewLine)
+
+<!--
+  Review evidence marker (validator-enforced):
+    The line below names the run(s) this record RESTS ON. Only what is named here - and the run named
+    by the derived independent-review block - is checked against the review store. Run ids appearing
+    anywhere else in this document are treated as NARRATIVE and are never checked, so a retraction may
+    name a failed run freely without the record being refused for it.
+    Leave it empty when the record rests on no campaign run. Do not name a run you are only discussing.
+-->
+<!-- SPECREW-REVIEW-EVIDENCE: $evidenceRunId -->
 
 <!--
   Gap Ledger schema (validator-enforced):

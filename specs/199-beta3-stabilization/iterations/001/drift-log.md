@@ -535,6 +535,39 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-087 — W35 shipped a control with no producer and a door painted on the wall (resolved)
+
+Two defects in the W35 fix itself, both found by review of the landed code rather than by a test.
+
+- **The evidence marker had no producer.** `SPECREW-REVIEW-EVIDENCE` was honoured by the validator and
+  emitted by NOTHING - no template, scaffold, refocus file, command or skill mentioned it. No agent
+  writing a `review.md` could know it existed, so the evidence union was permanently a union of one and
+  the authored half of the design never activated. **A control with no producer is a comment.**
+  - Fixed: `scaffold-review-artifact.ps1` now emits the marker, already populated when a qualifying run
+    exists, together with a schema comment saying what is checked and what is narrative. Fail-open in
+    every direction - no shared-governance beside it, or no qualifying run, emits an EMPTY marker, which
+    declares nothing and is exactly the prior behaviour. `refocus/review-signoff.md` names it where an
+    agent reads the record's shape.
+  - Proven end to end against a fixture project: with a qualifying run the scaffold emits
+    `declares='run-20260820-150735904-458c5888'`; with none it emits `declares=''`.
+- **The refusal named a remedy the reader could not perform.** `$citedRuns = @($declared)` merged
+  marker-sourced and block-sourced ids and discarded provenance, then the message said unconditionally
+  "remove it from the SPECREW-REVIEW-EVIDENCE marker". For a block-sourced run - every case today, since
+  nothing emitted a marker - the run is in no marker, and the block is explicitly do-not-hand-edit. **The
+  only offered action was the forbidden one**: the same painted-on-door shape W35 had just fixed one
+  layer up, and the W15 shape before that.
+  - Fixed: provenance is kept per run id and the remedy branches. Marker-sourced says remove it from the
+    marker; block-sourced says the block is recomputed and cannot be edited by hand, and names the one
+    action that works - obtain a run that completed against the current tree. When a run is in both, the
+    BLOCK wins, because removing it from the marker would leave it in the block.
+- **Verification**: 23 cases in `review-frame-and-evidence-honesty.Tests.ps1`. Mutation-proven with the
+  landing check: forcing every run to report as marker-sourced kills both the block-sourced case and the
+  named-in-both case. `It 'the evidence marker has a producer'` pins the first defect structurally, so a
+  control shipping without a producer fails rather than sitting inert.
+- **Note on recurrence**: writing these tests mangled generated PowerShell path escapes for the FOURTH
+  time this week (`` and `	` becoming CR and TAB). Working rule adopted: generated PowerShell paths
+  use forward slashes or nested `Join-Path`, never embedded backslashes.
+
 ### DRIFT-199-I001-084 — the orientation check read the last message, and the orientation is in the first (resolved)
 
 - **Observed**: 2026-08-20, verifying a reported false negative rather than dismissing it. The W25 check

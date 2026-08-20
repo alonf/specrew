@@ -329,4 +329,52 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
         $found[0] | Should -Match 'SPECREW-REVIEW-EVIDENCE'
     }
 
+
+    It 'tells a block-sourced weak run only what it can actually do' {
+        # The remedy must be one the READER can perform. The first version merged both sources into one
+        # list of ids and then told everyone to "remove it from the SPECREW-REVIEW-EVIDENCE marker" -
+        # which for a block-sourced run names an edit that is impossible (there is no marker) and
+        # forbidden (the block is recomputed and must not be hand-edited). That is the painted-on-door
+        # shape W35 had just fixed one layer up.
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete' -ReviewBody (@(
+                '## Reviewer independence',
+                '',
+                '<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->',
+                '- Run: run-20260819-210747148-9bd5980b (harness copilot-cli-file-primary)',
+                '<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->') -join "`n")
+        $found = @(Invoke-CitedRunCheck -Project $project)
+        $found.Count | Should -Be 1
+        $found[0] | Should -Not -Match 'remove it from the SPECREW-REVIEW-EVIDENCE marker'
+        $found[0] | Should -Match 'cannot be edited out by hand'
+        $found[0] | Should -Match 'obtain a run that completed against the current tree'
+    }
+
+    It 'still offers the marker remedy when the run really is marker-sourced' {
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete'
+        $found = @(Invoke-CitedRunCheck -Project $project)
+        $found.Count | Should -Be 1
+        $found[0] | Should -Match 'remove it from the SPECREW-REVIEW-EVIDENCE marker'
+    }
+
+    It 'lets the block win when a run is named in both, since removing the marker would not help' {
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete' -ReviewBody (@(
+                '<!-- SPECREW-REVIEW-EVIDENCE: run-20260819-210747148-9bd5980b -->',
+                '<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->',
+                '- Run: run-20260819-210747148-9bd5980b (harness copilot-cli-file-primary)',
+                '<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->') -join "`n")
+        $found = @(Invoke-CitedRunCheck -Project $project)
+        $found.Count | Should -Be 1
+        $found[0] | Should -Not -Match 'remove it from the SPECREW-REVIEW-EVIDENCE marker'
+    }
+
+    It 'the evidence marker has a producer, so it is a control and not a comment' {
+        # It shipped honoured by the validator and emitted by nothing, mentioned nowhere an agent reads.
+        # No review record could declare its own evidence, so the union was always a union of one and
+        # the authored half of the design never activated.
+        $scaffold = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1') -Raw -Encoding UTF8
+        $scaffold | Should -Match 'SPECREW-REVIEW-EVIDENCE'
+        $guidance = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/refocus/review-signoff.md') -Raw -Encoding UTF8
+        $guidance | Should -Match 'SPECREW-REVIEW-EVIDENCE'
+    }
+
 }
