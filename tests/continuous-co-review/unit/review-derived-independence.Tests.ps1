@@ -26,6 +26,40 @@ BeforeAll {
     if (-not $fn) { throw 'Test-ReviewDerivedIndependenceBlock not found' }
     . ([scriptblock]::Create($fn.Extent.Text))
 
+    # Extract the REAL warning writer rather than stubbing it. A stub would let the warn path pass
+    # even if the real writer threw, which is the shape this project keeps finding.
+    $warnFn = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+            $n.Name -eq 'Write-TrustHardeningWarning' }, $true) | Select-Object -First 1
+    if (-not $warnFn) { throw 'Write-TrustHardeningWarning not found' }
+    . ([scriptblock]::Create($warnFn.Extent.Text))
+    $script:ValidatorSoftWarnings = 0
+
+    function script:New-RecordProject {
+        # A project holding a real review.md at a governed iteration path, so the authorship reader can
+        # key on it. The store shape comes from New-StoreProject.
+        param([switch]$Observed, [switch]$NoRun)
+        $root = if ($NoRun) { New-StoreProject -NoRun } else { New-StoreProject -DeclareExamined -ExaminedPaths @('src/Engine.cs') }
+        $iterDir = Join-Path $root 'specs/001-thing/iterations/001'
+        New-Item -ItemType Directory -Path $iterDir -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $iterDir 'review.md') -Encoding UTF8 -Value @(
+            '# Review: Iteration 001', '', 'An independent review found no substantive defects.')
+        if ($Observed) {
+            # What a record written after W34-A landed carries by construction.
+            Write-SpecrewReviewAuthorshipObservation -ProjectRoot $root -HostKind 'claude' -SessionId 'sess-x' `
+                -ChangedPaths @('specs/001-thing/iterations/001/review.md')
+        }
+        return [pscustomobject]@{ Root = $root; IterationDirectory = $iterDir }
+    }
+    function script:CheckRecord {
+        param([Parameter(Mandatory)]$Project, [string[]]$Lines)
+        if (-not $Lines) { $Lines = @(Get-Content -LiteralPath (Join-Path $Project.IterationDirectory 'review.md') -Encoding UTF8) }
+        $errors = [System.Collections.Generic.List[string]]::new()
+        $before = $script:ValidatorSoftWarnings
+        Test-ReviewDerivedIndependenceBlock -ReviewLines $Lines -ProjectRoot $Project.Root `
+            -IterationDirectory $Project.IterationDirectory -Errors $errors
+        return [pscustomobject]@{ errors = @($errors); warnings = ($script:ValidatorSoftWarnings - $before) }
+    }
+
     function script:New-StoreProject {
         param(
             [string]$Completion = 'complete', [string]$Verdict = 'pass',
@@ -151,5 +185,59 @@ Describe 'W34-A the block cannot be authored by hand' {
         $root = New-StoreProject
         try { @(CheckBlock -Root $root -Block "# Review: Iteration 001`n`nAll tasks verified.").Count | Should -Be 0 }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+Describe 'Item 6 the ramp promotes itself' {
+    # The exposure is not the boundary - the signoff gate is fail-closed and its override phrase is
+    # tree-bound and prompt-captured. It is the MAINTAINER'S DECISION: the override asks whether
+    # accepting partial coverage is safe, and the only input to that judgement was prose written by the
+    # party under review. So the derived truth is put on the same page, and the standard promotes
+    # itself: a record written after W34-A carries an observed authorship fact by construction.
+
+    It 'warns, and does not refuse, a record that predates the block' {
+        $project = New-RecordProject
+        try {
+            $outcome = CheckRecord -Project $project
+            @($outcome.errors).Count | Should -Be 0
+            $outcome.warnings | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'refuses a record whose authorship was observed but carries no block' {
+        # Written after the block existed, so it is held to the full standard with no migration date
+        # and no hand-touched list.
+        $project = New-RecordProject -Observed
+        try {
+            $outcome = CheckRecord -Project $project
+            @($outcome.errors).Count | Should -Be 1
+            $outcome.errors[0] | Should -Match 'written after the block existed'
+            $outcome.warnings | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'has no false-positive path, because the block always renders' {
+        # Even with nothing qualifying, the derivation produces "No run qualifies" - so there is no
+        # legitimate case where authorship is observed and nothing can be derived.
+        $project = New-RecordProject -Observed -NoRun
+        try {
+            $outcome = CheckRecord -Project $project
+            @($outcome.errors).Count | Should -Be 1
+            $outcome.errors[0] | Should -Match 'No run in this project'
+        }
+        finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'says nothing when the record carries the correct block, whatever its authorship' {
+        $project = New-RecordProject -Observed
+        try {
+            $block = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $project.Root
+            $outcome = CheckRecord -Project $project -Lines @(($block -split "`n"))
+            @($outcome.errors).Count | Should -Be 0
+            $outcome.warnings | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }

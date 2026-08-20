@@ -867,12 +867,52 @@ function Test-ReviewDerivedIndependenceBlock {
         # reading it. Caught by a fixture whose body had a blank line in it.
         [AllowEmptyString()][string[]]$ReviewLines,
         [string]$ProjectRoot,
+        [string]$IterationDirectory,
         [System.Collections.Generic.List[string]]$Errors
     )
     if ($null -eq $ReviewLines -or @($ReviewLines).Count -eq 0) { return }
     if (-not (Get-Command -Name 'Get-SpecrewEmbeddedIndependenceBlock' -ErrorAction SilentlyContinue)) { return }
     $embedded = Get-SpecrewEmbeddedIndependenceBlock -ReviewLines $ReviewLines
-    if ([string]::IsNullOrWhiteSpace($embedded)) { return }
+    if ([string]::IsNullOrWhiteSpace($embedded)) {
+        # ITEM 6 / RAMP. An absent block is not silence and it is not automatically a refusal.
+        #
+        # The exposure this closes is not the boundary - the signoff gate is already fail-closed and its
+        # override phrase is tree-bound and prompt-captured, so an out-of-band review cannot advance
+        # anything. What is exposed is the MAINTAINER'S DECISION: the override asks whether accepting
+        # partial coverage is safe, and the only input to that judgement is prose written by the party
+        # under review. This puts the machine-derived truth on the same page as the claim.
+        #
+        # THE RAMP PROMOTES ITSELF, rather than waiting on a date or a hand-touched list. A record
+        # written after W34-A landed carries an observed authorship fact BY CONSTRUCTION; one written
+        # before does not. So new records meet the full standard immediately and old ones warn, with no
+        # migration step and no false-positive path - the block always renders, including to "No run
+        # qualifies", so there is no legitimate case where authorship is observed and nothing derives.
+        #
+        # Erroring from the start would wedge the gate shut on every project already holding a
+        # review.md, which is the same call made for W33's fail-open cases and for W34-B's
+        # `unattributed`. A warning that can never become an error is decoration; this one becomes one
+        # the moment the project moves forward.
+        $observedAuthorship = 'unattributed'
+        if ((Get-Command -Name 'Get-SpecrewReviewAuthorship' -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($IterationDirectory)) {
+            $recordPath = Join-Path $IterationDirectory 'review.md'
+            if (Test-Path -LiteralPath $recordPath -PathType Leaf) {
+                $relativeRecord = try { ([IO.Path]::GetRelativePath($ProjectRoot, (Resolve-Path -LiteralPath $recordPath).Path)).Replace([char]92, [char]47) } catch { '' }
+                if (-not [string]::IsNullOrWhiteSpace($relativeRecord)) {
+                    $observedAuthorship = [string](Get-SpecrewReviewAuthorship -ProjectRoot $ProjectRoot -ReviewPath $relativeRecord).state
+                }
+            }
+        }
+        $derivedForAbsent = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $ProjectRoot
+        if ($observedAuthorship -cne 'unattributed') {
+            $Errors.Add(("review.md carries no derived independent-review block, and this record was written after the block existed (its authorship was observed: {0}). The block states the machine-checkable part of the independence claim and is recomputed at validation, so it belongs beside whatever the record asserts. Add it:{1}{2}" -f $observedAuthorship, [Environment]::NewLine, $derivedForAbsent))
+        }
+        else {
+            Write-TrustHardeningWarning -Category 'review-independence-block-absent' -Detail (
+                "review.md carries no derived independent-review block, so nothing in this record has been checked against what the review store actually holds. Absent is not clean. This record predates the block; records written from now on are refused without it. The store currently derives:" + [Environment]::NewLine + $derivedForAbsent)
+        }
+        return
+    }
     $derived = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $ProjectRoot
     if ([string]$embedded -cne [string]$derived) {
         $Errors.Add(("review.md carries a derived independent-review block that does not match what this project's review store derives. The block states the machine-checkable part of the independence claim and is recomputed at validation, so it cannot be authored or edited by hand. Replace it with the derived block, or remove it and state plainly what the record's independence rests on. Derived:{0}{1}" -f [Environment]::NewLine, $derived))
@@ -3416,7 +3456,7 @@ function Test-ReviewArtifact {
     Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
     Test-ReviewCitedRunEvidence -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
     Test-ReviewRecordAuthorship -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -Errors $Errors
-    Test-ReviewDerivedIndependenceBlock -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
+    Test-ReviewDerivedIndependenceBlock -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Errors $Errors
 
     # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.
     Test-ReviewEvidenceTreeIntegrity -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors

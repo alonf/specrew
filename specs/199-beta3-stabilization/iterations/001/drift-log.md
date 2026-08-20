@@ -455,6 +455,86 @@ recorded maintainer ruling, so a single rate here would misstate them.
   consumes the production detector. A future deploy/detector convention mismatch becomes loud
   before another manual environment is handed to a tester.
 
+### DRIFT-199-I001-082 — a review record's independence claim was checked only when it volunteered to be (resolved, with a beta4 constraint recorded)
+
+- **Observed**: 2026-08-20, taking up the "ungoverned direct-copilot review recorded as evidence" item.
+  **The item was filed as an authority hole and is not one.** Verified before building:
+  - The signoff gate is fail-closed (`signoff-gate-wiring.ps1:136-160`): with no valid campaign result
+    the decision is `block` and it throws.
+  - Its only escape is the typed phrase `approved for partial review signoff - <reason>`, bound in
+    `HumanAuthorityStore.ps1:30-95` to a hash of `target_tree_id | campaign_id`, requiring a
+    pre-existing request and capture from a genuine prompt-entry event. The gate says it in the message
+    a human reads: *command-line identity fields are not authority.*
+  So an out-of-band review **cannot advance the boundary**.
+- **And the record that prompted the item is the honest one.** KeyContextAI's `review.md` says "It is
+  not a claim that the review was independent" (line 11), "no independent review has produced a valid
+  verdict on the code" (line 14), "obtained OUTSIDE the campaign machinery" (line 59), and leaves
+  GAP-01 open naming both routes to close it. It distinguishes out-of-band scrutiny from campaign
+  authority more carefully than the report against it assumed.
+- **Which is the actual finding: that care was VOLUNTARY.** Nothing produced it, checked it, or would
+  notice its absence. The same paragraph without the caveats passes every gate, because W31 is
+  fail-open on uncited prose BY DESIGN and that fail-open is load-bearing for legitimate cases.
+- **So the exposure is not the boundary — it is the maintainer's decision.** The override phrase asks
+  one question: is accepting partial coverage safe for this tree? The only input to that judgement was
+  prose written by the party under review. That is the shape this iteration removed from verdicts
+  (W34-B) and from independence claims (W34-A), surviving in the one place a human takes personal
+  responsibility.
+- **Citation**: the evidence rule; FR-003 for the human act the phrase represents.
+- **Resolution**: implementation-reverted. The derived independence block is now required in a review
+  record, on a **self-promoting ramp**:
+
+  | record | outcome |
+  | --- | --- |
+  | no block, no observed authorship (predates W34-A) | WARN `review-independence-block-absent` |
+  | no block, authorship observed (written after W34-A) | ERROR |
+  | block present | recomputed and compared, as before |
+
+  A record written after W34-A carries an observed authorship fact **by construction**, so new records
+  meet the full standard immediately and old ones warn — with no migration date and no hand-touched
+  list. The ramp promotes itself as each project moves forward. Erroring from the start would have
+  wedged the gate shut on every project already holding a `review.md`, the same call made for W33's
+  fail-open cases and for W34-B's `unattributed`; a warning that can never become an error is
+  decoration.
+- **No false-positive path**: the block always renders, including to "No run in this project's review
+  store qualifies", so there is no legitimate case where authorship is observed and nothing derives.
+  Pinned by `It 'has no false-positive path, because the block always renders'`.
+- **Rejected: detecting independence-claiming prose.** It is the brittle judgement heuristic this
+  iteration has spent a week removing, and it fails in the wrong direction on the only evidence
+  available: KeyContextAI's *honest* sentences — "it is not a claim that the review was independent" —
+  are dense with exactly the tokens such a rule matches. It would flag the careful record and miss a
+  confident one phrased around the trigger words. Same refusal as the W34-C negation limit, on the
+  fail-open side where it costs more.
+- **Verification**: 4 cases added to `review-derived-independence.Tests.ps1` (13 total), in the slice
+  lane. Mutation-proven with the landing check rule 2 requires: neutering the error branch killed
+  `refuses a record whose authorship was observed but carries no block` and the false-positive-path
+  case, and the mutation was asserted present in the file before the suite was trusted.
+
+### BETA4 CONSTRAINT — out-of-band scrutiny and supersede share a diagnosis, not a dependency
+
+Recorded now, while both are on paper, because the coupling is easiest to prevent before either exists.
+
+Both are "the store cannot express this yet", and they are different operations on it:
+
+- **Supersede** is a CORRECTION gap. The fact exists and is wrong, and the model cannot say *this
+  replaces X because Y*. It touches the trust model — "correctable by hand" was already rejected as
+  not-evidence — so it needs a maintainer ruling on what makes a superseding fact authoritative over
+  the one it replaces, and how a reader can tell. First real instance: the forged KeyContextAI
+  disposition (DRIFT-199-I001-035's architectural item).
+- **Out-of-band scrutiny** is a VOCABULARY gap. The event happened and there is no fact kind for it.
+  Additive, no trust-model change, no ruling required.
+
+**Sequence out-of-band first, and design it so it does not depend on supersede landing.** They share a
+diagnosis worth stating once; they must not share a dependency, or the easy one waits on the hard one.
+
+**The line to hold, written down before the design starts**: an out-of-band scrutiny fact
+**authorizes nothing**. It records that scrutiny occurred, what it read and who ran it — readable by a
+human deciding whether to type the override phrase, and invisible to every gate. Designing the two
+side by side invites giving it partial authority, because the supersede work is entirely about
+authority levels, and the obvious generalization — one fact type with a declared authority level, from
+which both fall out — is the framework-nobody-uses shape this project's own walk already produced a
+lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
+campaign gate exists to control.
+
 ### METHOD NOTE — a guard can be present, readable and inert, and so can its proof
 
 Carried out of DRIFT-199-I001-080 and -081 as a standing rule. Five defects in one slice were of this
