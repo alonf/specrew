@@ -183,6 +183,48 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
             else { "## Independent review`n`n<!-- SPECREW-REVIEW-EVIDENCE: $runId -->`n`nThe independent review found no review-blocking issues." }
             return [pscustomobject]@{ Root = $root; RunId = $runId; Lines = @($body -split "`n") }
         }
+        function script:New-ScaffoldFixture {
+            # Shaped the way the scaffold actually reads a plan: a Requirement column, not Requirements.
+            # A fixture that does not match the real shape proves nothing about the real path.
+            param([switch]$WithQualifyingRun)
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w35s-' + [guid]::NewGuid().ToString('N'))
+            $iter = Join-Path $root (Join-Path 'specs' (Join-Path '001-thing' (Join-Path 'iterations' '001')))
+            New-Item -ItemType Directory -Path $iter -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $iter 'plan.md') -Encoding UTF8 -Value @(
+                '# Iteration Plan', '', '## Tasks', '',
+                '| Task | Requirement | Status | Effort | Owner |',
+                '| --- | --- | --- | --- | --- |',
+                '| T001 | FR-001 | done | 1 | src/** |')
+            if ($WithQualifyingRun) {
+                $runId = 'run-20260820-150735904-458c5888'
+                $runDir = Join-Path $root (Join-Path '.specrew' (Join-Path 'review' (Join-Path 'authority' (Join-Path 'campaigns' (Join-Path 'cmp-a' (Join-Path 'runs' $runId))))))
+                New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+                ([ordered]@{
+                        schema_version = '1.0'; campaign_id = 'cmp-a'; run_id = $runId; harness_id = 'copilot-cli-file-primary'
+                        completion = 'complete'; verdict = 'pass'; currentness = 'current'; validation = 'valid'
+                        target_digest = '273c69bbabfb0044fc5b8b2a74fc65e739d1803f'; findings = @()
+                        examined_paths = @('src/Engine.cs', 'src/Map.cs')
+                    } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'result.json') -Encoding UTF8
+            }
+            return [pscustomobject]@{ Root = $root; Iteration = $iter }
+        }
+        function script:Invoke-ReviewScaffold {
+            param([Parameter(Mandatory)][string]$IterationDirectory)
+            $scaffold = Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1'
+            & pwsh -NoProfile -ExecutionPolicy Bypass -File $scaffold -IterationDirectory $IterationDirectory *> $null
+        }
+        function script:Get-EmittedEvidenceMarker {
+            # Three outcomes the string match could not tell apart: declared ids, an empty marker, or no
+            # marker at all ($null).
+            param([Parameter(Mandatory)][string]$IterationDirectory)
+            $recordPath = Join-Path $IterationDirectory 'review.md'
+            if (-not (Test-Path -LiteralPath $recordPath -PathType Leaf)) { return $null }
+            $text = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8
+            $pattern = '(?i)<!--\s*SPECREW-REVIEW-EVIDENCE\s*:(?<ids>[^>]*?)-->'
+            $match = [regex]::Match($text, $pattern)
+            if (-not $match.Success) { return $null }
+            return [string]$match.Groups['ids'].Value
+        }
         function script:Invoke-CitedRunCheck {
             param([Parameter(Mandatory)]$Project)
             $errors = [System.Collections.Generic.List[string]]::new()
@@ -371,8 +413,36 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
         # It shipped honoured by the validator and emitted by nothing, mentioned nowhere an agent reads.
         # No review record could declare its own evidence, so the union was always a union of one and
         # the authored half of the design never activated.
-        $scaffold = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1') -Raw -Encoding UTF8
-        $scaffold | Should -Match 'SPECREW-REVIEW-EVIDENCE'
+        #
+        # BEHAVIOURAL, NOT A STRING MATCH. The first version of this pin grepped the scaffold source for
+        # 'SPECREW-REVIEW-EVIDENCE' - which that file also contains at :305, in the COMMENT explaining
+        # the emission - so deleting the emission at :348 left the test green. It asserted that the
+        # source MENTIONS the marker, not that any record ever CARRIES one. So this runs the scaffold and
+        # reads the record it produced.
+        $project = New-ScaffoldFixture -WithQualifyingRun
+        try {
+            Invoke-ReviewScaffold -IterationDirectory $project.Iteration
+            $declared = Get-EmittedEvidenceMarker -IterationDirectory $project.Iteration
+            $null -eq $declared | Should -BeFalse -Because 'the scaffold must EMIT the marker, not merely mention it'
+            ([string]$declared).Trim() | Should -Be 'run-20260820-150735904-458c5888' -Because 'and populate it with the run the record rests on'
+        }
+        finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'emits an EMPTY marker when no run qualifies, which declares nothing' {
+        # Fail-open: a project with nothing to declare still gets the field, so an author can see it
+        # exists, and an empty marker is exactly the prior behaviour.
+        $project = New-ScaffoldFixture
+        try {
+            Invoke-ReviewScaffold -IterationDirectory $project.Iteration
+            $declared = Get-EmittedEvidenceMarker -IterationDirectory $project.Iteration
+            $null -eq $declared | Should -BeFalse -Because 'the marker is present even with nothing to declare'
+            ([string]$declared).Trim() | Should -Be ''
+        }
+        finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'names the marker where an agent reads the record shape' {
         $guidance = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/refocus/review-signoff.md') -Raw -Encoding UTF8
         $guidance | Should -Match 'SPECREW-REVIEW-EVIDENCE'
     }

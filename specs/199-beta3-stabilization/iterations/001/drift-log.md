@@ -560,10 +560,18 @@ Two defects in the W35 fix itself, both found by review of the landed code rathe
     marker; block-sourced says the block is recomputed and cannot be edited by hand, and names the one
     action that works - obtain a run that completed against the current tree. When a run is in both, the
     BLOCK wins, because removing it from the marker would leave it in the block.
-- **Verification**: 23 cases in `review-frame-and-evidence-honesty.Tests.ps1`. Mutation-proven with the
+- **Verification**: 25 cases in `review-frame-and-evidence-honesty.Tests.ps1`. Mutation-proven with the
   landing check: forcing every run to report as marker-sourced kills both the block-sourced case and the
-  named-in-both case. `It 'the evidence marker has a producer'` pins the first defect structurally, so a
-  control shipping without a producer fails rather than sitting inert.
+  named-in-both case.
+- **The producer pin was itself a string match, and satisfiable by a comment.** Its first version grepped
+  `scaffold-review-artifact.ps1` for `SPECREW-REVIEW-EVIDENCE` - a string that file ALSO contains at
+  `:305`, in the comment explaining the emission - so deleting the emission at `:348` left it green. It
+  asserted that the source MENTIONS the marker, never that a record CARRIES one. Replaced with a
+  behavioural pin that runs the scaffold and reads the record it produced. The mutation shows the
+  difference on one mutant: with the emission deleted, the string match still **passes** while the
+  behavioural pin fails two cases. A guard that reads source text rather than behaviour is the same
+  class as an inert guard - method rule 1 - with a narrower failure: it is live, it is just measuring
+  something that is not the property.
 - **Note on recurrence**: writing these tests mangled generated PowerShell path escapes for the FOURTH
   time this week (`` and `	` becoming CR and TAB). Working rule adopted: generated PowerShell paths
   use forward slashes or nested `Join-Path`, never embedded backslashes.
