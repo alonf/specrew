@@ -200,6 +200,59 @@ function Resolve-ReviewFindingGatingEligibility {
     return @($graded)
 }
 
+# W33: A COMPLETE CODE REVIEW MUST HAVE EXAMINED CODE.
+#
+# Measured 2026-08-19/20 (KeyContextAI). Two runs recorded `pass`/`complete`/`current` with zero
+# findings against a frozen target that held the whole implementation, and neither had read any of
+# it. Their own summaries said so, in plain language: "the frozen iteration 001 plan" (57s) and
+# "the frozen iteration artifacts" (67s), against 186s for the one run that walked the source. The
+# reviewer was HONEST both times. The record held the truth and nothing consumed it, so a review of
+# a planning document became the recorded independent review of an implementation, and - because a
+# passing run becomes the baseline the next round advances from - every later round inherited it.
+#
+# The controller cannot know which files a reviewer opened, and a duration threshold is a guess. So
+# the candidate DECLARES what it examined and the controller checks that declaration against the
+# target it froze. This catches the honest-but-misframed reviewer, which is the case that actually
+# occurred; it does not pretend to catch a lying one.
+#
+# FAIL-OPEN ON ABSENCE, deliberately. A deployed reviewer that never emits `examined_paths` behaves
+# exactly as it does today. Fail-closed would wedge the signoff gate shut on every project already
+# in flight, which is a worse failure than the one being fixed.
+function Test-ReviewExaminedPathIsSource {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    # A NEGATIVE rule on purpose: everything is source unless it is recognisably a record or a
+    # document. An unknown extension counts as source, so a language nobody here anticipated is
+    # never mistaken for paperwork and never triggers a degrade.
+    # NOT TrimStart('./') - that trims those two CHARACTERS repeatedly, so '.specrew/config.yml'
+    # arrives as 'specrew/config.yml' and a governance file classifies as source. Strip the one
+    # leading './' and nothing else.
+    $p = ([string]$Path).Trim().Replace('\', '/')
+    while ($p.StartsWith('./')) { $p = $p.Substring(2) }
+    if ([string]::IsNullOrWhiteSpace($p)) { return $false }
+    if ($p -match '(?i)^(specs|docs)/') { return $false }
+    if ($p -match '(?i)^\.(specrew|squad|specify|github|agents|cursor|copilot|claude)/') { return $false }
+    if ($p -match '(?i)\.(md|markdown|txt|rst|adoc)$') { return $false }
+    return $true
+}
+
+function Resolve-ReviewDeclaredCoverage {
+    # Returns what the candidate SAYS it examined, split by whether it is source. `declared` is the
+    # gate: when the reviewer said nothing, there is nothing to check and nothing is claimed.
+    param([object]$Candidate)
+    $empty = [pscustomobject]@{ declared = $false; paths = @(); source_paths = @() }
+    if ($null -eq $Candidate) { return $empty }
+    if (-not ($Candidate.PSObject.Properties.Name -contains 'examined_paths')) { return $empty }
+    $paths = @(@($Candidate.examined_paths) |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($paths.Count -eq 0) { return $empty }
+    return [pscustomobject]@{
+        declared     = $true
+        paths        = @($paths)
+        source_paths = @($paths | Where-Object { Test-ReviewExaminedPathIsSource -Path $_ })
+    }
+}
+
 function Invoke-ReviewResultIngress {
     [CmdletBinding()]
     param(
@@ -219,6 +272,11 @@ function Invoke-ReviewResultIngress {
         [Parameter(Mandatory)][long]$DurationMs,
         [string]$FailureReason,
         [string]$ControllerDegradeReason,
+        # W33. Whether the tree the controller FROZE contains source at all. Supplied by the caller
+        # because only the orchestrator holds the snapshot. Default $false keeps every existing
+        # caller - fixtures included - on exactly today's behaviour: with no claim that the target
+        # held code, a declared docs-only review is not evidence of anything being missed.
+        [bool]$TargetHasSource = $false,
         [object[]]$PriorFindings = @()
     )
     $paths = Get-ReviewRunStagingPaths -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId
@@ -277,6 +335,20 @@ function Invoke-ReviewResultIngress {
     $completion = [string]$classification.completion
     $verdict = [string]$classification.verdict
     $canApproveCurrent = [bool]$classification.can_approve_current
+
+    # W33. A candidate that declares its coverage and declares no source, against a target the
+    # controller knows holds source, has not reviewed the code - whatever its verdict says. Routed
+    # through the SAME degrade the design-context rule uses, so it cannot approve the current target
+    # and cannot become the baseline a later round advances from.
+    $coverage = Resolve-ReviewDeclaredCoverage -Candidate $candidateRead.candidate
+    if ($candidateRead.valid -and $TargetHasSource -and $coverage.declared -and
+        @($coverage.source_paths).Count -eq 0) {
+        $examinedNote = (@($coverage.paths) | Select-Object -First 5) -join ', '
+        $coverageDegrade = ('REVIEW_EXAMINED_NO_SOURCE: the review declares it examined only records or documents ({0}), while the frozen target contains source; this run is partial evidence about the code and cannot approve the current target.' -f $examinedNote)
+        $ControllerDegradeReason = if ([string]::IsNullOrWhiteSpace($ControllerDegradeReason)) { $coverageDegrade }
+        else { "$ControllerDegradeReason $coverageDegrade" }
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($ControllerDegradeReason)) {
         # Controller-known missing evidence outranks a reviewer's optimistic candidate. Preserve
         # validated findings, but never let a design-blind run become approval authority.
@@ -290,6 +362,10 @@ function Invoke-ReviewResultIngress {
         termination_verified = $TerminationVerified; containment = $Containment; currentness = $Currentness; validation = $validationState
         can_approve_current = $canApproveCurrent; failure_reason = $derivedFailure; summary = $summary; findings = @($terminalFindings)
         started_at = $StartedAt; ended_at = $EndedAt; duration_ms = $DurationMs
+        # W33. The coverage the verdict rests on, carried into the terminal record. This
+        # projection is an explicit field list - the same one that silently dropped the demotion
+        # marks - so a field added upstream and not named here never reaches a single reader.
+        examined_paths = @($coverage.paths)
     }
     $published = Publish-ReviewRunResultFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Fact $result
     $report = Write-ReviewRunReportCreateNew -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Content (ConvertTo-ReviewRunReportMarkdown -Result $result)

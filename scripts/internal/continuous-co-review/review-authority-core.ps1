@@ -715,8 +715,8 @@ function Test-ReviewAuthorityContractObject {
         'ReviewCampaign' { @('schema_version', 'campaign_id', 'target_lineage', 'created_at') }
         'ReviewRun' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'state') }
         'ReviewInvocation' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'snapshot_path', 'review_scope', 'prompt_path', 'candidate_result_path', 'candidate_report_path', 'deadline') }
-        'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings') }
-        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms') }
+        'ReviewerCandidate' { @('schema_version', 'run_id', 'target_digest', 'completion', 'verdict', 'summary', 'findings', 'examined_paths') }
+        'ReviewResult' { @('schema_version', 'campaign_id', 'run_id', 'target_digest', 'harness_id', 'completion', 'verdict', 'runtime_outcome', 'termination_verified', 'containment', 'currentness', 'validation', 'can_approve_current', 'failure_reason', 'summary', 'findings', 'started_at', 'ended_at', 'duration_ms', 'examined_paths') }
         'GrantFact' { @('schema_version', 'fact_type', 'campaign_id', 'grant_id', 'slots', 'authority_kind', 'authorization_ref', 'observed_at') }
         'ReservationFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'grant_id', 'slot', 'run_id', 'observed_at') }
         'SpendFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'invocation_started_at') }
@@ -777,6 +777,10 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'verdict' -Errors $errors -MaxLength 16 -Enum @('pass', 'findings', 'incomplete')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'summary' -Errors $errors -MaxLength $candidateLimits.max_summary_characters
+            # W33. What the review says it examined. OPTIONAL by design: a reviewer that never emits
+            # it behaves exactly as before, so no project already in flight is refused by a field it
+            # has never heard of. The rule lives in the ingest degrade, not in this contract.
+            Test-ReviewAuthorityExaminedPathsField -Object $InputObject -Name 'examined_paths' -Errors $errors
         }
         'ReviewResult' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial', 'none')
@@ -792,6 +796,10 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'started_at' -Errors $errors -MaxLength 64
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'ended_at' -Errors $errors -MaxLength 64
             Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'duration_ms' -Errors $errors -Minimum 0 -Maximum $script:ReviewAuthorityMaxDurationMilliseconds
+            # W33. Carried into the terminal record so the coverage a verdict rests on survives the
+            # projection. The declared-coverage rule was reachable only because nothing downstream
+            # could see what the reviewer said it had read.
+            Test-ReviewAuthorityExaminedPathsField -Object $InputObject -Name 'examined_paths' -Errors $errors
         }
         'GrantFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('grant')
@@ -1024,6 +1032,32 @@ function Test-ReviewAuthorityContractObject {
     elseif (@($errors | Where-Object { $_ -like 'unknown-field:*' -or $_ -like '*.unknown-field:*' }).Count -gt 0) { 'unknown-field' }
     else { 'schema-invalid' }
     return [pscustomobject]@{ valid = ($errors.Count -eq 0); category = $category; errors = @($errors) }
+}
+
+function Test-ReviewAuthorityExaminedPathsField {
+    # W33. An OPTIONAL, bounded list of repo-relative paths the review says it examined. Bounded on
+    # both count and length for the reason every other field here is: this lands in an immutable
+    # store, and an unbounded reviewer-supplied array is an unbounded write.
+    param(
+        [Parameter(Mandatory)]$Object,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors,
+        [int]$MaxCount = 500,
+        [int]$MaxLength = 512
+    )
+    if (-not ($Object.PSObject.Properties.Name -contains $Name)) { return }
+    $value = $Object.$Name
+    if ($null -eq $value) { return }
+    if ($value -is [string] -or -not ($value -is [System.Collections.IEnumerable])) {
+        $Errors.Add("wrong-type:${Name}:array") | Out-Null; return
+    }
+    $items = @($value)
+    if ($items.Count -gt $MaxCount) { $Errors.Add("too-many:${Name}:$MaxCount") | Out-Null; return }
+    for ($i = 0; $i -lt $items.Count; $i++) {
+        $item = $items[$i]
+        if ($null -eq $item -or -not ($item -is [string])) { $Errors.Add("wrong-type:${Name}[$i]:string") | Out-Null; continue }
+        if (([string]$item).Length -gt $MaxLength) { $Errors.Add("too-long:${Name}[$i]:$MaxLength") | Out-Null }
+    }
 }
 
 function Test-ReviewAuthorityContractJson {

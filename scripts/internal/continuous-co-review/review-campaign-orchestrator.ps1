@@ -2002,7 +2002,23 @@ function Invoke-ReviewCampaignRun {
         $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
         $startedAt = ConvertTo-ReviewObservedTimestampString -Value $spends[0].invocation_started_at
         $degradeReason = if ($DesignContextEmpty) { 'DESIGN_CONTEXT_EMPTY: no spec, design analysis, or formal contract resolved; this run is partial evidence and cannot approve the current target.' } else { $null }
-        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason $failureReason -ControllerDegradeReason $degradeReason
+        # W33. Whether the tree the controller FROZE holds source at all. The ingestor needs this to
+        # judge a declared docs-only review: on a genuinely docs-only target such a review is correct
+        # and must not be degraded, and only the orchestrator holds the snapshot to tell them apart.
+        # FAIL-OPEN: any error answers `no source`, so an unreadable snapshot never invents a degrade.
+        $targetHasSource = $false
+        try {
+            $snapshotRoot = [string]$snapshot.snapshot_path
+            if (-not [string]::IsNullOrWhiteSpace($snapshotRoot) -and (Test-Path -LiteralPath $snapshotRoot -PathType Container)) {
+                foreach ($file in (Get-ChildItem -LiteralPath $snapshotRoot -File -Recurse -Force -ErrorAction SilentlyContinue)) {
+                    $rel = [IO.Path]::GetRelativePath($snapshotRoot, $file.FullName)
+                    if (($rel.Replace([char]92, [char]47)) -match '(?i)(^|/)\.git(/|$)') { continue }
+                    if (Test-ReviewExaminedPathIsSource -Path $rel) { $targetHasSource = $true; break }
+                }
+            }
+        }
+        catch { $targetHasSource = $false }
+        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason $failureReason -ControllerDegradeReason $degradeReason -TargetHasSource $targetHasSource
         if ($ingress.published) {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null
             $findingCount = if ($ingress.candidate_category -ceq 'valid' -and [string]$ingress.result.completion -ceq 'complete' -and [string]$ingress.result.validation -ceq 'valid') { @($ingress.result.findings).Count } else { $null }

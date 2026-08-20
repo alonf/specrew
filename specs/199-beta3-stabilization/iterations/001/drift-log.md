@@ -455,6 +455,64 @@ recorded maintainer ruling, so a single rate here would misstate them.
   consumes the production detector. A future deploy/detector convention mismatch becomes loud
   before another manual environment is handed to a tester.
 
+### DRIFT-199-I001-080 — a review that read nothing recorded a clean pass, and became the baseline (resolved)
+
+- **Observed**: 2026-08-20, auditing the rest of the `C:\Dev\KeyContextAI` walk. DRIFT-199-I001-079
+  fixed what collapsed the reviewer's FRAME. It did not make a hollow result DETECTABLE, and the
+  same walk went on to prove that gap twice. The authority store holds:
+
+  | Run | Duration | Verdict | What it read |
+  | --- | --- | --- | --- |
+  | `run-20260819-210747148-9bd5980b` | 186s | `incomplete`/`partial`, 14 findings | the source |
+  | `run-20260819-211204294-86de8c6e` | 57s | `pass`/`complete`, 0 findings | the iteration plan |
+  | `run-20260820-083412478-d85dda20` | 67s | `pass`/`complete`, 0 findings | governance artifacts |
+
+  Both hollow runs are indistinguishable from a real clean review by every recorded fact —
+  `complete`, `current`, `valid`, `can_approve_current`. Duration was the only signal and it is
+  nowhere machine-checked.
+- **The reviewer was honest.** Both hollow runs described their own narrowness in the summary they
+  stored: "the frozen iteration 001 plan" and "the frozen iteration artifacts". The record held the
+  truth in plain language and nothing consumed it. This is not a reviewer-host defect, and not a
+  defect of Copilot in particular; it is the controller never asking what was examined.
+- **Why it compounds**: `Resolve-ContinuousCoReviewAutoFireBaselineTreeId` advances the next round's
+  baseline to the last ACCEPTED reviewed tree. Once a hollow pass is accepted it becomes that
+  baseline, so every later round diffs only what changed since — which was governance and records —
+  and passes again. The signoff hook then reports "your review covers these files", inheriting a
+  coverage claim from a run that established none. The walk's operator could not escape it without
+  `--baseline-ref`, and three of four rounds were spent.
+- **Citation**: evidence rule (claims need runtime evidence, not artifact existence). FR-003 for
+  round authorization; the signoff evidence gate for coverage.
+- **Resolution**: implementation-reverted. The candidate now DECLARES what it read, and the
+  controller checks that declaration against the tree it froze:
+  - `reviewer-candidate-prompt.md` asks for `examined_paths` — what was read, not what was given —
+    and states plainly that a records-only review is recorded as partial evidence about the code, so
+    an honest short list costs the reviewer nothing.
+  - `review-authority-core.ps1` accepts `examined_paths` on the candidate and carries it on the
+    terminal result, bounded at 500 paths x 512 characters because a reviewer-supplied array lands in
+    an immutable store.
+  - `review-result-ingestor.ps1` degrades a `complete` result whose declared coverage holds no source,
+    against a target that does — through the SAME controller-degrade path the design-context rule
+    uses, so it cannot approve the current target and cannot become an accepted baseline.
+  - `validate-governance.ps1` extends `Test-ReviewCitedRunEvidence` with the same rule, so a review
+    record citing such a run is told what that run actually established.
+- **Fail-open on absence, in three places, deliberately**: a reviewer that emits no `examined_paths`
+  behaves exactly as today; an empty declaration claims nothing; a docs-only target is never degraded
+  for being reviewed as documentation. Failing closed would wedge the signoff gate shut on every
+  project already in flight — a worse failure than the one being fixed — and would punish the honest
+  docs-only review the rule exists to protect.
+- **Honest limit**: this catches the honest-but-misframed reviewer, which is the case that occurred
+  three times in one walk. It does not catch a reviewer that lies about what it read, and it is not
+  built to. Duration heuristics were rejected as a guess dressed as a measurement.
+- **Verification**: `tests/continuous-co-review/unit/review-examined-coverage.Tests.ps1` (9 cases) and
+  three added cases in `review-frame-and-evidence-honesty.Tests.ps1`, joined to the slice lane. Two
+  mutation proofs: neutering the degrade kills the walk-shaped case, and restoring the classifier's
+  prefix bug kills two.
+- **A defect found in the fix, by running it**: the classifier first stripped a leading `./` with
+  `TrimStart('./')`, which trims those two CHARACTERS repeatedly — so `.specrew/config.yml` arrived as
+  `specrew/config.yml` and every governance dot-directory classified as SOURCE. That would have made
+  the degrade silently unreachable for precisely the files the walk's hollow runs examined. Caught by
+  running the classifier over real paths rather than by reading it, and pinned by a case.
+
 ### DRIFT-199-I001-079 — a review was recorded as clean and independent while its frame held one planning document (resolved)
 
 - **Observed**: 2026-08-19/20, auditing the `C:\Dev\KeyContextAI` walk of feature

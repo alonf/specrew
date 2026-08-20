@@ -903,6 +903,25 @@ function Test-ReviewCitedRunEvidence {
         if ([string]$result.verdict -notin @('pass', 'findings')) { $weak.Add("verdict '$([string]$result.verdict)'") | Out-Null }
         if ([string]$result.currentness -ne 'current') { $weak.Add("currentness '$([string]$result.currentness)'") | Out-Null }
         if ([string]$result.validation -ne 'valid') { $weak.Add("validation '$([string]$result.validation)'") | Out-Null }
+        # W33. The run's own declared coverage, when it recorded one. A run that says it examined
+        # only records or documents cannot evidence a review OF THE CODE, whatever its verdict.
+        # This is the case W31 alone could not see: the KeyContextAI run that became the recorded
+        # independent review was complete, current, valid and passing by every stored fact.
+        if ($result.PSObject.Properties['examined_paths']) {
+            $examined = @(@($result.examined_paths) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if (@($examined).Count -gt 0) {
+                $sourceExamined = @($examined | Where-Object {
+                        $rel = $_.Trim().Replace([char]92, [char]47)
+                        while ($rel.StartsWith('./')) { $rel = $rel.Substring(2) }
+                        -not ($rel -match '(?i)^(specs|docs)/') -and
+                        -not ($rel -match '(?i)^\.(specrew|squad|specify|github|agents|cursor|copilot|claude)/') -and
+                        -not ($rel -match '(?i)\.(md|markdown|txt|rst|adoc)$')
+                    })
+                if (@($sourceExamined).Count -eq 0) {
+                    $weak.Add(('examined only records or documents ({0})' -f ((@($examined) | Select-Object -First 3) -join ', '))) | Out-Null
+                }
+            }
+        }
         if (@($weak).Count -eq 0) { continue }
 
         $Errors.Add(("review.md cites review run {0} as evidence, but that run cannot support a review claim: {1}. Cite a run that completed against the current tree, or state in review.md what the cited run actually established." -f $runId, ($weak -join ', '))) | Out-Null

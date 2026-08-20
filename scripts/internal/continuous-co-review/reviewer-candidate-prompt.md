@@ -37,6 +37,7 @@ completion = "complete" or "partial"
 verdict = "pass", "findings", or "incomplete"
 summary = concise plain text
 findings = array of objects with exactly: local_id, severity, title, description, and optional location
+examined_paths = array of the repo-relative paths you actually opened and read
 
 Keep the candidate well inside the schema bounds: summary at most __MAX_SUMMARY_CHARACTERS__ characters;
 no more than __MAX_FINDINGS__ findings; each local_id at most __MAX_LOCAL_ID_CHARACTERS__ characters,
@@ -50,3 +51,11 @@ A complete pass has `completion="complete"`, `verdict="pass"`, and an empty find
 result with findings uses `verdict="findings"`. A partial result always uses `verdict="incomplete"`.
 Report only code-review findings grounded in the frozen workspace. Never invent a clean result to satisfy
 the schema.
+
+`examined_paths` is what you READ, not what you were given and not what exists. List the files you
+actually opened, repo-relative, at most 500 of them; if you sampled a large tree, list the ones you
+read. It is not a coverage boast and a short honest list is worth more than a long invented one -
+the controller checks it against the frozen target, and a review that examined only records or
+documents is recorded as partial evidence about the code no matter what verdict it carries. That is
+not a penalty: it is how a narrow review stays honest instead of becoming a clean bill of health for
+code nobody read.

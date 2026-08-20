@@ -158,7 +158,8 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
             param(
                 [string]$Completion = 'complete', [string]$Verdict = 'pass',
                 [string]$Currentness = 'current', [string]$Validation = 'valid',
-                [switch]$OmitRun, [string]$ReviewBody
+                [switch]$OmitRun, [string]$ReviewBody,
+                [object[]]$ExaminedPaths, [switch]$DeclareExamined
             )
             $root = Join-Path ([IO.Path]::GetTempPath()) ('w31-' + [guid]::NewGuid().ToString('N'))
             $runId = 'run-20260819-210747148-9bd5980b'
@@ -169,6 +170,7 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
                     schema_version = '1.0'; campaign_id = 'cmp-w31'; run_id = $runId
                     completion = $Completion; verdict = $Verdict; currentness = $Currentness; validation = $Validation
                 }
+                if ($DeclareExamined) { $result['examined_paths'] = @($ExaminedPaths) }
                 [IO.File]::WriteAllText((Join-Path $runDir 'result.json'), ($result | ConvertTo-Json -Depth 6 -Compress), [Text.UTF8Encoding]::new($false))
             }
             $body = if ($PSBoundParameters.ContainsKey('ReviewBody')) { $ReviewBody }
@@ -216,5 +218,27 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
     It 'stays silent when the cited run is not in this project store' {
         # A run id copied from another project, or a store pruned since - unknowable, so unjudged.
         @(Invoke-CitedRunCheck -Project (New-CitedRunProject -OmitRun)).Count | Should -Be 0
+    }
+
+    It 'flags a complete, passing run that declares it examined only records (W33)' {
+        # The case W31 alone could not see. run-...211204294 was complete, current, valid and passing
+        # by every stored fact, and had read a planning document. Now the run says what it read, and
+        # a claim resting on it is measured against that.
+        $found = @(Invoke-CitedRunCheck -Project (New-CitedRunProject -DeclareExamined -ExaminedPaths @(
+                    'specs/001-layout-autocorrect/iterations/001/plan.md',
+                    'specs/001-layout-autocorrect/iterations/001/review.md')))
+        $found.Count | Should -Be 1
+        $found[0] | Should -Match 'examined only records or documents'
+    }
+
+    It 'accepts a run that declares it examined source' {
+        @(Invoke-CitedRunCheck -Project (New-CitedRunProject -DeclareExamined -ExaminedPaths @(
+                    'src/DetectionEngine.cs', 'specs/001-x/spec.md'))).Count | Should -Be 0
+    }
+
+    It 'stays silent on a run that declared no coverage at all' {
+        # Same fail-open posture as the rest of this check: it catches an overstated claim, it does
+        # not make declaring coverage a condition of being cited.
+        @(Invoke-CitedRunCheck -Project (New-CitedRunProject)).Count | Should -Be 0
     }
 }
