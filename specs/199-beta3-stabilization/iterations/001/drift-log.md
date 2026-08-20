@@ -455,34 +455,52 @@ recorded maintainer ruling, so a single rate here would misstate them.
   consumes the production detector. A future deploy/detector convention mismatch becomes loud
   before another manual environment is handed to a tester.
 
-### METHOD NOTE — a guard can be present, readable and inert
+### METHOD NOTE — a guard can be present, readable and inert, and so can its proof
 
-Carried out of DRIFT-199-I001-080 and -081 as a standing rule, because two defects in one week were
-of this shape and one of them was invisible to reading.
+Carried out of DRIFT-199-I001-080 and -081 as a standing rule. Five defects in one slice were of this
+shape, and the fifth was in the machinery built to catch the other four.
 
-Two failure modes, and they are not equally detectable:
+**Two failure modes, and they are not equally detectable.**
 
-- **A guard that computes the WRONG answer.** `TrimStart('./')` trims those two characters rather than
-  the prefix, so `.specrew/config.yml` classified as source. A test catches this by asserting the right
-  answer, and reading the line can catch it if the reader knows the API.
-- **A guard that computes NO answer.** The W34-C rationale check was inserted through `sed`, which
-  turned the regex's `\b` word boundaries into literal BACKSPACE bytes. The pattern read
-  `(?i)<BS>findings?<BS>`, matched nothing, and the guard sat in the file parsing cleanly, reading
-  correctly, and doing nothing. Reading it — several times — did not reveal it. It surfaced only when a
-  probe printed both operands as `true` beside an `if` that did not fire.
+- A guard that computes the WRONG answer. `TrimStart('./')` trims those two characters rather than the
+  prefix, so `.specrew/config.yml` classified as source. A test catches this by asserting the right
+  answer, and a reader who knows the API can catch it too.
+- A guard that computes NO answer. The W34-C rationale check was inserted through `sed`, which turned
+  the regex's `\b` word boundaries into literal BACKSPACE bytes. The pattern read `(?i)<BS>findings?<BS>`,
+  matched nothing, and the guard sat in the file parsing cleanly, reading correctly, and doing nothing.
+  Reading it several times did not reveal it. It surfaced only when a probe printed both operands as
+  `true` beside an `if` that did not fire.
 
-The general rule is therefore NOT "avoid text-mangling tools", though the corruption came from one:
+So the rule is not "avoid text-mangling tools", though the corruption came from one:
 
-> **Every guard needs at least one assertion that fails when the guard is removed.**
+> **1. Every guard needs at least one assertion that fails when the guard is removed.**
 
 For this class, mutation-proving is not a nicety that raises confidence in a passing suite — it is the
 only detector. A guard with no such assertion is indistinguishable, by reading, from a guard that has
 been silently disabled; the suite stays green either way, because green is exactly what an inert guard
-produces.
+produces. "We reviewed the code" is not a substitute.
 
-Both instances of this class were found by RUNNING the fix rather than reading it, as were the
-`ConvertFrom-Json` local-time round-trip and the case-folding path dedup. Four defects, four found by
-execution, none by review.
+**Then the rule failed one level up, in the same way.** A mutation proof of the W34-C boundaries was
+attempted through `python -c`, the shell ate the replacement, and the suite reported 10/10 for both the
+"mutant" and the "restored" run. Nothing had been mutated. Reported as-is, that is a proof that never
+ran — presented as evidence, looking exactly like a successful one. The verification needs verifying,
+or the assertion proves nothing:
+
+> **2. A mutation proof must confirm the mutation actually landed before trusting the result.**
+>
+> **3. A mutation that changes nothing is a failed mutant, not a redundant test.**
+
+Rule 3 reads as a paradox — the passing outcome is the suspicious one — which is why it has to be
+written down rather than re-derived under time pressure. Rule 2 is what makes it actionable, and the
+recursion terminates there: grep the mutated file, assert the change is present, then run. Checking
+that an artifact changed needs no fourth rule to check it.
+
+What caught this one was the grep output still showing `\bfindings?\b` in the supposedly mutated file.
+
+**Evidence base**: four defects in this slice found by executing the fix rather than reading it —
+`TrimStart`, the `ConvertFrom-Json` local-time round-trip, the inert regex, and the case-folding path
+dedup — plus one verification defect found by verifying the verification. Reading finds intent; running
+finds behaviour.
 
 ### DRIFT-199-I001-081 — nothing recorded who wrote a review verdict (resolved)
 
