@@ -6327,4 +6327,312 @@ function Test-SpecrewWorkshopRecordsPresent {
         return [pscustomobject]@{ Present = $false; Reason = ("Workshop-records check could not complete ({0}) - blocking; verify the workshop ran and lens-applicability.json is valid." -f $_.Exception.Message) }
     }
 }
+
+# ---------------------------------------------------------------------------------------------------
+# W34-B: WHO WROTE THE VERDICT IS OBSERVED, NEVER DECLARED.
+#
+# W31 checks that a review record's cited run is complete, current, valid and a reviewed outcome.
+# W33 checks that the cited run examined code. Neither asks who wrote the verdict, and that gap has
+# now produced the same record twice on two projects:
+#
+#   specrew beta3, 2026-08-17 - the implementing session scaffolded review.md and wrote its own 13
+#     task verdicts and an overall `accepted`, committed before the corroborating round finished.
+#   KeyContextAI, 2026-08-19 - the session that wrote the code wrote the record claiming "the
+#     independent review ran and passed against this exact tree".
+#
+# The second is caught now, because its cited run was partial and the store says so. THE FIRST IS
+# NOT: its evidence was genuine, and a clean run plus an implementer-authored verdict passes every
+# check that exists. DRIFT-199-I001-037 recorded this signature once already and only the
+# campaign-evidence half was ever fixed.
+#
+# OBSERVED, NOT ASSERTED. An `authored_by` field written into review.md by the writing agent is this
+# same class one level up - a claim about authority made by the thing whose authority is in
+# question. So the fact is minted by the hook from what it watched the session write, exactly as
+# typed-turn receipts and the W25 orientation receipt are, and the agent never supplies it.
+# ---------------------------------------------------------------------------------------------------
+
+function Get-SpecrewReviewAuthorshipPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return (Join-Path $ProjectRoot '.specrew/runtime/review-authorship.json')
+}
+
+function Test-SpecrewReviewAuthorshipSourcePath {
+    # The same negative rule W33 uses on declared coverage: everything is source unless it is
+    # recognisably a record or a document, so an unanticipated language is never mistaken for
+    # paperwork. Kept deliberately identical in shape - if the two ever disagree, a session could
+    # author code that this rule cannot see.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    $p = ([string]$Path).Trim().Replace([char]92, [char]47)
+    while ($p.StartsWith('./')) { $p = $p.Substring(2) }
+    if ([string]::IsNullOrWhiteSpace($p)) { return $false }
+    if ($p -match '(?i)^(specs|docs)/') { return $false }
+    if ($p -match '(?i)^\.(specrew|squad|specify|github|agents|cursor|copilot|claude)/') { return $false }
+    if ($p -match '(?i)\.(md|markdown|txt|rst|adoc)$') { return $false }
+    return $true
+}
+
+function Get-SpecrewReviewRecordPathMatch {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    $p = ([string]$Path).Trim().Replace([char]92, [char]47)
+    while ($p.StartsWith('./')) { $p = $p.Substring(2) }
+    if ($p -match '(?i)^specs/[^/]+/iterations/[^/]+/review\.md$') { return $p }
+    return $null
+}
+
+function Write-SpecrewReviewAuthorshipObservation {
+    # Called from the Stop path with what the hook watched this turn change. Records two things and
+    # judges neither: which (host, session) wrote a review record and when, and which (host, session)
+    # was seen writing source and when. The verdict is derived at read time from those observations.
+    #
+    # FAIL-SILENT: this is bookkeeping on a hot path. Any error leaves the file as it was, because a
+    # missing observation reads as `unattributed` - which is honest - while a thrown Stop is not.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SessionId,
+        [AllowEmptyCollection()][string[]]$ChangedPaths = @()
+    )
+    if ([string]::IsNullOrWhiteSpace($SessionId)) { return }
+    $paths = @(@($ChangedPaths) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+    if ($paths.Count -eq 0) { return }
+    $reviewPaths = @($paths | ForEach-Object { Get-SpecrewReviewRecordPathMatch -Path $_ } | Where-Object { $null -ne $_ })
+    $wroteSource = @($paths | Where-Object { Test-SpecrewReviewAuthorshipSourcePath -Path $_ }).Count -gt 0
+    if ($reviewPaths.Count -eq 0 -and -not $wroteSource) { return }
+
+    try {
+        $statePath = Get-SpecrewReviewAuthorshipPath -ProjectRoot $ProjectRoot
+        $stateDir = Split-Path -Parent $statePath
+        if (-not (Test-Path -LiteralPath $stateDir -PathType Container)) {
+            New-Item -ItemType Directory -Path $stateDir -Force -ErrorAction Stop | Out-Null
+        }
+        $state = $null
+        if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+            try { $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 } catch { $state = $null }
+        }
+        $records = [ordered]@{}
+        $sourceSessions = [ordered]@{}
+        if ($null -ne $state) {
+            if ($state.PSObject.Properties['records'] -and $null -ne $state.records) {
+                foreach ($prop in $state.records.PSObject.Properties) { $records[$prop.Name] = $prop.Value }
+            }
+            if ($state.PSObject.Properties['source_sessions'] -and $null -ne $state.source_sessions) {
+                foreach ($prop in $state.source_sessions.PSObject.Properties) { $sourceSessions[$prop.Name] = $prop.Value }
+            }
+        }
+        # A SORTABLE UTC DIGIT STAMP, not ISO-8601, and not by preference. ConvertFrom-Json parses an
+        # ISO string into a LOCAL [datetime], so a round-trip through this file rewrote '...+00:00'
+        # as '...+03:00' - and the ordering rule then compared 13:07+03:00 against 10:07+00:00 and
+        # read a later source write as an earlier one, turning an independent record into an
+        # implementing one. Digits are never date-converted, and lexicographic order is
+        # chronological order. Found by reading the file the writer produced, not the writer.
+        $observedAt = [DateTimeOffset]::UtcNow.ToString('yyyyMMddHHmmssfffffff')
+        $safeHost = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'unknown' } else { ([string]$HostKind).ToLowerInvariant() }
+        $owner = '{0}|{1}' -f $safeHost, $SessionId
+
+        if ($wroteSource) {
+            $existing = if ($sourceSessions.Contains($owner)) { $sourceSessions[$owner] } else { $null }
+            $first = if ($null -ne $existing -and $existing.PSObject.Properties['first_observed_at']) { [string]$existing.first_observed_at } else { $observedAt }
+            $sourceSessions[$owner] = [ordered]@{ first_observed_at = $first; last_observed_at = $observedAt }
+        }
+        # NO DEDUP HERE ON PURPOSE. These are PATHS, and Sort-Object -Unique folds both case and
+        # culture - so on a case-sensitive volume two genuinely different records would collapse
+        # into one. The permanent path-identity class guard caught the first spelling of this line.
+        # A repeat is harmless: the body is idempotent per owner, so the same path twice in one
+        # turn just refreshes last_observed_at.
+        foreach ($reviewPath in $reviewPaths) {
+            $writers = [System.Collections.Generic.List[object]]::new()
+            if ($records.Contains($reviewPath) -and $null -ne $records[$reviewPath] -and
+                $records[$reviewPath].PSObject.Properties['writers']) {
+                foreach ($w in @($records[$reviewPath].writers)) { if ($null -ne $w) { [void]$writers.Add($w) } }
+            }
+            $already = @($writers | Where-Object { [string]$_.owner -ceq $owner })
+            if ($already.Count -gt 0) {
+                foreach ($w in $already) { $w.last_observed_at = $observedAt }
+            }
+            else {
+                [void]$writers.Add([ordered]@{ owner = $owner; host = $safeHost; session_id = [string]$SessionId; first_observed_at = $observedAt; last_observed_at = $observedAt })
+            }
+            $records[$reviewPath] = [ordered]@{ writers = @($writers) }
+        }
+
+        $payload = [ordered]@{ schema_version = '1.0'; records = $records; source_sessions = $sourceSessions } |
+            ConvertTo-Json -Depth 12
+        [IO.File]::WriteAllText($statePath, ($payload + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+    }
+    catch { return }
+}
+
+function Get-SpecrewReviewAuthorship {
+    # THE RULE, stated here rather than left to a reader's inference, because this is the field a
+    # future reader will lean on:
+    #
+    #   implementing-session  - the same (host, session) that wrote this review record was ALSO
+    #                           observed writing source in this project, at or before the write.
+    #                           PARTIAL authorship counts: judging one's own output is the concern,
+    #                           and having written some of it is still having written it.
+    #   independent-session   - a writer was observed, and no writer of this record was ever
+    #                           observed writing source.
+    #   unattributed          - no observation exists. An older record, another host, or a hook that
+    #                           never fired. NOT the same as clean, and reported as its own state.
+    #
+    # A record written after a restart, by a NEW session with the same operator at the keyboard,
+    # reads as `independent-session`. That is deliberate and is what the name means: session identity
+    # is observable and operator identity is not, so claiming to measure the second would be the
+    # assertion this whole rule exists to remove.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$ReviewPath
+    )
+    $unattributed = [pscustomobject]@{ state = 'unattributed'; writers = @(); implementing_writers = @() }
+    $normalized = Get-SpecrewReviewRecordPathMatch -Path $ReviewPath
+    if ([string]::IsNullOrWhiteSpace($normalized)) { return $unattributed }
+    $statePath = Get-SpecrewReviewAuthorshipPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) { return $unattributed }
+    $state = $null
+    try { $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 } catch { return $unattributed }
+    if ($null -eq $state -or -not $state.PSObject.Properties['records'] -or $null -eq $state.records) { return $unattributed }
+    $record = $state.records.PSObject.Properties | Where-Object { $_.Name -ceq $normalized } | Select-Object -First 1
+    if ($null -eq $record -or $null -eq $record.Value -or -not $record.Value.PSObject.Properties['writers']) { return $unattributed }
+    $writers = @(@($record.Value.writers) | Where-Object { $null -ne $_ })
+    if ($writers.Count -eq 0) { return $unattributed }
+
+    $sourceOwners = @()
+    if ($state.PSObject.Properties['source_sessions'] -and $null -ne $state.source_sessions) {
+        $sourceOwners = @($state.source_sessions.PSObject.Properties | ForEach-Object {
+                [pscustomobject]@{ owner = [string]$_.Name; first = [string]$_.Value.first_observed_at }
+            })
+    }
+    $implementing = @($writers | Where-Object {
+            $writer = $_
+            @($sourceOwners | Where-Object {
+                    $_.owner -ceq [string]$writer.owner -and
+                    # "at or before the write" - source seen for the first time only AFTER this record
+                    # was written cannot have been what the record judged.
+                    (([string]$_.first) -le ([string]$writer.last_observed_at))
+                }).Count -gt 0
+        })
+    $verdict = if ($implementing.Count -gt 0) { 'implementing-session' } else { 'independent-session' }
+    return [pscustomobject]@{ state = $verdict; writers = @($writers); implementing_writers = @($implementing) }
+}
+
+# ---------------------------------------------------------------------------------------------------
+# W34-A: THE INDEPENDENCE CLAIM IS DERIVED FROM THE STORE. THE JUDGEMENT AROUND IT IS AUTHORED.
+#
+# W27 established the principle - remove the decision rather than authenticate it - and the sharper
+# statement of it is: remove the decision the machinery already makes, and do not delete judgement it
+# cannot make. Both halves matter here.
+#
+# The KeyContextAI falsity was one sentence: "the independent review ran and passed against this exact
+# tree". That is entirely a function of the authority store, so nobody should be writing it by hand,
+# and this derives it instead.
+#
+# The per-task verdicts are NOT derivable and are deliberately left authored. A campaign result carries
+# verdict, completion, findings, summary and examined_paths - nothing that reconstructs "T007 | FR-012,
+# FR-013 | pass | named verification errors observed live on 2026-08-17: the runner named the failing
+# command and the store named the exact contract violation". Generating that table from a run that
+# never saw the tasks would trade a false independence claim for a false evidence table, which is the
+# worse trade: it would manufacture exactly the confident-looking record this whole class is about.
+#
+# INTEGRITY COMES FROM RECOMPUTATION, not from trusting the writer. Anything may emit the block; the
+# validator derives it again from the store and refuses a mismatch, so a hand-edited claim fails.
+# ---------------------------------------------------------------------------------------------------
+
+$script:SpecrewDerivedIndependenceOpen = '<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->'
+$script:SpecrewDerivedIndependenceClose = '<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->'
+
+function Test-SpecrewDerivedCoverageSourcePath {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    return (Test-SpecrewReviewAuthorshipSourcePath -Path $Path)
+}
+
+function Get-SpecrewQualifyingIndependentRun {
+    # A run qualifies as evidence of an independent review of code when the store says it completed,
+    # against the current tree, with a valid candidate and a reviewed outcome - and, when it declared
+    # its coverage at all (W33), that coverage included source. A run that declared nothing is left
+    # eligible on purpose: every reviewer deployed before W33 declares nothing, and refusing them all
+    # would wedge the gate shut on the past.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return $null }
+    $qualifying = [System.Collections.Generic.List[object]]::new()
+    foreach ($campaign in @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue)) {
+        $runsRoot = Join-Path $campaign.FullName 'runs'
+        if (-not (Test-Path -LiteralPath $runsRoot -PathType Container)) { continue }
+        foreach ($run in @(Get-ChildItem -LiteralPath $runsRoot -Directory -ErrorAction SilentlyContinue)) {
+            $resultPath = Join-Path $run.FullName 'result.json'
+            if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) { continue }
+            $result = $null
+            try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 } catch { continue }
+            if ($null -eq $result) { continue }
+            if ([string]$result.completion -cne 'complete') { continue }
+            if ([string]$result.verdict -notin @('pass', 'findings')) { continue }
+            if ([string]$result.currentness -cne 'current') { continue }
+            if ([string]$result.validation -cne 'valid') { continue }
+            $sourceCount = $null
+            if ($result.PSObject.Properties['examined_paths']) {
+                $declared = @(@($result.examined_paths) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                if (@($declared).Count -gt 0) {
+                    $sourceCount = @($declared | Where-Object { Test-SpecrewDerivedCoverageSourcePath -Path $_ }).Count
+                    if ($sourceCount -eq 0) { continue }
+                }
+            }
+            [void]$qualifying.Add([pscustomobject]@{ result = $result; source_count = $sourceCount })
+        }
+    }
+    if ($qualifying.Count -eq 0) { return $null }
+    # run_ids are fire-time-sortable, so "the latest qualifying run" is deterministic and monotone.
+    return (@($qualifying) | Sort-Object { [string]$_.result.run_id } | Select-Object -Last 1)
+}
+
+function Get-SpecrewDerivedIndependenceBlock {
+    # The canonical block, byte-stable for a given store state so recomputation can compare it.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $lines = [System.Collections.Generic.List[string]]::new()
+    [void]$lines.Add($script:SpecrewDerivedIndependenceOpen)
+    [void]$lines.Add('<!-- Derived from the review authority store. Do not hand-edit: the validator recomputes it. -->')
+    $qualifying = Get-SpecrewQualifyingIndependentRun -ProjectRoot $ProjectRoot
+    if ($null -eq $qualifying) {
+        [void]$lines.Add('- No run in this project''s review store qualifies as an independent review of the current tree.')
+        [void]$lines.Add('- Any independence this record claims rests on something other than a campaign run, and must say what.')
+    }
+    else {
+        $r = $qualifying.result
+        $findingCount = @($r.findings).Count
+        [void]$lines.Add(('- Run: {0} (harness {1})' -f [string]$r.run_id, [string]$r.harness_id))
+        [void]$lines.Add(('- Outcome: {0}, {1}, {2}, {3} - {4} finding(s)' -f [string]$r.verdict, [string]$r.completion, [string]$r.currentness, [string]$r.validation, $findingCount))
+        [void]$lines.Add(('- Reviewed tree: {0}' -f [string]$r.target_digest))
+        if ($null -eq $qualifying.source_count) {
+            # LABEL, DO NOT LAUNDER. Derived from the KeyContextAI store this branch names
+            # run-20260820-083412478-d85dda20 - the 67-second run that read governance artifacts and
+            # nothing else - because a run predating W33 declares no coverage and stays eligible so the
+            # gate does not wedge shut on the past. Rendering that as a neutral field would lend derived
+            # authority to a run nobody can show read the code, which is the defect this block exists to
+            # stop. So the block says what is and is not established, in the record, where a reader sees
+            # it beside the verdict.
+            [void]$lines.Add('- Coverage: UNKNOWN. This run predates the declared-coverage contract, so nothing')
+            [void]$lines.Add('  establishes which files it read. It is evidence that a review RAN, not evidence')
+            [void]$lines.Add('  that the code was reviewed. Re-run to obtain a run that declares its coverage.')
+        }
+        else {
+            [void]$lines.Add(('- Coverage: {0} source path(s) of {1} declared and checked against the frozen target.' -f [int]$qualifying.source_count, @($r.examined_paths).Count))
+        }
+    }
+    [void]$lines.Add($script:SpecrewDerivedIndependenceClose)
+    return ($lines -join "`n")
+}
+
+function Get-SpecrewEmbeddedIndependenceBlock {
+    # Returns the block as it appears in the record, normalized to LF so a CRLF checkout does not read
+    # as a tampered claim.
+    # [Parameter(Mandatory)] on a string array rejects an EMPTY ELEMENT, not just an empty array, so
+    # AllowEmptyString is what lets a markdown record - which is mostly blank lines - reach this at
+    # all. Without it the check threw on every real review.md instead of reading it.
+    param([Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$ReviewLines)
+    $text = (@($ReviewLines) -join "`n").Replace("`r`n", "`n").Replace("`r", "`n")
+    $start = $text.IndexOf($script:SpecrewDerivedIndependenceOpen, [StringComparison]::Ordinal)
+    if ($start -lt 0) { return $null }
+    $end = $text.IndexOf($script:SpecrewDerivedIndependenceClose, $start, [StringComparison]::Ordinal)
+    if ($end -lt 0) { return $null }
+    return $text.Substring($start, ($end - $start) + $script:SpecrewDerivedIndependenceClose.Length)
+}
 # specrew-self-provenance-ok: DRIFT-198-I011-003,DRIFT-198-I011-005,DRIFT-198-I011-006,DRIFT-198-I011-012,F-028,F-040,F-047,F-174; implementation history is recorded for maintainers and is never emitted as consumer instruction

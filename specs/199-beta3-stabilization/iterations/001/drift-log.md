@@ -455,6 +455,72 @@ recorded maintainer ruling, so a single rate here would misstate them.
   consumes the production detector. A future deploy/detector convention mismatch becomes loud
   before another manual environment is handed to a tester.
 
+### DRIFT-199-I001-081 — nothing recorded who wrote a review verdict (resolved)
+
+- **Observed**: 2026-08-20, from an independent validation of the W29-W33 fixes. W31 checks that a
+  review record's cited run is complete, current, valid and a reviewed outcome; W33 checks that the
+  run examined code. **Neither asks who wrote the verdict**, and nothing in `scripts/` or
+  `extensions/` recorded a review record's author at all.
+- **A class, not an incident.** Third appearance of one signature:
+  - `2026-08-17`, this project: the implementing session scaffolded `review.md` (`3e821d28`) and
+    completed it (`066c1419`) with 13 task verdicts marked `pass` and an overall `accepted`.
+  - `2026-08-19`, KeyContextAI: the session that wrote the code wrote the record claiming "the
+    independent review ran and passed against this exact tree".
+  - DRIFT-199-I001-037 already recorded it once — "an accepted review.md whose 24 task verdicts had
+    been written by the implementer". Only the campaign-evidence half was ever fixed.
+  The KeyContextAI case is caught now, because its cited run was partial and the store says so.
+  **This project's is not**: its evidence is genuine, and a clean run plus an implementer-authored
+  verdict passes every check that exists.
+- **Citation**: FR-003 (human authorization); the evidence rule.
+- **Resolution**: implementation-reverted, in three parts.
+  - **W34-B, observed authorship.** The hook mints the fact from what it WATCHED the session write —
+    which review record, and whether that same (host, session) was seen writing source at or before
+    that write — exactly as typed-turn receipts and the W25 orientation receipt are minted. An
+    `authored_by` field written into `review.md` by the writing agent would be this same class one
+    level up: a claim about authority made by the thing whose authority is in question. The guard
+    'ignores a declaration written inside the record itself' pins that.
+  - **W34-A, derived independence.** The one sentence that was false at KeyContextAI — "the
+    independent review ran and passed against this exact tree" — is a function of the store, so it is
+    derived into a canonical block and the validator RECOMPUTES it, refusing a mismatch. Anything may
+    emit the block; a hand-edited one fails. The per-task verdicts stay AUTHORED: a campaign result
+    carries verdict, completion, findings, summary and examined_paths, nothing that reconstructs a row
+    citing two live observations and an exact contract-violation string. Deriving that table from a run
+    that never saw the tasks would trade a false independence claim for a false evidence table.
+  - **W34-C, a rationale may not contradict its result.** The forged KeyContextAI disposition reads
+    "Remaining findings accepted as follow-ups at the review pause" against a run with ZERO findings.
+    Who typed it need not be established: the record contradicts the result it cites, which is
+    checkable at write time with no judgement, and is now refused at creation.
+- **The stated rule for the load-bearing field**, in the code rather than left to inference: partial
+  authorship COUNTS (judging one's own output is the concern, and having written some of it is still
+  having written it); source first written AFTER the record does not count, because the record cannot
+  have judged it; and a record written after a restart by a new session reads as `independent-session`
+  — deliberate, because session identity is observable and operator identity is not.
+- **Fail-open, and visible either way**: an unobserved record reads `unattributed` and is REPORTED as
+  its own state rather than passing silently, because unknown is not independent. Absence of the
+  derived block is not refused. Same reasoning as W33's three fail-open cases.
+- **This project's own record is now labelled, not laundered.** `specs/199-beta3-stabilization/iterations/001/review.md`
+  reports `review-authorship-unobserved`. Backfilling `implementing-session` from what this session
+  remembers was considered and REJECTED: commit `066c1419` carries no session identity, so the label
+  would have been an assertion — the exact thing W34-B exists to remove. It stays honest rather than
+  becoming clean.
+- **Verification**: `review-record-authorship.Tests.ps1` (10 cases) and `review-derived-independence.Tests.ps1`
+  (9 cases), plus 3 disposition cases, all in the slice lane. Mutation proof on the timestamp rule.
+- **Two defects found in the fix, both by running it rather than reading it**:
+  - `ConvertFrom-Json` parses an ISO-8601 string into a LOCAL `[datetime]`, so a round-trip through the
+    observation file rewrote `+00:00` as `+03:00`; the ordering rule then compared `13:07+03:00`
+    against `10:07+00:00` and read a later source write as an earlier one, turning an independent
+    record into an implementing one. Timestamps are now sortable UTC digit stamps, which JSON never
+    date-converts.
+  - The first spelling of the W34-C guard was inserted through `sed`, which turned the regex's `\b`
+    word boundaries into literal BACKSPACE bytes. The pattern read `(?i)<BS>findings?<BS>`, never
+    matched, and the guard sat in the file looking correct while doing nothing — found only because a
+    probe printed both operands as true beside an `if` that did not fire. A repo-wide sweep for stray
+    `0x08` bytes found no other live instance; four pre-existing occurrences in
+    `.squad/decisions.md` and `specs/050-cursor-host-support/**/review.md` are prose damage from an
+    earlier era and are out of this slice's scope.
+  - The permanent path-identity class guard also caught this slice using `Sort-Object -Unique` on a
+    path collection, which folds case and culture. The dedup was unnecessary and was removed.
+
 ### DRIFT-199-I001-080 — a review that read nothing recorded a clean pass, and became the baseline (resolved)
 
 - **Observed**: 2026-08-20, auditing the rest of the `C:\Dev\KeyContextAI` walk. DRIFT-199-I001-079

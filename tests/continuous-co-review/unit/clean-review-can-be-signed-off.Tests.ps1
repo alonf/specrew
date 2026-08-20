@@ -71,11 +71,12 @@ BeforeAll {
     }
 
     function Invoke-Disposition {
-        param([Parameter(Mandatory)]$Fixture, [string]$Decision = 'accept-current')
+        param([Parameter(Mandatory)]$Fixture, [string]$Decision = 'accept-current',
+            [string]$Rationale = 'closing a clean review')
         try {
             $null = Add-ReviewCampaignHumanDisposition -StoreRoot $Fixture.StoreRoot -CampaignId $Fixture.CampaignId `
                 -RunId $Fixture.RunId -Decision $Decision -AuthorizedBy 'human' -AuthorizationRef 'ref-w24' `
-                -Rationale 'closing a clean review'
+                -Rationale $Rationale
             return [pscustomobject]@{ threw = $false; reason = '' }
         }
         catch { return [pscustomobject]@{ threw = $true; reason = [string]$_.Exception.Message } }
@@ -123,5 +124,35 @@ Describe 'W24/W27 what a clean review does and does not require' {
         $outcome = Invoke-Disposition -Fixture $fixture
         $outcome.threw | Should -BeTrue
         $outcome.reason | Should -Match 'result-missing'
+    }
+}
+
+Describe 'W34-C a rationale may not contradict the result it disposes of' {
+    # The forged KeyContextAI disposition reads "Remaining findings accepted as follow-ups at the review
+    # pause" against a run with ZERO findings. Nobody needs to establish who typed it: the record
+    # contradicts the result it cites, and that is checkable at write time with no judgement at all.
+    # W27 closed the surface that produced it; this closes the SHAPE, so the next one is refused when it
+    # is created rather than found later in an immutable store that has no supersede mechanism.
+    It 'refuses a rationale citing findings against a zero-finding run' {
+        $outcome = Invoke-Disposition -Fixture (New-DispositionFixture -Verdict 'findings') `
+            -Rationale 'Remaining findings accepted as follow-ups at the review pause.'
+        # The fixture's `findings` verdict carries exactly one finding, so this must be ALLOWED - the
+        # guard is about contradiction, not about the word.
+        $outcome.threw | Should -BeFalse
+    }
+
+    It 'refuses the exact forged rationale when the run really has no findings' {
+        # `pass` fixtures carry zero findings. The verdict clause refuses this too, so the assertion is
+        # on WHICH refusal fires: the contradiction must be named, not masked by the earlier rule.
+        $fixture = New-DispositionFixture -Verdict 'pass'
+        $outcome = Invoke-Disposition -Fixture $fixture -Decision 'require-correction' `
+            -Rationale 'Remaining findings accepted as follow-ups at the review pause.'
+        $outcome.threw | Should -BeTrue
+        $outcome.reason | Should -Match 'rationale-contradicts-result'
+    }
+
+    It 'allows an honest rationale on a clean run' {
+        (Invoke-Disposition -Fixture (New-DispositionFixture -Verdict 'pass') -Decision 'require-correction' `
+                -Rationale 'Nothing outstanding; closing here.').threw | Should -BeFalse
     }
 }

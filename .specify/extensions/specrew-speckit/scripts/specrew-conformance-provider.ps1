@@ -906,6 +906,15 @@ try {
         }
         catch { $materialSignal = $null; $materialDecision = $null }
     }
+    # W34-B: mint the authorship observation from what the hook WATCHED this session write, before
+    # any block-kind decision narrows the view. It runs wherever a turn delta exists rather than only
+    # on a material stop, because a review record is often written in a turn that raises no block at
+    # all - which is exactly the turn whose authorship a later reader needs.
+    if ($null -ne $materialSignal -and (Get-Command -Name 'Write-SpecrewReviewAuthorshipObservation' -ErrorAction SilentlyContinue)) {
+        $authorshipPaths = @()
+        try { $authorshipPaths = @($materialSignal.changed_paths | ForEach-Object { [string]$_ }) } catch { $authorshipPaths = @() }
+        Write-SpecrewReviewAuthorshipObservation -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg -ChangedPaths $authorshipPaths
+    }
     if ($null -eq $materialSignal) {
         $materialSignal = [pscustomobject]@{ material = $false; reason = 'turn-delta-unavailable'; key = ''; user_file_count = 0; current_dirty_user_file_count = 0; new_commit_count = 0; attribution_mode = 'degraded-worktree' }
     }

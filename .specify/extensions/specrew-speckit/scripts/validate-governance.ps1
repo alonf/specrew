@@ -855,6 +855,66 @@ function Get-ActiveGapLedgerLines {
     return $activeLines.ToArray()
 }
 
+function Test-ReviewDerivedIndependenceBlock {
+    # W34-A. The independence claim is a function of the store, so it is recomputed rather than read.
+    # Anything may emit the block; a hand-edited one fails here, which is what makes emitting it safe.
+    #
+    # FAIL-OPEN ON ABSENCE: a record without the block is not refused - the same reasoning that gives
+    # W33 and W34-B their fail-open cases, since every record written before this existed has none.
+    param(
+        # A markdown record is mostly blank lines, and a bare [string[]] refuses an array that
+        # contains one - so without this the check throws on every real review.md rather than
+        # reading it. Caught by a fixture whose body had a blank line in it.
+        [AllowEmptyString()][string[]]$ReviewLines,
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ($null -eq $ReviewLines -or @($ReviewLines).Count -eq 0) { return }
+    if (-not (Get-Command -Name 'Get-SpecrewEmbeddedIndependenceBlock' -ErrorAction SilentlyContinue)) { return }
+    $embedded = Get-SpecrewEmbeddedIndependenceBlock -ReviewLines $ReviewLines
+    if ([string]::IsNullOrWhiteSpace($embedded)) { return }
+    $derived = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $ProjectRoot
+    if ([string]$embedded -cne [string]$derived) {
+        $Errors.Add(("review.md carries a derived independent-review block that does not match what this project's review store derives. The block states the machine-checkable part of the independence claim and is recomputed at validation, so it cannot be authored or edited by hand. Replace it with the derived block, or remove it and state plainly what the record's independence rests on. Derived:{0}{1}" -f [Environment]::NewLine, $derived))
+    }
+}
+
+function Test-ReviewRecordAuthorship {
+    # W34-B. Report the observed authorship of the review record. It LABELS, it does not launder: a
+    # record written by the implementing session becomes honest about that, not clean.
+    #
+    # A WARNING, not an error, and deliberately so. The observation says who wrote the verdict; it
+    # does not say the verdict is wrong, and refusing every such record would fail closed on the
+    # unreviewable past - the same reasoning that gives W33 its three fail-open cases. Absence reads
+    # as UNATTRIBUTED and is reported as its own state, because an unobserved record is not a clean
+    # one and silence here would make it look like one.
+    param(
+        [string]$ProjectRoot,
+        [string]$IterationDirectory,
+        [string]$OverallVerdict,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or [string]::IsNullOrWhiteSpace($IterationDirectory)) { return }
+    if (-not (Get-Command -Name 'Get-SpecrewReviewAuthorship' -ErrorAction SilentlyContinue)) { return }
+    $reviewPath = Join-Path $IterationDirectory 'review.md'
+    if (-not (Test-Path -LiteralPath $reviewPath -PathType Leaf)) { return }
+    $relative = try { ([IO.Path]::GetRelativePath($ProjectRoot, (Resolve-Path -LiteralPath $reviewPath).Path)).Replace([char]92, [char]47) } catch { $null }
+    if ([string]::IsNullOrWhiteSpace($relative)) { return }
+    $authorship = Get-SpecrewReviewAuthorship -ProjectRoot $ProjectRoot -ReviewPath $relative
+    switch ([string]$authorship.state) {
+        'implementing-session' {
+            $who = (@($authorship.implementing_writers) | ForEach-Object { [string]$_.owner } | Select-Object -First 2) -join ', '
+            Write-TrustHardeningWarning -Category 'review-authored-by-implementer' -Detail (
+                "review.md at {0} was written by the session that also wrote source in this project ({1}). The verdicts in it are the implementer's own judgement of the implementer's own work. That is recorded, not refused - cite an independent run for the claims that rest on one." -f $relative, $who)
+        }
+        'unattributed' {
+            Write-TrustHardeningWarning -Category 'review-authorship-unobserved' -Detail (
+                "review.md at {0} carries no observed authorship. Nothing watched it being written - an older record, another host, or a hook that never fired - so who wrote these verdicts is unknown. Unknown is not independent." -f $relative)
+        }
+        default { }
+    }
+}
+
 function Test-ReviewCitedRunEvidence {
     # W31: A REVIEW RECORD MAY NOT CLAIM MORE THAN ITS CITED EVIDENCE SUPPORTS.
     #
@@ -3355,6 +3415,8 @@ function Test-ReviewArtifact {
 
     Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
     Test-ReviewCitedRunEvidence -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
+    Test-ReviewRecordAuthorship -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -Errors $Errors
+    Test-ReviewDerivedIndependenceBlock -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
 
     # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.
     Test-ReviewEvidenceTreeIntegrity -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors

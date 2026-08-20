@@ -1782,6 +1782,24 @@ function Add-ReviewCampaignHumanDisposition {
     if ([string]::IsNullOrWhiteSpace($AuthorizedBy) -or [string]::IsNullOrWhiteSpace($AuthorizationRef) -or [string]::IsNullOrWhiteSpace($Rationale)) {
         throw 'review-human-disposition-requires-explicit-human-evidence'
     }
+    # W34-C: A RATIONALE MUST NOT CONTRADICT THE RESULT IT DISPOSES OF.
+    #
+    # The forged KeyContextAI disposition reads "Remaining findings accepted as follow-ups at the
+    # review pause" against a run with ZERO findings. Nobody needs to establish who typed that to
+    # know it is false: the record contradicts the result it cites, which is checkable at write time
+    # and needs no judgement. W27 closed the surface that produced it; this closes the shape, so a
+    # disposition that talks about findings a run never had is refused at the moment of creation
+    # rather than found a day later in an immutable store with no supersede mechanism.
+    # Split into named steps rather than one compound condition: the first spelling of this
+    # guard was written through sed, which turned the regex's word-boundary escapes into literal
+    # BACKSPACE bytes - so the pattern read (?i)[BS]findings?[BS], never matched, and the guard
+    # sat in the file looking correct while doing nothing. A probe printing both operands as
+    # true beside an `if` that did not fire is what exposed it.
+    $disposedFindingCount = @($result.findings).Count
+    $rationaleCitesFindings = [regex]::IsMatch([string]$Rationale, "findings?", [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if ($disposedFindingCount -eq 0 -and $rationaleCitesFindings) {
+        throw 'review-human-disposition-rationale-contradicts-result:cites-findings-against-a-zero-finding-run'
+    }
     $token = Get-ReviewCampaignStableToken -Value "$CampaignId/$RunId/$($result.target_digest)/$Decision/$AuthorizationRef" -Length 20
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'; fact_type = 'human-disposition'; disposition_id = "disposition-$token"
