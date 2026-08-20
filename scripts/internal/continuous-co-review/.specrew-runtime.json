@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "98ae6f4c09f4afab81a9eab7147fa491c7d2c8b74f2f8dc679a179e70372f773",
+  "runtime_bundle_sha256": "0f852419ccba21a217930e77854adaa46a20ccbee4c7ecfd70270a5a41529080",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -61,7 +61,7 @@
     },
     {
       "path": "review-authority-core.ps1",
-      "sha256": "c6d64a93d7496275705f25971dcfb4977948da9a00ca4fceea23e20d76d819eb"
+      "sha256": "93ec83d94fb052ef4ae823fe7abcf46dc9396c732154c29753f3f56be5681473"
     },
     {
       "path": "review-authority-cutover.ps1",
@@ -81,7 +81,7 @@
     },
     {
       "path": "review-campaign-orchestrator.ps1",
-      "sha256": "a4cc6c01439584c52f4f3977a07f01a94d2f4ab3348533f68b7a48e216b2cd03"
+      "sha256": "bdfa19c00dc7a44e90154f4b305d4d266c0de7bfb0869b496565d2f5519660c3"
     },
     {
       "path": "review-claude-harness-port.ps1",
@@ -133,7 +133,7 @@
     },
     {
       "path": "review-result-ingestor.ps1",
-      "sha256": "8c9606533d9a66a674497e5f9e01bdfb563e94fa6ea2cc0a9dceaa3aba292e25"
+      "sha256": "17ca3f1f6878eb1b9ccdb1c0e86dc9ab0c18e1f53180225347ff92f95f5de928"
     },
     {
       "path": "review-retro-projection.ps1",
@@ -177,7 +177,7 @@
     },
     {
       "path": "reviewer-candidate-prompt.md",
-      "sha256": "0c5b51679b4b0ae631fdeaf9bfb838f30863c565dbbb7db0ee74805785673694"
+      "sha256": "cf5b31b027f303b16a3c3926f37f059207ed04b5859f78b73708d589af772b61"
     },
     {
       "path": "reviewer-contracts.ps1",
