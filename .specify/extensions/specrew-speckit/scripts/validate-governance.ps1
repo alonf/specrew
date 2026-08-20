@@ -978,11 +978,52 @@ function Test-ReviewCitedRunEvidence {
         [System.Collections.Generic.List[string]]$Errors
     )
 
+    # W35: EVIDENCE IS DECLARED, NEVER INFERRED FROM PROSE.
+    #
+    # This used to scan the WHOLE record for run ids and require every one of them to be complete,
+    # current, valid and passing. It had no notion of citation context, so it could not tell a run the
+    # record RELIES ON from a run the record NAMES IN ORDER TO RETRACT A CLAIM ABOUT IT.
+    #
+    # Measured 2026-08-20 (KeyContextAI, review-signoff boundary): a record that rests on a clean 250s
+    # run - `pass`/`complete`/`valid`, 31 source paths examined - and preserves a retraction naming the
+    # earlier partial run it wrongly relied on, was REFUSED FOR CONTAINING THAT HISTORY. The only way to
+    # pass was to delete the retraction, so the check's single available remedy was destroying the
+    # honesty it exists to enforce. Second time a text-matching detector has punished compliant output
+    # (W16 was bullet glyphs).
+    #
+    # The fix removes the inference rather than sharpening it, per W27's principle. Prose run ids are
+    # NARRATIVE and carry no weight by construction. Evidence comes from two declared sources, and the
+    # UNION of them is checked - so naming a run explicitly can only add scrutiny, never remove it:
+    #   1. an explicit evidence marker, exact and authored for this purpose;
+    #   2. the derived independent-review block, which is computed from the store and recomputed at
+    #      validation, so it cannot be authored.
+    # A record declaring neither has nothing to check here; W34-A's ramp is what governs the absence of
+    # a block, warning for records that predate it and refusing for records written after.
     if ($null -eq $ReviewLines -or @($ReviewLines).Count -eq 0) { return }
-    $reviewText = $ReviewLines -join "`n"
-    $citedRuns = @([regex]::Matches($reviewText, 'run-\d{8}-\d{9}-[0-9a-f]{8}') |
-            ForEach-Object { $_.Value } | Sort-Object -Unique) # specrew-dedup-not-a-path: run ids,
-    # matched by a fixed lowercase-hex pattern, so no case or Unicode spelling can collide two of them.
+    $reviewText = ($ReviewLines -join "`n").Replace("`r`n", "`n")
+    $declared = [System.Collections.Generic.List[string]]::new()
+
+    # 1. The explicit marker. An HTML comment so it is invisible in rendered markdown, and a fixed
+    #    shape so reading it needs no judgement:
+    #        <!-- SPECREW-REVIEW-EVIDENCE: run-20260820-150735904-458c5888 -->
+    foreach ($markerMatch in [regex]::Matches($reviewText, '(?i)<!--\s*SPECREW-REVIEW-EVIDENCE\s*:(?<ids>[^>]*?)-->')) {
+        foreach ($idMatch in [regex]::Matches([string]$markerMatch.Groups['ids'].Value, 'run-\d{8}-\d{9}-[0-9a-f]{8}')) {
+            if (-not $declared.Contains([string]$idMatch.Value)) { [void]$declared.Add([string]$idMatch.Value) }
+        }
+    }
+
+    # 2. The derived block's run - the authoritative one, and the only run id in the record that no
+    #    author chose.
+    if (Get-Command -Name 'Get-SpecrewEmbeddedIndependenceBlock' -ErrorAction SilentlyContinue) {
+        $blockText = Get-SpecrewEmbeddedIndependenceBlock -ReviewLines $ReviewLines
+        if (-not [string]::IsNullOrWhiteSpace($blockText)) {
+            foreach ($idMatch in [regex]::Matches([string]$blockText, 'run-\d{8}-\d{9}-[0-9a-f]{8}')) {
+                if (-not $declared.Contains([string]$idMatch.Value)) { [void]$declared.Add([string]$idMatch.Value) }
+            }
+        }
+    }
+
+    $citedRuns = @($declared)
     if (@($citedRuns).Count -eq 0) { return }
 
     $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
@@ -1024,7 +1065,10 @@ function Test-ReviewCitedRunEvidence {
         }
         if (@($weak).Count -eq 0) { continue }
 
-        $Errors.Add(("review.md cites review run {0} as evidence, but that run cannot support a review claim: {1}. Cite a run that completed against the current tree, or state in review.md what the cited run actually established." -f $runId, ($weak -join ', '))) | Out-Null
+        # The old message ended "or state in review.md what the cited run actually established" - a
+        # remedy no code path implemented, so a reader who followed it got the same refusal again. Every
+        # remedy named here is one this function actually honours.
+        $Errors.Add(("review.md declares review run {0} as the evidence it rests on, but that run cannot support a review claim: {1}. Either obtain a run that completed against the current tree, or - if this run is named as history rather than relied upon - remove it from the SPECREW-REVIEW-EVIDENCE marker. Run ids appearing only in prose are treated as narrative and are not checked, so a retraction can name a failed run freely." -f $runId, ($weak -join ', '))) | Out-Null
     }
 }
 function Test-NoGapClosurePolicy {

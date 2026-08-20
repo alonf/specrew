@@ -535,6 +535,47 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-083 — a review record was refused for documenting its own retraction (resolved)
+
+- **Observed**: 2026-08-20, at `C:\Dev\KeyContextAI`'s live review-signoff boundary. `Test-ReviewCitedRunEvidence`
+  scanned the WHOLE record for run ids and required every one to be complete, current, valid and
+  passing. It had no notion of citation context, so it could not tell a run the record RELIES ON from a
+  run the record NAMES IN ORDER TO RETRACT A CLAIM ABOUT IT.
+- **The record it refused is exemplary.** It rests on `run-20260820-150735904-458c5888` — 250s,
+  `pass`/`complete`/`current`/`valid`, zero findings, 36 declared paths of which 31 are source — and it
+  preserves a section headed *"now CLOSED by a valid campaign run, after a false claim I have
+  retracted"*, naming the earlier partial run it had wrongly relied on. Reproduced read-only: 1 error,
+  against `run-20260819-210747148-9bd5980b`, which the record names as history and does not lean on.
+  **The only way to make it pass was to delete the retraction** — the check's sole available remedy was
+  destroying the honesty it exists to enforce.
+- **Second time a text-matching detector has punished compliant output.** W16 was bullet glyphs
+  (`•` versus `-`). The class is a detector inferring intent from prose.
+- **Citation**: the evidence rule; honest-state (a record must be able to state its own history).
+- **Resolution**: implementation-reverted, by REMOVING the inference rather than sharpening it (W27's
+  principle). Prose run ids are narrative and carry no weight by construction. Evidence now comes from
+  two declared sources, and the UNION is checked so naming a run can only ADD scrutiny:
+  1. an explicit marker, `<!-- SPECREW-REVIEW-EVIDENCE: run-... -->` — an HTML comment, invisible in
+     rendered markdown, fixed shape, authored for this purpose;
+  2. the derived independent-review block, which is computed from the store and recomputed at
+     validation, so it is the one run id in a record that no author chose.
+  A record declaring neither has nothing to check here; W34-A's ramp already governs a missing block.
+- **The message advertised a remedy that did not exist.** It ended *"or state in review.md what the
+  cited run actually established"*, and no code path implemented it, so a reader who followed the
+  advice got the same refusal again. Every remedy the message now names is one the function honours,
+  pinned by `It 'names only remedies that exist'`.
+- **Verification — both halves, RED first through the real path**, with the pre-fix function taken from
+  git at `58555b65` and asserted to be the pre-fix shape before its output was trusted (method rule 2):
+  - the KeyContextAI shape (a failed run named only in prose) — **REFUSED pre-fix**, accepted after;
+  - a record that genuinely leans on a partial run — refused pre-fix and **still refused after**, so
+    phrasing a weak citation as history cannot launder it;
+  - the live record itself: 1 error before, **0 after, with the retraction intact**, verified read-only
+    without writing anything into that project.
+  19 cases in `review-frame-and-evidence-honesty.Tests.ps1`, in the slice lane.
+- **A test that proved nothing, caught while writing it**: the derived-block path is guarded by
+  `Get-Command -ErrorAction SilentlyContinue`, and the suite had never loaded `shared-governance.ps1`,
+  so the guard silently skipped that path and the case passed without exercising it. Fixed by loading
+  the real module rather than stubbing it — the same shape as method rule 1, one layer out.
+
 ### METHOD NOTE — a guard can be present, readable and inert, and so can its proof
 
 Carried out of DRIFT-199-I001-080 and -081 as a standing rule. Five defects in one slice were of this

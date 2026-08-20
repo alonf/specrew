@@ -147,6 +147,10 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
         # The validator is an ENTRY script (running it validates a project), so extract JUST the check via an
         # AST parse - no full validation run, no subprocess. Same pattern as boundary-reader-conformance.
                 $script:W31ValidatorPath = Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
+        # W35 reads the derived block through Get-SpecrewEmbeddedIndependenceBlock, which the check
+        # guards with Get-Command. Load the real module rather than stubbing it: without this the
+        # guard silently skips the block path and the test passes while proving nothing.
+        . (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
         $w31Tokens = $null; $w31Errors = $null
         $w31Ast = [System.Management.Automation.Language.Parser]::ParseFile($script:W31ValidatorPath, [ref]$w31Tokens, [ref]$w31Errors)
         $w31Fn = $w31Ast.FindAll({ param($n) ($n -is [System.Management.Automation.Language.FunctionDefinitionAst]) -and $n.Name -eq 'Test-ReviewCitedRunEvidence' }, $true) | Select-Object -First 1
@@ -173,8 +177,10 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
                 if ($DeclareExamined) { $result['examined_paths'] = @($ExaminedPaths) }
                 [IO.File]::WriteAllText((Join-Path $runDir 'result.json'), ($result | ConvertTo-Json -Depth 6 -Compress), [Text.UTF8Encoding]::new($false))
             }
+            # W35: evidence is DECLARED. The default body carries the marker, because a run id in a
+            # sentence is narrative now and would assert nothing.
             $body = if ($PSBoundParameters.ContainsKey('ReviewBody')) { $ReviewBody }
-            else { "## Independent review`n`nThe independent review ($runId) found no review-blocking issues." }
+            else { "## Independent review`n`n<!-- SPECREW-REVIEW-EVIDENCE: $runId -->`n`nThe independent review found no review-blocking issues." }
             return [pscustomobject]@{ Root = $root; RunId = $runId; Lines = @($body -split "`n") }
         }
         function script:Invoke-CitedRunCheck {
@@ -241,4 +247,86 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
         # not make declaring coverage a condition of being cited.
         @(Invoke-CitedRunCheck -Project (New-CitedRunProject)).Count | Should -Be 0
     }
+
+    # Measured 2026-08-20 at KeyContextAI's review-signoff boundary. The record rests on a clean 250s
+    # run and PRESERVES a retraction naming the earlier partial run it wrongly relied on. The old check
+    # scanned the whole document, could not tell reliance from retraction, and refused the record for
+    # containing its own history - so its only available remedy was deleting the honesty it exists to
+    # enforce. Second time a text-matching detector punished compliant output; W16 was the first.
+
+    It 'accepts a record that leans on a clean run and names a partial one in a retraction' {
+        # The real shape: the clean run declared, the failed run present only as narrative.
+        $project = New-CitedRunProject -Verdict 'pass' -ReviewBody (@(
+                '## Reviewer independence',
+                '',
+                '<!-- SPECREW-REVIEW-EVIDENCE: run-20260819-210747148-9bd5980b -->',
+                '',
+                'A valid independent campaign review of the code now exists.',
+                '',
+                'The history below is kept because the retraction it records must stay visible.',
+                'An earlier revision claimed a valid independent review existed when none did:',
+                'run-20260820-999999999-deadbeef returned incomplete/partial with 14 findings.') -join "`n")
+        @(Invoke-CitedRunCheck -Project $project).Count | Should -Be 0
+    }
+
+    It 'STILL refuses a record that genuinely leans on a partial run' {
+        # The half that matters more. Phrasing a weak citation as history must not launder it: what is
+        # DECLARED is checked, whatever the surrounding prose says.
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete' -ReviewBody (@(
+                '## Reviewer independence',
+                '',
+                '<!-- SPECREW-REVIEW-EVIDENCE: run-20260819-210747148-9bd5980b -->',
+                '',
+                'Historical note only, nothing rests on this, purely narrative context.') -join "`n")
+        $found = @(Invoke-CitedRunCheck -Project $project)
+        $found.Count | Should -Be 1
+        $found[0] | Should -Match "completion 'partial'"
+    }
+
+    It 'treats a run id that appears only in prose as narrative' {
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete' -ReviewBody (@(
+                '## Reviewer independence',
+                '',
+                'An earlier revision cited run-20260819-210747148-9bd5980b, which was wrong.') -join "`n")
+        @(Invoke-CitedRunCheck -Project $project).Count | Should -Be 0
+    }
+
+    It 'checks the run the DERIVED block names, which no author chose' {
+        # The block is computed from the store and recomputed at validation, so it is the one run id in
+        # a record that cannot be authored. A record carrying it declares that run by construction.
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete' -ReviewBody (@(
+                '## Reviewer independence',
+                '',
+                '<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->',
+                '- Run: run-20260819-210747148-9bd5980b (harness copilot-cli-file-primary)',
+                '<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->') -join "`n")
+        $found = @(Invoke-CitedRunCheck -Project $project)
+        $found.Count | Should -Be 1
+        $found[0] | Should -Match 'run-20260819-210747148-9bd5980b'
+    }
+
+    It 'checks the UNION, so declaring a run can only add scrutiny' {
+        # Marker and block together. Naming something explicitly must never be a way to escape the
+        # authoritative run.
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete' -ReviewBody (@(
+                '<!-- SPECREW-REVIEW-EVIDENCE: run-20260820-111111111-aaaaaaaa -->',
+                '<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->',
+                '- Run: run-20260819-210747148-9bd5980b (harness copilot-cli-file-primary)',
+                '<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->') -join "`n")
+        # The invented id is absent from the store and stays fail-open; the real one is still checked.
+        $found = @(Invoke-CitedRunCheck -Project $project)
+        $found.Count | Should -Be 1
+        $found[0] | Should -Match 'run-20260819-210747148-9bd5980b'
+    }
+
+    It 'names only remedies that exist' {
+        # The old message ended "or state in review.md what the cited run actually established", and no
+        # code path implemented it - so a reader who followed the advice got the same refusal again.
+        $project = New-CitedRunProject -Completion 'partial' -Verdict 'incomplete'
+        $found = @(Invoke-CitedRunCheck -Project $project)
+        $found.Count | Should -Be 1
+        $found[0] | Should -Not -Match 'state in review\.md what the cited run actually established'
+        $found[0] | Should -Match 'SPECREW-REVIEW-EVIDENCE'
+    }
+
 }
