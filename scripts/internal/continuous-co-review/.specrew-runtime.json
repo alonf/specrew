@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "ef3f49bd1d30f78b484a58e15747337c55ccf7bc2584d70c7a4a225fd29c62f9",
+  "runtime_bundle_sha256": "98ae6f4c09f4afab81a9eab7147fa491c7d2c8b74f2f8dc679a179e70372f773",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -101,7 +101,7 @@
     },
     {
       "path": "review-design-context.ps1",
-      "sha256": "d953f98d79411cf68989e0bd280935809927daf1f0326150d902b59d7e082609"
+      "sha256": "5ecbb5043b20c6491524cc4e75e7f8d5b5d1ea6186de2f06cad0afbd0cd5f9e3"
     },
     {
       "path": "review-harness-contract.ps1",
@@ -133,7 +133,7 @@
     },
     {
       "path": "review-result-ingestor.ps1",
-      "sha256": "4cbcddbb61418ad2a4127ab229d79ab04f4080c30719db57aa98d3242cceb917"
+      "sha256": "8c9606533d9a66a674497e5f9e01bdfb563e94fa6ea2cc0a9dceaa3aba292e25"
     },
     {
       "path": "review-retro-projection.ps1",
