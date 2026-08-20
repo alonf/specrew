@@ -1796,7 +1796,20 @@ function Add-ReviewCampaignHumanDisposition {
     # sat in the file looking correct while doing nothing. A probe printing both operands as
     # true beside an `if` that did not fire is what exposed it.
     $disposedFindingCount = @($result.findings).Count
-    $rationaleCitesFindings = [regex]::IsMatch([string]$Rationale, "findings?", [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    # Word boundaries are back, written directly rather than through a text-mangling tool this time.
+    # They stop a substring match only. They do NOT address the sharper case: a rationale reading
+    # "no findings, accepting current state" contains the WORD findings and still trips this guard,
+    # so an honest negation is refused against a zero-finding run.
+    #
+    # That is accepted, not overlooked. This is a backstop on a path W27 already removed - accepting
+    # a clean result is unreachable through any surface - and its failure direction is closed: it can
+    # refuse an honest rationale, never admit a false one. Detecting negation in prose would mean
+    # putting a judgement heuristic where this whole slice has been removing them, and a brittle one:
+    # "no findings" and "findings: none" and "nothing found" are the easy third of the space.
+    #
+    # IF THE DISPOSITION PATH EVER BECOMES LEGITIMATE FOR CLEAN RUNS AGAIN, this fires on honest
+    # rationales and must be narrowed then. Pinned by a test so it is a known limit, not a discovery.
+    $rationaleCitesFindings = [regex]::IsMatch([string]$Rationale, '\bfindings?\b', [Text.RegularExpressions.RegexOptions]::IgnoreCase)
     if ($disposedFindingCount -eq 0 -and $rationaleCitesFindings) {
         throw 'review-human-disposition-rationale-contradicts-result:cites-findings-against-a-zero-finding-run'
     }

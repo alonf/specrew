@@ -151,6 +151,25 @@ Describe 'W34-C a rationale may not contradict the result it disposes of' {
         $outcome.reason | Should -Match 'rationale-contradicts-result'
     }
 
+    It 'does not trip on a word that merely contains the token' {
+        # Word boundaries, re-inserted after the sed corruption was repaired. Without them this
+        # matched inside longer words.
+        (Invoke-Disposition -Fixture (New-DispositionFixture -Verdict 'pass') -Decision 'require-correction' `
+                -Rationale 'Refindingsomething unrelated; closing here.').threw | Should -BeFalse
+    }
+
+    It 'ACCEPTED LIMIT: refuses an honest negation too, because it cannot read prose' {
+        # "no findings" contains the WORD findings, so word boundaries do not help here - this is a
+        # different limit from the substring one above. The guard refuses it, and that is the closed
+        # direction: it can reject an honest rationale, never admit a false one. Acceptable only
+        # because W27 already removed the surface that reaches this path for a clean run. If that
+        # ever changes, this test is the one that should start failing on purpose.
+        $outcome = Invoke-Disposition -Fixture (New-DispositionFixture -Verdict 'pass') -Decision 'require-correction' `
+            -Rationale 'No findings; accepting current state.'
+        $outcome.threw | Should -BeTrue
+        $outcome.reason | Should -Match 'rationale-contradicts-result'
+    }
+
     It 'allows an honest rationale on a clean run' {
         (Invoke-Disposition -Fixture (New-DispositionFixture -Verdict 'pass') -Decision 'require-correction' `
                 -Rationale 'Nothing outstanding; closing here.').threw | Should -BeFalse
