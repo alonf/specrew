@@ -1322,7 +1322,8 @@ if ($Live) {
                         Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow
                         # NO REVIEWER CHOSEN IS NOT A BROKEN TOOL, and it read like one.
                         #
-                        # Measured at C:\Devraces: three runs failed with `preflight-failed:harness`,
+                        # Measured on a manual-walk project (its path was lost to a \b-to-backspace defect in the
+                        # comment itself, commit 192d6608, and is not reconstructible): three runs failed with `preflight-failed:harness`,
                         # harness_id `unselected-harness`, and the project had NO reviewer-hosts.json at
                         # all - no reviewer had ever been authorized. The agent read the token as an
                         # ENVIRONMENTAL blocker, decided the co-review was unavailable, and wrote the

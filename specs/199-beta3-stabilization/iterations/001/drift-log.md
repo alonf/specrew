@@ -455,6 +455,35 @@ recorded maintainer ruling, so a single rate here would misstate them.
   consumes the production detector. A future deploy/detector convention mismatch becomes loud
   before another manual environment is handed to a tester.
 
+### METHOD NOTE — a guard can be present, readable and inert
+
+Carried out of DRIFT-199-I001-080 and -081 as a standing rule, because two defects in one week were
+of this shape and one of them was invisible to reading.
+
+Two failure modes, and they are not equally detectable:
+
+- **A guard that computes the WRONG answer.** `TrimStart('./')` trims those two characters rather than
+  the prefix, so `.specrew/config.yml` classified as source. A test catches this by asserting the right
+  answer, and reading the line can catch it if the reader knows the API.
+- **A guard that computes NO answer.** The W34-C rationale check was inserted through `sed`, which
+  turned the regex's `\b` word boundaries into literal BACKSPACE bytes. The pattern read
+  `(?i)<BS>findings?<BS>`, matched nothing, and the guard sat in the file parsing cleanly, reading
+  correctly, and doing nothing. Reading it — several times — did not reveal it. It surfaced only when a
+  probe printed both operands as `true` beside an `if` that did not fire.
+
+The general rule is therefore NOT "avoid text-mangling tools", though the corruption came from one:
+
+> **Every guard needs at least one assertion that fails when the guard is removed.**
+
+For this class, mutation-proving is not a nicety that raises confidence in a passing suite — it is the
+only detector. A guard with no such assertion is indistinguishable, by reading, from a guard that has
+been silently disabled; the suite stays green either way, because green is exactly what an inert guard
+produces.
+
+Both instances of this class were found by RUNNING the fix rather than reading it, as were the
+`ConvertFrom-Json` local-time round-trip and the case-folding path dedup. Four defects, four found by
+execution, none by review.
+
 ### DRIFT-199-I001-081 — nothing recorded who wrote a review verdict (resolved)
 
 - **Observed**: 2026-08-20, from an independent validation of the W29-W33 fixes. W31 checks that a
