@@ -41,6 +41,22 @@ try {
         return ($out -join "`n")
     }
 
+    function Invoke-StopWithTranscript {
+        # W35: the single-message helper above cannot express the shape that mattered - an orientation
+        # rendered in the OPENING message with ordinary work after it. This writes several assistant
+        # turns in order.
+        param([Parameter(Mandatory)][string[]]$AssistantTexts,[string]$SessionId = 'w35-session')
+        $transcript = Join-Path $scratch (Join-Path (Join-Path '.specrew' 'runtime') ('t-' + [guid]::NewGuid().ToString('N') + '.jsonl'))
+        $lines = foreach ($text in $AssistantTexts) {
+            [pscustomobject]@{ type='assistant'; message=[pscustomobject]@{ content=@([pscustomobject]@{ type='text'; text=$text }) } } | ConvertTo-Json -Depth 8 -Compress
+        }
+        [IO.File]::WriteAllText($transcript, (($lines -join [Environment]::NewLine) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+        $prior = $env:SPECREW_MODULE_PATH; $env:SPECREW_MODULE_PATH = $repoRoot
+        try { Push-Location $scratch; try { $out = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --host-kind claude --source-event Stop --transcript-path $transcript --session-id $SessionId 2>&1) } finally { Pop-Location } }
+        finally { $env:SPECREW_MODULE_PATH = $prior }
+        return ($out -join "`n")
+    }
+
     $workFirst = 'Feature 001-keycontext-ai is scaffolded on branch 001-keycontext-ai. Opening the design workshop now.'
 
     # No bootstrap was delivered to this session -> nothing was handed over to show -> nothing owed.
@@ -88,6 +104,29 @@ Now starting the design workshop.
     Assert-True ($material -match '(?i)this Stop followed material work') 'the material demand still fires and is not displaced'
     Assert-True ($material -match "(?i)Also: this session's orientation was never shown") 'the orientation rides along on a higher-priority block instead of being lost'
     Remove-Item -LiteralPath (Join-Path $scratch 'src') -Recurse -Force
+
+# W35: THE ORIENTATION IS IN THE OPENING MESSAGE, AND THE CHECK READ THE LAST ONE.
+#
+# Measured 2026-08-20 (KeyContextAI session e9c42e87): the opening message is a full banner and clears
+# this bar; only 2 of that session's 190 assistant messages do. Every stop whose last message was one of
+# the other 188 told a compliant session "your orientation was handed to you and the human never saw
+# it". Third detector to punish compliant output, after W16's bullet glyphs and W35's prose scan.
+$orientationBanner = 'Welcome - here is where this project stands. Specrew 0.40.0-beta3 is active on this project, and here is what I know about you: you prefer bare-number verdicts.'
+$orientedThenWorked = Invoke-StopWithTranscript -AssistantTexts @(
+    $orientationBanner,
+    'Creating the governed feature now.',
+    'Running the workshop lenses.',
+    $workFirst) -SessionId 'w35-oriented-then-worked'
+Assert-True ($orientedThenWorked -notmatch '(?i)orientation was handed to you and the human never saw it') 'an orientation rendered in the OPENING message is not demanded again after later work'
+
+# The bar must stay low but real: a session that never oriented is still caught, however many messages
+# it has produced.
+$neverOriented = Invoke-StopWithTranscript -AssistantTexts @(
+    'Creating the governed feature now.',
+    'Running the workshop lenses.',
+    $workFirst) -SessionId 'w35-never-oriented'
+Assert-True ($neverOriented -match '(?i)orientation was handed to you and the human never saw it') 'a session that never oriented is still caught across multiple messages'
+
 }
 finally { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
 

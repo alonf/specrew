@@ -535,6 +535,65 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-084 — the orientation check read the last message, and the orientation is in the first (resolved)
+
+- **Observed**: 2026-08-20, verifying a reported false negative rather than dismissing it. The W25 check
+  tested `$lastAssistantText`, while the obligation it enforces is that a session **opens** by orienting
+  the human. So the orientation lands in message 1 and the check ran against message N.
+- **Measured, not inferred** — `C:\Dev\KeyContextAI` session `e9c42e87`, read-only from the transcript
+  under the user's home: the opening message IS a full banner and clears the bar, and **only 2 of that
+  session's 190 assistant messages do**. Every stop whose last message was one of the other 188 told a
+  compliant session *"your orientation was handed to you and the human never saw it."* The journal shows
+  3 `orientation` blocks in that project, two of them at 15:09 and 15:15 against a session whose receipt
+  was not written until 18:16.
+- **Third instance of one class**: a detector inferring compliance from a narrow slice of text. W16 was
+  bullet glyphs (`•` versus `-`), DRIFT-199-I001-083 was the whole-document run-id scan, this is the
+  last-message-only orientation test.
+- **Citation**: the orientation obligation in the coordinator instructions (W23/W25).
+- **Resolution**: implementation-reverted. Candidates now include the **head of the transcript**, where
+  the orientation belongs, as well as the last assistant text; any candidate clearing the bar satisfies
+  it. The bar itself is unchanged and still low - names the product AND one fact only the orientation
+  carries - so a reply that goes straight to work is still caught.
+- **Cost is bounded and self-limiting**: this runs only while the session has no orientation receipt, and
+  the receipt is written the moment it is satisfied. A session pays for one 200-line head read a handful
+  of times, never per stop. That was the maintainer's original objection to a Stop-side check and it
+  still holds.
+- **Verification**: two cases in `session-orientation-rendered.tests.ps1` - an orientation rendered in
+  the opening message followed by ordinary work is not demanded again, and a session that never oriented
+  is still caught across multiple messages. Mutation-proven with the landing check: emptying the head
+  scan kills the first case and leaves the second passing. Also proven directly against the real
+  transcript: `satisfied=False` before, `True` after, with the go-straight-to-work guard still `False`.
+
+### DRIFT-199-I001-085 — `specrew` presented unqualified to agents who run it in bash (resolved, records-only)
+
+- **Observed**: 2026-08-20. A walk opened with `specrew review --live --approve-round ...` and got
+  `/usr/bin/bash: line 1: specrew: command not found`. It is a PowerShell module command; the guidance
+  the agent was reading presented it bare, so our own instructions walk a Git Bash consumer into what
+  reads like a broken install.
+- **Resolution**: spec-updated. The four agent-facing surfaces that carry the command - the
+  `review-signoff` and `implement` refocus files and the reviewer charter, plus their deployed mirrors -
+  now say it is a PowerShell command, give the `pwsh -NoProfile -Command "..."` form, and name the
+  symptom so it is recognised rather than diagnosed. The ~20 further occurrences in `docs/` are read by
+  humans in a browser and were deliberately left alone rather than swept.
+
+### DRIFT-199-I001-086 — Gap Ledger vocabulary: reported as missing, found present (no change)
+
+- **Reported**: the permitted classifications are not in front of the writer while composing, after a
+  record used `**GAP-01 - CLOSED 2026-08-20**` where the vocabulary is `fixed-now` / `deferred`.
+- **Checked before changing anything, and the diagnosis does not hold.** `scaffold-review-artifact.ps1`
+  already EMITS the schema into `review.md` as an HTML comment directly above `## Gap Ledger`, naming
+  both tokens, the approval requirement for `deferred`, and the exact one-line form for "no gaps". The
+  refusal message also names both tokens.
+- **What actually happened**: the live record contains **zero** occurrences of that comment - it was
+  dropped when the record was rewritten - while `fixed-now` appears correctly on the very next line
+  (GAP-02). So the writer knew the vocabulary and deviated on the one line where they wanted to say
+  something it cannot express: *this was a gap, and a later run closed it.*
+- **No change made.** Adding visible boilerplate to a deliverable is paperwork, and the schema is
+  already where it was asked to be. **The real finding is a vocabulary gap**, and it belongs to the
+  maintainer rather than to a scaffold edit: there is no token for a gap closed after the fact by
+  evidence that arrived later. `fixed-now` is the nearest and it is what the validator wants; if that
+  reading is intended, saying so once in the schema comment would end the class.
+
 ### DRIFT-199-I001-083 — a review record was refused for documenting its own retraction (resolved)
 
 - **Observed**: 2026-08-20, at `C:\Dev\KeyContextAI`'s live review-signoff boundary. `Test-ReviewCitedRunEvidence`
