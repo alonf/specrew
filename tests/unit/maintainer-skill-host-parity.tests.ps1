@@ -22,6 +22,12 @@ BeforeAll {
     # mirror target. Checked rather than assumed.
     $script:HostRoots = @('.agents/skills', '.claude/skills', '.cursor/rules', '.github/skills')
     $script:Canonical = '.claude/skills'
+    # THE REVIEW SNAPSHOT STRIPS THESE DIRECTORIES. worktree-reviewer.ps1 freezes a tree with the
+    # methodology machinery removed, and the deployed host skill mirrors are machinery - all four
+    # of them. This suite checks the MAINTAINER REPO's layout, so in a stripped tree there is
+    # nothing to check and it must say so rather than fail. Two unconditional assertions here did
+    # fail that way and killed a review round at preflight, twice.
+    $script:HostDirsPresent = Test-Path -LiteralPath (Join-Path $script:RepoRoot $script:Canonical) -PathType Container
 
     function script:Get-SkillNames {
         param([Parameter(Mandatory)][string]$HostRoot)
@@ -114,6 +120,7 @@ Describe 'a maintainer skill is visible on every host unless it says otherwise' 
     It 'honours a declared single-host scope instead of demanding mirrors' {
         # specrew-gate-stop exists to disable Claude's AskUserQuestion picker; mirroring it would be
         # wrong, and the file says so in its own front matter rather than in an allowlist here.
+        if (-not $script:HostDirsPresent) { Set-ItResult -Skipped -Because 'the host skill directories are machinery and are stripped from a review snapshot'; return }
         (Get-HostScope -SkillName 'specrew-gate-stop') | Should -Be 'claude'
         foreach ($hostRoot in @('.agents/skills', '.cursor/rules', '.github/skills')) {
             $path = Join-Path $script:RepoRoot (Join-Path $hostRoot 'specrew-gate-stop/SKILL.md')
@@ -122,6 +129,7 @@ Describe 'a maintainer skill is visible on every host unless it says otherwise' 
     }
 
     It 'sees the newly added local-build skill on every host' {
+        if (-not $script:HostDirsPresent) { Set-ItResult -Skipped -Because 'the host skill directories are machinery and are stripped from a review snapshot'; return }
         foreach ($hostRoot in $script:HostRoots) {
             $path = Join-Path $script:RepoRoot (Join-Path $hostRoot 'specrew-local-build/SKILL.md')
             (Test-Path -LiteralPath $path -PathType Leaf) | Should -BeTrue -Because "the crew implements on Codex and needs this one most"
