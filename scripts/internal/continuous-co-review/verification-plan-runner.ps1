@@ -49,8 +49,17 @@ if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathCaseSensitive' -ErrorActi
 # addition to this list MUST land together with a paired runtime-evidence test proving the engine fails to
 # LAUNCH a child without it on that platform.
 function Get-ContinuousCoReviewVerificationEngineBaseline {
-    if ($IsWindows) { return @() }
-    return @()
+    # SPECREW_REVIEW_PREFLIGHT travels here rather than through env_refs because the plan is
+    # PROJECT-AUTHORED: a consumer's plan cannot be expected to declare an engine control it has
+    # never heard of, and the wedge this closes is reached by every consumer who commits after a
+    # review. env_refs remain the authoritative allowlist for SUPPLIER variables; the baseline is
+    # what the engine itself is entitled to pass, and this is the first thing that qualifies.
+    #
+    # It carries NO value that changes what a command does beyond scoping ONE rule (see
+    # Test-ReviewCitedRunEvidence): the cited-run FRESHNESS check, which the round being
+    # preflighted exists to satisfy. Every other cited-run rule stays live during preflight.
+    if ($IsWindows) { return @('SPECREW_REVIEW_PREFLIGHT') }
+    return @('SPECREW_REVIEW_PREFLIGHT')
 }
 
 # The CONSTRUCTED child environment for a supplier-declared verification command (review findings f2 run

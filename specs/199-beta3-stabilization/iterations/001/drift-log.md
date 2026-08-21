@@ -535,6 +535,45 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-094 - the fix for a stale citation was gated on the stale citation (resolved)
+
+- **Observed**: 2026-08-21, immediately after W38 landed. W38 and W36's provenance branch together
+  produce a wedge **every consumer reaches by committing after a review**:
+  1. governance fails on the stale citation;
+  2. the fix is a fresh round;
+  3. the round's preflight runs the verification plan, which runs governance
+     (`verification-plan-materializer.ps1:107` authors exactly that command into the starter plan);
+  4. and it fails on the same stale citation.
+  For a block-sourced run the message named exactly one way out - *"obtain a run that completed against
+  the current tree"* - **which is the action the failure prevents**, and the block cannot be hand-edited
+  by design.
+- **I escaped it and a consumer could not have.** The escape - withdraw the claim in the record's own
+  prose - was available, and nothing said so. Only a reader who had already reasoned it out could take
+  it, which is not a remedy, it is a puzzle. Third layer of the painted-on-door shape after W15 and
+  W35's own first fix.
+- **Broken at the DEPENDENCY, not the rule.** The round exists to refresh the cited run, so its preflight
+  must not be gated on cited-run freshness. `SPECREW_REVIEW_PREFLIGHT` is set narrowly around the
+  preflight plan run and always cleared; the validator scopes out that ONE rule when it is present.
+  Staleness still fails ordinary validation and still stops the signoff gate, where it actually matters.
+- **Scoped to the freshness rule alone.** Completion, verdict, validation and declared coverage all stay
+  enforced during preflight - a preflight is not a licence to cite a bad run, and a case pins that.
+- **The marker travels on the ENGINE BASELINE, not through `env_refs`.** The plan is project-authored: a
+  consumer's plan cannot be expected to declare an engine control it has never heard of, and this wedge
+  is reached by every consumer. `env_refs` remain the authoritative allowlist for SUPPLIER variables;
+  the baseline is what the engine itself may pass, and this is the first thing that qualifies.
+- **The message now names the escape**, and names the boundary around it: withdraw the claim by removing
+  the marker and the block and saying so in the record - *"editing the record's own prose is yours to
+  do; the block and the store are not"*. That distinction is what keeps the escape from reading as a
+  licence to edit evidence.
+- **Verification**: `tests/continuous-co-review/unit/refusal-names-a-reachable-action.Tests.ps1`, 5 cases
+  in the slice lane. The acceptance case - a project whose tree moved can preflight without hand-editing
+  anything - plus ordinary validation still refusing it, every other rule still live in preflight, and
+  **the general property: no refusal names an action that the same refusal prevents**. Mutation-proven
+  twice with the landing check: removing the preflight scoping kills the acceptance case; removing the
+  escape from the message kills both property cases.
+- **That general property is the durable part.** It would have caught all three layers of this shape,
+  including the two I shipped myself.
+
 ### DRIFT-199-I001-093 - a stored currentness field kept a stale record reading clean (resolved)
 
 - **Observed**: 2026-08-21. `validate-governance.ps1` read `currentness` from the cited run's stored

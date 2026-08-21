@@ -1067,6 +1067,22 @@ function Test-ReviewCitedRunEvidence {
         # FAIL-OPEN: if the digest cannot be computed - no git, a detached state, the helper absent -
         # nothing is claimed. "I could not tell" must never manufacture staleness, the same posture
         # every other check in this file takes.
+        # W39: THE FRESHNESS RULE IS SCOPED OUT OF A REVIEW PREFLIGHT.
+        #
+        # W38 + W36 together produced a wedge every consumer reaches by committing after a review:
+        # governance fails on the stale citation, the fix is a fresh round, the round's preflight runs
+        # governance, and it fails. For a block-sourced run the message named only "obtain a run that
+        # completed against the current tree" - the action the failure prevents - and the block cannot
+        # be hand-edited. The escape exists (withdraw the claim in the record's own prose) but nothing
+        # said so, so only someone who had already reasoned it out could take it.
+        #
+        # Broken at the DEPENDENCY, not the rule: staleness still fails ordinary validation and still
+        # stops the signoff gate, where it actually matters. It simply does not gate the one operation
+        # whose entire purpose is to end the staleness.
+        #
+        # SCOPED TO THIS RULE ALONE. Completion, verdict, validation and declared coverage are all
+        # still enforced during preflight - a preflight is not a licence to cite a bad run.
+        $inReviewPreflight = -not [string]::IsNullOrWhiteSpace([string]$env:SPECREW_REVIEW_PREFLIGHT)
         $currentTreeId = ''
         try {
             if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
@@ -1082,7 +1098,8 @@ function Test-ReviewCitedRunEvidence {
         # StrictMode-safe: a stored result without target_digest must not take the validator down.
         # The existing fixtures in this suite have no such field, and reading it unguarded threw.
         $citedTreeId = if ($result.PSObject.Properties['target_digest']) { [string]$result.target_digest } else { '' }
-        if (-not [string]::IsNullOrWhiteSpace($currentTreeId) -and -not [string]::IsNullOrWhiteSpace($citedTreeId) -and
+        if (-not $inReviewPreflight -and
+            -not [string]::IsNullOrWhiteSpace($currentTreeId) -and -not [string]::IsNullOrWhiteSpace($citedTreeId) -and
             $currentTreeId -cne $citedTreeId) {
             $weak.Add(("it reviewed tree {0}, and the files now are tree {1}" -f $citedTreeId.Substring(0, [Math]::Min(8, $citedTreeId.Length)), $currentTreeId.Substring(0, [Math]::Min(8, $currentTreeId.Length)))) | Out-Null
         }
@@ -1117,7 +1134,7 @@ function Test-ReviewCitedRunEvidence {
             'Either obtain a run that completed against the current tree, or - if this run is named as history rather than relied upon - remove it from the SPECREW-REVIEW-EVIDENCE marker.'
         }
         else {
-            'This run is named by the DERIVED independent-review block, which is computed from the review store and recomputed at validation, so it cannot be edited out by hand. The way forward is to obtain a run that completed against the current tree; the block will then name that run instead.'
+            'This run is named by the DERIVED independent-review block, which is computed from the review store and recomputed at validation, so it cannot be edited out by hand. Two things you can do: obtain a run that completed against the current tree, and the block will then name it; or, if the claim has simply gone stale and you are not ready to re-run, WITHDRAW it - remove the evidence marker and the block from review.md and say plainly in the record that the independence claim is withdrawn pending a fresh round. Editing the record''s own prose is yours to do; the block and the store are not.'
         }
         $Errors.Add(("review.md declares review run {0} as the evidence it rests on, but that run cannot support a review claim: {1}. {2} Run ids appearing only in prose are treated as narrative and are not checked, so a retraction can name a failed run freely." -f $runId, ($weak -join ', '), $remedy)) | Out-Null
     }
