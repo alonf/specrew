@@ -535,6 +535,56 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-088 — there was no supported way to install your own build, and the stamp could not be checked (resolved)
+
+- **Observed**: 2026-08-21. The repo was at `fef3d0d9` and the installed module at `58555b65`, so every
+  fix since - W35, the orientation fix, the PATH naming, the provenance branch, the producer, the
+  behavioural pin - existed only as commits. `specrew update` in a project would fetch the build it
+  already had, and the manual test could not resume.
+- **A claim of mine was too strong and is corrected here.** I reported "there is no supported local
+  build-and-install path". The PROJECT side has always worked: `scripts/specrew-update.ps1:1126` resolves
+  `$repoRoot = Split-Path -Parent $PSScriptRoot`, so invoking the REPO copy by path sources templates
+  from the repo. What is missing is the MODULE side. And since the review-engine handshake
+  (`review-engine-resolution.ps1:261`) refuses every review when the project's bundle and the installed
+  module disagree, updating a project from source while the module lags now wedges reviews with
+  `review-engine-version-mismatch`. Pointing at source stopped being sufficient the moment review began
+  verifying provenance - which was the right call, and this is its cost.
+- **Two mechanisms assumed to exist, neither of which did.** The same shape as the evidence marker with
+  no producer, one day earlier: honoured downstream, emitted by nothing, unnoticed until the moment it
+  was needed.
+  - **No installer.** `invoke-module-release.ps1` deletes its stage in a `finally` - correct for a
+    RELEASE tool, useless for installing - so a dry run proved packaging worked and left nothing behind.
+    Every install this week was hand-assembled by extracting that script's functions via an AST parse.
+  - **An unverifiable stamp.** `build-stamp.json` recorded only a commit id supplied at package time. On
+    2026-08-20 that produced an install claiming `248dd0d2` while carrying current code, caught only
+    because 82 files were diffed by hand.
+- **Resolution**:
+  - `scripts/internal/module-packaging.ps1` — staging, stamping and identity, moved VERBATIM out of the
+    release script so the release path and the install path run the same code and cannot drift. The
+    release script is now a consumer of it; its dry run was re-verified end to end after the move.
+  - `scripts/internal/install-local-build.ps1` — the supported path. Stages with the shared code,
+    installs, and byte-verifies every packaged file by SHA256, then recomputes the content hash from
+    what LANDED and refuses if it disagrees with the stamp. Refuses a dirty tree by default, because a
+    build whose files are in no commit carrying a stamp that names one is the defect it exists to stop -
+    scoped to PACKAGED files, so uncommitted specs and drift logs never block an install. Preserves the
+    two non-packaged items an install carries (`.specrew/version-check-cache.json`, `PSGetModuleInfo.xml`)
+    that a clean replace would silently delete. Prints the handshake's other half as the next step.
+  - `build-stamp.json` gains `content_sha256`, derived from sorted relative paths plus per-file content -
+    the pattern `runtime_bundle_sha256` already proved. `commit` stays, because provenance is worth
+    recording; the content hash makes the claim CHECKABLE.
+- **Verification**: `tests/unit/module-packaging-identity.tests.ps1`, 8 cases in the slice lane, pinned
+  BEHAVIOURALLY rather than by string match - the hash changes when a packaged file changes, is stable
+  for identical content, notices a rename, excludes the stamp itself so writing it cannot invalidate it;
+  the installer reports an identity without installing, refuses a dirty tree, and the release script is
+  asserted to be a CONSUMER of the shared file rather than a second implementation.
+- **The dirty-tree guard fired on its first real run**, against my own uncommitted refactor of the
+  release script. Working as designed on the first attempt to use it.
+- **Mixed line endings bit the extraction**: `invoke-module-release.ps1` has 382 CRLF lines and 47 that
+  are not, so splitting on `
+` merged lines and cut the functions at the wrong boundaries. Redone by
+  splitting on LF and keeping each line's own trailing `` as content. Related to the escape-mangling
+  class, and the same remedy: do not assume a uniform text shape you have not measured.
+
 ### DRIFT-199-I001-087 — W35 shipped a control with no producer and a door painted on the wall (resolved)
 
 Two defects in the W35 fix itself, both found by review of the landed code rather than by a test.
