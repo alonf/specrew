@@ -535,6 +535,45 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-095 - the reviewer closeout artifacts had no generator on the path that runs (resolved)
+
+- **Observed**: 2026-08-21, at the KeyContextAI retro. The five artifacts closeout REQUIRES - `code-map.md`,
+  `dependency-report.md`, `coverage-evidence.md`, `reviewer-index.md`, `review-diagrams.md` - were never
+  produced, and the closeout validator refused. Every project that reaches closeout hits it.
+- **The mechanism, reproduced rather than assumed.** The entire artifact-writing block in
+  `scaffold-reviewer-artifacts.ps1` sat behind `if (-not $SummaryOnly)`, and
+  `scaffold-retro-artifact.ps1` invokes that script WITH `-SummaryOnly`. So the retro flow printed a
+  digest line - one that NAMES `reviewer-index.md` - and wrote nothing. One flag was doing two jobs:
+  output suppression already had its own guard further down, which is what `-SummaryOnly` means and all
+  it should ever have meant.
+- **Why it survived**: invisible to reading (the writers are all present, a few lines under a guard),
+  and invisible to `-DryRun` and `-WhatIf`, which both looked healthy because neither writes anyway.
+  A summary that names a file it did not create is the shape here.
+- **Resolution**: the write block no longer keys on `-SummaryOnly`. The guard is kept as a named
+  condition rather than deleted, so the block's indentation and the diff stay legible - re-flowing
+  seventy lines to remove one `if` is how an unrelated defect gets introduced beside a fix.
+- **Second finding, same incident - a scaffold that half-succeeded reported only failure.** `retro.md`
+  is already written when the reviewer sub-step runs, so a bare non-zero exit left a caller unable to
+  classify the result from the exit code, and the missing artifacts went unnoticed until a gate refused
+  them much later. Atomicity is not available (retro.md is a legitimate independent output), so the
+  alternative obligation applies: the scaffold now names what landed, what did not, why, and how to
+  finish - *"the retro artifact above is valid and does not need redoing; re-run only the reviewer
+  artifacts: ..."*. That last line is W39's reachable-action property applied to a scaffold.
+- **Verification**: `tests/unit/reviewer-closeout-artifacts-generate.tests.ps1`, 5 cases in the slice
+  lane, driven BEHAVIOURALLY against a real iteration copied from this project - a synthetic fixture
+  would not exercise the table parsing, and a generator that only works on invented input is the defect
+  this suite exists to catch. Includes a case pinning that `-DryRun` still writes nothing, so the fix
+  cannot quietly turn a preview into a write. Mutation-proven with the landing check: restoring the
+  `-not $SummaryOnly` gate kills the acceptance case alone.
+- **What I could NOT reproduce, stated rather than papered over**: the reported
+  `Cannot find an overload for "Add" and the argument count: "1"`. It did not occur from this project,
+  from a copy of KeyContextAI's `specs/`, or from a source-bearing fixture with 61 `.cs` files, on
+  either the repo copy or the installed copy (which are byte-identical). The consumer-visible outcome -
+  no artifacts, closeout refused - is fully explained and fixed by the `-SummaryOnly` gate above, and
+  that may be the same incident seen from the other end. If the throw recurs on the fixed build, the
+  exact invocation and stack line would pin it; guessing at an unreproduced throw is what this
+  iteration has spent the week not doing.
+
 ### DRIFT-199-I001-094 - the fix for a stale citation was gated on the stale citation (resolved)
 
 - **Observed**: 2026-08-21, immediately after W38 landed. W38 and W36's provenance branch together

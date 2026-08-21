@@ -2706,7 +2706,22 @@ $(($triageHints | ForEach-Object { "- $_" }) -join [Environment]::NewLine)
 $digestLine
 "@
 
-if (-not $SummaryOnly) {
+# W40: -SummaryOnly SUPPRESSES OUTPUT. IT MUST NOT SKIP THE WORK.
+#
+# This whole block - every reviewer closeout artifact - sat behind `if (-not $SummaryOnly)`, and
+# `scaffold-retro-artifact.ps1` invokes this script WITH -SummaryOnly. So the retro flow printed a
+# digest line naming `reviewer-index.md` and wrote none of the five artifacts, and closeout - the
+# gate that requires them - refused. Every project that reaches closeout hits it.
+#
+# One flag was doing two jobs and one of them was wrong. Output suppression already lives on its
+# own further down (`if (-not $SummaryOnly) { $actions | Format-Table }`), which is what the name
+# means and all it should ever have meant.
+#
+# The guard is kept as a named condition rather than deleted so the block's indentation - and the
+# diff - stay legible; re-flowing seventy lines to remove one `if` is how an unrelated defect gets
+# introduced next to a fix.
+$writeReviewerArtifacts = $true
+if ($writeReviewerArtifacts) {
     # F-028: Handle -Force flag with interactive confirmation
     if ($Force) {
         # Check if review artifacts exist
