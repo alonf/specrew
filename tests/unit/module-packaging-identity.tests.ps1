@@ -134,3 +134,46 @@ Describe 'the local install path exists and is exercised' {
         $installer | Should -Not -Match 'function New-ReleaseStageRoot'
     }
 }
+
+Describe 'a shipped file may not depend on one that is not shipped' {
+    It 'packages every file that a packaged script dot-sources from its own directory' {
+        # Caught for real on 2026-08-21: extracting shared code into module-packaging.ps1 left the
+        # PACKAGED invoke-module-release.ps1 dot-sourcing a file that was not in FileList, so the module
+        # would have shipped a release script that cannot load. The FileList integrity check runs the
+        # other direction - every listed file exists - and could never see this.
+        $repoRoot = $script:RepoRoot
+        $fileList = @((Import-PowerShellDataFile -LiteralPath (Join-Path $repoRoot 'Specrew.psd1')).FileList)
+        # NO REGEX HERE ON PURPOSE. Every generated regex in this slice has had its escapes mangled in
+        # transit at least once; plain string work has nothing to mangle and is easier to read anyway.
+        $listed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($entry in $fileList) { [void]$listed.Add(([string]$entry).Replace([char]92, [char]47)) }
+
+        $missing = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in $fileList) {
+            if ($entry -notlike '*.ps1') { continue }
+            $full = Join-Path $repoRoot $entry
+            if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
+            $normalizedEntry = ([string]$entry).Replace([char]92, [char]47)
+            $dir = if ($normalizedEntry.Contains('/')) { $normalizedEntry.Substring(0, $normalizedEntry.LastIndexOf('/')) } else { '' }
+            foreach ($line in @(Get-Content -LiteralPath $full -Encoding UTF8)) {
+                $trimmed = $line.TrimStart()
+                if ($trimmed.StartsWith('#')) { continue }
+                # Only dot-sources based on $PSScriptRoot ITSELF, which is what this guard's name claims.
+                # Forms like `(Split-Path -Parent $PSScriptRoot)` resolve somewhere else entirely - two
+                # co-review runtime files do exactly that - and treating their argument as a sibling
+                # produced false offenders. Out of scope, stated rather than silently matched.
+                if (-not $trimmed.StartsWith('. (Join-Path $PSScriptRoot ')) { continue }
+                $first = $trimmed.IndexOf([char]39)
+                $last = $trimmed.LastIndexOf([char]39)
+                if ($first -lt 0 -or $last -le $first) { continue }
+                # A dot-source may name a SUBDIRECTORY - 'internal\session-config.ps1' - so the separator
+                # inside the quoted name needs normalizing too, or every such dependency reads as missing.
+                $name = ($trimmed.Substring($first + 1, $last - $first - 1)).Replace([char]92, [char]47)
+                if ($name -notlike '*.ps1') { continue }
+                $dep = if ([string]::IsNullOrWhiteSpace($dir)) { $name } else { $dir + '/' + $name }
+                if (-not $listed.Contains($dep)) { [void]$missing.Add("$entry -> $dep") }
+            }
+        }
+        @($missing).Count | Should -Be 0 -Because "a packaged script that dot-sources an unpackaged file cannot load once installed (offenders: $($missing -join ', '))"
+    }
+}

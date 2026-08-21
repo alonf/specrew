@@ -339,6 +339,7 @@
         'scripts/internal/instruction-deploy.ps1',
         'scripts/internal/instruction-file-merge.ps1',
         'scripts/internal/invoke-module-release.ps1',
+        'scripts/internal/module-packaging.ps1',
         'scripts/internal/launch-contract.ps1',
         'scripts/internal/lens-applicability.ps1',
         'scripts/internal/lint-self-leak.ps1',

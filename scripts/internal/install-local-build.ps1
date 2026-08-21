@@ -155,7 +155,8 @@ try {
     Write-InstallInfo ("byte verification: all {0} packaged files match" -f $stagedFiles.Count)
 
     # The stamp must describe what actually landed, not what was staged.
-    $installedContent = Get-SpecrewPackageContentSha256 -StageRoot $InstallRoot
+    $packagedRelatives = @($stagedFiles | ForEach-Object { $_.FullName.Substring($stageRoot.Length).TrimStart([char]92) })
+    $installedContent = Get-SpecrewPackageContentSha256 -StageRoot $InstallRoot -RelativePaths $packagedRelatives
     if ($installedContent -cne [string]$stamp.content_sha256) {
         throw ("installed content hash {0} does not match the stamp {1}; the install does not match its own identity" -f $installedContent, $stamp.content_sha256)
     }

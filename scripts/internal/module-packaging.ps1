@@ -286,14 +286,30 @@ function Get-SpecrewPackageContentSha256 {
     # A hash of WHAT IS IN THE PACKAGE, computed the same way runtime_bundle_sha256 is: sorted relative
     # paths plus per-file content, so the order files happen to be enumerated in cannot change it.
     # build-stamp.json is excluded because it is about to contain this value.
-    param([Parameter(Mandatory = $true)][string]$StageRoot)
+    #
+    # -RelativePaths SCOPES THE HASH TO A KNOWN FILE SET, which an INSTALL needs and a stage does not.
+    # An install legitimately carries files no package contains - the module's own version-check cache
+    # and PowerShellGet's provenance file - so hashing the whole install root compares a package against
+    # a package plus two extras and always disagrees. The first version did exactly that, and its own
+    # post-install check caught it: byte verification passed for all 410 files and the identity assertion
+    # still failed. The defect was in the question, not the copy.
+    param(
+        [Parameter(Mandatory = $true)][string]$StageRoot,
+        [string[]]$RelativePaths
+    )
 
     $root = (Resolve-Path -LiteralPath $StageRoot -ErrorAction Stop).Path
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try {
         $accumulator = [System.IO.MemoryStream]::new()
+        $scoped = $null
+        if ($null -ne $RelativePaths -and @($RelativePaths).Count -gt 0) {
+            $scoped = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            foreach ($candidate in @($RelativePaths)) { [void]$scoped.Add(([string]$candidate -replace '\\', '/')) }
+        }
         $files = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -ErrorAction Stop |
                 Where-Object { $_.Name -cne 'build-stamp.json' } |
+                Where-Object { $null -eq $scoped -or $scoped.Contains((([IO.Path]::GetRelativePath($root, $_.FullName)) -replace '\\', '/')) } |
                 Sort-Object { ([IO.Path]::GetRelativePath($root, $_.FullName) -replace '\\', '/') })
         foreach ($file in $files) {
             $relative = ([IO.Path]::GetRelativePath($root, $file.FullName) -replace '\\', '/')
