@@ -337,10 +337,18 @@ function Write-ReleaseBuildStamp {
     )
 
     $stampPath = Join-Path $StageRoot 'build-stamp.json'
+    # content_file_count RECORDS THE SCOPE, because a hash without its scope is not reproducible. The
+    # first independent verification of this stamp disagreed with it, and the install was fine - the
+    # verifier had scoped to FileList while the stamp covers every staged file except itself, which also
+    # includes the optional README/CHANGELOG/LICENSE/NOTICE. A verifier who counts a different number of
+    # files now knows that before comparing hashes, instead of suspecting the package.
+    $stampedFiles = @(Get-ChildItem -LiteralPath $StageRoot -File -Recurse -Force -ErrorAction Stop |
+            Where-Object { $_.Name -cne 'build-stamp.json' })
     $content = [ordered]@{
         schema = 'specrew-build-stamp/v1'
         commit = $Commit
         content_sha256 = Get-SpecrewPackageContentSha256 -StageRoot $StageRoot
+        content_file_count = $stampedFiles.Count
     } | ConvertTo-Json
     [System.IO.File]::WriteAllText($stampPath, ($content + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
     return $stampPath

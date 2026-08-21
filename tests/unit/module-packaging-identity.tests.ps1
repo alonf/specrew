@@ -92,6 +92,10 @@ Describe 'the build stamp describes the package, not just the intent' {
             $stamp = Get-Content -LiteralPath (Join-Path $stage 'build-stamp.json') -Raw -Encoding UTF8 | ConvertFrom-Json
             $stamp.commit | Should -Be 'deadbeef'
             $stamp.content_sha256 | Should -Be $before
+            # The scope travels with the hash. Without it, an independent verifier has to guess
+            # which files were covered - and the first one to try this guessed FileList, got a
+            # different hash, and had no way to tell a scope mismatch from a corrupt package.
+            $stamp.content_file_count | Should -Be 2
         }
         finally { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
     }
