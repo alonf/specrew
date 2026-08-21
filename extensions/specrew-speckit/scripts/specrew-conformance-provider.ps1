@@ -913,7 +913,11 @@ try {
     if ($null -ne $materialSignal -and (Get-Command -Name 'Write-SpecrewReviewAuthorshipObservation' -ErrorAction SilentlyContinue)) {
         $authorshipPaths = @()
         try { $authorshipPaths = @($materialSignal.changed_paths | ForEach-Object { [string]$_ }) } catch { $authorshipPaths = @() }
-        Write-SpecrewReviewAuthorshipObservation -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg -ChangedPaths $authorshipPaths
+        # W37: the mode travels with the paths. Without it the observation cannot tell what this turn
+        # WROTE from what merely happens to be dirty, and it minted a source-writer fact either way.
+        $authorshipMode = ''
+        try { $authorshipMode = [string]$materialSignal.attribution_mode } catch { $authorshipMode = '' }
+        Write-SpecrewReviewAuthorshipObservation -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg -ChangedPaths $authorshipPaths -AttributionMode $authorshipMode
     }
     if ($null -eq $materialSignal) {
         $materialSignal = [pscustomobject]@{ material = $false; reason = 'turn-delta-unavailable'; key = ''; user_file_count = 0; current_dirty_user_file_count = 0; new_commit_count = 0; attribution_mode = 'degraded-worktree' }

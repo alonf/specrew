@@ -535,6 +535,53 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-092 - the authorship fact was minted from dirty state, not from what a session wrote (resolved)
+
+- **Observed**: 2026-08-21, from the KeyContextAI walk. `review-authored-by-implementer` fired on a
+  session that wrote no product code. Verified against source before building; an earlier diagnosis of
+  the same symptom was wrong and was discarded.
+- **The cause**: `conformance-turn-delta.ps1:248` returns `changed_paths = $changed` IDENTICALLY in both
+  attribution modes. `attribution_mode` is computed one line earlier at `:247` and correctly identifies
+  when exact per-turn attribution is unavailable - and its only consumer outside that file is
+  `specrew-conformance-provider.ps1:766`, where it picks a display label. **So the signal that names the
+  problem was wired to wording and to nothing else, while the authorship minting - a factual assertion
+  about who wrote what - never consulted it.** W34-B's own header says the fact is minted "from what it
+  watched the session write"; in degraded mode it was minted from what happened to be dirty. A
+  SessionStart redeploy had rewritten 15 files under that project's deployed copy of Specrew's runtime
+  and they sat dirty all session.
+- **Sixth instance of the week's pattern**: a computed control whose only consumer is cosmetic is a
+  typed comment. Alongside the evidence marker with no producer, the release path with no installer, the
+  baseline resolver with no caller, the guard satisfied by its own comment, and the mutation proof that
+  never mutated.
+- **Resolution**: the observation refuses to mint when attribution is not `exact-turn`.
+  **NEITHER HALF is minted, not just the source-writer half.** Refusing only the source half would let a
+  degraded session's review-record write stand while its code writes vanished - and the reader derives
+  `independent-session` from the ABSENCE of source writes, so an unsupportable fact would become a false
+  CLEAN one. Minting nothing leaves the record `unattributed`, which is what is actually true and which
+  the validator already reports as "unknown is not independent".
+- **Fail-closed on absence, inverting W33's posture deliberately**: an unstated mode is treated as
+  degraded, because a caller that does not say how it attributed cannot support a claim about who wrote
+  what.
+- **A path exclusion was tried and REVERTED, and that matters.** The reported first cause - a project's
+  deployed copy of Specrew's machinery classifying as project source - was fixed by excluding
+  `scripts/internal/(continuous-co-review|agent-tasks)/`. That predicate is SHARED with W33's coverage
+  classifier, and in the one repository where those paths ARE the product it silently recounted the
+  2026-08-21 review from **17 source paths to 9**, weakening a genuine independence claim and failing
+  the governance lane. A quiet degradation of a true claim is the exact failure this week has been
+  about. Reverted, with the reasoning left in the code.
+  - The residual downstream case - a redeploy landing inside an EXACTLY attributed turn - needs a
+    project-aware discriminator (a downstream project has no `Specrew.psd1` at its root), not a path
+    rule. Recorded as a known limit rather than smuggled in. The attribution fix covers the case that
+    actually occurred.
+- **Verification**: 15 cases in `review-record-authorship.Tests.ps1`, including the walk shape, an
+  unstated mode, and the general property that no source-writer fact EXISTS in the store while
+  attribution is degraded. Mutation-proven with the landing check: restoring the unconditional mint
+  kills three. A downstream fixture in `review-derived-independence.Tests.ps1` had to start stating its
+  attribution mode, which is the change propagating correctly rather than a break.
+- **No runtime bundle moved.** `shared-governance.ps1` and `specrew-conformance-provider.ps1` are outside
+  the co-review runtime bundle, and the installer was NOT run: installed stays at `bbe47795` while the
+  KeyContextAI walk is live.
+
 ### DRIFT-199-I001-091 - how a run's baseline was chosen is now a fact (resolved, and a correction to -089)
 
 - **Correcting my own correction.** DRIFT-199-I001-089 concluded that the baseline-as-a-fact item

@@ -6367,6 +6367,16 @@ function Test-SpecrewReviewAuthorshipSourcePath {
     if ([string]::IsNullOrWhiteSpace($p)) { return $false }
     if ($p -match '(?i)^(specs|docs)/') { return $false }
     if ($p -match '(?i)^\.(specrew|squad|specify|github|agents|cursor|copilot|claude)/') { return $false }
+    # W37 REVERTED HERE, DELIBERATELY. Excluding scripts/internal/continuous-co-review/ as "a deployed
+    # copy of Specrew's machinery" is wrong in the one repository where those paths ARE the product,
+    # and this predicate is shared with W33's coverage classifier - so the blanket rule silently
+    # recounted a real review's coverage from 17 source paths to 9, weakening a genuine independence
+    # claim. A quiet degradation of a true claim is the exact failure this week has been about.
+    #
+    # The residual downstream case - a redeploy landing inside an EXACTLY attributed turn - needs a
+    # project-aware discriminator (a downstream project has no Specrew.psd1 at its root), not a path
+    # rule. That is a design decision, recorded rather than smuggled in. The attribution fix below
+    # covers the case that actually occurred.
     if ($p -match '(?i)\.(md|markdown|txt|rst|adoc)$') { return $false }
     return $true
 }
@@ -6390,9 +6400,37 @@ function Write-SpecrewReviewAuthorshipObservation {
         [Parameter(Mandatory)][string]$ProjectRoot,
         [AllowNull()][string]$HostKind,
         [AllowNull()][string]$SessionId,
-        [AllowEmptyCollection()][string[]]$ChangedPaths = @()
+        [AllowEmptyCollection()][string[]]$ChangedPaths = @(),
+        # W37: how the turn delta was attributed. 'exact-turn' means the paths ARE what this turn
+        # wrote; anything else means they are whatever happened to be dirty.
+        [AllowNull()][string]$AttributionMode
     )
     if ([string]::IsNullOrWhiteSpace($SessionId)) { return }
+
+    # W37: MINT NOTHING WHEN ATTRIBUTION IS DEGRADED.
+    #
+    # This function's own header says the fact is minted "from what it watched the session write".
+    # In degraded-worktree mode it was minted from what happened to be DIRTY. On the KeyContextAI
+    # walk a SessionStart redeploy rewrote 15 files under the project's deployed copy of Specrew's
+    # runtime at 09:42; they stayed dirty all session, and a session that wrote only governance
+    # artifacts was labelled `review-authored-by-implementer`.
+    #
+    # `conformance-turn-delta.ps1` already computes exactly the signal that names this problem, and
+    # emits `changed_paths` identically in both modes. Its ONLY consumer outside that file picks a
+    # display label - so a computed control decided wording and nothing else, while a FACTUAL
+    # assertion about who wrote what never consulted it. Sixth instance of that pattern this week.
+    #
+    # NEITHER HALF IS MINTED, not just the source-writer half. Refusing only the source half would
+    # let a degraded session's review-record write stand while its code writes vanished, and the
+    # reader derives `independent-session` from the ABSENCE of source writes - turning an
+    # unsupportable fact into a false CLEAN one, which is the dangerous direction. Minting nothing
+    # leaves the record `unattributed`: unknown, which is what is actually true, and which the
+    # validator already reports out loud as "unknown is not independent".
+    #
+    # FAIL-CLOSED ON ABSENCE, deliberately inverting W33's posture: an unstated mode is treated as
+    # degraded, because a caller that does not say how it attributed cannot support a claim about
+    # who wrote what.
+    if ([string]::IsNullOrWhiteSpace($AttributionMode) -or $AttributionMode -cne 'exact-turn') { return }
     $paths = @(@($ChangedPaths) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
     if ($paths.Count -eq 0) { return }
     $reviewPaths = @($paths | ForEach-Object { Get-SpecrewReviewRecordPathMatch -Path $_ } | Where-Object { $null -ne $_ })

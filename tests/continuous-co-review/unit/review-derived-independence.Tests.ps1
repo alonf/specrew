@@ -45,8 +45,10 @@ BeforeAll {
             '# Review: Iteration 001', '', 'An independent review found no substantive defects.')
         if ($Observed) {
             # What a record written after W34-A landed carries by construction.
+            # W37: an observation must state HOW the turn was attributed, or it mints nothing. This
+            # fixture models a record whose authorship WAS observed, so it says exact-turn.
             Write-SpecrewReviewAuthorshipObservation -ProjectRoot $root -HostKind 'claude' -SessionId 'sess-x' `
-                -ChangedPaths @('specs/001-thing/iterations/001/review.md')
+                -AttributionMode 'exact-turn' -ChangedPaths @('specs/001-thing/iterations/001/review.md')
         }
         return [pscustomobject]@{ Root = $root; IterationDirectory = $iterDir }
     }
