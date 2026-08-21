@@ -1294,7 +1294,7 @@ function Resolve-ReviewCampaignPublicIdentity {
         # conclude the feature did not exist and to propose bypassing the gate.
         throw ('Specrew could not work out which feature this review is for. It looked at the lifecycle ' +
             'state, the active feature record, and the branch name, and none of them named one. ' +
-            'Tell it directly: specrew review --live --feature <feature-id> --approve-round')
+            'Tell it directly, and note this is the human''s command to run because --approve-round records their approval: specrew review --live --feature <feature-id> --approve-round')
     }
     $featureDirectory = Join-Path $root "specs/$feature"
     if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) { throw "review-campaign-feature-missing:$feature" }

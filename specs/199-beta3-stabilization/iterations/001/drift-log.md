@@ -535,12 +535,49 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-090 - the advisory instructed the agent to mint the human's approval (resolved)
+
+- **Observed**: 2026-08-21, from the KeyContextAI walk. The stop hook carries the review block into
+  agent context, where it read: *"What to do: run a fresh review of your files as they are now:
+  specrew review --live --approve-round"*. That flag is documented as *"Approve one review round.
+  Specrew records your approval and mints the reference itself"* - it exists so the approval phrase
+  cannot be forged. The guidance handed an agent, as its named next action, the one command whose
+  entire purpose is recording the HUMAN's decision.
+- **The W15 shape, and worse than W15.** W15 offered an action that was obviously forbidden; this one
+  looks routine, which is precisely what makes it dangerous. On the 2026-08-20 walk the agent noticed
+  and held. An earlier host, under less provocation, hand-wrote a controller.
+- **Deleting the command would have recreated the original defect.** The navigator's own comment
+  records why the flag is named there: neither dogfood host could discover it, so both improvised an
+  authorization. Discoverability and attribution are BOTH required.
+- **Resolution**: the command stays and the line says whose act it is. `review-signoff-evidence-gate.ps1`
+  already worded it that way - *"Approving a review round is the human's decision"* - so the fix is the
+  existing pattern applied consistently, not a new one.
+  - `request-current-digest-review` and `request-authorized-review` now read *"ask the human to ... -
+    approving a review round is their decision, and that flag is how Specrew records it"*.
+  - The incomplete-run advisory in `review-authority-core.ps1` gets the same treatment.
+  - The agent's PRIVATE channel (`Build-ReviewCampaignNavigatorAgentDirective`) now carries the
+    boundary explicitly: the command shown above is the human's to run, do not run it, do not record an
+    approval on their behalf, ask them. The consumer block explains the act; the agent channel says who
+    performs it.
+- **The audit found three more, as predicted.** A standing check over the co-review sources - not a
+  one-off sweep - flagged `continuous-co-review-navigator.ps1:604` and `:835` (both "authorize an
+  INDEPENDENT reviewer once: ...") and `review-campaign-orchestrator.ps1:1297` ("Tell it directly:
+  ..."). All three now name the owner.
+- **Verification**: `tests/continuous-co-review/unit/advisory-names-the-humans-act.Tests.ps1`, 7 cases.
+  The specific two, the agent-channel instruction, and TWO general properties: no action the sentence
+  generator can produce names the approval flag without an owner clause, and no reader-facing line in
+  the co-review sources does either. Mutation-proven with the landing check: restoring the pre-fix
+  wording kills three cases, including both general properties.
+- **A detail worth keeping**: joining the orchestrator message back onto one line was necessary, because
+  the line-based audit reads a continuation line on its own - and an owner clause on the previous line
+  does not travel with the flag for a reader skimming either.
+
 ### DRIFT-199-I001-089 - a re-sync demoted completed tasks, and a resolver nobody calls (resolved)
 
 Two items from the post-walk queue, taken together because checking the second corrected the first's
 neighbour.
 
-**Item 5 - the tasks-progress demotion, a deferral with a real instance.** `Sync-IterationTaskProgress`
+**Item 5 - the tasks-progress demotion. NO LONGER A DEFERRAL: two field instances.** `Sync-IterationTaskProgress`
 preserved live `in-progress`, `blocked`, `needs-rework` and `deferred` against the tasks.md checkbox
 derivation, but NOT `done`. The hand-driven flow leaves those boxes unticked even after the work is
 finished, so a re-sync reset completed tasks to `pending`. `task-progress.ps1` carried a note saying the
@@ -558,6 +595,17 @@ re-sync reset all 18 completed tasks and left state.md contradicting itself, the
 - Two fixture defects on the way, both of which would have made the suite prove nothing: a plan table
   missing columns the catalog projects, and a status pattern that did not allow for the quoted scalars
   the writer emits - which read every ledger as empty and every assertion as vacuous.
+- **Both instances, recorded rather than summarised.** First: the note at `task-progress.ps1` naming the
+  iteration-001 re-sync as still exposed and out of scope for that slice. Second, 2026-08-20 on
+  KeyContextAI: a complete 18-task ledger silently downgraded to `pending`, on a LIVE project, AT a
+  review boundary, with `state.md` then contradicting itself - the managed block reporting 0 complete
+  while the prose below reported 18. Which state was true was established only by a 57-test run.
+- **Re-scoped, because the deferral's framing was too narrow.** The defect is not "iteration 001 is
+  also exposed"; it is that the feature-root `tasks.md` checkboxes were treated as AUTHORITATIVE over a
+  live ledger at all. The hand-driven flow leaves those boxes unticked after the work is finished, so
+  that framing recurs on every future re-sync of every first iteration. The fix removes the authority
+  rather than the exposure: a derived hint may PROMOTE, never DEMOTE, so an unticked box can no longer
+  contradict the ledger no matter how often a sync runs.
 
 **The baseline-as-a-fact item dissolved once its premise was checked.** It was raised because it was not
 recoverable from the store why one run covered the whole iteration surface while earlier ones covered
