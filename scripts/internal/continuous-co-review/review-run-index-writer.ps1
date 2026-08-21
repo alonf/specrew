@@ -68,6 +68,18 @@ function New-ContinuousCoReviewRunIndexRecord {
         [Parameter(Mandatory)]
         [string] $BaselineRef,
 
+        # HOW THE BASELINE WAS CHOSEN, which decides whether a run can be signoff evidence at all.
+        # specrew-review.ps1 computes it - baseline OMITTED means auto-anchored to the feature
+        # merge-base and promotable, an explicit --baseline-ref makes the run exploratory and NOT
+        # promotable - and until now that decision lived only in control flow and was never
+        # persisted, so no later reader could tell the two apart from the record.
+        #
+        # OPTIONAL, new runs only, absence read as "not recorded" - the examined_paths precedent.
+        # A run written before this field existed simply does not carry it, which is NOT the same
+        # as a run that was exploratory.
+        [AllowNull()]
+        [string] $BaselineSource,
+
         [AllowNull()]
         [string] $DiffHash,
 
@@ -170,6 +182,7 @@ function New-ContinuousCoReviewRunIndexRecord {
         run_id                    = $RunId
         checkpoint_id             = $CheckpointId
         baseline_ref              = $BaselineRef
+        baseline_source           = $(if ([string]::IsNullOrWhiteSpace($BaselineSource)) { $null } else { [string]$BaselineSource })
         diff_hash                 = $resolvedDiffHash
         reviewed_ref              = $ReviewedRef
         reviewed_tree_id          = $ReviewedTreeId
@@ -207,6 +220,10 @@ function New-ContinuousCoReviewRunSkippedIndexRecord {
         [Parameter(Mandatory)]
         [string] $BaselineRef,
 
+        # See the note on the first declaration: optional, new runs only, absence is not a value.
+        [AllowNull()]
+        [string] $BaselineSource,
+
         [Parameter(Mandatory)]
         [string] $Reason,
 
@@ -225,6 +242,7 @@ function New-ContinuousCoReviewRunSkippedIndexRecord {
         run_id           = $RunId
         checkpoint_id    = $CheckpointId
         baseline_ref     = $BaselineRef
+        baseline_source  = $(if ([string]::IsNullOrWhiteSpace($BaselineSource)) { $null } else { [string]$BaselineSource })
         status           = 'skipped'
         reason           = $Reason
         diff_hash        = $DiffHash
@@ -247,6 +265,10 @@ function Write-ContinuousCoReviewRunIndex {
 
         [Parameter(Mandatory)]
         [string] $BaselineRef,
+
+        # See the note on the first declaration: optional, new runs only, absence is not a value.
+        [AllowNull()]
+        [string] $BaselineSource,
 
         [AllowNull()]
         [string] $DiffHash,
@@ -307,6 +329,7 @@ function Write-ContinuousCoReviewRunIndex {
             -RunId $RunId `
             -CheckpointId $CheckpointId `
             -BaselineRef $BaselineRef `
+            -BaselineSource $BaselineSource `
             -Reason $skipReason `
             -DiffHash $skipDiffHash `
             -GateVerdict $GateVerdict `
@@ -330,6 +353,7 @@ function Write-ContinuousCoReviewRunIndex {
         -RunId $RunId `
         -CheckpointId $CheckpointId `
         -BaselineRef $BaselineRef `
+        -BaselineSource $BaselineSource `
         -DiffHash $DiffHash `
         -ReviewedRef $ReviewedRef `
         -Scope $Scope `
@@ -426,6 +450,10 @@ function Write-ContinuousCoReviewSkippedRunIndex {
         [Parameter(Mandatory)]
         [string] $BaselineRef,
 
+        # See New-ContinuousCoReviewRunIndexRecord: optional, new runs only.
+        [AllowNull()]
+        [string] $BaselineSource,
+
         [Parameter(Mandatory)]
         $SkippedRun,
 
@@ -440,6 +468,7 @@ function Write-ContinuousCoReviewSkippedRunIndex {
         -RunId $RunId `
         -CheckpointId $CheckpointId `
         -BaselineRef $BaselineRef `
+        -BaselineSource $BaselineSource `
         -SkippedRun $SkippedRun `
         -GateVerdict $GateVerdict `
         -CreatedAt $CreatedAt

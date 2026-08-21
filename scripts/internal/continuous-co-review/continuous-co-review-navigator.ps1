@@ -1076,8 +1076,10 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
         if (-not (Get-Command -Name 'New-ContinuousCoReviewGateVerdict' -ErrorAction SilentlyContinue)) { return $null }
         $verdict = New-ContinuousCoReviewGateVerdict -RunId $RunId -CheckpointId $checkpointId -State 'pass' -RoundCount 1 -CreatedAt $Now
 
+        # The anchor here IS the merge-base with trunk (see the COVERAGE note above), so this run's
+        # baseline provenance is not a guess - it is the auto-anchor path by construction.
         $null = Write-ContinuousCoReviewRunIndex -RepoRoot $RepoRoot -RunId $RunId -CheckpointId $checkpointId `
-            -BaselineRef ([string]$anchor) -ReviewedRef $reviewedRef -ReviewedTreeId $TreeId `
+            -BaselineRef ([string]$anchor) -BaselineSource 'auto-anchor-merge-base' -ReviewedRef $reviewedRef -ReviewedTreeId $TreeId `
             -GateVerdict $verdict -EvidenceLabels $EvidenceLabels -CreatedAt $Now
         return $RunId
     }

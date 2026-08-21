@@ -535,6 +535,38 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-091 - how a run's baseline was chosen is now a fact (resolved, and a correction to -089)
+
+- **Correcting my own correction.** DRIFT-199-I001-089 concluded that the baseline-as-a-fact item
+  "dissolved" once its premise was checked. That was HALF right, and the half I got wrong is the half
+  that mattered:
+  - The TREE-ID half did dissolve. The navigator already records `baseline_ref` in the run index, and
+    the campaign path has no baseline at all because it freezes a whole tree.
+  - The PROVENANCE half - "and how it was chosen" - was real and missing. I read the original ask as
+    being only about the tree id and closed it on that basis.
+- **Why it is load-bearing.** `specrew-review.ps1:1536` computes
+  `$scopedExploratoryReview = -not [string]::IsNullOrWhiteSpace($parsedArgs.BaselineRef)` and decides
+  promotion from it: a baseline OMITTED auto-anchors to the feature merge-base and is promotable as
+  signoff evidence; an explicit `--baseline-ref` makes the run exploratory and is NOT promoted, so a
+  narrow `--baseline-ref HEAD~1` cannot satisfy review-signoff for earlier changes nobody reviewed.
+  That decision existed only in control flow and was never persisted, so no later reader could tell the
+  two apart from the record.
+- **Resolution**: `baseline_source` on the run index, threaded through all three record shapes and both
+  wrappers. Additive, optional, NEW RUNS ONLY, absence read as "not recorded" - the `examined_paths`
+  precedent. **Absence is not a value**: a run written before the field existed is not an exploratory
+  run, it is a run that did not say, and the guard pins that distinction directly.
+- **It has a producer.** The navigator's promotion writes the merge-base anchor, so it states
+  `auto-anchor-merge-base` by construction. Shipping a field nothing produces is the shape this log has
+  catalogued four times, so the producer is pinned in the same suite as the field.
+- **Verification**: `tests/continuous-co-review/unit/baseline-provenance-fact.Tests.ps1`, 6 cases in the
+  slice lane - both provenance values persist, absence and empty both read as not-recorded, every
+  pre-existing field still lands, and the navigator names its own path. Mutation-proven with the landing
+  check: forcing the field to null kills both provenance cases and leaves the absence cases passing.
+- **Built without moving the deployed runtime.** The writer and the navigator are inside the co-review
+  runtime bundle, and two walks are live against the INSTALLED module. Their handshake resolves against
+  what is installed, not against this repo, so the work is committed and the installer was deliberately
+  NOT run: installed stays at `bbe47795` while HEAD moves on. Installing is what would wedge them.
+
 ### DRIFT-199-I001-090 - the advisory instructed the agent to mint the human's approval (resolved)
 
 - **Observed**: 2026-08-21, from the KeyContextAI walk. The stop hook carries the review block into
