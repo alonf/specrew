@@ -919,6 +919,35 @@ function Test-ReviewDerivedIndependenceBlock {
     }
 }
 
+function Test-ScaffoldPendingSiblings {
+    # W41: A GENERATED ARTIFACT DIVERTED TO `.pending` MUST NOT WAIT IN SILENCE.
+    #
+    # When an iteration is already accepted, the reviewer scaffold protects the existing artifact and
+    # writes what it WOULD have produced to `<name>.pending`. That is the right call - overwriting an
+    # artifact under an accepted verdict would silently alter accepted evidence - but the only notice
+    # was a WARN at scaffold time, which scrolls past. Nothing else in the lifecycle ever mentioned the
+    # file again, so a generated version could sit beside an accepted one indefinitely.
+    #
+    # Raised while deciding a related migration question: whether a project that hand-authored these
+    # artifacts to work around a crash would ever receive generated versions. For the five closeout
+    # artifacts it does - they are written by the UPDATING writer, so an unaccepted iteration simply
+    # gets overwritten. The gap was not there; it was here, one door along.
+    #
+    # A WARNING, not an error: a `.pending` sibling is information for a human to reconcile, not a
+    # governance failure. Refusing on it would block closeout on a file the scaffold itself created.
+    param(
+        [string]$IterationDirectory,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) { return }
+    if (-not (Test-Path -LiteralPath $IterationDirectory -PathType Container)) { return }
+    $pending = @(Get-ChildItem -LiteralPath $IterationDirectory -Filter '*.pending' -File -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.Name })
+    if (@($pending).Count -eq 0) { return }
+    Write-TrustHardeningWarning -Category 'scaffold-pending-artifact' -Detail (
+        ("the scaffold produced a generated version of {0} artifact(s) and could not write it, because this iteration is already accepted and overwriting accepted evidence would be silent: {1}. Each is the content the generator would have written. Compare it with the accepted artifact and either fold in what it adds or delete the .pending file - leaving it is the only outcome that decides nothing." -f @($pending).Count, (@($pending) -join ', ')))
+}
+
 function Test-ReviewRecordAuthorship {
     # W34-B. Report the observed authorship of the review record. It LABELS, it does not launder: a
     # record written by the implementing session becomes honest about that, not clean.
@@ -3568,6 +3597,7 @@ function Test-ReviewArtifact {
     Test-NoGapClosurePolicy -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -IterationStatus $IterationStatus -Errors $Errors
     Test-ReviewCitedRunEvidence -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
     Test-ReviewRecordAuthorship -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -Errors $Errors
+    Test-ScaffoldPendingSiblings -IterationDirectory $IterationDirectory -Errors $Errors
     Test-ReviewDerivedIndependenceBlock -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Errors $Errors
 
     # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.

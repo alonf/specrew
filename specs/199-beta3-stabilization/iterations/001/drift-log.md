@@ -535,6 +535,43 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-096 - the migration question, decided on measurement rather than by omission
+
+- **Raised**: can a project that hand-authored the five closeout artifacts to work around W40's defect
+  ever receive generated versions, or does the workaround become permanent and invisible? Asked as a
+  deliberate decision rather than something to settle by silence - the first shipped defect whose
+  workaround could have been irreversible.
+- **The premise does not hold for the five, measured rather than reasoned.** The `preserved`-and-return
+  path is in `Write-MissingScaffoldFile`, which governs the dashboard, the hardening gate and the
+  trap-reapplication record. All five closeout artifacts use `Write-ScaffoldFile`, which UPDATES.
+- **What actually decides it is protection, not existence**, and it has two independent triggers:
+  - the ITERATION is accepted (`review.md` carries `Overall Verdict: accepted`), or
+  - the ARTIFACT itself carries verdict rows (`| pass |` / `| blocked |`).
+  Either one protects the file and diverts the generated content to `<name>.pending`.
+- **Measured outcomes** against a real iteration:
+  - unaccepted iteration, hand-authored `code-map.md` -> **overwritten**. The workaround ends by itself,
+    which is the migration case and the reason to leave the writer alone.
+  - accepted iteration -> artifact kept, generated version at `.pending`.
+  - unaccepted iteration, verdict-bearing artifact (`coverage-evidence.md`, `reviewer-index.md`) ->
+    protected on its OWN content, `.pending` again. Deliberate: those files hold judgements, and
+    overwriting a judgement is not a migration, it is a deletion.
+- **DECISION: the writers are left alone.** Protecting accepted or verdict-bearing artifacts is correct,
+  and everything else already migrates. Both halves are pinned by tests, because "we decided not to
+  change this" is only a decision if the behaviour it rests on is guarded.
+- **The gap that WAS real, one door along**: nothing ever mentioned a `.pending` file again. The only
+  notice was a WARN at scaffold time, which scrolls past, and `validate-governance.ps1` had zero
+  references to `.pending` - so a generated version could sit beside an accepted artifact indefinitely.
+  That is the invisibility half of the concern, and it was in a different place than the question
+  assumed. Closed: validation now names every `.pending` sibling, as a WARNING - it is information for a
+  human to reconcile, not a governance failure, and refusing on it would block closeout on a file the
+  scaffold itself created. The message says what the file is and names both ways to end it, because
+  leaving it is the only outcome that decides nothing.
+- **A wrong assertion in my own suite, caught by running it**: the "nothing waiting" case assumed an
+  unaccepted iteration produces no `.pending` at all. Two appeared, because those artifacts are
+  verdict-bearing. The test was measuring the generator when it meant to measure the check; corrected,
+  and the nuance is now pinned as its own case rather than hidden in a summary sentence.
+- **Verification**: `tests/unit/scaffold-migration-and-pending.tests.ps1`, 5 cases in the slice lane.
+
 ### DRIFT-199-I001-095 - the reviewer closeout artifacts had no generator on the path that runs (resolved)
 
 - **Observed**: 2026-08-21, at the KeyContextAI retro. The five artifacts closeout REQUIRES - `code-map.md`,
