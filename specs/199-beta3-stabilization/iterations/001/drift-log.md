@@ -535,6 +535,48 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-089 - a re-sync demoted completed tasks, and a resolver nobody calls (resolved)
+
+Two items from the post-walk queue, taken together because checking the second corrected the first's
+neighbour.
+
+**Item 5 - the tasks-progress demotion, a deferral with a real instance.** `Sync-IterationTaskProgress`
+preserved live `in-progress`, `blocked`, `needs-rework` and `deferred` against the tasks.md checkbox
+derivation, but NOT `done`. The hand-driven flow leaves those boxes unticked even after the work is
+finished, so a re-sync reset completed tasks to `pending`. `task-progress.ps1` carried a note saying the
+iteration-001 case was still exposed and out of scope for that slice; it then happened - a KeyContextAI
+re-sync reset all 18 completed tasks and left state.md contradicting itself, the managed block reporting
+0 complete while the prose below reported 18.
+
+- **Resolution**: `done` joins the preserved set. A derived hint MAY PROMOTE, NEVER DEMOTE - the checkbox
+  file is a hint, the ledger is the live record, and deliberately un-completing a task goes through
+  `Set-TaskStatus` rather than through unticking a box.
+- **Verification**: `tests/unit/task-progress-no-demotion.tests.ps1`, 3 cases in the slice lane, driving
+  the REAL `Sync-IterationTaskProgress` against a fixture built from this project's own plan column set.
+  Mutation-proven with the landing check: restoring the pre-fix list kills the demotion case and leaves
+  the other two passing.
+- Two fixture defects on the way, both of which would have made the suite prove nothing: a plan table
+  missing columns the catalog projects, and a status pattern that did not allow for the quoted scalars
+  the writer emits - which read every ledger as empty and every assertion as vacuous.
+
+**The baseline-as-a-fact item dissolved once its premise was checked.** It was raised because it was not
+recoverable from the store why one run covered the whole iteration surface while earlier ones covered
+only governance files. Checking that question is what exposed the false mechanism now corrected in
+DRIFT-199-I001-080: `Resolve-ContinuousCoReviewAutoFireBaselineTreeId` has no production consumer, and
+the campaign path freezes a whole tree rather than diffing from a baseline.
+
+- So there was no unrecorded baseline on the campaign path, because there is no baseline on it. The
+  navigator path, which does scope by baseline, already records `baseline_ref` in the run index at
+  `.specrew/review/inline/<run-id>/review-run.json`.
+- And the forensic question the item existed to answer - what did this run actually look at - is
+  answered by W33's `examined_paths`, which is a fact on the run itself.
+- **A fourth instance of one class**: a function defined, unit-tested, and wired to nothing. The tests
+  gave it the appearance of being live, which is why it survived. The evidence marker had no producer;
+  the release path had no installer; this resolver has no caller. Each was honoured or exercised by
+  something and reached by nothing.
+- **Recorded rather than built**: no new field was added. Adding one would have shipped a fact nothing
+  produces, which is the exact shape being catalogued here.
+
 ### DRIFT-199-I001-088 — there was no supported way to install your own build, and the stamp could not be checked (resolved)
 
 - **Observed**: 2026-08-21. The repo was at `fef3d0d9` and the installed module at `58555b65`, so every
@@ -858,12 +900,27 @@ finds behaviour.
   stored: "the frozen iteration 001 plan" and "the frozen iteration artifacts". The record held the
   truth in plain language and nothing consumed it. This is not a reviewer-host defect, and not a
   defect of Copilot in particular; it is the controller never asking what was examined.
-- **Why it compounds**: `Resolve-ContinuousCoReviewAutoFireBaselineTreeId` advances the next round's
-  baseline to the last ACCEPTED reviewed tree. Once a hollow pass is accepted it becomes that
-  baseline, so every later round diffs only what changed since — which was governance and records —
-  and passes again. The signoff hook then reports "your review covers these files", inheriting a
-  coverage claim from a run that established none. The walk's operator could not escape it without
-  `--baseline-ref`, and three of four rounds were spent.
+- **CORRECTED 2026-08-21 - the mechanism named here was wrong.** This entry originally said the next
+  round's baseline advances to the last accepted reviewed tree, so a hollow pass becomes the baseline
+  and every later round diffs only governance files. That was the walk operator's inference, repeated
+  here as fact without checking it. Checked now:
+  - `Resolve-ContinuousCoReviewAutoFireBaselineTreeId` has **no production consumer** - one definition
+    and two test references; nothing in `scripts/` or `extensions/` calls it.
+  - The campaign fire path freezes a **whole tree**: `recovery.json` carries `snapshot_path` and
+    `target_kind = code` and no baseline key at all. The `changed_paths` it does handle belong to the
+    snapshot INTEGRITY check (tamper detection), not to a review diff.
+  - `Get-ContinuousCoReviewCheckpointDiff`, which produces the baseline-scoped `diff_inline`, is
+    called by the NAVIGATOR - the checkpoint auto-fire path during implement - not by the campaign.
+  - The signoff gate reads `baseline_ref` only to walk the lineage chain for coverage, never to
+    scope what a reviewer reads.
+  So no baseline anchoring narrowed those runs. Every campaign run was handed the whole
+  implementation. **What actually narrowed them is what the other entries already record**: the
+  design-context frame (W29/W30), and the absence of any record of what was read (W33). They were
+  hollow because of where the reviewer's attention was steered and because nothing checked it - not
+  because the machinery fed them a thin diff.
+- **What stands unchanged**: the runs, their durations, their verdicts, their summaries, and the fact
+  that two of them recorded a clean pass having read no code. The evidence was measured; only the
+  explanation for it was borrowed.
 - **Citation**: evidence rule (claims need runtime evidence, not artifact existence). FR-003 for
   round authorization; the signoff evidence gate for coverage.
 - **Resolution**: implementation-reverted. The candidate now DECLARES what it read, and the

@@ -654,12 +654,20 @@ function Sync-IterationTaskProgress {
     foreach ($taskRow in $catalog) {
         $derivedStatus = if ($derivedHints.Statuses.Contains($taskRow.Task)) { [string]$derivedHints.Statuses[$taskRow.Task] } else { $null }
         if ($existing.Tasks.Contains($taskRow.Task)) {
-            # Preserve live non-pending state (in-progress, blocked, needs-rework, deferred) unless
-            # tasks.md derivation promotes the task to 'done'. Without this guard, every sync would
-            # downgrade actively worked tasks to 'pending' (the derived status for unchecked rows),
-            # silently erasing coordination state.
+            # Preserve live non-pending state unless tasks.md derivation promotes the task to 'done'.
+            # Without this guard, every sync would downgrade actively worked tasks to 'pending' (the
+            # derived status for unchecked rows), silently erasing coordination state.
+            #
+            # 'done' JOINED THAT LIST 2026-08-21. It was missing, and the deferral note above said the
+            # iteration-001 re-sync was still exposed - which then happened for real: a KeyContextAI
+            # re-sync reset all 18 completed tasks to 'pending' and left state.md contradicting itself,
+            # because the hand-driven flow leaves tasks.md unchecked even after the work is finished.
+            #
+            # A DERIVED HINT MAY PROMOTE, NEVER DEMOTE. The checkbox file is a hint; the ledger is the
+            # live record. Deliberately un-completing a task goes through Set-TaskStatus, not through
+            # unticking a box.
             $liveExistingStatus = [string]$existing.Tasks[$taskRow.Task].status
-            $preserveLiveExisting = ($liveExistingStatus -in @('in-progress', 'blocked', 'needs-rework', 'deferred')) -and ($derivedStatus -ne 'done')
+            $preserveLiveExisting = ($liveExistingStatus -in @('in-progress', 'blocked', 'needs-rework', 'deferred', 'done')) -and ($derivedStatus -ne 'done')
             $entry = [ordered]@{
                 title          = $taskRow.Title
                 status         = if ($preserveLiveExisting) { $liveExistingStatus } elseif (-not [string]::IsNullOrWhiteSpace($derivedStatus)) { $derivedStatus } elseif ([string]::IsNullOrWhiteSpace($liveExistingStatus)) { 'pending' } else { $liveExistingStatus }
