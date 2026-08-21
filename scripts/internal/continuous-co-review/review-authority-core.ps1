@@ -1334,12 +1334,12 @@ function Test-ReviewCampaignDuplicateCombination {
         [Parameter(Mandatory)][string]$ContractVersion,
         [object[]]$Runs = @()
     )
-    $matches = @($Runs | Where-Object {
+    $matchedItems = @($Runs | Where-Object {
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'target_digest') -ceq $TargetDigest -and
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'harness_id') -ceq $HarnessId -and
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'schema_version') -ceq $ContractVersion
     })
-    return [pscustomobject]@{ duplicate = ($matches.Count -gt 0); prior_run_ids = @($matches | ForEach-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') }) }
+    return [pscustomobject]@{ duplicate = ($matchedItems.Count -gt 0); prior_run_ids = @($matchedItems | ForEach-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') }) }
 }
 
 # --- T044: one-invocation run, acceptance/currentness, and finding lineage ----------------------

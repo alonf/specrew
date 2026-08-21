@@ -919,6 +919,32 @@ function Test-ReviewDerivedIndependenceBlock {
     }
 }
 
+function Test-DeployedExtensionIntegrity {
+    # W43. Every guarantee this validator makes assumes IT ran as shipped. A downstream agent
+    # hand-patched a deployed scaffold during the 2026-08-21 walk to clear a blocker - its fix was
+    # right and it said so - and nothing would have detected the same edit to this file.
+    #
+    # An ERROR, not a warning: a modified validator is not information to reconcile, it is a reason to
+    # distrust the run. The remedy is named, and it is one the reader can perform.
+    param(
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+    if (-not (Get-Command -Name 'Test-SpecrewDeployedExtensionIntegrity' -ErrorAction SilentlyContinue)) { return }
+    $state = $null
+    try { $state = Test-SpecrewDeployedExtensionIntegrity -ProjectRoot $ProjectRoot }
+    catch { return }
+    if ($null -eq $state -or -not [bool]$state.checked) { return }
+    $drifted = @($state.drifted)
+    $missing = @($state.missing)
+    if (@($drifted).Count -eq 0 -and @($missing).Count -eq 0) { return }
+    $detail = @()
+    if (@($drifted).Count -gt 0) { $detail += ('modified: ' + ((@($drifted) | Select-Object -First 5) -join ', ')) }
+    if (@($missing).Count -gt 0) { $detail += ('missing: ' + ((@($missing) | Select-Object -First 5) -join ', ')) }
+    $Errors.Add(("The deployed Specrew machinery under .specify/extensions/specrew-speckit does not match what was installed ({0}). Everything this validator reports assumes those files run as shipped, so a local edit to them makes this run's result unreliable rather than merely different. Restore them with: specrew update --project-path `"{1}`"  (from PowerShell). If the edit was deliberate and you want to keep it, make it in the Specrew repository and reinstall - a project-local patch is overwritten by the next update and is invisible to everyone else." -f ($detail -join '; '), $ProjectRoot)) | Out-Null
+}
+
 function Test-ScaffoldPendingSiblings {
     # W41: A GENERATED ARTIFACT DIVERTED TO `.pending` MUST NOT WAIT IN SILENCE.
     #
@@ -2759,8 +2785,8 @@ function Test-Phase2HardeningGate {
 
         foreach ($definition in $expectedConcernDefinitions) {
             $concernId = $definition.ConcernId
-            $matches = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
-            if ($matches.Count -ne 1) {
+            $matchedItems = @($hardeningState.ConcernRows | Where-Object { [string]$_.Concern -eq $concernId })
+            if ($matchedItems.Count -ne 1) {
                 Add-RepoStructuredValidationFailure -Errors $Errors -ProjectRoot $ProjectRoot -TargetPath $hardeningGatePath -LineNumber $concernHeadingLine -Category 'concern-order' -Message ("hardening-gate.md must contain exactly one canonical concern row for '{0}'" -f $concernId) -RemediationHint 'Keep each canonical concern visible exactly once in the Concern Review table.'
                 continue
             }
@@ -3598,6 +3624,7 @@ function Test-ReviewArtifact {
     Test-ReviewCitedRunEvidence -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -Errors $Errors
     Test-ReviewRecordAuthorship -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -OverallVerdict $overallVerdict -Errors $Errors
     Test-ScaffoldPendingSiblings -IterationDirectory $IterationDirectory -Errors $Errors
+    Test-DeployedExtensionIntegrity -ProjectRoot $ProjectRoot -Errors $Errors
     Test-ReviewDerivedIndependenceBlock -ReviewLines $reviewLines -ProjectRoot $ProjectRoot -IterationDirectory $IterationDirectory -Errors $Errors
 
     # Pillar 5 (FR-022): production evidence cited in review.md must exist in the cited Tree Under Review.

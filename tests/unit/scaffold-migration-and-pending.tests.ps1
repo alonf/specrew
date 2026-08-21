@@ -134,11 +134,21 @@ Describe 'W41 a diverted artifact does not wait in silence' {
         # That is deliberate rather than a gap: those files hold judgements, and overwriting a judgement
         # is not a migration, it is a deletion. What was wrong was that the .pending waited in silence,
         # and that is what the warning above fixes.
+        #
+        # The precondition is BUILT here rather than inherited from the checkout. It used to rely on the
+        # repository happening to contain a generated coverage-evidence.md, so removing that file - which
+        # is a byproduct, not a tracked artifact - turned this case red without anything about the
+        # behaviour changing. A guard that depends on untracked state guards the state, not the rule.
         $f = New-Fixture
         try {
+            [IO.File]::WriteAllText((Join-Path $f.Iteration 'coverage-evidence.md'),
+                "# Coverage Evidence: Iteration 001`n`n| Requirement | Result |`n| --- | --- |`n| FR-001 | pass |`n",
+                [Text.UTF8Encoding]::new($false))
             Invoke-Generator -IterationDirectory $f.Iteration
-            $pending = @(Get-ChildItem -LiteralPath $f.Iteration -Filter '*.pending' -File | ForEach-Object { $_.Name })
+            $pending = @(Get-ChildItem -LiteralPath $f.Iteration -Filter '*.pending' -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
             $pending | Should -Contain 'coverage-evidence.md.pending'
+            # ...and the judgement itself survived untouched.
+            (Get-Content -LiteralPath (Join-Path $f.Iteration 'coverage-evidence.md') -Raw -Encoding UTF8) | Should -Match '\| FR-001 \| pass \|'
             # ...while a non-verdict-bearing artifact was still migrated in place.
             (Get-Content -LiteralPath (Join-Path $f.Iteration 'code-map.md') -Raw -Encoding UTF8) | Should -Not -Match 'HAND-AUTHORED'
         }

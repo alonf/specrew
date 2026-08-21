@@ -365,14 +365,14 @@ function Get-LensIdFromRef {
 
 function Get-PhaseTwoLensActivationPlan {
     param(
-        [pscustomobject]$Profile,
+        [pscustomobject]$profileData,
         [pscustomobject]$ArtifactRefs,
         [pscustomobject]$QualityDefaults
     )
 
     $lensRefs = [System.Collections.Generic.List[string]]::new()
-    Add-UniqueItems -List $lensRefs -Values @($Profile.required_lens_refs)
-    Add-UniqueItems -List $lensRefs -Values @($Profile.custom_lens_refs)
+    Add-UniqueItems -List $lensRefs -Values @($profileData.required_lens_refs)
+    Add-UniqueItems -List $lensRefs -Values @($profileData.custom_lens_refs)
 
     $entries = [System.Collections.Generic.List[object]]::new()
     foreach ($lensRef in $lensRefs) {
@@ -796,7 +796,7 @@ function Get-CustomCompositionProfile {
 
 function Get-RiskResolution {
     param(
-        [pscustomobject]$Profile,
+        [pscustomobject]$profileData,
         [pscustomobject]$Signals
     )
 
@@ -819,11 +819,11 @@ function Get-RiskResolution {
     }
 
     $normalizedText = [string]$Signals.normalized_text
-    $surfaceRuntimeShapes = @($Profile.stack_surfaces | ForEach-Object { $_.runtime_shape })
-    $isRecognizedPreset = -not [string]::IsNullOrWhiteSpace([string]$Profile.preset_ref)
+    $surfaceRuntimeShapes = @($profileData.stack_surfaces | ForEach-Object { $_.runtime_shape })
+    $isRecognizedPreset = -not [string]::IsNullOrWhiteSpace([string]$profileData.preset_ref)
 
     $requiresConcurrency = if ($isRecognizedPreset) {
-        ($Profile.profile_id -eq 'quality-profile.node-public-ws-service.v1') -or
+        ($profileData.profile_id -eq 'quality-profile.node-public-ws-service.v1') -or
         (Test-AnyPattern -Text $normalizedText -Patterns @('\bconcurr', '\brace\b', '\bparallel\b', '\bshared state\b', '\bwebsocket\b', '\brealtime\b', '\bsession\b'))
     }
     else {
@@ -831,7 +831,7 @@ function Get-RiskResolution {
     }
 
     $requiresResiliency = if ($isRecognizedPreset) {
-        ($Profile.profile_id -in @('quality-profile.node-public-ws-service.v1', 'quality-profile.node-rest-with-postgres.v1', 'quality-profile.python-fastapi-service.v1', 'quality-profile.dotnet-aspnet-api.v1')) -or
+        ($profileData.profile_id -in @('quality-profile.node-public-ws-service.v1', 'quality-profile.node-rest-with-postgres.v1', 'quality-profile.python-fastapi-service.v1', 'quality-profile.dotnet-aspnet-api.v1')) -or
         (Test-AnyPattern -Text $normalizedText -Patterns @('\bretry\b', '\bidempot', '\brecover', '\btimeout\b', '\bbackoff\b', '\breconnect\b', '\bdegraded\b', '\bfailure\b'))
     }
     else {
@@ -874,7 +874,7 @@ function Get-RiskResolution {
 
 function Get-RequiredQualityGates {
     param(
-        [pscustomobject]$Profile,
+        [pscustomobject]$profileData,
         [pscustomobject]$RiskResolution
     )
 
@@ -1067,20 +1067,20 @@ elseif ($candidates.Count -gt 1) {
     $useRecognizedPreset = ($candidates[0].score -ge 85) -and ($scoreGap -ge 15)
 }
 
-$profile = if ($useRecognizedPreset -and $null -ne $selectedCandidate) {
+$profileData = if ($useRecognizedPreset -and $null -ne $selectedCandidate) {
     Get-PresetProfile -PresetId $selectedCandidate.preset_id -MatchedSignals @($selectedCandidate.matched_signals)
 }
 else {
     Get-CustomCompositionProfile -Signals $signals -Candidates $candidates
 }
 
-$riskResolution = Get-RiskResolution -Profile $profile -Signals $signals
-$requiredQualityGates = Get-RequiredQualityGates -Profile $profile -RiskResolution $riskResolution
+$riskResolution = Get-RiskResolution -Profile $profileData -Signals $signals
+$requiredQualityGates = Get-RequiredQualityGates -Profile $profileData -RiskResolution $riskResolution
 $qualityPlanningDefaults = Get-QualityPlanningDefaults -ResolvedProjectPath $resolvedProjectPath
 $phaseTwoArtifactRefs = Get-PhaseTwoArtifactRefs -ResolvedProjectPath $resolvedProjectPath -ResolvedFeaturePath $resolvedFeaturePath -QualityDefaults $qualityPlanningDefaults
 $presetRefs = [System.Collections.Generic.List[string]]::new()
-if ($profile.preset_ref) {
-    Add-UniqueItem -List $presetRefs -Value $profile.preset_ref
+if ($profileData.preset_ref) {
+    Add-UniqueItem -List $presetRefs -Value $profileData.preset_ref
 }
 
 $manualEvidence = [System.Collections.Generic.List[string]]::new()
@@ -1093,13 +1093,13 @@ $resolution = [pscustomobject]@{
     project_path              = $resolvedProjectPath
     feature_path              = $resolvedFeaturePath
     spec_path                 = $resolvedSpecPath
-    profile_id                = $profile.profile_id
-    resolution_mode           = $(if ($profile.preset_ref) { 'preset' } else { 'bounded-custom-composition' })
+    profile_id                = $profileData.profile_id
+    resolution_mode           = $(if ($profileData.preset_ref) { 'preset' } else { 'bounded-custom-composition' })
     preset_refs               = $presetRefs.ToArray()
-    custom_composition        = $(if ($profile.preset_ref) { $null } else { [pscustomobject]@{
-                reason        = $profile.custom_reason
-                lens_refs     = @($profile.custom_lens_refs)
-                unknowns      = @($profile.unknowns)
+    custom_composition        = $(if ($profileData.preset_ref) { $null } else { [pscustomobject]@{
+                reason        = $profileData.custom_reason
+                lens_refs     = @($profileData.custom_lens_refs)
+                unknowns      = @($profileData.unknowns)
                 phase_boundary = 'Phase 1 only; no hardening gate, bug-hunter execution, strongest-class routing, or quality-drift logic is implied.'
             } })
     stack_signals             = @($candidates | ForEach-Object {
@@ -1109,15 +1109,15 @@ $resolution = [pscustomobject]@{
                 matched_signals = @($_.matched_signals)
             }
         })
-    stack_surfaces            = @($profile.stack_surfaces)
+    stack_surfaces            = @($profileData.stack_surfaces)
     risk_dimensions           = @($riskResolution.required)
     not_applicable_dimensions = @($riskResolution.not_applicable)
-    required_lens_refs        = @($profile.required_lens_refs)
-    custom_lens_refs          = @($profile.custom_lens_refs)
+    required_lens_refs        = @($profileData.required_lens_refs)
+    custom_lens_refs          = @($profileData.custom_lens_refs)
     tool_bundle               = [pscustomobject]@{
-        bundle_id         = $profile.bundle_id
-        mechanical_checks = @($profile.mechanical_checks)
-        ecosystem_tools   = @($profile.ecosystem_tools)
+        bundle_id         = $profileData.bundle_id
+        mechanical_checks = @($profileData.mechanical_checks)
+        ecosystem_tools   = @($profileData.ecosystem_tools)
         manual_evidence   = $manualEvidence.ToArray()
     }
     required_quality_gates    = @($requiredQualityGates)
@@ -1126,7 +1126,7 @@ $resolution = [pscustomobject]@{
     phase2_known_traps_corpus_location = $phaseTwoArtifactRefs.known_traps_corpus_location
     phase2_trap_reapplication_artifact = $phaseTwoArtifactRefs.trap_reapplication_artifact
     phase2_hardening_focus_areas = @(Get-PhaseTwoHardeningFocusAreas -RiskResolution $riskResolution -ArtifactRefs $phaseTwoArtifactRefs)
-    phase2_lens_activation_plan = @(Get-PhaseTwoLensActivationPlan -Profile $profile -ArtifactRefs $phaseTwoArtifactRefs -QualityDefaults $qualityPlanningDefaults)
+    phase2_lens_activation_plan = @(Get-PhaseTwoLensActivationPlan -Profile $profileData -ArtifactRefs $phaseTwoArtifactRefs -QualityDefaults $qualityPlanningDefaults)
     phase2_routing_policy     = @(Get-PhaseTwoRoutingPolicy -QualityDefaults $qualityPlanningDefaults)
     phase2_explicit_later_deferrals = @(Get-PhaseTwoLaterDeferrals)
     phase2_deferrals          = Get-PhaseOneDeferrals

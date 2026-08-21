@@ -535,6 +535,68 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-097 - a local named after an automatic variable, and I closed the blocker on the wrong defect (resolved)
+
+- **Observed**: 2026-08-21. The walk updated to the "fixed" build and threw the same error. My -095 fix
+  was real but addressed a DIFFERENT defect in the same file - the `-SummaryOnly` write gate - and I
+  reported the blocker closed on that basis. It was not closed.
+- **The actual cause**, diagnosed by the maintainer from a stack trace: `scaffold-reviewer-artifacts.ps1`
+  assigned `$matches = New-Object System.Collections.Generic.List[string]`, colliding with PowerShell's
+  AUTOMATIC `$Matches`. The `-match` on the following line replaces it with a Hashtable, whose `Add()`
+  takes two arguments, so `.Add($pattern)` throws
+  `Cannot find an overload for "Add" and the argument count: "1"`.
+- **Why three reproduction attempts missed it, which is the part worth keeping**: the collision fires
+  only once a pattern actually MATCHES, because that is when `-match` repopulates `$Matches`. Every
+  fixture I built had no matching files, so the failing line never ran. Invisible to reading, to
+  `-WhatIf`, to `-DryRun`, and to every fixture. A stack trace from the failing run located it in one
+  step. I should have asked for one after the first failed reproduction instead of building a fourth.
+- **Resolution**: renamed to `$matchedPatterns`, and the mechanism is proven in both directions - the
+  pre-fix shape throws the reported error verbatim, the renamed shape does not. End-to-end, the scaffold
+  now produces all five artifacts against a 42-source-file fixture with `exit=0`.
+- **The class swept, as asked.** 17 unique sites across shipped scripts assigned to a dangerous
+  automatic (`$matches`, `$profile`, `$input`, `$args`); 20 scopes renamed. Scoped to the enclosing
+  function via an AST walk rather than a file-wide regex - a blind rename would also have rewritten
+  legitimate reads of the REAL automatic elsewhere in the same script.
+- **Standing guard**: `tests/unit/no-automatic-variable-collisions.tests.ps1` refuses any assignment to
+  a dangerous automatic across everything in FileList AND across the deployed `.specify` mirror, and
+  carries the failure mode itself as two cases so it reads as a defect class rather than a naming
+  preference. A per-site guard could not have caught this one; the shape has to be refused everywhere at
+  once, because the site that will fire is the one nobody looked at.
+
+### DRIFT-199-I001-098 - the deployed machinery outside the co-review bundle had no integrity check (resolved)
+
+- **Observed**: 2026-08-21, raised by the maintainer as a tag blocker.
+  `scripts/internal/continuous-co-review/` ships `.specrew-runtime.json` with per-file hashes, and
+  `review-engine-project-runtime-drifted` refuses when the deployed copy stops matching. The other half
+  of the deployed runtime - `.specify/extensions/specrew-speckit/`, holding `validate-governance.ps1`,
+  `shared-governance.ps1` and every scaffold - had no marker and no check. Measured before building:
+  zero integrity references outside the co-review bundle.
+- **Not hypothetical.** During the walk a downstream agent hand-patched a deployed scaffold to clear a
+  blocker. Its fix was right and it said so. Nothing stopped it, and nothing would have detected the
+  same edit to the VALIDATOR - the file every guarantee this iteration produced assumes runs as shipped.
+- **Resolution**: the marker-and-verify pattern extended to the extension deployment.
+  `deploy-speckit-extension.ps1` stamps `.specrew-extension-runtime.json` LAST, after every managed file
+  has landed, so the marker describes what is actually on disk rather than what was intended.
+  `validate-governance.ps1` verifies it and REFUSES on drift - an error, not a warning, because a
+  modified validator is not information to reconcile, it is a reason to distrust the whole run.
+- **Fail-open on absence.** A project deployed before the marker existed has none, and refusing the
+  entire installed base for a check they never had would wedge them. `specrew update` writes the marker
+  and is also the remedy for real drift, so the same action resolves both states.
+- **The refusal names a reachable action, and a second one for the deliberate case**: restore with
+  `specrew update --project-path "<root>"`, or - if the edit was wanted - make it in the Specrew
+  repository and reinstall, because a project-local patch is overwritten by the next update and is
+  invisible to every other project. W39's property applied to a new refusal.
+- **HONEST LIMIT, recorded in the code as well as here**: this is a self-check. An agent that edits the
+  validator could also edit the marker, or the verifier. It raises the cost of an undetected edit from
+  zero to three coordinated ones, and it catches every accidental or single-file edit - which is what
+  actually happened. The stronger form, comparing the deployed copy against the INSTALLED module, is
+  what the review engine already does for its bundle; the marker pattern was chosen here so the check
+  still works when the module is absent.
+- **Verification**: `tests/unit/deployed-extension-integrity.tests.ps1`, 6 cases in the slice lane - the
+  acceptance case (an edited deployed validator refused, naming `specrew update`), an edited scaffold, a
+  DELETED managed file, an untouched deployment staying silent, the fail-open case, and the message
+  naming where a deliberate edit belongs.
+
 ### DRIFT-199-I001-096 - the migration question, decided on measurement rather than by omission
 
 - **Raised**: can a project that hand-authored the five closeout artifacts to work around W40's defect

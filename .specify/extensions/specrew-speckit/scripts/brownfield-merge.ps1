@@ -79,9 +79,9 @@ function Get-BrownfieldState {
         $teamPath = Join-Path $ProjectPath '.squad\team.md'
         $teamContent = Get-Content -LiteralPath $teamPath -Raw
         $rolePattern = '(?m)^\|\s*([^|]+)\s*\|'
-        $matches = [regex]::Matches($teamContent, $rolePattern)
+        $matchedItems = [regex]::Matches($teamContent, $rolePattern)
         $roles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-        foreach ($match in $matches) {
+        foreach ($match in $matchedItems) {
             $roleName = $match.Groups[1].Value.Trim()
             if ($roleName -notin @('Role', '----', '')) {
                 $null = $roles.Add($roleName)
@@ -94,9 +94,9 @@ function Get-BrownfieldState {
         $ceremoniesPath = Join-Path $ProjectPath '.squad\ceremonies.md'
         $ceremoniesContent = Get-Content -LiteralPath $ceremoniesPath -Raw
         $ceremonyHeadingPattern = '(?m)^##\s+(.+?)(?:\s*\{[^}]*\})?\s*$'
-        $matches = [regex]::Matches($ceremoniesContent, $ceremonyHeadingPattern)
+        $matchedItems = [regex]::Matches($ceremoniesContent, $ceremonyHeadingPattern)
         $ceremonies = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-        foreach ($match in $matches) {
+        foreach ($match in $matchedItems) {
             $ceremonyName = $match.Groups[1].Value.Trim()
             if (-not [string]::IsNullOrWhiteSpace($ceremonyName)) {
                 $null = $ceremonies.Add($ceremonyName)

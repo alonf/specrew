@@ -364,7 +364,7 @@ function Get-SpecrewBoundaryCommitTimestamp {
         return $null
     }
 
-    $matches = @(
+    $matchedItems = @(
         $BoundaryCommits |
             Where-Object {
                 $_.Boundary -eq $Boundary -and
@@ -373,11 +373,11 @@ function Get-SpecrewBoundaryCommitTimestamp {
             }
     )
 
-    if ($matches.Count -eq 0) {
+    if ($matchedItems.Count -eq 0) {
         return $null
     }
 
-    $ordered = if ($Latest) { $matches | Sort-Object CommittedAt -Descending } else { $matches | Sort-Object CommittedAt }
+    $ordered = if ($Latest) { $matchedItems | Sort-Object CommittedAt -Descending } else { $matchedItems | Sort-Object CommittedAt }
     return $ordered[0].CommittedAt
 }
 

@@ -248,7 +248,7 @@ function Convert-IntakeUserProfile {
         'ai-researcher-project-manager' = 'ai_research_project_management'
     }
 
-    $profile = [ordered]@{
+    $profileData = [ordered]@{
         schema                      = '1.0'
         schema_version              = '1.0'
         specrew_version_at_creation = ''
@@ -280,17 +280,17 @@ function Convert-IntakeUserProfile {
         }
 
         if ($rawLine -match '^schema:\s*(.+)$') {
-            $profile.schema = Convert-IntakeYamlScalarValue -Value $matches[1]
+            $profileData.schema = Convert-IntakeYamlScalarValue -Value $matches[1]
             continue
         }
 
         if ($rawLine -match '^schema_version:\s*(.+)$') {
-            $profile.schema = Convert-IntakeYamlScalarValue -Value $matches[1]
+            $profileData.schema = Convert-IntakeYamlScalarValue -Value $matches[1]
             continue
         }
 
         if ($rawLine -match '^(specrew_version_at_creation|created_at|last_updated_at|updated_at|user_name):\s*(.+)$') {
-            $profile[$matches[1]] = Convert-IntakeYamlScalarValue -Value $matches[2]
+            $profileData[$matches[1]] = Convert-IntakeYamlScalarValue -Value $matches[2]
             continue
         }
 
@@ -303,36 +303,36 @@ function Convert-IntakeUserProfile {
             $key = $matches[1]
             $value = Convert-IntakeYamlScalarValue -Value $matches[2]
             if ($section -eq 'preferences') {
-                $profile.preferences[$key] = $value
+                $profileData.preferences[$key] = $value
             }
             else {
-                $profile[$section][$key] = $value
+                $profileData[$section][$key] = $value
             }
         }
     }
 
     foreach ($personaId in $personaFieldMap.Keys) {
         $field = $personaFieldMap[$personaId]
-        if ($profile.expertise[$field] -eq 'auto') {
-            $profile.expertise[$field] = $null
+        if ($profileData.expertise[$field] -eq 'auto') {
+            $profileData.expertise[$field] = $null
         }
-        elseif ($null -eq $profile.expertise[$field] -and $profile.expertise_dials.Contains($personaId)) {
-            $legacyValue = $profile.expertise_dials[$personaId]
+        elseif ($null -eq $profileData.expertise[$field] -and $profileData.expertise_dials.Contains($personaId)) {
+            $legacyValue = $profileData.expertise_dials[$personaId]
             if ($legacyValue -eq 'auto') {
-                $profile.expertise[$field] = $null
+                $profileData.expertise[$field] = $null
             }
             elseif ($null -ne $legacyValue) {
-                $profile.expertise[$field] = $legacyValue
+                $profileData.expertise[$field] = $legacyValue
             }
         }
 
-        $profile.expertise_dials[$personaId] = if ($null -eq $profile.expertise[$field]) { 'auto' } else { $profile.expertise[$field] }
+        $profileData.expertise_dials[$personaId] = if ($null -eq $profileData.expertise[$field]) { 'auto' } else { $profileData.expertise[$field] }
     }
 
-    $profile.schema_version = $profile.schema
-    $profile.updated_at = if ($null -ne $profile.last_updated_at -and $profile.last_updated_at -ne '') { $profile.last_updated_at } else { $profile.updated_at }
+    $profileData.schema_version = $profileData.schema
+    $profileData.updated_at = if ($null -ne $profileData.last_updated_at -and $profileData.last_updated_at -ne '') { $profileData.last_updated_at } else { $profileData.updated_at }
 
-    return $profile
+    return $profileData
 }
 
 function Read-IntakeYamlDocument {

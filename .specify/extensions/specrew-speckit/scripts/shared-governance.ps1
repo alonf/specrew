@@ -1,4 +1,4 @@
-﻿Set-StrictMode -Version Latest
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Resolve-ProjectPath {
@@ -5535,7 +5535,7 @@ function Get-ApprovalReferenceRecord {
     }
 
     $decisionId = Convert-ToDecisionReferenceId -ApprovalRef $normalizedRef
-    $matches = @(
+    $matchedItems = @(
         Get-DecisionsLedgerEntries -ProjectRoot $ProjectRoot |
             Where-Object {
                 ($_.DecisionId -eq $decisionId -or $_.Title -eq $normalizedRef) -and
@@ -5544,7 +5544,7 @@ function Get-ApprovalReferenceRecord {
             Select-Object -First 1
     )
 
-    if ($matches.Count -eq 0) {
+    if ($matchedItems.Count -eq 0) {
         return [pscustomobject]@{
             ApprovalRef      = $normalizedRef
             DecisionId       = $decisionId
@@ -5555,7 +5555,7 @@ function Get-ApprovalReferenceRecord {
         }
     }
 
-    $entry = $matches[0]
+    $entry = $matchedItems[0]
     return [pscustomobject]@{
         ApprovalRef      = $normalizedRef
         DecisionId       = $entry.DecisionId
@@ -6350,6 +6350,97 @@ function Test-SpecrewWorkshopRecordsPresent {
 # question. So the fact is minted by the hook from what it watched the session write, exactly as
 # typed-turn receipts and the W25 orientation receipt are, and the agent never supplies it.
 # ---------------------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------------------
+# W43: THE REST OF THE DEPLOYED RUNTIME GETS THE INTEGRITY CHECK THE CO-REVIEW BUNDLE ALREADY HAD.
+#
+# `scripts/internal/continuous-co-review/` ships a `.specrew-runtime.json` with per-file hashes, and
+# `review-engine-project-runtime-drifted` refuses when the deployed copy no longer matches. The other
+# half of the deployed runtime - `.specify/extensions/specrew-speckit/`, which holds
+# validate-governance.ps1, shared-governance.ps1 and every scaffold - had no marker and no check.
+#
+# During the 2026-08-21 walk a downstream agent hand-patched a deployed scaffold to clear a blocker.
+# Its fix was right and it said so. Nothing stopped it, and nothing would have detected it had it
+# edited the VALIDATOR instead - the file every guarantee from this iteration assumes runs as shipped.
+#
+# HONEST LIMIT, stated rather than implied: this is a self-check. An agent that edits the validator
+# could also edit the marker, or this function. It raises the cost of an undetected edit from zero to
+# three coordinated ones, and it catches every accidental or single-file edit - which is what actually
+# happened. The stronger form, comparing the deployed copy against the INSTALLED module, is what the
+# review engine already does for its own bundle; this deliberately mirrors the marker pattern instead
+# so it still works when the module is absent.
+function Get-SpecrewDeployedExtensionMarkerPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return (Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/.specrew-extension-runtime.json')
+}
+
+function Get-SpecrewDeployedExtensionManifest {
+    # Sorted relative path + per-file content hash, the same shape the co-review marker uses. The
+    # marker file itself is excluded because it is about to contain the result.
+    param([Parameter(Mandatory)][string]$ExtensionRoot)
+    $root = (Resolve-Path -LiteralPath $ExtensionRoot -ErrorAction Stop).Path
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $entries = [System.Collections.Generic.List[object]]::new()
+        $files = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -ErrorAction Stop |
+                Where-Object { $_.Name -cne '.specrew-extension-runtime.json' } |
+                Sort-Object { ([IO.Path]::GetRelativePath($root, $_.FullName)) -replace '\\', '/' })
+        foreach ($file in $files) {
+            $relative = ([IO.Path]::GetRelativePath($root, $file.FullName)) -replace '\\', '/'
+            # Text-normalised, so a CRLF/LF checkout difference is not reported as tampering - the same
+            # reason the co-review marker hashes logically rather than byte-for-byte.
+            $bytes = [IO.File]::ReadAllBytes($file.FullName)
+            $hash = ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLowerInvariant()
+            [void]$entries.Add([pscustomobject][ordered]@{ path = $relative; sha256 = $hash })
+        }
+        return @($entries)
+    }
+    finally { $sha.Dispose() }
+}
+
+function Write-SpecrewDeployedExtensionMarker {
+    param([Parameter(Mandatory)][string]$ProjectRoot, [string]$SpecrewVersion = 'unknown')
+    $extensionRoot = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit'
+    if (-not (Test-Path -LiteralPath $extensionRoot -PathType Container)) { return $null }
+    $manifest = @(Get-SpecrewDeployedExtensionManifest -ExtensionRoot $extensionRoot)
+    $payload = [ordered]@{
+        schema_version = '1.0'
+        specrew_version = [string]$SpecrewVersion
+        managed_files = @($manifest)
+        source = 'specrew-init-or-update'
+    } | ConvertTo-Json -Depth 12
+    $markerPath = Get-SpecrewDeployedExtensionMarkerPath -ProjectRoot $ProjectRoot
+    [IO.File]::WriteAllText($markerPath, ($payload + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+    return $markerPath
+}
+
+function Test-SpecrewDeployedExtensionIntegrity {
+    # Returns the drifted relative paths. FAIL-OPEN on absence: a project deployed before the marker
+    # existed has none, and refusing every one of them would wedge the installed base for a check they
+    # never had. `specrew update` writes the marker, which is also the remedy for real drift.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $result = [pscustomobject]@{ checked = $false; drifted = @(); missing = @(); marker = $null }
+    $markerPath = Get-SpecrewDeployedExtensionMarkerPath -ProjectRoot $ProjectRoot
+    if (-not (Test-Path -LiteralPath $markerPath -PathType Leaf)) { return $result }
+    $marker = $null
+    try { $marker = Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 }
+    catch { return $result }
+    if ($null -eq $marker -or -not $marker.PSObject.Properties['managed_files']) { return $result }
+
+    $extensionRoot = Join-Path $ProjectRoot '.specify/extensions/specrew-speckit'
+    if (-not (Test-Path -LiteralPath $extensionRoot -PathType Container)) { return $result }
+    $actual = @{}
+    foreach ($entry in (Get-SpecrewDeployedExtensionManifest -ExtensionRoot $extensionRoot)) { $actual[[string]$entry.path] = [string]$entry.sha256 }
+
+    $drifted = [System.Collections.Generic.List[string]]::new()
+    $missing = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in @($marker.managed_files)) {
+        $relative = [string]$entry.path
+        if (-not $actual.ContainsKey($relative)) { [void]$missing.Add($relative); continue }
+        if ($actual[$relative] -cne [string]$entry.sha256) { [void]$drifted.Add($relative) }
+    }
+    return [pscustomobject]@{ checked = $true; drifted = @($drifted); missing = @($missing); marker = $markerPath }
+}
 
 function Get-SpecrewReviewAuthorshipPath {
     param([Parameter(Mandatory)][string]$ProjectRoot)

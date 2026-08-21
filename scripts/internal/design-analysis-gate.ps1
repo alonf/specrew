@@ -158,12 +158,12 @@ function Get-SpecrewDesignAnalysisNamedOption {
 
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
 
-    $matches = [regex]::Matches($Text, '(?i)\b(Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b')
+    $matchedItems = [regex]::Matches($Text, '(?i)\b(Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b')
     $unique = New-Object System.Collections.Generic.List[string]
-    foreach ($match in $matches) {
+    foreach ($match in $matchedItems) {
         $value = $match.Groups[1].Value.Trim()
         $normalized = if ($value -match '(?i)^option\s+([A-Z])$') {
-            'Option ' + $Matches[1].ToUpperInvariant()
+            'Option ' + $matchedItems[1].ToUpperInvariant()
         } elseif ($value -match '(?i)^by[-\s]?the[-\s]?book$') {
             'By-the-book'
         } elseif ($value -match '(?i)^simplest$') {

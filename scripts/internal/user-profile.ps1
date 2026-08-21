@@ -242,7 +242,7 @@ function ConvertTo-NormalizedUserProfile {
         return $null
     }
 
-    $profile = [ordered]@{
+    $profileData = [ordered]@{
         schema                       = '1.0'
         specrew_version_at_creation  = ''
         created_at                   = ''
@@ -267,13 +267,13 @@ function ConvertTo-NormalizedUserProfile {
         $schema = Get-UserProfileValue -InputObject $RawProfile -Key 'schema_version'
     }
     if ($null -ne $schema) {
-        $profile.schema = [string]$schema
+        $profileData.schema = [string]$schema
     }
 
     foreach ($key in @('specrew_version_at_creation', 'created_at', 'user_name')) {
         $value = Get-UserProfileValue -InputObject $RawProfile -Key $key
         if ($null -ne $value) {
-            $profile[$key] = $value
+            $profileData[$key] = $value
         }
     }
 
@@ -282,14 +282,14 @@ function ConvertTo-NormalizedUserProfile {
         $lastUpdated = Get-UserProfileValue -InputObject $RawProfile -Key 'updated_at'
     }
     if ($null -ne $lastUpdated) {
-        $profile.last_updated_at = $lastUpdated
+        $profileData.last_updated_at = $lastUpdated
     }
 
     $rawPreferences = Get-UserProfileValue -InputObject $RawProfile -Key 'preferences'
     if ($null -ne $rawPreferences) {
         $preferredDepth = Get-UserProfileValue -InputObject $rawPreferences -Key 'preferred_intake_depth'
         if (-not [string]::IsNullOrWhiteSpace([string]$preferredDepth)) {
-            $profile.preferences.preferred_intake_depth = [string]$preferredDepth
+            $profileData.preferences.preferred_intake_depth = [string]$preferredDepth
         }
     }
 
@@ -297,7 +297,7 @@ function ConvertTo-NormalizedUserProfile {
     if ($null -ne $rawExpertise) {
         foreach ($field in @('software_architecture', 'ui_ux', 'product_management', 'ai_research_project_management')) {
             if (Test-UserProfileKey -InputObject $rawExpertise -Key $field) {
-                $profile.expertise[$field] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawExpertise -Key $field)
+                $profileData.expertise[$field] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawExpertise -Key $field)
             }
         }
     }
@@ -306,20 +306,20 @@ function ConvertTo-NormalizedUserProfile {
     if ($null -ne $rawLegacyDials) {
         foreach ($personaId in $script:UserProfileExpertiseMap.Keys) {
             if (Test-UserProfileKey -InputObject $rawLegacyDials -Key $personaId) {
-                $profile.expertise[$script:UserProfileExpertiseMap[$personaId]] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawLegacyDials -Key $personaId)
+                $profileData.expertise[$script:UserProfileExpertiseMap[$personaId]] = ConvertTo-PersistedExpertiseValue -Value (Get-UserProfileValue -InputObject $rawLegacyDials -Key $personaId)
             }
         }
     }
 
     foreach ($personaId in $script:UserProfileExpertiseMap.Keys) {
         $field = $script:UserProfileExpertiseMap[$personaId]
-        $profile.expertise_dials[$personaId] = ConvertTo-RuntimeExpertiseDial -Value $profile.expertise[$field]
+        $profileData.expertise_dials[$personaId] = ConvertTo-RuntimeExpertiseDial -Value $profileData.expertise[$field]
     }
 
-    $profile.schema_version = $profile.schema
-    $profile.updated_at = $profile.last_updated_at
+    $profileData.schema_version = $profileData.schema
+    $profileData.updated_at = $profileData.last_updated_at
 
-    return $profile
+    return $profileData
 }
 
 function Get-UserProfilePath {
@@ -544,14 +544,14 @@ function Show-UserProfileSummary {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [hashtable]$Profile
+        [hashtable]$profileData
     )
     
-    if (-not $Profile) {
-        $Profile = Get-UserProfile
+    if (-not $profileData) {
+        $profileData = Get-UserProfile
     }
 
-    if (-not $Profile) {
+    if (-not $profileData) {
         return "No Crew Interaction Profile found yet. Run ``specrew start`` to set how much you want Specrew to ask, explain, recommend, and auto-decide."
     }
 
@@ -564,12 +564,12 @@ function Show-UserProfileSummary {
     foreach ($area in Get-CrewInteractionProfileAreas) {
         $value = $null
         $resolved = $false
-        if ((Test-UserProfileKey -InputObject $Profile -Key 'expertise') -and (Test-UserProfileKey -InputObject $Profile.expertise -Key $area.ExpertiseKey)) {
-            $value = $Profile.expertise[$area.ExpertiseKey]
+        if ((Test-UserProfileKey -InputObject $profileData -Key 'expertise') -and (Test-UserProfileKey -InputObject $profileData.expertise -Key $area.ExpertiseKey)) {
+            $value = $profileData.expertise[$area.ExpertiseKey]
             $resolved = $true
         }
-        elseif ((Test-UserProfileKey -InputObject $Profile -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $Profile.expertise_dials -Key $area.PersonaId)) {
-            $value = $Profile.expertise_dials[$area.PersonaId]
+        elseif ((Test-UserProfileKey -InputObject $profileData -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $profileData.expertise_dials -Key $area.PersonaId)) {
+            $value = $profileData.expertise_dials[$area.PersonaId]
             $resolved = $true
         }
 
@@ -600,13 +600,13 @@ function Get-SpecrewProfileOrientationLine {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [hashtable]$Profile
+        [hashtable]$profileData
     )
 
-    if (-not $Profile) {
-        $Profile = Get-UserProfile
+    if (-not $profileData) {
+        $profileData = Get-UserProfile
     }
-    if (-not $Profile) {
+    if (-not $profileData) {
         return $null
     }
 
@@ -618,12 +618,12 @@ function Get-SpecrewProfileOrientationLine {
         # be skipped. Only an area absent from BOTH layers is omitted from the summary.
         $hasKey = $false
         $value = $null
-        if ((Test-UserProfileKey -InputObject $Profile -Key 'expertise') -and (Test-UserProfileKey -InputObject $Profile.expertise -Key $area.ExpertiseKey)) {
-            $value = $Profile.expertise[$area.ExpertiseKey]
+        if ((Test-UserProfileKey -InputObject $profileData -Key 'expertise') -and (Test-UserProfileKey -InputObject $profileData.expertise -Key $area.ExpertiseKey)) {
+            $value = $profileData.expertise[$area.ExpertiseKey]
             $hasKey = $true
         }
-        elseif ((Test-UserProfileKey -InputObject $Profile -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $Profile.expertise_dials -Key $area.PersonaId)) {
-            $value = $Profile.expertise_dials[$area.PersonaId]
+        elseif ((Test-UserProfileKey -InputObject $profileData -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $profileData.expertise_dials -Key $area.PersonaId)) {
+            $value = $profileData.expertise_dials[$area.PersonaId]
             $hasKey = $true
         }
         if (-not $hasKey) {
@@ -699,8 +699,8 @@ function Invoke-FirstRunExpertisePrompt {
 
         $validInput = $false
         while (-not $validInput) {
-            $input = Read-Host "  Your preference (1-10, auto, or Enter for auto)"
-            $normalizedInput = Normalize-CrewInteractionProfileSetupInput -InputValue $input
+            $userInput = Read-Host "  Your preference (1-10, auto, or Enter for auto)"
+            $normalizedInput = Normalize-CrewInteractionProfileSetupInput -InputValue $userInput
 
             if ($null -ne $normalizedInput) {
                 $dials[$area.PersonaId] = $normalizedInput
@@ -812,16 +812,16 @@ function Edit-UserProfile {
 
     foreach ($area in Get-CrewInteractionProfileAreas) {
         $currentValue = $existing.expertise_dials[$area.PersonaId]
-        $input = Read-Host "  $($area.DisplayLabel) (current: $currentValue)"
+        $userInput = Read-Host "  $($area.DisplayLabel) (current: $currentValue)"
 
-        if ([string]::IsNullOrWhiteSpace($input)) {
+        if ([string]::IsNullOrWhiteSpace($userInput)) {
             $newDials[$area.PersonaId] = $currentValue
         }
-        elseif ($input -eq 'auto') {
+        elseif ($userInput -eq 'auto') {
             $newDials[$area.PersonaId] = 'auto'
         }
-        elseif ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le 10) {
-            $newDials[$area.PersonaId] = [string][int]$input
+        elseif ($userInput -match '^\d+$' -and [int]$userInput -ge 1 -and [int]$userInput -le 10) {
+            $newDials[$area.PersonaId] = [string][int]$userInput
         }
         else {
             Write-Host "    Invalid input, keeping current value" -ForegroundColor Red
@@ -849,18 +849,18 @@ function New-CrewInteractionProfileSessionContext {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [object]$Profile
+        [object]$profileData
     )
 
-    if (-not $Profile) {
-        $Profile = Get-UserProfile
+    if (-not $profileData) {
+        $profileData = Get-UserProfile
     }
 
-    if (-not $Profile) {
+    if (-not $profileData) {
         return $null
     }
 
-    $rawExpertise = Get-UserProfileValue -InputObject $Profile -Key 'expertise'
+    $rawExpertise = Get-UserProfileValue -InputObject $profileData -Key 'expertise'
 
     $decisionAreas = [ordered]@{}
     foreach ($area in Get-CrewInteractionProfileAreas) {
@@ -879,11 +879,11 @@ function New-CrewInteractionProfileSessionContext {
         application          = 'soft collaboration guidance for all agents; hard-applied only in /speckit.specify'
         guidance             = "Higher settings: ask concise expert-level questions and assume the current user decides. Lower or auto settings: explain more, recommend defaults, and surface transparent auto-decisions. These are the current user's collaboration settings, not Specrew's internal persona lenses."
         profile_path         = Get-UserProfilePath
-        schema_version       = (Get-UserProfileValue -InputObject $Profile -Key 'schema_version')
-        created_at           = (Get-UserProfileValue -InputObject $Profile -Key 'created_at')
-        updated_at           = (Get-UserProfileValue -InputObject $Profile -Key 'updated_at')
+        schema_version       = (Get-UserProfileValue -InputObject $profileData -Key 'schema_version')
+        created_at           = (Get-UserProfileValue -InputObject $profileData -Key 'created_at')
+        updated_at           = (Get-UserProfileValue -InputObject $profileData -Key 'updated_at')
         decision_areas       = $decisionAreas
-        expertise_dials      = (Get-UserProfileValue -InputObject $Profile -Key 'expertise_dials')
+        expertise_dials      = (Get-UserProfileValue -InputObject $profileData -Key 'expertise_dials')
     }
 }
 

@@ -414,6 +414,15 @@ if ($PassThru) {
     return
 }
 
+# W43: stamp the deployed extension so a later hand-edit is detectable. Written LAST, after every
+# managed file has landed, so the marker describes what is actually on disk.
+if (-not $DryRun) {
+    try {
+        $extensionMarker = Write-SpecrewDeployedExtensionMarker -ProjectRoot $resolvedProjectPath -SpecrewVersion $extensionVersion
+        if ($extensionMarker) { Add-DeploymentAction -Actions $actions -Action 'stamped' -Path $extensionMarker }
+    }
+    catch { Write-Host ("WARN: could not stamp the deployed extension: {0}" -f $_.Exception.Message) -ForegroundColor Yellow }
+}
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Spec Kit extension deployment {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $resolvedProjectPath)) -ForegroundColor Green
 exit 0

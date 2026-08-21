@@ -243,8 +243,8 @@ function Test-ContinuousCoReviewVerificationProvenance {
         }
     }
     if ($kind -eq 'profile-selected') {
-        $profile = [string](Get-ContinuousCoReviewContractProp -Object $Provenance -Name 'profile')
-        if ([string]::IsNullOrWhiteSpace($profile)) {
+        $profileData = [string](Get-ContinuousCoReviewContractProp -Object $Provenance -Name 'profile')
+        if ([string]::IsNullOrWhiteSpace($profileData)) {
             return [pscustomobject]@{ valid = $false; reason = "provenance.profile is required when kind='profile-selected'" }
         }
     }

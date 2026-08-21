@@ -53,19 +53,19 @@ function ConvertFrom-UnixStyleInstallerArgs {
     )
 
     $result = [ordered]@{ BinDir = $BinDir; Force = $Force; DryRun = $DryRun; Help = $Help }
-    $args = @($CliArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    for ($i = 0; $i -lt $args.Count; $i++) {
-        switch -Regex ($args[$i]) {
+    $argList = @($CliArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    for ($i = 0; $i -lt $argList.Count; $i++) {
+        switch -Regex ($argList[$i]) {
             '^--bin-dir=(.+)$' { $result.BinDir = $Matches[1] }
             '^--bin-dir$' {
                 $i++
-                if ($i -ge $args.Count) { throw '--bin-dir requires a value.' }
-                $result.BinDir = $args[$i]
+                if ($i -ge $argList.Count) { throw '--bin-dir requires a value.' }
+                $result.BinDir = $argList[$i]
             }
             '^(--force|-f)$' { $result.Force = $true }
             '^(--whatif|--dry-run)$' { $result.DryRun = $true }
             '^(--help|-h)$' { $result.Help = $true }
-            default { throw ("Unknown argument '{0}'." -f $args[$i]) }
+            default { throw ("Unknown argument '{0}'." -f $argList[$i]) }
         }
     }
     return [pscustomobject]$result
