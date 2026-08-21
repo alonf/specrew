@@ -1051,6 +1051,41 @@ function Test-ReviewCitedRunEvidence {
         if ([string]$result.completion -ne 'complete') { $weak.Add("completion '$([string]$result.completion)'") | Out-Null }
         if ([string]$result.verdict -notin @('pass', 'findings')) { $weak.Add("verdict '$([string]$result.verdict)'") | Out-Null }
         if ([string]$result.currentness -ne 'current') { $weak.Add("currentness '$([string]$result.currentness)'") | Out-Null }
+        # W38: `currentness` IS A FIELD THE RUN WROTE ABOUT THE TREE THAT EXISTED THEN.
+        #
+        # It was computed at ingest and never re-asked, so a record whose reviewed tree has since
+        # moved still validated clean - which is how this project's own record kept reading as though
+        # a current independent review covered it while three commits of review machinery landed
+        # after the reviewed tree. The signoff GATE catches that at the boundary, but a record that
+        # reads clean in between is exactly the shape W31 and W33 exist to stop: a stored fact,
+        # true when written, quietly no longer true.
+        #
+        # So the tree is recomputed here, the way W34-A recomputes the derived block rather than
+        # reading it. A run's target_digest is the tree it actually froze; if that is not the tree
+        # that exists now, the run does not cover the current files whatever its stored field says.
+        #
+        # FAIL-OPEN: if the digest cannot be computed - no git, a detached state, the helper absent -
+        # nothing is claimed. "I could not tell" must never manufacture staleness, the same posture
+        # every other check in this file takes.
+        $currentTreeId = ''
+        try {
+            if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+                $digestHelper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1'
+                if (Test-Path -LiteralPath $digestHelper -PathType Leaf) { . $digestHelper }
+            }
+            if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
+                $digestState = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot
+                if ($null -ne $digestState -and [bool]$digestState.ok) { $currentTreeId = [string]$digestState.tree_id }
+            }
+        }
+        catch { $currentTreeId = '' }
+        # StrictMode-safe: a stored result without target_digest must not take the validator down.
+        # The existing fixtures in this suite have no such field, and reading it unguarded threw.
+        $citedTreeId = if ($result.PSObject.Properties['target_digest']) { [string]$result.target_digest } else { '' }
+        if (-not [string]::IsNullOrWhiteSpace($currentTreeId) -and -not [string]::IsNullOrWhiteSpace($citedTreeId) -and
+            $currentTreeId -cne $citedTreeId) {
+            $weak.Add(("it reviewed tree {0}, and the files now are tree {1}" -f $citedTreeId.Substring(0, [Math]::Min(8, $citedTreeId.Length)), $currentTreeId.Substring(0, [Math]::Min(8, $currentTreeId.Length)))) | Out-Null
+        }
         if ([string]$result.validation -ne 'valid') { $weak.Add("validation '$([string]$result.validation)'") | Out-Null }
         # W33. The run's own declared coverage, when it recorded one. A run that says it examined
         # only records or documents cannot evidence a review OF THE CODE, whatever its verdict.

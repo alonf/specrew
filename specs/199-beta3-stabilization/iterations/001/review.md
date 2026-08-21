@@ -7,29 +7,34 @@
 ## Independent review
 
 <!--
-  Review evidence marker (validator-enforced):
-    The line below names the run(s) this record RESTS ON. Only what is named here - and the run
-    named by the derived block - is checked against the review store. Run ids appearing anywhere
-    else in this document are NARRATIVE and are never checked.
+  NO EVIDENCE MARKER AND NO DERIVED BLOCK, DELIBERATELY, AND THIS IS NOT AN OVERSIGHT.
+
+  This record DID rest on run-20260821-104557253-97c3785a, which reviewed tree dfec403a with 17
+  source paths declared and checked. Three commits of review machinery landed after that tree -
+  W36 (advisory attribution), the baseline-provenance fact, and W37 (attribution-gated authorship)
+  - so the run no longer covers the files as they are now.
+
+  W38 makes that visible: currentness is recomputed against the current tree at validation instead
+  of being read from the field the run stored at ingest. Citing that run here now produces exactly
+  the refusal it should: "it reviewed tree dfec403a, and the files now are tree ...".
+
+  Leaving the citation in place would keep this record READING clean while its claim had quietly
+  expired - the precise failure W31, W33 and W38 exist to stop, and the one this project shipped
+  against itself. So the claim is withdrawn rather than dressed up.
+
+  A fresh round is AUTHORIZED and PENDING. It fires against the settled tree once the KeyContextAI
+  walk finishes and the module is installed, and will cover W36, baseline provenance, W37 and W38
+  together. The marker and the derived block are restored then, naming that run.
 -->
-<!-- SPECREW-REVIEW-EVIDENCE: run-20260821-104557253-97c3785a -->
 
-<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->
-<!-- Derived from the review authority store. Do not hand-edit: the validator recomputes it. -->
-- Run: run-20260821-104557253-97c3785a (harness copilot-cli-file-primary)
-- Outcome: pass, complete, current, valid - 0 finding(s)
-- Reviewed tree: dfec403a466d567830b4d6c9a30a3171ac47732f
-- Coverage: 17 source path(s) of 21 declared and checked against the frozen target.
-<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->
+A maintainer-authorized Copilot round ran on 2026-08-21 against tree `dfec403a` and returned
+`pass` / `complete` / `valid` with zero findings, under verified containment and verified
+termination, in 478 seconds, declaring 21 examined paths of which 17 were source. That run was
+real and its result stands as a fact about the tree it read.
 
-A maintainer-authorized Copilot round ran on 2026-08-21 against the committed tree and returned
-`pass` / `complete` / `current` / `valid` with zero findings, under verified containment and
-verified termination, in 478 seconds. It declared 21 examined paths, 17 of them source - the
-campaign orchestrator, the authority core and store, the signoff evidence gate, the host catalog
-and the navigator among them - and the controller checked that declaration against the frozen
-target. This is the first round on this project to carry declared coverage, because the contract
-that requires it (W33) did not exist when the earlier rounds fired.
-
+**It does not cover this record as it now stands.** Three commits of review machinery landed after
+that tree, so the independence claim it supported has expired and is withdrawn above rather than
+restated. A fresh round is authorized and pending against the settled tree.
 **What this record does not claim.** Its per-task verdicts and the prose around them were written
 by the implementing session, and the authorship fact says so rather than hiding it: this document
 reports `review-authorship-unobserved` for the verdicts authored on 2026-08-17, because the

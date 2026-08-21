@@ -535,6 +535,42 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-093 - a stored currentness field kept a stale record reading clean (resolved)
+
+- **Observed**: 2026-08-21. `validate-governance.ps1` read `currentness` from the cited run's stored
+  `result.json` - the value computed at INGEST, about the tree that existed then, never re-asked. So a
+  record whose reviewed tree had since moved still validated clean.
+- **This project shipped it against itself.** `review.md` rested on `run-20260821-104557253-97c3785a`
+  (tree `dfec403a`), and three commits of review machinery landed after that tree - W36, the
+  baseline-provenance fact, and W37. The record went on reading as though a current independent review
+  covered code that review had never seen. The signoff GATE would have caught it at the boundary, but a
+  record that reads clean in between is exactly the stored-fact-quietly-untrue shape W31 and W33 exist
+  to stop.
+- **Resolution**: the current tree is RECOMPUTED at validation and compared against the run's
+  `target_digest` - the tree it actually froze - the same way W34-A recomputes the derived block instead
+  of reading it. The refusal names both: *"it reviewed tree dfec403a, and the files now are tree ..."*.
+  `currentness` is still checked; it is simply no longer the only thing checked.
+- **FAIL-OPEN**: if the digest cannot be computed - no git, the helper absent, any error - nothing is
+  claimed. "I could not tell" must never manufacture staleness.
+- **A bug in the fix, caught by the existing fixtures**: reading `$result.target_digest` unguarded
+  throws under StrictMode on any stored result without that field, which is most of this suite's
+  fixtures. A validator that crashes on an older record is worse than one that misses staleness. Made
+  StrictMode-safe.
+- **Verification**: 3 cases in `review-frame-and-evidence-honesty.Tests.ps1` (28 total) - a moved tree
+  is refused, an unmoved tree is accepted, and an uncomputable digest claims nothing - driven against a
+  REAL git-backed fixture, because a fixture without a repo exercises only the fail-open path and would
+  prove nothing. Mutation-proven with the landing check: disabling the comparison kills the moved-tree
+  case alone.
+- **The consequence was acted on, not deferred.** With W38 live, this project's own record was correctly
+  refused. The stale citation is WITHDRAWN rather than dressed up: the evidence marker and derived block
+  are removed, the 2026-08-21 run is kept as history with what it actually covered, and the record says
+  plainly that a fresh round is authorized and pending against the settled tree. Leaving the citation in
+  place would have been the exact failure this entry records.
+- **Ordering note for whoever fires that round**: the round's preflight runs the verification plan,
+  which includes governance. Had the stale citation been left in place, governance would have failed,
+  the preflight would have failed with it, and the only thing that could refresh the citation - the
+  round - could never have run. Withdrawing the claim first is what keeps that from deadlocking.
+
 ### DRIFT-199-I001-092 - the authorship fact was minted from dirty state, not from what a session wrote (resolved)
 
 - **Observed**: 2026-08-21, from the KeyContextAI walk. `review-authored-by-implementer` fired on a

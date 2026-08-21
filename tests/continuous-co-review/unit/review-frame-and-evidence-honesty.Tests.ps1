@@ -151,6 +151,11 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
         # guards with Get-Command. Load the real module rather than stubbing it: without this the
         # guard silently skips the block path and the test passes while proving nothing.
         . (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+        # W38 recomputes the current tree via Get-ContinuousCoReviewReviewedStateDigest, loading it
+        # from the PROJECT when absent - which a governed project provides as part of its deployed
+        # runtime, and a bare temp fixture does not. Loading it here is what a real project supplies,
+        # and without it these cases would only ever exercise the fail-open path.
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $w31Tokens = $null; $w31Errors = $null
         $w31Ast = [System.Management.Automation.Language.Parser]::ParseFile($script:W31ValidatorPath, [ref]$w31Tokens, [ref]$w31Errors)
         $w31Fn = $w31Ast.FindAll({ param($n) ($n -is [System.Management.Automation.Language.FunctionDefinitionAst]) -and $n.Name -eq 'Test-ReviewCitedRunEvidence' }, $true) | Select-Object -First 1
@@ -445,6 +450,98 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
     It 'names the marker where an agent reads the record shape' {
         $guidance = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/refocus/review-signoff.md') -Raw -Encoding UTF8
         $guidance | Should -Match 'SPECREW-REVIEW-EVIDENCE'
+    }
+
+
+    # `currentness` is a field the run wrote about the tree that existed THEN. It was computed at
+    # ingest and never re-asked, so a record whose reviewed tree had since moved still validated
+    # clean - which is how this project's own record kept reading as though a current independent
+    # review covered it while three commits of review machinery landed after the reviewed tree.
+    # The signoff gate catches that at the boundary; a record that reads clean in between is the
+    # stored-fact-quietly-untrue shape W31 and W33 exist to stop.
+
+    function script:New-GitBackedProject {
+        # A REAL git repo, because the digest is computed from one. A fixture without git exercises
+        # only the fail-open path and would prove nothing about the comparison.
+        param([Parameter(Mandatory)][string]$CitedTreeId, [switch]$OmitEvidenceMarker)
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w38-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root 'src') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $root 'src/app.ps1') -Value '# one' -Encoding UTF8
+        Push-Location $root
+        try {
+            & git init --quiet 2>&1 | Out-Null
+            & git add -A 2>&1 | Out-Null
+            & git -c user.email='t@t' -c user.name='t' commit -m init --quiet 2>&1 | Out-Null
+        }
+        finally { Pop-Location }
+        $runId = 'run-20260821-104557253-97c3785a'
+        $runDir = Join-Path $root (Join-Path '.specrew' (Join-Path 'review' (Join-Path 'authority' (Join-Path 'campaigns' (Join-Path 'cmp-w38' (Join-Path 'runs' $runId))))))
+        New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+        ([ordered]@{
+                schema_version = '1.0'; campaign_id = 'cmp-w38'; run_id = $runId
+                completion = 'complete'; verdict = 'pass'; currentness = 'current'; validation = 'valid'
+                target_digest = $CitedTreeId
+            } | ConvertTo-Json -Depth 6 -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'result.json') -Encoding UTF8
+        $body = if ($OmitEvidenceMarker) { @('## Review', '', 'No run is cited here.') }
+        else { @('## Review', '', "<!-- SPECREW-REVIEW-EVIDENCE: $runId -->", '', 'Rests on the run above.') }
+        return [pscustomobject]@{ Root = $root; Lines = @($body) }
+    }
+    function script:CheckProject {
+        param([Parameter(Mandatory)]$Project)
+        $errors = [System.Collections.Generic.List[string]]::new()
+        try { Test-ReviewCitedRunEvidence -ReviewLines $Project.Lines -ProjectRoot $Project.Root -Errors $errors }
+        finally { Remove-Item -LiteralPath $Project.Root -Recurse -Force -ErrorAction SilentlyContinue }
+        return @($errors)
+    }
+    function script:Get-CurrentTreeId {
+        param([Parameter(Mandatory)][string]$Root)
+        $state = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root
+        if ($null -eq $state -or -not [bool]$state.ok) { return '' }
+        return [string]$state.tree_id
+    }
+
+    It 'refuses a run whose reviewed tree is not the tree that exists now' {
+        # The stored field says `current`; the trees disagree. The trees win.
+        $found = @(CheckProject -Project (New-GitBackedProject -CitedTreeId 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'))
+        $found.Count | Should -Be 1
+        $found[0] | Should -Match 'it reviewed tree deadbeef, and the files now are tree'
+    }
+
+    It 'accepts a run whose reviewed tree IS the tree that exists now' {
+        # The fix must not refuse a genuinely current run - that would make every record unpassable.
+        $project = New-GitBackedProject -CitedTreeId 'placeholder'
+        try {
+            $actual = Get-CurrentTreeId -Root $project.Root
+            $actual | Should -Not -BeNullOrEmpty -Because 'the fixture must be a real repo for this to mean anything'
+            $runPath = Join-Path $project.Root (Join-Path '.specrew' (Join-Path 'review' (Join-Path 'authority' (Join-Path 'campaigns' (Join-Path 'cmp-w38' (Join-Path 'runs' (Join-Path 'run-20260821-104557253-97c3785a' 'result.json')))))))
+            $result = Get-Content -LiteralPath $runPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $result.target_digest = $actual
+            ($result | ConvertTo-Json -Depth 6 -Compress) | Set-Content -LiteralPath $runPath -Encoding UTF8
+            $errors = [System.Collections.Generic.List[string]]::new()
+            Test-ReviewCitedRunEvidence -ReviewLines $project.Lines -ProjectRoot $project.Root -Errors $errors
+            @($errors).Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'claims nothing when the current tree cannot be computed' {
+        # FAIL-OPEN: "I could not tell" must never manufacture staleness. A project with no git repo
+        # cannot yield a digest, and the check must stay silent rather than refuse everything.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w38ng-' + [guid]::NewGuid().ToString('N'))
+        $runId = 'run-20260821-104557253-97c3785a'
+        $runDir = Join-Path $root (Join-Path '.specrew' (Join-Path 'review' (Join-Path 'authority' (Join-Path 'campaigns' (Join-Path 'cmp-w38' (Join-Path 'runs' $runId))))))
+        New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+        try {
+            ([ordered]@{
+                    schema_version = '1.0'; campaign_id = 'cmp-w38'; run_id = $runId
+                    completion = 'complete'; verdict = 'pass'; currentness = 'current'; validation = 'valid'
+                    target_digest = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+                } | ConvertTo-Json -Depth 6 -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'result.json') -Encoding UTF8
+            $errors = [System.Collections.Generic.List[string]]::new()
+            Test-ReviewCitedRunEvidence -ReviewLines @('## Review', '', "<!-- SPECREW-REVIEW-EVIDENCE: $runId -->") -ProjectRoot $root -Errors $errors
+            @($errors).Count | Should -Be 0
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
 }
