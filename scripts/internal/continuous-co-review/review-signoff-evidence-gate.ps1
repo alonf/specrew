@@ -395,6 +395,36 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     }
     catch { return $false }
 
+    # DRIFT-007's TWIN (2026-08-22, found by the downstream walk after b5c84f48 fixed the validator):
+    # this predicate classified path-by-path against the machinery list plus the feature allowlist,
+    # failing closed on the first unclassifiable path - and the Spec-Kit/Squad deployers write host
+    # mirrors (.github/agents/, .github/prompts/, .claude/skills/, Squad skills) that are in NEITHER.
+    # So every redeploy permanently staled every review in a downstream project: the same byte-vs-source
+    # question the validator had, surviving in a second copy of the check.
+    #
+    # The fix is the same SHARED classifier the validator got - Test-SpecrewReviewAuthorshipSourcePath,
+    # already shared with W33's coverage rule and W34-B's authorship rule - rather than growing this
+    # predicate's own parallel list to chase what deployment writes. One decision, now four consumers.
+    #
+    # SCOPED OUT OF specs/ DELIBERATELY. The classifier calls the whole specs/ tree non-source, but
+    # FR-009 as the maintainer ruled it (2026-08-10) distinguishes INPUT from OUTPUT inside the feature
+    # tree: spec, plan and tasks are the standard the code was judged against and MUST stale, while
+    # review output must not. The allowlist below carries that ruling and stays authoritative for
+    # specs/; the shared classifier covers everything outside it. Fail direction preserved: when the
+    # classifier is not loaded, nothing changes and an unclassifiable path still stales.
+    $sharedClassifier = Get-Command -Name 'Test-SpecrewReviewAuthorshipSourcePath' -ErrorAction SilentlyContinue
+    if ($null -eq $sharedClassifier) {
+        foreach ($sharedGovernanceCandidate in @(
+                (Join-Path $resolvedRoot '.specify/extensions/specrew-speckit/scripts/shared-governance.ps1'),
+                (Join-Path $resolvedRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1'))) {
+            if (Test-Path -LiteralPath $sharedGovernanceCandidate -PathType Leaf) {
+                try { . $sharedGovernanceCandidate } catch { $null = $_ }
+                $sharedClassifier = Get-Command -Name 'Test-SpecrewReviewAuthorshipSourcePath' -ErrorAction SilentlyContinue
+                if ($null -ne $sharedClassifier) { break }
+            }
+        }
+    }
+
     # The volume that decides case here is the one holding the CHANGED PATHS - the project - never the
     # one holding this script. They are routinely different volumes: on the default CurrentUser install
     # the engine sits under a OneDrive-backed Modules directory while the project is on a local disk
@@ -414,6 +444,14 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
             }
         }
         if (-not $isRecords -and (Test-ReviewCampaignPathIsFeatureProcessRecord -Path $path -FeatureId $FeatureId -Comparison $comparison)) {
+            $isRecords = $true
+        }
+        # The shared source classifier, outside specs/ only (see the block above): a host mirror, a
+        # document, or a dot-directory deployment write is not the reviewed surface. specs/ paths that
+        # the allowlist did not accept keep staling - they are review INPUT.
+        if (-not $isRecords -and $null -ne $sharedClassifier -and
+            -not $path.StartsWith('specs/', $comparison) -and
+            -not (& $sharedClassifier -Path $path)) {
             $isRecords = $true
         }
         if (-not $isRecords) { return $false }
@@ -736,7 +774,7 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     }
 
     if ($ordered.Count -eq 0) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No completed review covers your files as they are now. Approving a review round is the human''s decision and costs one of their rounds, so ASK them for it rather than running it: tell them a review is needed and offer specrew review --live --approve-round for them to run or authorize.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No completed review covers your files as they are now. Approving a review round is the human''s decision and costs one of their rounds, so ASK them for it: their typed reply `approved for review round` is the approval, and Specrew captures it from the conversation. Once they have typed it, run specrew review --live --approve-round yourself. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
     }
 
     # A newer claimed invocation supersedes every older result, including an older clean result.

@@ -826,6 +826,16 @@ function Update-SpecrewRollingHandover {
             Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
                 -HostKind $fromHost -SourceEvent $Source | Out-Null
         }
+        # W44: round approval is a typed phrase like every other authority - captured here from the
+        # human's own prompt entry, consumed by `specrew review --approve-round` as its authorization.
+        if ((Get-Command Write-SpecrewReviewRoundApprovalAuthorization -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            try {
+                Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                    -HostKind $fromHost -SourceEvent $Source | Out-Null
+            }
+            catch { $null = $_ }
+        }
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
             -Source $Source -NowUtc $NowUtc | Out-Null
@@ -1020,6 +1030,31 @@ function Update-SpecrewRollingHandover {
     if ($isEndOfTurn) {
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc | Out-Null
+        # W44 Stop backstop for round approval: on hosts where prompt-entry does not deliver the prompt
+        # text (observed on claude - verdict capture lands at Stop), read the MOST RECENT genuine human
+        # turn from the transcript and offer it to the same writer. One turn only, verified human, every
+        # recognizer guard still applied - never agent text, never an older utterance resurrected.
+        if ((Get-Command Write-SpecrewReviewRoundApprovalAuthorization -ErrorAction SilentlyContinue) -and
+            (Get-Command Get-SpecrewTranscriptParsedTurns -ErrorAction SilentlyContinue) -and
+            (Get-Command Format-SpecrewConversationTurnText -ErrorAction SilentlyContinue) -and
+            (Get-Command Test-SpecrewTurnIsHumanVerdictEvidence -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
+            try {
+                $roundApprovalTurns = New-Object System.Collections.Generic.List[object]
+                foreach ($ratRaw in @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath)) {
+                    $ratTurn = Format-SpecrewConversationTurnText -Turn $ratRaw -Raw
+                    if ($null -ne $ratTurn) { $roundApprovalTurns.Add($ratTurn) | Out-Null }
+                }
+                for ($rat = $roundApprovalTurns.Count - 1; $rat -ge 0; $rat--) {
+                    if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $roundApprovalTurns[$rat])) { continue }
+                    Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot `
+                        -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
+                        -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
+                    break
+                }
+            }
+            catch { $null = $_ }
+        }
     }
 
     # M2 (iter-10): hollow = the git delta GENUINELY produced nothing (git unavailable / the fail-safe empty

@@ -990,6 +990,52 @@ if ($Live) {
             $roundApprovalRequested = ([bool]$parsedArgs.ApproveRound -or
                 ([string]$parsedArgs.PauseChoice -cin @('1', 'fix-and-continue')))
 
+            # W44 (maintainer ruling, 2026-08-22): --approve-round NO LONGER TREATS BARE INVOCATION AS
+            # APPROVAL. The human's role in this system is authorization, not operation - boundary
+            # verdicts, partial signoff and workshop repair are all typed phrases captured from the
+            # conversation, with the agent operating the machinery afterwards. Round approval alone
+            # demanded the human run a CLI command, and telling a human in a conversation to go run
+            # `specrew review --live --approve-round` failed as UX on day one (the bash-PATH seam).
+            #
+            # The authority is now the CAPTURED HUMAN PHRASE (`approved for review round`), recorded by
+            # the prompt hooks the way boundary verdicts are. An agent invoking this flag with a captured
+            # approval is legitimate and the round runs; an agent invoking it bare is refused. A human
+            # invoking it from their own terminal - outside any agent session - is still self-evidently
+            # authorized: the invocation IS the approving act, performed by the human. The !-prefix case
+            # (the human running it from inside a session) is covered by the capture recognizing the
+            # human's own typed invocation as the approving act.
+            #
+            # GOVERNANCE, not security: an agent holding the filesystem could fabricate the capture file,
+            # exactly as it could fabricate verdict_history. The control makes the honest path the easy
+            # path and turns a quiet liberty into a deliberate, auditable act.
+            $capturedRoundApproval = $null
+            if ([bool]$parsedArgs.ApproveRound) {
+                $humanAuthorityStorePath = Join-Path $PSScriptRoot 'internal/bootstrap/HumanAuthorityStore.ps1'
+                if ((Test-Path -LiteralPath $humanAuthorityStorePath -PathType Leaf) -and
+                    -not (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
+                    try { . $humanAuthorityStorePath } catch { $null = $_ }
+                }
+                $insideAgentSession = $false
+                if (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) {
+                    try { $insideAgentSession = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSession = $false }
+                }
+                if (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue) {
+                    try { $capturedRoundApproval = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedRoundApproval = $null }
+                }
+                if ($insideAgentSession -and $null -eq $capturedRoundApproval) {
+                    Write-Host 'Approving a review round is the human''s decision, and no approval from them has been captured.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host 'Ask them for it in the conversation. Their typed reply:' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host '  approved for review round' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host 'Once they have typed it, run this same command again - running it is your job; deciding is theirs.'
+                    Write-Host 'They can also review the artifacts themselves instead of spending a round, or run this command'
+                    Write-Host 'from their own terminal, where their invocation is itself the approval.'
+                    exit 1
+                }
+            }
+
             # AN AUTHORIZATION THE HUMAN DID NOT GIVE FOR *THIS* ACT MUST NOT LOOK LIKE ONE THEY DID.
             #
             # Measured on both dogfood runs. Each agent passed the reviewer-HOST authorization reference
@@ -1119,6 +1165,17 @@ if ($Live) {
                 catch { $roundsRun = 0 }
                 $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($roundsRun + 1)
                 $approvalMinted = $true
+                # W44: the phrase the human typed becomes this reference's recorded authority. One
+                # approval, one round - the capture is stamped spent with the ref it became, so the
+                # record reads end to end: who approved (the phrase), what it became (the ref).
+                if ($null -ne $capturedRoundApproval -and
+                    (Get-Command -Name 'Complete-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
+                    try {
+                        Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath `
+                            -AuthorizationRef $campaignGrantAuthorizationRef | Out-Null
+                    }
+                    catch { $null = $_ }
+                }
             }
 
             # NEITHER GIVEN, AND A ROUND NEEDS ONE: say THAT, and name the command. This is the sentence
@@ -1139,16 +1196,23 @@ if ($Live) {
             # entered with an approval already in hand, because that is what a fixture naturally supplies.
             $answeringPause = -not [string]::IsNullOrWhiteSpace([string]$parsedArgs.PauseChoice)
             if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and -not $answeringPause) {
-                Write-Host 'This review round needs your approval before it can run.' -ForegroundColor Yellow
+                Write-Host 'This review round needs the human''s approval before it can run.' -ForegroundColor Yellow
                 Write-Host ''
-                Write-Host 'Approve it with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                Write-Host 'The approval is their typed reply in the conversation:  approved for review round' -ForegroundColor Cyan
+                Write-Host 'Once they have typed it, run:  specrew review --live --approve-round' -ForegroundColor Cyan
                 Write-Host ''
-                Write-Host 'Approving one round runs one review. Nothing is spent until you do, and Specrew records that you approved it.'
-                Write-Host 'If you keep your own approval records, you can supply your own label instead with --authorization-ref <label>.'
+                Write-Host 'Approving one round runs one review. Nothing is spent until then, and Specrew records the phrase as the'
+                Write-Host 'approval. A human at their own terminal can run the command directly - their invocation is itself the'
+                Write-Host 'approval. If you keep your own approval records, supply your own label instead with --authorization-ref <label>.'
                 exit 1
             }
             if ($approvalMinted -and -not $Json -and -not $Quiet) {
-                Write-Host ('Round approved. Specrew recorded your approval as {0}.' -f $campaignGrantAuthorizationRef) -ForegroundColor Cyan
+                if ($null -ne $capturedRoundApproval) {
+                    Write-Host ('Round approved by the human''s typed phrase ("{0}"). Specrew recorded it as {1}.' -f [string]$capturedRoundApproval.verdict_text, $campaignGrantAuthorizationRef) -ForegroundColor Cyan
+                }
+                else {
+                    Write-Host ('Round approved. Specrew recorded your approval as {0}.' -f $campaignGrantAuthorizationRef) -ForegroundColor Cyan
+                }
             }
             $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName $campaignHost) } else { 600 }
             $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }

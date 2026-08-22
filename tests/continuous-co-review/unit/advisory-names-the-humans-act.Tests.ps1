@@ -2,21 +2,25 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# W36 (2026-08-21): an advisory the agent reads must not hand it the human's approval command.
+# W36 (2026-08-21), REWRITTEN BY W44 (2026-08-22, maintainer ruling): the advisory names a DECISION for
+# the human and an EXECUTION for the agent, matching their roles.
 #
-# The stop hook carries the review block into agent context, where "What to do: run a fresh review of
-# your files as they are now: specrew review --live --approve-round" reads as a to-do. That flag is
-# documented at scripts/specrew-review.ps1 as "Approve one review round. Specrew records your approval
-# and mints the reference itself" - it exists so the approval phrase cannot be forged. Naming it with
-# no owner hands an agent the one command whose entire purpose is recording the HUMAN's decision.
+# W36 drew the ownership line in the wrong place. It made the COMMAND the human's to run - the one role
+# this system never gives the human anywhere else. Boundary verdicts, partial signoff and workshop
+# repair are all typed phrases captured from conversation, with the agent operating the machinery
+# afterwards; round approval alone demanded the human execute a CLI command, and it failed as UX on day
+# one (the bash-PATH seam): the human is in a conversation, not a terminal.
 #
-# This is the W15 shape - guidance naming an action the reader must not take - and worse than W15,
-# because W15 offered an obviously forbidden action while this one looks routine. On the 2026-08-20
-# walk the agent noticed and held. An earlier host, under less provocation, hand-wrote a controller.
+# The model now: the human's typed reply `approved for review round` is the approval, captured by the
+# hooks; the agent runs `specrew review --live --approve-round` carrying that captured phrase as its
+# authority, and the CLI refuses an agent invocation that has none. So the advisory must name BOTH
+# halves - the phrase to ask for (the decision) and the command to run afterwards (the execution) -
+# and must never tell the agent the command is forbidden, because with a captured approval it is the
+# agent's job.
 #
-# THE FIX IS NOT DELETING THE COMMAND. The navigator's own comment records why it is named: neither
-# dogfood host could discover the flag, so both improvised an authorization. Discoverability and
-# attribution are both required, so the line keeps the command AND says whose act it is.
+# What survives from W36 unchanged: discoverability (the command stays named - deleting it is what
+# produced two invented authorizations), and the prohibition on the agent RECORDING or fabricating an
+# approval on the human's behalf.
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
@@ -25,34 +29,51 @@ BeforeAll {
     # Written without regex: every generated pattern in this slice has had its escapes mangled at least
     # once, and plain string work has nothing to mangle.
     $script:ApprovalFlag = '--approve-round'
-    $script:OwnerTokens = @('ask the human', "human's", 'their decision', 'your approval', "human''s")
+    $script:TypedPhrase = 'approved for review round'
 
-    function script:Test-NamesTheOwner {
+    function script:Test-NamesTheDecision {
+        # The human's half: the typed phrase, verbatim, so the reader can relay it without inventing.
+        param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+        return $Text.ToLowerInvariant().Contains($script:TypedPhrase)
+    }
+    function script:Test-NamesTheExecution {
+        # The agent's half: after the phrase, running the command is the reader's own act.
         param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
         $lower = $Text.ToLowerInvariant()
-        foreach ($token in $script:OwnerTokens) { if ($lower.Contains($token.ToLowerInvariant())) { return $true } }
-        return $false
+        return ($lower.Contains('run') -and $lower.Contains($script:ApprovalFlag))
     }
 }
 
-Describe 'W36 the review-request advisories name whose act it is' {
-    It 'attributes the approval command to the human for request-current-digest-review' {
+Describe 'W44 the review-request advisories split decision from execution' {
+    It 'request-current-digest-review names the phrase to ask for AND the command to run after' {
         $sentence = Get-ReviewCampaignActionSentence -Action 'request-current-digest-review'
         $sentence | Should -Not -BeNullOrEmpty
-        # Discoverability is preserved - the command stays, because removing it is what produced two
-        # invented authorizations in the first place.
-        $sentence.Contains($script:ApprovalFlag) | Should -BeTrue -Because 'the flag must remain discoverable'
-        Test-NamesTheOwner -Text $sentence | Should -BeTrue -Because 'and the line must say whose act it is'
+        Test-NamesTheDecision -Text $sentence | Should -BeTrue -Because 'the typed phrase is the decision, and the reader must be able to relay it verbatim'
+        Test-NamesTheExecution -Text $sentence | Should -BeTrue -Because 'the command stays discoverable - removing it produced two invented authorizations'
     }
 
-    It 'attributes the approval command to the human for request-authorized-review' {
+    It 'request-authorized-review names both halves too' {
         $sentence = Get-ReviewCampaignActionSentence -Action 'request-authorized-review'
-        $sentence.Contains($script:ApprovalFlag) | Should -BeTrue
-        Test-NamesTheOwner -Text $sentence | Should -BeTrue
+        Test-NamesTheDecision -Text $sentence | Should -BeTrue
+        Test-NamesTheExecution -Text $sentence | Should -BeTrue
+    }
+
+    It 'offers the manual review as the alternative that spends nothing' {
+        # The human reading the artifacts is a legitimate ask; the human operating the CLI is not.
+        $sentence = Get-ReviewCampaignActionSentence -Action 'request-current-digest-review'
+        $sentence.ToLowerInvariant().Contains('review the artifacts themselves') | Should -BeTrue
+    }
+
+    It 'does not tell the human to run the command as their own act' {
+        # The W36 wording this suite used to REQUIRE. A human in a conversation is not at a terminal,
+        # and operating the machinery is the one role this system gives the agent everywhere else.
+        foreach ($action in @('request-current-digest-review', 'request-authorized-review')) {
+            $sentence = [string](Get-ReviewCampaignActionSentence -Action $action)
+            $sentence.ToLowerInvariant().Contains('ask the human to run') | Should -BeFalse -Because 'the human decides; the agent operates'
+        }
     }
 
     It 'leaves advisories that name no approval command alone' {
-        # The rule is about the approval flag, not about every sentence having an owner clause.
         $sentence = Get-ReviewCampaignActionSentence -Action 'poll-existing-run'
         $sentence | Should -Not -BeNullOrEmpty
         $sentence.Contains($script:ApprovalFlag) | Should -BeFalse
@@ -63,23 +84,21 @@ Describe 'W36 the review-request advisories name whose act it is' {
     }
 }
 
-Describe 'W36 the agent channel says the command is not the agent to run' {
-    It 'tells the agent, in its own channel, not to record the approval' {
-        # The consumer block explains the act; the agent's private channel draws the boundary around who
-        # performs it. Putting it only in the human block would leave the agent inferring.
+Describe 'W44 the agent channel states the split, not a prohibition on the command' {
+    It 'tells the agent to ask for the phrase, never fabricate, and then run the command itself' {
         $decision = [pscustomobject]@{ ask_narrow_question = $false; route = 'review-required'; message = 'x'; run_id = ''; implementer_action = 'request-authorized-review' }
         $directive = Build-ReviewCampaignNavigatorAgentDirective -PacketDecision $decision -PendingCrossing $null
         $directive | Should -Not -BeNullOrEmpty
-        $directive.Contains($script:ApprovalFlag) | Should -BeTrue
-        Test-NamesTheOwner -Text $directive | Should -BeTrue
-        $directive.ToLowerInvariant().Contains('do not run it') | Should -BeTrue
+        $lower = $directive.ToLowerInvariant()
+        Test-NamesTheDecision -Text $directive | Should -BeTrue
+        $lower.Contains('never record or fabricate') | Should -BeTrue -Because 'what survives from W36 is the prohibition on inventing the approval'
+        $lower.Contains('your job') | Should -BeTrue -Because 'execution is the agent role, stated in the agent channel'
+        $lower.Contains('do not run it') | Should -BeFalse -Because 'the W36 prohibition is the ruling this suite was rewritten to retire'
     }
 }
 
-Describe 'W36 THE GENERAL PROPERTY - no advisory names the approval flag without an owner' {
+Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming the typed phrase' {
     It 'holds across every action the sentence generator can produce' {
-        # The specific two are fixed above; this is the class. A new action added later that names the
-        # flag without saying whose it is fails here rather than reaching an agent.
         $actions = @('request-current-digest-review', 'request-authorized-review', 'poll-existing-run',
             'proceed', 'await-human-pause-decision', 'reconcile-run-claim', 'repair-review-state')
         $offenders = [System.Collections.Generic.List[string]]::new()
@@ -87,15 +106,14 @@ Describe 'W36 THE GENERAL PROPERTY - no advisory names the approval flag without
             $sentence = [string](Get-ReviewCampaignActionSentence -Action $action)
             if ([string]::IsNullOrWhiteSpace($sentence)) { continue }
             if (-not $sentence.Contains($script:ApprovalFlag)) { continue }
-            if (-not (Test-NamesTheOwner -Text $sentence)) { [void]$offenders.Add($action) }
+            if (-not (Test-NamesTheDecision -Text $sentence)) { [void]$offenders.Add($action) }
         }
-        @($offenders).Count | Should -Be 0 -Because "an advisory that names the approval flag must say it is the human's (offenders: $($offenders -join ', '))"
+        @($offenders).Count | Should -Be 0 -Because "an advisory naming the flag must name the typed phrase that authorizes it (offenders: $($offenders -join ', '))"
     }
 
     It 'holds across the reader-facing strings in the co-review sources' {
-        # The audit the finding asked for, as a standing check rather than a one-off sweep. Scans the
-        # co-review sources for reader-facing string literals that name the approval flag and requires
-        # each to carry an owner clause. Comments are skipped: they explain, they do not instruct.
+        # The standing audit, retargeted: every reader-facing line naming the approval flag must carry
+        # the typed phrase, so no advisory can regress to treating bare invocation as the approval.
         $sourceDir = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
         $offenders = [System.Collections.Generic.List[string]]::new()
         foreach ($file in @(Get-ChildItem -LiteralPath $sourceDir -Filter '*.ps1' -File)) {
@@ -107,9 +125,9 @@ Describe 'W36 THE GENERAL PROPERTY - no advisory names the approval flag without
                 if (-not $line.Contains($script:ApprovalFlag)) { continue }
                 # A line that merely parses or matches the flag is not an advisory.
                 if ($line.Contains('-cmatch') -or $line.Contains('-match') -or $line.Contains('Alias(')) { continue }
-                if (-not (Test-NamesTheOwner -Text $line)) { [void]$offenders.Add("$($file.Name):$lineNumber") }
+                if (-not (Test-NamesTheDecision -Text $line)) { [void]$offenders.Add("$($file.Name):$lineNumber") }
             }
         }
-        @($offenders).Count | Should -Be 0 -Because "every reader-facing line naming the approval flag must attribute it (offenders: $($offenders -join ', '))"
+        @($offenders).Count | Should -Be 0 -Because "every reader-facing line naming the approval flag must name the typed phrase (offenders: $($offenders -join ', '))"
     }
 }

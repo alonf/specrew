@@ -535,6 +535,92 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-103 - round approval becomes a typed phrase, like every other authority (resolved; W36 superseded by maintainer ruling)
+
+- **The ruling (2026-08-22)**: the W36 ownership split was wrong. The human's role in this system is
+  authorization, not operation - boundary verdicts, partial signoff and workshop repair are all typed
+  phrases captured from conversation, with the agent operating the machinery afterwards. Round approval
+  alone demanded the human execute a CLI command, which is inconsistent with the system's own model and
+  failed as UX on day one (the bash-PATH seam: the human is in a conversation, not a terminal).
+- **RED first, as demanded**: before this change, `--approve-round` minted an approval on BARE
+  INVOCATION, regardless of who invoked it - the only authority in the system an agent could perform
+  rather than relay. The acceptance case reproduces that red: neutralizing the enforcement turns
+  exactly it back on (11 pass / 1 fail under the mutant).
+- **The mechanism**, following the partial-signoff override's capture pattern:
+  - The human types `approved for review round`. `Write-SpecrewReviewRoundApprovalAuthorization`
+    (HumanAuthorityStore) captures it from the prompt-entry hook, with a Stop backstop that relays only
+    the most recent VERIFIED human transcript turn - observed on claude that verdict capture lands at
+    Stop, so prompt-entry alone was not enough. Conservative recognizer in the verdict-token tradition:
+    questions, negations, deferrals, mentions, teaching and machinery envelopes all fall through.
+  - `specrew review --live --approve-round` in an AGENT session consumes the captured phrase as its
+    authority, mints the reference, and stamps the capture spent with the ref it became - one approval,
+    one round, and the record reads end to end. No capture -> refused, naming the exact phrase to ask
+    for.
+  - A human at their OWN terminal - no agent-session env signal - is still self-evidently authorized:
+    the invocation IS the approving act. The !-prefix path (the human running it inside a session,
+    where the env cannot distinguish them from the agent) is covered by the capture recognizing the
+    human's own typed invocation as the approving act.
+- **Advisories rewritten to the two-role model** - navigator consumer sentences and agent channel,
+  review-authority-core's not-finished text, the orchestrator's feature-refusal and needs-approval
+  texts, the evidence gate's review-required ask, and the CLI's own refusals: name the DECISION (the
+  typed phrase, verbatim, so it can be relayed without inventing) and the EXECUTION (the agent runs the
+  command after). The manual-review alternative is offered where a round is asked for. What survives
+  from W36: discoverability of the command, and the prohibition on recording or fabricating an approval
+  on the human's behalf.
+- **Honest limits, stated**: (1) GOVERNANCE, not security - an agent holding the filesystem could
+  fabricate the capture file, exactly as it could fabricate verdict_history; the control makes the
+  honest path the easy path and turns a quiet liberty into a deliberate, auditable forgery. (2) The
+  !-prefix guarantee inside a session depends on the hooks seeing the human's message; if a host runs
+  !-commands without firing prompt or stop events, the human is refused once with the phrase named, and
+  one typed line recovers - the fail direction the system already chose (lose an approval, never invent
+  one). (3) `--pause-choice 1` still carries round approval without a capture - it answers a rendered
+  pause menu, a narrower surface, left as-is deliberately and named here rather than silently.
+- **Verification**: `tests/unit/round-approval-typed-authority.tests.ps1` (12 cases: recognizer matrix,
+  store round-trip with fail-closed forgery case, signal-list parity with HandoverStore's host
+  detector, hook wiring, and three END-TO-END CLI cases - agent refused bare, agent runs after the
+  phrase and the capture is stamped spent, terminal stays self-authorizing).
+  `advisory-names-the-humans-act.Tests.ps1` rewritten to pin the new model (9 cases), including the
+  standing sweep: no reader-facing line in the co-review sources may name `--approve-round` without
+  naming the typed phrase. MUTATION-PROVEN: disabling the CLI enforcement reproduces pre-W44 behavior
+  and turns exactly the acceptance case red.
+
+### DRIFT-199-I001-104 - the evidence gate's records-only exemption was DRIFT-007's twin (resolved)
+
+- **Observed**: 2026-08-22, by the test session, which confirmed the advisory still staled a
+  records-only delta after b5c84f48 and traced the cause read-only. Verified here at ground truth: a
+  downstream-shaped root's machinery list is `.agents, .antigravitycli, .claude/settings.local.json,
+  .git, .specify, .specrew, .squad, ...` - no `.github/agents`, no `.github/prompts`, no
+  `.claude/skills`, no `.cursor/rules` - while the Spec-Kit/Squad deployers write exactly those host
+  mirrors, markerless. The FR-009 exemption fails closed on the first unclassifiable path, so EVERY
+  redeploy permanently staled EVERY review in a downstream project.
+- **Why the first fix missed it**: b5c84f48 fixed the byte-vs-source question in the VALIDATOR's
+  cited-run check. The same question lived in a second copy - the evidence gate's records-only
+  classifier - with a different mechanism (an under-covering allowlist rather than exact tree
+  equality) and the same effect.
+- **Resolution, as the maintainer directed**: the gate now consults the SAME shared classifier the
+  validator got - `Test-SpecrewReviewAuthorshipSourcePath` - rather than growing its own parallel
+  list to chase what deployment writes. One decision, four consumers (W33 coverage, W34-B authorship,
+  DRIFT-007 staleness, FR-009 records-only). Load ladder resolves it from the deployed project's own
+  `.specify` copy when not already in-process; unavailable -> unchanged behavior, unclassifiable
+  stales - the fail direction preserved.
+- **Scoped OUT of `specs/` deliberately.** The classifier calls the whole specs/ tree non-source, but
+  FR-009 as ruled 2026-08-10 distinguishes INPUT from OUTPUT inside the feature tree: spec/plan/tasks
+  are the standard the code was judged against and MUST stale. The allowlist stays authoritative for
+  specs/; the classifier covers everything outside it. Both rulings hold.
+- **A suite-writing lesson recorded against myself**: the first draft's acceptance case passed against
+  the PRE-FIX gate, because in the Specrew source repo the machinery list enumerates the
+  `.specrew-managed` mirrors and the host-mirror paths classified fine HERE. The failure exists only in
+  a downstream-shaped root. Every case now runs against one, the source-repo behavior is pinned
+  separately, and the mutation proof was re-run to confirm the acceptance case actually goes red
+  (7 pass / 4 fail under the mutant). A fixture that shares the defect's blind spot proves nothing -
+  the same lesson as -099, in a new coat.
+- **Verification**: `tests/continuous-co-review/unit/records-only-covers-what-deployment-writes.Tests.ps1`,
+  11 cases in the slice lane - the downstream acceptance case, docs-only, source-still-stales,
+  the `.github/workflows` known-limit pinned as a stated decision, the FR-009 INPUT ruling surviving,
+  OUTPUT staying quiet, other-feature trees staling, fail-closed on empty/unknown, the source repo
+  unchanged, and a fresh-process child proving the load ladder resolves the classifier from the
+  project's deployed copy.
+
 ### DRIFT-199-I001-102 - W38 and W34-A had no mutually satisfiable state, and the cause was universal (resolved)
 
 - **Observed**: 2026-08-22, by the downstream walk. Reproduced here at ground truth before any fix:

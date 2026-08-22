@@ -272,7 +272,7 @@ function Resolve-ReviewCampaignPauseDecision {
             elapsed_minutes        = $ElapsedMinutes
             result_produced        = $false
             recommendation         = $(if ($continuationAvailable) {
-                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Ask the human to run it again: specrew review --live --approve-round - approving a review round is their decision, and that flag is how Specrew records it'
+                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Ask the human to approve another round - their typed reply ``approved for review round`` is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round'
                 } else {
                     'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. The round budget is spent; reset it explicitly or abandon this campaign.'
                 })

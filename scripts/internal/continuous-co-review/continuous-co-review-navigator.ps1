@@ -601,7 +601,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 $independenceNote = ''
                 $regIndependence = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewer_independence')) { [string]$reg.reviewer_independence } else { '' }
                 if ($regIndependence -eq 'same-host') {
-                    $independenceNote = ' NOTE: this was a SAME-HOST fallback review (reviewer = code-writer host; labelled, not silently substituted). Ask the human to authorize an INDEPENDENT reviewer once - it is their decision, and --approve-round is how Specrew records it: ``specrew review --live --host <other-host> --approve-round`` - the next run upgrades automatically.'
+                    $independenceNote = ' NOTE: this was a SAME-HOST fallback review (reviewer = code-writer host; labelled, not silently substituted). Ask the human to approve an INDEPENDENT reviewer round once - their typed reply ``approved for review round`` is the approval, and Specrew captures it from the conversation. Once they have typed it, run ``specrew review --live --host <other-host> --approve-round`` yourself - the next run upgrades automatically.'
                 }
                 # T094/FR-036 (iter-009 D4): the 3-dimension evidence labels, derived from the terminal
                 # status + registry and promoted onto the durable record - the tiered gate's assurance
@@ -832,7 +832,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         catch { $navFailReason = '' }
                     }
                     if ($navFailReason -match '(?i)no-authorized-reviewer-host') {
-                        $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - ask the human to authorize an INDEPENDENT reviewer ONCE - it is their decision, and --approve-round is how Specrew records it: ``specrew review --live --host <an-installed-harness-other-than-the-code-writer> --approve-round``. It then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - ask the human to approve an INDEPENDENT reviewer round ONCE: their typed reply ``approved for review round`` is the approval, and Specrew captures it from the conversation. Once they have typed it, run ``specrew review --live --host <an-installed-harness-other-than-the-code-writer> --approve-round`` yourself. It then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
                     }
                     else {
                         $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null
@@ -1462,21 +1462,20 @@ function Get-ReviewCampaignActionSentence {
         # must carry the approval in the same line. Someone reading a refusal is exactly the person
         # looking for how to run a review; making them find a second message first is what produced two
         # invented authorizations.
-        # W36: THE COMMAND STAYS, THE ATTRIBUTION IS ADDED.
+        # W44 (maintainer ruling, 2026-08-22): THE DECISION IS THE HUMAN'S, THE EXECUTION IS THE AGENT'S.
         #
-        # These sentences are written for the human, and the agent reads them too - the stop hook
-        # carries this block into its context, where 'What to do: run ... --approve-round' reads as a
-        # to-do. That flag exists so the approval phrase cannot be forged, so naming it with no owner
-        # hands an agent the one command whose entire purpose is recording the HUMAN's decision.
-        # Worse than W15's shape: W15 offered an obviously forbidden action, this looks routine. On
-        # the 2026-08-20 walk the agent noticed and held; an earlier host, under less provocation,
-        # hand-wrote a controller.
+        # W36 drew the line in the wrong place: it made the COMMAND the human's to run, which is the one
+        # role this system never gives the human anywhere else. Boundary verdicts, partial signoff and
+        # workshop repair are all typed phrases captured from conversation, with the agent operating the
+        # machinery afterwards - and round approval now works the same way. The human types `approved
+        # for review round`; the hooks capture it; the agent runs the command carrying that captured
+        # phrase as its authority, and a bare agent invocation without one is refused by the CLI itself.
         #
-        # Deleting the command is NOT the fix - that is the defect the comment above describes, where
-        # neither dogfood host could discover the flag and both improvised an authorization. Say whose
-        # act it is. review-signoff-evidence-gate.ps1 already words it that way.
-        'request-current-digest-review' { return 'ask the human to run a fresh review of these files as they are now: specrew review --live --approve-round - approving a review round is their decision, and that flag is how Specrew records it' }
-        'request-authorized-review' { return 'ask the human to start a review of these files: specrew review --live --approve-round - approving a review round is their decision, and that flag is how Specrew records it' }
+        # Telling a human in a conversation to go run a CLI command also failed as UX on day one (the
+        # bash-PATH seam): the human is in a conversation, not a terminal. The command still appears
+        # here - discoverability was the original defect - but addressed to the reader who runs it.
+        'request-current-digest-review' { return 'ask the human to approve a fresh review round of these files as they are now - their typed reply `approved for review round` is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude' }
+        'request-authorized-review' { return 'ask the human to approve a review round of these files - their typed reply `approved for review round` is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude' }
         'poll-existing-run' { return 'wait for the review that is already running; nothing else is needed from you' }
         'proceed' { return '' }
         'await-human-pause-decision' { return 'answer the review question above; nothing runs until you do' }
@@ -1496,10 +1495,11 @@ function Build-ReviewCampaignNavigatorAgentDirective {
     param([Parameter(Mandatory)]$PacketDecision, [AllowNull()]$PendingCrossing)
 
     $lines = [Collections.Generic.List[string]]::new()
-    # W36: the consumer block above may name `specrew review --live --approve-round`, and the agent
-    # reads that block. Say plainly, in the agent's OWN channel, that the command is not its to run.
-    # The human block explains the act; this draws the boundary around who performs it.
-    $lines.Add('Any `specrew review ... --approve-round` command shown above is the HUMAN''s to run: that flag is how Specrew records their approval of a review round. Do not run it, and do not record an approval on their behalf - ask them.') | Out-Null
+    # W44 (supersedes W36): the agent's own channel now states the split the maintainer ruled - the
+    # DECISION is the human's, the EXECUTION is the agent's. The CLI enforces it: an agent invocation
+    # of --approve-round without a captured typed approval is refused, so this sentence describes the
+    # mechanism rather than standing in for one.
+    $lines.Add('Approving a review round is the HUMAN''s decision, given as their typed reply `approved for review round` - ask them for it; never record or fabricate one on their behalf. Once they have typed it, running `specrew review --live --approve-round` is YOUR job: the captured phrase is the authority the command consumes, and it refuses an agent invocation that has none.') | Out-Null
     if ([bool](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'ask_narrow_question')) {
         $lines.Add('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') | Out-Null
     }

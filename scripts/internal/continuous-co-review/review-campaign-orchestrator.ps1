@@ -1301,7 +1301,7 @@ function Resolve-ReviewCampaignPublicIdentity {
         # conclude the feature did not exist and to propose bypassing the gate.
         throw ('Specrew could not work out which feature this review is for. It looked at the lifecycle ' +
             'state, the active feature record, and the branch name, and none of them named one. ' +
-            'Tell it directly, and note this is the human''s command to run because --approve-round records their approval: specrew review --live --feature <feature-id> --approve-round')
+            'Tell it directly: specrew review --live --feature <feature-id> --approve-round. Approving the round is the human''s decision - their typed reply `approved for review round` is captured from the conversation, and the command consumes it.')
     }
     $featureDirectory = Join-Path $root "specs/$feature"
     if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) { throw "review-campaign-feature-missing:$feature" }
@@ -1458,7 +1458,7 @@ function Invoke-ReviewCampaignCommand {
             $conditionSentence = switch ($failedCondition) {
                 'not-cataloged' { "Specrew does not recognise the reviewer '$ReviewerHost'. Check the name, or list the reviewers this project can use with: specrew review --list-hosts" }
                 'not-installed' { "The reviewer '$ReviewerHost' is set up for this project, but its command is not on this machine. Install it, or choose one that is available with: specrew review --list-hosts" }
-                default { "This review round needs your approval before it can run. Approve it with: specrew review --live --approve-round" }
+                default { "This review round needs the human''s approval before it can run. Their typed reply `approved for review round` is the approval; once they have typed it, run: specrew review --live --approve-round. From their own terminal, the human can also run that command directly - their invocation is itself the approval." }
             }
             # THE TOKEN ITSELF MUST STOP LYING, not just the sentence beside it. For the two genuine
             # host conditions the host really is the problem, so the long-standing
