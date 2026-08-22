@@ -544,6 +544,84 @@ No open prompts.
     if (@(Get-CaptureLedger -ProjectRoot $p4).Count -ne 2) { Fail 'a DIFFERENT verdict for the same boundary was swallowed as a duplicate (zero-capture)' }
     Write-Pass 'T004 part 3: the writer is idempotent on crossing + verdict text, and a DIFFERENT verdict still appends'
 
+    # ---- W45 (2026-08-22): PROMPT-ENTRY CAPTURE WITH NO TRANSCRIPT ----------------------------------------
+    # Verdict capture required a transcript, and on hosts whose prompt event carries none (Copilot's
+    # userPromptSubmitted) the prompt-entry call bailed 'no-transcript' - capture landed only at Stop,
+    # AFTER the turn processing the verdict. Observed: the human typed the phrase, the session read
+    # start-context mid-turn, saw unauthorized, and asked AGAIN. The prompt text itself is the evidence
+    # (the W44 round-approval shape); the boundary tie is the deterministic pending state.
+
+    # (1) ACCEPTANCE: on a prompt-entry host with no transcript, the controller shows the crossing
+    #     authorized before the session's turn begins.
+    $w45a = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $w45aCapture = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45a -TranscriptPath $null `
+        -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'tasks' `
+        -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z'
+    if (-not $w45aCapture.authorized) { Fail "W45 acceptance: prompt-entry with no transcript did not authorize (reason=$($w45aCapture.reason))" }
+    $w45aLedger = @(Get-CaptureLedger -ProjectRoot $w45a)
+    if ($w45aLedger.Count -ne 1) { Fail "W45 acceptance: expected 1 ledger entry, got $($w45aLedger.Count)" }
+    if ([string]$w45aLedger[0].evidence_source -ne 'hook-captured-user-prompt') { Fail "W45: evidence source must say which surface saw it (got '$($w45aLedger[0].evidence_source)')" }
+    Write-Pass 'W45 (1) ACCEPTANCE: prompt-entry capture authorizes with NO transcript, before the turn begins'
+
+    # (2) The Stop re-fire on the same verdict does not double-write.
+    $w45t = New-CaptureTranscript -Path (Join-Path $scratch 'w45-stop.jsonl') -HumanText 'approved for before-implement'
+    $null = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45a -TranscriptPath $w45t `
+        -LastAuthorizedBoundary 'before-implement' -Source 'stop' -NowUtc '2026-08-22T12:05:00Z'
+    if (@(Get-CaptureLedger -ProjectRoot $w45a).Count -ne 1) { Fail 'W45: the Stop re-fire double-wrote the prompt-entry capture' }
+    Write-Pass 'W45 (2): the Stop backstop re-fire does not double-write'
+
+    # (3) The conservative floor survives the missing transcript: nothing ambiguous authorizes.
+    foreach ($notVerdict in @(
+            'send back: the plan is missing the rollback path',
+            'is this ready to approve?',
+            '1',
+            'please reply with approved for before-implement',
+            '<system-reminder>approved for before-implement</system-reminder>')) {
+        $w45c = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+        $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45c -TranscriptPath $null `
+            -LastUserMessage $notVerdict -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z'
+        if ($r.authorized) { Fail "W45: prompt-only capture authorized on non-verdict text: '$notVerdict'" }
+    }
+    Write-Pass 'W45 (3): send-back / question / bare number / teaching / machinery never authorize without a transcript'
+
+    # (4) A named boundary that contradicts the pending crossing stays un-authorized - the safety rule.
+    $w45d = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45d -TranscriptPath $null `
+        -LastUserMessage 'approved for retro' -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z'
+    if ($r.authorized) { Fail 'W45: a verdict naming a DIFFERENT boundary authorized the pending one' }
+    Write-Pass 'W45 (4): a contradicting named boundary stays un-authorized'
+
+    # (5) No pending crossing -> nothing to bind to -> nothing captured. The fabrication direction.
+    $w45e = New-PendingProject -LastAuthorizedBoundary 'before-implement' -WorkingBoundary 'before-implement'
+    $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45e -TranscriptPath $null `
+        -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'before-implement' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z'
+    if ($r.authorized) { Fail 'W45: prompt-only capture minted an authorization with no pending crossing' }
+    Write-Pass 'W45 (5): no pending crossing, no capture - the prompt path cannot fabricate'
+
+    # (6) A STOP event with no transcript still bails: the prompt path is prompt-entry ONLY, because at
+    #     Stop the "last user message" is not fresh by construction.
+    $w45f = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45f -TranscriptPath $null `
+        -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'tasks' -Source 'stop' -NowUtc '2026-08-22T12:00:00Z'
+    if ($r.authorized -or $r.reason -ne 'no-transcript') { Fail "W45: a Stop event without a transcript must stay 'no-transcript' (got authorized=$($r.authorized) reason=$($r.reason))" }
+    Write-Pass 'W45 (6): the prompt-only path is prompt-entry only; Stop without a transcript still declines'
+
+    # (7) A transcript-bearing call never takes the prompt-only branch: the send-back-first window rule
+    #     survives. Transcript holds the packet and a send-back; the live prompt approves. The forward
+    #     scan must still hit the send-back and refuse - prompt-only must not rescue what the transcript
+    #     path deliberately blocks.
+    $w45g = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'before-implement'
+    $w45gt = Join-Path $scratch 'w45-sendback.jsonl'
+    $sbLines = @(
+        ('{"role":"assistant","message":{"content":[{"type":"text","text":' + (("Packet body.`n`n<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->") | ConvertTo-Json) + '}]}}')
+        ('{"role":"user","message":{"content":[{"type":"text","text":' + ('send back: the hardening gate is still tbd' | ConvertTo-Json) + '}]}}')
+    )
+    Set-Content -LiteralPath $w45gt -Value $sbLines -Encoding UTF8
+    $r = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $w45g -TranscriptPath $w45gt `
+        -LastUserMessage 'approved for before-implement' -LastAuthorizedBoundary 'tasks' -Source 'UserPromptSubmit' -NowUtc '2026-08-22T12:00:00Z'
+    if ($r.authorized) { Fail 'W45: with a transcript present, the prompt-only path rescued an approval past a send-back' }
+    Write-Pass 'W45 (7): a transcript-bearing call keeps every transcript conservatism - no rescue past a send-back'
+
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }

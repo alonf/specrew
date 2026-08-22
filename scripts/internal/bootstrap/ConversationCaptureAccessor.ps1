@@ -439,6 +439,84 @@ function Get-SpecrewPendingVerdictFallbackCapture {
     return (Find-SpecrewPendingVerdictFallbackCandidate -Turns $Turns -Pending $pending)
 }
 
+function Get-SpecrewPromptEntryBoundaryVerdict {
+    # W45 (2026-08-22): CAPTURE THE VERDICT BEFORE THE TURN STARTS, EVEN WITH NO TRANSCRIPT.
+    #
+    # Verdict capture required a transcript, and on hosts whose prompt event carries no transcript path
+    # (Copilot's userPromptSubmitted) the prompt-entry call bailed 'no-transcript' - so capture landed
+    # only at Stop, AFTER the turn that was processing the verdict. Observed cost on Copilot: the human
+    # typed the phrase, the session read start-context mid-turn, saw the crossing unauthorized, and
+    # asked AGAIN - one wasted approval cycle and a confused human, at every boundary.
+    #
+    # This is the W44 round-approval shape applied to verdicts: the prompt event's own text is the
+    # evidence. The prompt IS the human's typed turn, delivered by the host at the moment they typed it
+    # - the same trust the partial-signoff, workshop-repair and round-approval writers already extend to
+    # exactly this channel. The boundary tie comes from the DETERMINISTIC pending-crossing state on
+    # disk, not from a transcript packet marker.
+    #
+    # THIS IS NOT THE DISABLED PENDING-ARTIFACT FALLBACK (DEC-198-GOV-003). That fallback paired STALE
+    # TRANSCRIPT turns with the pending artifact during the agent's own stop cycle - the two
+    # fabrications it produced both fired ~37s after a packet render, on machinery turns. Here the text
+    # is the live prompt: it cannot be stale, cannot be the agent's, and cannot be a re-read of an
+    # earlier turn, because the host hands it over exactly once, when the human submits it. Every
+    # conservatism the tokenizer enforces still applies, and a transcript-bearing host never reaches
+    # this path at all.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()][string]$ProjectRoot,
+        [Parameter()][AllowNull()][string]$LastUserMessage
+    )
+
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-prompt' }
+    if ([string]::IsNullOrWhiteSpace($LastUserMessage)) { return $result }
+    $text = ([string]$LastUserMessage).Trim()
+    $text = $text -replace '(?is)^\s*<USER_REQUEST>\s*', '' -replace '(?is)\s*</USER_REQUEST>\s*$', ''
+    $text = $text.Trim()
+    if (Test-SpecrewConversationMachineryEnvelope -Text $text) { $result.Reason = 'machinery-envelope'; return $result }
+
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {
+        $result.Reason = 'no-pending-state'
+        return $result
+    }
+    $pending = $null
+    try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
+    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { $result.Reason = 'no-pending-state'; return $result }
+    $pendingFromMarker = [string]$pending.PendingFromMarkerBoundary
+    $pendingToMarker = [string]$pending.PendingToMarkerBoundary
+    if ([string]::IsNullOrWhiteSpace($pendingFromMarker) -or [string]::IsNullOrWhiteSpace($pendingToMarker)) {
+        $result.Reason = 'pending-state-incomplete'
+        return $result
+    }
+
+    $verdict = Test-SpecrewHumanVerdictToken -Text $text
+    if (-not $verdict.IsApproval) {
+        # The conservative floor is unchanged: send-back, discuss, negation, deferral, question and
+        # ambiguity all fall to NOT-approval, and the crossing stays un-authorized until re-asked.
+        $result.Reason = ("not-approval:{0}" -f $verdict.Action)
+        return $result
+    }
+
+    # Contradiction cross-check against the ONE pending crossing - the same rule the marker path
+    # applies. A human who named a different boundary makes the tie ambiguous -> un-authorized.
+    $named = @($verdict.NamedBoundaries)
+    if ($named.Count -gt 0) {
+        $pendingSet = @($pendingFromMarker, $pendingToMarker, [string]$pending.PendingFromBoundary, [string]$pending.PendingToBoundary) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
+        if (@($named | Where-Object { $pendingSet -contains $_ }).Count -eq 0) {
+            $result.Reason = 'named-boundary-contradicts-pending'
+            return $result
+        }
+    }
+
+    $result.Found = $true
+    $result.FromBoundary = $pendingFromMarker
+    $result.ToBoundary = $pendingToMarker
+    $result.VerdictText = Get-SpecrewCapturedVerdictText -HumanText $text -ToBoundary $pendingToMarker
+    $result.HumanText = $text
+    $result.Reason = 'captured-prompt-entry'
+    return $result
+}
+
 function Get-SpecrewCapturedBoundaryVerdict {
     # F-174 iteration 011 (T004, FR-026): read the host transcript for the human's verdict on a rendered boundary
     # VERDICT packet. The verdict is tied to a boundary ONLY via the packet's stable machine marker

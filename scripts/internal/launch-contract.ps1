@@ -396,6 +396,8 @@ Summarize the meaningful past outcome, not just file names. Include artifacts cr
 
 Name the exact lifecycle boundary and explain why human judgment is required before the next step. After boundary sync, use ``.specrew/runtime/pending-verdict-stop.md`` as the authoritative source for the boundary name, approval phrase, and last-line marker; never infer ``<from> -> <to>`` from the phase you intend to run next. For ``clarify -> plan``, say that planning will convert the spec into architecture and task direction, so spec mistakes become downstream work.
 
+**Authority in flight.** If the human's immediately-preceding turn is the bare approval phrase for the pending crossing, that verdict IS given even when the controller still reads un-authorized mid-turn: on some hosts the capture lands only at end-of-turn, so the recording arrives at this very turn's Stop. Do not re-ask — proceed on the typed phrase, and verify the recorded authorization at the START of your next turn. Ask again only if it is still unrecorded then.
+
 ## What Needs Your Review
 
 Point to targeted review surfaces with ``file:///`` links, exact sections worth inspecting, high-impact choices, assumptions, uncertainties, and what can be safely skimmed. Identify release-blocking items when in scope, including ``Status: Approved`` verdict-evidence checks and beta smoke evidence.

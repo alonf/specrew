@@ -535,6 +535,43 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-106 - verdict capture landed at Stop, so a session could never see the verdict it was processing (resolved)
+
+- **Observed**: 2026-08-22, on Copilot. The human typed the approval phrase; the session checked
+  `start-context.json` mid-turn, saw the crossing un-authorized, and asked AGAIN - while the capture
+  landed at that very turn's Stop. One wasted approval cycle and a confused human, at every boundary,
+  on any session that verifies against the controller rather than trusting the typed phrase.
+- **Cause**: `Invoke-SpecrewBoundaryVerdictCapture` hard-required a transcript path, and Copilot's
+  `userPromptSubmitted` event delivers the prompt text but no transcript - so the prompt-entry call,
+  which exists precisely for immediate capture, bailed `no-transcript` on the one host shape it was
+  most needed for. The handover provider was wired to the event; the failure was one guard inside.
+- **Resolution - the W44 shape applied to verdicts.** A new prompt-entry reader
+  (`Get-SpecrewPromptEntryBoundaryVerdict`) captures from the prompt event's own text: the prompt IS
+  the human's typed turn, delivered by the host at the moment they typed it - the same channel and
+  trust the partial-signoff, workshop-repair and round-approval writers already use. The boundary tie
+  comes from the DETERMINISTIC pending-crossing state on disk, not from a transcript packet marker.
+  Evidence source `hook-captured-user-prompt`, added to the writer's captured-provenance list so the
+  ledger names which surface saw it.
+- **This is NOT the disabled pending-artifact fallback** (DEC-198-GOV-003), and the distinction is
+  recorded in the code: that fallback paired STALE TRANSCRIPT turns with the pending artifact during
+  the agent's own stop cycle - both fabrications fired ~37s after a packet render, on machinery turns.
+  The live prompt cannot be stale, cannot be the agent's, and cannot be a re-read of an earlier turn.
+  Every tokenizer conservatism still applies.
+- **Scoped tightly, and each edge is a pinned case**: prompt-entry events ONLY (a Stop event without a
+  transcript still declines, because at Stop the "last user message" is not fresh by construction);
+  a transcript-bearing call NEVER takes the branch, so the send-back-first window rule cannot be
+  rescued around; no pending crossing means no capture; a contradicting named boundary stays
+  un-authorized; the Stop re-fire on the same verdict does not double-write.
+- **The Stop-only half of the ruling - guidance, where the mid-turn reader looks.** The
+  pending-verdict-stop artifact and the launch contract now state the authority-in-flight rule: if the
+  human's immediately-preceding turn is the bare approval phrase, that verdict IS given - proceed on
+  it, verify the recorded authorization at the START of the next turn, and re-ask only if it is still
+  unrecorded then. The spurious re-ask is named as the failure the rule prevents.
+- **Verification**: seven W45 cases added to `tests/integration/verdict-capture-blocks.tests.ps1`
+  (class-guard lane), driving the REAL entry point against real pending projects. MUTATION-PROVEN:
+  restoring the pre-fix `no-transcript` bail turns exactly the acceptance case red - on a prompt-entry
+  host, the controller shows the crossing authorized before the session's turn begins.
+
 ### DRIFT-199-I001-105 - the pause menu's round-spending answer joins the typed-phrase authority (resolved)
 
 - **The instruction (2026-08-22)**: close `--pause-choice 1` with the same capture mechanism before the

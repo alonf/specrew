@@ -3377,7 +3377,11 @@ function Add-SpecrewBoundaryAuthorization {
     $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
 
     # The sources the capture path actually emits, read from HandoverStore.ps1 rather than composed.
-    $capturedEvidenceSources = @('hook-captured-from-transcript', 'hook-captured-from-transcript-pending-artifact')
+    # W45 added 'hook-captured-user-prompt': the prompt-entry event's own text, on hosts whose prompt
+    # event carries no transcript path - the same channel and label the partial-signoff, workshop-repair
+    # and round-approval writers use. It is captured provenance, not out-of-band: the hook saw the
+    # human's typed turn at the moment they submitted it.
+    $capturedEvidenceSources = @('hook-captured-from-transcript', 'hook-captured-from-transcript-pending-artifact', 'hook-captured-user-prompt')
     $isCapturedProvenance = $capturedEvidenceSources -ccontains $effectiveEvidenceSource
     $isOutOfBand = -not $isCapturedProvenance
     if ($isOutOfBand -and [string]::IsNullOrWhiteSpace($OutOfBandReason)) {

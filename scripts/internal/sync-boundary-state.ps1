@@ -693,6 +693,13 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $lines.Add(('Recorded at: {0}' -f $recordedAt)) | Out-Null
     $lines.Add('') | Out-Null
     $lines.Add('After rendering the packet, stop. Do not record authorization yourself; the Stop/UserPromptSubmit verdict capture writes authorization only after the human replies.') | Out-Null
+    $lines.Add('') | Out-Null
+    # W45 (2026-08-22): the spurious re-ask. On a host whose capture lands only at Stop, the controller
+    # cannot show the verdict DURING the turn that is processing it. A session that verified mid-turn
+    # saw "unauthorized", asked again, and the capture landed at that very turn's Stop - one wasted
+    # approval cycle and a confused human, at every boundary. The artifact the session reads mid-turn
+    # is the right place to say what an in-flight verdict looks like and what to do with it.
+    $lines.Add('AUTHORITY IN FLIGHT: if the human''s immediately-preceding turn is the bare approval phrase above, that verdict IS given - the hooks may not have recorded it yet, because on some hosts capture lands only at end-of-turn. Do not ask again. Proceed on it, and verify the recorded authorization at the START of your next turn rather than blocking mid-turn. If it is still unrecorded THEN, ask once - and only then.') | Out-Null
 
     Write-FileAtomically -Path $artifactPath -Content (($lines -join [Environment]::NewLine) + [Environment]::NewLine)
 

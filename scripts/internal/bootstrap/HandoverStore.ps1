@@ -617,7 +617,19 @@ function Invoke-SpecrewBoundaryVerdictCapture {
     )
 
     $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
-    if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { $result.reason = 'no-transcript'; return $result }
+    # W45 (2026-08-22): a prompt-entry event with no transcript is no longer a dead end. On hosts whose
+    # prompt event carries no transcript path (Copilot), capture used to land only at Stop - AFTER the
+    # turn that was processing the verdict - so a mid-turn controller read told the session the crossing
+    # was unauthorized while the human's approval sat one hook away, and the session re-asked. The
+    # prompt text itself is the evidence (the W44 round-approval shape); the boundary tie comes from the
+    # deterministic pending state. A transcript-bearing call never takes this branch, so every
+    # transcript-path conservatism - including refusing to scan past a send-back - is untouched.
+    $promptEntrySources = @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')
+    $promptOnlyEligible = ([string]::IsNullOrWhiteSpace($TranscriptPath) -and
+        ($Source -in $promptEntrySources) -and
+        -not [string]::IsNullOrWhiteSpace($LastUserMessage) -and
+        (Get-Command Get-SpecrewPromptEntryBoundaryVerdict -ErrorAction SilentlyContinue))
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath) -and -not $promptOnlyEligible) { $result.reason = 'no-transcript'; return $result }
     if (-not ((Get-Command Get-SpecrewCapturedBoundaryVerdict -ErrorAction SilentlyContinue) -and
             (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue) -and
             (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) -and
@@ -628,7 +640,12 @@ function Invoke-SpecrewBoundaryVerdictCapture {
     }
 
     try {
-        $captured = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage
+        $captured = if ([string]::IsNullOrWhiteSpace($TranscriptPath)) {
+            Get-SpecrewPromptEntryBoundaryVerdict -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage
+        }
+        else {
+            Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage
+        }
         if (-not $captured.Found) { $result.reason = $captured.Reason; return $result }
 
         $result.captured = $true
@@ -679,7 +696,13 @@ function Invoke-SpecrewBoundaryVerdictCapture {
                 $result.reason = 'stage-evidence-absent-refused'
                 return $result
             }
-            $evidenceSource = if ([string]$captured.Reason -eq 'captured-pending-artifact-fallback') { 'hook-captured-from-transcript-pending-artifact' } else { 'hook-captured-from-transcript' }
+            $evidenceSource = switch ([string]$captured.Reason) {
+                'captured-pending-artifact-fallback' { 'hook-captured-from-transcript-pending-artifact' }
+                # W45: the live prompt is the evidence - the same channel and the same label the other
+                # prompt-entry authority writers use, so the ledger says exactly which surface saw it.
+                'captured-prompt-entry' { 'hook-captured-user-prompt' }
+                default { 'hook-captured-from-transcript' }
+            }
             # F-198 FR-005: an authorization for a boundary BEHIND the working crossing is a
             # reconciliation of already-done work - record it distinctly as retroactive.
             $authorizationKind = if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToBoundary)) -ne (Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.WorkingBoundary))) { 'retroactive' } else { 'standard' }
