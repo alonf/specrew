@@ -1304,7 +1304,22 @@ try {
         }
         catch { $orientationOwed = $false }
     }
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
+    # W47 (2026-08-23): SOURCE WRITTEN WHERE THE STATE STOOD. The state-advance check watches the
+    # cursor, and on the KeyContextAI walk the cursor never moved - the session committed product
+    # source at `tasks` with the hardening gate blocked and no crossing minted, and nothing fired.
+    # This is the live half of the enforcement (the validator FAILs at rest): on a material stop,
+    # product source that changed since the last authorized pre-implement boundary refuses the stop
+    # and names the missing verdict. Gated on material stops so trivial stops never pay the git cost.
+    $unauthorizedSourceBlock = $false
+    $unauthorizedSourceDrift = $null
+    if ($materialStop -and (Get-Command Get-SpecrewUnauthorizedSourceDrift -ErrorAction SilentlyContinue)) {
+        try { $unauthorizedSourceDrift = Get-SpecrewUnauthorizedSourceDrift -ProjectRoot $projectRoot } catch { $unauthorizedSourceDrift = $null }
+        if ($null -ne $unauthorizedSourceDrift -and [bool]$unauthorizedSourceDrift.checked -and [bool]$unauthorizedSourceDrift.pre_implement -and
+            (@($unauthorizedSourceDrift.committed_source).Count + @($unauthorizedSourceDrift.uncommitted_source).Count) -gt 0) {
+            $unauthorizedSourceBlock = $true
+        }
+    }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($unauthorizedSourceBlock) { 'unauthorized-source' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1450,6 +1465,9 @@ try {
     $advanceKey = if ($blockKind -eq 'boundary' -and $hasPending) {
         ("{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary)
     }
+    elseif ($blockKind -eq 'unauthorized-source') {
+        ("unauthorized-source|{0}|{1}" -f [string]$unauthorizedSourceDrift.authorized_boundary, [string]$unauthorizedSourceDrift.anchor_commit)
+    }
     elseif ($blockKind -eq 'material' -and $materialInitialBlock -and -not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) {
         [string]$materialSignal.key
     }
@@ -1496,7 +1514,7 @@ try {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
             $cappedKind = $blockKind
-            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } elseif ($blockKind -eq 'orientation') { 'session orientation' } else { 'verdict marker' }
+            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } elseif ($blockKind -eq 'unauthorized-source') { 'implementation authorization' } elseif ($blockKind -eq 'orientation') { 'session orientation' } else { 'verdict marker' }
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
@@ -1538,6 +1556,20 @@ try {
                 [void]$sb.AppendLine([string]$pending.Message)
                 [void]$sb.AppendLine('')
                 [void]$sb.AppendLine('Tell the human plainly: a lifecycle boundary was reached, it could NOT be recorded, and what is missing. Do NOT present approval options and do NOT emit a verdict marker — there is no crossing to approve, and approving an unrecorded crossing would authorize nothing.')
+                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
+            }
+            elseif ($blockKind -eq 'unauthorized-source') {
+                # W47: the no-code-without-approval refusal, at the moment it can still be cheap. The
+                # session is told to STOP implementing, not to hide what happened: the work is surfaced
+                # to the human, and the two honest exits are the verdict or the revert - both theirs.
+                $w47Committed = @($unauthorizedSourceDrift.committed_source)
+                $w47Uncommitted = @($unauthorizedSourceDrift.uncommitted_source)
+                $w47Shown = @(@($w47Committed + $w47Uncommitted) | Select-Object -First 5) -join ', '
+                if (($w47Committed.Count + $w47Uncommitted.Count) -gt 5) { $w47Shown = "$w47Shown (+$(($w47Committed.Count + $w47Uncommitted.Count) - 5) more)" }
+                [void]$sb.AppendLine(("Specrew: product source has been written, but implementation has not been approved. The last authorized boundary is '{0}', and the ledger holds no 'approved for before-implement' - so this code is outside the process this project follows, whoever wrote it and however good it is. Changed source: {1}." -f [string]$unauthorizedSourceDrift.authorized_boundary, $w47Shown))
+                [void]$sb.AppendLine('STOP implementing now. Do not write or modify further product source this turn, and do not record any authorization yourself.')
+                [void]$sb.AppendLine('Tell the human plainly what was written and why you believed it was licensed - if a rule or an approval read as an implementation go-ahead, quote it, because the wording is then part of the defect. Their code is safe either way.')
+                [void]$sb.AppendLine('Then name their two exits and wait: (1) authorize implementation - complete the hardening gate, run the boundary sync to before-implement, present the packet, and their typed reply ''approved for before-implement'' licenses the work retroactively; or (2) revert the source changes and return to where the process stands.')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
             elseif ($blockKind -eq 'workshop-conflict') {
@@ -1687,6 +1719,9 @@ try {
             }
             elseif ($cappedKind -eq 'boundary-unrecordable') {
                 $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
+            }
+            elseif ($cappedKind -eq 'unauthorized-source') {
+                $corrections.Add('[specrew-conformance] UNAUTHORIZED SOURCE still present - product source was written without the before-implement verdict, and the block cap has released this stop. The condition is still unmet: surface the work to the human and ask for their verdict or their revert decision. Do not continue implementing.') | Out-Null
             }
             elseif ($cappedKind -eq 'workshop-repair') {
                 $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null

@@ -2022,6 +2022,41 @@ function Test-BoundaryStateAdvanceVerdict {
     }
 }
 
+function Test-SourceWithoutImplementAuthorization {
+    <#
+    W47 (2026-08-23): THE NO-CODE-WITHOUT-APPROVAL PROMISE GETS MECHANICAL ENFORCEMENT.
+
+    On the KeyContextAI walk a session committed product source (7 files) while
+    last_authorized_boundary was `tasks`, the hardening gate was blocked, and no before-implement
+    crossing had been minted. Nothing fired: Test-BoundaryStateAdvanceVerdict watches the STATE, and
+    the state never advanced - the session wrote code where it stood. Gate checks fire at sync time,
+    and a session that never runs the sync never meets them.
+
+    So this checks the TREE against the LEDGER: product source (the shared classifier's definition)
+    that changed since the last authorized boundary's own commit, while that boundary is still
+    pre-implement, FAILS - an error, not a warning, because code without the verdict is outside the
+    process whatever its quality. The remedy is named: the crossing's verdict, or reverting the
+    source. Detection is shared with the conformance layer (Get-SpecrewUnauthorizedSourceDrift), so
+    the live session and the at-rest validation refuse on the same fact.
+
+    Committed drift only, here: a human's uncommitted scratch edits are not a governance fact yet,
+    and the conformance layer already speaks to the live session about them.
+    #>
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    if (-not (Get-Command -Name 'Get-SpecrewUnauthorizedSourceDrift' -ErrorAction SilentlyContinue)) { return 0 }
+    $drift = $null
+    try { $drift = Get-SpecrewUnauthorizedSourceDrift -ProjectRoot $ProjectRoot } catch { return 0 }
+    if ($null -eq $drift -or -not [bool]$drift.checked -or -not [bool]$drift.pre_implement) { return 0 }
+    $committed = @($drift.committed_source)
+    if ($committed.Count -eq 0) { return 0 }
+
+    $shown = @($committed | Select-Object -First 5) -join ', '
+    if ($committed.Count -gt 5) { $shown = "$shown (+$($committed.Count - 5) more)" }
+    Write-Host ("FAIL [trust-hardening] source-without-implement-authorization: {0} product source file(s) changed since the '{1}' authorization ({2}), but implementation has not been approved - verdict_history holds no 'approved for before-implement'. Code written without that verdict is outside the process this project follows, whoever wrote it and however good it is. Either obtain the verdict - complete the hardening gate, run the boundary sync, present the packet, and record the human's 'approved for before-implement' - or revert the source changes: {3}" -f $committed.Count, [string]$drift.authorized_boundary, ([string]$drift.anchor_commit).Substring(0, [Math]::Min(8, ([string]$drift.anchor_commit).Length)), $shown) -ForegroundColor Red
+    return 1
+}
+
 function Test-ApprovedFeatureStatusVerdictEvidence {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -5661,6 +5696,12 @@ try {
     $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
     $teamValidationErrors = New-Object System.Collections.Generic.List[string]
+    # W47: the tree-vs-ledger cross-check - source written where the state STOOD, not where it moved.
+    # Runs BEFORE the team-composition exit: unauthorized code must not hide behind a config failure.
+    $sourceAuthorizationFailureCount = Test-SourceWithoutImplementAuthorization -ProjectRoot $resolvedProjectPath
+    if ($sourceAuthorizationFailureCount -gt 0) {
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $sourceAuthorizationFailureCount
+    }
     Test-BaselineTeamMembers -TeamRoles $teamRoles -Errors $teamValidationErrors
 
     if ($teamValidationErrors.Count -gt 0) {

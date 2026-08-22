@@ -1811,6 +1811,91 @@ function Get-SpecrewBoundaryEnforcementState {
     }
 }
 
+function Get-SpecrewUnauthorizedSourceDrift {
+    # W47 (2026-08-23): THE NO-CODE-WITHOUT-APPROVAL PROMISE, ENFORCED RATHER THAN ASSUMED.
+    #
+    # On the 2026-08-23 walk a session committed product source (7 files) while
+    # last_authorized_boundary was `tasks`, the hardening gate was blocked, and no before-implement
+    # crossing had even been minted. Nothing fired: state-advance-without-verdict watches the STATE,
+    # and the state never advanced - the session just wrote code where it stood. The gate checks fire
+    # at sync time, and a session that never runs the sync never meets them. The flagship guarantee
+    # rested on agent compliance alone, and the first weak-model implement walk exposed it.
+    #
+    # The detector: product source (as the shared classifier defines it - the same one W33 coverage,
+    # W34-B authorship, DRIFT-007 staleness and FR-009 records-only already use) that changed since the
+    # last authorized boundary's own commit, while that boundary is still pre-implement. Consumed by
+    # BOTH the validator (FAIL) and the conformance layer (live refusal), so the same fact is checked
+    # at rest and in flight.
+    #
+    # FAIL-OPEN where the anchor is missing: no enforcement state, no verdict history, or an auth
+    # commit git cannot resolve all return checked=$false and claim nothing - "could not tell" must
+    # never manufacture a violation. STATED LIMIT: a history rewrite that discards the auth commit
+    # silences this check; the boundary ledger itself still names the commit, so the rewrite is
+    # visible there.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+
+    $result = [pscustomobject]@{
+        checked = $false
+        pre_implement = $false
+        authorized_boundary = $null
+        anchor_commit = $null
+        committed_source = @()
+        uncommitted_source = @()
+        reason = 'not-evaluated'
+    }
+
+    if (-not (Get-Command -Name 'Get-SpecrewBoundaryEnforcementState' -ErrorAction SilentlyContinue)) { $result.reason = 'state-reader-unavailable'; return $result }
+    $enforcement = $null
+    try { $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot } catch { $result.reason = 'state-unreadable'; return $result }
+    if ($null -eq $enforcement -or -not [bool]$enforcement.Exists -or $null -eq $enforcement.State) { $result.reason = 'no-enforcement-state'; return $result }
+    $state = $enforcement.State
+    $enabled = if ($state.Contains('enabled')) { [bool]$state['enabled'] } else { $false }
+    if (-not $enabled) { $result.reason = 'enforcement-disabled'; return $result }
+
+    $lastAuthorized = [string]$state['last_authorized_boundary']
+    if ([string]::IsNullOrWhiteSpace($lastAuthorized)) { $result.reason = 'no-authorized-boundary'; return $result }
+    $order = @(Get-SpecrewBoundaryOrder)
+    $authIdx = [Array]::IndexOf($order, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthorized))
+    $implementIdx = [Array]::IndexOf($order, 'before-implement')
+    if ($authIdx -lt 0 -or $implementIdx -lt 0) { $result.reason = 'boundary-unrecognized'; return $result }
+    $result.authorized_boundary = $lastAuthorized
+    if ($authIdx -ge $implementIdx) {
+        # Implementation is licensed: the before-implement verdict (or a later one) is on the ledger.
+        $result.checked = $true
+        $result.reason = 'implementation-authorized'
+        return $result
+    }
+    $result.pre_implement = $true
+
+    # The anchor: the commit the newest authorization was recorded against. Source that existed AT the
+    # authorization was in front of the human when they approved; source that arrived AFTER it was not.
+    $history = @($state['verdict_history'])
+    if ($history.Count -eq 0) { $result.reason = 'no-verdict-history'; return $result }
+    $newest = $history[-1]
+    $newestMap = if ($newest -is [System.Collections.IDictionary]) { $newest } else { $newest | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+    $anchor = ([string]$newestMap['auth_commit_hash']).Trim()
+    if ([string]::IsNullOrWhiteSpace($anchor)) { $result.reason = 'no-anchor-commit'; return $result }
+    $result.anchor_commit = $anchor
+
+    $null = & git -C $ProjectRoot cat-file -e ("{0}^{{commit}}" -f $anchor) 2>$null
+    if ($LASTEXITCODE -ne 0) { $result.reason = 'anchor-commit-unresolvable'; return $result }
+
+    $committedRaw = @(& git -C $ProjectRoot diff --name-only ("{0}..HEAD" -f $anchor) 2>$null)
+    if ($LASTEXITCODE -ne 0) { $result.reason = 'diff-failed'; return $result }
+    $uncommittedRaw = @(& git -C $ProjectRoot status --porcelain --untracked-files=all 2>$null | ForEach-Object {
+            $line = [string]$_
+            if ($line.Length -gt 3) { $line.Substring(3).Trim('"') } })
+
+    $result.committed_source = @($committedRaw | ForEach-Object { ([string]$_).Replace([char]92, [char]47) } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-SpecrewReviewAuthorshipSourcePath -Path $_) })
+    $result.uncommitted_source = @($uncommittedRaw | ForEach-Object { ([string]$_).Replace([char]92, [char]47) } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-SpecrewReviewAuthorshipSourcePath -Path $_) })
+    $result.checked = $true
+    $result.reason = 'evaluated'
+    return $result
+}
+
 function Get-SpecrewBoundaryStageEvidenceContract {
     <#
     FR-068 (T090). The boundary -> required-evidence contract.

@@ -535,6 +535,59 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-108 - the no-code-without-approval promise had no mechanical enforcement (resolved)
+
+- **Observed**: 2026-08-23, on the KeyContextAI walk. A Copilot/gpt-5.6-sol session committed product
+  source (feat(layout), 7 src files) while `last_authorized_boundary: tasks`, the hardening gate
+  blocked, and no before-implement crossing even minted. Nothing fired.
+  `state-advance-without-verdict` watches the STATE, and the state never advanced - the session wrote
+  code where it stood. Gate checks fire at sync time, and a session that never runs the sync never
+  meets them. Eight days hardening the evidence path, and the flagship guarantee rested on agent
+  compliance alone - masked all week by strong-model compliance, exposed by the first weak-model
+  implement walk.
+- **Three stacked causes, as the maintainer dissected them**: (1) Launch Rule 28 was an anti-stall
+  instruction that read as a licence - momentum verbs dominant, the safety condition a subordinate
+  clause, and it even forbade the stop that would have helped ("do not stop... to explain the
+  blocker"); (2) neither rule NAMED the check - "once implementation approval is granted" never said
+  the go-ahead is a verdict_history entry with to_boundary: before-implement, so a weak model resolved
+  "approval granted" against the freshest approvals in context (two `approved for tasks` and a relayed
+  "proceed with the before-implement preparation", minus the word preparation); (3) nothing was
+  positioned to catch the misreading - after the tasks verdict, pending_crossing was null, so
+  enforcement between syncs was passive. The composition pattern again: rule 28 fixed stalling, and
+  the fix created rushing.
+- **Producer-level fix, three layers, one shared fact.**
+  `Get-SpecrewUnauthorizedSourceDrift` (shared-governance): product source - the shared classifier's
+  definition, its fifth consumer - that changed since the last authorized boundary's own commit, while
+  that boundary is still pre-implement. Fail-open where the anchor is missing; STATED LIMIT recorded:
+  a history rewrite discarding the auth commit silences the check, and the ledger still names the
+  commit so the rewrite is visible there.
+  - **Validation FAILs** (`Test-SourceWithoutImplementAuthorization`): an error naming both exits -
+    obtain the verdict (gate, sync, packet, typed `approved for before-implement`) or revert. Runs
+    BEFORE the team-composition exit, so unauthorized code cannot hide behind a config failure - the
+    first fixture run proved it would have.
+  - **The stop layer refuses live**: a new `unauthorized-source` conformance block, outranking the
+    material packet. It tells the session to STOP implementing, surface the work, quote whatever rule
+    or approval it believed was its licence - because the wording is then part of the defect - and
+    wait for the human's verdict or revert decision. Never to record authorization itself. Wired into
+    the cap machinery so a disagreement cannot hang the session, with its own capped-release nudge.
+  - **The wording**: Rule 28 and refocus clause 5 rewritten to the maintainer's shape - the condition
+    named, checkable, and FIRST: "Until the boundary ledger holds the human's typed `approved for
+    before-implement`, no product source file is created or modified. No other approval substitutes."
+    The anti-stall intent survives as before-implement PREPARATION (gate, sync, packet) proceeding
+    without a stop; the licence reading does not. Rule 30's "explicit implementation go-ahead" now
+    names the recorded verdict too.
+- **Acceptance through the real path, on a downstream-shaped fixture** (method rule 5):
+  `tests/integration/no-code-without-approval.tests.ps1`, 8 cases in the slice lane - the REAL
+  validator FAILs on a real source commit at tasks, naming the missing verdict and the file; the SAME
+  commit passes after the verdict is recorded through the REAL writer; records-only commits at tasks
+  stay clean; the detector's fail-open, uncommitted-source and licensed edges; the provider wiring
+  pinned to the shared detector; and the contract wording pinned condition-first. MUTATION-PROVEN
+  twice: removing the validator wiring reds exactly the acceptance case, and removing the block kind
+  from the stop resolution reds exactly the live-layer case.
+- **Wording is the shrink, enforcement is the close** - the maintainer's own framing, kept: a
+  condition a weak model must check beats a condition a strong model happens to infer, and now the
+  machinery checks it whether or not anyone reads the rule.
+
 ### DRIFT-199-I001-107 - self-leak, second class: internal requirement ids in emitted strings (resolved)
 
 - **The finding (2026-08-22)**: the provenance rule - implementation history is recorded for
