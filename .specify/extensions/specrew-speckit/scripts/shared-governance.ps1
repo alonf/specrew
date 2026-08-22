@@ -1811,6 +1811,56 @@ function Get-SpecrewBoundaryEnforcementState {
     }
 }
 
+function Select-SpecrewProductSourcePaths {
+    # W48 (2026-08-23): PRODUCT SOURCE IS THE CLASSIFIER'S ANSWER MINUS THE MACHINERY SPECREW ITSELF
+    # DEPLOYS. Found live on the first downstream firing of the no-code guard: the refusal named
+    # `scripts/internal/continuous-co-review/*` - Specrew's own review bundle, refreshed by the human's
+    # own `specrew update` - as "product source written without approval". The shared classifier calls
+    # those paths source because in the Specrew repository they ARE the product; in a DOWNSTREAM
+    # project they are deployed machinery. This is DRIFT-104's blind spot in its fifth consumer, and
+    # the fix is the same: the ONE machinery resolver (Get-ContinuousCoReviewMachineryPaths, ladder-
+    # loaded from the project's own deployed bundle), never a parallel list. In the Specrew source
+    # repository the resolver answers with the source-repo list, so engine code stays product THERE.
+    #
+    # Fail direction: resolver unavailable -> no exclusion, paths stay product. That direction is safe
+    # because deployed-machinery edits are the INTEGRITY markers' jurisdiction, not this filter's -
+    # excluding machinery here loses no coverage, and failing to exclude it merely nags, which the
+    # named-exemption above it can absorb until the resolver loads.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowEmptyCollection()][object[]]$Paths = @()
+    )
+
+    $candidates = @($Paths | ForEach-Object { ([string]$_).Replace([char]92, [char]47) } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-SpecrewReviewAuthorshipSourcePath -Path $_) })
+    if ($candidates.Count -eq 0) { return @() }
+
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $resolverPath = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $resolverPath -PathType Leaf) { try { . $resolverPath } catch { $null = $_ } }
+    }
+    $machineryRoots = @()
+    if (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue) {
+        try {
+            $machineryRoots = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $ProjectRoot |
+                    ForEach-Object { (([string]$_).Replace([char]92, [char]47)).Trim('/') } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+        catch { $machineryRoots = @() }
+    }
+    if ($machineryRoots.Count -eq 0) { return @($candidates) }
+
+    return @($candidates | Where-Object {
+            $path = $_
+            $isMachinery = $false
+            foreach ($root in $machineryRoots) {
+                if ($path -eq $root -or $path.StartsWith($root + '/', [System.StringComparison]::OrdinalIgnoreCase)) { $isMachinery = $true; break }
+            }
+            -not $isMachinery
+        })
+}
+
 function Get-SpecrewUnauthorizedSourceDrift {
     # W47 (2026-08-23): THE NO-CODE-WITHOUT-APPROVAL PROMISE, ENFORCED RATHER THAN ASSUMED.
     #
@@ -1887,10 +1937,10 @@ function Get-SpecrewUnauthorizedSourceDrift {
             $line = [string]$_
             if ($line.Length -gt 3) { $line.Substring(3).Trim('"') } })
 
-    $result.committed_source = @($committedRaw | ForEach-Object { ([string]$_).Replace([char]92, [char]47) } |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-SpecrewReviewAuthorshipSourcePath -Path $_) })
-    $result.uncommitted_source = @($uncommittedRaw | ForEach-Object { ([string]$_).Replace([char]92, [char]47) } |
-            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-SpecrewReviewAuthorshipSourcePath -Path $_) })
+    # W48: machinery-aware - a `specrew update` refreshing the deployed bundle is not the project
+    # writing product code, and the first downstream firing proved the difference matters.
+    $result.committed_source = @(Select-SpecrewProductSourcePaths -ProjectRoot $ProjectRoot -Paths $committedRaw)
+    $result.uncommitted_source = @(Select-SpecrewProductSourcePaths -ProjectRoot $ProjectRoot -Paths $uncommittedRaw)
     $result.checked = $true
     $result.reason = 'evaluated'
     return $result
@@ -6826,6 +6876,10 @@ function Get-SpecrewReviewedTreeSourceDrift {
         return [pscustomobject]@{ comparable = $false; changed = @(); source = @(); reason = 'diff-failed' }
     }
 
+    # W48 note, measured rather than assumed: this detector needs NO machinery overlay. Both tree-ids
+    # are reviewed-state DIGEST trees, and the digest's own machinery strip removes the deployed
+    # bundle from both sides before this diff exists - a mutation proof against the overlay stayed
+    # green here, which is how the difference was found. The classifier alone is correct in this spot.
     $source = @($changed | Where-Object { Test-SpecrewReviewAuthorshipSourcePath -Path $_ })
     return [pscustomobject]@{ comparable = $true; changed = @($changed); source = @($source); reason = 'compared' }
 }

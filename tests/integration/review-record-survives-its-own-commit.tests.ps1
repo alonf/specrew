@@ -178,6 +178,33 @@ Describe 'DRIFT-007 a project that records a review can still validate' {
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'W48: a review recorded alongside a bundle refresh still validates' {
+        # PINS EXISTING PROTECTION, found by a failed mutation proof: this detector needs no machinery
+        # overlay, because both tree-ids are reviewed-state DIGEST trees and the digest's machinery
+        # strip removes the deployed bundle from both sides before the diff exists. If this case ever
+        # reds, that strip has regressed - the overlay belongs in the no-code guard, not here.
+        $root = New-ReviewedProject
+        try {
+            # The full bundle, as deployed - worktree-reviewer dot-sources siblings at load.
+            New-Item -ItemType Directory -Path (Join-Path $root 'scripts/internal') -Force | Out-Null
+            Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review') `
+                -Destination (Join-Path $root 'scripts/internal/continuous-co-review') -Recurse -Force
+            $bundle = Join-Path $root 'scripts/internal/continuous-co-review'
+            Invoke-Git -Root $root -GitArgs @('add', '-A') | Out-Null
+            Invoke-Git -Root $root -GitArgs @('commit', '--quiet', '-m', 'deploy the bundle') | Out-Null
+
+            $reviewed = Get-CurrentTree -Root $root
+            $null = Write-StoreResult -Root $root -TargetDigest $reviewed
+            $null = Write-ReviewRecord -Root $root
+            Set-Content -LiteralPath (Join-Path $bundle 'hook-health-receipt.ps1') -Value '# refreshed by update' -Encoding UTF8
+            Invoke-Git -Root $root -GitArgs @('add', '-A') | Out-Null
+            Invoke-Git -Root $root -GitArgs @('commit', '--quiet', '-m', 'record review; specrew update refresh') | Out-Null
+
+            @(Get-StaleErrors -Root $root) | Should -BeNullOrEmpty -Because 'the human updating Specrew is not the code moving past its review'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'refuses rather than passes when the reviewed tree can no longer be found' {
         # Fail-open would be wrong here: the tree moved, and "I cannot tell what changed" is a weaker
         # claim than staleness but it is not a clean bill. It is reported as exactly what it is.

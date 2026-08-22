@@ -535,6 +535,49 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-109 - the no-code guard fired on the human's own specrew update (resolved)
+
+- **Observed**: 2026-08-23, on the guard's FIRST live downstream firing, confirmed by the reviewer. The
+  refusal named `scripts/internal/continuous-co-review/*` (22 files, the update deployment) as
+  "product source written without approval" - Specrew's own review bundle, refreshed by the human's own
+  governed `specrew update`. The human was asked to retroactively license Specrew's machinery as their
+  product code, and every mid-implement update in every downstream project would re-fire it.
+- **Root cause, exactly as the reviewer traced it**: `Test-SpecrewReviewAuthorshipSourcePath` returns
+  source=true for those paths - correct in the Specrew repository, where they ARE the product - and the
+  W37 machinery exclusion lived in the authorship lane, not the classifier, so the classifier's fifth
+  consumer inherited the gap. DRIFT-104's blind spot, again, one consumer later.
+- **The design decision the reviewer asked for: a machinery OVERLAY, not a classifier change.**
+  `Select-SpecrewProductSourcePaths` composes the classifier with the ONE FR-012 machinery resolver
+  (`Get-ContinuousCoReviewMachineryPaths`, ladder-loaded from the project's own deployed bundle).
+  The classifier stays a pure path predicate - making it project-aware would change five consumers'
+  semantics at once, and W37 already proved the blanket exclusion wrong in the source repo. The
+  resolver answers per-root: downstream, the bundle is machinery; in the Specrew repository, the
+  engine paths stay product. RECONCILED with the records-only fix by construction: both consult the
+  same resolver, so the two answers cannot disagree.
+- **Fail direction**: resolver unavailable -> no exclusion, paths stay product. Safe, because
+  deployed-machinery edits are the INTEGRITY markers' jurisdiction - excluding machinery here loses no
+  coverage, and failing to exclude it merely nags.
+- **A second claim of mine, KILLED BY ITS OWN MUTATION PROOF and recorded as the correction**: I
+  wired the same overlay into the DRIFT-007 staleness detector, claiming the same hole. The mutation
+  stayed green - because both tree-ids there are reviewed-state DIGEST trees, and the digest's own
+  machinery strip removes the bundle from both sides before the diff exists. That detector needs no
+  overlay; the change was reverted and the measurement recorded in the code. The suite keeps the
+  mixed-window case as a PIN of the digest strip: if it ever reds, the strip regressed.
+- **The refusal's numbered exits fixed in the same pass**: the "(1)/(2)" menu invited a bare-number
+  reply the authority layer can never accept, and the first live firing collected exactly that
+  misreading (the session read the human's `1` as an operational go-ahead). The exits are now prose,
+  with an explicit instruction: do not number them - the typed verdict phrase takes the first exit, an
+  explicit revert instruction takes the second.
+- **Verification**: the walk's shape reproduced against a REAL deployed bundle (a lone-file fixture
+  was the first draft's lie - `worktree-reviewer.ps1` dot-sources siblings, so only a full bundle
+  loads, which is itself method rule 5 again). Acceptance as the reviewer wrote it: a mid-implement
+  update deployment triggers no unauthorized-source block; a genuine product file still does - and a
+  MIXED commit fires naming ONLY the product files, never Specrew's own. Source-repo behavior pinned
+  unchanged. MUTATION-PROVEN: disabling the overlay reds exactly the two walk-shape cases.
+- **Also confirmed live on this walk, for the record**: W45 prompt-entry capture - the human typed the
+  verdict and the session found the authorization already recorded and the pending artifact already
+  retired, no re-ask; and the W47 licence-quote mechanism produced its first collected quote.
+
 ### DRIFT-199-I001-108 - the no-code-without-approval promise had no mechanical enforcement (resolved)
 
 - **Observed**: 2026-08-23, on the KeyContextAI walk. A Copilot/gpt-5.6-sol session committed product

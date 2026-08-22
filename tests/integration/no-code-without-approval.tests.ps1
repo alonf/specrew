@@ -75,6 +75,14 @@ BeforeAll {
         Invoke-Git -Root $Root -GitArgs @('commit', '--quiet', '-m', 'feat(layout): product source') | Out-Null
     }
 
+    function script:Copy-SpecrewBundleInto {
+        param([Parameter(Mandatory)][string]$Root)
+        New-Item -ItemType Directory -Path (Join-Path $Root 'scripts/internal') -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review') `
+            -Destination (Join-Path $Root 'scripts/internal/continuous-co-review') -Recurse -Force
+        Set-Content -LiteralPath (Join-Path $Root 'scripts/internal/continuous-co-review/.specrew-runtime.json') -Value '{"files":[]}' -Encoding UTF8
+    }
+
     function script:Invoke-Validator {
         param([Parameter(Mandatory)][string]$Root)
         $output = @(& pwsh -NoProfile -File $script:Validator -ProjectPath $Root 2>&1 | ForEach-Object { [string]$_ })
@@ -108,6 +116,51 @@ Describe 'W47 ACCEPTANCE through the real validator' {
             $run.Text | Should -Not -Match 'source-without-implement-authorization' -Because 'the verdict is exactly what licenses the work'
         }
         finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'W48: a specrew update refreshing the deployed bundle does NOT fire the guard' {
+        # The first downstream firing, reproduced: the refusal named scripts/internal/continuous-co-review/*
+        # - Specrew's own review bundle, refreshed by the human's own governed update - as product source.
+        # DRIFT-104's blind spot in the classifier's fifth consumer. Machinery is the integrity markers'
+        # jurisdiction; the no-code guard watches the PRODUCT.
+        $f = New-GovernedProjectAtTasks
+        try {
+            # The REAL bundle, as specrew update deploys it - a lone file was the first fixture's
+            # lie: worktree-reviewer.ps1 dot-sources its siblings, so only a full bundle loads.
+            Copy-SpecrewBundleInto -Root $f.Root
+            $bundle = Join-Path $f.Root 'scripts/internal/continuous-co-review'
+            Set-Content -LiteralPath (Join-Path $bundle 'hook-health-receipt.ps1') -Value '# refreshed by update' -Encoding UTF8
+            Set-Content -LiteralPath (Join-Path $bundle '.specrew-runtime.json') -Value '{"files":[]}' -Encoding UTF8
+            Invoke-Git -Root $f.Root -GitArgs @('add', '-A') | Out-Null
+            Invoke-Git -Root $f.Root -GitArgs @('commit', '--quiet', '-m', 'chore: specrew update bundle refresh') | Out-Null
+            $run = Invoke-Validator -Root $f.Root
+            $run.Text | Should -Not -Match 'source-without-implement-authorization' -Because 'the human running specrew update is not the project writing product code'
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'W48: a mixed commit still fires, and names only the product files' {
+        $f = New-GovernedProjectAtTasks
+        try {
+            Copy-SpecrewBundleInto -Root $f.Root
+            $bundle = Join-Path $f.Root 'scripts/internal/continuous-co-review'
+            Set-Content -LiteralPath (Join-Path $bundle 'host-support-tier.ps1') -Value '# refreshed' -Encoding UTF8
+            Add-SourceCommit -Root $f.Root
+            $run = Invoke-Validator -Root $f.Root
+            $run.Text | Should -Match 'source-without-implement-authorization'
+            $run.Text | Should -Match 'src/layout\.ts'
+            $run.Text | Should -Not -Match 'host-support-tier\.ps1' -Because 'the refusal must not ask the human to license Specrew''s own machinery as their product'
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'W48: in the Specrew SOURCE repository the engine paths stay product' {
+        # The W37 revert's whole point, preserved: here, scripts/internal/continuous-co-review IS the
+        # product, and the resolver answers with the source-repo machinery list that excludes it.
+        $filtered = @(Select-SpecrewProductSourcePaths -ProjectRoot $script:RepoRoot -Paths @(
+                'scripts/internal/continuous-co-review/worktree-reviewer.ps1', 'src/app.ts'))
+        $filtered | Should -Contain 'scripts/internal/continuous-co-review/worktree-reviewer.ps1'
+        $filtered | Should -Contain 'src/app.ts'
     }
 
     It 'records-only commits at tasks stay clean - the classifier decides, not the diff size' {
