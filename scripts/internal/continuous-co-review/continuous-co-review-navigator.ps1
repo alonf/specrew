@@ -1181,7 +1181,7 @@ function Format-ReviewCampaignOutstandingPause {
         # from the fact's own counts rather than assumed, so a resumed surface cannot offer a round the
         # campaign can no longer run.
         $offered = @(
-            if ($budgetTotal -le 0 -or $roundsUsed -lt $budgetTotal) { [pscustomobject]@{ id = 1; text = 'Fix these and run another review round' } }
+            if ($budgetTotal -le 0 -or $roundsUsed -lt $budgetTotal) { [pscustomobject]@{ id = 1; text = 'Fix these and run another review round (approving one round - in a conversation, your typed reply `approved for review round` is this approval, and your agent answers for you)' } }
             [pscustomobject]@{ id = 2; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' }
             [pscustomobject]@{ id = 3; text = 'Abandon this review campaign (nothing further runs)' }
         )

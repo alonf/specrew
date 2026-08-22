@@ -535,6 +535,32 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-105 - the pause menu's round-spending answer joins the typed-phrase authority (resolved)
+
+- **The instruction (2026-08-22)**: close `--pause-choice 1` with the same capture mechanism before the
+  tag. Answering the pause with "run another round" IS approving a round - -103's own record named this
+  surface as left open, and W21 already established for the mint that the menu answer and the flag are
+  one act arrived at from two directions. The same act now needs the same authority.
+- **Resolution**: the W44 gate's condition widened from the flag alone to `$roundApprovalRequested` -
+  the one predicate W21 pins as the full set of round-approving entries. An agent relaying
+  `--pause-choice 1` without a captured phrase is refused with the phrase named; with one, it proceeds
+  and the mint stamps the capture spent. A human at their terminal stays self-evident. Choices 2 and 3
+  spend nothing, never enter the predicate, and are untouched - a human declining to spend must never
+  be asked to authorize the spend they are declining, which is the exact W21-era wedge.
+- **The surfaces tell the human**: both pause menus (the live one in review-authority-core, the resumed
+  one in the navigator) now show, on option 1 itself, that in a conversation the typed reply `approved
+  for review round` is this approval.
+- **The general property is now checkable, as asked**: no code path mints round authority without
+  either a captured phrase or the human's own invocation. Pinned structurally - the refusal must sit
+  under the SAME predicate that gates the mint, so a new round-approving entry added to the predicate
+  is gated automatically - and behaviorally, end to end through the real CLI for all four shapes
+  (choice 1 agent-bare refused, choice 1 agent-with-phrase proceeds, choices 2/3 never gated, choice 1
+  terminal self-evident). MUTATION-PROVEN: narrowing the gate back to the flag turns exactly the
+  behavioral case and the structural case red (16 pass / 2 fail).
+- **Also recorded**: the -104 fixture lesson promoted to the standing method notes as the family's
+  third note (rule 5): a fixture that shares the defect's blind spot cannot detect the defect -
+  anything that runs in downstream projects is proven against a downstream-shaped fixture.
+
 ### DRIFT-199-I001-103 - round approval becomes a typed phrase, like every other authority (resolved; W36 superseded by maintainer ruling)
 
 - **The ruling (2026-08-22)**: the W36 ownership split was wrong. The human's role in this system is
@@ -1317,6 +1343,35 @@ Two defects in the W35 fix itself, both found by review of the landed code rathe
   `Get-Command -ErrorAction SilentlyContinue`, and the suite had never loaded `shared-governance.ps1`,
   so the guard silently skipped that path and the case passed without exercising it. Fixed by loading
   the real module rather than stubbing it — the same shape as method rule 1, one layer out.
+
+### METHOD NOTE — a fixture that shares the defect's blind spot cannot detect the defect
+
+Added 2026-08-22 at the maintainer's direction, promoting the lesson from DRIFT-199-I001-104 to the
+third standing note in this family.
+
+The first draft of the FR-009 acceptance suite ran its cases against the Specrew source repository -
+where the machinery list enumerates the `.specrew-managed` host mirrors, so the very paths the defect
+failed to classify downstream classified fine. The acceptance case passed against the PRE-FIX gate.
+Only the mutation proof exposed it: disabling the fix turned the wrong case red, which meant the right
+case was proving nothing.
+
+> **5. A fixture that shares the defect's blind spot cannot detect the defect. Anything that runs in
+> downstream projects is proven against a downstream-shaped fixture.**
+
+The shape to recognise: the source repository is the one environment where every convenience holds -
+markers exist, machinery lists are complete, helpers are loadable from relative paths, the module is
+importable. A downstream project has NONE of that by default, and the defects this week have
+overwhelmingly lived in the gap - the unstamped update path (-099), the unclassifiable host mirrors
+(-104), the engine baseline the working tree satisfied and the committed tree did not. Rules 1-3 catch
+an inert guard; rule 4 catches a control proven off its real path; this catches the remaining case,
+where guard, path and proof are all live but the WORLD the proof runs in is the one world that never
+exhibits the failure.
+
+The cheap discipline: a downstream-shaped fixture is a temp directory without `Specrew.psd1` at its
+root, with `.specify/` deployed and nothing else assumed. Building one costs five lines. The tell that
+one is needed: the code under test branches on `Test-ContinuousCoReviewSpecrewSourceRepo`, resolves
+anything from `.specrew-managed` markers, or load-ladders a helper - any of those means the source repo
+and a deployed project are DIFFERENT WORLDS, and the suite must run in the world where consumers live.
 
 ### METHOD NOTE — a control that refuses must be proven to fire on the path its own remedy names
 

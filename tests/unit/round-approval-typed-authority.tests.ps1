@@ -41,7 +41,8 @@ BeforeAll {
         # invocation binds them as PowerShell parameters and silently drops the live path.
         param(
             [Parameter(Mandatory)][string]$Root,
-            [Parameter(Mandatory)][ValidateSet('agent', 'terminal')][string]$Context
+            [Parameter(Mandatory)][ValidateSet('agent', 'terminal')][string]$Context,
+            [string[]]$CliArgs = @('--approve-round')
         )
         $envPrelude = if ($Context -eq 'terminal') {
             # Clear every agent-session signal in the CHILD, so the case is deterministic wherever the
@@ -52,7 +53,7 @@ BeforeAll {
             # Assert agent context explicitly rather than inheriting it, for the same determinism.
             "`$env:CLAUDECODE = '1'; "
         }
-        $command = $envPrelude + "pwsh -NoProfile -File '" + $script:ReviewCli + "' -ProjectPath '" + $Root + "' -FeatureId 001-fixture --live --approve-round; exit `$LASTEXITCODE"
+        $command = $envPrelude + "pwsh -NoProfile -File '" + $script:ReviewCli + "' -ProjectPath '" + $Root + "' -FeatureId 001-fixture --live " + ($CliArgs -join ' ') + "; exit `$LASTEXITCODE"
         $output = @(& pwsh -NoProfile -Command $command 2>&1 | ForEach-Object { [string]$_ })
         return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Text = ($output -join "`n") }
     }
@@ -187,6 +188,90 @@ Describe 'W44 ACCEPTANCE: who may fire a round, end to end through the real CLI'
             $run.Text | Should -Match 'Round approved\. Specrew recorded your approval as'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+Describe 'W44 the pause menu answer that spends a round carries the same authority' {
+    # Extension (maintainer, 2026-08-22): answering the pause with "run another round" IS approving a
+    # round - W21 established that for the mint - so the gate covers the whole approval predicate, and
+    # `--pause-choice 1` was the last invocation-is-approval surface. Choices 2 and 3 spend nothing and
+    # must never be asked to authorize the spend they are declining.
+
+    It 'an agent relaying pause-choice 1 without a captured phrase is refused' {
+        $root = New-CampaignFixture
+        try {
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '1')
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match 'no approval from them has been captured'
+            $run.Text | Should -Match 'approved for review round'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'an agent relaying pause-choice 1 AFTER the typed phrase gets past the gate' {
+        $root = New-CampaignFixture
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '1')
+            # The bare fixture fails later for its own reasons; what matters is WHICH refusal.
+            $run.Text | Should -Not -Match 'no approval from them has been captured'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'choices 2 and 3 spend nothing and are never gated on an approval' {
+        $root = New-CampaignFixture
+        try {
+            foreach ($choice in @('2', '3')) {
+                $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', $choice)
+                $run.Text | Should -Not -Match 'no approval from them has been captured' -Because "choice $choice declines or ends the spend; asking it to authorize one is the W21-era wedge"
+            }
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a human at their terminal answering pause-choice 1 stays self-evident' {
+        $root = New-CampaignFixture
+        try {
+            $run = Invoke-ReviewCli -Root $root -Context 'terminal' -CliArgs @('--pause-choice', '1')
+            $run.Text | Should -Not -Match 'no approval from them has been captured'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'both pause surfaces name the typed phrase on the option that spends' {
+        foreach ($file in @('scripts/internal/continuous-co-review/review-authority-core.ps1',
+                'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')) {
+            $text = Get-Content -LiteralPath (Join-Path $script:RepoRoot $file) -Raw -Encoding UTF8
+            $optionLine = [regex]::Match($text, "id = 1[^\r\n]*Fix these and run another review round[^\r\n]*").Value
+            $optionLine | Should -Not -BeNullOrEmpty -Because $file
+            $optionLine.Contains('approved for review round') | Should -BeTrue -Because 'the human answering in a conversation must be shown the phrase that IS the approval'
+        }
+    }
+
+    It 'THE GENERAL PROPERTY: the gate condition is the same predicate that gates the mint' {
+        # Checkable now, as the ruling asked: no code path mints round authority without either a
+        # captured phrase or the human own invocation. The gate must sit on $roundApprovalRequested -
+        # the one predicate W21 pins as the full set of round-approving entries - so a new entry added
+        # to the predicate is gated automatically, and narrowing the gate back to the flag alone is a
+        # detectable mutation (the pause-choice refusal case above goes red).
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $tokens = $null; $parseErrors = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseInput($cli, [ref]$tokens, [ref]$parseErrors)
+        $gate = @($ast.FindAll({
+                    param($node)
+                    $node -is [System.Management.Automation.Language.IfStatementAst] -and
+                    $node.Extent.Text.Contains('no approval from them has been captured')
+                }, $true) | Sort-Object { $_.Extent.Text.Length } | Select-Object -First 1)
+        @($gate).Count | Should -Be 1
+        # Walk outward: the refusal must live under a $roundApprovalRequested condition.
+        $node = $gate[0]; $guarded = $false
+        while ($null -ne $node) {
+            if ($node -is [System.Management.Automation.Language.IfStatementAst] -and
+                $node.Clauses[0].Item1.Extent.Text -match 'roundApprovalRequested') { $guarded = $true; break }
+            $node = $node.Parent
+        }
+        $guarded | Should -BeTrue -Because 'gating on ApproveRound alone leaves pause-choice 1 as an invocation-is-approval surface'
     }
 }
 

@@ -329,7 +329,7 @@ function Resolve-ReviewCampaignPauseDecision {
     # budget exists to interrupt. Exhaustion has to feel different from an ordinary continuation.
     $options = [Collections.Generic.List[object]]::new()
     if ($continuationAvailable) {
-        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Fix these and run another review round' })
+        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Fix these and run another review round (approving one round - in a conversation, your typed reply `approved for review round` is this approval, and your agent answers for you)' })
     }
     $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' })
     $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' })

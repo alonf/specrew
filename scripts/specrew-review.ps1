@@ -1008,8 +1008,15 @@ if ($Live) {
             # GOVERNANCE, not security: an agent holding the filesystem could fabricate the capture file,
             # exactly as it could fabricate verdict_history. The control makes the honest path the easy
             # path and turns a quiet liberty into a deliberate, auditable act.
+            # EXTENDED TO THE PAUSE MENU (maintainer, 2026-08-22): answering the pause with "run another
+            # round" IS approving a round - W21 established that for the mint, and the same act needs the
+            # same authority. So the gate covers the WHOLE approval predicate, not just the flag, and the
+            # general property becomes checkable: no code path mints round authority without either a
+            # captured phrase or the human's own invocation. Choices 2 and 3 spend nothing, never enter
+            # this predicate, and are untouched - a human declining to spend must never be asked to
+            # authorize the spend they are declining.
             $capturedRoundApproval = $null
-            if ([bool]$parsedArgs.ApproveRound) {
+            if ($roundApprovalRequested) {
                 $humanAuthorityStorePath = Join-Path $PSScriptRoot 'internal/bootstrap/HumanAuthorityStore.ps1'
                 if ((Test-Path -LiteralPath $humanAuthorityStorePath -PathType Leaf) -and
                     -not (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
