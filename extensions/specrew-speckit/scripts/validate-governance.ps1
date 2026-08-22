@@ -1153,10 +1153,37 @@ function Test-ReviewCitedRunEvidence {
         # StrictMode-safe: a stored result without target_digest must not take the validator down.
         # The existing fixtures in this suite have no such field, and reading it unguarded threw.
         $citedTreeId = if ($result.PSObject.Properties['target_digest']) { [string]$result.target_digest } else { '' }
+        # DRIFT-007: THE REVIEWED SURFACE, NOT EVERY BYTE.
+        #
+        # Exact tree equality made every run stale at its own recording commit, because the digest
+        # includes `specs/` - so writing the record moved the tree the record is measured against. With
+        # the derived block present the record failed here; with it absent the W34-A absence arm failed
+        # instead. No project could satisfy both, and the fix each check offered was the state the other
+        # refused. It shipped four days before its first contact with a project that committed a result.
+        #
+        # A run now stays current while only records have moved, and goes stale the moment code does.
+        # Same evidence, better question.
         if (-not $inReviewPreflight -and
             -not [string]::IsNullOrWhiteSpace($currentTreeId) -and -not [string]::IsNullOrWhiteSpace($citedTreeId) -and
             $currentTreeId -cne $citedTreeId) {
-            $weak.Add(("it reviewed tree {0}, and the files now are tree {1}" -f $citedTreeId.Substring(0, [Math]::Min(8, $citedTreeId.Length)), $currentTreeId.Substring(0, [Math]::Min(8, $currentTreeId.Length)))) | Out-Null
+            $citedShort = $citedTreeId.Substring(0, [Math]::Min(8, $citedTreeId.Length))
+            $currentShort = $currentTreeId.Substring(0, [Math]::Min(8, $currentTreeId.Length))
+            $drift = $null
+            if (Get-Command -Name 'Get-SpecrewReviewedTreeSourceDrift' -ErrorAction SilentlyContinue) {
+                $drift = Get-SpecrewReviewedTreeSourceDrift -ProjectRoot $ProjectRoot -CitedTreeId $citedTreeId -CurrentTreeId $currentTreeId
+            }
+            if ($null -eq $drift -or -not [bool]$drift.comparable) {
+                # Not a licence to pass. The tree moved and what moved cannot be established, so the
+                # citation can no longer be checked - which is a weaker claim than staleness and is
+                # reported as exactly that.
+                $weak.Add(("it reviewed tree {0}, the files now are tree {1}, and that reviewed tree is no longer in this repository's object store - so whether any source changed since cannot be established" -f $citedShort, $currentShort)) | Out-Null
+            }
+            elseif (@($drift.source).Count -gt 0) {
+                $movedSource = @($drift.source)
+                $shown = @($movedSource | Select-Object -First 3) -join ', '
+                if (@($movedSource).Count -gt 3) { $shown = "$shown (+$(@($movedSource).Count - 3) more)" }
+                $weak.Add(("it reviewed tree {0} and {1} source file(s) have changed since: {2}" -f $citedShort, @($movedSource).Count, $shown)) | Out-Null
+            }
         }
         if ([string]$result.validation -ne 'valid') { $weak.Add("validation '$([string]$result.validation)'") | Out-Null }
         # W33. The run's own declared coverage, when it recorded one. A run that says it examined

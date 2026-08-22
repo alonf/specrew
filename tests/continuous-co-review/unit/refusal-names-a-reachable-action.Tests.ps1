@@ -87,7 +87,10 @@ Describe 'W39 a moved tree does not block the round that would fix it' {
         try {
             $found = @(CheckIn -Project $project)
             $found.Count | Should -Be 1
-            $found[0] | Should -Match 'and the files now are tree'
+            # DRIFT-007: the fixture's cited tree is invented, so the refusal now says what it can
+            # actually establish - the trees differ and the reviewed one is unreachable - rather than
+            # asserting staleness it cannot demonstrate. Still one refusal, still outside preflight.
+            $found[0] | Should -Match 'the files now are tree'
         }
         finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
     }

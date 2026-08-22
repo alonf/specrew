@@ -535,6 +535,49 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-102 - W38 and W34-A had no mutually satisfiable state, and the cause was universal (resolved)
+
+- **Observed**: 2026-08-22, by the downstream walk. Reproduced here at ground truth before any fix:
+  appending one line to a file under `specs/` moves the reviewed-state tree-id.
+- **The wedge**, and it admitted no state a project could reach:
+  - derived block PRESENT -> W38 refuses: the cited run's tree is not the current tree.
+  - derived block ABSENT -> W34-A's absence arm hard-errors for any record with observed authorship.
+  - Each check's only offered remedy was the state the other refused.
+- **Why it fired for everyone**: `reviewed-state-digest.ps1` excludes `.specrew/`, `.specify/`,
+  `.squad/`, `.scratch/` and six named `.pending` byproducts - but not `specs/`. review.md, drift-log.md,
+  state.md and every closeout artifact are inside the digest, so RECORDING a review moves the tree the
+  review is measured against. Every run went stale at its own recording commit. W38 shipped four days
+  before it first met a project that committed a result.
+- **Fixed at the comparison, not the digest.** The digest's scope is deliberate - anything excluded from
+  it is a false-allow vector for the freshness gate, which is the defect FR-025 exists to prevent. What
+  was wrong was the QUESTION: whether any byte moved, when what matters is whether the reviewed surface
+  moved. The comparison now asks whether any SOURCE changed between the two trees, via
+  `Test-SpecrewReviewAuthorshipSourcePath` - the classifier W33's coverage rule and W34-B's authorship
+  rule already share. That is the judgement the maintainer had been making by hand all week with
+  `git diff <tree>..HEAD -- src tests data`.
+- **A run stays current while only records have changed, and goes stale the moment code does.**
+- **The unreachable-tree case does NOT pass.** A digest tree is a dangling object and can be collected.
+  When it is gone, nothing can be established about what changed, and the refusal says exactly that -
+  a weaker claim than staleness, and not a clean bill. Fail-open would have been the wrong default for
+  the one branch where the evidence is missing rather than merely old.
+- **KNOWN LIMIT, stated rather than discovered later**: the shared classifier treats `specs/`, `docs/`,
+  dot-directories and any `.md` as not-source, so in a repository whose PRODUCT is documentation a real
+  product change reads as records-only. Three checks now share that one decision in one place; changing
+  it changes all three together, which is the reason to keep it shared.
+- **Why a full suite missed it, and this is the third time this week**: nothing in the W38 suite ever
+  committed the record it had just written. Every case checked a citation against a tree correctly, in
+  isolation. The sequence a real project follows - record, commit, validate - was never run.
+- **Verification**: `tests/integration/review-record-survives-its-own-commit.tests.ps1`, 5 cases on a
+  real git fixture with the real digest, the real store and the real derived block: the acceptance case
+  commits the record and requires validation to pass; source drift still refuses AND names the changed
+  file; source-plus-records drift still refuses, because a fix landing beside its own drift entry must
+  not hide behind the entry; an unreachable reviewed tree refuses; and the general property - after
+  recording a review, a project validates. MUTATION-PROVEN: restoring exact tree equality reproduces the
+  wedge and turns the acceptance case and the general property red.
+- **Two older cases changed their assertions, not their behaviour.** Both fixtures cite an invented tree
+  id, which now lands in the unreachable branch. They still refuse; they now assert the reason rather
+  than a phrase.
+
 ### DRIFT-199-I001-101 - the integrity hash comment claimed normalisation the code did not do (resolved)
 
 - **Observed**: 2026-08-22, while verifying -099. The manifest comment read "Text-normalised, so a

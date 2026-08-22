@@ -502,9 +502,17 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
 
     It 'refuses a run whose reviewed tree is not the tree that exists now' {
         # The stored field says `current`; the trees disagree. The trees win.
+        #
+        # DRIFT-007 refined WHICH disagreement counts - a run stays current while only records have
+        # moved - so this fixture's invented tree id now lands in the branch it always actually was:
+        # `deadbeef...` is not an object in the repository, so nothing can be established about what
+        # changed between the two trees. Still a refusal, and the assertion now names the reason
+        # instead of a phrase, so a future change to the wording does not read as a behaviour change.
         $found = @(CheckProject -Project (New-GitBackedProject -CitedTreeId 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'))
         $found.Count | Should -Be 1
-        $found[0] | Should -Match 'it reviewed tree deadbeef, and the files now are tree'
+        $found[0] | Should -Match 'it reviewed tree deadbeef'
+        $found[0] | Should -Match 'the files now are tree'
+        $found[0] | Should -Match 'no longer in this repository''s object store'
     }
 
     It 'accepts a run whose reviewed tree IS the tree that exists now' {

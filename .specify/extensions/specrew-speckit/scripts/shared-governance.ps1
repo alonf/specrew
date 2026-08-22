@@ -6685,6 +6685,59 @@ function Test-SpecrewDerivedCoverageSourcePath {
     return (Test-SpecrewReviewAuthorshipSourcePath -Path $Path)
 }
 
+function Get-SpecrewReviewedTreeSourceDrift {
+    # DRIFT-007 (2026-08-22): WHETHER THE REVIEWED SURFACE MOVED, NOT WHETHER ANY BYTE MOVED.
+    #
+    # W38 compared the cited run's frozen tree-id against the current one for exact equality. The
+    # reviewed-state digest deliberately excludes `.specrew/`, `.specify/`, `.squad/` and `.scratch/` -
+    # but NOT `specs/`. So review.md, drift-log.md, state.md and every closeout artifact are inside the
+    # digest, and RECORDING a review moves the tree the review is measured against. Every run went stale
+    # at its own recording commit, and the two checks left no satisfiable state: with the derived block
+    # present the record failed on staleness, and without it the absence arm failed instead. Each
+    # check's only remedy was the state the other refused.
+    #
+    # The digest is not what is wrong - its scope is deliberate, and anything excluded from it is a
+    # false-allow vector for the freshness gate. The wrong thing was the question. So the comparison
+    # asks what a human asks: did any SOURCE change between these two trees. That is the judgement the
+    # maintainer made by hand all week with `git diff <tree>..HEAD -- src tests data`.
+    #
+    # KNOWN LIMIT, shared with W33's coverage rule and W34-B's authorship rule and stated rather than
+    # discovered: `Test-SpecrewReviewAuthorshipSourcePath` treats `specs/`, `docs/`, dot-directories and
+    # any `.md` as not-source. In a repository whose PRODUCT is documentation, a genuine product change
+    # therefore reads as records-only. Three checks now share that classifier, so it is one decision in
+    # one place rather than three quiet ones - and changing it changes all three together.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CitedTreeId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentTreeId
+    )
+
+    if ([string]::IsNullOrWhiteSpace($CitedTreeId) -or [string]::IsNullOrWhiteSpace($CurrentTreeId)) {
+        return [pscustomobject]@{ comparable = $false; changed = @(); source = @(); reason = 'tree-id-missing' }
+    }
+    if ($CitedTreeId -ceq $CurrentTreeId) {
+        return [pscustomobject]@{ comparable = $true; changed = @(); source = @(); reason = 'identical' }
+    }
+
+    $changed = @()
+    try {
+        $output = & git -C $ProjectRoot diff --name-only $CitedTreeId $CurrentTreeId 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            # The reviewed tree is a dangling object - written by the digest, never committed, and
+            # collectable. Once it is gone, what changed cannot be established, and the honest answer is
+            # that the citation can no longer be checked rather than that it is fine.
+            return [pscustomobject]@{ comparable = $false; changed = @(); source = @(); reason = 'reviewed-tree-not-in-object-store' }
+        }
+        $changed = @(@($output) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+    catch {
+        return [pscustomobject]@{ comparable = $false; changed = @(); source = @(); reason = 'diff-failed' }
+    }
+
+    $source = @($changed | Where-Object { Test-SpecrewReviewAuthorshipSourcePath -Path $_ })
+    return [pscustomobject]@{ comparable = $true; changed = @($changed); source = @($source); reason = 'compared' }
+}
+
 function Get-SpecrewQualifyingIndependentRun {
     # A run qualifies as evidence of an independent review of code when the store says it completed,
     # against the current tree, with a valid candidate and a reviewed outcome - and, when it declared
