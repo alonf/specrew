@@ -510,16 +510,22 @@ function Get-DefaultRequirementRefsForGate {
         [string]$GateId
     )
 
+    # W46: the Requirement column in a downstream quality table used to cite Specrew's own FR ids,
+    # which collide with the consumer's FR namespace - a downstream human maps 'FR-027' onto THEIR
+    # spec. The column now names the quality dimension the gate enforces, in consumer terms.
+    # Maintainer citations for the original mapping: dead-field FR-011/FR-027/FR-030; anti-pattern
+    # FR-011/FR-028/FR-030; test-integrity FR-011/FR-029/FR-030; stack-tooling FR-011; lens-review
+    # FR-011/FR-012; concurrency/resiliency/retry FR-011/FR-012/FR-015.
     switch ($GateId) {
-        'dead-field' { return @('FR-011', 'FR-027', 'FR-030') }
-        'anti-pattern' { return @('FR-011', 'FR-028', 'FR-030') }
-        'test-integrity' { return @('FR-011', 'FR-029', 'FR-030') }
-        'stack-tooling-evidence' { return @('FR-011') }
-        'quality-lens-review' { return @('FR-011', 'FR-012') }
-        'concurrency-correctness-review' { return @('FR-011', 'FR-012', 'FR-015') }
-        'resiliency-semantics-review' { return @('FR-011', 'FR-012', 'FR-015') }
-        'retry-idempotency-review' { return @('FR-011', 'FR-012', 'FR-015') }
-        default { return @('FR-011') }
+        'dead-field' { return @('mechanical quality bar', 'unused-state hygiene') }
+        'anti-pattern' { return @('mechanical quality bar', 'deterministic anti-pattern scan') }
+        'test-integrity' { return @('mechanical quality bar', 'assertion-driven tests') }
+        'stack-tooling-evidence' { return @('stack tooling evidence') }
+        'quality-lens-review' { return @('quality-lens review') }
+        'concurrency-correctness-review' { return @('quality-lens review', 'concurrency correctness') }
+        'resiliency-semantics-review' { return @('quality-lens review', 'resiliency semantics') }
+        'retry-idempotency-review' { return @('quality-lens review', 'retry and idempotency') }
+        default { return @('quality bar') }
     }
 }
 

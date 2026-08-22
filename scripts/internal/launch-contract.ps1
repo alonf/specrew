@@ -240,6 +240,13 @@ function Get-StartPrompt {
     # orientation block + Rule 52 (visible file:/// artifact references in user output).
     $projectPathUrl = ([string]$ResolvedProjectPath).Replace('\', '/').TrimEnd('/')
 
+    # specrew-internal-id-ok: KNOWN LEAK, NAMED RATHER THAN HIDDEN. The governed launch contract
+    # below still cites internal requirement ids (SC-021, SC-025, SC-026, FR-035..FR-040, and a
+    # boundary-commit example naming T013) in the instruction text handed to downstream agents.
+    # Rewriting a governed document is not a mechanical sweep: gates and skills validate against
+    # its phrases, and the ids are load-bearing anchors inside it today. Tracked for beta4;
+    # the W46 firewall keeps this the LAST such surface rather than one of a growing set.
+    # specrew-internal-id-ok: governed contract text; named debt, tracked for beta4
     return @"
 You are Squad running inside a Specrew-bootstrapped repository.
 

@@ -120,7 +120,7 @@ function Format-BootstrapDirective {
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
     $stateRead = if ($reads.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$reads[1])) { [string]$reads[1] } else { '.specrew/start-context.json' }
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add('[specrew-bootstrap] SessionStart B2 - the orientation below is written to be SHOWN to the human, not merely read by you. Render it as VISIBLE PROSE in your FIRST reply, before any structured picker and before starting work: reading it to orient yourself is not rendering it, and a human who never sees it cannot correct what you believe about them. A concrete request in their first message does not replace it - announce what is starting and render the orientation with it (render-first; FR-004 (questions are shown as prose before any picker) and FR-020 (that rule is enforced mechanically, not by instruction alone)).')
+    $lines.Add('[specrew-bootstrap] SessionStart B2 - the orientation below is written to be SHOWN to the human, not merely read by you. Render it as VISIBLE PROSE in your FIRST reply, before any structured picker and before starting work: reading it to orient yourself is not rendering it, and a human who never sees it cannot correct what you believe about them. A concrete request in their first message does not replace it - announce what is starting and render the orientation with it (render-first: questions are shown as prose before any picker, and that rule is enforced mechanically, not by instruction alone).')  # FR-004/FR-020
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
     # F-184 iter-002 (T004, FR-013/FR-014/FR-018): FRONT-LOAD the coordinator posture + the exact anti-
     # specify.exe guard from the SINGLE packaged source (the caller resolves it via
@@ -190,13 +190,13 @@ function Format-BootstrapDirective {
         if (Get-Command -Name 'Get-SpecrewProfileOrientationLine' -ErrorAction SilentlyContinue) {
             $resolvedExpertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile)
             if (-not [string]::IsNullOrWhiteSpace($resolvedExpertiseLine)) {
-                $bannerItem3 = '  (3) How you will adapt to the HUMAN - render banner item 3 with THIS resolved adaptation, read from the user''s ~/.specrew/user-profile.yml (do NOT substitute the example, and do NOT render the no-profile fallback): ' + ([string]$resolvedExpertiseLine).Trim() + ' (FR-025).'
+                $bannerItem3 = '  (3) How you will adapt to the HUMAN - render banner item 3 with THIS resolved adaptation, read from the user''s ~/.specrew/user-profile.yml (do NOT substitute the example, and do NOT render the no-profile fallback): ' + ([string]$resolvedExpertiseLine).Trim() + '.'  # FR-025
             }
         }
     }
     catch { $bannerItem3 = $null }
     if ([string]::IsNullOrWhiteSpace($bannerItem3)) {
-        $bannerItem3 = '  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can (FR-025 (the expertise dials can be set at init, so hook-only users still get the adaptation)).'
+        $bannerItem3 = '  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can - the expertise dials can be set at init, so hook-only users still get the adaptation.'  # FR-025
     }
     $lines.Add($bannerItem3)
     $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) an intake choice only when there are at least two executable actions. Resume exists only for a valid active session. Pick-feature exists only when at least one feature exists. Never offer an action that cannot execute. If two or more real actions exist, render the choices as visible text, end the turn and wait for the human''s typed reply. If only one executable action exists, announce it and proceed without a decorative menu. In particular, a concrete feature request in a project with no existing feature deterministically chooses New: announce that New is starting and continue into the product-domain workshop.')
@@ -219,7 +219,7 @@ function Format-BootstrapDirective {
     # the file stays the durable reference re-consulted at later boundaries. Fallback to the read-the-file
     # directive only when the body could not be captured (deployed resolution failure).
     if (-not [string]::IsNullOrWhiteSpace($ContractBody)) {
-        $lines.Add(("Your governed launch contract for THIS session is BELOW - the SAME contract specrew start hands the agent (FR-023 (a hook-started session gets the identical launch contract and session state)): the full lifecycle rules, governance, boundary authorization, the user-profile/expertise adaptation, and the coordinator framing. Follow it EXACTLY; do NOT bypass clarify or governance gates, and do NOT drive from raw Spec Kit scripts. The same contract is saved at {0} (and the current lifecycle state at {1}) for reference as you work each boundary." -f $contractRead, $stateRead))
+        $lines.Add(("Your governed launch contract for THIS session is BELOW - the SAME contract specrew start hands the agent (a hook-started session gets the identical launch contract and session state): the full lifecycle rules, governance, boundary authorization, the user-profile/expertise adaptation, and the coordinator framing. Follow it EXACTLY; do NOT bypass clarify or governance gates, and do NOT drive from raw Spec Kit scripts. The same contract is saved at {0} (and the current lifecycle state at {1}) for reference as you work each boundary." -f $contractRead, $stateRead))
         $lines.Add('')
         $lines.Add('===== BEGIN SPECREW LAUNCH CONTRACT (follow this) =====')
         $lines.Add($ContractBody.TrimEnd())
@@ -232,7 +232,7 @@ function Format-BootstrapDirective {
         # user-profile/expertise adaptation that feeds banner item 3 + the coordinator framing) and the explicit
         # item-3 fallback, since a host that skims the pointer (claude, iter-6 disproof) would otherwise render an
         # empty item 3. Governance itself is script-enforced, so skimming the contract does NOT bypass any gate.
-        $lines.Add(("DRIVE this session from the governed contract (FR-023 (a hook-started session gets the identical launch contract and session state)): READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, policy classes, the user-profile/expertise adaptation that feeds banner item 3, and the coordinator framing) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts. (Banner item 3 lives ONLY in that contract here - read it; if it carries no adaptation or you cannot read it, use the /specrew-user-profile fallback named at the top - do NOT invent one.)" -f $contractRead, $stateRead))
+        $lines.Add(("DRIVE this session from the governed contract - a hook-started session gets the identical launch contract and session state: READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, policy classes, the user-profile/expertise adaptation that feeds banner item 3, and the coordinator framing) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts. (Banner item 3 lives ONLY in that contract here - read it; if it carries no adaptation or you cannot read it, use the /specrew-user-profile fallback named at the top - do NOT invent one.)" -f $contractRead, $stateRead))
     }
     if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
         if ($d.handover.placeholder) {
@@ -305,7 +305,7 @@ function Format-BootstrapDirective {
     # is integrity-critical - a committed boundary read as approved is exactly the DF-4/DF-5 failure.
     if ($null -ne $PendingVerdict -and [bool]$PendingVerdict.HasPendingVerdict) {
         $lines.Add('')
-        $lines.Add('=== AWAITING YOUR VERDICT (committed != authorized - FR-027 (a committed boundary is not an approved one until you say so)) ===')
+        $lines.Add('=== AWAITING YOUR VERDICT (committed != authorized - a committed boundary is not an approved one until you say so) ===')  # FR-027
         $lines.Add([string]$PendingVerdict.Message)
         $lines.Add('Treat that boundary as NOT YET approved: do NOT advance the lifecycle on it and do NOT record an authorization yourself. SURFACE this in your orientation banner and ASK the human to confirm; their actual response is the verdict (captured by the next hook fire, or their explicit confirmation), else stay at the prior authorized boundary.')
     }
@@ -373,7 +373,7 @@ function Format-BootstrapDirective {
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
-    $lines.Add('Handover protocol (FR-022 (you author the handover body; the hook cannot see the conversation)): to carry your INTERPRETIVE context across a session switch - your open questions + working hypothesis, which NO hook can author - persist it via `specrew handover author --from <file>` (a markdown body with `## ` section headers; run `specrew handover --help` for the section names), so what you hand off == what the next session inherits. Refresh before you expect to stop. On Claude the Stop hook ALSO captures your rendered boundary packet verbatim, but it is transcript-blind for the interpretive sections - only you can author those. NEVER delete + recreate .specrew/handover/session-handover.md with generic file tools - a crash between the delete and the create loses the handover; the writer (and `specrew handover author`) replaces the file ATOMICALLY and keeps session-handover.md.old as the crash backup (the bootstrap reader falls back to it automatically).')
+    $lines.Add('Handover protocol (you author the handover body; the hook cannot see the conversation): to carry your INTERPRETIVE context across a session switch - your open questions + working hypothesis, which NO hook can author - persist it via `specrew handover author --from <file>` (a markdown body with `## ` section headers; run `specrew handover --help` for the section names), so what you hand off == what the next session inherits. Refresh before you expect to stop. On Claude the Stop hook ALSO captures your rendered boundary packet verbatim, but it is transcript-blind for the interpretive sections - only you can author those. NEVER delete + recreate .specrew/handover/session-handover.md with generic file tools - a crash between the delete and the create loses the handover; the writer (and `specrew handover author`) replaces the file ATOMICALLY and keeps session-handover.md.old as the crash backup (the bootstrap reader falls back to it automatically).')
     $lines.Add('This directive is advisory and non-authorizing: it never advances a lifecycle boundary on its own.')
     return ($lines -join "`n")
 }

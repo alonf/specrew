@@ -826,7 +826,7 @@ function Get-ReviewerRegressionReadback {
 
     $capStatus = Get-LockoutCapStatus -ProjectRoot $ProjectRoot -Feature $Feature -LockoutChainCap $settings.LockoutChainCap
     $capNotes = if ($capStatus.CapActive) {
-        "Lockout-chain cap active ($($capStatus.ChainLength) implementers = original + $($settings.LockoutChainCap) rotations). Further rotation blocked. Human-owned revision or approved alternate owner required per FR-010."
+        "Lockout-chain cap active ($($capStatus.ChainLength) implementers = original + $($settings.LockoutChainCap) rotations). Further rotation blocked. Human-owned revision or approved alternate owner required."
     }
     else {
         $null
@@ -1131,7 +1131,7 @@ switch ($Mode) {
         $capDecisionPath = $null
         if ($capActivatedNow) {
             $capChain = @(Get-ImplementerChainFromConfig -ProjectRoot $ProjectRoot -Feature $Feature)
-            $capDecisionPath = Add-StructuredDecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Lockout-chain cap activated for $Feature" -Type 'lockout-cap' -AffectedRequirement 'FR-009, FR-010, FR-011' -AffectedIteration (Get-IterationReference -IterationDirectory $IterationDirectory) -NextAction 'awaiting-human-owned-revision-or-approved-alternate' -Rationale "Implementer lockout-chain reached the configured cap ($(Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot).LockoutChainCap rotations beyond original implementer). Cap is now active." -DetailLines @(
+            $capDecisionPath = Add-StructuredDecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Lockout-chain cap activated for $Feature" -Type 'lockout-cap' -AffectedRequirement 'reviewer-regression lockout-cap policy' -AffectedIteration (Get-IterationReference -IterationDirectory $IterationDirectory) -NextAction 'awaiting-human-owned-revision-or-approved-alternate' -Rationale "Implementer lockout-chain reached the configured cap ($(Get-ReviewerRegressionSettings -ProjectRoot $ProjectRoot).LockoutChainCap rotations beyond original implementer). Cap is now active." -DetailLines @(
                 "- **Feature**: $Feature"
                 "- **Implementer Chain**: $($capChain -join ' → ')"
                 "- **Chain Length**: $($capChain.Count)"
@@ -1141,7 +1141,7 @@ switch ($Mode) {
             )
         }
 
-        $decisionPath = Add-StructuredDecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Reviewer regression $newEventId" -Type 'reviewer-regression-escalation' -AffectedRequirement 'FR-001, FR-002, FR-003, FR-004, FR-015' -AffectedIteration (Get-IterationReference -IterationDirectory $IterationDirectory) -NextAction 'continue-review-routing' -Rationale $routing.Notes -DetailLines @(
+        $decisionPath = Add-StructuredDecisionsLedgerEntry -ProjectRoot $ProjectRoot -Title "Reviewer regression $newEventId" -Type 'reviewer-regression-escalation' -AffectedRequirement 'reviewer-regression escalation policy' -AffectedIteration (Get-IterationReference -IterationDirectory $IterationDirectory) -NextAction 'continue-review-routing' -Rationale $routing.Notes -DetailLines @(
             "- **Event ID**: $newEventId"
             "- **Feature**: $Feature"
             "- **Routing Outcome**: $($routing.Action)"

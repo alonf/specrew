@@ -1677,26 +1677,26 @@ try {
             # and "I am now on my own".
             $corrections.Add(('[specrew-conformance] ENFORCEMENT STOPPED after {0} consecutive blocks on the same unmet condition. Specrew is no longer holding this turn - the requirement below is still unmet, and from here it is on you rather than on the hook. This limit exists so a disagreement between us cannot hang your session indefinitely.' -f $script:SpecrewBlockCap)) | Out-Null
             if ($cappedKind -eq 'material') {
-                $corrections.Add('[specrew-conformance] MATERIAL-WORK STOP packet still missing (FR-015) - render the five-part context packet with file:/// references before handing control back.') | Out-Null
+                $corrections.Add('[specrew-conformance] MATERIAL-WORK STOP packet still missing - render the five-part context packet with file:/// references before handing control back.') | Out-Null
             }
             # certify f3: a REFUSED boundary must never be instructed to emit a marker, capped or
             # not — for missing evidence that reintroduces the marker FR-068 suppresses, and for an
             # unrecordable crossing it invents a marker for a crossing that does not exist (FR-066).
             elseif ($cappedKind -eq 'boundary-evidence-absent') {
-                $corrections.Add('[specrew-conformance] STAGE EVIDENCE still missing (FR-068) - do NOT render approval options and do NOT include any boundary approval comment; there is nothing to approve until the stage produces its evidence in the bound tree. Produce the missing artifacts, commit them, re-run the boundary sync, then stop again.') | Out-Null
+                $corrections.Add('[specrew-conformance] STAGE EVIDENCE still missing - do NOT render approval options and do NOT include any boundary approval comment; there is nothing to approve until the stage produces its evidence in the bound tree. Produce the missing artifacts, commit them, re-run the boundary sync, then stop again.') | Out-Null
             }
             elseif ($cappedKind -eq 'boundary-unrecordable') {
-                $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE (FR-066) - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
+                $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
             }
             elseif ($cappedKind -eq 'workshop-repair') {
                 $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null
             }
             else {
-                $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong (FR-011/FR-015) - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
+                $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
             }
         }
-        if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists (FR-011 #1)`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }
-        if ($rawHit) { $corrections.Add("[specrew-conformance] RAW SPEC KIT invocation detected (FR-011 #3)`n`nDo NOT run the un-governed 'specify workflow' automation - route through the Specrew design workshop and the governed /speckit.* commands so the gates are honored.") | Out-Null }
+        if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }
+        if ($rawHit) { $corrections.Add("[specrew-conformance] RAW SPEC KIT invocation detected`n`nDo NOT run the un-governed 'specify workflow' automation - route through the Specrew design workshop and the governed /speckit.* commands so the gates are honored.") | Out-Null }
     }
 
     # --- forensic journal (diagnostics only - never gate state) ---

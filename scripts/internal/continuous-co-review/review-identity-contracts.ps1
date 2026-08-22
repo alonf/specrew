@@ -299,8 +299,8 @@ function Get-ContinuousCoReviewArtifactClass {
     if ($p -match '(^|/)\.specrew/review/pending(/|$)')      { return & $mk 'transient' $false $false 'prunable only after the owning run is terminal/reaped/abandoned' }
     if ($p -match '(^|/)\.specrew/runtime(/|$)')             { return & $mk 'transient' $false $false 'machine-local runtime state; prunable only when its owning cycle/run is terminal' }
     if ($p -match '(^|/)\.review(/|$)')                      { return & $mk 'transient' $false $false 'ephemeral disposable-worktree bundle; prunable only after the run ends' }
-    if ($p -match '(^|/)\.specrew/review/inline/')           { return & $mk 'durable'   $true  $true  'retained until superseded by a later reviewed digest for its lineage; then archive or prune per T019 policy' }
-    if ($p -match '(^|/)\.specrew/review/test-evidence/')    { return & $mk 'durable'   $true  $true  'retained for its digest; prunable once no live lineage references it (T019 policy)' }
+    if ($p -match '(^|/)\.specrew/review/inline/')           { return & $mk 'durable'   $true  $true  'retained until superseded by a later reviewed digest for its lineage; then archive or prune per the retention policy' }
+    if ($p -match '(^|/)\.specrew/review/test-evidence/')    { return & $mk 'durable'   $true  $true  'retained for its digest; prunable once no live lineage references it (retention policy)' }
     if ($p -match '(^|/)\.specrew/review/signoff-gate/')     { return & $mk 'durable'   $true  $false 'latest.json overwritten each decision; history/ append-only (not supersedable)' }
     return & $mk 'unknown' $false $false 'unclassified — a contract gap to resolve before it accumulates'
 }

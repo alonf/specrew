@@ -87,10 +87,15 @@ foreach ($provider in $providers) {
     Assert-True ($providerText -match '(?i)concrete request in their first message does not replace it') 'the session directive closes the "they asked for something concrete" shortcut'
 }
 
-# --- 4. The ids in that directive stay glossed (FR-016 does not regress through this edit) ---
-. (Join-Path $repoRoot 'scripts\internal\specrew-consumer-language.ps1')
+# --- 4. The directive's EMITTED STRING carries no internal id at all (W46 supersedes glossing) ---
+# The maintainer ruled internal requirement ids out of emitted strings entirely; the citation lives in
+# the trailing comment on the same source line, which is the sanctioned half. So the check reads the
+# STRING (up to its closing quote), not the raw source line - a raw-line read would flag the very
+# comment the rule requires.
 $directiveLine = @(Get-Content -LiteralPath $providers[0] -Encoding UTF8 | Where-Object { $_ -match 'SHOWN to the human, not merely read by you' })
 Assert-True (@($directiveLine).Count -eq 1) 'the sharpened directive is a single emitted line'
-Assert-True (@(Get-SpecrewUnglossedId -Text $directiveLine[0]).Count -eq 0) 'the sharpened directive still glosses every requirement id it cites'
+$directiveString = [regex]::Match([string]$directiveLine[0], "'(.*)'").Groups[1].Value
+Assert-True (-not [string]::IsNullOrWhiteSpace($directiveString)) 'the directive string extracted for the id check'
+Assert-True ($directiveString -cnotmatch '\b(?:FR|SC|NFR)-[0-9]{1,4}\b') 'the emitted directive cites no internal requirement id - the citation lives in the adjacent comment'
 
 Write-Host 'session orientation obligation: all assertions pass' -ForegroundColor Green

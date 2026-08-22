@@ -125,7 +125,7 @@ if ((Test-Path -LiteralPath $projectConfigPath -PathType Leaf) -and ($null -ne $
             $expectedVersion = [version]$expectedRaw
             if ($resolvedModuleVersion -lt $expectedVersion) {
                 throw @"
-Stale Specrew install — boundary-sync dispatch refused (iter-006 T001 stale-install check).
+Stale Specrew install — boundary-sync dispatch refused by the stale-install check.
 
   Project expects: $expectedVersion  (from $projectConfigPath::specrew_version)
   Resolved:        $resolvedModuleVersion  (from $resolvedModuleBase)

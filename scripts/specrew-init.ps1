@@ -112,7 +112,7 @@ function Get-ManagedAgentsBlock {
     $lookup = Get-AgentLookup -Agents $Agents
     $lines = @(
         '# >>> specrew-managed agents >>>',
-        '# Specrew-managed delegated-agent opt-in and detection state (FR-022).',
+        '# Specrew-managed delegated-agent opt-in and detection state.',
         'agents:'
     )
 

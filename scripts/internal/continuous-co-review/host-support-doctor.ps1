@@ -46,7 +46,7 @@ function Format-SpecrewCodexHeadlessReadinessReport {
         [AllowNull()][datetime]$Now
     )
     $sb = [System.Text.StringBuilder]::new()
-    [void]$sb.AppendLine('=== Codex untrusted-headless governance preflight (FR-051) ===')
+    [void]$sb.AppendLine('=== Codex untrusted-headless governance preflight ===')
     if (-not (Get-Command -Name 'Test-SpecrewCodexHeadlessGovernanceReady' -ErrorAction SilentlyContinue)) {
         [void]$sb.AppendLine('  (unavailable: hook-health-receipt module not loaded)')
         return $sb.ToString()
@@ -95,10 +95,10 @@ function Format-SpecrewHostSupportDoctorReport {
             if ($PSBoundParameters.ContainsKey('Now')) { $healthArgs.Now = $Now }
             $sections.Add((Format-SpecrewHookHealthReport @healthArgs).TrimEnd()) | Out-Null
         }
-        catch { $sections.Add('=== Specrew hook-health evidence (FR-053) ===' + [Environment]::NewLine + ('  (unavailable: {0})' -f $_.Exception.Message)) | Out-Null }
+        catch { $sections.Add('=== Specrew hook-health evidence ===' + [Environment]::NewLine + ('  (unavailable: {0})' -f $_.Exception.Message)) | Out-Null }
     }
     else {
-        $sections.Add('=== Specrew hook-health evidence (FR-053) ===' + [Environment]::NewLine + '  (unavailable: hook-health-receipt module not loaded)') | Out-Null
+        $sections.Add('=== Specrew hook-health evidence ===' + [Environment]::NewLine + '  (unavailable: hook-health-receipt module not loaded)') | Out-Null
     }
 
     # 3. Codex untrusted-headless preflight (FR-051).

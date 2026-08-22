@@ -102,7 +102,7 @@ function Invoke-SpecrewDetectCapability {
             return [ordered]@{
                 provider    = 'github'
                 mechanism   = 'ci-only'
-                constraints = @('forge-neutral core: ci-only is the honest answer the core gives without importing a forge adapter (FR-014); for real GitHub capability (branch-protection/rulesets) use the github adapter via the capability detector.')
+                constraints = @('forge-neutral core: ci-only is the honest answer the core gives without importing a forge adapter; for real GitHub capability (branch-protection/rulesets) use the github adapter via the capability detector.')
             }
         }
         default {

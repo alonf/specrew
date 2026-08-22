@@ -535,6 +535,48 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-107 - self-leak, second class: internal requirement ids in emitted strings (resolved)
+
+- **The finding (2026-08-22)**: the provenance rule - implementation history is recorded for
+  maintainers and never emitted as consumer instruction - was violated by runtime-emitted strings
+  carrying FR/SC/T/W citations ("fail-loud, FR-015", "T091/FR-037; check the module deploy"). These
+  reach downstream humans and agents with no referent for the ids - and worse than jargon, the ids
+  COLLIDE: a downstream project has its own FR-004, so a Specrew citation reads as a claim about the
+  consumer's spec.
+- **Swept: 80+ string sites across 30 shipped scripts** (the maintainer's 51 plus the sites the
+  standing check then found). The behavior words stayed - "fail-loud", "fail-closed", "containment",
+  "anti-omission" - and the ids moved to adjacent comments, the sanctioned half of the rule. Three
+  classes beyond plain messages:
+  - **Structured refs into downstream artifacts**: the quality-gate tables in
+    `resolve-quality-profile.ps1`, `run-mechanical-checks.ps1` and both iteration scaffolds cited
+    Specrew FR ids in the `Requirement` column of downstream hardening-gate and quality tables - the
+    id-collision case in its purest form. The column now names the quality dimension in consumer terms
+    ("mechanical quality bar", "assertion-driven tests"); the original mapping is a comment.
+  - **Decision-ledger refs**: `-AffectedRequirement 'FR-043'` and friends wrote Specrew ids into the
+    downstream `.squad/decisions.md` ledger. Now policy names ("delegated-lifecycle routing policy").
+  - **Reviewer/smoke prompts**: the live reviewer prompt and the platform-smoke review scopes cited
+    T060/T061/T091 sequencing ids to a fresh-context reviewer. Sequencing facts kept, ids gone.
+- **The standing check** (`tests/unit/no-internal-ids-in-emitted-strings.tests.ps1`, class-guard
+  lane): AST scan over every FileList script's string literals for the id shapes, comments exempt by
+  construction - the AST never sees them, which IS the rule. Exemptions require a
+  `specrew-internal-id-ok:` comment and are pinned as a CLOSED, individually-justified list, so a new
+  exemption fails the count and forces a review. The 52nd leak cannot ship.
+- **Four exemptions, named rather than hidden**: (1) the governed LAUNCH CONTRACT still cites internal
+  ids in instruction text handed to downstream agents - rewriting a governed document is not a
+  mechanical sweep (gates and skills validate against its phrases), so it is recorded as known debt
+  for beta4, and the firewall keeps it the LAST such surface; (2)+(3) the generated hook launcher,
+  where the one id sits in a COMMENT of the generated file; (4) the stage-evidence rule table's
+  maintainer-facing Provenance data field.
+- **Two older suites flipped to the stronger form.** W22's banner-gloss suite required each cited id
+  to carry its meaning in brackets; the ruling supersedes glossing - the MEANING must survive in the
+  prose and the id must be gone from it. Both suites now pin exactly that, and the gloss texts are
+  asserted to still reach the reader.
+- **Relation to the first firewall**: `lint-self-leak.ps1` guards the deployed-FILE surface
+  (templates, the extension tree) via the deny-list; this check guards the EMITTED-STRING surface of
+  the runtime. Together they cover both ways Specrew's inside voice can reach a consumer session.
+  Further Specrew-lingua terms, as they are ruled, extend this check's pattern the way deny-list
+  classes extend the first.
+
 ### DRIFT-199-I001-106 - verdict capture landed at Stop, so a session could never see the verdict it was processing (resolved)
 
 - **Observed**: 2026-08-22, on Copilot. The human typed the approval phrase; the session checked

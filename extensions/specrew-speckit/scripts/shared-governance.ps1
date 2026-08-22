@@ -1863,6 +1863,9 @@ function Get-SpecrewBoundaryStageEvidenceContract {
         [pscustomobject]@{ Boundary = 'clarify'; Kind = 'content'; Paths = @('spec.md'); Markers = @(
                 '(?ms)^##[ \t]+Clarifications[ \t]*\r?$(?:(?!^##[ \t]).)*?^###[ \t]+Session[ \t]+\d{4}-\d{2}-\d{2}',
                 '(?im)^[ \t]*[-*][ \t]+\*\*Clarify Disposition\*\*[ \t]*:[ \t]*skip\b[^\r\n]{20,}'
+            # The Provenance field is maintainer-facing rule-table data (who ruled what, when);
+            # no consumer surface renders it.
+            # specrew-internal-id-ok: maintainer-facing rule-table provenance data
             ); MarkerMatch = 'any'; Provenance = 'MAINTAINER-RULED 2026-08-06 - session block OR recorded skip-with-rationale; STRICT forms ruled 2026-08-06 after DRIFT-198-I011-006' }
 
         # plan / tasks: the iteration plan. `tasks` records its breakdown in the SAME plan.md table in

@@ -253,7 +253,7 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         if (Test-Path -LiteralPath $wrPath -PathType Leaf) { try { . $wrPath } catch { $null = $_ } }
     }
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
-        return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'machinery-resolver-unavailable (the ONE FR-012 machinery resolver could not be loaded - refusing a digest that would diverge from the worktree strip)'
+        return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'machinery-resolver-unavailable (the one shared machinery resolver could not be loaded - refusing a digest that would diverge from the worktree strip)'
     }
     $machineryPaths = @()
     try {

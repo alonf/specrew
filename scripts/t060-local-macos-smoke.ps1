@@ -121,7 +121,7 @@ try {
         run_id = 'run-t060-macos-preflight'
         target_digest = $reviewedDigest
         snapshot_path = $root
-        review_scope = 'T060 no-spend local macOS production-port preflight.'
+        review_scope = 'No-spend local macOS production-port preflight.'
         prompt_path = (Join-Path $root 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md')
         candidate_result_path = (Join-Path $preflightRoot 'candidate/candidate.json')
         candidate_report_path = (Join-Path $preflightRoot 'candidate/candidate.md')
@@ -182,16 +182,16 @@ $progressSink = {
     param($event)
     $progressEvents.Add($event) | Out-Null
     $findingText = if ($null -ne $event.validated_finding_count) { "; findings=$($event.validated_finding_count)" } else { '' }
-    Write-Host ("T060 macOS [{0}] elapsed={1}ms{2} {3}" -f $event.stage, $event.elapsed_ms, $findingText, $event.message)
+    Write-Host ("local-smoke macOS [{0}] elapsed={1}ms{2} {3}" -f $event.stage, $event.elapsed_ms, $findingText, $event.message)
 }.GetNewClosure()
 
 # This is the only provider-capable call in this package. The production command itself is
 # synchronous and has no hidden retry; a second attempt requires a new run ID and human grant.
 $t060ReviewScope = @'
 Review the implemented code and tests in the complete frozen target for correctness, security,
-failure semantics, and conformance with the resolved design context. This T060 run is one serialized
-live harness proof executed before the remaining T060 harnesses, campaign-authority cutover, T061
-independent signoff, retrospective, and closeout. Treat plan/state entries that accurately identify
+failure semantics, and conformance with the resolved design context. This run is one serialized
+live harness proof executed before the remaining platform harnesses, campaign-authority cutover, the
+final independent signoff, retrospective, and closeout. Treat plan/state entries that accurately identify
 those later steps or an external provider-quota constraint as execution context, not code-review
 findings. Report a pending or deferred item only when a grounded defect in the frozen code makes that
 step unsafe or impossible, or when the implementation contradicts an approved requirement. Do not

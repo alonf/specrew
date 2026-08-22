@@ -637,13 +637,13 @@ function New-ContinuousCoReviewStrippedWorktree {
         # Test-ContinuousCoReviewPathUnderRoot - same physical resolution AND platform-appropriate case
         # semantics as the strict design-context gate, so a case-distinct path can't slip on POSIX.
         if ([string]::IsNullOrEmpty((Get-ContinuousCoReviewPhysicalPath -Path $candidatePath))) {
-            throw "[co-review] refusing to materialize the reviewer worktree $context - its physical path could not be resolved reliably (fail-closed, FR-008 containment)."
+            throw "[co-review] refusing to materialize the reviewer worktree $context - its physical path could not be resolved reliably (fail-closed containment)."
         }
         foreach ($originPath in @($gitRoot, $resolved)) {
             if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
             if (Test-ContinuousCoReviewPathUnderRoot -Path $candidatePath -Root $originPath) {
                 $originFull = Get-ContinuousCoReviewPhysicalPath -Path $originPath
-                throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
+                throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (containment)."
             }
         }
     }
@@ -1113,7 +1113,7 @@ issue, records the approving human, and states where the work is carried. NOTE: 
 the mirror record in the drift-log/specs/proposals; the implementer is required to mirror deferrals into a
 worktree-visible artifact. A deferral-covered issue is reported (if at all) as ADVISORY with the decision id
 cited, never blocking. A deferral CLAIM without a verifiable worktree-visible record is itself a blocking
-finding - AND WHEN YOU RAISE THAT FINDING, STATE THE FORMAT THAT WOULD SATISFY IT (FR-013). Naming the
+finding - AND WHEN YOU RAISE THAT FINDING, STATE THE FORMAT THAT WOULD SATISFY IT. Naming the
 rule without naming its shape leaves the implementer guessing at exactly the moment they are trying to
 comply. Your finding must name all four required elements: (1) a WORKTREE-VISIBLE artifact - an
 iteration drift-log event, a specs decision artifact, or a proposal work item; (2) which NAMES or
@@ -1492,7 +1492,7 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
         if (Test-Path -LiteralPath $helper -PathType Leaf) { try { . $helper } catch { $null = $_ } }
     }
     if (-not (Get-Command -Name 'New-SpecrewProcessContainment' -ErrorAction SilentlyContinue)) {
-        throw 'co-review: the OS-native containment helper (agent-tasks/process-tree.ps1) is unavailable - refusing to spawn an uncontainable reviewer (T091/FR-037; check the module deploy).'
+        throw 'co-review: the OS-native containment helper (agent-tasks/process-tree.ps1) is unavailable - refusing to spawn an uncontainable reviewer; check the module deploy.'
     }
     # Compile the containment runtime BEFORE the spawn: the first-use Add-Type takes seconds, and paying
     # it after Start() opens the pre-assignment escape window (empirically caught - the grandchild forked
@@ -1648,7 +1648,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
             incremental_findings_present = $jsonlPresent
             probable_cause               = if ($jsonlPresent) { 'finalization-or-capture-gap' } else { 'no-output-produced' }
         }
-        [Console]::Error.WriteLine(("[co-review] WARN EMPTY_EXIT0_RESULT reviewer host '{0}' returned exit 0 with EMPTY stdout (probable cause: {1}); retrying once (T108/D-197-I009-015)." -f $HostName, $firstAttempt.probable_cause))
+        [Console]::Error.WriteLine(("[co-review] WARN EMPTY_EXIT0_RESULT reviewer host '{0}' returned exit 0 with EMPTY stdout (probable cause: {1}); retrying once." -f $HostName, $firstAttempt.probable_cause))
         $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
         if ($null -ne $r.telemetry) {
             $r.telemetry | Add-Member -NotePropertyName 'empty_result_retry' -NotePropertyValue ([pscustomobject][ordered]@{

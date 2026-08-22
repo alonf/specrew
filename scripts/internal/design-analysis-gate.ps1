@@ -346,7 +346,7 @@ function Test-SpecrewDesignAnalysisLensCoverage {
             if ($addressedMatch.Success) { $addressed = $addressedMatch.Groups['v'].Value }
         }
         if ($null -eq $addressed -or (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value $addressed)) {
-            $errors.Add(("design-analysis.md does not address selected lens '{0}' (FR-026 anti-omission): add a non-placeholder 'Addressed:' coverage entry for it in the Applicable Lenses section, pointing into the option comparison." -f $id)) | Out-Null
+            $errors.Add(("design-analysis.md does not address selected lens '{0}' (anti-omission): add a non-placeholder 'Addressed:' coverage entry for it in the Applicable Lenses section, pointing into the option comparison." -f $id)) | Out-Null
         }
     }
 
@@ -454,7 +454,7 @@ function Test-SpecrewLensWorkshopRecords {
         $rec = $null
         if ($null -ne $workshop -and $workshop.PSObject.Properties[$id]) { $rec = $workshop.$id }
         if ($null -eq $rec) {
-            $errors.Add(("lens-applicability.json has no workshop record for selected lens '{0}' (SC-021): record agenda + decision/agreement + depth + a moved_on marker." -f $id)) | Out-Null
+            $errors.Add(("lens-applicability.json has no workshop record for selected lens '{0}': record agenda + decision/agreement + depth + a moved_on marker." -f $id)) | Out-Null
             continue
         }
 
@@ -469,7 +469,7 @@ function Test-SpecrewLensWorkshopRecords {
         if ($null -eq $movedOn -or -not [bool]$movedOn) { $missing.Add('moved_on') | Out-Null }
 
         if ($missing.Count -gt 0) {
-            $errors.Add(("workshop record for selected lens '{0}' is incomplete (SC-021): missing or placeholder {1}." -f $id, ($missing -join ', '))) | Out-Null
+            $errors.Add(("workshop record for selected lens '{0}' is incomplete: missing or placeholder {1}." -f $id, ($missing -join ', '))) | Out-Null
         }
 
         # #2904 (iter-007 real-host dogfood): the 'code-implementation' lens's moved_on is HOLLOW unless its
@@ -498,12 +498,12 @@ function Test-SpecrewLensWorkshopRecords {
         if ($confirmationRequired) {
             $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
             if ($confirmation -notin $validProvenance) {
-                $errors.Add(("workshop record for selected lens '{0}' is missing a valid confirmation provenance (SC-026): set 'confirmation' to one of human-confirmed | human-delegated | human-skipped (got '{1}'). Record human-confirmed ONLY for a lens the human was surfaced and confirmed; an explicit delegate/skip records human-delegated/human-skipped; an agreement MUST NOT be synthesized for an un-surfaced lens." -f $id, $confirmation)) | Out-Null
+                $errors.Add(("workshop record for selected lens '{0}' is missing a valid confirmation provenance: set 'confirmation' to one of human-confirmed | human-delegated | human-skipped (got '{1}'). Record human-confirmed ONLY for a lens the human was surfaced and confirmed; an explicit delegate/skip records human-delegated/human-skipped; an agreement MUST NOT be synthesized for an un-surfaced lens." -f $id, $confirmation)) | Out-Null
             } else {
                 $confirmationScope = if ($rec.PSObject.Properties['confirmation_scope']) { [string]$rec.confirmation_scope } else { '' }
                 $requiredScope = $requiredConfirmationScopes[$confirmation]
                 if ($confirmationScope -ne $requiredScope) {
-                    $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope (SC-026, #2212): set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
+                    $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope: set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
                 }
             }
         }
@@ -585,7 +585,7 @@ function Test-SpecrewDesignCoDesignRecord {
 
     $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Co-?Design\s+Record')
     if (-not $section.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Body)) {
-        $errors.Add("design-analysis.md is missing a populated '## Co-Design Record' section (SC-025): record the co-designed component-to-responsibility map, at least one agreed flow, and a human-agreed marker.") | Out-Null
+        $errors.Add("design-analysis.md is missing a populated '## Co-Design Record' section: record the co-designed component-to-responsibility map, at least one agreed flow, and a human-agreed marker.") | Out-Null
         return $errors.ToArray()
     }
 
@@ -609,7 +609,7 @@ function Test-SpecrewDesignCoDesignRecord {
     }
 
     if ($missing.Count -gt 0) {
-        $errors.Add(("'## Co-Design Record' is incomplete (SC-025): missing {0}." -f ($missing -join ', '))) | Out-Null
+        $errors.Add(("'## Co-Design Record' is incomplete: missing {0}." -f ($missing -join ', '))) | Out-Null
     }
 
     return $errors.ToArray()
@@ -1061,7 +1061,7 @@ function Test-SpecrewProductDomainPlanBlock {
     if ($blocking.Count -eq 0) { return @() }
 
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add(("[product-domain-plan-block] Do not author plan.md for '{0}': {1} load-bearing research-needed product-domain gap(s) must be researched or explicitly accepted first (FR-011):" -f $feature, $blocking.Count)) | Out-Null
+    $lines.Add(("[product-domain-plan-block] Do not author plan.md for '{0}': {1} load-bearing research-needed product-domain gap(s) must be researched or explicitly accepted first:" -f $feature, $blocking.Count)) | Out-Null
     foreach ($b in $blocking) { $lines.Add(("  - {0}" -f $b)) | Out-Null }
     return $lines.ToArray()
 }
@@ -1122,7 +1122,7 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
 
     $artifact = Get-SpecrewFeatureLensApplicabilityPath -ProjectRoot $ProjectRoot -FeatureRef $feature
     if ($null -eq $artifact -or -not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
-        throw ("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the lens-applicability intake has not run. Run the interactive, expertise-adapted lens intake, record the feature-level lens-applicability.json, and amend spec.md + the requirements checklist with the lens-informed requirements BEFORE sync-specify (FR-027 / Amendment A3). Expected artifact: {1}" -f $feature, $artifact)
+        throw ("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the lens-applicability intake has not run. Run the interactive, expertise-adapted lens intake, record the feature-level lens-applicability.json, and amend spec.md + the requirements checklist with the lens-informed requirements BEFORE sync-specify. Expected artifact: {1}" -f $feature, $artifact)
     }
 
     # SC-021 (Amendment A4): the per-lens workshop-record FLOOR, enforced HERE against the feature-level
@@ -1133,7 +1133,7 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
     $workshopErrors = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $artifact)
     if ($workshopErrors.Count -gt 0) {
         $lines = New-Object System.Collections.Generic.List[string]
-        $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the per-lens workshop records are incomplete (SC-021). Record agenda + decision/agreement + depth + a moved_on marker for each selected lens in {1} before sync-specify." -f $feature, $artifact)) | Out-Null
+        $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the per-lens workshop records are incomplete. Record agenda + decision/agreement + depth + a moved_on marker for each selected lens in {1} before sync-specify." -f $feature, $artifact)) | Out-Null
         foreach ($wsErr in $workshopErrors) { $lines.Add(("  - {0}" -f $wsErr)) | Out-Null }
         throw ($lines -join [Environment]::NewLine)
     }
@@ -1287,20 +1287,20 @@ function Test-SpecrewProductDomainGate {
     if (-not (Test-Path -LiteralPath $ymlPath -PathType Leaf)) { $missing.Add('workshop/product-domain.yml') | Out-Null }
     if (-not (Test-Path -LiteralPath $mdPath -PathType Leaf)) { $missing.Add('workshop/product-domain.md') | Out-Null }
     if ($missing.Count -gt 0) {
-        throw ("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the first-stage product-domain record is MISSING ({1}). The product-domain lens runs before the technical lenses (FR-001); run it, capture the evidence-tagged record at the chosen depth, and persist both files before sync-specify. Specrew surfaces this rather than silently skipping the grounding (FR-013). Expected: {2}" -f $feature, ($missing -join ', '), $ymlPath)
+        throw ("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the first-stage product-domain record is MISSING ({1}). The product-domain lens runs before the technical lenses; run it, capture the evidence-tagged record at the chosen depth, and persist both files before sync-specify. Specrew surfaces this rather than silently skipping the grounding. Expected: {2}" -f $feature, ($missing -join ', '), $ymlPath)
     }
 
     # Load the record validator (sibling helper). If it cannot be loaded, fail CLOSED (no silent skip).
     $helper = Join-Path $PSScriptRoot 'product-domain-lens.ps1'
     if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
-        throw ("[product-domain-gate] Cannot validate the product-domain record for '{0}': the record validator helper is missing at {1}. Refusing to pass the specify boundary without validation (fail-closed, FR-013)." -f $feature, $helper)
+        throw ("[product-domain-gate] Cannot validate the product-domain record for '{0}': the record validator helper is missing at {1}. Refusing to pass the specify boundary without validation (fail-closed)." -f $feature, $helper)
     }
     . $helper
     $schemaArg = if (Test-Path -LiteralPath $schemaPath -PathType Leaf) { $schemaPath } else { $null }
     $errs = @(Test-SpecrewProductDomainRecord -Path $ymlPath -SchemaPath $schemaArg)
     if ($errs.Count -gt 0) {
         $lines = New-Object System.Collections.Generic.List[string]
-        $lines.Add(("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the product-domain record is INVALID. Fix these before sync-specify (a batch 'confirm all' is NOT valid product-domain confirmation, FR-009):" -f $feature)) | Out-Null
+        $lines.Add(("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the product-domain record is INVALID. Fix these before sync-specify (a batch 'confirm all' is NOT valid product-domain confirmation):" -f $feature)) | Out-Null
         foreach ($e in $errs) { $lines.Add(("  - {0}" -f $e)) | Out-Null }
         throw ($lines -join [Environment]::NewLine)
     }

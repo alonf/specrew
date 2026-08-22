@@ -1319,7 +1319,7 @@ function Test-ReviewEvidenceTreeIntegrity {
     }
 
     foreach ($missing in @($treeCheck.MissingProduction)) {
-        $Errors.Add(("review.md (FR-022/Pillar 5) cites production evidence file '{0}' that is present in the working tree but absent from the cited Tree Under Review commit '{1}' for {2}. Either stage + commit the file then re-issue the verdict, or remove it from review.md evidence." -f $missing, $treeCheck.TreeHash, $relativeIteration))
+        $Errors.Add(("review.md cites production evidence file '{0}' that is present in the working tree but absent from the cited Tree Under Review commit '{1}' for {2}. Either stage + commit the file then re-issue the verdict, or remove it from review.md evidence." -f $missing, $treeCheck.TreeHash, $relativeIteration))
     }
 
     foreach ($missingTest in @($treeCheck.MissingTest)) {
@@ -4478,7 +4478,7 @@ function Test-ReviewerRegressionLedgerInvariants {
 
         # FR-007: Validate soft-warning classification
         if ($null -ne $entry.Severity -and $entry.Severity -ne 'soft-warning') {
-            $issues.Add("$($entry.EventId): Severity must always be 'soft-warning' per FR-007, found '$($entry.Severity)'") | Out-Null
+            $issues.Add("$($entry.EventId): Severity must always be 'soft-warning', found '$($entry.Severity)'") | Out-Null
         }
 
         # FR-015: Validate escalation action consistency
@@ -4499,7 +4499,7 @@ function Test-ReviewerRegressionLedgerInvariants {
 
         # FR-008: Validate withdrawal consistency
         if ($entry.EventStatus -eq 'withdrawn' -and [string]::IsNullOrWhiteSpace($entry.WithdrawalReference)) {
-            $issues.Add("$($entry.EventId): Status 'withdrawn' requires 'Withdrawal Reference' per FR-008") | Out-Null
+            $issues.Add("$($entry.EventId): Status 'withdrawn' requires 'Withdrawal Reference'") | Out-Null
         }
     }
 
@@ -4619,7 +4619,7 @@ function Test-ReviewerRegressionDecisionsEntries {
 
         # FR-011: Lockout-cap decisions must be visible
         if ($entry.Type -eq 'lockout-cap' -and [string]::IsNullOrWhiteSpace($entry.DecisionId)) {
-            $issues.Add("Lockout-cap decision entry must have a Decision ID per FR-011") | Out-Null
+            $issues.Add("Lockout-cap decision entry must have a Decision ID") | Out-Null
         }
     }
 

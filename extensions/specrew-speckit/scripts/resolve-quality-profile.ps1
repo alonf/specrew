@@ -883,22 +883,22 @@ function Get-RequiredQualityGates {
     $findingsPath = $evidenceDirectory + 'mechanical-findings.json'
     $evidencePath = $evidenceDirectory + 'quality-evidence.md'
 
-    $null = $gates.Add((New-QualityGate -GateId 'dead-field' -Category 'mechanical' -RequirementRefs @('FR-004', 'FR-027', 'FR-030') -EvidenceRef $findingsPath -Description 'Inspect declared fields, DTOs, and config members for unused state.'))
-    $null = $gates.Add((New-QualityGate -GateId 'anti-pattern' -Category 'mechanical' -RequirementRefs @('FR-004', 'FR-028', 'FR-030') -EvidenceRef $findingsPath -Description 'Flag deterministic anti-patterns before model-based review.'))
-    $null = $gates.Add((New-QualityGate -GateId 'test-integrity' -Category 'mechanical' -RequirementRefs @('FR-004', 'FR-029', 'FR-030') -EvidenceRef $findingsPath -Description 'Require assertion-driven tests with meaningful negative-path evidence.'))
-    $null = $gates.Add((New-QualityGate -GateId 'stack-tooling-evidence' -Category 'tooling' -RequirementRefs @('FR-004', 'FR-010', 'FR-011') -EvidenceRef $evidencePath -Description 'Record the stack-aware lint, static-analysis, and verification command(s) selected for the active surface.'))
-    $null = $gates.Add((New-QualityGate -GateId 'quality-lens-review' -Category 'manual-evidence' -RequirementRefs @('FR-010', 'FR-011', 'FR-015') -EvidenceRef $evidencePath -Description 'Record checklist-backed quality reasoning for the selected preset or bounded custom composition.'))
+    $null = $gates.Add((New-QualityGate -GateId 'dead-field' -Category 'mechanical' -RequirementRefs @() -EvidenceRef $findingsPath -Description 'Inspect declared fields, DTOs, and config members for unused state.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-004, FR-027, FR-030
+    $null = $gates.Add((New-QualityGate -GateId 'anti-pattern' -Category 'mechanical' -RequirementRefs @() -EvidenceRef $findingsPath -Description 'Flag deterministic anti-patterns before model-based review.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-004, FR-028, FR-030
+    $null = $gates.Add((New-QualityGate -GateId 'test-integrity' -Category 'mechanical' -RequirementRefs @() -EvidenceRef $findingsPath -Description 'Require assertion-driven tests with meaningful negative-path evidence.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-004, FR-029, FR-030
+    $null = $gates.Add((New-QualityGate -GateId 'stack-tooling-evidence' -Category 'tooling' -RequirementRefs @() -EvidenceRef $evidencePath -Description 'Record the stack-aware lint, static-analysis, and verification command(s) selected for the active surface.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-004, FR-010, FR-011
+    $null = $gates.Add((New-QualityGate -GateId 'quality-lens-review' -Category 'manual-evidence' -RequirementRefs @() -EvidenceRef $evidencePath -Description 'Record checklist-backed quality reasoning for the selected preset or bounded custom composition.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-010, FR-011, FR-015
 
     if ($RiskResolution.required.id -contains 'concurrency-correctness') {
-        $null = $gates.Add((New-QualityGate -GateId 'concurrency-correctness-review' -Category 'manual-evidence' -RequirementRefs @('FR-003', 'FR-015') -EvidenceRef $evidencePath -Description 'Record how the plan addresses materially relevant concurrency-correctness concerns in Phase 1.'))
+        $null = $gates.Add((New-QualityGate -GateId 'concurrency-correctness-review' -Category 'manual-evidence' -RequirementRefs @() -EvidenceRef $evidencePath -Description 'Record how the plan addresses materially relevant concurrency-correctness concerns in Phase 1.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-003, FR-015
     }
 
     if ($RiskResolution.required.id -contains 'resiliency') {
-        $null = $gates.Add((New-QualityGate -GateId 'resiliency-semantics-review' -Category 'manual-evidence' -RequirementRefs @('FR-003', 'FR-015') -EvidenceRef $evidencePath -Description 'Record how the plan addresses materially relevant resiliency and degraded-behavior concerns in Phase 1.'))
+        $null = $gates.Add((New-QualityGate -GateId 'resiliency-semantics-review' -Category 'manual-evidence' -RequirementRefs @() -EvidenceRef $evidencePath -Description 'Record how the plan addresses materially relevant resiliency and degraded-behavior concerns in Phase 1.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-003, FR-015
     }
 
     if ($RiskResolution.required.id -contains 'retry-idempotency-and-recovery') {
-        $null = $gates.Add((New-QualityGate -GateId 'retry-idempotency-review' -Category 'manual-evidence' -RequirementRefs @('FR-015') -EvidenceRef $evidencePath -Description 'Record retry, idempotency, and recovery expectations only when they materially apply in this Phase 1 slice.'))
+        $null = $gates.Add((New-QualityGate -GateId 'retry-idempotency-review' -Category 'manual-evidence' -RequirementRefs @() -EvidenceRef $evidencePath -Description 'Record retry, idempotency, and recovery expectations only when they materially apply in this Phase 1 slice.'))  # quality-bar provenance (maintainer citation, kept out of consumer artifacts): FR-015
     }
 
     return @($gates)

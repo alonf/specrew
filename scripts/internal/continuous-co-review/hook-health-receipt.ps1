@@ -814,7 +814,7 @@ function Format-SpecrewHookHealthReport {
     }
 
     $sb = [System.Text.StringBuilder]::new()
-    [void]$sb.AppendLine('=== Specrew hook-health evidence (FR-053) ===')
+    [void]$sb.AppendLine('=== Specrew hook-health evidence ===')
     [void]$sb.AppendLine('Hook liveness is MONITORING evidence: a fresh receipt shows the configured hook path was observed')
     [void]$sb.AppendLine('firing. The receipt store is project-writable, so this is operational confidence, not authentication.')
     [void]$sb.AppendLine('The version is a NON-AUTHORITATIVE ambient-path-binding diagnostic and never promotes liveness/readiness.')

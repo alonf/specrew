@@ -2271,7 +2271,7 @@ function Write-DelegatedRoutingLedgerEntries {
         $status = if ([string]::IsNullOrWhiteSpace($roleEntry.Value.fallback_reason)) { 'honored' } else { 'fell-back' }
         $fallbackReason = if ([string]::IsNullOrWhiteSpace($roleEntry.Value.fallback_reason)) { '(none)' } else { $roleEntry.Value.fallback_reason }
 
-        Add-StructuredDecisionsLedgerEntry -ProjectRoot $ResolvedProjectPath -Title ("Routing evidence: {0}" -f $roleEntry.Value.role) -Type 'routing-evidence' -AffectedRequirement 'FR-043' -NextAction 'none' -Rationale ("Delegated lifecycle routing was applied for role '{0}'." -f $roleEntry.Value.role) -DetailLines @(
+        Add-StructuredDecisionsLedgerEntry -ProjectRoot $ResolvedProjectPath -Title ("Routing evidence: {0}" -f $roleEntry.Value.role) -Type 'routing-evidence' -AffectedRequirement 'delegated-lifecycle routing policy' -NextAction 'none' -Rationale ("Delegated lifecycle routing was applied for role '{0}'." -f $roleEntry.Value.role) -DetailLines @(
             ('- **Routing Evidence**: {0} | requested={1} | actual={2} | model={3} | status={4} | fallback={5}' -f $roleEntry.Value.role, $roleEntry.Value.requested_agent, $roleEntry.Value.effective_agent, $modelId, $status, $fallbackReason)
         ) | Out-Null
     }
@@ -3441,7 +3441,7 @@ if (Get-Command Invoke-CrewBootstrap -ErrorAction SilentlyContinue) {
 
 Write-Success "Prepared Specrew start context."
 if ($selectedHost -ne 'copilot') {
-    Write-Info ("Selected host: {0} (non-Squad runtime; coordinator prompt rewritten per FR-011/FR-012)" -f $selectedHost)
+    Write-Info ("Selected host: {0} (non-Squad runtime; coordinator prompt rewritten for this host)" -f $selectedHost)
 }
 $promptDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.PromptPath
 $contextDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resolvedProjectPath -Path $artifactPaths.ContextPath

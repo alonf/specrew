@@ -318,6 +318,10 @@ function Install-HookLauncher {
     # $env:/$raw/${...} literal — it is NOT expanded at deploy time. The launcher path is the only deploy-time
     # value, and it is baked into the command string (Get-SpecrewHookCommand), not into the launcher body.
     $projectRootEnvVarLiteral = ConvertTo-PowerShellStringArrayLiteral -Values @(Get-HookLauncherProjectRootEnvVars)
+    # This here-string GENERATES the launcher file, and the one internal id in it sits inside a
+    # comment of that generated file - the sanctioned half of the provenance rule. The generator
+    # carries it as a string only because the whole file body is one string.
+    # specrew-internal-id-ok: generated-file comment; comments are the sanctioned half
     $launcherBody = @'
 # Specrew user-level hook launcher — GENERATED per-machine by deploy-refocus-hooks.ps1 (do NOT edit by hand).
 # Some host configs are shared across projects, so their command string cannot name a per-project dispatcher path.

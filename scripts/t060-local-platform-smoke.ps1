@@ -175,7 +175,7 @@ try {
         run_id = 'run-t060-local-preflight'
         target_digest = $reviewedDigest
         snapshot_path = $root
-        review_scope = "T060 no-spend $platformName/$HostName production-port preflight."
+        review_scope = "No-spend $platformName/$HostName production-port preflight."
         prompt_path = (Join-Path $root 'scripts/internal/continuous-co-review/reviewer-candidate-prompt.md')
         candidate_result_path = (Join-Path $preflightRoot 'candidate/candidate.json')
         candidate_report_path = (Join-Path $preflightRoot 'candidate/candidate.md')
@@ -249,7 +249,7 @@ $progressSink = {
     $isHeartbeat = [string]$event.stage -ceq 'running' -and $null -eq $event.validated_finding_count
     if (-not $isHeartbeat -or ([long]$event.elapsed_ms - $lastHeartbeatPrinted) -ge 60000) {
         $findingText = if ($null -ne $event.validated_finding_count) { "; findings=$($event.validated_finding_count)" } else { '' }
-        Write-Host ("T060 {0}/{1} [{2}] elapsed={3}ms{4} {5}" -f $platformName, $HostName, $event.stage, $event.elapsed_ms, $findingText, $event.message)
+        Write-Host ("local-smoke {0}/{1} [{2}] elapsed={3}ms{4} {5}" -f $platformName, $HostName, $event.stage, $event.elapsed_ms, $findingText, $event.message)
         if ($isHeartbeat) { $lastHeartbeatPrinted = [long]$event.elapsed_ms }
     }
 }.GetNewClosure()
@@ -261,9 +261,9 @@ Complete one bounded risk-based code review of the implemented code and tests in
 correctness, security, failure semantics, and conformance with the resolved design context. Selected
 live path: harness=$HostName; platform=$platformName. Prioritize the common campaign/file contract plus
 the selected harness adapter and selected OS runtime integration; use adjacent tests and deterministic
-evidence to choose additional high-risk checks. T061 is the separate final independent signoff. This
-T060 run is one serialized live harness proof executed before the remaining T060 harnesses,
-campaign-authority cutover, T061 independent signoff, retrospective, and closeout. Treat plan/state
+evidence to choose additional high-risk checks. A separate final independent signoff follows. This
+run is one serialized live harness proof executed before the remaining platform harnesses,
+campaign-authority cutover, the final independent signoff, retrospective, and closeout. Treat plan/state
 entries that accurately identify those later steps or an external provider-quota constraint as
 execution context, not code-review findings. Report a pending or deferred item only when a grounded
 defect in the frozen code makes that step unsafe or impossible, or when the implementation contradicts

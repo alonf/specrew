@@ -76,8 +76,11 @@ foreach ($file in $bannerFiles) {
 }
 Assert-True ($totalEmitted -ge 50) ("the banner's emitted prose was actually read, not silently empty (found {0} strings)" -f $totalEmitted)
 
-# The ids the banner cites must be glossed with what the requirement MEANS, not decorated with empty
-# brackets - the detector already treats `FR-027 ()` as bare, and this pins the intent for a reader.
+# W46 (2026-08-22) SUPERSEDES THE GLOSS REQUIREMENT WITH THE STRONGER FORM. W22 required each cited id
+# to carry its meaning in brackets; the maintainer then ruled the ids themselves out of emitted strings
+# entirely (internal requirement ids are Specrew's inside voice, and they collide with the consumer's
+# own FR namespace). So the pin flips: the MEANING must survive in the banner prose, and the id must be
+# GONE from it - it now lives in the adjacent comment, the sanctioned half of the provenance rule.
 $sourceText = Get-Content -LiteralPath $bannerFiles[0] -Raw -Encoding UTF8
 foreach ($pair in @(
         @{ Id = 'FR-027'; Gloss = 'a committed boundary is not an approved one' }
@@ -85,7 +88,13 @@ foreach ($pair in @(
         @{ Id = 'FR-023'; Gloss = 'identical launch contract' }
         @{ Id = 'FR-025'; Gloss = 'expertise dials' }
         @{ Id = 'FR-004'; Gloss = 'shown as prose before any picker' })) {
-    Assert-True ($sourceText -match ([regex]::Escape($pair.Id) + '\s*\([^)]*' + [regex]::Escape($pair.Gloss))) ("{0} is glossed with what it means, not merely bracketed" -f $pair.Id)
+    Assert-True ($sourceText -match [regex]::Escape($pair.Gloss)) ("the meaning behind {0} still reaches the reader in consumer terms" -f $pair.Id)
+    # Every remaining occurrence of the id must sit inside a comment: on each line that carries it, a
+    # '#' must precede it. That is exactly where the citation belongs - and only there.
+    $outsideComment = @(Get-Content -LiteralPath $bannerFiles[0] -Encoding UTF8 | Where-Object {
+            $_.Contains($pair.Id) -and ($_.IndexOf('#') -lt 0 -or $_.IndexOf($pair.Id) -lt $_.IndexOf('#'))
+        })
+    Assert-True (@($outsideComment).Count -eq 0) ("{0} no longer appears outside a comment - the id lives in comments now" -f $pair.Id)
 }
 
 # MUTATION PROOF: a newly added bare id must fail this guard, or it certifies text nobody checked.
