@@ -535,6 +535,66 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-099 - the W43 stamp never ran on the path its own remedy names (resolved)
+
+- **Observed**: 2026-08-22, by the downstream walk, one day after -098 landed. KeyContextAI had no
+  `.specrew-extension-runtime.json` at all after a successful `specrew update`. Verified here at ground
+  truth, not taken on report.
+- **Cause**: the stamp block sat AFTER `if ($PassThru) { ... return }` in
+  `deploy-speckit-extension.ps1`. Both `specrew update` (`specrew-update.ps1:1361`) and `specrew init`
+  (via `Invoke-SpecKitExtensionDeployment`) invoke that script with `-PassThru`, so the stamp was
+  unreachable on every path that actually deploys - including the one the integrity check's refusal
+  names as the way back. The remedy was where the control never ran.
+- **Nothing crashed and no suite went red.** The check fails open when the marker is absent, by design,
+  so the guarantee was simply inactive. My W43 suite stayed green throughout because every one of its
+  six cases called `Write-SpecrewDeployedExtensionMarker` DIRECTLY. I proved the control in the shape I
+  invoked it, not in the shape a consumer reaches.
+- **Consequence while it was live**: the standing instruction "don't edit under `.specify/` - the marker
+  will catch it" was unenforceable at the moment it was given. It held because the downstream agent
+  followed it, not because anything checked.
+- **Resolution**: the stamp moved above every return, so it runs on all non-dry-run paths through the
+  deploy script. Init's other branch - `specify extension add --dev`, which lands files without going
+  through that script - stamps in `scripts/init/spec-kit-deploy.ps1`. Its `preserved` branch deliberately
+  does NOT: nothing landed there, and minting a marker over content the run never verified would turn
+  "unknown" into "checked", which is the -092 mistake in a new place.
+- **Verification**, in the shape the failure demands rather than the shape that is cheap:
+  `tests/integration/deployed-extension-marker-on-update.tests.ps1` drives the REAL `specrew update`
+  against a real fixture project, then hand-edits the deployed validator and requires the refusal. Five
+  cases, ~28s, in the slice lane. MUTATION-PROVEN: moving the stamp back under the `-PassThru` return
+  reproduces the defect and turns the acceptance case red; a string match on the file could not tell the
+  difference.
+
+### DRIFT-199-I001-100 - a closeout run diverted seven files it had just written (resolved)
+
+- **Observed**: 2026-08-22, same walk. One retro scaffold emitted seven `.pending` template siblings for
+  seven artifacts the same run had created moments earlier.
+- **Two causes, both introduced by -095's fix.** (1) `scaffold-retro-artifact.ps1` invoked the reviewer
+  scaffold TWICE - once with `-PassThru` to collect actions, once with `-SummaryOnly` to print. That was
+  harmless while `-SummaryOnly` skipped the writes; -095 correctly stopped it skipping work, and the
+  second call silently became a second WRITING pass. (2) The protection check asks "does this file exist
+  and does the iteration read accepted" - and after the first pass every artifact existed, so the second
+  pass judged its own output to be protected human evidence.
+- **Reported as cosmetic; it is not.** The `.pending` warning added the day before (-096) exists so a
+  human reads it and decides. Seven false ones per closeout is how that warning becomes wallpaper, and
+  the one that matters arrives after the reader has learned to dismiss it.
+- **Resolution**, three parts, because one alone leaves a hole:
+  - ONE invocation. The `-PassThru` call now also prints the digest and exits 0, so the second call has
+    no reason to exist. -095's partial-completion reporting moved onto the remaining call.
+  - A run never diverts a file it created. The set of files present is recorded once, before the first
+    write - by the time the second write asks, `Test-Path` can no longer tell the two apart. Fails
+    CLOSED on anything it cannot classify: a stray `.pending` costs noise, overwriting accepted evidence
+    costs the evidence.
+  - Identical content is not a change. Recorded as `unchanged`, written nowhere, so a legitimate re-run
+    does not fill the directory with copies of itself.
+- **And a fourth thing found while fixing it**: `Write-MissingScaffoldFile` never overwrites, so an
+  existing target was already safe - asking the verdict question first turned "preserve it, write
+  nothing" into "write a `.pending` copy". Removed.
+- **Verification**: `tests/unit/scaffold-writes-once.tests.ps1`, 4 cases - a closeout produces no
+  `.pending`, the retro scaffold calls the reviewer scaffold exactly once (counted in the AST, so a
+  comment cannot satisfy it), a re-run rewrites and diverts nothing, and a genuinely different
+  pre-existing artifact is STILL protected, because narrowing the rule to "not what I just wrote" must
+  not narrow it to nothing. End-to-end: 7 of 7 artifacts, 0 pending, exit 0.
+
 ### DRIFT-199-I001-097 - a local named after an automatic variable, and I closed the blocker on the wrong defect (resolved)
 
 - **Observed**: 2026-08-21. The walk updated to the "fixed" build and threw the same error. My -095 fix
@@ -1107,6 +1167,37 @@ Two defects in the W35 fix itself, both found by review of the landed code rathe
   `Get-Command -ErrorAction SilentlyContinue`, and the suite had never loaded `shared-governance.ps1`,
   so the guard silently skipped that path and the case passed without exercising it. Fixed by loading
   the real module rather than stubbing it — the same shape as method rule 1, one layer out.
+
+### METHOD NOTE — a control that refuses must be proven to fire on the path its own remedy names
+
+Added 2026-08-22 from DRIFT-199-I001-099. The reviewer named it after the seventh instance of the same
+family in one week, and it is the sharpest of them, so it earns a rule rather than another entry.
+
+The family: a control that exists, reads correctly, has a producer and a consumer, and never executes.
+The earlier six were controls with no consumer, or no producer. This one had both — and the path it
+never ran on was `specrew update`, the exact command its own refusal message tells the reader to run.
+
+> **4. A control that refuses must be proven to fire on the path its own remedy names — end to end,
+> through the real command, not through the function.**
+
+Why the existing rules did not catch it. Rule 1 was satisfied: the W43 suite had assertions that failed
+when the guard was removed. Rule 2 was satisfied: the mutations landed. Every case called
+`Write-SpecrewDeployedExtensionMarker` directly, so all six proved the control in the shape I invoked it
+rather than the shape a consumer reaches. Mutation-proving a call that no consumer makes proves the
+mutation, not the guarantee.
+
+The tell, worth recognising early: a refusal message that names a command, and a test suite that never
+runs that command. If the message says `specrew update`, something in the suite must run `specrew
+update`. It is slower. The gap it covers is exactly the gap the fast version cannot see.
+
+And the second-order cost, which is the reason this is a method note and not a bug: a control believed
+active changes what people do. The standing instruction "don't edit under `.specify/` — the marker will
+catch it" was unenforceable at the moment it was given. It held because a person followed it. An
+inactive control does not merely fail to protect; it withdraws the caution that would have.
+
+**Every one of the seven was found by running, not by reading — and this one by a downstream walk one
+day after it landed.** The suite that should have caught it was written by the same person, in the same
+hour, as the defect.
 
 ### METHOD NOTE — a guard can be present, readable and inert, and so can its proof
 

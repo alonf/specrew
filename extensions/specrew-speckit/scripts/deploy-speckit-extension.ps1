@@ -407,21 +407,31 @@ foreach ($item in $itemsToCopy) {
 
 Ensure-ExtensionRegistration -ManifestPath $targetExtensionsManifest -ExtensionName 'specrew-speckit' -ExtensionVersion $extensionVersion -Actions $actions
 
-if ($PassThru) {
-    foreach ($action in $actions) {
-        $action
-    }
-    return
-}
-
-# W43: stamp the deployed extension so a later hand-edit is detectable. Written LAST, after every
-# managed file has landed, so the marker describes what is actually on disk.
+# W43: stamp the deployed extension so a later hand-edit is detectable. Written after every managed
+# file has landed, so the marker describes what is actually on disk.
+#
+# DRIFT-005 (2026-08-22, found by a downstream walk one day after this landed): this block sat AFTER
+# the `-PassThru` early return below. Both `specrew update` and `specrew init` invoke this script with
+# -PassThru, so the stamp was unreachable on every path that actually deploys - including the one the
+# integrity check's own refusal names as the remedy. The control existed, its consumer existed, and it
+# never ran. Nothing crashed; the marker was simply never there, and the check fails open by design, so
+# the guarantee was silently inactive for every project.
+#
+# The stamp now runs BEFORE any return, on every non-dry-run path through this script. Placement is
+# load-bearing: keep it above the -PassThru block, not below it.
 if (-not $DryRun) {
     try {
         $extensionMarker = Write-SpecrewDeployedExtensionMarker -ProjectRoot $resolvedProjectPath -SpecrewVersion $extensionVersion
         if ($extensionMarker) { Add-DeploymentAction -Actions $actions -Action 'stamped' -Path $extensionMarker }
     }
     catch { Write-Host ("WARN: could not stamp the deployed extension: {0}" -f $_.Exception.Message) -ForegroundColor Yellow }
+}
+
+if ($PassThru) {
+    foreach ($action in $actions) {
+        $action
+    }
+    return
 }
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Spec Kit extension deployment {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $resolvedProjectPath)) -ForegroundColor Green

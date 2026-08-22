@@ -541,12 +541,46 @@ $($phaseVarianceRows -join [Environment]::NewLine)
 
 Write-MissingFile -TargetPath $retroPath -Content $retroContent -Actions $actions
 
-$reviewerArtifactActions = @(
-    & $reviewerArtifactScriptPath `
-        -IterationDirectory $resolvedIterationDirectory `
-        -PassThru `
-        -DryRun:$DryRun
-)
+# W40/DRIFT-006: ONE invocation, not two.
+#
+# This script used to call the reviewer scaffold twice - once with -PassThru to collect actions, and
+# again with -SummaryOnly to print. That was harmless while -SummaryOnly skipped the writes. W40 removed
+# that skip (correctly: -SummaryOnly must suppress OUTPUT, not work), which turned the second call into
+# a second writing pass. On an accepted iteration the artifact-protection check then saw the files the
+# FIRST pass had just created, judged them protected, and diverted all seven to `.pending` - junk in
+# every closeout, and worse, it trained the reader to ignore the pending warning that exists to be read.
+#
+# W40 reported precisely what it completed, which is why this was findable. The reporting moved here so
+# there is still exactly one call.
+$reviewerArtifactActions = @()
+try {
+    $reviewerArtifactActions = @(
+        & $reviewerArtifactScriptPath `
+            -IterationDirectory $resolvedIterationDirectory `
+            -PassThru `
+            -SummaryOnly `
+            -DryRun:$DryRun
+    )
+    if ($LASTEXITCODE -ne 0) { throw "reviewer-artifact scaffold exited with code $LASTEXITCODE" }
+}
+catch {
+    # W40: REPORT WHAT COMPLETED, NOT JUST THAT SOMETHING FAILED.
+    #
+    # retro.md is already written by the time this sub-step runs. When the sub-step threw, this script
+    # exited non-zero having half-succeeded, and the exit code alone could not tell a caller which half
+    # - so the missing reviewer artifacts went unnoticed until the closeout validator refused, at a
+    # gate, much later. Atomicity is not available here (retro.md is a legitimate independent output),
+    # so the alternative obligation applies: say precisely what landed and what did not.
+    Write-Host ''
+    Write-Host 'PARTIAL SCAFFOLD - this run completed some of its work and not the rest.' -ForegroundColor Yellow
+    Write-Host ('  WROTE:     {0}' -f $retroPath) -ForegroundColor Yellow
+    Write-Host '  DID NOT WRITE: the reviewer closeout artifacts (code-map.md, dependency-report.md,' -ForegroundColor Yellow
+    Write-Host '                 coverage-evidence.md, reviewer-index.md, review-diagrams.md).' -ForegroundColor Yellow
+    Write-Host ('  REASON:    {0}' -f $_.Exception.Message) -ForegroundColor Yellow
+    Write-Host '  The retro artifact above is valid and does not need redoing. Re-run only the reviewer' -ForegroundColor Yellow
+    Write-Host ('             artifacts: {0} -IterationDirectory {1}' -f $reviewerArtifactScriptPath, $resolvedIterationDirectory) -ForegroundColor Yellow
+    exit 1
+}
 
 foreach ($action in $reviewerArtifactActions) {
     if ($null -eq $action) {
@@ -563,29 +597,4 @@ if ($PassThru) {
 
 $actions | Select-Object Action, Path | Format-Table -AutoSize
 Write-Host ("Retro artifact scaffold {0} for {1}" -f ($(if ($DryRun) { 'previewed' } else { 'completed' }), $retroPath)) -ForegroundColor Green
-# W40: REPORT WHAT COMPLETED, NOT JUST THAT SOMETHING FAILED.
-#
-# retro.md is already written by the time this sub-step runs. When the sub-step threw, this script
-# exited non-zero having half-succeeded, and the exit code alone could not tell a caller which half
-# - so the missing reviewer artifacts went unnoticed until the closeout validator refused, at a
-# gate, much later. Atomicity is not available here (retro.md is a legitimate independent output),
-# so the alternative obligation applies: say precisely what landed and what did not.
-try {
-    & $reviewerArtifactScriptPath `
-        -IterationDirectory $resolvedIterationDirectory `
-        -SummaryOnly `
-        -DryRun:$DryRun
-    if ($LASTEXITCODE -ne 0) { throw "reviewer-artifact scaffold exited with code $LASTEXITCODE" }
-}
-catch {
-    Write-Host ''
-    Write-Host 'PARTIAL SCAFFOLD - this run completed some of its work and not the rest.' -ForegroundColor Yellow
-    Write-Host ('  WROTE:     {0}' -f $retroPath) -ForegroundColor Yellow
-    Write-Host '  DID NOT WRITE: the reviewer closeout artifacts (code-map.md, dependency-report.md,' -ForegroundColor Yellow
-    Write-Host '                 coverage-evidence.md, reviewer-index.md, review-diagrams.md).' -ForegroundColor Yellow
-    Write-Host ('  REASON:    {0}' -f $_.Exception.Message) -ForegroundColor Yellow
-    Write-Host '  The retro artifact above is valid and does not need redoing. Re-run only the reviewer' -ForegroundColor Yellow
-    Write-Host ('             artifacts: {0} -IterationDirectory {1}' -f $reviewerArtifactScriptPath, $resolvedIterationDirectory) -ForegroundColor Yellow
-    exit 1
-}
 exit 0

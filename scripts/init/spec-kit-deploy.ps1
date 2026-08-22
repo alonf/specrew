@@ -229,6 +229,15 @@ function Invoke-SpecKitExtensionDeployment {
 
         try {
             Invoke-NativeCommand -FilePath 'specify' -ArgumentList @('extension', 'add', '--dev', $extensionSourceRoot) -WorkingDirectory $ProjectPath
+            # DRIFT-005: this path lands the managed files WITHOUT going through
+            # deploy-speckit-extension.ps1, so it needs its own stamp. The 'preserved' path above
+            # deliberately does not get one: nothing landed there, and minting a marker over content
+            # this run never verified would turn "unknown" into "checked" - the fact would not be
+            # observed, only asserted.
+            if (Get-Command -Name 'Write-SpecrewDeployedExtensionMarker' -ErrorAction SilentlyContinue) {
+                try { $null = Write-SpecrewDeployedExtensionMarker -ProjectRoot $ProjectPath }
+                catch { Write-Host ("[info] could not stamp the deployed extension: {0}" -f $_.Exception.Message) -ForegroundColor Yellow }
+            }
             return [pscustomobject]@{
                     Action = 'installed-via-cli'
                     Path   = $targetExtensionRoot

@@ -37,10 +37,64 @@ function Add-ScaffoldAction {
         })
 }
 
+# DRIFT-006: what THIS RUN wrote is not evidence this run has to protect.
+#
+# Protection exists so a generated template never overwrites a human's accepted artifact. A file this
+# same invocation created moments ago is neither. Recording the pre-existing set once, before the first
+# write, is what makes "existed before this run" answerable at all - by the time the second write asks,
+# `Test-Path` can no longer tell the two apart, which is exactly how seven .pending siblings appeared
+# for seven files the same run had just created.
+$script:SpecrewPreexistingArtifacts = $null
+$script:SpecrewPreexistingScannedDirectories = $null
+
+function Initialize-SpecrewPreexistingArtifacts {
+    param([Parameter(Mandatory = $true)][string]$IterationDirectory)
+
+    $set = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $scanned = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    # The iteration directory holds the five closeout artifacts and the dashboard; the feature directory
+    # above it holds current-architecture.md. Both are written by this script, so both must be recorded -
+    # a directory left unscanned would make every file in it look newly created.
+    $iterationsRoot = Split-Path -Parent $IterationDirectory
+    $featureRoot = if ($iterationsRoot) { Split-Path -Parent $iterationsRoot } else { $null }
+    foreach ($directory in @($IterationDirectory, $featureRoot)) {
+        if ([string]::IsNullOrWhiteSpace($directory)) { continue }
+        if (-not (Test-Path -LiteralPath $directory -PathType Container)) { continue }
+        $null = $scanned.Add([System.IO.Path]::GetFullPath($directory))
+        foreach ($file in @(Get-ChildItem -LiteralPath $directory -File -Force -ErrorAction SilentlyContinue)) {
+            $null = $set.Add($file.FullName)
+        }
+    }
+
+    $script:SpecrewPreexistingArtifacts = $set
+    $script:SpecrewPreexistingScannedDirectories = $scanned
+}
+
+function Test-SpecrewFileExistedBeforeThisRun {
+    param([Parameter(Mandatory = $true)][string]$TargetPath)
+
+    # Fail CLOSED wherever the answer is unknown - an uninitialised set, or a target in a directory that
+    # was never scanned. Protecting a file we cannot classify is the safe direction: a stray `.pending`
+    # costs noise, and overwriting a human's accepted evidence costs the evidence.
+    if ($null -eq $script:SpecrewPreexistingArtifacts) { return $true }
+    $full = [System.IO.Path]::GetFullPath($TargetPath)
+    $parent = [System.IO.Path]::GetDirectoryName($full)
+    if ($null -eq $script:SpecrewPreexistingScannedDirectories -or
+        -not $script:SpecrewPreexistingScannedDirectories.Contains($parent)) {
+        return $true
+    }
+    return $script:SpecrewPreexistingArtifacts.Contains($full)
+}
+
 function Test-SpecrewFileHasPopulatedVerdict {
     param([string]$TargetPath)
 
     if (-not (Test-Path -LiteralPath $TargetPath -PathType Leaf)) {
+        return $false
+    }
+
+    if (-not (Test-SpecrewFileExistedBeforeThisRun -TargetPath $TargetPath)) {
         return $false
     }
 
@@ -142,6 +196,18 @@ function Write-ScaffoldFile {
         [System.Collections.ArrayList]$Actions
     )
 
+    $rendered = ConvertTo-LintCleanMarkdown -Content $Content
+
+    # DRIFT-006: nothing to protect and nothing to update when the generated content is already what is
+    # on disk. Diverting an identical file to `.pending` asks the reader to compare two copies of the
+    # same bytes, and every such prompt they dismiss makes the next one - the one that differs - cheaper
+    # to dismiss too.
+    if ((Test-Path -LiteralPath $TargetPath -PathType Leaf) -and
+        ((Get-Content -LiteralPath $TargetPath -Raw -Encoding UTF8) -ceq $rendered)) {
+        Add-ScaffoldAction -Actions $Actions -Action 'unchanged' -Path $TargetPath
+        return
+    }
+
     $finalPath = $TargetPath
     if (Test-SpecrewFileHasPopulatedVerdict -TargetPath $TargetPath) {
         $finalPath = "$TargetPath.pending"
@@ -178,16 +244,16 @@ function Write-MissingScaffoldFile {
         [System.Collections.ArrayList]$Actions
     )
 
-    $finalPath = $TargetPath
-    if (Test-SpecrewFileHasPopulatedVerdict -TargetPath $TargetPath) {
-        $finalPath = "$TargetPath.pending"
-        Write-Host "WARN: Protected existing accepted artifact '$TargetPath'. Emitting template default to sibling '$finalPath' instead." -ForegroundColor Yellow
-    }
-
-    if (Test-Path -LiteralPath $finalPath) {
-        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $finalPath
+    # DRIFT-006: this writer NEVER overwrites, so an existing target is already safe and there is nothing
+    # for protection to protect it from. Asking the verdict question first turned "preserve it, write
+    # nothing" into "write a .pending copy" - a file nobody asked for, describing a decision that had
+    # already been made in the reader's favour. Existence is the whole answer here.
+    if (Test-Path -LiteralPath $TargetPath) {
+        Add-ScaffoldAction -Actions $Actions -Action 'preserved' -Path $TargetPath
         return
     }
+
+    $finalPath = $TargetPath
 
     Add-ScaffoldAction -Actions $Actions -Action $(if ($DryRun) { 'would-create' } else { 'created' }) -Path $finalPath
     if ($DryRun) {
@@ -2726,6 +2792,9 @@ $digestLine
 # diff - stay legible; re-flowing seventy lines to remove one `if` is how an unrelated defect gets
 # introduced next to a fix.
 $writeReviewerArtifacts = $true
+# DRIFT-006: record what was on disk BEFORE the first write, so protection can tell a pre-existing
+# artifact from one this run just produced. Must stay immediately above the write block.
+Initialize-SpecrewPreexistingArtifacts -IterationDirectory $resolvedIterationDirectory
 if ($writeReviewerArtifacts) {
     # F-028: Handle -Force flag with interactive confirmation
     if ($Force) {
@@ -2800,12 +2869,7 @@ Human annotations in these files will be lost. Preserve annotations in review.md
     Write-ScaffoldFile -TargetPath $currentArchitecturePath -Content $currentArchitectureContent -Actions $actions
 }
 
-if ($PassThru) {
-    $actions
-    return
-}
-
-if (-not $SummaryOnly) {
+if (-not $SummaryOnly -and -not $PassThru) {
     $actions | Select-Object Action, Path | Format-Table -AutoSize
 }
 
@@ -2815,6 +2879,17 @@ if ($nonInteractive) {
 }
 else {
     Write-ReviewerSummary -Summary $summaryObject
+}
+
+# DRIFT-006: -PassThru returns the actions AND still reports and exits 0.
+#
+# It used to `return` here, above the digest, so a caller that wanted the actions got no summary - which
+# is why scaffold-retro-artifact.ps1 called this script a second time just to print, and that second
+# call became a second writing pass once W40 stopped -SummaryOnly from skipping the work. One call now
+# does both. The summary goes to the host stream, so it never pollutes the captured action objects, and
+# `exit 0` keeps $LASTEXITCODE meaningful for the caller's partial-completion check.
+if ($PassThru) {
+    $actions
 }
 
 exit 0
