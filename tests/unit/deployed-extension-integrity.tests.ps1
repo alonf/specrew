@@ -98,6 +98,23 @@ Describe 'W43 a modified deployed validator is detected and refused' {
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'does not report a CRLF/LF checkout difference as tampering' {
+        # The comment claimed line-ending normalisation while the code hashed raw bytes. Every governed
+        # project commits .specify/, so the first clone taken with different line endings would have been
+        # told its validator was modified when nobody had touched it - and a refusal that fires on
+        # innocent state teaches the reader to route around it, which costs more than the gap it closed.
+        $root = New-DeployedProject
+        try {
+            $validator = Join-Path $root '.specify/extensions/specrew-speckit/scripts/validate-governance.ps1'
+            $text = [IO.File]::ReadAllText($validator)
+            $flipped = if ($text.Contains("`r`n")) { $text.Replace("`r`n", "`n") } else { $text.Replace("`n", "`r`n") }
+            $flipped | Should -Not -Be $text -Because 'the case is meaningless if the line endings did not actually change'
+            [IO.File]::WriteAllText($validator, $flipped)
+            @(Check -Root $root).Count | Should -Be 0 -Because 'the same content with other line endings is the same content'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'tells a deliberate patcher where the edit actually belongs' {
         # The reachable-action property: refusing is not enough if the reader had a real reason to edit.
         $root = New-DeployedProject

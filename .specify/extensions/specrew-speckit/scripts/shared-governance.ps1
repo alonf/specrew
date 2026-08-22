@@ -6387,9 +6387,20 @@ function Get-SpecrewDeployedExtensionManifest {
                 Sort-Object { ([IO.Path]::GetRelativePath($root, $_.FullName)) -replace '\\', '/' })
         foreach ($file in $files) {
             $relative = ([IO.Path]::GetRelativePath($root, $file.FullName)) -replace '\\', '/'
-            # Text-normalised, so a CRLF/LF checkout difference is not reported as tampering - the same
-            # reason the co-review marker hashes logically rather than byte-for-byte.
+            # LINE-ENDING NORMALISED, and the code has to actually do it. The comment here used to claim
+            # normalisation while the line below hashed raw bytes - a false refusal waiting for the first
+            # project that commits .specify/ (they all do) and is cloned with different line endings.
+            # Git would hand one checkout CRLF and another LF, the hashes would differ, and the validator
+            # would report tampering to someone who had touched nothing. A refusal that fires on innocent
+            # state is worse than the gap it closes, because it teaches the reader to route around it.
+            #
+            # CR bytes are stripped for text; anything containing a NUL is treated as binary and hashed
+            # whole, since stripping bytes from a binary would be corruption, not normalisation.
             $bytes = [IO.File]::ReadAllBytes($file.FullName)
+            if ([Array]::IndexOf($bytes, [byte]0) -lt 0) {
+                $text = [Text.Encoding]::UTF8.GetString($bytes).Replace("`r`n", "`n")
+                $bytes = [Text.Encoding]::UTF8.GetBytes($text)
+            }
             $hash = ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLowerInvariant()
             [void]$entries.Add([pscustomobject][ordered]@{ path = $relative; sha256 = $hash })
         }

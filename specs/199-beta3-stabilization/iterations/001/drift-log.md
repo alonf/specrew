@@ -535,6 +535,27 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-101 - the integrity hash comment claimed normalisation the code did not do (resolved)
+
+- **Observed**: 2026-08-22, while verifying -099. The manifest comment read "Text-normalised, so a
+  CRLF/LF checkout difference is not reported as tampering" directly above
+  `[IO.File]::ReadAllBytes(...)` hashed whole. The comment described the intent; the code hashed raw
+  bytes.
+- **Why it mattered before anyone hit it**: every governed project commits `.specify/`, including the
+  marker. The first clone taken with different line endings - a colleague on another machine, a CI
+  checkout with `core.autocrlf` set differently - would have been told its validator was modified when
+  nobody had touched it. A refusal that fires on innocent state costs more than the gap it closes,
+  because the reader learns to route around the check rather than read it.
+- **Resolution**: line endings are normalised before hashing, for real. Files containing a NUL byte are
+  treated as binary and hashed whole, since stripping bytes from a binary is corruption rather than
+  normalisation.
+- **Verification**: a case in `tests/unit/deployed-extension-integrity.tests.ps1` flips the deployed
+  validator's line endings and requires silence - and asserts the flip actually changed the file first,
+  because a normalisation test that normalises nothing passes for the wrong reason.
+- **Worth naming**: found by reading code I had written the day before, while checking something else.
+  The comment was not a lie about someone else's code; it was my own statement of what I meant to do,
+  sitting above what I did.
+
 ### DRIFT-199-I001-099 - the W43 stamp never ran on the path its own remedy names (resolved)
 
 - **Observed**: 2026-08-22, by the downstream walk, one day after -098 landed. KeyContextAI had no
