@@ -535,6 +535,59 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-112 - the entitlement model: the allowance meters attempts, the human authorizes deliveries (resolved)
+
+- **W50, observed on the walk**: `--approve-round` consumed the captured phrase and minted round-2,
+  then crashed on FeatureId validation. The human's approval was spent by an invocation that could
+  never run, and the correct one-capture-one-round refusal then locked them out. Root cause of the
+  crash itself: feature resolution happened in TWO places - the mint resolved it, then the
+  design-context call received the raw empty parameter and threw a raw ValidatePattern error exposing
+  the id regex (an internal-language leak in a refusal). Same half-completed class as W40.
+- **The ruling that generalizes the fix**: a captured `approved for review round` is an ENTITLEMENT to
+  one DELIVERED review, and it survives system failure.
+  - Failure BEFORE invocation (crash, unresolvable feature, no slot): nothing is consumed - not the
+    capture, not a slot.
+  - INVOKED but NOT DELIVERED (infrastructure failure; a harness-fault partial): the token cost is
+    recorded as spent-without-delivery in a delivery journal - the cost is real and stays visible -
+    the entitlement stands, and the system gets ONE bounded automatic retry (more time on a timeout
+    kill, a fresh run otherwise, choice recorded) before it may ask the human anything.
+  - DELIVERED (complete; or a partial the human explicitly accepts): consumed. Only here. The
+    partial-acceptance consumption fires inside the partial-signoff override writer, so accepting IS
+    the delivery.
+  - The bound matters: unlimited retry on "failure" is a token-burn hole. After the second failure the
+    human gets a plain-language ask - what failed, what it cost, what is requested - and it is never a
+    re-approval of the same decision: "your approved review could not be delivered after a retry; try
+    a different host, or withdraw it."
+  - Measured against the walk: yesterday's partial auto-retries once instead of demanding a reset, and
+    today's crash leaves the capture standing. Two human asks become zero.
+- **Implementation**: `Resolve-SpecrewRoundEntitlementOutcome` classifies each invocation on FR-014's
+  own never-reached discriminator, so the entitlement and the round counter cannot drift apart;
+  consumption moved from the mint to the delivered branch of the new entitlement loop; identity
+  resolution failures refuse in consumer language and say the approval was NOT spent; the retry mints
+  the next round reference against the same standing entitlement; the orchestrator's design-context
+  call now receives the RESOLVED feature and the ValidatePattern accepts empty (routing to the
+  documented fallback chain).
+- **Rider: one currency.** Round accounting spoke three - "1 of 4 rounds" on the pause menu, slots:1
+  in the grant, allowance-exhausted in the refusal. The exhausted refusal now speaks rounds: every
+  approved round has been used by an attempt, and a reset restores them, with the typed phrase named.
+  The slot vocabulary stays internal.
+- **Rider: the allowance reset is phrase-gated authority.** Checked rather than assumed, as asked: it
+  was NOT gated - a bare agent invocation with --ack-reason applied it immediately, the W44 gap one
+  door down, and the walk agent's "approve allowance reset" typed decision was improvised over a
+  mechanism that did not exist. It exists now: `approved for allowance reset` captured at prompt-entry
+  with the Stop backstop, consumed on the reset, terminal self-evident, refusal naming the phrase.
+- **Verification**: 26 cases green in the typed-authority suite, including RED-first acceptance
+  through the real CLI (unresolvable feature: consumer language, no raw regex, capture unspent, "was
+  NOT spent" stated; undelivered fixture run leaves the entitlement standing; partial acceptance
+  consumes at the acceptance; reset gate all four shapes) plus structural pins: consumption only in
+  the delivered branch, retry bounded at one, both journaled, the ask never the phrase demand.
+  MUTATION-PROVEN: restoring stamp-at-mint reds exactly the undelivered-run case. STATED LIMIT: the
+  invoked-but-undelivered retry path is pinned structurally and at the classifier, not end-to-end -
+  driving a real invoked-failed round needs a live harness, which is what the walks are for.
+- **Also for the record, from the maintainer**: the W44 happy path and the one-capture-one-round
+  refusal both worked live on Copilot, and the walk agent rendered an improvised menu in the
+  typed-decision shape unprompted - the vocabulary is propagating.
+
 ### DRIFT-199-I001-111 - the unauthorized-source exit menu takes the W49 shape; the boundary-packet split stands (resolved)
 
 - **The ruling (2026-08-23)**: the boundary-packet contract is NOT touched before the tag - three

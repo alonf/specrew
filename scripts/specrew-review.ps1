@@ -876,6 +876,32 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
             # It still demands explicit human evidence - a reason, in the human's own words - because
             # lifting a spend limit is exactly the act that must never be implicit.
             if ([string]$parsedArgs.Remediate -ceq 'allowance-reset') {
+                # W50 rider: replenishing spend authority is an authority act - the W44 gap one door
+                # down. In an agent session the human's typed `approved for allowance reset` is the
+                # authority this command consumes; a human at their own terminal stays self-evident.
+                $humanAuthorityStorePathReset = Join-Path $PSScriptRoot 'internal/bootstrap/HumanAuthorityStore.ps1'
+                if ((Test-Path -LiteralPath $humanAuthorityStorePathReset -PathType Leaf) -and
+                    -not (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue)) {
+                    try { . $humanAuthorityStorePathReset } catch { $null = $_ }
+                }
+                $capturedAllowanceReset = $null
+                $insideAgentSessionReset = $false
+                if (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) {
+                    try { $insideAgentSessionReset = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSessionReset = $false }
+                }
+                if (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue) {
+                    try { $capturedAllowanceReset = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedAllowanceReset = $null }
+                }
+                if ($insideAgentSessionReset -and $null -eq $capturedAllowanceReset) {
+                    Write-Host 'Replenishing the review rounds is the human''s decision, and no approval from them has been captured.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host 'Ask them for it in the conversation. Their typed reply:' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host '  approved for allowance reset' -ForegroundColor Cyan
+                    Write-Host ''
+                    Write-Host 'Once they have typed it, run this same command again with their reason in --ack-reason. From their own terminal, the human can run it directly - their invocation is itself the approval.'
+                    exit 1
+                }
                 if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
                     Write-Host 'Topping up the review rounds needs a reason recorded with it.' -ForegroundColor Yellow
                     Write-Host ''
@@ -904,6 +930,9 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                         New-ReviewCampaignPauseDecisionFact -CampaignId $resetIdentity.campaign_id `
                             -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingAtReset -Name 'run_id')) `
                             -Choice 'fix-and-continue' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))) | Out-Null
+                }
+                if ($null -ne $capturedAllowanceReset -and (Get-Command -Name 'Complete-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue)) {
+                    try { Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference ([string]$resetFact.reset_id) | Out-Null } catch { $null = $_ }
                 }
                 if ($Json) { $resetFact | ConvertTo-Json -Depth 10; exit 0 }
                 Write-Host 'Your review rounds are topped up. The rounds already run stay on the record; they no longer count against your allowance.' -ForegroundColor Green
@@ -1152,8 +1181,24 @@ if ($Live) {
             # An explicit --authorization-ref still wins, untouched.
             $approvalMinted = $false
             if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and $roundApprovalRequested) {
-                $approvalIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath `
-                    -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                # W50: VIABILITY BEFORE SPEND. On the walk this resolution succeeded, the capture was
+                # stamped spent, and the invocation then crashed downstream - the human's approval was
+                # consumed by an invocation that could never run, and the one-capture-one-round refusal
+                # then locked them out. Resolution failures now refuse in consumer language, and the
+                # entitlement is untouched (consumption moved to DELIVERY, below).
+                $approvalIdentity = $null
+                try {
+                    $approvalIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath `
+                        -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+                }
+                catch {
+                    Write-Host $_.Exception.Message -ForegroundColor Yellow
+                    if ($null -ne $capturedRoundApproval) {
+                        Write-Host ''
+                        Write-Host 'The human''s typed approval was NOT spent - nothing ran. Once the feature is named, run this again; their approval is still standing.' -ForegroundColor Cyan
+                    }
+                    exit 1
+                }
                 # THE ROUND NUMBER IS ROUNDS ALREADY RUN, NOT APPROVALS ALREADY MINTED.
                 #
                 # The first version counted grants, so approving the same round twice minted a SECOND
@@ -1173,17 +1218,10 @@ if ($Live) {
                 catch { $roundsRun = 0 }
                 $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($roundsRun + 1)
                 $approvalMinted = $true
-                # W44: the phrase the human typed becomes this reference's recorded authority. One
-                # approval, one round - the capture is stamped spent with the ref it became, so the
-                # record reads end to end: who approved (the phrase), what it became (the ref).
-                if ($null -ne $capturedRoundApproval -and
-                    (Get-Command -Name 'Complete-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
-                    try {
-                        Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath `
-                            -AuthorizationRef $campaignGrantAuthorizationRef | Out-Null
-                    }
-                    catch { $null = $_ }
-                }
+                # W50 (supersedes the W44 stamp-at-mint): THE ALLOWANCE METERS ATTEMPTS; THE HUMAN
+                # AUTHORIZES DELIVERIES. The captured phrase is an entitlement to one DELIVERED review,
+                # so it is consumed after the run - and only when the run delivered. The mint still
+                # names the ref the phrase becomes; the stamp waits for the delivery it paid for.
             }
 
             # NEITHER GIVEN, AND A ROUND NEEDS ONE: say THAT, and name the command. This is the sentence
@@ -1364,11 +1402,68 @@ if ($Live) {
                 # (stop-here returned above, before its decision could be recorded on a failed landing;
                 # `landed`, not `ok` - the per-STEP outcomes carry `ok`, the composition does not.)
             }
-            $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
-                -RunId ([string]$parsedArgs.RunId) -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
-                -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
-                -DesignContextRefs @($parsedArgs.DesignContextRefs) -ExcludedPathPatterns @($parsedArgs.ExcludedPathPatterns) `
-                -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
+            # W50: THE ENTITLEMENT LOOP. One invocation, plus at most ONE bounded automatic retry when
+            # a run was invoked but not delivered (infrastructure failure, or a partial produced by a
+            # harness fault). The retry chooses more time (a timeout kill) or a fresh run on the same
+            # host otherwise, and records its choice. Unlimited retry on "failure" is a token-burn hole
+            # an agent could fall into; after the second failure the human gets a plain-language ask -
+            # what failed, what it cost, what is requested - never a re-approval of the same decision.
+            $entitlementAttempt = 0
+            $entitlementOutcome = $null
+            $entitlementRetried = $false
+            while ($true) {
+                $entitlementAttempt++
+                $attemptRunId = if ($entitlementAttempt -eq 1) { [string]$parsedArgs.RunId } else { '' }
+                $attemptTimeout = if ($entitlementRetried -and $entitlementOutcome -and [string]$entitlementOutcome.reason -match 'timed-out|timeout') { [int][Math]::Min(7200, [int]($tos * 1.5)) } else { $tos }
+                $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
+                    -RunId $attemptRunId -ReviewerHost $campaignHost -GrantAuthorizationRef $campaignGrantAuthorizationRef `
+                    -ReviewerHostExplicit:(-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) `
+                    -DesignContextRefs @($parsedArgs.DesignContextRefs) -ExcludedPathPatterns @($parsedArgs.ExcludedPathPatterns) `
+                    -Model $campaignModel -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $attemptTimeout -ProgressSink $progressSink
+                $entitlementOutcome = if (Get-Command -Name 'Resolve-SpecrewRoundEntitlementOutcome' -ErrorAction SilentlyContinue) {
+                    Resolve-SpecrewRoundEntitlementOutcome -CampaignRun $campaignRun
+                } else { $null }
+                if ($null -eq $entitlementOutcome -or -not $approvalMinted) { break }
+                if ([string]$entitlementOutcome.outcome -ceq 'delivered') {
+                    # DELIVERY, and only delivery, consumes the entitlement.
+                    if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Complete-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
+                        try { Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef | Out-Null } catch { $null = $_ }
+                    }
+                    break
+                }
+                if ([string]$entitlementOutcome.outcome -cne 'undelivered') { break }  # not-invoked: nothing consumed, nothing to retry
+                # Spent-without-delivery: the cost is real and stays visible.
+                $entitlementCost = try { [string]$campaignRun.diagnostics.usage.total_tokens } catch { '' }
+                if (Get-Command -Name 'Write-SpecrewRoundDeliveryJournal' -ErrorAction SilentlyContinue) {
+                    Write-SpecrewRoundDeliveryJournal -ProjectRoot $resolvedProjectPath -EventKind 'spent-without-delivery' `
+                        -RunId ([string]$entitlementOutcome.run_id) -Detail ("attempt={0} reason={1} tokens={2}" -f $entitlementAttempt, [string]$entitlementOutcome.reason, $entitlementCost) | Out-Null
+                }
+                if ($entitlementAttempt -ge 2) { break }
+                $entitlementRetried = $true
+                $retryChoice = if ([string]$entitlementOutcome.reason -match 'timed-out|timeout') { 'more-time' } else { 'fresh-run-same-host' }
+                if (Get-Command -Name 'Write-SpecrewRoundDeliveryJournal' -ErrorAction SilentlyContinue) {
+                    Write-SpecrewRoundDeliveryJournal -ProjectRoot $resolvedProjectPath -EventKind 'automatic-retry' `
+                        -RunId ([string]$entitlementOutcome.run_id) -Detail ("choice={0} after={1}" -f $retryChoice, [string]$entitlementOutcome.reason) | Out-Null
+                }
+                if (-not $Json -and -not $Quiet) {
+                    Write-Host ("The review was invoked but not delivered ({0}). Retrying once automatically ({1}); the human's approval is not spent by a failure." -f [string]$entitlementOutcome.reason, $retryChoice) -ForegroundColor Yellow
+                }
+                # The retry is a fresh attempt against the SAME standing entitlement: recompute the
+                # round reference so it does not collide with the failed attempt's spent slot.
+                try {
+                    $retryRoundsRun = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') `
+                            -CampaignId $approvalIdentity.campaign_id |
+                            Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') }).Count
+                    $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($retryRoundsRun + 1)
+                }
+                catch { break }
+            }
+            if ($approvalMinted -and $null -ne $entitlementOutcome -and [string]$entitlementOutcome.outcome -ceq 'undelivered' -and $entitlementAttempt -ge 2 -and -not $Json -and -not $Quiet) {
+                # The plain-language ask, never a re-approval of the same decision.
+                Write-Host ''
+                Write-Host ("Your approved review could not be delivered after a retry. What failed: {0}. The attempts and their token cost are recorded in .specrew/review/round-approval/delivery-journal.jsonl." -f [string]$entitlementOutcome.reason) -ForegroundColor Yellow
+                Write-Host 'Your approval is still standing - it was for a delivered review, and none was delivered. You can: try a different reviewer host (tell your agent which), or withdraw the approval (say so, and nothing further runs).' -ForegroundColor Cyan
+            }
             if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
             elseif ($Quiet) {
                 $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }
@@ -1559,6 +1654,14 @@ if ($Live) {
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
                         Write-Host '    specrew review --live --host <claude|codex|...> --approve-round   (their typed `approved for review round` is the approval this flag carries)'
+                    }
+                    elseif ($reason -match 'allowance-exhausted') {
+                        # W50 rider: round accounting spoke three currencies - "1 of 4 rounds" on the
+                        # pause menu, slots:1 in the grant, allowance-exhausted in the refusal. One
+                        # human-visible account: rounds you approved, rounds attempted, what a reset
+                        # gives. The slot vocabulary stays internal.
+                        Write-Host 'Every review round you approved has been used by an attempt. Nothing further runs until the rounds are replenished.' -ForegroundColor Yellow
+                        Write-Host 'A reset restores your rounds: the typed reply `approved for allowance reset` is that decision, and your agent then runs: specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
                     }
                     elseif ($reason -match 'timeout|budget') {
                         # F-198 FR-022 teaching (consumer-legible, amended approval UX): the sanctioned

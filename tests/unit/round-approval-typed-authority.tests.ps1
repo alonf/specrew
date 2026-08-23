@@ -42,7 +42,8 @@ BeforeAll {
         param(
             [Parameter(Mandatory)][string]$Root,
             [Parameter(Mandatory)][ValidateSet('agent', 'terminal')][string]$Context,
-            [string[]]$CliArgs = @('--approve-round')
+            [string[]]$CliArgs = @('--approve-round'),
+            [switch]$OmitFeature
         )
         $envPrelude = if ($Context -eq 'terminal') {
             # Clear every agent-session signal in the CHILD, so the case is deterministic wherever the
@@ -53,7 +54,8 @@ BeforeAll {
             # Assert agent context explicitly rather than inheriting it, for the same determinism.
             "`$env:CLAUDECODE = '1'; "
         }
-        $command = $envPrelude + "pwsh -NoProfile -File '" + $script:ReviewCli + "' -ProjectPath '" + $Root + "' -FeatureId 001-fixture --live " + ($CliArgs -join ' ') + "; exit `$LASTEXITCODE"
+        $featureArg = if ($OmitFeature) { '' } else { ' -FeatureId 001-fixture' }
+        $command = $envPrelude + "pwsh -NoProfile -File '" + $script:ReviewCli + "' -ProjectPath '" + $Root + "'" + $featureArg + " --live " + ($CliArgs -join ' ') + "; exit `$LASTEXITCODE"
         $output = @(& pwsh -NoProfile -Command $command 2>&1 | ForEach-Object { [string]$_ })
         return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Text = ($output -join "`n") }
     }
@@ -165,7 +167,12 @@ Describe 'W44 ACCEPTANCE: who may fire a round, end to end through the real CLI'
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'an agent invocation AFTER the typed phrase runs, and records the phrase as its authority' {
+    It 'an agent invocation AFTER the typed phrase runs - and an UNDELIVERED run leaves the entitlement standing' {
+        # W50 (maintainer ruling) supersedes the original stamp-at-mint expectation this case carried:
+        # the allowance meters attempts; the human authorizes DELIVERIES. This fixture has no reviewer,
+        # so nothing is ever delivered - and the walk proved the old behavior wrong: the capture was
+        # spent by an invocation that crashed, and the one-capture-one-round refusal locked the human
+        # out. The entitlement now survives every failure and is consumed only by a delivered review.
         $root = New-CampaignFixture
         try {
             $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
@@ -173,8 +180,7 @@ Describe 'W44 ACCEPTANCE: who may fire a round, end to end through the real CLI'
             $run.Text | Should -Match 'Round approved by the human''s typed phrase'
             $run.Text | Should -Not -Match 'no approval from them has been captured'
             $fact = Get-Content -LiteralPath (Get-PendingFactPath -Root $root) -Raw | ConvertFrom-Json
-            [string]$fact.spent_at | Should -Not -BeNullOrEmpty -Because 'one approval, one round'
-            [string]$fact.authorization_ref | Should -Match '^cmp-001-fixture-i001-round-'
+            [string]$fact.spent_at | Should -BeNullOrEmpty -Because 'nothing was delivered, so the entitlement stands - a failure must not spend the human''s approval'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -263,7 +269,8 @@ Describe 'W44 the pause menu answer that spends a round carries the same authori
         $gate = @($ast.FindAll({
                     param($node)
                     $node -is [System.Management.Automation.Language.IfStatementAst] -and
-                    $node.Extent.Text.Contains('no approval from them has been captured')
+                    $node.Extent.Text.Contains('no approval from them has been captured') -and
+                    $node.Extent.Text.Contains('approved for review round')
                 }, $true) | Sort-Object { $_.Extent.Text.Length } | Select-Object -First 1)
         @($gate).Count | Should -Be 1
         # Walk outward: the refusal must live under a $roundApprovalRequested condition.
@@ -274,6 +281,110 @@ Describe 'W44 the pause menu answer that spends a round carries the same authori
             $node = $node.Parent
         }
         $guarded | Should -BeTrue -Because 'gating on ApproveRound alone leaves pause-choice 1 as an invocation-is-approval surface'
+    }
+}
+
+Describe 'W50 the entitlement: the allowance meters attempts, the human authorizes deliveries' {
+    # RED-FIRST against the pre-W50 build: the walk's --approve-round consumed the captured phrase and
+    # minted round-2, then crashed on FeatureId validation - the approval was spent by an invocation
+    # that could never run, and the one-capture-one-round refusal locked the human out.
+
+    It 'ACCEPTANCE: an unresolvable feature refuses in consumer language and leaves the entitlement unconsumed - and says so' {
+        $root = New-CampaignFixture
+        try {
+            # Strip every feature-resolution source: no feature dir match for the branch, no
+            # session feature_ref, no feature.json.
+            Remove-Item -LiteralPath (Join-Path $root 'specs/001-fixture') -Recurse -Force
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--approve-round') -OmitFeature
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match '--feature' -Because 'the refusal names the flag in consumer language'
+            $run.Text | Should -Not -Match '\[0-9\]\+-\[a-z0-9\]' -Because 'a raw id regex is an internal-language leak in a refusal'
+            $run.Text | Should -Match 'was NOT spent'
+            $fact = Get-Content -LiteralPath (Get-PendingFactPath -Root $root) -Raw | ConvertFrom-Json
+            [string]$fact.spent_at | Should -BeNullOrEmpty -Because 'failure before invocation consumes nothing'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'classifies every outcome the rule names, on FR-014''s own discriminator' {
+        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'completed'; completion = 'complete' } })).outcome | Should -Be 'delivered'
+        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'completed'; completion = 'partial' } })).outcome | Should -Be 'undelivered' -Because 'a partial is consumed only when the human explicitly accepts it'
+        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'timed-out'; completion = 'incomplete' } })).outcome | Should -Be 'undelivered'
+        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $true; status = 'terminal'; result = [pscustomobject]@{ runtime_outcome = 'preflight-failed'; completion = '' } })).outcome | Should -Be 'not-invoked' -Because 'a run that never reached a reviewer is failure-before-invocation, whatever the plumbing says'
+        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun ([pscustomobject]@{ invoked = $false; status = 'not-started'; result = $null })).outcome | Should -Be 'not-invoked'
+        (Resolve-SpecrewRoundEntitlementOutcome -CampaignRun $null).outcome | Should -Be 'not-invoked'
+    }
+
+    It 'a partial the human explicitly accepts consumes the entitlement - at the acceptance' {
+        $root = New-CampaignFixture
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $null = Write-SpecrewReviewSignoffOverrideRequest -ProjectRoot $root -TargetTreeId ('a' * 40) -CampaignId 'cmp-w50-fixture'
+            $null = Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $root -Response 'approved for partial review signoff - the uncovered half is generated code' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'accepting the partial IS the delivery'
+            $fact = Get-Content -LiteralPath (Get-PendingFactPath -Root $root) -Raw | ConvertFrom-Json
+            [string]$fact.authorization_ref | Should -Match '^partial-accepted:'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'THE STRUCTURE: consumption keys on delivered, the retry is bounded at one, and both are journaled' {
+        # The retry loop is CLI plumbing around a live harness, so its wiring is pinned structurally:
+        # Complete- fires only inside the delivered branch; the loop breaks at attempt 2; every
+        # undelivered attempt and every retry choice writes the delivery journal; and the second
+        # failure produces the plain-language ask, never the phrase demand.
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $loop = [regex]::Match($cli, "(?s)# W50: THE ENTITLEMENT LOOP.+?could not be delivered after a retry").Value
+        $loop | Should -Not -BeNullOrEmpty
+        $loop.Contains("outcome -ceq 'delivered'") | Should -BeTrue
+        ([regex]::Matches($loop, [regex]::Escape('Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot'))).Count | Should -Be 1 -Because 'delivery is the only consumption point in the loop'
+        $loop.Contains('if ($entitlementAttempt -ge 2) { break }') | Should -BeTrue -Because 'unlimited retry on failure is a token-burn hole'
+        $loop.Contains("'spent-without-delivery'") | Should -BeTrue -Because 'the cost is real and must stay visible'
+        $loop.Contains("'automatic-retry'") | Should -BeTrue -Because 'the retry choice is recorded'
+        $cli.Contains('Your approval is still standing') | Should -BeTrue -Because 'the ask is never a re-approval of the same decision'
+    }
+}
+
+Describe 'W50 rider: the allowance reset is phrase-gated authority' {
+    It 'recognizes the typed reset phrase conservatively' {
+        (Test-SpecrewAllowanceResetPhrase -Text 'approved for allowance reset').Matched | Should -BeTrue
+        (Test-SpecrewAllowanceResetPhrase -Text 'approve an allowance reset').Matched | Should -BeTrue
+        (Test-SpecrewAllowanceResetPhrase -Text 'should I approve an allowance reset?').Matched | Should -BeFalse
+        (Test-SpecrewAllowanceResetPhrase -Text 'do not approve the allowance reset').Matched | Should -BeFalse
+        (Test-SpecrewAllowanceResetPhrase -Text 'approved for review round').Matched | Should -BeFalse -Because 'the round phrase must not double as the reset phrase - different powers, different words'
+    }
+
+    It 'an agent invocation without the captured reset phrase is refused, naming it' {
+        $root = New-CampaignFixture
+        try {
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--remediate', 'allowance-reset', '--ack-reason', '"more rounds needed"')
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match 'approved for allowance reset'
+            $run.Text | Should -Match 'no approval from them has been captured'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'with the captured phrase the reset applies and the capture is stamped spent' {
+        $root = New-CampaignFixture
+        try {
+            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--remediate', 'allowance-reset', '--ack-reason', '"more rounds needed"')
+            $run.Text | Should -Match 'topped up'
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'one phrase, one reset'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a human at their own terminal stays self-evident' {
+        $root = New-CampaignFixture
+        try {
+            $run = Invoke-ReviewCli -Root $root -Context 'terminal' -CliArgs @('--remediate', 'allowance-reset', '--ack-reason', '"more rounds needed"')
+            $run.Text | Should -Not -Match 'no approval from them has been captured'
+            $run.Text | Should -Match 'topped up'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
 

@@ -859,6 +859,16 @@ function Update-SpecrewRollingHandover {
             }
             catch { $null = $_ }
         }
+        # W50 rider: an allowance reset replenishes spend authority, so it takes the same typed-phrase
+        # capture as the round approval - a bare agent invocation was the W44 gap one door down.
+        if ((Get-Command Write-SpecrewAllowanceResetAuthorization -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            try {
+                Write-SpecrewAllowanceResetAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                    -HostKind $fromHost -SourceEvent $Source | Out-Null
+            }
+            catch { $null = $_ }
+        }
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
             -Source $Source -NowUtc $NowUtc | Out-Null
@@ -1073,6 +1083,11 @@ function Update-SpecrewRollingHandover {
                     Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot `
                         -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
                         -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
+                    if (Get-Command Write-SpecrewAllowanceResetAuthorization -ErrorAction SilentlyContinue) {
+                        Write-SpecrewAllowanceResetAuthorization -ProjectRoot $ProjectRoot `
+                            -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
+                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
+                    }
                     break
                 }
             }

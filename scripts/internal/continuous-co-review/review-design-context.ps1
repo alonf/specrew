@@ -64,7 +64,7 @@ function Resolve-ContinuousCoReviewWorktreeDesignContext {
     # can apply the explicit DESIGN_CONTEXT_EMPTY partial-evidence degrade.
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [ValidatePattern('^[0-9]+-[a-z0-9][a-z0-9-]*$')][string]$FeatureId
+        [ValidatePattern('^$|^[0-9]+-[a-z0-9][a-z0-9-]*$')][string]$FeatureId  # W50: empty = use the fallback chain; a raw regex error is an internal-language leak in a refusal
     )
     $out = New-Object System.Collections.Generic.List[string]
     # A public campaign already carries an exact FeatureId. Prefer that immutable command
@@ -141,7 +141,7 @@ function Resolve-ContinuousCoReviewDesignContextSelection {
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [AllowEmptyCollection()][string[]]$DesignContextFiles = @(),
-        [ValidatePattern('^[0-9]+-[a-z0-9][a-z0-9-]*$')][string]$FeatureId
+        [ValidatePattern('^$|^[0-9]+-[a-z0-9][a-z0-9-]*$')][string]$FeatureId  # W50: empty = use the fallback chain; a raw regex error is an internal-language leak in a refusal
     )
     # W29: EXPLICIT REFS ADD TO THE RESOLVED CONTEXT. THEY DO NOT REPLACE IT.
     #
