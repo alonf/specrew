@@ -1181,25 +1181,18 @@ function Format-ReviewCampaignOutstandingPause {
         # from the fact's own counts rather than assumed, so a resumed surface cannot offer a round the
         # campaign can no longer run.
         $offered = @(
-            if ($budgetTotal -le 0 -or $roundsUsed -lt $budgetTotal) { [pscustomobject]@{ id = 1; text = 'Fix these and run another review round (approving one round - in a conversation, your typed reply `approved for review round` is this approval, and your agent answers for you)' } }
-            [pscustomobject]@{ id = 2; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' }
-            [pscustomobject]@{ id = 3; text = 'Abandon this review campaign (nothing further runs)' }
+            if ($budgetTotal -le 0 -or $roundsUsed -lt $budgetTotal) { [pscustomobject]@{ id = 1; text = 'run another round - fixes go in and one more review runs on your files; this approves one round, and your typed reply `approved for review round` is that approval' } }
+            [pscustomobject]@{ id = 2; text = 'stop the review here - remaining findings become follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes; this spends nothing' }
+            [pscustomobject]@{ id = 3; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' }
         )
     }
-    foreach ($option in $offered) { $lines.Add(('  {0}. {1}' -f $option.id, $option.text)) }
+    # W49: typed decisions with consequences, never numbered labels and never a --flag - the menu is
+    # the human's surface, and the CLI spelling is the agent's job (the agent directive carries the
+    # mapping). Bare numbers are never authority in this system, so a menu must not teach them.
+    foreach ($option in $offered) { $lines.Add(('  - {0}' -f $option.text)) }
 
     $lines.Add('')
-    # "Reply with a number" contradicted the line directly beneath it. In a terminal there is nothing to
-    # reply TO - typing 2 does nothing - and the command below is how the answer actually reaches
-    # Specrew. Two instructions in consecutive lines, one of them impossible.
-    #
-    # The numbered LIST above stays, and that is not an exception to last night's ruling: at a BOUNDARY
-    # VERDICT only a typed phrase is captured, so a number there is a control that cannot authorize. Here
-    # the number IS the answer channel - `--pause-choice 2` is read and acted on - so the numbers are
-    # real. The ruling is about offering controls that cannot do what they name, not about digits.
-    $lines.Add('Nothing runs and nothing is spent until you answer.')
-    $choiceIds = @($offered | ForEach-Object { [string]$_.id }) -join '|'
-    $lines.Add(('Answer with:  specrew review --live --pause-choice <{0}>{1}' -f $choiceIds, $(
+    $lines.Add(('Nothing runs and nothing is spent until you answer. Your typed decision is the answer; your agent carries it to Specrew.{0}' -f $(
                 $answerRun = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
                 if ([string]::IsNullOrWhiteSpace($answerRun)) { '' } else { "   (answering round $answerRun)" })))
     return $lines.ToArray()
@@ -1285,15 +1278,18 @@ function Format-ReviewCampaignPauseSurface {
         $lines.Add([string]$Decision.budget_refusal)
     }
     $lines.Add('')
-    $lines.Add('What would you like to do?')
+    # W49 (maintainer ruling, 2026-08-23): THE MENU SPEAKS THE HUMAN'S LANGUAGE, ALL THREE OPTIONS.
+    # After W44, option 1 was a typed phrase while 2 and 3 still leaned on a raw --pause-choice command
+    # - two languages on one surface, and the human's was not one of them. Every option is now a plain
+    # typed decision with its consequence stated ON the option; the agent maps the decision to the CLI.
+    # A human never sees a --flag in a decision menu, and numbered labels are gone with it - a number
+    # was only ever the CLI's spelling, and bare numbers are never authority in this system.
+    $lines.Add('What would you like to do? Reply with one of these decisions:')
     foreach ($option in @($Decision.options)) {
-        $lines.Add(('  {0}. {1}' -f $option.id, $option.text))
+        $lines.Add(('  - {0}' -f $option.text))
     }
     $lines.Add('')
-    # This surface said "Reply with a number" and then named NO way to send one - the reader was told to
-    # answer and not told how. The resumed surface at least carried the command; this one did not.
-    $lines.Add('Nothing runs and nothing is spent until you answer.')
-    $lines.Add('Answer with:  specrew review --live --pause-choice <1|2|3>')
+    $lines.Add('Nothing runs and nothing is spent until you answer. Your typed decision is the answer; your agent (or the terminal command it runs) carries it to Specrew.')
     return ($lines -join [Environment]::NewLine)
 }
 
@@ -1502,6 +1498,14 @@ function Build-ReviewCampaignNavigatorAgentDirective {
     $lines.Add('Approving a review round is the HUMAN''s decision, given as their typed reply `approved for review round` - ask them for it; never record or fabricate one on their behalf. Once they have typed it, running `specrew review --live --approve-round` is YOUR job: the captured phrase is the authority the command consumes, and it refuses an agent invocation that has none.') | Out-Null
     if ([bool](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'ask_narrow_question')) {
         $lines.Add('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') | Out-Null
+    }
+    # W49: the pause menu shows the human typed decisions only - the CLI spelling is yours. Mapping:
+    # `run another round` -> specrew review --live --pause-choice 1 (needs their captured `approved for
+    # review round`); `stop the review here` -> --pause-choice 2; `abandon this review campaign` ->
+    # --pause-choice 3. The last two spend nothing and need no captured approval - relay them as typed;
+    # never show the human a --flag, and never answer a pause they have not decided.
+    if ([string](Get-ReviewAuthorityProperty -Object $PacketDecision -Name 'implementer_action') -ceq 'await-human-pause-decision') {
+        $lines.Add('The pause menu above offers the human three typed decisions; mapping them to the CLI is YOUR job, never theirs: `run another round` -> `specrew review --live --pause-choice 1` (requires their captured `approved for review round`); `stop the review here` -> `--pause-choice 2`; `abandon this review campaign` -> `--pause-choice 3`. The last two spend nothing and need no captured approval - relay the typed decision as given, never show the human a --flag, and never answer a pause they have not decided.') | Out-Null
     }
     $crossingId = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'crossing_id')
     $crossingTo = [string](Get-ReviewCampaignCrossingField -Crossing $PendingCrossing -Name 'to_boundary')

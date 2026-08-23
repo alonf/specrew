@@ -535,6 +535,36 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-110 - the pause menu spoke two languages, and the human's was not one of them (resolved)
+
+- **The ruling (2026-08-23)**: after -103, option 1 of the pause menu was a typed phrase while options
+  2 and 3 still leaned on a raw `--pause-choice` command - the surface's answer line was the CLI
+  spelling, and a human cannot know what they are choosing in a language that is not theirs.
+- **Resolution**: all three options are plain typed decisions with the consequence stated ON the
+  option - `run another round` (approves one round; the typed `approved for review round` is that
+  approval), `stop the review here` (findings become follow-ups, a final check runs on the files as
+  they are, sign-off completes; spends nothing), `abandon this review campaign` (nothing further runs,
+  nothing signed off; spends nothing). Numbered labels are gone from the rendering with the flag - a
+  number was only ever the CLI's spelling, and bare numbers are never authority in this system, so a
+  menu must not teach them. Applied to the LIVE surface, the RESUMED surface, and the not-produced
+  branch's reduced menu, which the first sweep of this fix had missed.
+- **The mapping moved to the reader whose job it is.** The navigator's agent directive now carries it
+  explicitly: `run another round` -> `--pause-choice 1` (requires the captured approval), `stop the
+  review here` -> `--pause-choice 2`, `abandon this review campaign` -> `--pause-choice 3`; the last
+  two spend nothing and need no capture - recognition only, exactly as ruled. The one surface that may
+  still name the flag is the human's OWN terminal footer, where the command is how they answer - and
+  it now names the typed decisions beside the numbers, so menu language and transport are one
+  vocabulary.
+- **The standing sweep extended, as the acceptance asked**: every reader-facing line naming
+  `--approve-round` OR `--pause-choice` - now including the review CLI itself, not only the co-review
+  sources - must name the typed decision it carries, which makes every surviving flag line a MAPPING
+  line by construction. Plus a menu-shape check: no pause renderer numbers its labels or hands the
+  human a CLI command as the way to decide. Extending the file set found one more bare approve-round
+  line in the CLI's own refusal; it now carries the phrase.
+- **Verification**: sweep green across both flags and both file sets; MUTATION-PROVEN by restoring the
+  old `Answer with: specrew review --live --pause-choice <1|2|3>` line, which reds both the sweep and
+  the menu-shape check. Lanes green x3.
+
 ### DRIFT-199-I001-109 - the no-code guard fired on the human's own specrew update (resolved)
 
 - **Observed**: 2026-08-23, on the guard's FIRST live downstream firing, confirmed by the reviewer. The

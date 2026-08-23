@@ -138,9 +138,10 @@ Options:
   --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
   --model <model>        Requested reviewer model id for the host
   --effort <effort>      Optional host-specific reviewer reasoning/effort setting to persist in evidence
-  --approve-round        Approve one review round. Specrew records your approval and mints the
+  --approve-round        Approve one review round (the typed reply `approved for review round` in a
+                         conversation is the same approval). Specrew records it and mints the
                          reference itself - there is no value to invent
-  --pause-choice <1|2|3> Answer a review round that is waiting for your decision:
+  --pause-choice <1|2|3> Carry a decided pause answer to Specrew (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign):
                          1 run another round, 2 stop here and complete sign-off, 3 abandon
   --pause-rationale      Optional note recorded with a stop-here answer
   --authorization-ref    Your own authorization label. With --host and without --live, this
@@ -907,7 +908,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                 if ($Json) { $resetFact | ConvertTo-Json -Depth 10; exit 0 }
                 Write-Host 'Your review rounds are topped up. The rounds already run stay on the record; they no longer count against your allowance.' -ForegroundColor Green
                 Write-Host ''
-                Write-Host 'Run the next review with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                Write-Host 'Run the next review with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval)' -ForegroundColor Cyan
                 exit 0
             }
             if ([string]$parsedArgs.Remediate -cne 'override-block') { throw "Campaign remediation '$($parsedArgs.Remediate)' does not create signoff authority; use a new explicitly authorized run." }
@@ -1086,7 +1087,7 @@ if ($Live) {
                 [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
                 Write-Host 'That authorization reference was not created by approving this review round.' -ForegroundColor Yellow
                 Write-Host ''
-                Write-Host 'If you want to approve a round now, use:  specrew review --live --approve-round' -ForegroundColor Cyan
+                Write-Host 'If you want to approve a round now, use:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval)' -ForegroundColor Cyan
                 Write-Host ''
                 Write-Host 'If you are deliberately supplying your own label - a scripted run, or an approval you recorded elsewhere -'
                 Write-Host 'say what it is, and Specrew will record it as such rather than as a round you approved here:'
@@ -1206,7 +1207,7 @@ if ($Live) {
                 Write-Host 'This review round needs the human''s approval before it can run.' -ForegroundColor Yellow
                 Write-Host ''
                 Write-Host 'The approval is their typed reply in the conversation:  approved for review round' -ForegroundColor Cyan
-                Write-Host 'Once they have typed it, run:  specrew review --live --approve-round' -ForegroundColor Cyan
+                Write-Host 'Once they have typed `approved for review round`, run:  specrew review --live --approve-round' -ForegroundColor Cyan
                 Write-Host ''
                 Write-Host 'Approving one round runs one review. Nothing is spent until then, and Specrew records the phrase as the'
                 Write-Host 'approval. A human at their own terminal can run the command directly - their invocation is itself the'
@@ -1245,7 +1246,7 @@ if ($Live) {
                 if ([string]::IsNullOrWhiteSpace([string]$FeatureId)) {
                     Write-Host 'Specrew does not know which feature you are answering for, so it cannot find the round waiting for you.' -ForegroundColor Yellow
                     Write-Host ''
-                    Write-Host ('Tell it which one:  specrew review --live --feature <feature-id> --pause-choice {0}' -f $pauseAnswer) -ForegroundColor Cyan
+                    Write-Host ('Tell it which one:  specrew review --live --feature <feature-id> --pause-choice {0}   (relaying the human''s typed decision: 1 = run another round, 2 = stop the review here, 3 = abandon this review campaign)' -f $pauseAnswer) -ForegroundColor Cyan
                     exit 1
                 }
                 $campaignStoreRoot = Join-Path $resolvedProjectPath '.specrew/review/authority'
@@ -1266,7 +1267,7 @@ if ($Live) {
                 if ($null -eq $outstanding) {
                     Write-Host ('No review round is waiting for your answer on {0}, so there is nothing to reply to.' -f $answerIdentity.campaign_id) -ForegroundColor Yellow
                     Write-Host ''
-                    Write-Host 'Start one with:  specrew review --live --approve-round' -ForegroundColor Cyan
+                    Write-Host 'Start one with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval)' -ForegroundColor Cyan
                     exit 1
                 }
                 # W27: a human who answers a clean round out of habit gets told it was unnecessary, not
@@ -1403,7 +1404,7 @@ if ($Live) {
                         if ([string]$campaignRun.result.failure_reason -match 'unselected-harness|reviewer-host-required|preflight-failed:harness') {
                             Write-Host ''
                             Write-Host 'No reviewer has been chosen for this project yet, so there was nothing to run the review with. This is a setup step, not a broken tool.' -ForegroundColor Cyan
-                            Write-Host 'Pick one you have installed, and approve it once:  specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round' -ForegroundColor Cyan
+                            Write-Host 'Pick one you have installed, and approve it once:  specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round   (the typed reply `approved for review round` carries the same approval)' -ForegroundColor Cyan
                             Write-Host 'Choose a different one from the tool that wrote the code where you can - a second opinion is the point.'
                         }
                     }
@@ -1491,8 +1492,11 @@ if ($Live) {
                         if ($null -ne $answerFact) { $answerRunId = [string](Get-ReviewAuthorityProperty -Object $answerFact -Name 'run_id') }
                     }
                     if (-not $alreadyTold) {
+                        # W49: this footer prints in the HUMAN's own terminal, where the command IS how
+                        # they answer - so it may name the flag, but only WITH the typed decisions, so
+                        # the menu language and the transport stay one vocabulary.
                         Write-Host ''
-                        Write-Host ("Reply with:  specrew review --pause-choice <1|2|3>{0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
+                        Write-Host ("Answer from this terminal with:  specrew review --live --pause-choice <1|2|3>   (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign){0}" -f $(if ([string]::IsNullOrWhiteSpace($answerRunId)) { '' } else { "   (answering round $answerRunId)" })) -ForegroundColor Cyan
                     }
                 }
                 if ($campaignRun.PSObject.Properties['resolved_timeout_seconds']) {
@@ -1554,7 +1558,7 @@ if ($Live) {
                     Write-Host ("Run: {0}   Reason: {1}" -f $run.run_id, $reason)
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
-                        Write-Host '    specrew review --live --host <claude|codex|...> --approve-round'
+                        Write-Host '    specrew review --live --host <claude|codex|...> --approve-round   (their typed `approved for review round` is the approval this flag carries)'
                     }
                     elseif ($reason -match 'timeout|budget') {
                         # F-198 FR-022 teaching (consumer-legible, amended approval UX): the sanctioned

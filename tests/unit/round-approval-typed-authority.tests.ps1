@@ -240,10 +240,12 @@ Describe 'W44 the pause menu answer that spends a round carries the same authori
     }
 
     It 'both pause surfaces name the typed phrase on the option that spends' {
+        # W49 rewording: the option leads with the typed decision (`run another round`) and carries the
+        # approval phrase, because choosing it approves a round.
         foreach ($file in @('scripts/internal/continuous-co-review/review-authority-core.ps1',
                 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')) {
             $text = Get-Content -LiteralPath (Join-Path $script:RepoRoot $file) -Raw -Encoding UTF8
-            $optionLine = [regex]::Match($text, "id = 1[^\r\n]*Fix these and run another review round[^\r\n]*").Value
+            $optionLine = [regex]::Match($text, "id = 1[^\r\n]*run another round[^\r\n]*").Value
             $optionLine | Should -Not -BeNullOrEmpty -Because $file
             $optionLine.Contains('approved for review round') | Should -BeTrue -Because 'the human answering in a conversation must be shown the phrase that IS the approval'
         }

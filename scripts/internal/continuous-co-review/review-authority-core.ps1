@@ -250,9 +250,9 @@ function Resolve-ReviewCampaignPauseDecision {
     if (-not $resultProduced) {
         $options = [Collections.Generic.List[object]]::new()
         if ($continuationAvailable) {
-            $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Run the review again' })
+            $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - the review runs again on your files; this approves one round, and your typed reply `approved for review round` is that approval' })
         }
-        $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' })
+        $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })
         return [pscustomobject][ordered]@{
             blocking_count         = 0
             major_count            = 0
@@ -329,10 +329,10 @@ function Resolve-ReviewCampaignPauseDecision {
     # budget exists to interrupt. Exhaustion has to feel different from an ordinary continuation.
     $options = [Collections.Generic.List[object]]::new()
     if ($continuationAvailable) {
-        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; text = 'Fix these and run another review round (approving one round - in a conversation, your typed reply `approved for review round` is this approval, and your agent answers for you)' })
+        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - fixes go in and one more review runs on your files; this approves one round, and your typed reply `approved for review round` is that approval' })
     }
-    $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; text = 'Stop here - remaining findings are saved as follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes' })
-    $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; text = 'Abandon this review campaign (nothing further runs)' })
+    $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; reply = 'stop the review here'; text = 'stop the review here - remaining findings become follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes; this spends nothing' })
+    $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })
 
     return [pscustomobject][ordered]@{
         blocking_count         = $blocking

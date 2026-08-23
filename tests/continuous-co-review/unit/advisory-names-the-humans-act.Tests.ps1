@@ -111,23 +111,47 @@ Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming t
         @($offenders).Count | Should -Be 0 -Because "an advisory naming the flag must name the typed phrase that authorizes it (offenders: $($offenders -join ', '))"
     }
 
-    It 'holds across the reader-facing strings in the co-review sources' {
-        # The standing audit, retargeted: every reader-facing line naming the approval flag must carry
-        # the typed phrase, so no advisory can regress to treating bare invocation as the approval.
-        $sourceDir = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+    It 'holds across the reader-facing strings in the co-review sources and the review CLI' {
+        # The standing audit, retargeted twice. W44: every reader-facing line naming --approve-round
+        # must carry the typed phrase. W49 extends it to --pause-choice: after W44, the pause menu spoke
+        # two languages - option 1 a typed phrase, options 2 and 3 raw CLI commands with the
+        # consequences stripped - and a human cannot know what they are choosing in a language that is
+        # not theirs. So every reader-facing line naming --pause-choice must name at least one typed
+        # decision, which makes it a MAPPING line by construction; a bare answer-channel line cannot
+        # pass. The review CLI joins the file set so the terminal surfaces speak the same vocabulary.
+        $pauseDecisions = @('run another round', 'stop the review here', 'abandon')
+        $files = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review') -Filter '*.ps1' -File | ForEach-Object { $_.FullName })
+        $files += (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1')
         $offenders = [System.Collections.Generic.List[string]]::new()
-        foreach ($file in @(Get-ChildItem -LiteralPath $sourceDir -Filter '*.ps1' -File)) {
+        foreach ($file in $files) {
             $lineNumber = 0
-            foreach ($line in @(Get-Content -LiteralPath $file.FullName -Encoding UTF8)) {
+            foreach ($line in @(Get-Content -LiteralPath $file -Encoding UTF8)) {
                 $lineNumber++
                 $trimmed = $line.TrimStart()
                 if ($trimmed.StartsWith('#')) { continue }
-                if (-not $line.Contains($script:ApprovalFlag)) { continue }
-                # A line that merely parses or matches the flag is not an advisory.
-                if ($line.Contains('-cmatch') -or $line.Contains('-match') -or $line.Contains('Alias(')) { continue }
-                if (-not (Test-NamesTheDecision -Text $line)) { [void]$offenders.Add("$($file.Name):$lineNumber") }
+                # A line that merely parses, matches, aliases or pattern-cases the flag is not an advisory.
+                if ($line.Contains('-cmatch') -or $line.Contains('-match') -or $line.Contains('Alias(') -or $trimmed.StartsWith("'^--")) { continue }
+                if ($line.Contains($script:ApprovalFlag) -and -not (Test-NamesTheDecision -Text $line)) {
+                    [void]$offenders.Add("$(Split-Path -Leaf $file):$lineNumber [approve-round]")
+                }
+                if ($line.Contains('--pause-choice')) {
+                    $lower = $line.ToLowerInvariant()
+                    $namesADecision = $false
+                    foreach ($decision in $pauseDecisions) { if ($lower.Contains($decision)) { $namesADecision = $true; break } }
+                    if (-not $namesADecision) { [void]$offenders.Add("$(Split-Path -Leaf $file):$lineNumber [pause-choice]") }
+                }
             }
         }
-        @($offenders).Count | Should -Be 0 -Because "every reader-facing line naming the approval flag must name the typed phrase (offenders: $($offenders -join ', '))"
+        @($offenders).Count | Should -Be 0 -Because "every reader-facing line naming an answer flag must name the typed decision it carries (offenders: $($offenders -join ', '))"
+    }
+
+    It 'W49: no pause menu renders numbered option labels or a --flag as the answer channel' {
+        # The menu is the human surface. Numbered labels teach bare-number replies - which are never
+        # authority in this system - and a --flag is the agent's spelling, not the human's decision.
+        foreach ($file in @('scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')) {
+            $text = Get-Content -LiteralPath (Join-Path $script:RepoRoot $file) -Raw -Encoding UTF8
+            $text | Should -Not -Match "Add\(\('  \{0\}\. \{1\}' -f \`$option" -Because 'option rendering must not number the labels'
+            $text | Should -Not -Match "Answer with:\s+specrew review" -Because 'the menu must not hand the human a CLI command as the way to decide'
+        }
     }
 }
