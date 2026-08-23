@@ -31,11 +31,12 @@ Assert-True ($null -ne (Get-Command Get-SpecrewUnglossedId -ErrorAction Silently
 
 # All three shipped copies: the module source, the extension source, and the deployed mirror. A gloss
 # applied to one and missed in another still reaches a consumer through whichever copy their host runs.
+# W52 aftermath: the deployed .specify mirror is machinery the review digest strips, so it is absent by design in a frozen review tree; its integrity there is the W43 marker check's jurisdiction, not this suite's.
 $bannerFiles = @(
     'scripts\internal\specrew-bootstrap-provider.ps1'
     'extensions\specrew-speckit\scripts\specrew-bootstrap-provider.ps1'
     '.specify\extensions\specrew-speckit\scripts\specrew-bootstrap-provider.ps1'
-) | ForEach-Object { Join-Path $repoRoot $_ }
+) | ForEach-Object { Join-Path $repoRoot $_ } | Where-Object { ($_ -notmatch '\.specify') -or (Test-Path -LiteralPath $_ -PathType Leaf) }
 
 function Get-EmittedStringLiterals {
     # The strings the banner puts in front of a human: arguments to the line collector and to direct

@@ -74,11 +74,12 @@ foreach ($surface in $hostSurfaces) {
 }
 
 # --- 3. The session directive itself says the orientation is for the human, in all three copies ---
+# W52 aftermath: the deployed .specify mirror is machinery the review digest strips, so it is absent by design in a frozen review tree; its integrity there is the W43 marker check's jurisdiction, not this suite's.
 $providers = @(
     'scripts\internal\specrew-bootstrap-provider.ps1'
     'extensions\specrew-speckit\scripts\specrew-bootstrap-provider.ps1'
     '.specify\extensions\specrew-speckit\scripts\specrew-bootstrap-provider.ps1'
-) | ForEach-Object { Join-Path $repoRoot $_ }
+) | ForEach-Object { Join-Path $repoRoot $_ } | Where-Object { ($_ -notmatch '\.specify') -or (Test-Path -LiteralPath $_ -PathType Leaf) }
 foreach ($provider in $providers) {
     Assert-True (Test-Path -LiteralPath $provider -PathType Leaf) ("bootstrap provider copy exists: {0}" -f (Split-Path (Split-Path $provider -Parent) -Leaf))
     $providerText = Get-Content -LiteralPath $provider -Raw -Encoding UTF8

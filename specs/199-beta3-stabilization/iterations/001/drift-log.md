@@ -535,6 +535,70 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-115 - the frozen review tree is a third world, and two launches failed inside it (resolved)
+
+- **Observed**: 2026-08-24, while launching the round the maintainer directed ("choose codex as your
+  reviewer and run an independent review"). The engine froze the reviewed tree and ran the
+  verification plan inside it; `f199-slice-suites` failed twice with
+  `verification-command-failed:f199-slice-suites:diagnostics-require-command-scoped-disclosure` -
+  after the same lane had passed in the working tree at every commit. The human's typed round
+  approval survived every failed launch unspent, exactly as DRIFT-112 requires; the engine said so in
+  consumer language each time.
+- **Cause - two instances of one gap.** The reviewed-state digest strips machinery (`.git`,
+  `.specrew`, `.specify`, `.squad`, `.scratch`) by design, so the frozen tree a reviewer is handed
+  has NO `.specrew` and NO `.specify`. (1) The DRIFT-005 fixture builder copied `.specrew/config.yml`
+  from the repo under test - present in the working tree, absent in the frozen one, so every case
+  died in setup. Fixed at 426e4ada: a minimal Specrew-managed marker written inline, never copied.
+  (2) Five suites asserted the deployed `.specify` mirror byte-identical to its source; in the frozen
+  tree the mirror is absent BY DESIGN, so the assert failed on a world-shape, not a defect. Fixed
+  here: the copies list keeps only mirrors that exist, and the mirror case skips with the reason
+  stated - the mirror's integrity in that world is the W43 marker check's jurisdiction, not the
+  suite's.
+- **The reproduction had its own trap.** A `git archive` snap at a long scratch path produced 36
+  ADDITIONAL reds that were pure artifacts: Windows MAX_PATH truncated the checkout at the deep
+  fixture paths ("Filename too long"), and every suite alphabetically after the truncation point
+  failed on files that were never written. The faithful reproduction is the engine's own
+  materialization - `git worktree add --detach --no-checkout` + `git read-tree --reset -u <digest>` -
+  at the engine's own external root (`$TEMP/specrew-review-targets/rt-<token>`), whose SHORT base
+  turns out to be part of the fidelity. At that root the frozen lane runs green (exit 0, tree
+  1c8e5236), which is what separated the two real failures from the 36 phantom ones.
+- **Citation**: method rule 5, extended in its appendix - the frozen review tree is a third world
+  alongside the source repo and the downstream project, and "passes in the working tree" does not
+  transfer into it.
+- **Verification**: the five guarded suites pass in the working tree, where the mirror exists and the
+  byte-identical asserts EXECUTE, and in a faithful frozen-tree materialization, where the mirror
+  path skips; the frozen `f199-slice-suites` lane exits 0 at the engine's root shape.
+
+### DRIFT-199-I001-114 - exhaustion is a decision, not a condition (resolved)
+
+- **Observed**: 2026-08-24, maintainer ruling on the walk. With the round allowance exhausted, the
+  crew treated exhaustion as a working condition: implementation continued while source drifted past
+  the last delivered review, and the human would have discovered the gap at signoff. The ruling:
+  "there should be no situation of no-review without the user say so."
+- **Part 1 - the one-time decision stop.** When the allowance is exhausted AND product source has
+  moved beyond the last delivered review, the conformance provider stops ONCE with three typed
+  decisions, each carrying its consequence: `approved for allowance reset` (rounds restored, coverage
+  resumes), `continue without coverage until the review phase` (implementation continues uncovered,
+  and the choice is RECORDED so the review phase knows the absence was deliberate, not unnoticed),
+  `hold implementation here` (nothing advances, nothing is recorded). The deferral is a stored fact
+  bound to `covered_tree_at_deferral`, so drift BEYOND the tree the human saw re-arms the stop - they
+  decided about the drift in front of them, not about all future drift. The block honours the cap,
+  and the cap-released correction restates all three phrases so the decision stays the human's even
+  after the stop stops blocking.
+- **Part 2 - the standing coverage line.** Every re-entry packet carries one line stating what review
+  coverage the current tree actually has: the latest DELIVERED run across campaigns, whether source
+  has drifted since it, and the rounds remaining (`Get-SpecrewReviewCoverageState` /
+  `Get-SpecrewReviewCoverageLine`; the rounds figure comes from the engine's own budget resolver,
+  ladder-loaded, so the packet and the engine cannot disagree about the meter). The pending-verdict
+  artifact carries the same line, and the signoff gate's review-required refusal names an in-force
+  deferral - the surfaces tell one story.
+- **Citation**: DRIFT-112 (the entitlement model this extends); the evidence rule - coverage is a
+  runtime fact about delivered runs, not an inference from the meter.
+- **Verification**: `tests/unit/coverage-is-a-decision.tests.ps1`, 9 cases in the slice lane - the
+  stop firing only on exhausted-AND-drifted; each typed decision honoured through the real provider;
+  the deferral binding re-arming on new drift; the coverage line present in the packet and the
+  pending-verdict artifact; the gate naming the deferral.
+
 ### DRIFT-199-I001-113 - the review->repair->stale->review loop: one classification, history as history, sealed history (resolved)
 
 - **Observed**: 2026-08-24, live on the walk, costing a human approval per cycle. Three stacked
@@ -1696,6 +1760,16 @@ root, with `.specify/` deployed and nothing else assumed. Building one costs fiv
 one is needed: the code under test branches on `Test-ContinuousCoReviewSpecrewSourceRepo`, resolves
 anything from `.specrew-managed` markers, or load-ladders a helper - any of those means the source repo
 and a deployed project are DIFFERENT WORLDS, and the suite must run in the world where consumers live.
+
+Extended 2026-08-24 from DRIFT-199-I001-115: there is a THIRD world - the frozen review tree. The
+reviewed-state digest strips every machinery directory, so the tree the review engine hands a reviewer
+has no `.specrew` and no `.specify` at all. A suite (or a fixture builder) that touches either passes
+in the working tree and fails only inside a review launch, which is the most expensive place to find
+it. The tells: a fixture that COPIES machinery from the repo under test instead of writing a minimal
+inline shape, and an assert on a deployed mirror's existence. And reproducing that world has a rule of
+its own: use the engine's exact materialization (`git worktree add --detach --no-checkout` +
+`read-tree --reset -u <digest>`) at a root as SHORT as the engine's - an approximation at a long scratch
+path manufactured 36 phantom failures out of Windows MAX_PATH checkout truncation.
 
 ### METHOD NOTE — a control that refuses must be proven to fire on the path its own remedy names
 

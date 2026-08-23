@@ -17,7 +17,13 @@ function Assert-True { param([bool]$Condition,[string]$Message) if (-not $Condit
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $provider = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
 $mirror = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
-Assert-True ((Get-Content -LiteralPath $provider -Raw -Encoding UTF8) -eq (Get-Content -LiteralPath $mirror -Raw -Encoding UTF8)) 'conformance provider source and deployed mirror are byte-identical'
+if (Test-Path -LiteralPath $mirror -PathType Leaf) {
+    Assert-True ((Get-Content -LiteralPath $provider -Raw -Encoding UTF8) -eq (Get-Content -LiteralPath $mirror -Raw -Encoding UTF8)) 'conformance provider source and deployed mirror are byte-identical'
+}
+else {
+    # W52 aftermath: the deployed .specify mirror is machinery the review digest strips, so it is absent by design in a frozen review tree; its integrity there is the W43 marker check's jurisdiction, not this suite's.
+    Write-Host 'SKIP: deployed mirror absent (frozen review tree); mirror integrity is the W43 marker check' -ForegroundColor Yellow
+}
 
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('specrew-w25-' + [guid]::NewGuid().ToString('N'))
 try {

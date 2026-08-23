@@ -21,8 +21,13 @@ $yamlReaderSource = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\inta
 $provider = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
 
 Assert-True (Test-Path -LiteralPath $writer -PathType Leaf) 'agenda confirmation writer exists'
-Assert-True (Test-Path -LiteralPath $mirror -PathType Leaf) 'agenda confirmation deployed mirror exists'
-Assert-True ((Get-Content -LiteralPath $writer -Raw -Encoding UTF8) -eq (Get-Content -LiteralPath $mirror -Raw -Encoding UTF8)) 'agenda confirmation source and deployed mirror are byte-identical'
+if (Test-Path -LiteralPath $mirror -PathType Leaf) {
+    Assert-True ((Get-Content -LiteralPath $writer -Raw -Encoding UTF8) -eq (Get-Content -LiteralPath $mirror -Raw -Encoding UTF8)) 'agenda confirmation source and deployed mirror are byte-identical'
+}
+else {
+    # W52 aftermath: the deployed .specify mirror is machinery the review digest strips - absent by design in a frozen review tree; mirror integrity there is the W43 marker check's jurisdiction.
+    Write-Host 'SKIP: deployed mirror absent (frozen review tree); mirror integrity is the W43 marker check' -ForegroundColor Yellow
+}
 
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('specrew-agenda-confirmation-' + [guid]::NewGuid().ToString('N'))
 try {

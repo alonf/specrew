@@ -28,7 +28,13 @@ $catalogSource = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\desig
 $yamlReaderSource = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\intake\helpers\Read-IntakeYaml.ps1'
 
 Assert-True (Test-Path -LiteralPath $provider -PathType Leaf) 'conformance provider source exists'
-Assert-True ((Get-Content -LiteralPath $provider -Raw -Encoding UTF8) -eq (Get-Content -LiteralPath $providerMirror -Raw -Encoding UTF8)) 'conformance provider source and deployed mirror are byte-identical'
+if (Test-Path -LiteralPath $providerMirror -PathType Leaf) {
+    Assert-True ((Get-Content -LiteralPath $provider -Raw -Encoding UTF8) -eq (Get-Content -LiteralPath $providerMirror -Raw -Encoding UTF8)) 'conformance provider source and deployed mirror are byte-identical'
+}
+else {
+    # W52 aftermath: the deployed .specify mirror is machinery the review digest strips - absent by design in a frozen review tree; mirror integrity there is the W43 marker check's jurisdiction.
+    Write-Host 'SKIP: deployed mirror absent (frozen review tree); mirror integrity is the W43 marker check' -ForegroundColor Yellow
+}
 
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('specrew-workshop-material-' + [guid]::NewGuid().ToString('N'))
 $feature = '001-retro-calculator'
