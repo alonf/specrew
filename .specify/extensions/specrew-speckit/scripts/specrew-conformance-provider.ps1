@@ -1569,8 +1569,15 @@ try {
                 [void]$sb.AppendLine(("Specrew: product source has been written, but implementation has not been approved. The last authorized boundary is '{0}', and the ledger holds no 'approved for before-implement' - so this code is outside the process this project follows, whoever wrote it and however good it is. Changed source: {1}." -f [string]$unauthorizedSourceDrift.authorized_boundary, $w47Shown))
                 [void]$sb.AppendLine('STOP implementing now. Do not write or modify further product source this turn, and do not record any authorization yourself.')
                 [void]$sb.AppendLine('Tell the human plainly what was written and why you believed it was licensed - if a rule or an approval read as an implementation go-ahead, quote it, because the wording is then part of the defect. Their code is safe either way.')
-                [void]$sb.AppendLine('Then name their two exits and wait: authorize implementation - complete the hardening gate, run the boundary sync to before-implement, present the packet, and their typed reply ''approved for before-implement'' licenses the work retroactively; or revert the source changes and return to where the process stands.')
-                [void]$sb.AppendLine('Do not number the exits when you present them: a bare number is never an authorization in this system, and the first live firing collected exactly that misreading. The typed verdict phrase is the only reply that takes the first exit; an explicit instruction to revert is the only reply that takes the second.')
+                # W49 applied here by maintainer ruling: this menu numbers TWO DISTINCT DECISIONS (unlike
+                # boundary packets, whose numbers only index discussion prompts inside one typed phrase),
+                # and a typed `1` at this surface was already quoted as an implementation licence on the
+                # first live firing. So it takes the pause-menu shape: typed decisions with the
+                # consequence stated on each, never numbered.
+                [void]$sb.AppendLine('Then present their two decisions the way this system presents every decision - typed replies with the consequence stated on each, and NEVER numbered (a bare number is never an authorization here, and the first live firing collected exactly that misreading):')
+                [void]$sb.AppendLine('  - `approved for before-implement` - licenses the written work retroactively and implementation proceeds; this reply comes AFTER the preparation, so first complete the hardening gate, run the boundary sync, and present the packet')
+                [void]$sb.AppendLine('  - `revert the source changes` - the unauthorized files are reverted, nothing is licensed, and the project returns to where the process stands')
+                [void]$sb.AppendLine('Wait for one of those typed replies; nothing advances until the human gives one.')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
             elseif ($blockKind -eq 'workshop-conflict') {

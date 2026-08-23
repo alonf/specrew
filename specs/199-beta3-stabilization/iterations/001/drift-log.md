@@ -535,6 +535,27 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-111 - the unauthorized-source exit menu takes the W49 shape; the boundary-packet split stands (resolved)
+
+- **The ruling (2026-08-23)**: the boundary-packet contract is NOT touched before the tag - three
+  coordinated surfaces on the most trafficked path, two walks in flight - and the split stands on its
+  recorded distinction: boundary numbers index discussion prompts inside accepted typed phrases, and
+  the verdict was never numbered. Full boundary-packet alignment, if ever wanted, is beta4, filed next
+  to the launch-contract rewrite, since they would move together.
+- **The one exception, from the incident record**: the unauthorized-source stop's exit menu numbers two
+  DISTINCT decisions - not prompt labels - and a typed `1` there was already quoted as an
+  implementation licence on the KeyContextAI walk. -109 had denumbered the exits and added the
+  don't-number instruction; this pass finishes them into the full W49 option shape, typed decision
+  first with the consequence stated on each:
+  - `approved for before-implement` - licenses the written work retroactively and implementation
+    proceeds; the reply comes AFTER the preparation (gate, sync, packet).
+  - `revert the source changes` - the unauthorized files are reverted, nothing is licensed, and the
+    project returns to where the process stands.
+- **The menu-shape check extended** to this surface: the block must lead each exit with its typed
+  reply, must not render `(1)`/`(2)` exits, and must carry the never-numbered instruction WITH the menu
+  it governs. MUTATION-PROVEN: restoring the numbered-exits sentence reds exactly the new case.
+- Lanes green x3. The boundary-packet surfaces were not modified, per the ruling.
+
 ### DRIFT-199-I001-110 - the pause menu spoke two languages, and the human's was not one of them (resolved)
 
 - **The ruling (2026-08-23)**: after -103, option 1 of the pause menu was a typed phrase while options

@@ -154,4 +154,18 @@ Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming t
             $text | Should -Not -Match "Answer with:\s+specrew review" -Because 'the menu must not hand the human a CLI command as the way to decide'
         }
     }
+
+    It 'W49 exception (maintainer, 2026-08-23): the unauthorized-source exit menu is typed decisions, never numbered' {
+        # Boundary-packet numbers stand on their recorded distinction - they index discussion prompts
+        # inside one accepted typed phrase, and the verdict was never numbered. This surface is the ONE
+        # exception: it numbers two DISTINCT decisions, and a typed `1` here was already quoted as an
+        # implementation licence on the KeyContextAI walk. The W49 shape applied once more.
+        $provider = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1') -Raw -Encoding UTF8
+        $block = [regex]::Match($provider, "(?s)elseif \(\`$blockKind -eq 'unauthorized-source'\) \{\s*\r?\n\s*# W47.+?\r?\n            \}").Value
+        $block | Should -Not -BeNullOrEmpty
+        $block.Contains('`approved for before-implement`') | Should -BeTrue -Because 'the licensing exit leads with its typed reply'
+        $block.Contains('`revert the source changes`') | Should -BeTrue -Because 'the revert exit leads with its typed reply'
+        $block | Should -Not -Match '\(\s*[12]\s*\)\s*(authorize|revert)' -Because 'numbered exits are the misreading the first live firing collected'
+        $block.Contains('NEVER numbered') | Should -BeTrue -Because 'the instruction travels with the menu it governs'
+    }
 }
