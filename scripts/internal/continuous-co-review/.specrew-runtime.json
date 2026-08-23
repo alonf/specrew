@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "230327dbe4c318923aad5d40a737ee4f7df76560795869b85af106cd178e6c26",
+  "runtime_bundle_sha256": "cbb60979d397593d98f57ddff5868b39d0b8efd24027c05557a6e6b69fd459da",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -157,7 +157,7 @@
     },
     {
       "path": "review-signoff-evidence-gate.ps1",
-      "sha256": "1474b06b33bc0b1dc424fae4e02b1a6cdf580c2db5c0cdca24b06d6af5344f6f"
+      "sha256": "04fe5ab8a2211e35c6ae87b48d8586663ca1c905a125f1374912028148cd5099"
     },
     {
       "path": "review-target-port.ps1",

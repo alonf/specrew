@@ -39,3 +39,8 @@ claims:
     claim_start_time: "2026-07-09T19:26:23Z"
     last_refresh_time: "2026-07-11T15:28:56Z"
     branch_name: "198-beta2-hardening"
+  - feature_id: "199-beta3-stabilization"
+    claimed_by: "alon@ALONBLADE"
+    claim_start_time: "2026-08-10T00:35:54Z"
+    last_refresh_time: "2026-08-10T08:02:26Z"
+    branch_name: "199-beta3-stabilization"

@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "fact_type": "allowance-reset-approval",
+  "authority_kind": "human",
+  "authorized_by": "unattributed-human",
+  "verdict_text": "approved for allowance reset",
+  "response_hash": "2d329747be027d516e256e7272f50d3236c31a76742c2a5032ff2868dfc59fe5",
+  "evidence_source": "hook-captured-from-transcript",
+  "source_event": "Stop",
+  "host_kind": "claude",
+  "observed_at": "2026-08-23T22:11:01.1676802Z",
+  "spent_at": null
+}

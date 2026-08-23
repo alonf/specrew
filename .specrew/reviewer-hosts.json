@@ -18,12 +18,12 @@
       "host": "codex",
       "model": "gpt-5.6-sol",
       "adapter_id": "reviewer-host-adapter-codex-exec",
-      "allowed": false,
+      "allowed": true,
       "installed": true,
       "review_class_rank": 85,
       "model_source": "human-entered",
       "cost_class": "non-default",
-      "authorization_ref": "suspended-2026-08-17-codex-token-exhaustion: not selectable until tokens are replenished (prior grant: maintainer-authorized-2026-07-26-systematic-slice)",
+      "authorization_ref": "beta3-w51-independent-review",
       "fallback_allowed": false,
       "timeout_seconds": 0
     },
@@ -36,7 +36,7 @@
       "review_class_rank": 80,
       "model_source": "human-entered",
       "cost_class": "non-default",
-      "authorization_ref": "maintainer-authorized-2026-08-17-beta3: copilot reviews while codex is out of tokens; claude-4.8-arm risk accepted with claude as code writer (supersedes suspended-2026-07-26-reviewer-independence)",
+      "authorization_ref": "maintainer-authorized-20260821-status-fix-all",
       "fallback_allowed": false,
       "timeout_seconds": 0
     },

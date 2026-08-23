@@ -2,15 +2,15 @@
 focus_area: "Feature 197 before-implement boundary"
 active_issues: "[]"
 schema: v1
-updated_at: 2026-07-11T15:28:56Z
+updated_at: 2026-08-10T08:02:26Z
 session_state_active: true
 session_state_boundary: before-implement
-session_state_feature: 198-beta2-hardening
-session_state_feature_path: "C:\Dev\specrew-beta2-hardening\specs\198-beta2-hardening"
-session_state_iteration: 003
+session_state_feature: 199-beta3-stabilization
+session_state_feature_path: "C:\Dev\specrew-beta3-stabilization\specs\199-beta3-stabilization"
+session_state_iteration: 001
 session_state_task: "(none)"
-session_state_auth_commit: 007681e7
-session_state_recorded_at: 2026-07-11T15:28:56Z
+session_state_auth_commit: 8ed3313d1ec114e33e1696e37e937649ed57afbb
+session_state_recorded_at: 2026-08-10T08:02:26Z
 ---
 
 # What We're Focused On
