@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "497118e803f690fe777e9f4d04e7e1a4227992b221096ed5b64f0703a84efb75",
+  "runtime_bundle_sha256": "230327dbe4c318923aad5d40a737ee4f7df76560795869b85af106cd178e6c26",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -25,7 +25,7 @@
     },
     {
       "path": "continuous-co-review-navigator.ps1",
-      "sha256": "269728df1b69f546b942072051c5b95c4d38cfff678f81e53543f48b9c0203ba"
+      "sha256": "c8d93119ec6e193951711d2e8690974400ae7e23491f9e29ff6821b0a35392f0"
     },
     {
       "path": "escalation-latch.ps1",
@@ -33,15 +33,15 @@
     },
     {
       "path": "hook-health-receipt.ps1",
-      "sha256": "53af48ba8cad1fd66ccc0bb20a2c8237ed5814a6ce819c6f0cac950ba085e275"
+      "sha256": "8c416b02bfcfe37d6c23ce6c682224f5c38ad5178cad4544810f438907dda646"
     },
     {
       "path": "host-support-doctor.ps1",
-      "sha256": "a6f62e16a6862e716825e17afc0e03bc38291691a450c6b4650657fce0f839c2"
+      "sha256": "c17e4fec1fd617f0ac2e1ad36c7d06d7d39b570b4abf776580de45172d07b06b"
     },
     {
       "path": "host-support-tier.ps1",
-      "sha256": "4b322a54dcc5d900d5c9923ea9d3d73d538bf13da8e8fb1db744f7893f438f6c"
+      "sha256": "8ecb52699fe116486fd8f77f8ad57e4af051a2503de9a8bbc1f1eec8cdc84f17"
     },
     {
       "path": "inline-review-gate-evaluator.ps1",
@@ -61,7 +61,7 @@
     },
     {
       "path": "review-authority-core.ps1",
-      "sha256": "4408dab48afeca8ada06581a5887a8cb3bacc429173f46770f2cd7ba109a03d9"
+      "sha256": "4dde0227142a3fbb483b04216072da53191f683c9346b5fe02f8566b016be1c0"
     },
     {
       "path": "review-authority-cutover.ps1",
@@ -81,7 +81,7 @@
     },
     {
       "path": "review-campaign-orchestrator.ps1",
-      "sha256": "1c6432699437a0a8b5bc1a34fb83265c7becacf9d19799bcdc24ba007855c2c6"
+      "sha256": "7ca0d130407baffac3d6bc3191302efec5be007175e4723aa5d7f31a80052cee"
     },
     {
       "path": "review-claude-harness-port.ps1",
@@ -101,7 +101,7 @@
     },
     {
       "path": "review-design-context.ps1",
-      "sha256": "5ecbb5043b20c6491524cc4e75e7f8d5b5d1ea6186de2f06cad0afbd0cd5f9e3"
+      "sha256": "678999705058870f3149cf42960cf5f4c5b12d875a7af28fdd7017e745ba8ece"
     },
     {
       "path": "review-harness-contract.ps1",
@@ -109,7 +109,7 @@
     },
     {
       "path": "review-identity-contracts.ps1",
-      "sha256": "bf9fea241826ed94da75bdbfb9a655522e2ec90d8944ff82f72cd65da4733840"
+      "sha256": "9825475d93dfb605fa8c4be9ae5ec2fd5783c74c4b54035f0b7538e139608855"
     },
     {
       "path": "review-linux-runtime-port.ps1",
@@ -157,7 +157,7 @@
     },
     {
       "path": "review-signoff-evidence-gate.ps1",
-      "sha256": "909c6337037ffec05da33f2b4b555f59def3e81255b1045c6ccdc8f31e55ea78"
+      "sha256": "1474b06b33bc0b1dc424fae4e02b1a6cdf580c2db5c0cdca24b06d6af5344f6f"
     },
     {
       "path": "review-target-port.ps1",
@@ -169,7 +169,7 @@
     },
     {
       "path": "reviewed-state-digest.ps1",
-      "sha256": "d1fc08d6b8da83e1aa1d67753f33212fd1ece955f854af8ed658bf4fbd87d7d1"
+      "sha256": "ab68e6f6e4aac9fe4eaa8cad54b9fc4843a1d7558ccab3f35508c6456c15aa64"
     },
     {
       "path": "reviewer-authorization-gate.ps1",
@@ -209,7 +209,7 @@
     },
     {
       "path": "test-evidence-recorder.ps1",
-      "sha256": "594a124358c1f1094f6e692c5bb7c016d86b2a4628fc07c65d08aa2d6a0eeda5"
+      "sha256": "7695b7a45d6180d841bbe4028ad390d6c3858262e5847d25d1a1a1cfedee7d70"
     },
     {
       "path": "tracker-honesty-check.ps1",
@@ -217,7 +217,7 @@
     },
     {
       "path": "verification-plan-contract.ps1",
-      "sha256": "2da2f51620aa9c3755a9af668fa029fee0ba578900d7dffaaaadb354b418d570"
+      "sha256": "036095def0a2aa900f8a1f1c42efbfdcedc9a49059d020579cb03ad910a8b35d"
     },
     {
       "path": "verification-plan-materializer.ps1",
@@ -225,11 +225,11 @@
     },
     {
       "path": "verification-plan-runner.ps1",
-      "sha256": "3ae97f0b14760c82a8554092f56ab80bac5452bb4a48d986f25f335ba936b24d"
+      "sha256": "c09eb7c6aac2ea9656fe55e28ce1af55748e9ebafb49621637625ebbd8c76b6d"
     },
     {
       "path": "verification-plan-supplier.ps1",
-      "sha256": "831b8db915fdf162b5aedf43f0e0fffcd41635cd2c70e4b36510c5259b77a53d"
+      "sha256": "a4335cec0a31296d4a4528fc01f7aecd5a04a17bc63a195489b8e410ca566148"
     },
     {
       "path": "worktree-navigator.ps1",
@@ -245,7 +245,7 @@
     },
     {
       "path": "worktree-reviewer.ps1",
-      "sha256": "85500ee0b53588eca2a2f56865615681d94acd59a6489903c6eff8e572530fc4"
+      "sha256": "066b1ccdd85aca3692c8ba7c28fb1d65a6f20662a4c94879284d8e73132fbd79"
     }
   ],
   "source": "specrew-init-or-update"

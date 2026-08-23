@@ -788,7 +788,20 @@ function Resolve-ReviewCampaignVerdictPacketDecision {
     }
 
     if ($ordered.Count -eq 0) {
-        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No completed review covers your files as they are now. Approving a review round is the human''s decision and costs one of their rounds, so ASK them for it: their typed reply `approved for review round` is the approval, and Specrew captures it from the conversation. Once they have typed it, run specrew review --live --approve-round yourself. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
+        # W52: if the human deliberately deferred coverage to the review phase, this refusal is the
+        # review phase - the ask must say the absence was CHOSEN and is now due, not imply nobody
+        # noticed. The deferral fact is the store's distinction between the two.
+        $w52DeferralNote = ''
+        if (Get-Command -Name 'Get-SpecrewCoverageDeferralAuthorization' -ErrorAction SilentlyContinue) {
+            try {
+                $w52Deferral = Get-SpecrewCoverageDeferralAuthorization -ProjectRoot $RepoRoot
+                if ($null -ne $w52Deferral) {
+                    $w52DeferralNote = (' You deferred coverage on {0} ("{1}") - that deferral ran until the review phase, and the review phase is now, so the round is due.' -f ([string]$w52Deferral.observed_at), [string]$w52Deferral.verdict_text)
+                }
+            }
+            catch { $null = $_ }
+        }
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message ('No completed review covers your files as they are now. Approving a review round is the human''s decision and costs one of their rounds, so ASK them for it: their typed reply `approved for review round` is the approval, and Specrew captures it from the conversation. Once they have typed it, run specrew review --live --approve-round yourself. If they prefer not to spend a round, they can review the artifacts themselves and say what they conclude.' + $w52DeferralNote) -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
     }
 
     # A newer claimed invocation supersedes every older result, including an older clean result.

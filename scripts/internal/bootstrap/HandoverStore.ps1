@@ -869,6 +869,17 @@ function Update-SpecrewRollingHandover {
             }
             catch { $null = $_ }
         }
+        # W52: the chosen-absence disposition - `continue without coverage until the review phase` -
+        # recorded from the human's own words so the signoff gate can distinguish deliberate deferral
+        # from nobody noticing.
+        if ((Get-Command Write-SpecrewCoverageDeferralAuthorization -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            try {
+                Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                    -HostKind $fromHost -SourceEvent $Source | Out-Null
+            }
+            catch { $null = $_ }
+        }
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
             -Source $Source -NowUtc $NowUtc | Out-Null
@@ -1085,6 +1096,11 @@ function Update-SpecrewRollingHandover {
                         -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
                     if (Get-Command Write-SpecrewAllowanceResetAuthorization -ErrorAction SilentlyContinue) {
                         Write-SpecrewAllowanceResetAuthorization -ProjectRoot $ProjectRoot `
+                            -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
+                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
+                    }
+                    if (Get-Command Write-SpecrewCoverageDeferralAuthorization -ErrorAction SilentlyContinue) {
+                        Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $ProjectRoot `
                             -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
                             -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
                     }

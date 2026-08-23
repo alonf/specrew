@@ -1319,7 +1319,37 @@ try {
             $unauthorizedSourceBlock = $true
         }
     }
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($unauthorizedSourceBlock) { 'unauthorized-source' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
+    # W52: EXHAUSTION IS A DECISION, NOT A CONDITION. When the round allowance is exhausted AND new
+    # product source exists beyond the last DELIVERED review, coverage is actually falling behind -
+    # and that gets ONE first-class decision stop, not silence and not a nag. Exhaustion with zero
+    # source drift stays silent (planning is not uncovered work). A recorded deferral - the human's
+    # typed `continue without coverage until the review phase` - keeps it silent until the review
+    # phase, because CHOSEN absence is honest; ACCUMULATED absence is the thing this release exists
+    # to prevent. Gated on material stops with implementation authorized, so trivial stops and
+    # pre-implement stages never pay the coverage math.
+    $coverageDecisionBlock = $false
+    $coverageDecisionState = $null
+    if ($materialStop -and -not $unauthorizedSourceBlock -and
+        $null -ne $unauthorizedSourceDrift -and [string]$unauthorizedSourceDrift.reason -ceq 'implementation-authorized' -and
+        (Get-Command Get-SpecrewReviewCoverageState -ErrorAction SilentlyContinue)) {
+        try {
+            $coverageDecisionState = Get-SpecrewReviewCoverageState -ProjectRoot $projectRoot
+            if ($null -ne $coverageDecisionState -and [bool]$coverageDecisionState.available -and
+                [bool]$coverageDecisionState.exhausted -and [int]$coverageDecisionState.source_drift_count -gt 0) {
+                $coverageDeferral = $null
+                if (Get-Command Get-SpecrewCoverageDeferralAuthorization -ErrorAction SilentlyContinue) {
+                    try { $coverageDeferral = Get-SpecrewCoverageDeferralAuthorization -ProjectRoot $projectRoot } catch { $coverageDeferral = $null }
+                }
+                # A deferral recorded AGAINST THIS COVERAGE STATE silences the stop; a deferral that
+                # predates the last delivered review no longer describes anything and does not.
+                $deferralCurrent = ($null -ne $coverageDeferral -and
+                    [string]$coverageDeferral.covered_tree_at_deferral -ceq [string]$coverageDecisionState.covered_tree)
+                if (-not $deferralCurrent) { $coverageDecisionBlock = $true }
+            }
+        }
+        catch { $coverageDecisionBlock = $false }
+    }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($unauthorizedSourceBlock) { 'unauthorized-source' } elseif ($coverageDecisionBlock) { 'coverage-decision' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1465,6 +1495,9 @@ try {
     $advanceKey = if ($blockKind -eq 'boundary' -and $hasPending) {
         ("{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary)
     }
+    elseif ($blockKind -eq 'coverage-decision') {
+        ("coverage-decision|{0}|{1}" -f [string]$coverageDecisionState.campaign_id, [string]$coverageDecisionState.covered_tree)
+    }
     elseif ($blockKind -eq 'unauthorized-source') {
         ("unauthorized-source|{0}|{1}" -f [string]$unauthorizedSourceDrift.authorized_boundary, [string]$unauthorizedSourceDrift.anchor_commit)
     }
@@ -1514,7 +1547,7 @@ try {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
             $cappedKind = $blockKind
-            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } elseif ($blockKind -eq 'unauthorized-source') { 'implementation authorization' } elseif ($blockKind -eq 'orientation') { 'session orientation' } else { 'verdict marker' }
+            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } elseif ($blockKind -eq 'unauthorized-source') { 'implementation authorization' } elseif ($blockKind -eq 'coverage-decision') { 'coverage decision' } elseif ($blockKind -eq 'orientation') { 'session orientation' } else { 'verdict marker' }
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
@@ -1578,6 +1611,20 @@ try {
                 [void]$sb.AppendLine('  - `approved for before-implement` - licenses the written work retroactively and implementation proceeds; this reply comes AFTER the preparation, so first complete the hardening gate, run the boundary sync, and present the packet')
                 [void]$sb.AppendLine('  - `revert the source changes` - the unauthorized files are reverted, nothing is licensed, and the project returns to where the process stands')
                 [void]$sb.AppendLine('Wait for one of those typed replies; nothing advances until the human gives one.')
+                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
+            }
+            elseif ($blockKind -eq 'coverage-decision') {
+                # W52: the one-time decision stop, in the typed-decision shape. The middle option is
+                # the crucial one - running uncovered becomes a CHOSEN, RECORDED fact the signoff gate
+                # can later distinguish from nobody noticing.
+                $w52Line = if (Get-Command Get-SpecrewReviewCoverageLine -ErrorAction SilentlyContinue) { [string](Get-SpecrewReviewCoverageLine -ProjectRoot $projectRoot) } else { '' }
+                [void]$sb.AppendLine('Specrew: your review allowance is exhausted, and product source has moved beyond the last delivered review - coverage is now falling behind, and running without it is a decision only the human can make.')
+                if (-not [string]::IsNullOrWhiteSpace($w52Line)) { [void]$sb.AppendLine($w52Line) }
+                [void]$sb.AppendLine('Present their three decisions the way this system presents every decision - typed replies with the consequence stated on each, never numbered:')
+                [void]$sb.AppendLine('  - `approved for allowance reset` - replenishes the review rounds; you then run the reset with their reason and reviews resume')
+                [void]$sb.AppendLine('  - `continue without coverage until the review phase` - implementation continues uncovered, and their choice is RECORDED so the review phase knows the absence was deliberate, not unnoticed')
+                [void]$sb.AppendLine('  - `hold implementation here` - no further product source until they decide otherwise; nothing is recorded and nothing runs')
+                [void]$sb.AppendLine('Wait for one of those typed replies. Do not continue writing product source while this decision is theirs to make, and never record a decision on their behalf.')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
             elseif ($blockKind -eq 'workshop-conflict') {
@@ -1658,6 +1705,8 @@ try {
             }
             elseif ($blockKind -eq 'material') {
                 [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')
+                $w52MaterialLine = if (Get-Command Get-SpecrewReviewCoverageLine -ErrorAction SilentlyContinue) { try { [string](Get-SpecrewReviewCoverageLine -ProjectRoot $projectRoot) } catch { '' } } else { '' }
+                if (-not [string]::IsNullOrWhiteSpace($w52MaterialLine)) { [void]$sb.AppendLine(('Include this line verbatim in the packet: {0}' -f $w52MaterialLine)) }
                 [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
                 [void]$sb.AppendLine('This is a NON-BOUNDARY material-work stop; do NOT emit a SPECREW-VERDICT-BOUNDARY marker.')
@@ -1727,6 +1776,9 @@ try {
             }
             elseif ($cappedKind -eq 'boundary-unrecordable') {
                 $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
+            }
+            elseif ($cappedKind -eq 'coverage-decision') {
+                $corrections.Add('[specrew-conformance] COVERAGE DECISION still unmade - the allowance is exhausted, source has moved beyond the last delivered review, and the block cap has released this stop. The decision is still the human''s: `approved for allowance reset`, `continue without coverage until the review phase`, or `hold implementation here`. Surface it; do not continue implementing as if it were made.') | Out-Null
             }
             elseif ($cappedKind -eq 'unauthorized-source') {
                 $corrections.Add('[specrew-conformance] UNAUTHORIZED SOURCE still present - product source was written without the before-implement verdict, and the block cap has released this stop. The condition is still unmet: surface the work to the human and ask for their verdict or their revert decision. Do not continue implementing.') | Out-Null

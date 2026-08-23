@@ -6842,6 +6842,213 @@ function Test-SpecrewDerivedCoverageSourcePath {
 # refusal names the paths that exist today.
 # ---------------------------------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------------------------------
+# W52 (2026-08-24, maintainer ruling): EXHAUSTION IS A DECISION, NOT A CONDITION. The human must know
+# when they need to replenish or authorize - and there is NO situation of no-review without the human
+# saying so. Chosen absence is honest; accumulated absence is the thing this release exists to
+# prevent. Two halves: a one-time decision stop when the allowance is exhausted AND source drift
+# exists (the moment coverage is actually falling behind), and a standing coverage line in every
+# re-entry packet, so the number climbing is its own alarm without any new interruption.
+# ---------------------------------------------------------------------------------------------------
+
+function Get-SpecrewReviewCoverageState {
+    # The one coverage question, answered from the store and the tree: what was last DELIVERED, what
+    # tree it covered, what product source has moved since, and how many rounds remain. Fail-open
+    # everywhere - a project with no campaigns, no digest, or no loadable engine answers
+    # available=$false and nothing downstream fires.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+
+    $state = [pscustomobject]@{
+        available = $false
+        campaign_id = $null
+        last_delivered_run = $null
+        covered_tree = $null
+        source_drift = @()
+        source_drift_count = 0
+        rounds_used = $null
+        budget_total = $null
+        exhausted = $false
+        reason = 'not-evaluated'
+    }
+    $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { $state.reason = 'no-campaigns'; return $state }
+
+    # Latest DELIVERED run (completion complete) across campaigns - the same all-campaign walk the
+    # derived-independence reader uses, keyed on DELIVERY per the W50 entitlement rule.
+    $delivered = $null
+    foreach ($campaign in @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue)) {
+        $runsRoot = Join-Path $campaign.FullName 'runs'
+        if (-not (Test-Path -LiteralPath $runsRoot -PathType Container)) { continue }
+        foreach ($run in @(Get-ChildItem -LiteralPath $runsRoot -Directory -ErrorAction SilentlyContinue)) {
+            $resultPath = Join-Path $run.FullName 'result.json'
+            if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) { continue }
+            $result = $null
+            try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 } catch { continue }
+            if ($null -eq $result -or [string]$result.completion -cne 'complete') { continue }
+            if ($null -eq $delivered -or ([string]$result.run_id -cgt [string]$delivered.run_id)) { $delivered = $result }
+        }
+    }
+    if ($null -eq $delivered) { $state.reason = 'no-delivered-review'; return $state }
+    $state.last_delivered_run = [string]$delivered.run_id
+    $state.covered_tree = [string]$delivered.target_digest
+    $state.campaign_id = [string]$delivered.campaign_id
+
+    # Source drift since the covered tree, on the ONE refined classification (machinery-aware,
+    # execution-records-quiet, standard-artifacts-stale).
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+        $digestHelper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1'
+        if (Test-Path -LiteralPath $digestHelper -PathType Leaf) { try { . $digestHelper } catch { $null = $_ } }
+    }
+    if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
+        try {
+            $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot
+            if ($null -ne $digest -and [bool]$digest.ok -and -not [string]::IsNullOrWhiteSpace([string]$state.covered_tree)) {
+                $drift = Get-SpecrewReviewedTreeSourceDrift -ProjectRoot $ProjectRoot -CitedTreeId $state.covered_tree -CurrentTreeId ([string]$digest.tree_id)
+                if ([bool]$drift.comparable) {
+                    $state.source_drift = @($drift.source)
+                    $state.source_drift_count = @($drift.source).Count
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+
+    # Rounds remaining, from the ONE production counter - never a parallel reimplementation. The
+    # engine ladder-loads from the project's own deployed bundle (or this repository's source).
+    if (-not (Get-Command -Name 'Get-ReviewCampaignRoundBudgetState' -ErrorAction SilentlyContinue)) {
+        $engineLoad = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/_load.ps1'
+        if (Test-Path -LiteralPath $engineLoad -PathType Leaf) { try { . $engineLoad } catch { $null = $_ } }
+    }
+    if (Get-Command -Name 'Get-ReviewCampaignRoundBudgetState' -ErrorAction SilentlyContinue) {
+        try {
+            $budget = Get-ReviewCampaignRoundBudgetState -StoreRoot (Join-Path $ProjectRoot '.specrew/review/authority') `
+                -CampaignId $state.campaign_id -RepoRoot $ProjectRoot
+            $state.rounds_used = [int]$budget.rounds_used
+            $state.budget_total = [int]$budget.budget_total
+            $state.exhausted = [bool]$budget.budget_exhausted
+        }
+        catch { $null = $_ }
+    }
+    $state.available = $true
+    $state.reason = 'evaluated'
+    return $state
+}
+
+function Get-SpecrewReviewCoverageLine {
+    # W52 part 2: THE STANDING COVERAGE LINE, one sentence for every re-entry packet. The human sees
+    # coverage drift at every stop they already read; the number climbing is its own alarm.
+    # Deviation from the ruling's wording, stated: it counts source FILES changed, not commits - the
+    # covered identity is a digest TREE, which has no commit ancestry to count along.
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $state = $null
+    try { $state = Get-SpecrewReviewCoverageState -ProjectRoot $ProjectRoot } catch { return '' }
+    if ($null -eq $state -or -not [bool]$state.available) { return '' }
+    $roundsText = if ($null -ne $state.rounds_used -and $null -ne $state.budget_total) {
+        ('{0} of {1} rounds remaining' -f ([Math]::Max(0, [int]$state.budget_total - [int]$state.rounds_used)), [int]$state.budget_total)
+    } else { 'rounds remaining unknown' }
+    $shortTree = ([string]$state.covered_tree)
+    if ($shortTree.Length -gt 8) { $shortTree = $shortTree.Substring(0, 8) }
+    return ('Review coverage: last delivered review {0} covered tree {1}; {2} source file(s) changed since; {3}.' -f `
+            [string]$state.last_delivered_run, $shortTree, [int]$state.source_drift_count, $roundsText)
+}
+
+# ---------------------------------------------------------------------------------------------------
+# The chosen-absence disposition: `continue without coverage until the review phase`, the human's own
+# words, recorded so the signoff gate can later distinguish deliberate deferral from nobody noticing.
+# ---------------------------------------------------------------------------------------------------
+
+function Get-SpecrewCoverageAuthorityHash {
+    # Same algorithm as the bootstrap authority store's hash; defined here so the READER works in any
+    # process that loads shared-governance alone (the validator), not only under the hook co-load.
+    param([AllowEmptyString()][string]$Text)
+    return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes([string]$Text)))).ToLowerInvariant()
+}
+
+function Get-SpecrewCoverageDeferralRoot {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/coverage-disposition'
+}
+
+function Test-SpecrewCoverageDeferralPhrase {
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    $r = [pscustomobject]@{ Matched = $false; Phrase = $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $trimmed = $Text.Trim()
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
+    if ($trimmed.EndsWith('?')) { return $r }
+    $lower = ($trimmed -replace '\s+', ' ').ToLowerInvariant()
+    $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?continue\s+without\s+coverage(?:\s+until\s+the\s+review\s+phase)?\b')
+    if (-not $anchor.Success) { return $r }
+    $tail = $lower.Substring($anchor.Length)
+    if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
+    if ($lower -match '^\s*(?:do\s*not|never|not)\b') { return $r }
+    $r.Matched = $true; $r.Phrase = $trimmed
+    return $r
+}
+
+function Write-SpecrewCoverageDeferralAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: coverage-deferral
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    if (-not (Get-Command -Name 'ConvertTo-SpecrewHumanAuthoritySourceEvent' -ErrorAction SilentlyContinue)) { return $null }
+    $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
+    $evidenceSource = 'hook-captured-user-prompt'
+    if ($null -eq $event) {
+        if (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) { $event = 'Stop'; $evidenceSource = 'hook-captured-from-transcript' }
+        else { return $null }
+    }
+    $recognized = Test-SpecrewCoverageDeferralPhrase -Text $Response
+    if (-not [bool]$recognized.Matched) { return $null }
+    $root = Get-SpecrewCoverageDeferralRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root 'coverage-deferral.json'
+    $coverage = $null
+    try { $coverage = Get-SpecrewReviewCoverageState -ProjectRoot $ProjectRoot } catch { $coverage = $null }
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'coverage-deferral'; authority_kind = 'human'
+        authorized_by = 'unattributed-human'; verdict_text = [string]$recognized.Phrase
+        response_hash = Get-SpecrewCoverageAuthorityHash -Text ([string]$recognized.Phrase)
+        evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
+        campaign_id = $(if ($null -ne $coverage) { [string]$coverage.campaign_id } else { '' })
+        covered_tree_at_deferral = $(if ($null -ne $coverage) { [string]$coverage.covered_tree } else { '' })
+        source_drift_at_deferral = $(if ($null -ne $coverage) { [int]$coverage.source_drift_count } else { 0 })
+        observed_at = $NowUtc
+    }
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    return $fact
+}
+
+function Get-SpecrewCoverageDeferralAuthorization {
+    # The standing deferral, or $null. A deferral is SUPERSEDED by a review delivered after it - a
+    # fresh delivered review resets coverage, so the old choice no longer describes the state.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Join-Path (Get-SpecrewCoverageDeferralRoot -ProjectRoot $ProjectRoot) 'coverage-deferral.json'
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('schema_version', 'fact_type', 'authority_kind', 'verdict_text', 'response_hash', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'coverage-deferral' -or [string]$fact.authority_kind -cne 'human') { return $null }
+    if ([string]$fact.response_hash -cne (Get-SpecrewCoverageAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
+    if (-not [bool](Test-SpecrewCoverageDeferralPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
+    return $fact
+}
+
 function Get-SpecrewIterationSealPath {
     param([Parameter(Mandatory)][string]$IterationDirectory)
     return Join-Path $IterationDirectory '.specrew-iteration-seal.json'
