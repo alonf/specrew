@@ -31,7 +31,11 @@ BeforeAll {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('w44-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-fixture/iterations/001') -Force | Out-Null
-        Copy-Item -LiteralPath (Join-Path $script:RepoRoot '.specrew/config.yml') -Destination (Join-Path $root '.specrew/config.yml') -Force
+        # W52 aftermath: a MINIMAL Specrew-managed marker written inline, never copied from the repo's
+        # own .specrew - that directory is machinery the reviewed-state digest strips, so a fixture
+        # depending on it passes in the working tree and fails in the frozen tree a reviewer is handed
+        # (method rule 5's world-gap, measured by two failed review launches).
+        Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "specrew_version: `"0.40.0`"`nbootstrap_mode: `"fixture`"" -Encoding UTF8
         & git init -q -b 001-fixture $root 2>&1 | Out-Null
         return $root
     }
