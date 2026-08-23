@@ -6827,6 +6827,183 @@ function Test-SpecrewDerivedCoverageSourcePath {
     return (Test-SpecrewReviewAuthorshipSourcePath -Path $Path)
 }
 
+# ---------------------------------------------------------------------------------------------------
+# W51 part 3 (2026-08-24): A CLOSED ITERATION'S RECORDS ARE PRESERVED HISTORY, AND HISTORY REFUSES
+# SILENT EDITS. Second live instance on the walk: a session reopened a closed iteration's review.md to
+# chase a green validator, undoing the maintainer's explicit preserved-state ruling - and nothing
+# noticed. The W43 shape applied: a seal written at iteration-closeout, after the records have landed,
+# verified at validation, refusing on drift with the reachable paths named. Fail-open on absence -
+# iterations closed before the seal existed have none, and refusing history for a check it never had
+# would wedge every existing project.
+#
+# HONEST LIMIT, same as W43: a self-check. It catches every accidental or single-file edit - which is
+# what happened - and turns a silent edit into three coordinated ones. The governed REOPEN mechanism
+# (supersede) is the beta4 item this incident is the second live argument for; until it exists, the
+# refusal names the paths that exist today.
+# ---------------------------------------------------------------------------------------------------
+
+function Get-SpecrewIterationSealPath {
+    param([Parameter(Mandatory)][string]$IterationDirectory)
+    return Join-Path $IterationDirectory '.specrew-iteration-seal.json'
+}
+
+function Get-SpecrewIterationSealManifest {
+    # Line-ending-normalised hashes (the W43 lesson, learned once already: a CRLF/LF checkout
+    # difference must never read as tampering). Files with a NUL byte hash whole.
+    param([Parameter(Mandatory)][string]$IterationDirectory)
+    $root = (Resolve-Path -LiteralPath $IterationDirectory -ErrorAction Stop).Path
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $entries = [System.Collections.Generic.List[object]]::new()
+        $files = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -ErrorAction Stop |
+                Where-Object { $_.Name -cne '.specrew-iteration-seal.json' } |
+                Sort-Object { ([IO.Path]::GetRelativePath($root, $_.FullName)) -replace '\\', '/' })
+        foreach ($file in $files) {
+            $relative = ([IO.Path]::GetRelativePath($root, $file.FullName)) -replace '\\', '/'
+            $bytes = [IO.File]::ReadAllBytes($file.FullName)
+            if ([Array]::IndexOf($bytes, [byte]0) -lt 0) {
+                $text = [Text.Encoding]::UTF8.GetString($bytes).Replace("`r`n", "`n")
+                $bytes = [Text.Encoding]::UTF8.GetBytes($text)
+            }
+            $hash = ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLowerInvariant()
+            [void]$entries.Add([pscustomobject][ordered]@{ path = $relative; sha256 = $hash })
+        }
+        return @($entries)
+    }
+    finally { $sha.Dispose() }
+}
+
+function Write-SpecrewIterationSeal {
+    # Written LAST at iteration-closeout, after every record has landed, so the seal describes what is
+    # actually on disk - the closed truth the human's verdict accepted.
+    param(
+        [Parameter(Mandatory)][string]$IterationDirectory,
+        [AllowNull()][string]$Feature,
+        [AllowNull()][string]$Iteration
+    )
+    if (-not (Test-Path -LiteralPath $IterationDirectory -PathType Container)) { return $null }
+    $manifest = @(Get-SpecrewIterationSealManifest -IterationDirectory $IterationDirectory)
+    $payload = [ordered]@{
+        schema_version = '1.0'
+        feature = [string]$Feature
+        iteration = [string]$Iteration
+        sealed_at = ([DateTimeOffset]::UtcNow.ToString('o'))
+        sealed_files = @($manifest)
+        source = 'iteration-closeout'
+    } | ConvertTo-Json -Depth 12
+    $sealPath = Get-SpecrewIterationSealPath -IterationDirectory $IterationDirectory
+    [IO.File]::WriteAllText($sealPath, ($payload + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+    return $sealPath
+}
+
+function Test-SpecrewIterationSealIntegrity {
+    # Returns drifted/missing relative paths. FAIL-OPEN on absence: an iteration closed before the
+    # seal existed has none. New files ADDED after the seal are also drift - history does not grow.
+    param([Parameter(Mandatory)][string]$IterationDirectory)
+    $result = [pscustomobject]@{ checked = $false; drifted = @(); missing = @(); added = @(); seal = $null }
+    $sealPath = Get-SpecrewIterationSealPath -IterationDirectory $IterationDirectory
+    if (-not (Test-Path -LiteralPath $sealPath -PathType Leaf)) { return $result }
+    $seal = $null
+    try { $seal = Get-Content -LiteralPath $sealPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 }
+    catch { return $result }
+    if ($null -eq $seal -or -not $seal.PSObject.Properties['sealed_files']) { return $result }
+    if (-not (Test-Path -LiteralPath $IterationDirectory -PathType Container)) { return $result }
+
+    $actual = @{}
+    foreach ($entry in (Get-SpecrewIterationSealManifest -IterationDirectory $IterationDirectory)) { $actual[[string]$entry.path] = [string]$entry.sha256 }
+    $sealed = @{}
+    foreach ($entry in @($seal.sealed_files)) { $sealed[[string]$entry.path] = [string]$entry.sha256 }
+
+    $drifted = [System.Collections.Generic.List[string]]::new()
+    $missing = [System.Collections.Generic.List[string]]::new()
+    $added = [System.Collections.Generic.List[string]]::new()
+    foreach ($path in $sealed.Keys) {
+        if (-not $actual.ContainsKey($path)) { [void]$missing.Add($path); continue }
+        if ($actual[$path] -cne $sealed[$path]) { [void]$drifted.Add($path) }
+    }
+    foreach ($path in $actual.Keys) {
+        if (-not $sealed.ContainsKey($path)) { [void]$added.Add($path) }
+    }
+    return [pscustomobject]@{ checked = $true; drifted = @($drifted); missing = @($missing); added = @($added); seal = $sealPath }
+}
+
+function Resolve-SpecrewActiveFeatureRef {
+    # The active feature, resolved from lifecycle state rather than required from the caller - the
+    # same resolve-don't-require rule the campaign identity resolver already follows. Empty when the
+    # project genuinely has no active feature.
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    foreach ($probe in @(
+            @{ Path = '.specrew/start-context.json'; Read = { param($t) [string](($t | ConvertFrom-Json).session_state.feature_ref) } },
+            @{ Path = '.specify/feature.json'; Read = { param($t) [string](($t | ConvertFrom-Json).feature) } }
+        )) {
+        $probePath = Join-Path $ProjectRoot $probe.Path
+        if (-not (Test-Path -LiteralPath $probePath -PathType Leaf)) { continue }
+        try {
+            $candidate = ([string](& $probe.Read (Get-Content -LiteralPath $probePath -Raw -Encoding UTF8))).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($candidate)) { return (Split-Path -Leaf $candidate) }
+        }
+        catch { $null = $_ }
+    }
+    return ''
+}
+
+function Test-SpecrewLifecycleExecutionRecordPath {
+    # W51 (2026-08-24, maintainer ruling): THE ONE CLASSIFICATION OF THE specs/ TREE, refined at the
+    # FR-009 boundary INSIDE it. The standard artifacts - spec.md, plan design content, tasks.md
+    # definitions, the workshop records - are the standard the code is judged against: change one and
+    # what a review concluded changes, so they STALE. The execution records - state.md,
+    # tasks-progress.yml, review.md, drift-log.md, the reviewer closeout set - are OUTPUT of executing
+    # and reviewing: recording them cannot invalidate the review that produced them.
+    #
+    # ONE classification, BOTH consumers - the signoff gate's records-only exemption and the
+    # validator's citation-staleness check - because the walk measured what a split costs: the
+    # validator ruled that recording a review cannot invalidate it while the gate staled on the very
+    # records the review had just measured, and every loop around that disagreement cost a human
+    # approval.
+    #
+    # Scoped to the ACTIVE feature (FR-009's earlier narrowing, kept): another feature's records tree
+    # is ordinary content. An unmatched path returns $false, which STALES - the allowlist fails toward
+    # nagging, never toward silencing.
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Path,
+        [AllowNull()][AllowEmptyString()][string]$FeatureId
+    )
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($FeatureId)) { return $false }
+    $normalized = ([string]$Path).Replace([char]92, [char]47).Trim().Trim('/')
+    $featurePrefix = 'specs/' + $FeatureId.Trim().Trim('/') + '/'
+    if (-not $normalized.StartsWith($featurePrefix, [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+
+    $relative = $normalized.Substring($featurePrefix.Length)
+    $iteration = [regex]::Match($relative, '^iterations/[^/]+/(?<rest>.*)$')
+    if ($iteration.Success) { $relative = [string]$iteration.Groups['rest'].Value }
+    if ([string]::IsNullOrWhiteSpace($relative)) { return $false }
+
+    # Process records and review OUTPUT. The review-evidence names are the same set the finalization
+    # envelope allowlists, so the two cannot disagree about what counts as review evidence.
+    $recordFiles = @(
+        'drift-log.md', 'state.md', 'tasks-progress.yml',
+        'review.md', 'reviewer-index.md', 'code-map.md', 'coverage-evidence.md', 'dependency-report.md', 'review-diagrams.md',
+        'review-signoff.md', 'retro.md'
+    )
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    foreach ($name in $recordFiles) {
+        if ($relative.Equals($name, $comparison)) { return $true }
+    }
+    if ($relative.StartsWith('closeout', $comparison) -and $relative -notmatch '/') { return $true }
+
+    # workshop/ IS DELIBERATELY ABSENT (maintainer ruling, 2026-08-11): the workshop holds the binding
+    # standard the implementation is judged against - INPUT by the ruling's own test. An allowlist is
+    # safe because omissions nag; that safety is void for any entry wrongly included.
+    foreach ($directory in @('quality/', 'checklists/', 'dashboards/', 'gates/')) {
+        if ($relative.StartsWith($directory, $comparison)) { return $true }
+    }
+    return $false
+}
+
 function Get-SpecrewReviewedTreeSourceDrift {
     # DRIFT-007 (2026-08-22): WHETHER THE REVIEWED SURFACE MOVED, NOT WHETHER ANY BYTE MOVED.
     #
@@ -6879,8 +7056,27 @@ function Get-SpecrewReviewedTreeSourceDrift {
     # W48 note, measured rather than assumed: this detector needs NO machinery overlay. Both tree-ids
     # are reviewed-state DIGEST trees, and the digest's own machinery strip removes the deployed
     # bundle from both sides before this diff exists - a mutation proof against the overlay stayed
-    # green here, which is how the difference was found. The classifier alone is correct in this spot.
-    $source = @($changed | Where-Object { Test-SpecrewReviewAuthorshipSourcePath -Path $_ })
+    # green here, which is how the difference was found.
+    #
+    # W51 refines the specs/ half of the DRIFT-007 known limit: the shared classifier calls the whole
+    # specs/ tree non-source, but the STANDARD artifacts inside the active feature - spec.md, plan
+    # design content, tasks.md, the workshop records - are the standard the code was judged against,
+    # and changing one changes what the review concluded. They stale now. Execution records still do
+    # not, which is the validator's original ruling kept: recording a review cannot invalidate it.
+    # One classification, shared with the signoff gate's records-only exemption, so the two consumers
+    # cannot disagree - the walk measured a human approval per loop when they did. Fail-open when no
+    # active feature resolves: everything under specs/ stays quiet, the pre-W51 behavior.
+    $activeFeature = Resolve-SpecrewActiveFeatureRef -ProjectRoot $ProjectRoot
+    $activeFeaturePrefix = if ([string]::IsNullOrWhiteSpace($activeFeature)) { $null } else { 'specs/' + $activeFeature + '/' }
+    $source = @($changed | Where-Object {
+            $path = $_
+            if (Test-SpecrewReviewAuthorshipSourcePath -Path $path) { return $true }
+            if ($null -ne $activeFeaturePrefix -and
+                ([string]$path).Replace([char]92, [char]47).StartsWith($activeFeaturePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                return (-not (Test-SpecrewLifecycleExecutionRecordPath -Path $path -FeatureId $activeFeature))
+            }
+            return $false
+        })
     return [pscustomobject]@{ comparable = $true; changed = @($changed); source = @($source); reason = 'compared' }
 }
 

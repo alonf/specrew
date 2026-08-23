@@ -919,6 +919,34 @@ function Test-ReviewDerivedIndependenceBlock {
     }
 }
 
+function Test-ClosedIterationSeals {
+    # W51 part 3. Closed iterations are SKIPPED from iteration validation - their recorded state is
+    # history - but history refusing silent edits is exactly why they can be skipped safely. This
+    # walks only the iterations that carry a seal, so pre-seal closeouts stay fail-open, and an
+    # active iteration (no seal yet) is never touched.
+    param(
+        [string]$ProjectRoot,
+        [System.Collections.Generic.List[string]]$Errors
+    )
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+    if (-not (Get-Command -Name 'Test-SpecrewIterationSealIntegrity' -ErrorAction SilentlyContinue)) { return }
+    $specsRoot = Join-Path $ProjectRoot 'specs'
+    if (-not (Test-Path -LiteralPath $specsRoot -PathType Container)) { return }
+    foreach ($seal in @(Get-ChildItem -Path $specsRoot -Filter '.specrew-iteration-seal.json' -Recurse -File -Force -ErrorAction SilentlyContinue)) {
+        $iterationDir = Split-Path -Parent $seal.FullName
+        $state = $null
+        try { $state = Test-SpecrewIterationSealIntegrity -IterationDirectory $iterationDir }
+        catch { continue }
+        if ($null -eq $state -or -not [bool]$state.checked) { continue }
+        $touched = @(@($state.drifted) + @($state.missing) + @($state.added))
+        if ($touched.Count -eq 0) { continue }
+        $shown = @($touched | Select-Object -First 4) -join ', '
+        if ($touched.Count -gt 4) { $shown = "$shown (+$($touched.Count - 4) more)" }
+        $relativeIteration = try { ([IO.Path]::GetRelativePath($ProjectRoot, $iterationDir)).Replace([char]92, [char]47) } catch { $iterationDir }
+        $Errors.Add(("Closed iteration {0} was edited after its closeout seal: {1}. A closed iteration's records are preserved history - the state the human's verdict accepted - and a later edit silently rewrites what was approved. Revert the edit (git checkout -- <file>), or record what needs to change as a drift entry in the ACTIVE iteration's drift-log.md, where new facts belong. Deliberately superseding closed history is the human's act, not a session's: until the governed supersede mechanism ships, their explicit instruction recorded in the active drift log is the path." -f $relativeIteration, $shown)) | Out-Null
+    }
+}
+
 function Test-DeployedExtensionIntegrity {
     # W43. Every guarantee this validator makes assumes IT ran as shipped. A downstream agent
     # hand-patched a deployed scaffold during the 2026-08-21 walk to clear a blocker - its fix was
@@ -5668,25 +5696,35 @@ try {
     # are unaffected — closed iterations naturally aren't in those sets.
     $closedSkippedCount = 0
     if (-not $IncludeClosed -and -not $validatorScoped -and $targets.Count -gt 0) {
+        # W51 part 2 (maintainer ruling): A CLOSED ITERATION'S RECORDED STATE IS HISTORY, NOT A GATE
+        # INPUT FOR THE NEXT ITERATION. The walk's before-implement readiness run blocked iteration
+        # 002's work on iteration 001's deliberately-preserved FAIL, because this filter keyed ONLY on
+        # the index - an iteration whose own state.md says closed but which never made the index was
+        # validated as if live. The index stays the fast path; each unindexed candidate now answers
+        # from its OWN state.md, so closed is closed whether or not the index heard about it.
         $closedIndex = Get-SpecrewClosedIterationIndex -ProjectRoot $resolvedProjectPath
-        if ($closedIndex.Count -gt 0) {
-            $filtered = New-Object System.Collections.Generic.List[string]
-            foreach ($tp in $targets) {
-                $normalized = $tp -replace '\\', '/'
-                if ($normalized -match 'specs/([^/]+)/iterations/([^/]+)$') {
-                    $feature = $Matches[1]
-                    $iteration = $Matches[2]
-                    if ($closedIndex.ContainsKey("$feature/$iteration")) {
-                        $closedSkippedCount++
-                        continue
-                    }
+        $filtered = New-Object System.Collections.Generic.List[string]
+        foreach ($tp in $targets) {
+            $normalized = $tp -replace '\\', '/'
+            if ($normalized -match 'specs/([^/]+)/iterations/([^/]+)$') {
+                $feature = $Matches[1]
+                $iteration = $Matches[2]
+                if ($closedIndex.ContainsKey("$feature/$iteration")) {
+                    $closedSkippedCount++
+                    continue
                 }
-                $null = $filtered.Add($tp)
+                $stateProbe = Join-Path $tp 'state.md'
+                if ((Get-Command -Name 'Get-SpecrewClosedIterationFromStateFile' -ErrorAction SilentlyContinue) -and
+                    ($null -ne (Get-SpecrewClosedIterationFromStateFile -StatePath $stateProbe))) {
+                    $closedSkippedCount++
+                    continue
+                }
             }
-            $targets = @($filtered.ToArray())
-            if ($closedSkippedCount -gt 0) {
-                Write-Host ("[validator-scope] closed-iteration filter: {0} closed iterations skipped (use -IncludeClosed to validate them)" -f $closedSkippedCount)
-            }
+            $null = $filtered.Add($tp)
+        }
+        $targets = @($filtered.ToArray())
+        if ($closedSkippedCount -gt 0) {
+            Write-Host ("[validator-scope] closed-iteration filter: {0} closed iterations skipped (use -IncludeClosed to validate them)" -f $closedSkippedCount)
         }
     }
     Write-Host $scopeBanner
@@ -5696,6 +5734,14 @@ try {
     $teamRoles = Get-TeamRoleMap -ResolvedProjectPath $resolvedProjectPath
 
     $teamValidationErrors = New-Object System.Collections.Generic.List[string]
+    # W51 part 3: sealed history refuses silent edits. Runs BEFORE the team-composition exit for the
+    # same reason as W47: tampering with approved history must not hide behind a config failure.
+    $closedSealErrors = New-Object System.Collections.Generic.List[string]
+    Test-ClosedIterationSeals -ProjectRoot $resolvedProjectPath -Errors $closedSealErrors
+    if ($closedSealErrors.Count -gt 0) {
+        foreach ($sealError in $closedSealErrors) { Write-Host ("FAIL [trust-hardening] closed-iteration-edited: {0}" -f $sealError) -ForegroundColor Red }
+        Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $closedSealErrors.Count
+    }
     # W47: the tree-vs-ledger cross-check - source written where the state STOOD, not where it moved.
     # Runs BEFORE the team-composition exit: unauthorized code must not hide behind a config failure.
     $sourceAuthorizationFailureCount = Test-SourceWithoutImplementAuthorization -ProjectRoot $resolvedProjectPath

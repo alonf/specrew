@@ -2030,6 +2030,20 @@ function Invoke-SpecrewBoundaryStateSync {
             Write-Warning ("Boundary sync 'iteration-closeout' could not append to closed-iteration index: {0}" -f $_.Exception.Message)
         }
 
+        # W51 part 3: seal the closed iteration's records - written LAST, after every record has
+        # landed, so the seal describes the closed truth the human's verdict accepted. A later edit is
+        # refused at validation with the reachable paths named. Fires on the path its own remedy
+        # names: this sync IS iteration-closeout.
+        try {
+            $sealIterationDir = Join-Path (Join-Path (Join-Path $paths.ProjectRoot 'specs') $effectiveFeatureRef) (Join-Path 'iterations' $effectiveIterationNumber)
+            if ((Get-Command -Name 'Write-SpecrewIterationSeal' -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $sealIterationDir -PathType Container)) {
+                $null = Write-SpecrewIterationSeal -IterationDirectory $sealIterationDir -Feature $effectiveFeatureRef -Iteration $effectiveIterationNumber
+            }
+        }
+        catch {
+            Write-Warning ("Boundary sync 'iteration-closeout' could not seal the iteration records: {0}" -f $_.Exception.Message)
+        }
+
         # Proposal 046 (inline-ship per F-040 dogfooding 2026-05-23): auto-render the iteration
         # dashboard snapshot to specs/<feature>/iterations/<NNN>/dashboard.md so the historical
         # velocity / boundary / verdict view exists without the human having to invoke

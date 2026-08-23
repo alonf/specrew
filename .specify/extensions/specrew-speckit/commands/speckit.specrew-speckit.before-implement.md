@@ -10,7 +10,7 @@ Before implementation starts, confirm the active iteration artifacts are approve
 
 1. Confirm the latest iteration plan has an approval verdict and is still the active source of truth.
 2. Verify execution is not bypassing unresolved review findings or missing phase artifacts.
-3. Run `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` when iteration artifacts are available.
+3. Run `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/<feature>/iterations/<active-iteration>` when iteration artifacts are available. Readiness is about the ACTIVE iteration: a closed iteration's recorded state is history, not a gate input for the next iteration, and a preserved FAIL in a closed iteration must never block new work. (Full-repo runs also skip closed iterations automatically; the explicit scope makes the readiness question exact.)
 4. When the active iteration includes Phase 2 hardening-gate scope (`FR-031` through `FR-033`), confirm `quality/hardening-gate.md` exists and records explicit review of:
    - security surface analysis
    - error-handling expectations

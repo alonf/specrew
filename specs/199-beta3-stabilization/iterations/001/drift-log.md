@@ -535,6 +535,51 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-113 - the review->repair->stale->review loop: one classification, history as history, sealed history (resolved)
+
+- **Observed**: 2026-08-24, live on the walk, costing a human approval per cycle. Three stacked
+  defects, ruled as three parts with an ordering note: (1) and (2) unblock the walk; (3) follows. The
+  readiness agent's round-before-repairs sequencing became expensive ONLY because of (1) - once
+  records do not stale, order stops mattering.
+- **Part 1 - navigator/validator disagreement on staleness.** The validator ruled that recording a
+  review cannot invalidate it; the gate's records-only exemption staled on the very records the
+  review had just measured. TWO live holes: the gate's feature-scoped allowlist died outright when a
+  caller passed no feature id (and the classifier overlay excludes specs/, so EVERY record staled);
+  and the two consumers classified the specs/ tree independently. Resolution: the FR-009 boundary
+  refined INSIDE specs/ as the maintainer ruled it - standard artifacts (spec.md, plan design
+  content, tasks.md definitions, workshop records) STALE; execution records (state.md,
+  tasks-progress.yml, review.md, drift-log.md, the reviewer closeout set) do NOT - implemented ONCE
+  (`Test-SpecrewLifecycleExecutionRecordPath` in shared-governance) and consumed by BOTH the gate and
+  the validator's citation-staleness check, which now also STALES on standard-artifact changes inside
+  the active feature (a refinement of DRIFT-007's known limit, in the strict direction). The gate
+  resolves the active feature itself when the caller passed none - resolve, don't require, the same
+  rule the campaign identity resolver already follows.
+- **Part 2 - a closed iteration's recorded state is history, not a gate input.** The before-implement
+  readiness run blocked iteration 002's T018 on iteration 001's deliberately-preserved FAIL. The
+  closed-iteration filter (Proposal 085) keyed ONLY on the index, so a closed-but-unindexed iteration
+  validated as live. Now each unindexed candidate answers from its OWN state.md
+  (Get-SpecrewClosedIterationFromStateFile), the index staying the fast path; and the before-implement
+  readiness instruction scopes the validator to the ACTIVE iteration explicitly. `-IncludeClosed`
+  still reaches history on demand - skipping is a default, not a wall.
+- **Part 3 - sealed history refuses silent edits (the W43 shape, second live instance).** A session
+  reopened closed iterations/001/review.md to chase a green validator, undoing the maintainer's
+  explicit preserved-state ruling, and nothing noticed. iteration-closeout now writes
+  `.specrew-iteration-seal.json` LAST, after every record has landed - line-ending-normalised hashes,
+  the W43 lesson learned once already. Validation FAILS on drift, missing, AND added files (history
+  does not grow), running BEFORE the team-composition exit for the same reason W47 does: tampering
+  with approved history must not hide behind a config failure. The refusal names the paths that exist
+  today - revert, or record the change as a drift entry in the ACTIVE iteration - and states plainly
+  that deliberately superseding closed history is the human's act, with the governed supersede
+  mechanism the beta4 item this incident is the second live argument for. Fail-open on absence:
+  pre-seal closeouts are not refused for a check they never had.
+- **Verification**: `tests/integration/closed-iterations-are-history.tests.ps1`, 8 cases in the slice
+  lane, all through real machinery - the gate answering records-only with NO feature id passed;
+  standard artifacts staling both consumers while execution records stale neither (the
+  one-classification property exercised on both sides); the full-repo validator skipping a
+  closed-by-state-only iteration carrying a would-FAIL record; -IncludeClosed still reaching it; the
+  walk's exact reopen refused with the reachable paths named; untouched-sealed silence; unsealed
+  fail-open; and added-file drift.
+
 ### DRIFT-199-I001-112 - the entitlement model: the allowance meters attempts, the human authorizes deliveries (resolved)
 
 - **W50, observed on the walk**: `--approve-round` consumed the captured phrase and minted round-2,

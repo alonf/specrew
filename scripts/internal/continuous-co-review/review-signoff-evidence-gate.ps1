@@ -381,6 +381,13 @@ function Test-ReviewCampaignDeltaIsRecordsOnly {
     if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $false }
     try { $resolvedRoot = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction Stop).Path }
     catch { return $false }
+    # W51: RESOLVE, DON'T REQUIRE. A caller that passed no feature id used to kill the records
+    # allowlist outright - and the shared-classifier overlay excludes specs/, so review.md, state.md
+    # and the progress sync staled the review that had just measured them. One human approval per
+    # loop, live on the walk. The active feature is lifecycle state the project already holds.
+    if ([string]::IsNullOrWhiteSpace($FeatureId) -and (Get-Command -Name 'Resolve-SpecrewActiveFeatureRef' -ErrorAction SilentlyContinue)) {
+        try { $FeatureId = [string](Resolve-SpecrewActiveFeatureRef -ProjectRoot $resolvedRoot) } catch { $null = $_ }
+    }
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
         $reviewerModule = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
         if (Test-Path -LiteralPath $reviewerModule -PathType Leaf) { try { . $reviewerModule } catch { $null = $_ } }
@@ -486,6 +493,13 @@ function Test-ReviewCampaignPathIsFeatureProcessRecord {
     )
 
     if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($FeatureId)) { return $false }
+    # W51: the ONE classification lives in shared-governance (Test-SpecrewLifecycleExecutionRecordPath),
+    # consumed by this gate AND the validator's citation-staleness check so the two can never disagree
+    # about what recording a review does to the review. Delegate when loaded; the body below is the
+    # same logic verbatim, kept for a standalone gate load.
+    if (Get-Command -Name 'Test-SpecrewLifecycleExecutionRecordPath' -ErrorAction SilentlyContinue) {
+        return [bool](Test-SpecrewLifecycleExecutionRecordPath -Path $Path -FeatureId $FeatureId)
+    }
     $featurePrefix = 'specs/' + $FeatureId.Trim().Trim('/') + '/'
     if (-not $Path.StartsWith($featurePrefix, $Comparison)) { return $false }
 
