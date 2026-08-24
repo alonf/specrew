@@ -64,7 +64,10 @@ BeforeAll {
     function script:CheckIn {
         param([Parameter(Mandatory)]$Project, [switch]$AsPreflight)
         $prior = $env:SPECREW_REVIEW_PREFLIGHT
-        if ($AsPreflight) { $env:SPECREW_REVIEW_PREFLIGHT = '1' } else { Remove-Item Env:SPECREW_REVIEW_PREFLIGHT -ErrorAction SilentlyContinue }
+        # DRIFT-199-I001-117: the engine's marker names the project whose preflight is running, so
+        # the pin exercises that real shape; the legacy bare-'1' branch has its own pin in the
+        # DRIFT-007 suite.
+        if ($AsPreflight) { $env:SPECREW_REVIEW_PREFLIGHT = [string]$Project.Root } else { Remove-Item Env:SPECREW_REVIEW_PREFLIGHT -ErrorAction SilentlyContinue }
         $errors = [System.Collections.Generic.List[string]]::new()
         try { Test-ReviewCitedRunEvidence -ReviewLines $Project.Lines -ProjectRoot $Project.Root -Errors $errors }
         finally {

@@ -242,3 +242,66 @@ Describe 'DRIFT-007 a project that records a review can still validate' {
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
+Describe 'W39 scoping: the preflight exemption belongs to ONE project (DRIFT-199-I001-117)' {
+    # Found by five failed review launches: the engine marks its own preflight with
+    # SPECREW_REVIEW_PREFLIGHT, the marker deliberately reaches every verification child, and the
+    # validator disarmed the staleness rule on ANY non-empty value - so the fixture projects THIS
+    # suite builds inherited a disarmed detector, and its armed cases red only inside a review
+    # launch, the most expensive place to find out. The marker now names the one project whose
+    # preflight is running, and the exemption applies to that project alone.
+
+    BeforeEach {
+        $script:PriorPreflight = $env:SPECREW_REVIEW_PREFLIGHT
+    }
+    AfterEach {
+        if ($null -eq $script:PriorPreflight) { Remove-Item Env:SPECREW_REVIEW_PREFLIGHT -ErrorAction SilentlyContinue }
+        else { $env:SPECREW_REVIEW_PREFLIGHT = $script:PriorPreflight }
+    }
+
+    function script:New-StaleReviewedProject {
+        # The armed shape all three original cases share: reviewed, then source moved, then committed.
+        $root = New-ReviewedProject
+        $reviewed = Get-CurrentTree -Root $root
+        $null = Write-StoreResult -Root $root -TargetDigest $reviewed
+        $null = Write-ReviewRecord -Root $root
+        Set-Content -LiteralPath (Join-Path $root 'src/app.ts') -Value 'export const hello = () => "MOVED";' -Encoding UTF8
+        Invoke-Git -Root $root -GitArgs @('add', '-A') | Out-Null
+        Invoke-Git -Root $root -GitArgs @('commit', '--quiet', '-m', 'change the code after the review') | Out-Null
+        return $root
+    }
+
+    It 'staleness still fires inside ANOTHER project''s review preflight - the engine world' {
+        $root = New-StaleReviewedProject
+        try {
+            # The exact ambient shape a verification child sees: the marker names the engine's
+            # verification copy, which is never the fixture this suite just built.
+            $env:SPECREW_REVIEW_PREFLIGHT = Join-Path ([IO.Path]::GetTempPath()) 'specrew-review-targets/rt-someone-elses-preflight'
+            $errors = @(Get-StaleErrors -Root $root)
+            @($errors).Count | Should -Be 1 -Because 'another project being preflighted is not a licence to stop watching this one'
+            $errors[0] | Should -Match 'src/app\.ts'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the exemption still holds for the project whose preflight it is - W39 kept' {
+        $root = New-StaleReviewedProject
+        try {
+            $env:SPECREW_REVIEW_PREFLIGHT = $root
+            @(Get-StaleErrors -Root $root) | Should -BeNullOrEmpty -Because 'the round being preflighted is what refreshes exactly this citation'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the legacy bare marker still disarms, so an older engine cannot resurrect the W38 wedge' {
+        # ''1'' is what a pre-scoping engine sends. Deleting this branch would arm staleness during
+        # that engine's preflight and bring back the exact wedge W39 closed; this case pins the
+        # compat branch so removing it is a decision, not an accident.
+        $root = New-StaleReviewedProject
+        try {
+            $env:SPECREW_REVIEW_PREFLIGHT = '1'
+            @(Get-StaleErrors -Root $root) | Should -BeNullOrEmpty
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}

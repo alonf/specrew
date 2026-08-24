@@ -376,7 +376,11 @@ function Invoke-ReviewCampaignFrozenVerification {
     # cited run, so gating its own preflight on cited-run freshness makes the fix unreachable by the
     # only thing that can apply it. Set narrowly around this call and always cleared.
     $priorPreflightMarker = $env:SPECREW_REVIEW_PREFLIGHT
-    $env:SPECREW_REVIEW_PREFLIGHT = '1'
+    # DRIFT-199-I001-117: the marker names the ONE project this preflight is for - the verification
+    # copy's root - not a bare flag. The validator's W39 exemption compares roots, so the fixture
+    # projects the verification suites build stay ARMED while this copy's own governance run skips
+    # the freshness rule the round exists to satisfy.
+    $env:SPECREW_REVIEW_PREFLIGHT = $snapshotPath
     try {
         $support = Add-ReviewCampaignVerificationSupport -Snapshot $Snapshot
         $execution = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $snapshotPath -Plan $selected.plan

@@ -535,6 +535,43 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-117 - W39's preflight marker disarmed the staleness rule for every project, not its own (resolved)
+
+- **Observed**: 2026-08-24, the fifth failed launch - `verification-command-failed:f199-slice-suites`
+  AGAIN, after DRIFT-115's world fixes and DRIFT-116's parallel lane, and the timing said something
+  new: the derived diagnosis (obtained by driving the engine's own
+  `New-GitReviewTargetSnapshot` -> `New-GitReviewTargetVerificationCopy` ->
+  `Invoke-ReviewCampaignFrozenVerification` chain directly) read "exit code 1, after 196.8s - it
+  finished on its own". Not a timeout. A suite was genuinely red in a world no local run had ever
+  built.
+- **The world, finally complete.** The engine's verification world is the frozen digest tree PLUS
+  tracked machinery restored from the pinned origin commit (`Add-ReviewCampaignVerificationSupport`)
+  PLUS a scrubbed child environment PLUS one engine-baseline variable: `SPECREW_REVIEW_PREFLIGHT`,
+  which W39 sends into every verification child on purpose, because the governance command must not
+  fail the preflight of the very round that would refresh its stale citation. DRIFT-115's
+  reproduction had the tree right and the machinery and marker absent - which is why its lane ran
+  green while the engine's ran red.
+- **Cause**: the validator disarmed the cited-run FRESHNESS rule on ANY non-empty marker. The
+  DRIFT-007 suite builds fixture projects and asserts the rule fires; inside a review preflight those
+  fixtures inherited the ambient marker, the detector disarmed, and three armed-staleness cases
+  expected 1 error and read 0. The exemption W39 scoped to one RULE was accidentally global across
+  PROJECTS.
+- **Resolution**: the marker now names the one project whose preflight is running - the orchestrator
+  sets it to the verification copy's root, and the validator honours the exemption only when the
+  project it is validating IS that root (normalized full-path comparison, case-insensitive on
+  Windows). A bare `1` - what a pre-scoping engine sends - keeps the old global behavior, as a pinned
+  compat branch, so pairing a new validator with an old engine cannot resurrect the W38+W36 wedge.
+  The W39 acceptance pin now exercises the real path-shaped marker; the legacy branch has its own
+  pin, so removing it is a decision rather than an accident.
+- **Citation**: method rule 5's third world, one layer deeper - the world includes the AMBIENT
+  CONTROL VARIABLES the engine sends, not just the file tree; and W39 / DRIFT-113's principle that an
+  exemption is scoped by naming its condition precisely.
+- **Verification**: RED-first through the shipped validator - the new case (staleness fires while the
+  marker names ANOTHER project's preflight) failed against the pre-fix validator and passes after;
+  the W39-kept case (marker names the fixture itself -> exemption holds) and the legacy-`1` case pin
+  both sides; the engine's own frozen verification chain, which produced the five failures, run
+  end-to-end after the fix with all three plan commands green.
+
 ### DRIFT-199-I001-116 - the slice lane grew past its own budget, and the review died of it twice more (resolved)
 
 - **Observed**: 2026-08-24, the third and fourth failed launches of the maintainer-directed codex

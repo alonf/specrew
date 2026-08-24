@@ -1165,7 +1165,28 @@ function Test-ReviewCitedRunEvidence {
         #
         # SCOPED TO THIS RULE ALONE. Completion, verdict, validation and declared coverage are all
         # still enforced during preflight - a preflight is not a licence to cite a bad run.
-        $inReviewPreflight = -not [string]::IsNullOrWhiteSpace([string]$env:SPECREW_REVIEW_PREFLIGHT)
+        #
+        # AND SCOPED TO ONE PROJECT. The marker carries the root of the verification copy whose
+        # preflight is running, because a bare flag disarmed this rule for EVERY project validated
+        # anywhere under that preflight - including the fixture projects the verification suites
+        # build, whose armed-staleness cases then red only inside a live review launch, the most
+        # expensive place to find out (five failed launches). A bare '1' is what a pre-scoping
+        # engine sends; it keeps the old global behavior so pairing this validator with an older
+        # engine cannot resurrect the W38+W36 wedge.
+        $preflightMarker = [string]$env:SPECREW_REVIEW_PREFLIGHT
+        $inReviewPreflight = $false
+        if (-not [string]::IsNullOrWhiteSpace($preflightMarker)) {
+            if ($preflightMarker.Trim() -ceq '1') { $inReviewPreflight = $true }
+            else {
+                try {
+                    $markerFull = [IO.Path]::GetFullPath($preflightMarker.Trim()).TrimEnd('\', '/')
+                    $projectFull = [IO.Path]::GetFullPath([string]$ProjectRoot).TrimEnd('\', '/')
+                    $rootComparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+                    $inReviewPreflight = [string]::Equals($markerFull, $projectFull, $rootComparison)
+                }
+                catch { $inReviewPreflight = $false }
+            }
+        }
         $currentTreeId = ''
         try {
             if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {

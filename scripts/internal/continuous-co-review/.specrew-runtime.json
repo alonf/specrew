@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "cbb60979d397593d98f57ddff5868b39d0b8efd24027c05557a6e6b69fd459da",
+  "runtime_bundle_sha256": "81799bfb9a0c1a9818d6c9abb0028b5440bd7b93f5f1c7016d7b99b386190c45",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -81,7 +81,7 @@
     },
     {
       "path": "review-campaign-orchestrator.ps1",
-      "sha256": "7ca0d130407baffac3d6bc3191302efec5be007175e4723aa5d7f31a80052cee"
+      "sha256": "38c566fc6386e2b194ef3a5738fd6b860a63f8eb5e0a7c1e6c042905d8f793c3"
     },
     {
       "path": "review-claude-harness-port.ps1",
