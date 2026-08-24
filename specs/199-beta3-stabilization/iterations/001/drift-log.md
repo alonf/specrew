@@ -535,6 +535,37 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-116 - the slice lane grew past its own budget, and the review died of it twice more (resolved)
+
+- **Observed**: 2026-08-24, the third and fourth failed launches of the maintainer-directed codex
+  round, both `verification-command-failed:f199-slice-suites` again - AFTER the DRIFT-115 world-gap
+  fixes, with the lane green in a faithful frozen-tree materialization. The differentiator was
+  TIMING, not content: both engine runs died at ~520s total, which is ~40s of materialization and
+  class-guards plus exactly the slice lane's 480s bound. The lane was timing out, and the sealed
+  reason does not distinguish a timeout from a red suite (the derived diagnosis that would have is
+  returned on the launch path but only rendered on the sign-off landing path - noted, not fixed
+  here).
+- **Cause**: growth without re-measurement. This iteration added four suites to the slice lane
+  (round-approval 26 cases, no-code 11, closed-iterations 8, coverage 9 - each on a maintainer
+  ruling), every one a sequential `pwsh -NoProfile -File` child process paying full cold start.
+  Measured in the engine's world (fresh worktree materialization, environment scrubbed to the plan's
+  env_refs): 370s cold against the 480s bound - 110s of headroom that launch-time contention ate
+  twice, while the warm working-tree run measured 264s and looked comfortable. The project already
+  owns the rule this violated: a lane's bound carries MEASURED headroom
+  (`ci-registry-lane-tooling.tests.ps1` pins it for CI), and the measurement has to happen in the
+  world the lane runs in, which DRIFT-115 had just established is not the working tree.
+- **Resolution**: the lane runs its child suites 6 at a time (`ForEach-Object -Parallel`) - they are
+  already isolated processes on GUID-scoped temp fixtures, so parallelism changes HOW they run and
+  nothing about WHICH run; the result count is pinned to 24 so a swallowed suite cannot read as a
+  pass. Measured cold+scrubbed after: 199s, restoring 2.4x headroom under the unchanged 480s bound,
+  with the full three-command preflight at ~300s inside the 900s review window. The measurement and
+  its date live in the plan entry's label, next to the lane's history.
+- **Citation**: the evidence rule - a bound is a claim about runtime, and it holds only in the world
+  it was measured in.
+- **Verification**: the patched lane exits 0 in the working tree AND cold+scrubbed in a fresh
+  frozen-tree materialization; both other plan commands re-run green (49s/120s, 51s/180s); the plan
+  diff touches exactly the command string and the label.
+
 ### DRIFT-199-I001-115 - the frozen review tree is a third world, and two launches failed inside it (resolved)
 
 - **Observed**: 2026-08-24, while launching the round the maintainer directed ("choose codex as your
