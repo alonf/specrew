@@ -145,6 +145,48 @@ Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming t
         @($offenders).Count | Should -Be 0 -Because "every reader-facing line naming an answer flag must name the typed decision it carries (offenders: $($offenders -join ', '))"
     }
 
+    It 'W54: every surface naming a captured phrase says it arrives as a normal chat message' {
+        # W54 (maintainer ruling, 2026-08-24, from the KeyContextAI walk): a Copilot agent asked for
+        # `approved for review round` through its ask-user tool twice; the replies arrived as tool
+        # results, capture correctly refused both by typed-turns doctrine, and the human was asked
+        # three times for one decision. Copilot actively steers agents toward the question UI, so
+        # this is systematic. The fix is at the GUIDANCE layer - capture must not learn to read
+        # pickers, because that reintroduces the dismissal hazard typed-turns-v1 exists to prevent -
+        # so every advisory and refusal that names a hook-captured phrase carries the clause: the
+        # reply is a normal chat message, and a question-UI or picker reply is not captured.
+        $capturedPhrases = @('approved for review round', 'approved for allowance reset', 'continue without coverage until the review phase', 'approved for <boundary>')
+        $clauseCore = 'normal chat message'
+        $window = 15
+        $files = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review') -Filter '*.ps1' -File | ForEach-Object { $_.FullName })
+        $files += @(
+            (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'),
+            (Join-Path $script:RepoRoot 'scripts/internal/sync-boundary-state.ps1'),
+            (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'),
+            (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
+        )
+        $offenders = [System.Collections.Generic.List[string]]::new()
+        foreach ($file in $files) {
+            $lines = @(Get-Content -LiteralPath $file -Encoding UTF8)
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                $line = $lines[$i]
+                $trimmed = $line.TrimStart()
+                if ($trimmed.StartsWith('#')) { continue }
+                # Recognizer patterns, writers and parser lines carry the phrase as DATA, not advisory.
+                if ($line.Contains('-cmatch') -or $line.Contains('-match') -or $line.Contains('[regex]') -or $trimmed.StartsWith("'^")) { continue }
+                $lower = $line.ToLowerInvariant()
+                $named = $false
+                foreach ($phrase in $capturedPhrases) { if ($lower.Contains($phrase)) { $named = $true; break } }
+                if (-not $named) { continue }
+                $clauseNearby = $false
+                for ($j = [Math]::Max(0, $i - $window); $j -le [Math]::Min($lines.Count - 1, $i + $window); $j++) {
+                    if ($lines[$j].ToLowerInvariant().Contains($clauseCore)) { $clauseNearby = $true; break }
+                }
+                if (-not $clauseNearby) { [void]$offenders.Add("$(Split-Path -Leaf $file):$($i + 1)") }
+            }
+        }
+        @($offenders).Count | Should -Be 0 -Because "every advisory naming a captured phrase must say it arrives as a normal chat message - a question-UI or picker reply is not captured (offenders: $($offenders -join ', '))"
+    }
+
     It 'W49: no pause menu renders numbered option labels or a --flag as the answer channel' {
         # The menu is the human surface. Numbered labels teach bare-number replies - which are never
         # authority in this system - and a --flag is the agent's spelling, not the human's decision.

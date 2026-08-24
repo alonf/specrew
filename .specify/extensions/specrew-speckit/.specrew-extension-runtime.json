@@ -388,7 +388,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "27ecbd435654d9112556fca33cee996c070bb3eda8b13454fc8859af8b29d822"
+      "sha256": "fcf00485dcea54e6b30b12a587f371b2c535756101988666afadaae87c7cf198"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -400,7 +400,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "bb6a182e62bbffd584a2133c6fdc1e3b7136345daf4e668cd6a63ed2183701ef"
+      "sha256": "447d4b1848921c02743451349df2d092ad96f416741f63f3d2eab6acd7f40ffa"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -428,7 +428,7 @@
     },
     {
       "path": "scripts/validate-governance.ps1",
-      "sha256": "e6ddb371122d0d569b6f783730dfdc8483f678ae2eb4608fa6318a9475abfd6e"
+      "sha256": "2aab15398deef45151b6cd42de785ab104a4cd150a215bc4a3ba55c988b1def6"
     },
     {
       "path": "scripts/validate-versions.ps1",

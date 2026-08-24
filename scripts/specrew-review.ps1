@@ -139,8 +139,9 @@ Options:
   --model <model>        Requested reviewer model id for the host
   --effort <effort>      Optional host-specific reviewer reasoning/effort setting to persist in evidence
   --approve-round        Approve one review round (the typed reply `approved for review round` in a
-                         conversation is the same approval). Specrew records it and mints the
-                         reference itself - there is no value to invent
+                         conversation is the same approval, given as a normal chat message - a reply
+                         inside a question UI or picker is not captured). Specrew records it and
+                         mints the reference itself - there is no value to invent
   --pause-choice <1|2|3> Carry a decided pause answer to Specrew (1 = run another round, 2 = stop the review here, 3 = abandon this review campaign):
                          1 run another round, 2 stop here and complete sign-off, 3 abandon
   --pause-rationale      Optional note recorded with a stop-here answer
@@ -895,7 +896,15 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                 if ($insideAgentSessionReset -and $null -eq $capturedAllowanceReset) {
                     Write-Host 'Replenishing the review rounds is the human''s decision, and no approval from them has been captured.' -ForegroundColor Yellow
                     Write-Host ''
-                    Write-Host 'Ask them for it in the conversation. Their typed reply:' -ForegroundColor Cyan
+                    # W54: a phrase that arrived through a question UI was SEEN and correctly refused
+                    # - say so, or the agent re-asks through the same tool and the human answers the
+                    # same question again (measured: three asks for one decision on the walk).
+                    if ((Get-Command -Name 'Get-SpecrewQuestionUiPhraseObservation' -ErrorAction SilentlyContinue) -and
+                        $null -ne (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $resolvedProjectPath)) {
+                        Write-Host 'The conversation shows the phrase arriving from a question UI or picker. Those replies are not captured, by design: only a typed chat turn is authority. Ask the human to type it in the chat.' -ForegroundColor Yellow
+                        Write-Host ''
+                    }
+                    Write-Host 'Ask them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:' -ForegroundColor Cyan
                     Write-Host ''
                     Write-Host '  approved for allowance reset' -ForegroundColor Cyan
                     Write-Host ''
@@ -937,7 +946,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                 if ($Json) { $resetFact | ConvertTo-Json -Depth 10; exit 0 }
                 Write-Host 'Your review rounds are topped up. The rounds already run stay on the record; they no longer count against your allowance.' -ForegroundColor Green
                 Write-Host ''
-                Write-Host 'Run the next review with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval)' -ForegroundColor Cyan
+                Write-Host 'Run the next review with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
                 exit 0
             }
             if ([string]$parsedArgs.Remediate -cne 'override-block') { throw "Campaign remediation '$($parsedArgs.Remediate)' does not create signoff authority; use a new explicitly authorized run." }
@@ -1062,7 +1071,13 @@ if ($Live) {
                 if ($insideAgentSession -and $null -eq $capturedRoundApproval) {
                     Write-Host 'Approving a review round is the human''s decision, and no approval from them has been captured.' -ForegroundColor Yellow
                     Write-Host ''
-                    Write-Host 'Ask them for it in the conversation. Their typed reply:' -ForegroundColor Cyan
+                    # W54: name the actual cause when the phrase was seen arriving through a picker.
+                    if ((Get-Command -Name 'Get-SpecrewQuestionUiPhraseObservation' -ErrorAction SilentlyContinue) -and
+                        $null -ne (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $resolvedProjectPath)) {
+                        Write-Host 'The conversation shows the phrase arriving from a question UI or picker. Those replies are not captured, by design: only a typed chat turn is authority. Ask the human to type it in the chat.' -ForegroundColor Yellow
+                        Write-Host ''
+                    }
+                    Write-Host 'Ask them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:' -ForegroundColor Cyan
                     Write-Host ''
                     Write-Host '  approved for review round' -ForegroundColor Cyan
                     Write-Host ''
@@ -1116,7 +1131,7 @@ if ($Live) {
                 [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
                 Write-Host 'That authorization reference was not created by approving this review round.' -ForegroundColor Yellow
                 Write-Host ''
-                Write-Host 'If you want to approve a round now, use:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval)' -ForegroundColor Cyan
+                Write-Host 'If you want to approve a round now, use:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
                 Write-Host ''
                 Write-Host 'If you are deliberately supplying your own label - a scripted run, or an approval you recorded elsewhere -'
                 Write-Host 'say what it is, and Specrew will record it as such rather than as a round you approved here:'
@@ -1244,7 +1259,16 @@ if ($Live) {
             if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and -not $answeringPause) {
                 Write-Host 'This review round needs the human''s approval before it can run.' -ForegroundColor Yellow
                 Write-Host ''
-                Write-Host 'The approval is their typed reply in the conversation:  approved for review round' -ForegroundColor Cyan
+                # W54: after a failed capture, diagnose the picker shape when the transcript showed it -
+                # the phrase was SEEN arriving as a tool result and correctly refused, and without this
+                # sentence the agent re-asks through the same question UI (measured: three asks for one
+                # decision on the walk).
+                if ((Get-Command -Name 'Get-SpecrewQuestionUiPhraseObservation' -ErrorAction SilentlyContinue) -and
+                    $null -ne (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $resolvedProjectPath)) {
+                    Write-Host 'The conversation shows the phrase arriving from a question UI or picker. Those replies are not captured, by design: only a typed chat turn is authority. Ask the human to type it in the chat.' -ForegroundColor Yellow
+                    Write-Host ''
+                }
+                Write-Host 'The approval is their typed reply in the conversation, as a normal chat message - a reply inside a question UI or picker is not captured:  approved for review round' -ForegroundColor Cyan
                 Write-Host 'Once they have typed `approved for review round`, run:  specrew review --live --approve-round' -ForegroundColor Cyan
                 Write-Host ''
                 Write-Host 'Approving one round runs one review. Nothing is spent until then, and Specrew records the phrase as the'
@@ -1305,7 +1329,7 @@ if ($Live) {
                 if ($null -eq $outstanding) {
                     Write-Host ('No review round is waiting for your answer on {0}, so there is nothing to reply to.' -f $answerIdentity.campaign_id) -ForegroundColor Yellow
                     Write-Host ''
-                    Write-Host 'Start one with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval)' -ForegroundColor Cyan
+                    Write-Host 'Start one with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
                     exit 1
                 }
                 # W27: a human who answers a clean round out of habit gets told it was unnecessary, not
@@ -1318,9 +1342,32 @@ if ($Live) {
                 if ($null -ne $outstandingResult -and [string]$outstandingResult.verdict -ceq 'pass' -and
                     [string]$outstandingResult.completion -ceq 'complete' -and [string]$outstandingResult.validation -ceq 'valid' -and
                     [string]$outstandingResult.currentness -ceq 'current' -and [bool]$outstandingResult.can_approve_current) {
-                    Write-Host 'That review found nothing, so there was no decision waiting for you and nothing needed answering.' -ForegroundColor Green
-                    Write-Host 'It already covers your files as they are now. What still needs you is the boundary approval, where this result is cited.'
-                    exit 0
+                    # Round-13 finding (DRIFT-199-I001-122): currentness and can_approve_current are
+                    # INGEST-TIME facts - true when the result landed, silent about every source edit
+                    # since. This shortcut speaks in the present tense ("covers your files as they
+                    # are now"), so it is checked against the PRESENT tree: only a target that still
+                    # matches takes the exit. A moved tree falls through to the ordinary pause
+                    # handling, whose superseded-pause logic owns exactly that case - and an
+                    # uncomputable digest falls through too, because a shortcut that cannot prove its
+                    # own sentence does not get to say it.
+                    $cleanShortcutHolds = $false
+                    try {
+                        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+                            $digestHelperPath = Join-Path $reviewEngineRoot 'reviewed-state-digest.ps1'
+                            if (Test-Path -LiteralPath $digestHelperPath -PathType Leaf) { . $digestHelperPath }
+                        }
+                        if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
+                            $nowDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $resolvedProjectPath
+                            $cleanShortcutHolds = ($null -ne $nowDigest -and [bool]$nowDigest.ok -and
+                                [string]$nowDigest.tree_id -ceq [string]$outstandingResult.target_digest)
+                        }
+                    }
+                    catch { $cleanShortcutHolds = $false }
+                    if ($cleanShortcutHolds) {
+                        Write-Host 'That review found nothing, so there was no decision waiting for you and nothing needed answering.' -ForegroundColor Green
+                        Write-Host 'It already covers your files as they are now. What still needs you is the boundary approval, where this result is cited.'
+                        exit 0
+                    }
                 }
                 $choice = switch ($pauseAnswer) {
                     '1' { 'fix-and-continue' }
@@ -1499,7 +1546,7 @@ if ($Live) {
                         if ([string]$campaignRun.result.failure_reason -match 'unselected-harness|reviewer-host-required|preflight-failed:harness') {
                             Write-Host ''
                             Write-Host 'No reviewer has been chosen for this project yet, so there was nothing to run the review with. This is a setup step, not a broken tool.' -ForegroundColor Cyan
-                            Write-Host 'Pick one you have installed, and approve it once:  specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round   (the typed reply `approved for review round` carries the same approval)' -ForegroundColor Cyan
+                            Write-Host 'Pick one you have installed, and approve it once:  specrew review --live --host <claude|codex|copilot|cursor-agent|antigravity> --approve-round   (the typed reply `approved for review round` carries the same approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
                             Write-Host 'Choose a different one from the tool that wrote the code where you can - a second opinion is the point.'
                         }
                     }
@@ -1653,7 +1700,7 @@ if ($Live) {
                     Write-Host ("Run: {0}   Reason: {1}" -f $run.run_id, $reason)
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
-                        Write-Host '    specrew review --live --host <claude|codex|...> --approve-round   (their typed `approved for review round` is the approval this flag carries)'
+                        Write-Host '    specrew review --live --host <claude|codex|...> --approve-round   (their typed `approved for review round` is the approval this flag carries, given as a normal chat message - a reply inside a question UI or picker is not captured)'
                     }
                     elseif ($reason -match 'allowance-exhausted') {
                         # W50 rider: round accounting spoke three currencies - "1 of 4 rounds" on the
@@ -1661,7 +1708,7 @@ if ($Live) {
                         # human-visible account: rounds you approved, rounds attempted, what a reset
                         # gives. The slot vocabulary stays internal.
                         Write-Host 'Every review round you approved has been used by an attempt. Nothing further runs until the rounds are replenished.' -ForegroundColor Yellow
-                        Write-Host 'A reset restores your rounds: the typed reply `approved for allowance reset` is that decision, and your agent then runs: specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
+                        Write-Host 'A reset restores your rounds: the typed reply `approved for allowance reset` - as a normal chat message; a reply inside a question UI or picker is not captured - is that decision, and your agent then runs: specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
                     }
                     elseif ($reason -match 'timeout|budget') {
                         # F-198 FR-022 teaching (consumer-legible, amended approval UX): the sanctioned

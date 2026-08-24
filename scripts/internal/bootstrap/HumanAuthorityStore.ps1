@@ -223,6 +223,72 @@ function Get-SpecrewReviewRoundApprovalRoot {
     return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/round-approval'
 }
 
+function Get-SpecrewQuestionUiObservationPath {
+    # W54: lives BESIDE the round-approval store because it is that family's diagnostic - never
+    # authority. The directory is already review runtime evidence (untracked by ruling).
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'question-ui-observation.json'
+}
+
+function Write-SpecrewQuestionUiPhraseObservation {
+    # W54 (maintainer ruling, 2026-08-24): an authority phrase that arrived through a question-UI
+    # tool is visible in the transcript only as a tool result, and capture rightly refuses it by
+    # typed-turns doctrine - but silently, so the agent re-asks through the same tool and the human
+    # answers the same question again (measured: three asks for one decision on the KeyContextAI
+    # walk). This records the OBSERVATION so the refusal downstream can name the actual cause and
+    # remedy. It is a diagnostic fact: nothing reads it as approval, and a genuine typed capture
+    # clears it.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][ValidateSet('review-round-approval', 'allowance-reset', 'coverage-deferral')][string]$PhraseKind,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewQuestionUiObservationPath -ProjectRoot $ProjectRoot
+    $dir = Split-Path -Parent $path
+    if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'question-ui-phrase-observation'
+        phrase_kind = $PhraseKind; host_kind = [string]$HostKind; source_event = [string]$SourceEvent
+        observed_at = $NowUtc
+    }
+    $json = $fact | ConvertTo-Json -Depth 4
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return $null }
+    return $fact
+}
+
+function Get-SpecrewQuestionUiPhraseObservation {
+    # The standing observation, or $null. Shape-validated the way every store reader here is; an
+    # unreadable file is treated as absent, and absent just means the refusal names no picker cause.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewQuestionUiObservationPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 4 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('fact_type', 'phrase_kind', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'question-ui-phrase-observation') { return $null }
+    return $fact
+}
+
+function Clear-SpecrewQuestionUiPhraseObservation {
+    # Called by the authority writers on a successful mint: once the human typed the phrase in the
+    # chat, the picker diagnosis is history, not standing state.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewQuestionUiObservationPath -ProjectRoot $ProjectRoot
+    try { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } } catch { $null = $_ }
+}
+
 function Get-SpecrewAgentSessionSignalNames {
     # The env signals that mean "this process is running inside an agent session". MIRRORS the per-host
     # sets in HandoverStore's Get-SpecrewRuntimeHostFromEnv - a parity test pins the two together, so a
@@ -359,6 +425,7 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
             [string]$existing.response_hash -ceq [string]$fact.response_hash) {
+            Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
             return $existing
         }
     }
@@ -370,6 +437,8 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         ($fact | ConvertTo-Json -Compress -Depth 8) | Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Encoding UTF8
     }
     catch { $null = $_ }
+    # W54: the human typed it in the chat, so any standing picker diagnosis is now history.
+    Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
     return $fact
 }
 
@@ -587,11 +656,16 @@ function Write-SpecrewAllowanceResetAuthorization {
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
         if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
-            [string]$existing.response_hash -ceq [string]$fact.response_hash) { return $existing }
+            [string]$existing.response_hash -ceq [string]$fact.response_hash) {
+            Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
+            return $existing
+        }
     }
     $json = $fact | ConvertTo-Json -Depth 8
     if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
     else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    # W54: the human typed it in the chat, so any standing picker diagnosis is now history.
+    Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
     return $fact
 }
 

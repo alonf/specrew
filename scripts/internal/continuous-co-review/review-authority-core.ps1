@@ -250,7 +250,7 @@ function Resolve-ReviewCampaignPauseDecision {
     if (-not $resultProduced) {
         $options = [Collections.Generic.List[object]]::new()
         if ($continuationAvailable) {
-            $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - the review runs again on your files; this approves one round, and your typed reply `approved for review round` is that approval' })
+            $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - the review runs again on your files; this approves one round, and your typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is that approval' })
         }
         $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })
         return [pscustomobject][ordered]@{
@@ -272,7 +272,7 @@ function Resolve-ReviewCampaignPauseDecision {
             elapsed_minutes        = $ElapsedMinutes
             result_produced        = $false
             recommendation         = $(if ($continuationAvailable) {
-                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Ask the human to approve another round - their typed reply ``approved for review round`` is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round'
+                    'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. Ask the human to approve another round - their typed reply - as a normal chat message; a reply inside a question UI or picker is not captured - ``approved for review round`` is the approval, and Specrew captures it from the conversation. Once they have typed it, run: specrew review --live --approve-round'
                 } else {
                     'This review did not finish, so it found nothing AND cleared nothing - there is no evidence either way about your files. Do not read this as a clean result. The round budget is spent; reset it explicitly or abandon this campaign.'
                 })
@@ -329,7 +329,7 @@ function Resolve-ReviewCampaignPauseDecision {
     # budget exists to interrupt. Exhaustion has to feel different from an ordinary continuation.
     $options = [Collections.Generic.List[object]]::new()
     if ($continuationAvailable) {
-        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - fixes go in and one more review runs on your files; this approves one round, and your typed reply `approved for review round` is that approval' })
+        $options.Add([pscustomobject]@{ id = 1; choice = 'fix-and-continue'; reply = 'run another round'; text = 'run another round - fixes go in and one more review runs on your files; this approves one round, and your typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is that approval' })
     }
     $options.Add([pscustomobject]@{ id = 2; choice = 'stop-here'; reply = 'stop the review here'; text = 'stop the review here - remaining findings become follow-ups, a final check runs on your files exactly as they are now, and review sign-off completes; this spends nothing' })
     $options.Add([pscustomobject]@{ id = 3; choice = 'abandon'; reply = 'abandon this review campaign'; text = 'abandon this review campaign - nothing further runs and nothing is signed off; this spends nothing' })

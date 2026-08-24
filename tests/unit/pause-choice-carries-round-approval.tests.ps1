@@ -99,4 +99,23 @@ $mutatedAssignments = @([System.Management.Automation.Language.Parser]::ParseInp
         }, $true))
 Assert-True (@($mutatedAssignments).Count -eq 0) 'mutation proof: removing option 1 from the approval predicate is detected by this guard'
 
+# --- Round-13 findings (DRIFT-199-I001-122), pinned structurally where the behavior lives ---
+
+# F2: the clean-round early exit speaks in the present tense ("covers your files as they are now"),
+# so it must consult the PRESENT tree - currentness and can_approve_current are ingest-time facts,
+# true when the result landed and silent about every source edit since.
+$r13RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$r13CliText = Get-Content -LiteralPath (Join-Path $r13RepoRoot 'scripts\specrew-review.ps1') -Raw -Encoding UTF8
+$r13Shortcut = [regex]::Match($r13CliText, '(?s)\$cleanShortcutHolds = \$false.{0,2500}?if \(\$cleanShortcutHolds\)').Value
+Assert-True (-not [string]::IsNullOrWhiteSpace($r13Shortcut)) 'the clean-round early exit guards itself before speaking in the present tense'
+Assert-True ($r13Shortcut.Contains('Get-ContinuousCoReviewReviewedStateDigest')) 'the shortcut recomputes the current tree, not the ingest-time currentness'
+Assert-True ($r13Shortcut.Contains('target_digest')) 'the recomputed tree is compared against the tree the clean result actually covered'
+
+# F4: every stop-here attempt writes transport evidence under the system temp path; the finally that
+# disposes the snapshot must dispose the attempt directory too, or attempts accumulate forever.
+$r13OrchText = Get-Content -LiteralPath (Join-Path $r13RepoRoot 'scripts\internal\continuous-co-review\review-campaign-orchestrator.ps1') -Raw -Encoding UTF8
+$r13Finally = [regex]::Match($r13OrchText, '(?s)specrew-stop-here-evidence.{0,5000}?finally \{.{0,3500}?Remove-GitReviewTargetSnapshot.{0,3000}?\n            \}').Value
+Assert-True (-not [string]::IsNullOrWhiteSpace($r13Finally)) 'the stop-here verification finally block exists to check'
+Assert-True ($r13Finally.Contains('$evidenceDirectory')) 'the finally disposes the attempt evidence directory, not only the git snapshot'
+
 Write-Host 'pause choice carries round approval: all assertions pass' -ForegroundColor Green

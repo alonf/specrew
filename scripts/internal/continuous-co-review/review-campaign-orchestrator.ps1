@@ -886,6 +886,7 @@ function Invoke-ReviewCampaignStopHereLanding {
             # drift.
             $snapshot = $null
             $verification = $null
+            $evidenceDirectory = $null
             try {
                 $snapshot = New-GitReviewTargetSnapshot -OriginRepo $ctx.project_root -RunId $ctx.run_id
                 # implementer_evidence_path is a FILE, not a directory - the ingestor builds it as
@@ -909,6 +910,21 @@ function Invoke-ReviewCampaignStopHereLanding {
                 # worktrees the consumer never asked for and git later complains about.
                 if ($null -ne $snapshot) {
                     try { Remove-GitReviewTargetSnapshot -Snapshot $snapshot | Out-Null } catch { $null = $_ }
+                }
+                # Round-13 finding (DRIFT-199-I001-122): the attempt directory is TRANSPORT - the
+                # verification outcome object already carries everything the caller reads below - so
+                # leaving it meant every stop-here attempt, landed or refused, accumulated a GUID
+                # directory under the system temp path forever. Removed here, with the per-run parent
+                # folded away when this was its last attempt; a cleanup failure stays non-fatal.
+                if (-not [string]::IsNullOrWhiteSpace([string]$evidenceDirectory)) {
+                    try {
+                        if (Test-Path -LiteralPath $evidenceDirectory) { Remove-Item -LiteralPath $evidenceDirectory -Recurse -Force }
+                        $evidenceRunParent = Split-Path -Parent $evidenceDirectory
+                        if ((Test-Path -LiteralPath $evidenceRunParent) -and @([IO.Directory]::GetFileSystemEntries($evidenceRunParent)).Count -eq 0) {
+                            [IO.Directory]::Delete($evidenceRunParent)
+                        }
+                    }
+                    catch { $null = $_ }
                 }
             }
             # The diagnosis is carried THROUGH the port, not dropped here. A port that narrows its
@@ -1310,7 +1326,7 @@ function Resolve-ReviewCampaignPublicIdentity {
         # conclude the feature did not exist and to propose bypassing the gate.
         throw ('Specrew could not work out which feature this review is for. It looked at the lifecycle ' +
             'state, the active feature record, and the branch name, and none of them named one. ' +
-            'Tell it directly: specrew review --live --feature <feature-id> --approve-round. Approving the round is the human''s decision - their typed reply `approved for review round` is captured from the conversation, and the command consumes it.')
+            'Tell it directly: specrew review --live --feature <feature-id> --approve-round. Approving the round is the human''s decision - their typed reply `approved for review round` (as a normal chat message - a reply inside a question UI or picker is not captured) is captured from the conversation, and the command consumes it.')
     }
     $featureDirectory = Join-Path $root "specs/$feature"
     if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) { throw "review-campaign-feature-missing:$feature" }
@@ -1469,7 +1485,7 @@ function Invoke-ReviewCampaignCommand {
             $conditionSentence = switch ($failedCondition) {
                 'not-cataloged' { "Specrew does not recognise the reviewer '$ReviewerHost'. Check the name, or list the reviewers this project can use with: specrew review --list-hosts" }
                 'not-installed' { "The reviewer '$ReviewerHost' is set up for this project, but its command is not on this machine. Install it, or choose one that is available with: specrew review --list-hosts" }
-                default { "This review round needs the human''s approval before it can run. Their typed reply `approved for review round` is the approval; once they have typed it, run: specrew review --live --approve-round. From their own terminal, the human can also run that command directly - their invocation is itself the approval." }
+                default { "This review round needs the human''s approval before it can run. Their typed reply `approved for review round`, as a normal chat message, is the approval - a reply inside a question UI or picker is not captured; once they have typed it, run: specrew review --live --approve-round. From their own terminal, the human can also run that command directly - their invocation is itself the approval." }
             }
             # THE TOKEN ITSELF MUST STOP LYING, not just the sentence beside it. For the two genuine
             # host conditions the host really is the problem, so the long-standing

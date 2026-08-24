@@ -407,3 +407,88 @@ Describe 'W44 the hooks feed the capture' {
         $stopBlock.Contains('Test-SpecrewTurnIsHumanVerdictEvidence') | Should -BeTrue -Because 'never agent text - the same provenance rule verdict capture uses'
     }
 }
+
+Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and never authority' {
+    # W54 (maintainer ruling, 2026-08-24, from the KeyContextAI walk): a Copilot agent asked for
+    # `approved for review round` via its ask-user tool twice; the replies arrived as tool results,
+    # capture correctly refused both by typed-turns doctrine, and the human answered the same
+    # question three times. The fix is at the GUIDANCE layer: capture must not learn to read pickers
+    # (that reintroduces the dismissal hazard typed-turns-v1 exists to prevent), but the refusal the
+    # agent sees must name the actual cause and remedy - which requires the refusing pass to RECORD
+    # what it saw. The observation is a diagnostic fact, never authority.
+
+    It 'records the observation for a phrase inside a tool result, and mints nothing' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w54-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            # The claude shape of an ask-user reply: a USER record whose content is a tool_result -
+            # the phrase is in the transcript, and no genuine human turn carries it.
+            $line = '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":[{"type":"text","text":"approved for review round"}]}]}}'
+            $tp = Join-Path $root 'transcript.jsonl'
+            [IO.File]::WriteAllLines($tp, [string[]]@($line), [Text.UTF8Encoding]::new($false))
+
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ClassificationEngine.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1')
+            Update-SpecrewRollingHandover -ProjectRoot $root -TranscriptPath $tp -Source 'Stop' | Out-Null
+
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'a tool-result reply is not a typed turn; capture refusing it is the doctrine, not the defect'
+            $obs = Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $root
+            $obs | Should -Not -BeNullOrEmpty -Because 'the refusing pass must record what it saw, or the refusal downstream cannot name the cause'
+            [string]$obs.phrase_kind | Should -Be 'review-round-approval'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'does not observe the agent quoting the phrase, nor the question itself, nor CLI output echoing it' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w54-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $cliEcho = ('review output line`nThe approval is their typed reply: approved for review round`nmore output ' + ('x' * 400))
+            $lines = @(
+                # The agent rendering the menu - assistant text quoting the phrase.
+                '{"type":"assistant","message":{"content":[{"type":"text","text":"Reply with `approved for review round` to approve one round."}]}}'
+                # The QUESTION (tool_use input naming the phrase as an option) - a question is not a reply.
+                '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"ask_user","input":{"options":["approved for review round","hold"]}}]}}'
+                # CLI output echoing the advisory inside a LONG tool-result string - command output, not a picker reply.
+                ('{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t3","content":[{"type":"text","text":"' + $cliEcho + '"}]}]}}')
+            )
+            $tp = Join-Path $root 'transcript.jsonl'
+            [IO.File]::WriteAllLines($tp, [string[]]$lines, [Text.UTF8Encoding]::new($false))
+
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ClassificationEngine.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1')
+            . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1')
+            Update-SpecrewRollingHandover -ProjectRoot $root -TranscriptPath $tp -Source 'Stop' | Out-Null
+
+            Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'a false observation misdiagnoses a human who simply has not replied yet'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a genuine typed capture clears the observation - the diagnosis must not outlive its cause' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w54-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            Write-SpecrewQuestionUiPhraseObservation -ProjectRoot $root -PhraseKind 'review-round-approval' -HostKind 'copilot' -SourceEvent 'stop-transcript' | Out-Null
+            (Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $root) | Should -Not -BeNullOrEmpty
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'copilot' -SourceEvent 'UserPromptSubmit'
+            Get-SpecrewQuestionUiPhraseObservation -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'once the human typed it in the chat, the picker diagnosis is history, not standing state'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the review CLI refusal names the cause and the remedy when the observation stands' {
+        # Structural, on the shipped CLI: the refusal blocks consult the observation and carry the
+        # cause ("question UI or picker") and the remedy ("type it in the chat").
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $cli.Contains('Get-SpecrewQuestionUiPhraseObservation') | Should -BeTrue -Because 'a refusal that cannot see the observation cannot name the cause'
+        ([regex]::Matches($cli, [regex]::Escape('Ask the human to type it in the chat'))).Count |
+            Should -BeGreaterOrEqual 2 -Because 'both the round-approval and allowance-reset refusals diagnose the picker shape'
+    }
+}

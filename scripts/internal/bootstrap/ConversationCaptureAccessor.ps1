@@ -189,12 +189,16 @@ function Test-SpecrewHumanVerdictToken {
         # Round-12 finding (DRIFT-199-I001-120): the interrogative rule binds BEFORE EITHER approval
         # return, not only in the fallback. "Approve plan? I am still deciding." satisfied the
         # recognized closed set through the boundary name and returned approval without ever meeting
-        # the round-11 guard below. Same test, same doctrine: if the first sentence punctuation after
-        # the verb is a question mark, the approval clause is a question and a question is
-        # deliberation - while a declarative approval with a TRAILING question ("approved for
-        # implement. should I also update the changelog?") is unaffected, because its first
-        # punctuation is the period.
-        $interrogativeApprovalClause = ($afterApproval -match '^[^.!?]*\?')
+        # the round-11 guard below.
+        #
+        # Round-13 finding (DRIFT-199-I001-122): and the test is scoped to the APPROVAL CLAUSE by the
+        # SAME instruction-delimiter split the boundary extraction uses below - the round-12 version
+        # scanned to the first sentence punctuation, straight past a spaced dash, so "approved for
+        # tasks — can you also update the changelog?" read as interrogative and a valid approval was
+        # erased. The clause is what can be a question; what follows a delimiter is instruction
+        # wording, and a question there is an ordinary follow-up ("approved for implement. should I
+        # also update the changelog?" was already safe via the period for the same reason).
+        $interrogativeApprovalClause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s', 2))[0].Contains('?')
         $isRecognizedPhrase = (-not $interrogativeApprovalClause) -and (
             [string]::IsNullOrWhiteSpace($afterApproval) -or
             $afterApproval -match '^\s*[,.;:]' -or
@@ -261,16 +265,17 @@ function Test-SpecrewHumanVerdictToken {
         '^\s*(?:(?:option\s*)?([12])\s*[.):\-\u2013\u2014]\s*)?(?:(?:yes|confirmed)\s*[,;:\-\u2013\u2014]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b'
     )
     if ($approvalUtterance.Success) {
-        # Round-11 finding (DRIFT-199-I001-118): the interrogative rule binds to the SENTENCE the
+        # Round-11 finding (DRIFT-199-I001-118): the interrogative rule binds to the CLAUSE the
         # approval verb sits in, not just to the utterance's last character. "Approve? I am still
         # deciding." sailed past the ends-with-? guard above - the question mark closed the approval
         # clause, not the utterance - and this fallback then converted the human's explicit
-        # uncertainty into authorization. If the first sentence punctuation after the verb is a
-        # question mark, the approval is a question; a question is deliberation, whatever follows.
-        # A DECLARATIVE approval with a trailing question ("approved the plan. ok to continue?")
-        # keeps its existing reading: the follow-up question comes after a '.' and does not match.
+        # uncertainty into authorization. Round-13 (DRIFT-199-I001-122) scoped the test to the same
+        # instruction-delimiter split the recognized branch uses: the round-12 form scanned to the
+        # first sentence punctuation, straight past a spaced dash or comma, so a trailing question
+        # after a delimited approval ("approved, and could you rerun the lanes after?") erased the
+        # approval. What can be a question is the clause; after a delimiter it is a follow-up.
         $afterAnchor = $lower.Substring($approvalUtterance.Length)
-        if ($afterAnchor -match '^[^.!?]*\?') { return $r }
+        if (([regex]::Split($afterAnchor, '[,.;:]|\s[-–—]\s', 2))[0].Contains('?')) { return $r }
         if ($approvalUtterance.Groups[1].Success) { $r.ApprovalOption = [int]$approvalUtterance.Groups[1].Value }
         $r.IsApproval = $true; $r.Action = 'approve'; return $r
     }

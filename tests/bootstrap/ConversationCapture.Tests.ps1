@@ -85,6 +85,13 @@ $approveWithInstructions = @(
     @{ text = 'approved for plan. changes needed in the README are noted for later'; why = 'an affirmative change clause AFTER the approval is instruction wording' }
     @{ text = 'approved for review-signoff with instructions: reject any finding without a failure scenario'; why = '"reject" describes what to do with findings, not the boundary' }
     @{ text = 'approved for implement. should I also update the changelog?';        why = 'a trailing QUESTION is a follow-up, not an interrogative approval' }
+    # Round-13 finding (DRIFT-199-I001-122): the round-12 question test scanned to the first sentence
+    # punctuation, straight PAST the spaced-dash instruction delimiter - so a trailing question after
+    # a dash-delimited approval erased the approval. The question test now stops at the SAME
+    # instruction delimiters the boundary extraction uses: the clause is declarative, the question is
+    # a follow-up.
+    @{ text = 'approved for tasks — can you also update the changelog?';            why = 'the spaced dash already ended the approval clause; the question after it is a follow-up' }
+    @{ text = 'approved, and could you rerun the lanes after?';                     why = 'the comma ended the approval clause; the question after it is an instruction' }
 )
 foreach ($c in $approveWithInstructions) {
     $v = Test-SpecrewHumanVerdictToken -Text $c.text

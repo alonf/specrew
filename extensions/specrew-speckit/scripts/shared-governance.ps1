@@ -7050,6 +7050,10 @@ function Write-SpecrewCoverageDeferralAuthorization {
     $json = $fact | ConvertTo-Json -Depth 8
     if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
     else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    # W54: the human typed it in the chat, so any standing picker diagnosis is now history.
+    if (Get-Command Clear-SpecrewQuestionUiPhraseObservation -ErrorAction SilentlyContinue) {
+        Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
+    }
     return $fact
 }
 
@@ -7364,17 +7368,30 @@ function Get-SpecrewQualifyingIndependentRun {
             $sourceCount = $null
             if ($result.PSObject.Properties['examined_paths']) {
                 $declared = @(@($result.examined_paths) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-                if (@($declared).Count -gt 0) {
-                    $sourceCount = @($declared | Where-Object { Test-SpecrewDerivedCoverageSourcePath -Path $_ }).Count
-                    if ($sourceCount -eq 0) { continue }
-                }
+                # Round-13 finding (DRIFT-199-I001-122): a PRESENT empty list is declared ZERO
+                # coverage - the ingress refuses new ones since the round-11 fix, but results
+                # persisted before it are read HERE, and treating them like legacy absence let a
+                # run that declared it read nothing qualify as independent-review evidence. Only
+                # ABSENCE of the field keeps the legacy unknown-coverage path.
+                if (@($declared).Count -eq 0) { continue }
+                $sourceCount = @($declared | Where-Object { Test-SpecrewDerivedCoverageSourcePath -Path $_ }).Count
+                if ($sourceCount -eq 0) { continue }
             }
             [void]$qualifying.Add([pscustomobject]@{ result = $result; source_count = $sourceCount })
         }
     }
     if ($qualifying.Count -eq 0) { return $null }
-    # run_ids are fire-time-sortable, so "the latest qualifying run" is deterministic and monotone.
-    return (@($qualifying) | Sort-Object { [string]$_.result.run_id } | Select-Object -Last 1)
+    # "Latest" is a TIME claim (the DRIFT-120 rule, applied to this walk too - the same lexicographic
+    # selection lived one function over): order by the result's own ended_at, ordinal run id only as
+    # the deterministic tie-breaker.
+    return (@($qualifying) | Sort-Object -Property @{ Expression = {
+                $parsedEnded = [System.DateTimeOffset]::MinValue
+                $endedRaw = if ($_.result.PSObject.Properties['ended_at']) { [string]$_.result.ended_at } else { '' }
+                if (-not [string]::IsNullOrWhiteSpace($endedRaw)) {
+                    $null = [System.DateTimeOffset]::TryParse($endedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEnded)
+                }
+                $parsedEnded
+            } }, @{ Expression = { [string]$_.result.run_id } } | Select-Object -Last 1)
 }
 
 function Get-SpecrewDerivedIndependenceBlock {

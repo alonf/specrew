@@ -1084,6 +1084,36 @@ function Update-SpecrewRollingHandover {
             (Get-Command Test-SpecrewTurnIsHumanVerdictEvidence -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
             try {
+                # W54 OBSERVATION (never authority): a phrase arriving inside a tool RESULT is the
+                # question-UI shape - the turn parser drops tool_result parts by design, so capture
+                # rightly refuses it, but silently, and the agent then re-asks through the same tool.
+                # Record what was seen, so the review CLI's refusal can name the actual cause. The
+                # raw-line detector is deliberately narrow: the record must carry a tool-RESULT
+                # marker (never tool_use - the question naming the phrase as an option is not a
+                # reply), and the phrase must sit in a SHORT quoted JSON string - a picker reply is
+                # the chosen option text, while CLI output echoing an advisory is one long string
+                # whose quotes are nowhere near the phrase. False negatives are acceptable; a false
+                # positive would misdiagnose a human who simply has not replied yet. Runs BEFORE the
+                # mint loop, so a genuine typed capture in the same pass clears it.
+                if (Get-Command Write-SpecrewQuestionUiPhraseObservation -ErrorAction SilentlyContinue) {
+                    $w54Kinds = @(
+                        @{ Phrase = 'approved for review round'; Kind = 'review-round-approval' }
+                        @{ Phrase = 'approved for allowance reset'; Kind = 'allowance-reset' }
+                        @{ Phrase = 'continue without coverage until the review phase'; Kind = 'coverage-deferral' }
+                    )
+                    foreach ($rawLine in @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath)) {
+                        if ($rawLine -notmatch '(?i)(tool_result|function_call_output|tool\.result|toolresult|tool_output)') { continue }
+                        $obsKind = $null
+                        foreach ($k in $w54Kinds) {
+                            if ($rawLine -match ('"(?:[^"\\]|\\.){0,200}?' + [regex]::Escape([string]$k.Phrase) + '(?:[^"\\]|\\.){0,200}?"')) { $obsKind = [string]$k.Kind; break }
+                        }
+                        if ($null -ne $obsKind) {
+                            Write-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot -PhraseKind $obsKind `
+                                -HostKind $fromHost -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
+                            break
+                        }
+                    }
+                }
                 $roundApprovalTurns = New-Object System.Collections.Generic.List[object]
                 foreach ($ratRaw in @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath)) {
                     $ratTurn = Format-SpecrewConversationTurnText -Turn $ratRaw -Raw

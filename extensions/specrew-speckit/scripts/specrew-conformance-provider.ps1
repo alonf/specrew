@@ -1698,6 +1698,7 @@ try {
                 [void]$sb.AppendLine('  - `approved for allowance reset` - replenishes the review rounds; you then run the reset with their reason and reviews resume')
                 [void]$sb.AppendLine('  - `continue without coverage until the review phase` - implementation continues uncovered, and their choice is RECORDED so the review phase knows the absence was deliberate, not unnoticed')
                 [void]$sb.AppendLine('  - `hold implementation here` - no further product source until they decide otherwise; nothing is recorded and nothing runs')
+                [void]$sb.AppendLine('Each decision is their typed reply as a normal chat message - a reply inside a question UI or picker is not captured.')
                 [void]$sb.AppendLine('Wait for one of those typed replies. Do not continue writing product source while this decision is theirs to make, and never record a decision on their behalf.')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
@@ -1852,7 +1853,7 @@ try {
                 $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
             }
             elseif ($cappedKind -eq 'coverage-decision') {
-                $corrections.Add('[specrew-conformance] COVERAGE DECISION still unmade - the allowance is exhausted, source has moved beyond the last delivered review, and the block cap has released this stop. The decision is still the human''s: `approved for allowance reset`, `continue without coverage until the review phase`, or `hold implementation here`. Surface it; do not continue implementing as if it were made.') | Out-Null
+                $corrections.Add('[specrew-conformance] COVERAGE DECISION still unmade - the allowance is exhausted, source has moved beyond the last delivered review, and the block cap has released this stop. The decision is still the human''s: `approved for allowance reset`, `continue without coverage until the review phase`, or `hold implementation here` - each as their typed reply in a normal chat message, because a reply inside a question UI or picker is not captured. Surface it; do not continue implementing as if it were made.') | Out-Null
             }
             elseif ($cappedKind -eq 'unauthorized-source') {
                 $corrections.Add('[specrew-conformance] UNAUTHORIZED SOURCE still present - product source was written without the before-implement verdict, and the block cap has released this stop. The condition is still unmet: surface the work to the human and ask for their verdict or their revert decision. Do not continue implementing.') | Out-Null

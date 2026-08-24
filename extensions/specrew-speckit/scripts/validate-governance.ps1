@@ -1254,6 +1254,13 @@ function Test-ReviewCitedRunEvidence {
         # independent review was complete, current, valid and passing by every stored fact.
         if ($result.PSObject.Properties['examined_paths']) {
             $examined = @(@($result.examined_paths) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            # Round-13 finding (DRIFT-199-I001-122): a PRESENT empty list is declared ZERO coverage.
+            # The ingress refuses new ones since the round-11 fix, but a complete/passing result
+            # persisted before it can carry an empty declaration into this reader - and "I read no
+            # files" cannot evidence a review of the code. Only ABSENCE keeps the legacy fail-open.
+            if (@($examined).Count -eq 0) {
+                $weak.Add('declared it examined no files at all') | Out-Null
+            }
             if (@($examined).Count -gt 0) {
                 $sourceExamined = @($examined | Where-Object {
                         $rel = $_.Trim().Replace([char]92, [char]47)

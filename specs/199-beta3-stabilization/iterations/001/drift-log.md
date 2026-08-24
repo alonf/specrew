@@ -535,6 +535,79 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-122 - round 13's findings: a dash-erased approval, a stale clean shortcut, legacy empty coverage, leaked evidence dirs (resolved)
+
+- **Observed**: 2026-08-24, the third approved round - run-20260824-140831555-4c... (af17d8d5),
+  terminal, complete, current, 4 validated findings, all minor by demotion, all right. Fixed the
+  same day per the standing instruction.
+- **One - the round-12 question test erased dash-delimited approvals.** "approved for tasks — can
+  you also update the changelog?" - the interrogative scan ran to the first sentence punctuation,
+  straight past the spaced-dash instruction delimiter, so the trailing follow-up question read as an
+  interrogative approval clause and BOTH branches rejected a valid approval. The test now stops at
+  the SAME instruction delimiters the boundary extraction uses, in both branches. Third consecutive
+  round finding a one-door or one-scope fix in the recognizer: round 11 guarded one branch, round
+  12 guarded both but overscoped the scan, round 13 scoped it - the discussion prompt about a
+  standing recognizer method rule is now three data points strong.
+- **Two - the clean-round early exit trusted ingest-time facts in a present-tense sentence.** A
+  pause reply after a clean round took the W27 courtesy exit ("covers your files as they are now")
+  on stored currentness/can_approve_current - both true at ingest, silent about every edit since -
+  skipping the requested stop-here handling. The shortcut now recomputes the current digest and
+  compares it with the covered tree; a moved or uncomputable tree falls through to the ordinary
+  pause handling, whose superseded-pause logic owns that case.
+- **Three - the round-11 empty-coverage fix stopped at the ingress.** Results persisted BEFORE that
+  fix can carry `examined_paths: []` into the governance readers, where present-empty was treated
+  like legacy absence: the validator raised no weakness and the derived-independence walk let a
+  read-nothing run qualify as evidence. Both readers now treat a present empty list as declared
+  zero coverage (weak / disqualified); only ABSENCE keeps the legacy fail-open. Found in passing
+  and fixed with it: the derived-independence walk picked "the latest qualifying run" by
+  lexicographic run id - the exact DRIFT-120 defect one function over - now ordered by ended_at
+  with the ordinal id as tie-breaker.
+- **Four - every stop-here attempt leaked its evidence directory.** The per-attempt transport dir
+  under the system temp path was created unconditionally and the finally disposed only the git
+  snapshot. The finally now removes the attempt directory (and folds away the empty per-run
+  parent); the verification outcome object already carries everything callers read, so nothing
+  loses data.
+- **Citation**: FR-010's leading-approval-wins rule; the evidence rule (a present-tense sentence is
+  checked against the present tree); DRIFT-118/120 (the empty-declaration and latest-is-time rules,
+  each now applied at EVERY reader).
+- **Verification**: the dash-delimited approvals RED against the pre-fix recognizer, green after,
+  with the full capture/round-approval/verdict-capture family green; the shortcut and finally pinned
+  structurally in the slice lane's pause-choice suite; the coverage and derived-independence suites
+  green; both lanes green.
+
+### DRIFT-199-I001-121 - authority phrases routed through question-UI tools were refused correctly and silently (resolved)
+
+- **Observed**: 2026-08-24, maintainer ruling from the KeyContextAI walk. A Copilot agent asked for
+  `approved for review round` through its ask-user tool twice; the replies arrived as tool results,
+  capture refused both - CORRECTLY, by typed-turns doctrine - and the human answered the same
+  question three times. Copilot actively steers agents toward its question UI, so the shape is
+  systematic, not one session's quirk.
+- **Ruling - fix at the guidance layer, not the capture layer.** Extending capture to picker
+  replies would reintroduce the dismissal hazard typed-turns-v1 exists to prevent. Instead: every
+  advisory and refusal that names a typed phrase carries the clause "as a normal chat message - a
+  reply inside a question UI or picker is not captured"; and the refusal after a failed capture
+  DIAGNOSES the picker shape when the transcript shows it.
+- **Resolution, three parts.** (1) The clause, on all 27 phrase-naming surface lines the extended
+  standing sweep found across the review CLI, navigator, orchestrator, authority core, signoff
+  gate and conformance menus - and the sweep in `advisory-names-the-humans-act` now enforces it
+  for every captured phrase, so a new surface cannot omit it. (2) An OBSERVATION fact (never
+  authority): the Stop backstop raw-scans the transcript tail for a captured phrase inside a
+  tool-RESULT record - deliberately narrow: the record must carry a tool-result marker (never
+  tool_use, so the question naming the phrase as an option is not a reply) and the phrase must sit
+  in a short quoted JSON string (a picker reply is the chosen option; CLI output echoing an
+  advisory is one long string) - false negatives acceptable, a false positive would misdiagnose a
+  human who has not replied yet. A genuine typed capture clears it: the diagnosis must not outlive
+  its cause. (3) The review CLI's three capture-refusals consult the observation and name the
+  actual cause and the actual remedy: "the human typed it into a question UI; ask them to type it
+  in the chat."
+- **Citation**: typed-turns-v1 (the doctrine is right; the silence was the defect); W44/W49 (the
+  phrase-naming sweep this extends); the consumer-language rule (the clause is the human's
+  language, not machinery vocabulary).
+- **Verification**: RED-first - the tool-result transcript minting nothing AND recording the
+  observation; the assistant-menu / tool_use-question / long-CLI-echo shapes observing NOTHING; the
+  typed capture clearing it; the CLI refusals consulting the observation with the remedy named
+  twice; the W54 sweep red on 27 surfaces before the clause landed and green after.
+
 ### DRIFT-199-I001-120 - round 12's findings: a question with a boundary name, a loud run id, a deferral that never re-armed (resolved)
 
 - **Observed**: 2026-08-24, the verification round the maintainer approved after round 11's fixes -
