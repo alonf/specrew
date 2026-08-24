@@ -932,11 +932,18 @@ try {
         $rb = Invoke-Conformance -Proj $p7 -TranscriptPath $tn
         if (-not $rb.Blocked) { Fail "Case 7: block #$n (within the cap of 3) MUST block. Out: $($rb.Out)" }
     }
+    # W53 (DRIFT-199-I001-119): the FIRST capped stop is ONE more block - the announcement - because
+    # the corrections below ride a channel the claude Stop hook does not deliver to the model, so a
+    # silent release was invisible in the transcript ("complied" and "outlasted" read identically).
     $t7cap = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (attempt 4).' })
     $r7cap = Invoke-Conformance -Proj $p7 -TranscriptPath $t7cap
-    if ($r7cap.Blocked) { Fail "Case 7: the 4th consecutive block exceeds the cap and MUST degrade (release the stop) to avoid a hang. Out: $($r7cap.Out)" }
-    if ($r7cap.Out -notmatch 'ENFORCEMENT STOPPED after 3 consecutive blocks') { Fail "Case 7: the capped release MUST announce that enforcement stopped and name the cap. Out: $($r7cap.Out)" }
-    if ($r7cap.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 7: over the cap, degrade to a plain marker nudge. Out: $($r7cap.Out)" }
+    if (-not $r7cap.Blocked) { Fail "Case 7: the FIRST capped stop must announce itself as one more block so the notice reaches the transcript. Out: $($r7cap.Out)" }
+    if ($r7cap.Out -notmatch 'packet discipline capped for this session after 3 refusals') { Fail "Case 7: the announcement must carry the exact one-line notice. Out: $($r7cap.Out)" }
+    $t7cap2 = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (attempt 5).' })
+    $r7cap2 = Invoke-Conformance -Proj $p7 -TranscriptPath $t7cap2
+    if ($r7cap2.Blocked) { Fail "Case 7: past the announcement the cap releases the stop (no hang). Out: $($r7cap2.Out)" }
+    if ($r7cap2.Out -notmatch 'ENFORCEMENT STOPPED after 3 consecutive blocks') { Fail "Case 7: the capped release MUST announce that enforcement stopped and name the cap. Out: $($r7cap2.Out)" }
+    if ($r7cap2.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 7: over the cap, degrade to a plain marker nudge. Out: $($r7cap2.Out)" }
     # A packet-present stop resets the counter.
     $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = $realPacket })
     $null = Invoke-Conformance -Proj $p7 -TranscriptPath $t7ok
@@ -1049,9 +1056,17 @@ try {
     Set-Content -LiteralPath $cf13 -Value '{"key":"plan|clarify","count":3}' -Encoding UTF8
     $t13 = New-Transcript -Proj $p13 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $r13 = Invoke-Conformance -Proj $p13 -TranscriptPath $t13
-    if ($r13.Blocked) { Fail "Case 13: a count at the cap for this advance key MUST cap (count persists by advance, no time window). Out: $($r13.Out)" }
-    if ($r13.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 13: at the cap, degrade to the plain marker nudge. Out: $($r13.Out)" }
-    Write-Pass "Case 13: the consecutive-block count is keyed by the advance (no time window) - a count at the cap releases regardless of elapsed time (145 HANG-1)"
+    # W53: the first capped stop is the bounded ANNOUNCEMENT block (notice + recorded fact); the cap
+    # itself still caps - the SECOND capped stop releases. 145 HANG-1's concern (a count at the cap
+    # must actually cap, no time window) is preserved one turn later, and the announcement cannot
+    # loop because it fires only when its fact write verifies, once per fact.
+    if (-not $r13.Blocked) { Fail "Case 13: the first capped stop must announce (one bounded block). Out: $($r13.Out)" }
+    if ($r13.Out -notmatch 'packet discipline capped for this session after 3 refusals') { Fail "Case 13: the announcement carries the notice. Out: $($r13.Out)" }
+    $t13b = New-Transcript -Proj $p13 -Turns @(@{ role = 'assistant'; text = 'plan.md written (post-announce).' })
+    $r13b = Invoke-Conformance -Proj $p13 -TranscriptPath $t13b
+    if ($r13b.Blocked) { Fail "Case 13: past the announcement, a count at the cap MUST release (count persists by advance, no time window). Out: $($r13b.Out)" }
+    if ($r13b.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 13: at the cap, degrade to the plain marker nudge. Out: $($r13b.Out)" }
+    Write-Pass "Case 13: the consecutive-block count is keyed by the advance (no time window) - a count at the cap announces once then releases regardless of elapsed time (145 HANG-1 + W53)"
 
     # ---- Case 14 (145 HANG-2): an unpersistable counter degrades to NO block (fail-open). A directory placed at the
     #      counter file path makes the verified write fail -> the provider must NOT start an uncappable loop on a capless host.

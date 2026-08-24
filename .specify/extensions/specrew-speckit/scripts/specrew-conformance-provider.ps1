@@ -125,6 +125,46 @@ function Set-SpecrewBlockCount {
     return $false
 }
 
+function Get-SpecrewCapFactPath {
+    # W53: the cap fact lives BESIDE the counter it documents - session-scoped when the counter is,
+    # legacy-named at the runtime root otherwise - so "capped for this session" is literally the
+    # file's own scope.
+    param($Runtime)
+    $dir = Split-Path -Parent ([string]$Runtime.BlockPath)
+    $legacy = [string]::IsNullOrWhiteSpace([string]$Runtime.Owner)
+    return (Join-Path $dir $(if ($legacy) { 'conformance-cap-facts.jsonl' } else { 'cap-facts.jsonl' }))
+}
+
+function Test-SpecrewCapFactRecorded {
+    param([string]$Path, [string]$Key)
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+        foreach ($line in @(Get-Content -LiteralPath $Path -Encoding UTF8)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $rec = $null
+            try { $rec = $line | ConvertFrom-Json -ErrorAction Stop } catch { continue }
+            if ($null -ne $rec -and ($rec.PSObject.Properties.Name -contains 'advance_key') -and ([string]$rec.advance_key -ceq $Key)) { return $true }
+        }
+    }
+    catch { $null = $_ }
+    return $false
+}
+
+function Write-SpecrewCapFact {
+    # W53: append + read-back verify - the SAME durability rule the block counter follows (145
+    # HANG-2). The announcement block fires ONLY when the fact explaining it is durably on disk, so
+    # a write failure degrades to the released-silent path rather than adding an unrecorded block.
+    param([string]$Path, [pscustomobject]$Fact)
+    try {
+        $dir = Split-Path -Parent $Path
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        ($Fact | ConvertTo-Json -Compress) | Add-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop
+        return (Test-SpecrewCapFactRecorded -Path $Path -Key ([string]$Fact.advance_key))
+    }
+    catch { $null = $_ }
+    return $false
+}
+
 function Get-SpecrewRecentMaterialRetryKey {
     param([AllowNull()]$Record)
     try {
@@ -1487,6 +1527,7 @@ try {
     $corrections = New-Object System.Collections.Generic.List[string]
     $capped = $false
     $cappedKind = $null
+    $capAnnounced = $false
     # The advance identity the consecutive-block cap keys on: a boundary advance is working|lastAuth; a material
     # non-boundary stop is keyed by the current handover snapshot. A NEW advance/snapshot starts a fresh count; the agent
     # rendering the packet (not blockWarranted) resets it. No time window (145 HANG-1).
@@ -1549,6 +1590,35 @@ try {
             $cappedKind = $blockKind
             $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } elseif ($blockKind -eq 'workshop-conflict') { 'workshop decision reconciliation' } elseif ($blockKind -eq 'workshop-repair') { 'workshop record repair' } elseif ($blockKind -eq 'boundary-evidence-absent') { 'stage evidence' } elseif ($blockKind -eq 'boundary-unrecordable') { 'boundary recording' } elseif ($blockKind -eq 'unauthorized-source') { 'implementation authorization' } elseif ($blockKind -eq 'coverage-decision') { 'coverage decision' } elseif ($blockKind -eq 'orientation') { 'session orientation' } else { 'verdict marker' }
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
+            # W53 (DRIFT-199-I001-119): AN EXEMPTION-BY-EXHAUSTION IS A DOCUMENTED EVENT, NOT AN
+            # AMBIENT STATE. The corrections below are real, but on a claude Stop they ride plain
+            # stdout, which the host does not deliver to the model - so the cap was invisible in the
+            # exact transcript a human reads, and "complied" and "outlasted" looked identical (the
+            # maintainer caught it from the store, from outside). The FIRST capped stop therefore
+            # announces itself through the one channel that reaches the transcript: one more block,
+            # whose only demand is the one-line notice in the final permitted output. The fact is
+            # written and read back BEFORE the block fires (the counter's own 145 HANG-2 rule), so
+            # an unverifiable write degrades to the silent-release path instead of adding an
+            # unrecorded block - and the fact's presence is what keeps this to ONE extra turn.
+            $capFactPath = Get-SpecrewCapFactPath -Runtime $materialRuntime
+            if (-not (Test-SpecrewCapFactRecorded -Path $capFactPath -Key $advanceKey)) {
+                $capFact = [pscustomobject]@{
+                    schema_version = '1.0'; fact_type = 'conformance-cap-reached'
+                    advance_key = [string]$advanceKey; block_kind = [string]$blockKind; subject = [string]$capSubject
+                    cap = [int]$script:SpecrewBlockCap; owner = [string]$materialRuntime.Owner
+                    recorded_at = ([System.DateTimeOffset]::UtcNow.ToString('o'))
+                }
+                if (Write-SpecrewCapFact -Path $capFactPath -Fact $capFact) {
+                    $capAnnounced = $true
+                    $sbCap = New-Object System.Text.StringBuilder
+                    [void]$sbCap.AppendLine(('Specrew: this stop was refused {0} consecutive times for the same unmet requirement ({1}), and the refusal cap has now released it - Specrew is no longer holding your turns. Render the message you were going to render, and include this exact line in it, so a reader of the transcript can tell that enforcement ended rather than the requirement being met:' -f $count, $capSubject))
+                    [void]$sbCap.AppendLine('')
+                    [void]$sbCap.AppendLine(('Specrew: packet discipline capped for this session after {0} refusals - {1} is still unmet.' -f $count, $capSubject))
+                    [void]$sbCap.AppendLine('')
+                    [void]$sbCap.AppendLine('The requirement itself is unchanged and still yours to meet; this notice documents that it is now on you rather than on the hook. Do not present approval options and do not add any approval comment that the released requirement itself did not call for.')
+                    $blockReason = $sbCap.ToString().TrimEnd()
+                }
+            }
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
             # Block ONLY when the increment durably persisted (145 HANG-2): a host without a built-in cap relies on
@@ -1764,7 +1834,7 @@ try {
             # The corrections below already NAME the unmet condition. What was missing is the fact that
             # nothing is enforcing it any more, which is the difference between "I am being reminded"
             # and "I am now on my own".
-            $corrections.Add(('[specrew-conformance] ENFORCEMENT STOPPED after {0} consecutive blocks on the same unmet condition. Specrew is no longer holding this turn - the requirement below is still unmet, and from here it is on you rather than on the hook. This limit exists so a disagreement between us cannot hang your session indefinitely.' -f $script:SpecrewBlockCap)) | Out-Null
+            $corrections.Add(('[specrew-conformance] ENFORCEMENT STOPPED after {0} consecutive blocks on the same unmet condition. Specrew is no longer holding this turn - the requirement below is still unmet, and from here it is on you rather than on the hook. This limit exists so a disagreement between us cannot hang your session indefinitely. Include this exact line in your message so the transcript records it: "Specrew: packet discipline capped for this session after {0} refusals - {1} is still unmet."' -f $script:SpecrewBlockCap, $capSubject)) | Out-Null
             if ($cappedKind -eq 'material') {
                 $corrections.Add('[specrew-conformance] MATERIAL-WORK STOP packet still missing - render the five-part context packet with file:/// references before handing control back.') | Out-Null
             }
@@ -1804,7 +1874,7 @@ try {
             # FR-045a: a continuation directive is NOT a packet-render block - label it distinctly so the flush-race
             # forensic (which keys off 'stop-block' + a low dx_lat_hits to catch mid-flush truncation) does not treat a
             # by-design non-packet continue message as a partial-read suspect.
-            $evt = if ($workshopQuestionWins) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } elseif ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
+            $evt = if ($workshopQuestionWins) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } elseif ($stopIntentContinue) { 'stop-continue' } elseif ($capAnnounced) { 'stop-block-cap-announce' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
             # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.

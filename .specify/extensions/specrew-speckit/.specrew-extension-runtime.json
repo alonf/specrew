@@ -400,7 +400,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "9a00e6f8aa006762da9d52d18fc8e2f17c08bb5aec0ba3b45139a4a9077b2107"
+      "sha256": "61d5af9d0932ebe81a2d67cf4bcabfbd0e0f7406be40b688a373716491be9bcc"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",

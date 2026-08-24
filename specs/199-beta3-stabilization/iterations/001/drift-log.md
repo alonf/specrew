@@ -535,6 +535,41 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-119 - the stop discipline capped out silently, and "complied" was indistinguishable from "outlasted" (resolved)
+
+- **Observed**: 2026-08-24, by the maintainer, from the store, from outside - which is exactly how it
+  must not be caught. `conformance-material-nudged.json` a week stale; the evidence-absent counter
+  parked at its cap of 3; repeated `stop-block-capped` journal events with `dx_lat_hits: 0` - the
+  crew's own final messages carrying zero of the six packet headers, turn after turn, while the
+  transcript read like compliance.
+- **Cause, two layers.** The cap itself is a defensible runaway guard, and a previous fix already
+  made it ANNOUNCE - but the announcement rides the corrections channel, which on a claude Stop is
+  plain stdout the host does not deliver to the model. The one channel that reaches the transcript
+  on a Stop is the block decision, and the capped path by definition stopped using it. So
+  enforcement ended invisibly: an exemption-by-exhaustion as ambient state.
+- **Ruling**: caps must be visible and recorded. When a conformance block reaches its cap, that fact
+  surfaces - a one-line notice in the final permitted output and a recorded fact - so a human
+  reading the transcript can tell "complied" from "outlasted".
+- **Resolution**: the FIRST capped stop announces itself as ONE more block, whose directive is to
+  include the exact line "Specrew: packet discipline capped for this session after N refusals -
+  <requirement> is still unmet" in the message being rendered. Before that block fires, a
+  `conformance-cap-reached` fact (advance key, kind, cap, owner, timestamp) is appended to
+  `cap-facts.jsonl` BESIDE the session-scoped counter and read back - the counter's own 145 HANG-2
+  durability rule - so an unverifiable write degrades to the old silent release rather than adding
+  an unrecorded block, and the fact's presence is what bounds the announcement to one turn per
+  session per unmet advance. Later capped stops release as before, now with the notice line added to
+  the corrections for hosts that do deliver them; a fresh session's counters are its own, so
+  exhaustion never carries across sessions. Case 7 and Case 13 of the detection suite were updated
+  to the new contract - their concerns (no hang; the cap actually caps, no time window) hold one
+  turn later, bounded by the fact.
+- **Citation**: honest state - a control that has stopped controlling must say so where its subject
+  reads; the W43/W53 family (a guarantee that fails open must fail LOUDLY).
+- **Verification**: `tests/integration/cap-exhaustion-is-documented.tests.ps1`, RED-first against
+  the shipped provider on the exact walk shape (evidence-absent, cap 3): stops 1-3 block unchanged;
+  stop 4 announces with the exact notice and no banned vocabulary; the fact is on disk with type,
+  cap, key and kind; stop 5 releases and mints no duplicate; a fresh session is enforced from zero.
+  The full detection suite green on the updated contract; the seam suite green after redeploy.
+
 ### DRIFT-199-I001-118 - round 11's findings: an empty declaration could approve, a question could authorize, a sentence hid accepted majors (resolved)
 
 - **Observed**: 2026-08-24, the codex round the maintainer directed finally delivered -
