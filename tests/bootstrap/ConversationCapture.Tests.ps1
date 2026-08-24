@@ -123,6 +123,12 @@ $nonApprovals = @(
     # approval verb sits in, wherever the utterance goes afterwards.
     @{ text = 'Approve? I am still deciding.';                         approval = $false; action = 'none' }
     @{ text = 'approved? probably, but let me sleep on it';            approval = $false; action = 'none' }
+    # Round-12 finding (DRIFT-199-I001-120): the round-11 fix bound the interrogative rule only to
+    # the FALLBACK branch, and a boundary name after the verb satisfied the recognized closed set
+    # first - so a boundary-qualified question still authorized. The first-sentence question test
+    # binds before EITHER approval return.
+    @{ text = 'Approve plan? I am still deciding.';                    approval = $false; action = 'none' }
+    @{ text = 'approved for tasks? or should we hold';                 approval = $false; action = 'none' }
     @{ text = 'reply with approved for tasks when you are ready';      approval = $false; action = 'none' }
     @{ text = '1';                                                     approval = $false; action = 'none' }
     @{ text = 'yes';                                                   approval = $false; action = 'none' }

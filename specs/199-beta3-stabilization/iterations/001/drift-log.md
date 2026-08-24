@@ -535,6 +535,44 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-120 - round 12's findings: a question with a boundary name, a loud run id, a deferral that never re-armed (resolved)
+
+- **Observed**: 2026-08-24, the verification round the maintainer approved after round 11's fixes -
+  run-20260824-112850882-4c1baf28, terminal, complete, current, 3 validated findings, every one
+  minor by demotion (no stated failure scenario) and every one substantively right. All three fixed
+  the same day, RED-first, per the standing instruction.
+- **One - the round-11 interrogative fix guarded only one of two doors.** "Approve plan? I am still
+  deciding." satisfied the recognized closed set THROUGH the boundary name and returned approval
+  before ever reaching the round-11 fallback guard. The first-sentence question test now binds
+  before EITHER approval return; a declarative approval with a trailing question keeps its follow-up
+  reading. The lesson inside the lesson: a guard added to the branch the finding exercised is not a
+  guard on the rule - round 11 proved the exact utterance and round 12 walked through the other
+  door with one added word.
+- **Two - "latest delivered" was a lexicographic claim about ids, not a time claim.**
+  `Get-SpecrewReviewCoverageState` took the case-sensitive greatest run_id as the latest delivery;
+  run ids are not a chronological contract, so an older `run-zzz...` could permanently outrank
+  every newer timestamped delivery and answer the coverage question with the wrong covered tree
+  and the wrong campaign's meter - suppressing or spuriously raising the exhaustion decision.
+  Selection now orders by the result fact's own `ended_at` (unparseable sorts before parseable),
+  with the ordinal run id only as the deterministic tie-breaker.
+- **Three - the deferral never re-armed.** The disposition compared only
+  `covered_tree_at_deferral` to the current covered tree - constant as more source changes - so one
+  typed deferral silently covered ALL later uncovered work, contradicting W52's own recorded rule.
+  The writer now records `current_tree_at_deferral` (the tree the human actually saw), the coverage
+  state exposes `current_tree`, and the ONE currency decision lives in
+  `Test-SpecrewCoverageDeferralCurrent`: the deferral holds only while it names the same delivered
+  review AND no product source moved past the deferral tree (records staying quiet on W51's
+  classification); anything unverifiable - including a pre-fix fact without the tree - re-arms,
+  because the human re-decides with one typed phrase and silence-by-default is the class W52
+  exists to prevent.
+- **Citation**: FR-026/SC-013 (a question is never authorization); the evidence rule ("latest" is a
+  runtime fact, not a property of identifier text); W52's recorded binding and W51's one
+  classification.
+- **Verification**: all RED-first against the stashed pre-fix library - the boundary-qualified
+  question red in the capture suite; the loud-run-id case, both deferral-currency cases, and the
+  updated structural pin red in the coverage suite (4 reds pre-fix, 12/12 after); the capture,
+  verdict-capture and round-approval suites green after.
+
 ### DRIFT-199-I001-119 - the stop discipline capped out silently, and "complied" was indistinguishable from "outlasted" (resolved)
 
 - **Observed**: 2026-08-24, by the maintainer, from the store, from outside - which is exactly how it

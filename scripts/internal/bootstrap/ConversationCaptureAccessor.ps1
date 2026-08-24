@@ -186,7 +186,16 @@ function Test-SpecrewHumanVerdictToken {
     $leadingApproval = [regex]::Match($lower, $approvalAnchor)
     if ($leadingApproval.Success) {
         $afterApproval = $lower.Substring($leadingApproval.Length)
-        $isRecognizedPhrase = (
+        # Round-12 finding (DRIFT-199-I001-120): the interrogative rule binds BEFORE EITHER approval
+        # return, not only in the fallback. "Approve plan? I am still deciding." satisfied the
+        # recognized closed set through the boundary name and returned approval without ever meeting
+        # the round-11 guard below. Same test, same doctrine: if the first sentence punctuation after
+        # the verb is a question mark, the approval clause is a question and a question is
+        # deliberation - while a declarative approval with a TRAILING question ("approved for
+        # implement. should I also update the changelog?") is unaffected, because its first
+        # punctuation is the period.
+        $interrogativeApprovalClause = ($afterApproval -match '^[^.!?]*\?')
+        $isRecognizedPhrase = (-not $interrogativeApprovalClause) -and (
             [string]::IsNullOrWhiteSpace($afterApproval) -or
             $afterApproval -match '^\s*[,.;:]' -or
             $afterApproval -match '^\s+[-–—]\s' -or

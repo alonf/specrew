@@ -1380,10 +1380,14 @@ try {
                 if (Get-Command Get-SpecrewCoverageDeferralAuthorization -ErrorAction SilentlyContinue) {
                     try { $coverageDeferral = Get-SpecrewCoverageDeferralAuthorization -ProjectRoot $projectRoot } catch { $coverageDeferral = $null }
                 }
-                # A deferral recorded AGAINST THIS COVERAGE STATE silences the stop; a deferral that
-                # predates the last delivered review no longer describes anything and does not.
-                $deferralCurrent = ($null -ne $coverageDeferral -and
-                    [string]$coverageDeferral.covered_tree_at_deferral -ceq [string]$coverageDecisionState.covered_tree)
+                # A deferral recorded AGAINST THIS COVERAGE STATE silences the stop; one that
+                # predates the last delivered review - or that source has moved PAST since the human
+                # deferred (round-12 finding, DRIFT-199-I001-120) - no longer describes anything and
+                # does not. The ONE shared currency decision lives in shared-governance.
+                $deferralCurrent = $false
+                if ($null -ne $coverageDeferral -and (Get-Command Test-SpecrewCoverageDeferralCurrent -ErrorAction SilentlyContinue)) {
+                    try { $deferralCurrent = [bool](Test-SpecrewCoverageDeferralCurrent -ProjectRoot $projectRoot -Deferral $coverageDeferral -CoverageState $coverageDecisionState) } catch { $deferralCurrent = $false }
+                }
                 if (-not $deferralCurrent) { $coverageDecisionBlock = $true }
             }
         }

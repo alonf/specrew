@@ -6864,6 +6864,7 @@ function Get-SpecrewReviewCoverageState {
         campaign_id = $null
         last_delivered_run = $null
         covered_tree = $null
+        current_tree = $null
         source_drift = @()
         source_drift_count = 0
         rounds_used = $null
@@ -6876,7 +6877,16 @@ function Get-SpecrewReviewCoverageState {
 
     # Latest DELIVERED run (completion complete) across campaigns - the same all-campaign walk the
     # derived-independence reader uses, keyed on DELIVERY per the W50 entitlement rule.
+    #
+    # Round-12 finding (DRIFT-199-I001-120): "latest" is a TIME claim, and run ids are not a
+    # chronological contract - callers may mint any valid `run-[a-z0-9-]+` identifier, so the
+    # case-sensitive lexicographic max let an older `run-z...` permanently outrank every newer
+    # timestamped delivery and answer the coverage question with the wrong covered tree and the
+    # wrong campaign's meter. Order by the result fact's own ended_at; an unparseable or absent
+    # stamp sorts before every parseable one, and the ordinal run id is only the deterministic
+    # tie-breaker.
     $delivered = $null
+    $deliveredEnded = [System.DateTimeOffset]::MinValue
     foreach ($campaign in @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue)) {
         $runsRoot = Join-Path $campaign.FullName 'runs'
         if (-not (Test-Path -LiteralPath $runsRoot -PathType Container)) { continue }
@@ -6886,7 +6896,15 @@ function Get-SpecrewReviewCoverageState {
             $result = $null
             try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 } catch { continue }
             if ($null -eq $result -or [string]$result.completion -cne 'complete') { continue }
-            if ($null -eq $delivered -or ([string]$result.run_id -cgt [string]$delivered.run_id)) { $delivered = $result }
+            $resultEnded = [System.DateTimeOffset]::MinValue
+            $endedRaw = if ($result.PSObject.Properties['ended_at']) { [string]$result.ended_at } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($endedRaw)) {
+                $parsedEnded = [System.DateTimeOffset]::MinValue
+                if ([System.DateTimeOffset]::TryParse($endedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEnded)) { $resultEnded = $parsedEnded }
+            }
+            $newer = ($null -eq $delivered) -or ($resultEnded -gt $deliveredEnded) -or
+                (($resultEnded -eq $deliveredEnded) -and ([string]::CompareOrdinal([string]$result.run_id, [string]$delivered.run_id) -gt 0))
+            if ($newer) { $delivered = $result; $deliveredEnded = $resultEnded }
         }
     }
     if ($null -eq $delivered) { $state.reason = 'no-delivered-review'; return $state }
@@ -6903,6 +6921,7 @@ function Get-SpecrewReviewCoverageState {
     if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
         try {
             $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot
+            if ($null -ne $digest -and [bool]$digest.ok) { $state.current_tree = [string]$digest.tree_id }
             if ($null -ne $digest -and [bool]$digest.ok -and -not [string]::IsNullOrWhiteSpace([string]$state.covered_tree)) {
                 $drift = Get-SpecrewReviewedTreeSourceDrift -ProjectRoot $ProjectRoot -CitedTreeId $state.covered_tree -CurrentTreeId ([string]$digest.tree_id)
                 if ([bool]$drift.comparable) {
@@ -7021,6 +7040,10 @@ function Write-SpecrewCoverageDeferralAuthorization {
         evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
         campaign_id = $(if ($null -ne $coverage) { [string]$coverage.campaign_id } else { '' })
         covered_tree_at_deferral = $(if ($null -ne $coverage) { [string]$coverage.covered_tree } else { '' })
+        # Round-12 finding (DRIFT-199-I001-120): the tree the human actually SAW when they deferred -
+        # the identity later drift is measured against, so one deferral cannot silently cover work
+        # that came after it.
+        current_tree_at_deferral = $(if ($null -ne $coverage) { [string]$coverage.current_tree } else { '' })
         source_drift_at_deferral = $(if ($null -ne $coverage) { [int]$coverage.source_drift_count } else { 0 })
         observed_at = $NowUtc
     }
@@ -7047,6 +7070,34 @@ function Get-SpecrewCoverageDeferralAuthorization {
     if ([string]$fact.response_hash -cne (Get-SpecrewCoverageAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
     if (-not [bool](Test-SpecrewCoverageDeferralPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
     return $fact
+}
+
+function Test-SpecrewCoverageDeferralCurrent {
+    # W52's binding, made real (round-12 finding, DRIFT-199-I001-120): the human deferred the drift
+    # in front of them, not all future drift. A deferral therefore holds only while (a) it was
+    # recorded against the SAME delivered review the coverage state now names, and (b) NO product
+    # source has moved past the tree they saw when they deferred. Records moving stays deferred -
+    # coverage is about source, on W51's one classification. Anything unverifiable - a fact without
+    # the deferral tree, a state without the current tree, an incomparable diff - re-arms the stop,
+    # because the human re-decides with one typed phrase and silence-by-default is the class W52
+    # exists to prevent.
+    [OutputType([bool])]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()]$Deferral,
+        [AllowNull()]$CoverageState
+    )
+    if ($null -eq $Deferral -or $null -eq $CoverageState) { return $false }
+    if ([string]$Deferral.covered_tree_at_deferral -cne [string]$CoverageState.covered_tree) { return $false }
+    $deferralTree = if ($Deferral.PSObject.Properties['current_tree_at_deferral']) { [string]$Deferral.current_tree_at_deferral } else { '' }
+    if ([string]::IsNullOrWhiteSpace($deferralTree)) { return $false }
+    $currentTree = if ($CoverageState.PSObject.Properties['current_tree']) { [string]$CoverageState.current_tree } else { '' }
+    if ([string]::IsNullOrWhiteSpace($currentTree)) { return $false }
+    if ($deferralTree -ceq $currentTree) { return $true }
+    $since = $null
+    try { $since = Get-SpecrewReviewedTreeSourceDrift -ProjectRoot $ProjectRoot -CitedTreeId $deferralTree -CurrentTreeId $currentTree } catch { return $false }
+    return ($null -ne $since -and [bool]$since.comparable -and @($since.source).Count -eq 0)
 }
 
 function Get-SpecrewIterationSealPath {

@@ -81,6 +81,32 @@ Describe 'W52 the coverage state answers the one question' {
         finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'latest delivered means latest in TIME - a loud run id does not outrank a newer delivery' {
+        # Round-12 finding (DRIFT-199-I001-120): run ids are not a chronological contract - callers
+        # may mint any valid identifier - and the lexicographic max let an older `run-zzz...`
+        # permanently outrank every newer timestamped delivery, answering the coverage question with
+        # the wrong covered tree and the wrong campaign's meter.
+        $f = New-CoveredProject
+        try {
+            $oldRun = Join-Path $f.Root '.specrew/review/authority/campaigns/cmp-older-i001/runs/run-zzzzzzzz-loud-identifier'
+            New-Item -ItemType Directory -Path $oldRun -Force | Out-Null
+            $stale = [ordered]@{
+                schema_version = '1.0'; campaign_id = 'cmp-older-i001'; run_id = 'run-zzzzzzzz-loud-identifier'
+                target_digest = ('f' * 40); harness_id = 'fx'; completion = 'complete'; verdict = 'pass'
+                runtime_outcome = 'completed'; termination_verified = $true; containment = 'verified'
+                currentness = 'current'; validation = 'valid'; can_approve_current = $true; failure_reason = $null
+                summary = 's'; findings = @(); started_at = '2026-08-20T00:00:00Z'; ended_at = '2026-08-20T00:01:00Z'
+                duration_ms = 60000; examined_paths = @()
+            }
+            [IO.File]::WriteAllText((Join-Path $oldRun 'result.json'), ($stale | ConvertTo-Json -Depth 12), [Text.UTF8Encoding]::new($false))
+
+            $state = Get-SpecrewReviewCoverageState -ProjectRoot $f.Root
+            [string]$state.last_delivered_run | Should -Be 'run-20260824-000000001-aaaaaaaa' -Because 'the 2026-08-24 delivery is newer than the 2026-08-20 one, whatever their ids spell'
+            [string]$state.covered_tree | Should -Be $f.Covered
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'rounds come from the ONE production counter when the bundle is present' {
         $f = New-CoveredProject -WithBundle
         try {
@@ -105,6 +131,55 @@ Describe 'W52 the chosen-absence disposition' {
         finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'a deferral covers the drift the human saw, not the drift that came after' {
+        # Round-12 finding (DRIFT-199-I001-120): the disposition compared only covered-tree equality,
+        # which stays constant as more source changes - so one deferral silently covered ALL later
+        # uncovered work, contradicting W52's own recorded rule that the choice binds to the drift
+        # in front of the human and later drift re-arms the stop.
+        $f = New-CoveredProject
+        try {
+            Set-Content -LiteralPath (Join-Path $f.Root 'src/app.ts') -Value 'export const a = 2;' -Encoding UTF8
+            & git -C $f.Root add -A 2>&1 | Out-Null; & git -C $f.Root commit -q -m 'drift the human saw' 2>&1 | Out-Null
+
+            $fact = Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $f.Root -Response 'continue without coverage until the review phase' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            [string]$fact.current_tree_at_deferral | Should -Not -BeNullOrEmpty -Because 'the deferral must record the tree the human actually saw, not only the covered tree'
+
+            $state = Get-SpecrewReviewCoverageState -ProjectRoot $f.Root
+            Test-SpecrewCoverageDeferralCurrent -ProjectRoot $f.Root -Deferral $fact -CoverageState $state |
+                Should -BeTrue -Because 'no source has moved past the deferral point yet'
+
+            # Records moving stays deferred - coverage is about source (W51's classification).
+            New-Item -ItemType Directory -Path (Join-Path $f.Root 'docs') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $f.Root 'docs/note.md') -Value 'a note' -Encoding UTF8
+            & git -C $f.Root add -A 2>&1 | Out-Null; & git -C $f.Root commit -q -m 'records only' 2>&1 | Out-Null
+            $state = Get-SpecrewReviewCoverageState -ProjectRoot $f.Root
+            Test-SpecrewCoverageDeferralCurrent -ProjectRoot $f.Root -Deferral $fact -CoverageState $state |
+                Should -BeTrue -Because 'a document is not uncovered product source'
+
+            # NEW source past the deferral point re-arms.
+            Set-Content -LiteralPath (Join-Path $f.Root 'src/new.ts') -Value 'export const b = 3;' -Encoding UTF8
+            & git -C $f.Root add -A 2>&1 | Out-Null; & git -C $f.Root commit -q -m 'drift the human never saw' 2>&1 | Out-Null
+            $state = Get-SpecrewReviewCoverageState -ProjectRoot $f.Root
+            Test-SpecrewCoverageDeferralCurrent -ProjectRoot $f.Root -Deferral $fact -CoverageState $state |
+                Should -BeFalse -Because 'they decided about the drift in front of them, not about all future drift'
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a deferral that cannot prove what the human saw does not hold' {
+        # A pre-fix fact carries no current_tree_at_deferral; re-arming once is correct - the human
+        # re-decides with one typed phrase, and silence-by-default is the class W52 exists to prevent.
+        $f = New-CoveredProject
+        try {
+            $fact = Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $f.Root -Response 'continue without coverage until the review phase' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $legacy = $fact | Select-Object * -ExcludeProperty current_tree_at_deferral
+            $state = Get-SpecrewReviewCoverageState -ProjectRoot $f.Root
+            Test-SpecrewCoverageDeferralCurrent -ProjectRoot $f.Root -Deferral $legacy -CoverageState $state |
+                Should -BeFalse -Because 'an unverifiable deferral is not a standing one'
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'rejects questions, negations, and machinery envelopes' {
         foreach ($text in @('continue without coverage?', 'do not continue without coverage', '<system-reminder>continue without coverage</system-reminder>')) {
             (Test-SpecrewCoverageDeferralPhrase -Text $text).Matched | Should -BeFalse -Because $text
@@ -120,7 +195,7 @@ Describe 'W52 the decision stop and the packet line, wired' {
         $signal | Should -Not -BeNullOrEmpty
         $signal.Contains('[bool]$coverageDecisionState.exhausted') | Should -BeTrue
         $signal.Contains('[int]$coverageDecisionState.source_drift_count -gt 0') | Should -BeTrue -Because 'exhaustion with zero source drift stays silent'
-        $signal.Contains('covered_tree_at_deferral') | Should -BeTrue -Because 'a deferral against a superseded coverage state does not silence a new one'
+        $signal.Contains('Test-SpecrewCoverageDeferralCurrent') | Should -BeTrue -Because 'deferral currency is the ONE shared decision - superseded-review AND later-drift re-arms both live in it (round-12 finding)'
         $provider | Should -Match "elseif \(\`$coverageDecisionBlock\) \{ 'coverage-decision' \}"
     }
 
