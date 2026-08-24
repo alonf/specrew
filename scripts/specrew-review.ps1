@@ -1474,7 +1474,29 @@ if ($Live) {
                 if ([string]$entitlementOutcome.outcome -ceq 'delivered') {
                     # DELIVERY, and only delivery, consumes the entitlement.
                     if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Complete-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
-                        try { Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef | Out-Null } catch { $null = $_ }
+                        # Round-16 finding (DRIFT-199-I001-126): this branch used to swallow every
+                        # error and read nothing back, so a transient write failure left the capture
+                        # unspent after a DELIVERED review - and the next invocation derived a second
+                        # grant from the same approval. The consumption now reports whether its stamp
+                        # is durable, and a failure is SAID OUT LOUD rather than accepted quietly:
+                        # the review really did run, so the honest state is "delivered, but the
+                        # approval could not be marked spent", which the human must see before
+                        # anything reuses it.
+                        $consumption = $null
+                        try { $consumption = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef }
+                        catch { $consumption = [pscustomobject]@{ consumed = $false; reason = ('threw:' + $_.Exception.Message) } }
+                        if ($null -eq $consumption -or -not [bool]$consumption.consumed) {
+                            $consumptionReason = if ($null -ne $consumption) { [string]$consumption.reason } else { 'no-result' }
+                            if (-not $Quiet) {
+                                Write-Host ''
+                                Write-Host 'The review ran and its result is recorded, but Specrew could NOT mark your approval as used.' -ForegroundColor Yellow
+                                Write-Host 'Until that is fixed, the same approval could start another review, which you did not ask for.' -ForegroundColor Yellow
+                                Write-Host ('What Specrew saw: {0}' -f $consumptionReason)
+                                Write-Host ('The record is at: {0}' -f (Join-Path $resolvedProjectPath '.specrew/review/round-approval/pending-round-approval.json'))
+                                Write-Host 'Say so and it stops there, or check that file before approving anything further.'
+                            }
+                            [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_NOT_CONSUMED ' + $consumptionReason)
+                        }
                     }
                     break
                 }

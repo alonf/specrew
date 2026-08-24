@@ -72,8 +72,18 @@ Describe 'W33 the source classifier' {
 
     It 'treats records and documents as not-source' {
         foreach ($p in @('specs/001-x/spec.md', 'specs/001-x/iterations/001/review.md', 'docs/guide.md',
-                'README.md', '.specrew/config.yml', '.squad/team.md', '.github/workflows/ci.yml')) {
+                'README.md', '.specrew/config.yml', '.squad/team.md',
+                '.github/copilot-instructions.md', '.github/skills/specrew-review/SKILL.md')) {
             Test-ReviewExaminedPathIsSource -Path $p | Should -BeFalse -Because "$p is a record or document"
+        }
+    }
+
+    It 'treats an executable workflow as source, so declaring only CI is not declaring code coverage' {
+        # Round-16 finding (DRIFT-199-I001-126): `.github/` was non-source wholesale here too, so a
+        # review that declared it examined only workflows counted as having examined no source - the
+        # mirror image of the records-only defect, in the coverage classifier that shares the rule.
+        foreach ($p in @('.github/workflows/ci.yml', '.github/actions/setup/action.yml')) {
+            Test-ReviewExaminedPathIsSource -Path $p | Should -BeTrue -Because "$p is executable"
         }
     }
 

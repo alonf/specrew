@@ -70,12 +70,18 @@ Describe 'FR-009 the records-only exemption covers what deployment actually writ
     }
 
     It 'a workflow change is source and still stales - dot-github is not a blanket pass' {
-        # .github/workflows is genuinely behavior: CI is executable. The shared classifier calls all of
-        # .github/ non-source, and that IS the b5c84f48 known limit, shared deliberately with the
-        # validator - pinned here so the limit is a stated decision, not a discovery.
-        # (If this expectation ever changes, change the SHARED classifier, so all four consumers move
-        # together.)
-        Test-RecordsOnly -Paths @('.github/workflows/ci.yml') | Should -BeTrue -Because 'the shared classifier treats dot-directories as non-source; this is the stated b5c84f48 limit, kept identical across consumers'
+        # .github/workflows is genuinely behavior: CI is executable. This case was written pinning the
+        # OPPOSITE - the b5c84f48 limit, where the shared classifier called all of .github/ non-source -
+        # with the instruction that changing it means changing the SHARED classifier so all consumers
+        # move together. Round 16 (DRIFT-199-I001-126) found the limit reaching a consequence the note
+        # anticipated: a commit touching only a workflow read as records-only and signoff reused a
+        # review of a tree that never held the executable change. The classifier moved; this case now
+        # pins what its own name always said.
+        Test-RecordsOnly -Paths @('.github/workflows/ci.yml') | Should -BeFalse -Because 'CI is executable behavior, and the digest already treated it as reviewable'
+        Test-RecordsOnly -Paths @('.github/actions/setup/action.yml') | Should -BeFalse -Because 'a composite action is executable too'
+        # The records half of .github stays records: host instruction mirrors and skill catalogs.
+        Test-RecordsOnly -Paths @('.github/copilot-instructions.md') | Should -BeTrue
+        Test-RecordsOnly -Paths @('.github/skills/specrew-review/SKILL.md') | Should -BeTrue
     }
 
     It 'THE FR-009 RULING SURVIVES: the active features plan is review INPUT and still stales' {

@@ -571,3 +571,100 @@ Describe 'W56 an approval followed by an instruction BLOCK is still an approval 
         }
     }
 }
+
+Describe 'W57 round 16: authority must survive a reversal, a lost stamp, and a promised withdrawal' {
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
+        $script:W57Recognizers = @(
+            @{ Name = 'round-approval'; Phrase = 'approved for review round'; Fn = { param($t) (Test-SpecrewReviewRoundApprovalPhrase -Text $t).Matched } }
+            @{ Name = 'allowance-reset'; Phrase = 'approved for allowance reset'; Fn = { param($t) (Test-SpecrewAllowanceResetPhrase -Text $t).Matched } }
+            @{ Name = 'coverage-deferral'; Phrase = 'continue without coverage until the review phase'; Fn = { param($t) (Test-SpecrewCoverageDeferralPhrase -Text $t).Matched } }
+        )
+    }
+
+    It 'BLOCKING: a trailing negation reverses the approval in every recognizer' {
+        # Round-16 finding (DRIFT-199-I001-126): the negation check was anchored to the START of the
+        # utterance, so it could not see a reversal AFTER the anchor - "approved for review round,
+        # but do not run it" minted spend authority against the human's explicit refusal. The
+        # deferral scan already read the same-line tail; the negation scan now does too.
+        foreach ($r in $script:W57Recognizers) {
+            foreach ($suffix in @(', but do not run it', ' - do not actually run it', '; never mind', ': cancel that', ', actually stop', ' - hold off for now', ', withdraw that', '. do not proceed')) {
+                & $r.Fn ($r.Phrase + $suffix) | Should -BeFalse -Because "$($r.Name)$suffix reverses the act"
+            }
+        }
+    }
+
+    It 'the reversal scan does not eat ordinary same-line instructions' {
+        # The floor cuts one way, but it must not swallow the W44 shape it was built around.
+        foreach ($r in $script:W57Recognizers) {
+            & $r.Fn ($r.Phrase + ' - use the codex reviewer') | Should -BeTrue -Because "$($r.Name): a plain instruction"
+            & $r.Fn ($r.Phrase + ', focus on the authority layer') | Should -BeTrue -Because "$($r.Name): a plain scope note"
+        }
+    }
+
+    It 'BLOCKING: a workflow change is reviewable source, not a governance record' {
+        # Round-16 finding: `.github/` was classified non-source WHOLESALE, so a commit touching only
+        # .github/workflows/publish.yml read as records-only and signoff reused an older review of a
+        # tree that never contained the executable change. The digest already treats workflows as
+        # reviewable, so the two disagreed. Host-instruction and skill mirrors stay records.
+        foreach ($p in @('.github/workflows/publish.yml', '.github/workflows/specrew-ci.yml', '.github/actions/setup/action.yml')) {
+            Test-SpecrewReviewAuthorshipSourcePath -Path $p | Should -BeTrue -Because "$p is executable"
+        }
+        foreach ($p in @('.github/copilot-instructions.md', '.github/skills/specrew-review/SKILL.md', '.github/agents/squad.agent.md', '.github/prompts/x.prompt.md', '.specrew/config.yml', '.squad/team.md')) {
+            Test-SpecrewReviewAuthorshipSourcePath -Path $p | Should -BeFalse -Because "$p is a record or a host mirror"
+        }
+    }
+
+    It 'MAJOR: a withdrawal the CLI advertises actually revokes the pending capture' {
+        # Round-16 finding: after the bounded delivery attempts fail, the CLI tells the human they may
+        # withdraw the approval and promises nothing further runs - and no recognizer, fact or check
+        # implemented it, so the next --approve-round loaded the same unspent capture and invoked
+        # another reviewer. A promise in a refusal is a contract.
+        (Test-SpecrewApprovalWithdrawalPhrase -Text 'withdraw the review round approval').Matched | Should -BeTrue
+        (Test-SpecrewApprovalWithdrawalPhrase -Text 'withdraw my approval').Matched | Should -BeTrue
+        (Test-SpecrewApprovalWithdrawalPhrase -Text 'should I withdraw my approval?').Matched | Should -BeFalse -Because 'a question is not an act, here as everywhere'
+        (Test-SpecrewApprovalWithdrawalPhrase -Text 'we discussed how to withdraw my approval').Matched | Should -BeFalse -Because 'a mention is not an act'
+
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w57-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            (Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root) | Should -Not -BeNullOrEmpty
+            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'a withdrawn approval is not standing authority - the promise the refusal made'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'MAJOR: a consumption that did not land is reported, never silently accepted' {
+        # Round-16 finding: the delivered branch swallowed every error from the consumption write and
+        # never checked its postcondition, so a transient failure left spent_at unset and the NEXT
+        # invocation derived a fresh grant from the same capture - two delivered reviews from one
+        # approval. The writer now verifies its own postcondition by read-back.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w57-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'ref-one'
+            [bool]$done.consumed | Should -BeTrue -Because 'a landed consumption reports that it landed'
+            [string]$done.fact.spent_at | Should -Not -BeNullOrEmpty
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty
+
+            # Absent capture: consumed=false, never a silent success.
+            Remove-Item -LiteralPath (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') -Force
+            $missing = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'ref-two'
+            [bool]$missing.consumed | Should -BeFalse
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the CLI blocks on an unconsumed approval rather than accepting the delivery quietly' {
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $branch = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,4000}?break').Value
+        $branch | Should -Not -BeNullOrEmpty
+        $branch.Contains('consumed') | Should -BeTrue -Because 'the delivered branch must read the consumption result, not discard it'
+        $branch | Should -Not -Match '\}\s*catch\s*\{\s*\$null = \$_\s*\}' -Because 'swallowing the consumption error is the defect'
+    }
+}
+

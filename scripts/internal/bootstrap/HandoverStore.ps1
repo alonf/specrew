@@ -859,6 +859,18 @@ function Update-SpecrewRollingHandover {
             }
             catch { $null = $_ }
         }
+        # Round-16 (DRIFT-199-I001-126): a WITHDRAWAL is captured on the same path as the approval it
+        # revokes - the CLI promises "say so, and nothing further runs", and a promise nothing reads
+        # is not kept. Runs BEFORE the approval writer below so a turn cannot both withdraw and
+        # re-approve; the recognizers are disjoint, and order makes that explicit rather than lucky.
+        if ((Get-Command Write-SpecrewApprovalWithdrawal -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            try {
+                Write-SpecrewApprovalWithdrawal -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                    -HostKind $fromHost -SourceEvent $Source | Out-Null
+            }
+            catch { $null = $_ }
+        }
         # W50 rider: an allowance reset replenishes spend authority, so it takes the same typed-phrase
         # capture as the round approval - a bare agent invocation was the W44 gap one door down.
         if ((Get-Command Write-SpecrewAllowanceResetAuthorization -ErrorAction SilentlyContinue) -and

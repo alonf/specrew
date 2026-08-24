@@ -535,6 +535,58 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-126 - round 16: a reversal that minted, a workflow that hid, a promise nobody kept, a stamp nobody checked (resolved)
+
+- **Observed**: 2026-08-25, run-20260824-220050018-c523ad86 - terminal, complete, current, FOUR
+  findings, TWO blocking, all in the authority layer. The first round in this sequence to raise
+  blocking findings, and the first whose findings were not variations on one theme.
+- **BLOCKING 1 - a trailing negation minted spend authority.** All three recognizers anchored their
+  negation check to the START of the utterance, so a reversal AFTER the anchor was invisible:
+  `approved for review round, but do not run it` returned true and created spend authority against
+  the human's explicit refusal. The deferral scan already read the same-line tail; the negation scan
+  now does too, with a generous reversal set (do not / never / cancel / withdraw / revoke / hold off
+  / stand down / stop / abort / never mind / actually stop / disregard). The floor still cuts one
+  way: plain same-line instructions and scope notes keep minting, pinned on both sides.
+- **BLOCKING 2 - a workflow-only change hid behind the records-only exemption.** `.github/` was
+  classified non-source WHOLESALE, so a commit touching only `.github/workflows/publish.yml` read as
+  records-only and the signoff gate preserved an older authorizing result - signoff proceeding over
+  an executable change no review had seen. The reviewed-state digest already treated workflows as
+  reviewable, so two consumers of the same question disagreed. The exemption now names what it was
+  always about - governance records and host mirrors (`.github/skills|agents|prompts|instructions|
+  chatmodes|ISSUE_TEMPLATE/` and top-level `.github/*.md`) - and everything else under `.github`,
+  workflows and composite actions included, is source. Applied to all THREE copies per rule 6.
+  **The suite had already named this**: a records-only case titled "a workflow change is source and
+  still stales - dot-github is not a blanket pass" pinned the OPPOSITE, with a note saying that
+  changing it means changing the shared classifier so all consumers move together. Round 16 found
+  the limit reaching the consequence that note anticipated; the case now pins what its name says.
+- **MAJOR 1 - the CLI advertised a withdrawal that did not exist.** After the bounded delivery
+  attempts fail, the refusal tells the human they may "withdraw the approval (say so, and nothing
+  further runs)" - and no recognizer, fact or check implemented it, so a later `--approve-round`
+  loaded the same unspent capture and invoked another reviewer. A promise made in a refusal is a
+  contract: `Test-SpecrewApprovalWithdrawalPhrase` + `Write-SpecrewApprovalWithdrawal` now keep it,
+  captured on the same path as the approval and running BEFORE the approval writer so one turn
+  cannot both withdraw and re-approve. The floor cuts the OTHER way here - a withdrawal REMOVES
+  authority, so a false positive costs a retype while a false negative runs a review the human
+  stopped - hence the generous verb set and no closed-tail requirement.
+- **MAJOR 2 - a consumption that did not land was accepted silently.** The delivered branch swallowed
+  every error from the consumption write and never read its postcondition, so a transient failure
+  left `spent_at` unset after a DELIVERED review and the next invocation derived a second grant from
+  the same approval. `Complete-SpecrewReviewRoundApprovalAuthorization` now returns
+  `{ consumed; fact; reason }` and verifies its own stamp by read-back - the rule the block counter
+  and the cap fact already follow - with EVERY exit returning that shape, because the $null early
+  returns were indistinguishable from success. Both call sites report a failure in consumer language
+  rather than accepting the delivery quietly.
+- **Citation**: the W50 entitlement rule (one approval, one delivered review) for both majors; the
+  evidence rule for blocking 2 (a review is evidence about the tree it read); FR-010's
+  leading-approval doctrine for blocking 1.
+- **Verification**: five RED cases, one per finding plus the CLI structural pin, red against the
+  shipped build and green after; 40/40 in the authority suite; the four classifier-consumer suites
+  green after their two stale pins were moved to the new contract; all three plan commands green.
+- **Method note that came with it**: the parse break that turned 40 cases red at once was an
+  apostrophe inside a single-quoted regex (`don't`). PowerShell reported it as one unexpected token
+  40 functions later; the tell is EVERY case failing with an EMPTY message, which is a load failure,
+  not forty defects.
+
 ### DRIFT-199-I001-125 - a genuine typed approval carrying a multi-paragraph instruction block was refused (resolved by round 15)
 
 - **Observed**: 2026-08-24, live on this walk. The maintainer typed `approved for review round`,

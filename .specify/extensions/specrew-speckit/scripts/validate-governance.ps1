@@ -1266,7 +1266,11 @@ function Test-ReviewCitedRunEvidence {
                         $rel = $_.Trim().Replace([char]92, [char]47)
                         while ($rel.StartsWith('./')) { $rel = $rel.Substring(2) }
                         -not ($rel -match '(?i)^(specs|docs)/') -and
-                        -not ($rel -match '(?i)^\.(specrew|squad|specify|github|agents|cursor|copilot|claude)/') -and
+                        -not ($rel -match '(?i)^\.(specrew|squad|specify|agents|cursor|copilot|claude)/') -and
+                        # Round-16 (DRIFT-199-I001-126): .github workflows and actions are executable
+                        # source; only the governance records and host mirrors under it are records.
+                        -not ($rel -match '(?i)^\.github/(?:skills|agents|prompts|instructions|chatmodes|ISSUE_TEMPLATE)/') -and
+                        -not ($rel -match '(?i)^\.github/[^/]+\.md$') -and
                         -not ($rel -match '(?i)\.(md|markdown|txt|rst|adoc)$')
                     })
                 if (@($sourceExamined).Count -eq 0) {

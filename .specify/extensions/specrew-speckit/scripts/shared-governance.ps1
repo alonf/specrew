@@ -6610,7 +6610,15 @@ function Test-SpecrewReviewAuthorshipSourcePath {
     while ($p.StartsWith('./')) { $p = $p.Substring(2) }
     if ([string]::IsNullOrWhiteSpace($p)) { return $false }
     if ($p -match '(?i)^(specs|docs)/') { return $false }
-    if ($p -match '(?i)^\.(specrew|squad|specify|github|agents|cursor|copilot|claude)/') { return $false }
+    # Round-16 finding (DRIFT-199-I001-126): .github/ was non-source WHOLESALE, so a commit
+    # touching only .github/workflows/publish.yml read as records-only and signoff reused a review
+    # of a tree that never held the executable change - while reviewed-state-digest already treated
+    # workflows as reviewable, so the two consumers disagreed. The exemption now names the
+    # GOVERNANCE RECORDS and host mirrors it was always about; everything else under .github,
+    # workflows and composite actions included, is reviewable source.
+    if ($p -match '(?i)^\.(specrew|squad|specify|agents|cursor|copilot|claude)/') { return $false }
+    if ($p -match '(?i)^\.github/(?:skills|agents|prompts|instructions|chatmodes|ISSUE_TEMPLATE)/') { return $false }
+    if ($p -match '(?i)^\.github/[^/]+\.md$') { return $false }
     # W37 REVERTED HERE, DELIBERATELY. Excluding scripts/internal/continuous-co-review/ as "a deployed
     # copy of Specrew's machinery" is wrong in the one repository where those paths ARE the product,
     # and this predicate is shared with W33's coverage classifier - so the blanket rule silently
@@ -7017,6 +7025,10 @@ function Test-SpecrewCoverageDeferralPhrase {
     # coverage stop before the human's stated condition holds.
     if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
     if ($lower -match '^\s*(?:do\s*not|never|not)\b') { return $r }
+    # Round-16 (DRIFT-199-I001-126): a reversal AFTER the anchor is the same refusal as one before
+    # it. The negation check was anchored to the start of the utterance and could not see
+    # "..., but do not run it" - which minted authority against the human's explicit refusal.
+    if ($tail -match "\b(?:do\s*not|don''t|dont|never|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b") { return $r }
     $r.Matched = $true; $r.Phrase = $trimmed
     return $r
 }

@@ -230,7 +230,15 @@ function Test-ReviewExaminedPathIsSource {
     while ($p.StartsWith('./')) { $p = $p.Substring(2) }
     if ([string]::IsNullOrWhiteSpace($p)) { return $false }
     if ($p -match '(?i)^(specs|docs)/') { return $false }
-    if ($p -match '(?i)^\.(specrew|squad|specify|github|agents|cursor|copilot|claude)/') { return $false }
+    # Round-16 finding (DRIFT-199-I001-126): .github/ was non-source WHOLESALE, so a commit
+    # touching only .github/workflows/publish.yml read as records-only and signoff reused a review
+    # of a tree that never held the executable change - while reviewed-state-digest already treated
+    # workflows as reviewable, so the two consumers disagreed. The exemption now names the
+    # GOVERNANCE RECORDS and host mirrors it was always about; everything else under .github,
+    # workflows and composite actions included, is reviewable source.
+    if ($p -match '(?i)^\.(specrew|squad|specify|agents|cursor|copilot|claude)/') { return $false }
+    if ($p -match '(?i)^\.github/(?:skills|agents|prompts|instructions|chatmodes|ISSUE_TEMPLATE)/') { return $false }
+    if ($p -match '(?i)^\.github/[^/]+\.md$') { return $false }
     if ($p -match '(?i)\.(md|markdown|txt|rst|adoc)$') { return $false }
     return $true
 }

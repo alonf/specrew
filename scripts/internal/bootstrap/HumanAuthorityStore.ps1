@@ -157,7 +157,16 @@ function Write-SpecrewReviewSignoffOverrideAuthorization {
     # W50: a partial the human explicitly accepts IS a delivered review, and delivery is the only
     # point that consumes the round entitlement. The acceptance is this override; consume here.
     if (Get-Command Complete-SpecrewReviewRoundApprovalAuthorization -ErrorAction SilentlyContinue) {
-        try { Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot -AuthorizationRef ('partial-accepted:' + [string]$request.request_id) | Out-Null } catch { $null = $_ }
+        # Round-16 (DRIFT-199-I001-126): the same postcondition as the CLI's delivered branch - a
+        # consumption that did not land is surfaced, never swallowed, or one approval can deliver
+        # twice. The override itself still stands; what is reported is the unmarked approval.
+        $partialConsumption = $null
+        try { $partialConsumption = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot -AuthorizationRef ('partial-accepted:' + [string]$request.request_id) }
+        catch { $partialConsumption = [pscustomobject]@{ consumed = $false; reason = ('threw:' + $_.Exception.Message) } }
+        if ($null -eq $partialConsumption -or -not [bool]$partialConsumption.consumed) {
+            $partialReason = if ($null -ne $partialConsumption) { [string]$partialConsumption.reason } else { 'no-result' }
+            [Console]::Error.WriteLine('[specrew-authority] WARN ROUND_APPROVAL_NOT_CONSUMED partial-accepted:' + $partialReason)
+        }
     }
     return $fact
 }
@@ -378,7 +387,8 @@ function Test-SpecrewReviewRoundApprovalPhrase {
             # round, once the tests pass" minted immediately and could spend a round before the
             # stated condition held. This is SPEND authority: the conservative floor scans the whole
             # tail, and a false negative costs the human one plain retype, never a spent round.
-            $negated = $lower -match '^\s*(?:do\s*not|do\s+not|never|not\s+yet|hold\s+off|wait|stop)\b'
+            $negated = ($lower -match '^\s*(?:do\s*not|do\s+not|never|not\s+yet|hold\s+off|wait|stop)\b') -or
+                ($tail -match '\b(?:do\s*not|don''t|dont|never|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b')
             if ($tail -notmatch '\b(later|after|once|when|unless|if)\b' -and -not $negated) {
                 $r.Matched = $true; $r.Kind = 'typed-phrase'; $r.Phrase = $trimmed
                 return $r
@@ -496,6 +506,70 @@ function Get-SpecrewReviewRoundApprovalAuthorization {
     return $fact
 }
 
+function Test-SpecrewApprovalWithdrawalPhrase {
+    # W57 / round-16 finding (DRIFT-199-I001-126): the CLI's undelivered-round refusal tells the
+    # human they may "withdraw the approval (say so, and nothing further runs)" - and nothing
+    # implemented it, so the next invocation loaded the same unspent capture and invoked another
+    # reviewer. A promise made in a refusal is a contract; this is the recognizer that keeps it.
+    #
+    # Same conservative shape as every recognizer here - leading-anchored, so a mention or a
+    # question is not an act - but the floor cuts the OTHER way for a withdrawal: it REMOVES
+    # authority, so a false positive costs a retype while a false negative runs a review the human
+    # said to stop. Hence the deliberately generous verb set and no closed-tail requirement.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    $r = [pscustomobject]@{ Matched = $false; Phrase = $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $trimmed = $Text.Trim()
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower) -or $lower.EndsWith('?')) { return $r }
+    if ($lower -notmatch '^\s*(?:(?:i|we)\s+)?(?:want\s+to\s+|would\s+like\s+to\s+)?(?:withdraw|revoke|rescind|retract|cancel)\b') { return $r }
+    if ($lower -notmatch '\b(approval|approve[d]?|round|authorization|authorisation)\b') { return $r }
+    $r.Matched = $true; $r.Phrase = $trimmed
+    return $r
+}
+
+function Write-SpecrewApprovalWithdrawal {
+    # SPECREW-AUTHORITY-CONTROL: approval-withdrawal
+    # Removes the pending capture and records WHY it is gone, so the ledger shows a withdrawal
+    # rather than an approval that silently vanished. Journals before deleting: the record of the
+    # human's act must survive even if the delete then fails.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $recognized = Test-SpecrewApprovalWithdrawalPhrase -Text $Response
+    if (-not [bool]$recognized.Matched) { return $null }
+    $root = Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot
+    $path = Join-Path $root 'pending-round-approval.json'
+    $withdrawn = $null
+    if ([IO.File]::Exists($path)) {
+        try { $withdrawn = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $withdrawn = $null }
+    }
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-round-approval-withdrawn'; authority_kind = 'human'
+        authorized_by = 'unattributed-human'; verdict_text = [string]$recognized.Phrase
+        response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
+        withdrew_observed_at = $(if ($null -ne $withdrawn -and $withdrawn.PSObject.Properties['observed_at']) { [string]$withdrawn.observed_at } else { '' })
+        host_kind = [string]$HostKind; source_event = [string]$SourceEvent; observed_at = $NowUtc
+    }
+    try {
+        [IO.Directory]::CreateDirectory($root) | Out-Null
+        ($fact | ConvertTo-Json -Compress -Depth 8) | Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Encoding UTF8
+    }
+    catch { $null = $_ }
+    # An UNSPENT capture is what a withdrawal removes; a spent one is history and stays.
+    if ($null -ne $withdrawn -and [string]::IsNullOrWhiteSpace([string]$withdrawn.spent_at)) {
+        try { [IO.File]::Delete($path) } catch { return $null }
+    }
+    return $fact
+}
+
 function Complete-SpecrewReviewRoundApprovalAuthorization {
     # One approval, one round: the mint that consumed the phrase stamps it spent, carrying the
     # authorization reference it became, so the record reads end to end - who approved (the phrase),
@@ -507,17 +581,39 @@ function Complete-SpecrewReviewRoundApprovalAuthorization {
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
-    if (-not [IO.File]::Exists($path)) { return $null }
+    # W57: EVERY exit returns the same shape. The old early returns handed back $null, which the
+    # caller could not tell from success - the discard that let a delivered round leave its approval
+    # unspent (round-16 finding). "There was nothing to consume" is itself a reportable outcome.
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'no-pending-capture' } }
     $fact = $null
     try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
-    catch { return $null }
-    if ($null -eq $fact) { return $null }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-empty' } }
     $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
     $fact | Add-Member -NotePropertyName 'authorization_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
     $json = $fact | ConvertTo-Json -Depth 8
-    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
-    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
-    return $fact
+    # W57 / round-16 finding (DRIFT-199-I001-126): VERIFY THE POSTCONDITION, AND SAY SO.
+    #
+    # The caller swallowed every error here and never checked the outcome, so a transient write
+    # failure left spent_at unset after a DELIVERED review - and the next invocation derived a fresh
+    # grant from the same capture, two delivered reviews from one approval. This now returns
+    # { consumed; fact; reason }: consumed=$true ONLY when the stamp is durably readable back, which
+    # is the same read-back rule the block counter and the cap fact already follow.
+    $reason = 'consumed'
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'readback-failed' } }
+    if ($null -eq $verified -or -not $verified.PSObject.Properties['spent_at'] -or
+        [string]::IsNullOrWhiteSpace([string]$verified.spent_at) -or
+        [string]$verified.authorization_ref -cne [string]$AuthorizationRef) {
+        return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'stamp-not-durable' }
+    }
+    return [pscustomobject]@{ consumed = $true; fact = $verified; reason = $reason }
 }
 
 # ===================================================================================================
@@ -652,6 +748,8 @@ function Test-SpecrewAllowanceResetPhrase {
     # failures" replenishes spend authority before the stated condition holds.
     if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
     if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait|stop)\b') { return $r }
+    # Round-16 (DRIFT-199-I001-126): a reversal AFTER the anchor is the same refusal as one before it.
+    if ($tail -match '\b(?:do\s*not|don''t|dont|never|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b') { return $r }
     $r.Matched = $true; $r.Phrase = $trimmed
     return $r
 }
