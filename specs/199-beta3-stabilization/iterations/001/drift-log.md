@@ -535,6 +535,40 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-125 - a genuine typed approval carrying a multi-paragraph instruction block was refused (OPEN - awaiting maintainer ruling)
+
+- **Observed**: 2026-08-24, live on this walk. The maintainer typed `approved for review round`,
+  then a blank line, then a multi-paragraph instruction block ("If it delivers clean: ... If it
+  finds more: ..."). Capture refused it; the launch reported no captured approval; nothing ran and
+  nothing was spent. The human's intent was unambiguous to any reader.
+- **Cause, measured against BOTH recognizer versions** (this is not the round-14 change - the
+  pre-fix recognizer at `ce4beaca~1` refuses the identical text): the W44 CLOSED TAIL rule. The
+  recognizer collapses all whitespace to single spaces, so the paragraph break becomes an ordinary
+  space, and the tail then reads as arbitrary prose directly after the phrase - the exact shape the
+  closed tail exists to reject ("...review round seems premature"). A paragraph break is a STRONGER
+  separator than any punctuation in the closed set, and it is destroyed before the decision is made.
+- **A second, independent refusal is stacked behind it**: even if the line break were treated as a
+  delimiter, the instruction block's own conditional wording ("If it delivers clean", "If it finds
+  more") contains deferral words, and the round-14 fix scans the WHOLE tail - so the approval would
+  read as conditional. Those conditions govern what the crew does AFTER the round, not whether the
+  round is authorized.
+- **Why this is NOT fixed unilaterally**: it changes what counts as HUMAN SPEND AUTHORITY, and this
+  same function has produced four minting/scoping defects in four consecutive rounds (rule 6's
+  genealogy). Loosening the mint here on the crew's own judgement is the one class of change the
+  authority model reserves for the human. The conservative floor behaved correctly: refusing cost
+  one retype; minting wrongly would have spent a round on an inferred approval.
+- **Proposed fix, for the ruling** (both halves needed, or the other refusal still fires): (1) treat
+  a LINE BREAK in the ORIGINAL text as a closed-tail delimiter, since a paragraph break separates
+  more strongly than a comma; (2) scope the deferral scan to the approval's own LINE - a condition
+  attached to the approval is written in the approval's sentence, while a following block is
+  instruction wording, which is already the settled doctrine in the boundary-verdict recognizer
+  ("approved for plan. changes needed in the README are noted for later" is an approval). Round-14's
+  refusals must stay red under any such change: they are same-line delimited deferrals.
+- **Citation**: FR-010 leading-approval-wins (the rule this shape belongs to); the W50 entitlement
+  rule (the human authorizes deliveries - and their authorization must survive their own formatting).
+- **Immediate remedy in use**: the bare phrase as its own message; instructions in a separate
+  message are already recorded and will be followed.
+
 ### DRIFT-199-I001-124 - a prohibition that forbade the remedy it required (resolved)
 
 - **Observed**: 2026-08-24, by the maintainer, reading the cap-release notice that had just fired on
