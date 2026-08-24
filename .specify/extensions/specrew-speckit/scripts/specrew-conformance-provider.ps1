@@ -1619,7 +1619,7 @@ try {
                     [void]$sbCap.AppendLine('')
                     [void]$sbCap.AppendLine(('Specrew: packet discipline capped for this session after {0} refusals - {1} is still unmet.' -f $count, $capSubject))
                     [void]$sbCap.AppendLine('')
-                    [void]$sbCap.AppendLine('The requirement itself is unchanged and still yours to meet; this notice documents that it is now on you rather than on the hook. Do not present approval options and do not add any approval comment that the released requirement itself did not call for.')
+                    [void]$sbCap.AppendLine('The requirement itself is unchanged and still yours to meet; this notice documents that it is now on you rather than on the hook. Do not present boundary-verdict options and do not add any approval comment that the released requirement itself did not call for - asking for the evidence-producing approvals the requirement itself names remains your job.')
                     $blockReason = $sbCap.ToString().TrimEnd()
                 }
             }
@@ -1651,7 +1651,7 @@ try {
                 # captured — suppressing the demand must not suppress the capture.
                 [void]$sb.AppendLine([string]$pending.Message)
                 [void]$sb.AppendLine('')
-                [void]$sb.AppendLine('Report this plainly and name the missing artifact(s). Do NOT present approval options and do NOT emit a verdict marker: the stage has produced nothing to approve, and a verdict recorded now would be indistinguishable in the ledger from an approval of real work.')
+                [void]$sb.AppendLine('Report this plainly and name the missing artifact(s). Do NOT present boundary-verdict options and do NOT emit a verdict marker: the stage has produced nothing to approve, and a verdict recorded now would be indistinguishable in the ledger from an approval of real work. Asking for the evidence-producing approvals the requirement itself names remains your job.')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
             elseif ($blockKind -eq 'boundary-unrecordable') {
@@ -1662,7 +1662,7 @@ try {
                 # crossing that does not exist.
                 [void]$sb.AppendLine([string]$pending.Message)
                 [void]$sb.AppendLine('')
-                [void]$sb.AppendLine('Tell the human plainly: a lifecycle boundary was reached, it could NOT be recorded, and what is missing. Do NOT present approval options and do NOT emit a verdict marker — there is no crossing to approve, and approving an unrecorded crossing would authorize nothing.')
+                [void]$sb.AppendLine('Tell the human plainly: a lifecycle boundary was reached, it could NOT be recorded, and what is missing. Do NOT present boundary-verdict options and do NOT emit a verdict marker - there is no crossing to approve, and approving an unrecorded crossing would authorize nothing. Asking for the evidence-producing approvals the requirement itself names remains your job.')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             }
             elseif ($blockKind -eq 'unauthorized-source') {
@@ -1847,10 +1847,10 @@ try {
             # not — for missing evidence that reintroduces the marker FR-068 suppresses, and for an
             # unrecordable crossing it invents a marker for a crossing that does not exist (FR-066).
             elseif ($cappedKind -eq 'boundary-evidence-absent') {
-                $corrections.Add('[specrew-conformance] STAGE EVIDENCE still missing - do NOT render approval options and do NOT include any boundary approval comment; there is nothing to approve until the stage produces its evidence in the bound tree. Produce the missing artifacts, commit them, re-run the boundary sync, then stop again.') | Out-Null
+                $corrections.Add('[specrew-conformance] STAGE EVIDENCE still missing - do NOT render boundary-verdict options and do NOT include any boundary approval comment; there is nothing to approve until the stage produces its evidence in the bound tree, and asking for the evidence-producing approvals the requirement itself names remains your job. Produce the missing artifacts, commit them, re-run the boundary sync, then stop again.') | Out-Null
             }
             elseif ($cappedKind -eq 'boundary-unrecordable') {
-                $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE - do NOT render approval options and do NOT include any boundary approval comment; no crossing exists to approve. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
+                $corrections.Add('[specrew-conformance] BOUNDARY REMAINS UNRECORDABLE - do NOT render boundary-verdict options and do NOT include any boundary approval comment; no crossing exists to approve, and asking for the evidence-producing approvals the requirement itself names remains your job. Run the project''s Specrew start/bootstrap path so the boundary ledger exists, then stop again.') | Out-Null
             }
             elseif ($cappedKind -eq 'coverage-decision') {
                 $corrections.Add('[specrew-conformance] COVERAGE DECISION still unmade - the allowance is exhausted, source has moved beyond the last delivered review, and the block cap has released this stop. The decision is still the human''s: `approved for allowance reset`, `continue without coverage until the review phase`, or `hold implementation here` - each as their typed reply in a normal chat message, because a reply inside a question UI or picker is not captured. Surface it; do not continue implementing as if it were made.') | Out-Null

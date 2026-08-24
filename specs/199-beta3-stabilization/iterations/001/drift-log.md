@@ -535,6 +535,30 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-124 - a prohibition that forbade the remedy it required (resolved)
+
+- **Observed**: 2026-08-24, by the maintainer, reading the cap-release notice that had just fired on
+  the crew. The notice ended "Do not present approval options" - one sentence doing two jobs. Its
+  intent is to forbid boundary-verdict MENUS when the evidence they would approve does not exist.
+  But the only path to MEETING the released requirement is itself an approval - the round approval
+  that produces the evidence - so a literal reading forbids asking for it.
+- **The class, named by the maintainer**: the Rule-28 shape. A strong model threads the ambiguity
+  and does the right thing; a weak model obeys the literal text into a wedge where it may neither
+  proceed nor ask. The defect is invisible from the strong side, which is why it survived its own
+  first live firing: this session read the intent correctly and still shipped the wording.
+- **Resolution**: the prohibition names what it forbids, on all five surfaces that carried it (the
+  cap-release notice, the two block directives for absent stage evidence and an unrecordable
+  boundary, and their two capped corrections): "do not present BOUNDARY-VERDICT options ... asking
+  for the evidence-producing approvals the requirement itself names remains your job." The second
+  half is load-bearing - forbidding without restoring leaves the same wedge one clause narrower.
+  Pinned in the standing wording sweep beside the W44/W49/W54 clause checks, with a floor assertion
+  so a sweep that finds nothing to check cannot pass vacuously.
+- **Citation**: Rule 28's own diagnosis (name the condition, checkable, first); the refusal contract
+  (a refusal names a reachable action - and a refusal that forbids the only reachable action names
+  none).
+- **Verification**: RED-first - the sweep flagged all five surfaces against the shipped provider and
+  is green after; the cap-exhaustion and full conformance-detection suites green on the new wording.
+
 ### DRIFT-199-I001-123 - round 14: a delimited deferral minted spend authority, and the promoted rule earned its fourth data point (resolved)
 
 - **Observed**: 2026-08-24, the fourth and final allowance round - run-20260824-150609793-e350790e,
@@ -3422,6 +3446,46 @@ nobody asked was where and when it actually executes.*
 ENTRY POINT (which door the test comes through). This is about the ENVIRONMENT (which machines and which
 triggers the test is ever run under). A fixture can satisfy the fifth perfectly and still only ever prove
 it on the author's laptop.*
+
+**PROMOTED 2026-08-24 by maintainer direction, after four instances in four consecutive review rounds.**
+
+> **RULE — A RECOGNIZER FIX IS PROVEN AGAINST EVERY BRANCH AND EVERY DELIMITER THAT REACHES THE SAME
+> RETURN — across every FILE that carries a copy of the rule, with a case per delimiter in the
+> punctuation class, before the fix is called done.**
+
+*Evidence, four rounds, each defect introduced adjacent to the previous fix: **round 11** — the
+interrogative guard was added to ONE branch, and the recognized closed set was the other door
+("Approve plan? I am still deciding."); **round 12** — the guard covered both branches but OVERSCOPED
+the scan past the instruction delimiters, erasing valid dash-delimited approvals; **round 13** — the
+scan was scoped to the clause in one FILE, while the spend-authority recognizers in another file
+carried their own copy of the rule; **round 14** — those recognizers split the tail on its delimiter
+and inspected element ZERO, empty by construction, so a delimited deferral minted spend authority
+immediately. DRIFT-199-I001-118, -120, -122, -123.*
+
+*The tell that the rule applies: the fix touches a regex, a `Split`, or a `Substring` near an
+approval/refusal return. The cheap discipline: enumerate the returns the verb can reach, and write the
+SAME adversarial case against each, varying only the delimiter.*
+
+### THE MEASUREMENT THAT CARRIES WITH IT — the economics case for the standing-grant proposal
+
+**Recorded here at maintainer direction (2026-08-24) so beta4 planning finds it where it scopes, not
+only in an iteration appendix.**
+
+> **Four recognizer defects, across four consecutive rounds, in authority-layer code. NONE was found
+> by any suite or by self-review. All four were found by independent review rounds — one each.**
+
+That is the whole argument for the standing-grant / external-review economics proposal, and it should
+be load-bearing when beta4 scopes it. The suites were not absent: each of the four defects lived in a
+function with existing green coverage, written by the same author who had just fixed its sibling. What
+the independent round supplied was not more diligence but a DIFFERENT ADJACENCY — a reader with no
+memory of which branch the last fix touched. Every one of the four was cheap to fix and expensive to
+find, which is exactly the cost curve a standing grant is meant to flatten: the rounds are the only
+control that has repeatedly located this class, and they are currently metered per-decision against a
+human's attention.
+
+*Corollary worth carrying with it: three of the four were demoted to minor by the failure-scenario
+contract and every one was substantively right. If beta4 scopes the standing grant, the demotion bar
+is the calibration question that comes with it.*
 
 ## DRIFT-199-I001-036 — the records-only exemption was missing from the IN-FLIGHT path (RESOLVED by ruling)
 

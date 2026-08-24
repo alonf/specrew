@@ -187,6 +187,33 @@ Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming t
         @($offenders).Count | Should -Be 0 -Because "every advisory naming a captured phrase must say it arrives as a normal chat message - a question-UI or picker reply is not captured (offenders: $($offenders -join ', '))"
     }
 
+    It 'W55: a refusal forbids BOUNDARY-VERDICT options, never the approvals its own remedy needs' {
+        # W55 (maintainer ruling, 2026-08-24, from the cap-release notice firing on the crew): "Do
+        # not present approval options" was doing two jobs. Its intent is to forbid boundary-verdict
+        # MENUS when the evidence they would approve does not exist - but the only path to meeting
+        # the released requirement IS an approval (the round approval that produces the evidence),
+        # so a literal reading forbids asking for it. That is the Rule-28 shape: a strong model
+        # threads it, a weak model obeys it into a wedge where it may neither proceed nor ask.
+        # The clause must name what it forbids.
+        $provider = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1') -Raw -Encoding UTF8
+        $offenders = [System.Collections.Generic.List[string]]::new()
+        $lineNumber = 0
+        foreach ($line in @(Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1') -Encoding UTF8)) {
+            $lineNumber++
+            if ($line.TrimStart().StartsWith('#')) { continue }
+            $lower = $line.ToLowerInvariant()
+            if ($lower -notmatch 'present approval options|render approval options') { continue }
+            # The emitted prohibition must be scoped to boundary-verdict options AND must say that
+            # asking for the evidence-producing approval is still the agent's job.
+            if ($lower -notmatch 'boundary-verdict options') { [void]$offenders.Add("line ${lineNumber} [unscoped prohibition]") }
+            elseif ($lower -notmatch 'remains your job') { [void]$offenders.Add("line ${lineNumber} [does not restore the ask]") }
+        }
+        @($offenders).Count | Should -Be 0 -Because "a refusal must forbid boundary-verdict options while leaving the evidence-producing ask intact (offenders: $($offenders -join ', '))"
+        # The scoped form must actually be present - a sweep that finds nothing to check proves nothing.
+        ([regex]::Matches($provider, [regex]::Escape('boundary-verdict options'))).Count |
+            Should -BeGreaterOrEqual 4 -Because 'every refusal surface that suppressed approval menus carries the scoped wording'
+    }
+
     It 'W49: no pause menu renders numbered option labels or a --flag as the answer channel' {
         # The menu is the human surface. Numbered labels teach bare-number replies - which are never
         # authority in this system - and a --flag is the agent's spelling, not the human's decision.
