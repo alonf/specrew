@@ -551,6 +551,12 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
 
         if ($shouldLand) {
             @($reached) -join ',' | Should -Be 'verify,accept,gate' -Because 'the designed flow must actually run when the human saw the real number'
+            # Round-11 finding (DRIFT-199-I001-118): this landing just accepted TWO MAJOR residuals,
+            # and the completion sentence said "Any remaining minor findings" - telling the human who
+            # had just consented to majors that nothing above minor remained. The sentence must not
+            # qualify the residuals with a severity the landing never established.
+            [string]$landing.message | Should -Match '(?i)remaining findings' -Because 'the residuals here are major, so the phrase must be severity-neutral'
+            [string]$landing.message | Should -Not -Match '(?i)minor findings' -Because 'naming only minors misstates what the human accepted'
         }
         else {
             @($reached).Count | Should -Be 0 -Because 'a refusal must happen before the tree is verified or anything is accepted'
@@ -791,14 +797,17 @@ Describe 'the pause protocol, reached from the command a consumer runs' {
 
         [string]$second.status | Should -Be 'paused'
         $surface = @($second.pause_surface) -join "`n"
-        # What MUST be there (rule 4), not merely what must not.
+        # What MUST be there (rule 4), not merely what must not - updated for W49 (DRIFT-199-I001-110):
+        # the menu is TYPED DECISIONS in the human's language, each with its consequence, and no
+        # numbered options or --flags reach the human. The stale numbered-menu pins that stood here
+        # survived W49 because this suite is outside the slice lane - itself the lesson the lane
+        # label records.
         $surface | Should -Match 'What would you like to do\?'
-        $surface | Should -Match '(?m)^\s+2\. Stop here'
-        $surface | Should -Match '(?m)^\s+3\. Abandon'
-        # `--live` is part of the command now: the campaign path is only entered with it, so the line
-        # a human copies has to carry it. The earlier form would have had them run a command that never
-        # reaches the pause handler.
-        $surface | Should -Match 'specrew review --live --pause-choice' -Because 'a decision surface must say how to answer it, in a form that actually works'
+        $surface | Should -Match '(?m)^\s+- stop the review here'
+        $surface | Should -Match '(?m)^\s+- abandon this review campaign'
+        $surface | Should -Match '(?m)^\s+- run another round'
+        $surface | Should -Not -Match '(?m)^\s+\d\.\s' -Because 'W49: numbers index nothing for a human; the typed decision is the answer'
+        $surface | Should -Not -Match '--pause-choice' -Because 'W49: machinery flags are the agent''s vocabulary, never the menu''s'
         $surface | Should -Match 'Nothing runs and nothing is spent until you answer'
     }
 

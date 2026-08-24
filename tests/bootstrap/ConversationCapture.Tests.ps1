@@ -117,6 +117,12 @@ $nonApprovals = @(
     @{ text = 'do not approve this yet';                               approval = $false; action = 'none' }
     @{ text = 'approve?';                                              approval = $false; action = 'none' }
     @{ text = 'should I approve this or not?';                         approval = $false; action = 'none' }
+    # Round-11 finding (DRIFT-199-I001-118): the question mark ended the approval CLAUSE, not the
+    # utterance, so the ends-with-? guard missed it and the generic fallback converted the human's
+    # explicit uncertainty into authorization. The interrogative rule binds to the sentence the
+    # approval verb sits in, wherever the utterance goes afterwards.
+    @{ text = 'Approve? I am still deciding.';                         approval = $false; action = 'none' }
+    @{ text = 'approved? probably, but let me sleep on it';            approval = $false; action = 'none' }
     @{ text = 'reply with approved for tasks when you are ready';      approval = $false; action = 'none' }
     @{ text = '1';                                                     approval = $false; action = 'none' }
     @{ text = 'yes';                                                   approval = $false; action = 'none' }

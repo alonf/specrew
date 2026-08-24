@@ -1109,7 +1109,12 @@ function Invoke-ReviewCampaignStopHereLanding {
             ' ({0} command{1}: {2})' -f $labels.Count, $(if ($labels.Count -eq 1) { '' } else { 's' }), ($labels -join ', ')
         }
         else { '' }
-        ('Review is signed off. Any remaining minor findings are saved as follow-ups, and the final check ran on your files exactly as they were{0}.' -f $ran)
+        # Round-11 finding (DRIFT-199-I001-118): the stop-here precondition DELIBERATELY accepts major
+        # residuals when the pause record proves the human saw their count - so a completion sentence
+        # naming only "minor findings" told a human who had just accepted two majors that nothing
+        # above minor remained. The severity-neutral phrase is honest for both shapes; the accepted
+        # counts themselves live in the pause record and the result, not in this scope.
+        ('Review is signed off. Any remaining findings are saved as follow-ups, and the final check ran on your files exactly as they were{0}.' -f $ran)
     }
     else {
         $whatFailed = switch ($failedStep) {

@@ -535,6 +535,45 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-118 - round 11's findings: an empty declaration could approve, a question could authorize, a sentence hid accepted majors (resolved)
+
+- **Observed**: 2026-08-24, the codex round the maintainer directed finally delivered -
+  run-20260824-020906264-29e5a7bc, terminal, complete, current, 3 validated findings (1 blocking,
+  2 minor). All three fixed the same day, RED-first, per the standing instruction to fix all
+  findings.
+- **Blocking - a present empty examined-paths declaration could authorize unreviewed code.**
+  `Resolve-ReviewDeclaredCoverage` mapped an explicitly present `examined_paths: []` to
+  `declared=false`, and the W33 source-coverage degrade runs only when declared is true - so a
+  complete/pass candidate that HONESTLY reported opening no files stayed approval authority over a
+  source-bearing target. A present empty list is now a declaration of ZERO coverage and degrades
+  (partial/incomplete, cannot approve) on source targets, with its own message ("examined no files
+  at all"); only ABSENCE of the field keeps the legacy fail-open for pre-contract reviewers, and the
+  docs-only-target carve-out still applies. The suite case that pinned the old behaviour ("an empty
+  declaration claims nothing") was superseded, not patched around.
+- **Minor - a leading approval question could be persisted as authorization.** "Approve? I am still
+  deciding." - the closed-set leading-approval branch rejected it correctly, but the generic
+  fallback matched the leading verb, and the whole-utterance question guard checks only the LAST
+  character. The interrogative rule now binds to the SENTENCE the approval verb sits in: if the
+  first sentence punctuation after the verb is a question mark, the utterance is deliberation,
+  whatever follows. A declarative approval with a trailing question keeps its existing follow-up
+  reading.
+- **Minor - the stop-here completion named only minors while majors were being accepted.** The
+  precondition deliberately permits major residuals the human provably saw, and the success sentence
+  then said "Any remaining minor findings are saved as follow-ups". Now severity-neutral
+  ("remaining findings"); the counts live in the pause record and the result. Pinned on the exact
+  matched-consent case that accepts two majors.
+- **Also repaired in passing**: the pause-wiring suite still pinned the pre-W49 numbered menu - it
+  sits outside the slice lane, so W49 never met it; its resumed-surface case now pins the typed-
+  decision menu and the ABSENCE of numbers and flags.
+- **Citation**: W33 (declared coverage), FR-026/SC-013 (a question is never authorization), the W49
+  consumer-language ruling, and the consent arm's own rule - consent given against false
+  information is not consent; a sentence that misnames what was accepted is the same defect one
+  layer down.
+- **Verification**: each fix RED-first - the flipped coverage case red against the pre-fix resolver;
+  the finding's exact utterance red against the pre-fix recognizer; the severity-neutral pin red
+  against the stashed pre-fix sentence and green after - then the full coverage, capture,
+  verdict-capture, round-approval and pause-wiring suites green.
+
 ### DRIFT-199-I001-117 - W39's preflight marker disarmed the staleness rule for every project, not its own (resolved)
 
 - **Observed**: 2026-08-24, the fifth failed launch - `verification-command-failed:f199-slice-suites`

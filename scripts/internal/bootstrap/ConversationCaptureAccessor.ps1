@@ -252,6 +252,16 @@ function Test-SpecrewHumanVerdictToken {
         '^\s*(?:(?:option\s*)?([12])\s*[.):\-\u2013\u2014]\s*)?(?:(?:yes|confirmed)\s*[,;:\-\u2013\u2014]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b'
     )
     if ($approvalUtterance.Success) {
+        # Round-11 finding (DRIFT-199-I001-118): the interrogative rule binds to the SENTENCE the
+        # approval verb sits in, not just to the utterance's last character. "Approve? I am still
+        # deciding." sailed past the ends-with-? guard above - the question mark closed the approval
+        # clause, not the utterance - and this fallback then converted the human's explicit
+        # uncertainty into authorization. If the first sentence punctuation after the verb is a
+        # question mark, the approval is a question; a question is deliberation, whatever follows.
+        # A DECLARATIVE approval with a trailing question ("approved the plan. ok to continue?")
+        # keeps its existing reading: the follow-up question comes after a '.' and does not match.
+        $afterAnchor = $lower.Substring($approvalUtterance.Length)
+        if ($afterAnchor -match '^[^.!?]*\?') { return $r }
         if ($approvalUtterance.Groups[1].Success) { $r.ApprovalOption = [int]$approvalUtterance.Groups[1].Value }
         $r.IsApproval = $true; $r.Action = 'approve'; return $r
     }

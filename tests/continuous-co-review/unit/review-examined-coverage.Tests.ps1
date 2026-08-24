@@ -124,8 +124,23 @@ Describe 'W33 a declared docs-only review cannot approve code' {
         [string]$r.result.failure_reason | Should -BeNullOrEmpty
     }
 
-    It 'stays silent on an empty declaration, which claims nothing' {
+    It 'degrades a PRESENT empty declaration on a source target - declared zero coverage is not silence' {
+        # Round-11 blocking finding (DRIFT-199-I001-118), superseding the case that stood here: an
+        # explicitly present examined_paths=[] mapped to declared=false, so a reviewer that honestly
+        # reported opening NO files stayed complete/pass and could sign off code it never inspected.
+        # A present empty list IS a declaration - of zero coverage. Only ABSENCE of the field keeps
+        # the legacy fail-open above.
         $r = Invoke-CoverageIngress -ExaminedPaths @()
+        [string]$r.result.completion | Should -Be 'partial'
+        [string]$r.result.verdict | Should -Be 'incomplete'
+        [bool]$r.result.can_approve_current | Should -BeFalse
+        [string]$r.result.failure_reason | Should -Match 'REVIEW_EXAMINED_NO_SOURCE'
+        [string]$r.result.failure_reason | Should -Match 'no files at all' -Because 'the empty case must not render an empty parenthetical list'
+    }
+
+    It 'an empty declaration against a target that holds no source stays a correct review' {
+        # The docs-only-target carve-out applies the same way it does for a populated docs-only list.
+        $r = Invoke-CoverageIngress -ExaminedPaths @() -TargetHasSource $false
         [string]$r.result.completion | Should -Be 'complete'
         [string]$r.result.verdict | Should -Be 'pass'
     }

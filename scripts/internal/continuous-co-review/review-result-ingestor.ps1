@@ -238,6 +238,12 @@ function Test-ReviewExaminedPathIsSource {
 function Resolve-ReviewDeclaredCoverage {
     # Returns what the candidate SAYS it examined, split by whether it is source. `declared` is the
     # gate: when the reviewer said nothing, there is nothing to check and nothing is claimed.
+    #
+    # Round-11 blocking finding (DRIFT-199-I001-118): a PRESENT empty list is not "said nothing" -
+    # it is an honest declaration of ZERO coverage, and mapping it to declared=false let a
+    # complete/pass candidate that opened no files stay approval authority over a source-bearing
+    # target. Only ABSENCE of the field keeps the legacy fail-open, for reviewers that predate the
+    # declared-coverage contract.
     param([object]$Candidate)
     $empty = [pscustomobject]@{ declared = $false; paths = @(); source_paths = @() }
     if ($null -eq $Candidate) { return $empty }
@@ -245,7 +251,6 @@ function Resolve-ReviewDeclaredCoverage {
     $paths = @(@($Candidate.examined_paths) |
             ForEach-Object { [string]$_ } |
             Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if ($paths.Count -eq 0) { return $empty }
     return [pscustomobject]@{
         declared     = $true
         paths        = @($paths)
@@ -343,8 +348,14 @@ function Invoke-ReviewResultIngress {
     $coverage = Resolve-ReviewDeclaredCoverage -Candidate $candidateRead.candidate
     if ($candidateRead.valid -and $TargetHasSource -and $coverage.declared -and
         @($coverage.source_paths).Count -eq 0) {
-        $examinedNote = (@($coverage.paths) | Select-Object -First 5) -join ', '
-        $coverageDegrade = ('REVIEW_EXAMINED_NO_SOURCE: the review declares it examined only records or documents ({0}), while the frozen target contains source; this run is partial evidence about the code and cannot approve the current target.' -f $examinedNote)
+        $coverageDegrade = if (@($coverage.paths).Count -eq 0) {
+            # The empty declaration reads differently from a docs-only one: nothing was opened at all.
+            'REVIEW_EXAMINED_NO_SOURCE: the review declares it examined no files at all, while the frozen target contains source; this run is partial evidence about the code and cannot approve the current target.'
+        }
+        else {
+            $examinedNote = (@($coverage.paths) | Select-Object -First 5) -join ', '
+            ('REVIEW_EXAMINED_NO_SOURCE: the review declares it examined only records or documents ({0}), while the frozen target contains source; this run is partial evidence about the code and cannot approve the current target.' -f $examinedNote)
+        }
         $ControllerDegradeReason = if ([string]::IsNullOrWhiteSpace($ControllerDegradeReason)) { $coverageDegrade }
         else { "$ControllerDegradeReason $coverageDegrade" }
     }
