@@ -348,10 +348,14 @@ function Test-SpecrewReviewRoundApprovalPhrase {
         # Closed tail: nothing, or a delimiter followed by instructions. Arbitrary prose directly after
         # the phrase ("...review round seems premature") is not the phrase.
         if ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]') {
-            # A deferral or negation around the clause still defers.
-            $clause = ([regex]::Split($tail, '[,.;:]|\s-\s', 2))[0]
+            # A deferral or negation anywhere in the TAIL still defers. Round-14 finding
+            # (DRIFT-199-I001-123): the first cut split the tail on the delimiter and inspected
+            # element ZERO - empty by construction for a delimited tail - so "approved for review
+            # round, once the tests pass" minted immediately and could spend a round before the
+            # stated condition held. This is SPEND authority: the conservative floor scans the whole
+            # tail, and a false negative costs the human one plain retype, never a spent round.
             $negated = $lower -match '^\s*(?:do\s*not|do\s+not|never|not\s+yet|hold\s+off|wait|stop)\b'
-            if ($clause -notmatch '\b(later|after|once|when|unless|if)\b' -and -not $negated) {
+            if ($tail -notmatch '\b(later|after|once|when|unless|if)\b' -and -not $negated) {
                 $r.Matched = $true; $r.Kind = 'typed-phrase'; $r.Phrase = $trimmed
                 return $r
             }
@@ -616,8 +620,10 @@ function Test-SpecrewAllowanceResetPhrase {
     if (-not $anchor.Success) { return $r }
     $tail = $lower.Substring($anchor.Length)
     if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
-    $clause = ([regex]::Split($tail, '[,.;:]|\s-\s', 2))[0]
-    if ($clause -match '\b(later|after|once|when|unless|if)\b') { return $r }
+    # Round-14 finding (DRIFT-199-I001-123): the whole TAIL, not element zero of a delimiter split -
+    # which is empty by construction - or "approved for allowance reset, after we verify the
+    # failures" replenishes spend authority before the stated condition holds.
+    if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
     if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait|stop)\b') { return $r }
     $r.Matched = $true; $r.Phrase = $trimmed
     return $r

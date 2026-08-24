@@ -535,6 +535,35 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-123 - round 14: a delimited deferral minted spend authority, and the promoted rule earned its fourth data point (resolved)
+
+- **Observed**: 2026-08-24, the fourth and final allowance round - run-20260824-150609793-e350790e,
+  terminal, complete, current, ONE validated finding (minor by demotion, reported major). The
+  reviewer's answer to the standing prompt arrived while the round ran: promote the recognizer rule.
+  The round then proved it a fourth time, in a file none of the first three touched.
+- **The finding.** Both spend-authority recognizers - round approval and allowance reset - accept a
+  delimited tail, then split the tail ON that delimiter and inspect element ZERO for deferral words.
+  For a delimited tail element zero is empty by construction, so "approved for review round, once
+  the tests pass" and "approved for allowance reset, after we verify the failures" minted
+  immediately: a round spent, or the allowance replenished, before the human's stated condition
+  held.
+- **Resolution**: the deferral scan reads the WHOLE tail in both recognizers. This is SPEND
+  authority, so the conservative floor cuts one way: a deferral word anywhere in the tail refuses,
+  and the cost of a false negative is one plain retype - never a spent round. A delimited
+  INSTRUCTION tail still mints (the W44 shape: a reason is not a condition), pinned alongside the
+  refusals so the floor cannot silently widen. Regression cases per the reviewer's list: comma,
+  semicolon, colon, period, and spaced hyphen, in both recognizers.
+- **The rule, promoted.** Method rule 6 is in the appendix with the four-round genealogy: one branch
+  guarded, both guarded but overscoped, scoped in one file, element-zero in the other file. And the
+  measurement the reviewer asked recorded with it: no suite and no self-review found any of the
+  four - independent rounds found them all.
+- **Citation**: method rule 6 (its own first application); the entitlement rule (the allowance
+  meters attempts, the human authorizes deliveries - and a condition the human stated is part of
+  the authorization, not decoration).
+- **Verification**: RED-first - ten delimited-deferral refusal cases red against the shipped
+  recognizers, green after; the instruction-tail mints pinned green on both sides; the full
+  capture/round-approval family green; both lanes green.
+
 ### DRIFT-199-I001-122 - round 13's findings: a dash-erased approval, a stale clean shortcut, legacy empty coverage, leaked evidence dirs (resolved)
 
 - **Observed**: 2026-08-24, the third approved round - run-20260824-140831555-4c... (af17d8d5),
@@ -2023,6 +2052,35 @@ inline shape, and an assert on a deployed mirror's existence. And reproducing th
 its own: use the engine's exact materialization (`git worktree add --detach --no-checkout` +
 `read-tree --reset -u <digest>`) at a root as SHORT as the engine's - an approximation at a long scratch
 path manufactured 36 phantom failures out of Windows MAX_PATH checkout truncation.
+
+### METHOD NOTE — a recognizer fix is proven against every branch and every delimiter that reaches the same return
+
+Promoted 2026-08-24 on the maintainer's reviewer's direction, after the class produced its third
+instance in three consecutive independent rounds - and confirmed by a fourth in the round that
+reviewed the promotion itself. The genealogy, each defect introduced adjacent to the previous fix:
+
+- Round 11: the interrogative guard was added to ONE branch; the recognized closed set was the other
+  door ("Approve plan? I am still deciding.").
+- Round 12: the guard covered both branches but OVERSCOPED the scan past the instruction delimiters,
+  erasing valid dash-delimited approvals.
+- Round 13: the scan was scoped to the clause - in one FILE; the spend-authority recognizers in
+  another file carried their own copy of the clause logic.
+- Round 14: those recognizers split the tail on the delimiter and inspected element ZERO - empty by
+  construction - so a delimited deferral minted immediately.
+
+> **6. A recognizer fix is proven against every branch and every delimiter that reaches the same
+> return - across every FILE that carries a copy of the rule, with a case per delimiter in the
+> punctuation class, before the fix is called done.**
+
+The shape to recognise: text recognizers accrete branches (anchored phrase, closed set, fallback,
+per-file copies), and a rule patched where the finding exercised it leaves every sibling branch
+carrying the old behavior. The tell that the rule applies: the fix touches a regex, a Split, or a
+Substring near an approval/refusal return. The cheap discipline: enumerate the returns the verb can
+reach, and write the SAME adversarial case against each, varying only the delimiter.
+
+Worth recording with it: no suite and no self-review found any of the four - three independent codex
+rounds and a fourth verification round did, one each. That is the measured argument, four data
+points strong, for the external-review economics proposal.
 
 ### METHOD NOTE — a control that refuses must be proven to fire on the path its own remedy names
 

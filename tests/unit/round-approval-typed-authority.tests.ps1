@@ -104,6 +104,34 @@ Describe 'W44 the recognizer accepts only a clear human approving act' {
             (Test-SpecrewReviewRoundApprovalPhrase -Text $text).Matched | Should -BeFalse -Because $text
         }
     }
+
+    It 'a delimited deferral is still a deferral, whatever the delimiter - round 14 finding' {
+        # Round-14 finding (DRIFT-199-I001-123): both spend-authority recognizers split the tail on
+        # the delimiter and inspected element ZERO for deferral words - which for a delimited tail is
+        # empty by construction - so "approved for review round, once the tests pass" minted
+        # immediately and could spend a round before the stated condition held. The FOURTH recognizer
+        # scoping defect in four rounds, and the first instance of the just-promoted method rule:
+        # every branch and every DELIMITER that reaches the same return.
+        foreach ($text in @('approved for review round, once the tests pass',
+                'approved for review round; after we verify the failures',
+                'approved for review round: when the lanes are green',
+                'approved for review round. unless codex is busy',
+                'approved for review round - if the budget allows')) {
+            (Test-SpecrewReviewRoundApprovalPhrase -Text $text).Matched | Should -BeFalse -Because $text
+        }
+        foreach ($text in @('approved for allowance reset, after we verify the failures',
+                'approved for allowance reset; once the walk finishes',
+                'approved for allowance reset: when you are ready',
+                'approved for allowance reset. if the drift is real',
+                'approved for allowance reset - unless a round remains')) {
+            (Test-SpecrewAllowanceResetPhrase -Text $text).Matched | Should -BeFalse -Because $text
+        }
+        # The conservative floor cuts one way only: a delimited INSTRUCTION tail still mints.
+        (Test-SpecrewReviewRoundApprovalPhrase -Text 'approved for review round - use the codex reviewer').Matched |
+            Should -BeTrue -Because 'instructions after the delimiter are the W44 shape, not a deferral'
+        (Test-SpecrewAllowanceResetPhrase -Text 'approved for allowance reset - the drift is authority-layer code').Matched |
+            Should -BeTrue -Because 'a reason is not a condition'
+    }
 }
 
 Describe 'W44 the capture store: one approval, one round' {
