@@ -535,7 +535,7 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
-### DRIFT-199-I001-125 - a genuine typed approval carrying a multi-paragraph instruction block was refused (OPEN - awaiting maintainer ruling)
+### DRIFT-199-I001-125 - a genuine typed approval carrying a multi-paragraph instruction block was refused (resolved by round 15)
 
 - **Observed**: 2026-08-24, live on this walk. The maintainer typed `approved for review round`,
   then a blank line, then a multi-paragraph instruction block ("If it delivers clean: ... If it
@@ -566,8 +566,29 @@ campaign gate exists to control.
   refusals must stay red under any such change: they are same-line delimited deferrals.
 - **Citation**: FR-010 leading-approval-wins (the rule this shape belongs to); the W50 entitlement
   rule (the human authorizes deliveries - and their authorization must survive their own formatting).
-- **Immediate remedy in use**: the bare phrase as its own message; instructions in a separate
-  message are already recorded and will be followed.
+- **Immediate remedy used at the time**: the bare phrase as its own message.
+- **RESOLVED by round 15** (run-20260824-211019916-56991ec4, terminal, complete, current), which
+  found this independently as its single finding, ruled it against FR-003/FR-010, proposed the same
+  two-part fix, and named the sibling recognizer by line number. With an independent round ruling it
+  a defect, the maintainer's standing "fix RED-first" instruction covered it - the crew's own
+  judgement never had to be the authority for changing what counts as authority, which was the
+  reason it was left open.
+- **The fix**: `Get-SpecrewAuthorityApprovalLine` - the approval's OWN LINE, whitespace-normalized,
+  everything before the first line break. Within that line the closed tail, the deferral scan and
+  the interrogative test apply exactly as before, so round 14's same-line deferrals stay refused and
+  "approved for review round?" stays deliberation; what follows a line break is an instruction
+  BLOCK and is not scanned, which is the doctrine the boundary-verdict recognizer already applied
+  across a sentence break. Applied to all THREE copies of the rule per method rule 6.
+- **What the shared matrix found that the finding did not**: the coverage-deferral recognizer - the
+  third copy, which the reviewer did not name - had NEVER carried the round-14 deferral scan at all,
+  so "continue without coverage, once the walk finishes" would have silenced the coverage stop
+  before the human's condition held. Rule 6's first prospective catch: the matrix ran against every
+  file carrying the rule, not only the files the finding named.
+- **Verification**: the W56 matrix - 3 recognizers x (the live multi-paragraph shape, a question in
+  the following block, five same-line deferral delimiters, an interrogative approval line, arbitrary
+  prose, a machinery envelope, a mention, and the three plain shapes) - RED before, 34/34 green
+  after; the exact message that was refused live now captures; the capture, verdict-capture and
+  coverage suites green.
 
 ### DRIFT-199-I001-124 - a prohibition that forbade the remedy it required (resolved)
 

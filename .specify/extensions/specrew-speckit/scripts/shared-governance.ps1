@@ -6998,12 +6998,24 @@ function Test-SpecrewCoverageDeferralPhrase {
     if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
     $trimmed = $Text.Trim()
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
-    if ($trimmed.EndsWith('?')) { return $r }
-    $lower = ($trimmed -replace '\s+', ' ').ToLowerInvariant()
+    # W56 (DRIFT-199-I001-125): the decision lives on its OWN LINE, so a real disposition followed by
+    # an instruction block is not refused as arbitrary prose. Defined locally rather than laddered
+    # from the bootstrap store, because this recognizer must work when only shared-governance is
+    # loaded; the W56 case matrix runs the SAME cases against all three copies, which is what rule 6
+    # actually demands of a rule that lives in more than one file.
+    $firstLine = ([regex]::Split($trimmed, '\r\n|\n|\r', 2))[0]
+    $lower = (($firstLine -replace '\s+', ' ').Trim()).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower)) { return $r }
+    if ($lower.EndsWith('?')) { return $r }
     $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?continue\s+without\s+coverage(?:\s+until\s+the\s+review\s+phase)?\b')
     if (-not $anchor.Success) { return $r }
     $tail = $lower.Substring($anchor.Length)
     if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
+    # W56: this copy never had the round-14 deferral scan at all - found by running the shared matrix
+    # against all three recognizers rather than against the two the finding named. A deferred
+    # disposition ("continue without coverage, once the walk finishes") must not silence the
+    # coverage stop before the human's stated condition holds.
+    if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
     if ($lower -match '^\s*(?:do\s*not|never|not)\b') { return $r }
     $r.Matched = $true; $r.Phrase = $trimmed
     return $r

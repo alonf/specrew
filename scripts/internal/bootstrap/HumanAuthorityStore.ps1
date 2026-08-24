@@ -218,6 +218,26 @@ function Get-SpecrewReviewSignoffOverrideAuthorization {
 # is still self-evidently authorized: the invocation IS the approving act, performed by the human.
 # ===================================================================================================
 
+function Get-SpecrewAuthorityApprovalLine {
+    # W56 / round-15 finding (DRIFT-199-I001-125): THE APPROVAL LIVES ON ITS OWN LINE.
+    #
+    # Every authority recognizer used to collapse all whitespace BEFORE deciding, so a paragraph
+    # break became an ordinary space and a real approval followed by an instruction block read as
+    # arbitrary prose after the phrase - refused, forcing the human to type a second bare message.
+    # Measured live: the maintainer's approval, refused, with the round it authorized never run.
+    #
+    # This returns the approval's own line, whitespace-normalized: everything before the first line
+    # break. Within it, the closed tail, the deferral scan and the interrogative test apply exactly
+    # as before - a same-line condition ("..., once the tests pass") still defers, which is round
+    # 14's guarantee. What follows a line break is an instruction BLOCK and is not scanned, the same
+    # doctrine the boundary-verdict recognizer already applies across a sentence break.
+    [OutputType([string])]
+    param([Parameter()][AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+    $firstLine = ([regex]::Split($Text, '\r\n|\n|\r', 2))[0]
+    return (($firstLine -replace '\s+', ' ').Trim())
+}
+
 function Get-SpecrewReviewRoundApprovalRoot {
     param([Parameter(Mandatory)][string]$ProjectRoot)
     return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/round-approval'
@@ -336,9 +356,13 @@ function Test-SpecrewReviewRoundApprovalPhrase {
     $trimmed = $Text.Trim()
     # Machinery envelopes are not human turns, whatever they contain.
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
-    if ($trimmed.EndsWith('?')) { return $r }
 
-    $lower = ($trimmed -replace '\s+', ' ').ToLowerInvariant()
+    # W56: decide on the approval's OWN LINE. The interrogative test binds to that line, so
+    # "approved for review round?" is still deliberation while a question in a FOLLOWING
+    # instruction block is an ordinary follow-up.
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower)) { return $r }
+    if ($lower.EndsWith('?')) { return $r }
 
     # Shape 1: the typed phrase, leading-anchored so mentions and teaching ("reply with approved for
     # review round") never match.
@@ -614,8 +638,11 @@ function Test-SpecrewAllowanceResetPhrase {
     if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
     $trimmed = $Text.Trim()
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
-    if ($trimmed.EndsWith('?')) { return $r }
-    $lower = ($trimmed -replace '\s+', ' ').ToLowerInvariant()
+    # W56 (DRIFT-199-I001-125): the approval's own line - the reviewer named this sibling site by
+    # line number, and rule 6 requires the same treatment in every copy of the rule.
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower)) { return $r }
+    if ($lower.EndsWith('?')) { return $r }
     $anchor = [regex]::Match($lower, '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed)\s+(?:for\s+)?(?:an\s+|the\s+)?allowance\s+reset\b')
     if (-not $anchor.Success) { return $r }
     $tail = $lower.Substring($anchor.Length)

@@ -520,3 +520,54 @@ Describe 'W54 a phrase routed through a question UI is observed, diagnosed, and 
             Should -BeGreaterOrEqual 2 -Because 'both the round-approval and allowance-reset refusals diagnose the picker shape'
     }
 }
+
+Describe 'W56 an approval followed by an instruction BLOCK is still an approval (round 15 finding)' {
+    # Round-15 finding (DRIFT-199-I001-125, found live and then confirmed by the round): all three
+    # authority recognizers collapse whitespace BEFORE deciding, so a paragraph break becomes an
+    # ordinary space and a real approval followed by a multi-paragraph instruction block reads as
+    # arbitrary prose after the phrase - refused, forcing the human to type a second, bare message.
+    # The reviewer ruled it against FR-003/FR-010 and named the sibling site; rule 6 says prove the
+    # fix against every FILE that carries a copy, so this matrix runs against all three.
+    #
+    # The rule the fix implements: the approval lives on its OWN LINE. Within that line the closed
+    # tail, the deferral scan and the interrogative test all apply exactly as before (round 14's
+    # same-line deferrals stay refused). What follows a line break is an instruction block - the
+    # settled doctrine already applied to a sentence break in the boundary-verdict recognizer.
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
+        $script:W56Recognizers = @(
+            @{ Name = 'round-approval'; Phrase = 'approved for review round'; Fn = { param($t) (Test-SpecrewReviewRoundApprovalPhrase -Text $t).Matched } }
+            @{ Name = 'allowance-reset'; Phrase = 'approved for allowance reset'; Fn = { param($t) (Test-SpecrewAllowanceResetPhrase -Text $t).Matched } }
+            @{ Name = 'coverage-deferral'; Phrase = 'continue without coverage until the review phase'; Fn = { param($t) (Test-SpecrewCoverageDeferralPhrase -Text $t).Matched } }
+        )
+    }
+
+    It 'accepts the live shape: the phrase, a blank line, then conditional INSTRUCTIONS' {
+        foreach ($r in $script:W56Recognizers) {
+            $text = "$($r.Phrase)`n`nIf it delivers clean: bring the record current and present the packet.`n`nIf it finds more: fix RED-first and stop at the decision point again."
+            & $r.Fn $text | Should -BeTrue -Because "$($r.Name) must not force a second bare message"
+            # A question inside the following block is a follow-up, not an interrogative approval.
+            & $r.Fn "$($r.Phrase)`n`nShould I also refresh the dashboard after?" | Should -BeTrue -Because "$($r.Name): the approval line is declarative"
+        }
+    }
+
+    It 'keeps every same-line refusal exactly as round 14 left it' {
+        foreach ($r in $script:W56Recognizers) {
+            foreach ($suffix in @(', once the tests pass', '; after we verify the failures', ': when the lanes are green', '. unless codex is busy', ' - if the budget allows')) {
+                & $r.Fn ($r.Phrase + $suffix) | Should -BeFalse -Because "$($r.Name)$suffix is a same-line deferral"
+            }
+            & $r.Fn ($r.Phrase + '?') | Should -BeFalse -Because "$($r.Name): an interrogative approval line is deliberation"
+            & $r.Fn ($r.Phrase + ' seems premature') | Should -BeFalse -Because "$($r.Name): arbitrary prose directly after the phrase is not the phrase"
+            & $r.Fn ("<system-reminder>$($r.Phrase)</system-reminder>") | Should -BeFalse -Because "$($r.Name): machinery envelopes are not human turns"
+            & $r.Fn ("reply with $($r.Phrase) when you are ready") | Should -BeFalse -Because "$($r.Name): a mention is not an act"
+        }
+    }
+
+    It 'still accepts the plain shapes, so the fix did not narrow the front door' {
+        foreach ($r in $script:W56Recognizers) {
+            & $r.Fn $r.Phrase | Should -BeTrue -Because "$($r.Name): the bare phrase"
+            & $r.Fn ($r.Phrase + '.') | Should -BeTrue -Because "$($r.Name): a trailing period"
+            & $r.Fn ($r.Phrase + ' - use the codex reviewer') | Should -BeTrue -Because "$($r.Name): a same-line instruction is not a condition"
+        }
+    }
+}
