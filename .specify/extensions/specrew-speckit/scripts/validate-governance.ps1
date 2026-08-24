@@ -1181,8 +1181,21 @@ function Test-ReviewCitedRunEvidence {
                 try {
                     $markerFull = [IO.Path]::GetFullPath($preflightMarker.Trim()).TrimEnd('\', '/')
                     $projectFull = [IO.Path]::GetFullPath([string]$ProjectRoot).TrimEnd('\', '/')
-                    $rootComparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
-                    $inReviewPreflight = [string]::Equals($markerFull, $projectFull, $rootComparison)
+                    # Case semantics come from the VOLUME via the path-identity primitive, never from
+                    # the OS family - the class-guard lane enforces this structurally. 'distinct' when
+                    # undetermined, and Ordinal when the primitive is unreachable: both err toward NOT
+                    # applying the exemption, which leaves the freshness rule live - the safe side.
+                    if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue)) {
+                        $pathIdentityHelper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/path-identity.ps1'
+                        if (Test-Path -LiteralPath $pathIdentityHelper -PathType Leaf) { . $pathIdentityHelper }
+                    }
+                    if (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue) {
+                        $rootComparer = Get-ContinuousCoReviewPathComparer -Path $projectFull -WhenUndetermined 'distinct'
+                        $inReviewPreflight = $rootComparer.Equals($markerFull, $projectFull)
+                    }
+                    else {
+                        $inReviewPreflight = [string]::Equals($markerFull, $projectFull, [StringComparison]::Ordinal)
+                    }
                 }
                 catch { $inReviewPreflight = $false }
             }
