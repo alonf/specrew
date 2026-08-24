@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "81799bfb9a0c1a9818d6c9abb0028b5440bd7b93f5f1c7016d7b99b386190c45",
+  "runtime_bundle_sha256": "65266100dacfd1fe9cd3992d2753cb661fca7c14a77faa0e708060cb0941b72c",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -81,7 +81,7 @@
     },
     {
       "path": "review-campaign-orchestrator.ps1",
-      "sha256": "38c566fc6386e2b194ef3a5738fd6b860a63f8eb5e0a7c1e6c042905d8f793c3"
+      "sha256": "c38f53a2ebc2aa8d48232dcc179b42a2c74d37523a1f6fded3a00115cc5cdcf7"
     },
     {
       "path": "review-claude-harness-port.ps1",
@@ -133,7 +133,7 @@
     },
     {
       "path": "review-result-ingestor.ps1",
-      "sha256": "17ca3f1f6878eb1b9ccdb1c0e86dc9ab0c18e1f53180225347ff92f95f5de928"
+      "sha256": "929cb8cf7ef8702ec9536ca475d200cff1e469f99d62db478765af82cea3b412"
     },
     {
       "path": "review-retro-projection.ps1",
