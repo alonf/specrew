@@ -7,6 +7,9 @@ Set-StrictMode -Version Latest
 
 if (-not (Get-Command -Name 'Resolve-ReviewResultClassification' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-authority-core.ps1') }
 if (-not (Get-Command -Name 'Publish-ReviewRunResultFact' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-authority-store.ps1') }
+# Round-19 (DRIFT-199-I001-130): declared-coverage containment asks the VOLUME about case, so the
+# path-identity primitive must be loadable here. Guarded on the exact function used, not a sibling.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'path-identity.ps1') }
 
 function Get-ReviewRunStagingPaths {
     [CmdletBinding()]
@@ -277,12 +280,27 @@ function Resolve-ReviewDeclaredCoverage {
             $rel = ([string]$_).Trim().Replace([char]92, [char]47)
             while ($rel.StartsWith('./')) { $rel = $rel.Substring(2) }
             if ([string]::IsNullOrWhiteSpace($rel)) { return $false }
+            # Round-19 finding (DRIFT-199-I001-130): REJECT, do not normalize. A declared path must
+            # be genuinely repo-relative and traversal-free - `..` anywhere, a rooted path, or a
+            # drive qualifier is not a claim about the frozen tree, whatever it resolves to on this
+            # disk. Checked BEFORE resolution so the containment test is never the only guard.
+            if (@($rel -split '/') -contains '..') { return $false }
+            if ($rel.StartsWith('/') -or $rel -match '^[A-Za-z]:') { return $false }
             $full = ''
             try { $full = [IO.Path]::GetFullPath((Join-Path $rootFull $rel)) } catch { return $false }
-            # Containment first: a traversal escape is not coverage of the frozen root, whatever it
-            # resolves to on this disk.
+            # Containment on the VOLUME's own case rule, never a hard-coded one: a case-sensitive
+            # volume can hold a sibling root differing only in case, and folding case there let a
+            # path outside the frozen tree pass as coverage of it. 'distinct' when undetermined
+            # keeps the two roots apart rather than merging them.
             $prefix = $rootFull + [IO.Path]::DirectorySeparatorChar
-            if (-not $full.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) { return $false }
+            $containmentComparison = [StringComparison]::Ordinal
+            if (Get-Command -Name 'Get-ContinuousCoReviewPathComparer' -ErrorAction SilentlyContinue) {
+                $volumeComparer = Get-ContinuousCoReviewPathComparer -Path $rootFull -WhenUndetermined 'distinct'
+                if ($volumeComparer.Equals(($rootFull.ToUpperInvariant()), ($rootFull.ToLowerInvariant()))) {
+                    $containmentComparison = [StringComparison]::OrdinalIgnoreCase
+                }
+            }
+            if (-not $full.StartsWith($prefix, $containmentComparison)) { return $false }
             return [IO.File]::Exists($full)
         })
     return [pscustomobject]@{

@@ -789,7 +789,7 @@ Describe 'W59 round 18: the double-spend block is derived from delivery evidence
     It 'the CLI derives the block from run results, not only from the marker' {
         $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
         $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,20000}?\$approvalMinted = \$true').Value
-        $mint.Contains('Get-SpecrewDeliveredRoundForCapture') | Should -BeTrue -Because 'the block survives a failed marker write only if it is derived from published evidence'
+        $mint.Contains('Get-SpecrewDeliveredRoundForMintedRef') | Should -BeTrue -Because 'the block survives a failed marker write only if it is derived from published evidence - joined through the grant since round 19'
     }
 }
 
@@ -838,3 +838,120 @@ Describe 'W60 the delivered-round comparison uses instants, not locale-rendered 
         $mint | Should -Not -Match '-CaptureObservedAt \(\[string\]' -Because 'stringifying a stored DateTime is what skewed the comparison by the machine offset'
     }
 }
+
+Describe 'W61 round 19: ownership is joined through the grant, and the recovery path actually recovers' {
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-result-ingestor.ps1')
+
+        function script:New-JoinFixture {
+            # A campaign store shaped exactly like the live one: grant -> reservation -> run result.
+            param([string]$AuthorizationRef, [string]$RunOutcome = 'completed', [string]$GrantId = 'grant-aaaa1111')
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w61-' + [guid]::NewGuid().ToString('N'))
+            $campaign = 'cmp-fixture-i001'
+            $base = Join-Path $root ".specrew/review/authority/campaigns/$campaign"
+            New-Item -ItemType Directory -Path (Join-Path $base 'grants') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $base "reservations/$GrantId/slot-001") -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $base 'runs/run-joined') -Force | Out-Null
+            ([pscustomobject]@{ authority_kind = 'human'; authorization_ref = $AuthorizationRef; campaign_id = $campaign
+                    fact_type = 'grant'; grant_id = $GrantId; observed_at = '2026-08-25T10:00:00.0000000+00:00'; schema_version = '1.0'; slots = 1 } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $base "grants/$GrantId.json") -Encoding UTF8
+            ([pscustomobject]@{ grant_id = $GrantId; run_id = 'run-joined'; schema_version = '1.0' } | ConvertTo-Json -Compress) |
+                Set-Content -LiteralPath (Join-Path $base "reservations/$GrantId/slot-001/generation-001.json") -Encoding UTF8
+            ([pscustomobject]@{ campaign_id = $campaign; run_id = 'run-joined'; runtime_outcome = $RunOutcome
+                    started_at = '2026-08-25T10:05:00.0000000+00:00'; schema_version = '1.0' } | ConvertTo-Json -Compress) |
+                Set-Content -LiteralPath (Join-Path $base 'runs/run-joined/result.json') -Encoding UTF8
+            return [pscustomobject]@{ Root = $root; CampaignId = $campaign }
+        }
+    }
+
+    It 'BLOCKING/MAJOR: ownership is joined through the grant this capture minted, never inferred from time' {
+        # Round-19 findings (DRIFT-199-I001-130): the block asked "did any completed run start after
+        # this capture?" - so an unrelated round completing in the same campaign refused a pending
+        # approval that never paid for it. Ownership is a JOIN through published facts:
+        # capture.minted_ref -> grant.authorization_ref -> reservation.run_id -> run result.
+        $f = New-JoinFixture -AuthorizationRef 'cmp-fixture-i001-round-7'
+        try {
+            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-7' |
+                Should -Not -BeNullOrEmpty -Because 'that grant reserved that run, and that run completed'
+            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-9' |
+                Should -BeNullOrEmpty -Because 'a DIFFERENT round completing is not this approval being spent - the round-19 major'
+            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef '' |
+                Should -BeNullOrEmpty -Because 'a capture that never minted a grant owns no round'
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'an undelivered run under this captures own grant leaves the entitlement standing' {
+        $f = New-JoinFixture -AuthorizationRef 'cmp-fixture-i001-round-7' -RunOutcome 'launch-failed'
+        try {
+            Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $f.Root -CampaignId $f.CampaignId -AuthorizationRef 'cmp-fixture-i001-round-7' |
+                Should -BeNullOrEmpty -Because 'the W50 rule: attempts are metered, deliveries are authorized'
+        }
+        finally { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'BLOCKING: the capture records the grant it minted, so ownership can be joined at all' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w61-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $stamped = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $root -AuthorizationRef 'cmp-x-round-3'
+            [bool]$stamped.stamped | Should -BeTrue -Because 'the mint must be recorded on the capture, verified by read-back'
+            [string](Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root).minted_ref | Should -Be 'cmp-x-round-3'
+            # Stamping the mint does NOT spend the capture: an undelivered attempt keeps the entitlement.
+            [string]((Get-Content (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') -Raw | ConvertFrom-Json).spent_at) |
+                Should -BeNullOrEmpty
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'BLOCKING: the recovery the CLI prints actually recovers - the delivered capture is retired' {
+        # Round-19 blocking finding: the CLI told the human to re-type the phrase, the writer treated
+        # the identical text as the same act and kept the old capture, and the block fired forever -
+        # the recovery instruction wedged the loop. Detecting a delivered round for this capture now
+        # RETIRES it (completing the consumption that failed), so the next approval is a fresh act.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w61-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $null = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $root -AuthorizationRef 'cmp-x-round-3'
+            $reconciled = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'cmp-x-round-3'
+            [bool]$reconciled.consumed | Should -BeTrue
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'a retired capture is not standing authority'
+            # And a NEW typed approval after that is a genuinely new act, not deduped into the old one.
+            $fresh = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $fresh | Should -Not -BeNullOrEmpty
+            [string]$fresh.minted_ref | Should -BeNullOrEmpty -Because 'a fresh capture owns no round yet, so nothing blocks it'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'BLOCKING: declared coverage rejects traversal and absolute paths outright' {
+        # Round-19 blocking finding: containment was a case-insensitive PREFIX test, so on a
+        # case-sensitive volume a sibling root (/tmp/REVIEW next to /tmp/review) passed it, and `..`
+        # components were never rejected. This volume is case-insensitive, so the sibling shape
+        # cannot be built here honestly; the traversal rule is pinned BEHAVIORALLY (it closes the
+        # described attack on every volume) and the volume-aware comparison STRUCTURALLY below.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w61-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root 'src') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $root 'src/real.cs') -Value 'class R {}' -Encoding UTF8
+        try {
+            foreach ($p in @('../REVIEW/src/fake.cs', '..\sibling\src\fake.cs', 'src/../../escape/x.cs', '/etc/passwd.cs', 'C:\Windows\System32\evil.cs')) {
+                $r = Resolve-ReviewDeclaredCoverage -Candidate ([pscustomobject]@{ examined_paths = @($p) }) -TargetRoot $root
+                @($r.source_paths).Count | Should -Be 0 -Because "$p is not a repo-relative path inside the frozen root"
+            }
+            $ok = Resolve-ReviewDeclaredCoverage -Candidate ([pscustomobject]@{ examined_paths = @('src/real.cs') }) -TargetRoot $root
+            @($ok.source_paths).Count | Should -Be 1 -Because 'an ordinary repo-relative path still counts'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the containment test uses the volume-aware primitive, not a hard-coded case rule' {
+        $src = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-result-ingestor.ps1') -Raw -Encoding UTF8
+        $fn = [regex]::Match($src, '(?s)function Resolve-ReviewDeclaredCoverage.+?\n\}').Value
+        $fn | Should -Not -Match 'StartsWith\(\$prefix, \[StringComparison\]::OrdinalIgnoreCase\)' -Because 'the comparison must be SELECTED by the volume, never hard-coded at the call'
+        $fn.Contains('Get-ContinuousCoReviewPathComparer') | Should -BeTrue -Because 'the primitive already exists in this engine'
+    }
+}
+

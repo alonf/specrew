@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "a3a180895901a9c96acbedb12e49f128f1f0594067c4e00a0879ac14e09055d8",
+  "runtime_bundle_sha256": "06772511ed77ef7e387237fc600a63e7203341eb00479db8bda3d76a756cca98",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -133,7 +133,7 @@
     },
     {
       "path": "review-result-ingestor.ps1",
-      "sha256": "914cf391cb3159343f20528c22782a49f1d70437a2eec26106ffff5d1015f6c6"
+      "sha256": "b786661e71cc0ae6f35184d0ed25c985ce962c4680a295aab0267842dbeb47c6"
     },
     {
       "path": "review-retro-projection.ps1",

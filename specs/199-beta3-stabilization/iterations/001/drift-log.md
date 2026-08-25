@@ -535,6 +535,56 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-130 - round 19: the double-spend block owned the wrong round, and its printed recovery could not recover (3 of 4 resolved; the requirement conflict OPEN and now three-times confirmed)
+
+- **Observed**: 2026-08-25, run-20260825-114427952-03c89386 - terminal, complete, current, four
+  findings: two blocking, two major. Three are fixed; the fourth is the standing requirement
+  conflict, raised for the third consecutive round and now naming SC-001 as well.
+- **BLOCKING - the printed recovery wedged the loop.** After a delivered round whose consumption
+  stamp failed, the CLI told the human to type `approved for review round` again. The writer treats
+  an unspent capture with the same response hash as the SAME act and returns the existing fact with
+  its original timestamp, so the time-based block found the same delivered run after it and refused
+  again - every time, forever. The recovery instruction was unreachable by following it.
+- **MAJOR - ownership was inferred from time.** The block asked "did ANY completed run start after
+  this capture?", so an unrelated round completing in the same campaign refused a pending approval
+  that had never paid for it.
+- **Resolution - one fix for both: OWNERSHIP IS RECORDED AND JOINED.** The capture now carries the
+  authorization reference minted FROM it (`minted_ref`, stamped at mint with read-back
+  verification, present-from-birth so the shape is stable and a reader cannot StrictMode-throw on
+  "no round yet"). Stamping the mint does NOT spend the capture - an undelivered attempt keeps the
+  entitlement, the W50 rule. `Get-SpecrewDeliveredRoundForMintedRef` then answers ownership by
+  following published facts: `minted_ref` -> `grants/*.json` -> `grant_id` ->
+  `reservations/<grant_id>/**` -> `run_id` -> `runs/<run_id>/result.json`, delivered only. And the
+  block SELF-HEALS: finding a delivered round for this capture RETIRES it, completing the
+  consumption that failed earlier, so the human's next approval is a clean act rather than a wedge -
+  and if the storage problem is still present, the refusal says so and names the file.
+- **BLOCKING - coverage containment folded case and allowed traversal.** The round-17 resolver
+  hard-coded `OrdinalIgnoreCase` for its root-containment test, so on a case-sensitive volume a
+  sibling root differing only in case passed it, and `..` components were never rejected. Now
+  declared paths are REJECTED before resolution when they carry `..`, a leading `/`, or a drive
+  qualifier - a claim about the frozen tree must be genuinely repo-relative - and containment asks
+  the VOLUME through `Get-ContinuousCoReviewPathComparer` ('distinct' when undetermined) instead of
+  assuming. Honest test limit recorded in the suite: this volume is case-insensitive, so the
+  sibling-root shape cannot be built here; the traversal rule is pinned behaviorally and the
+  volume-aware comparison structurally.
+- **OPEN, third confirmation - FR-001/FR-002/SC-001 versus W27 and W49.** The round adds SC-001 to
+  the conflict: the frozen contract requires three NUMBERED options, while W49 deliberately renders
+  unnumbered typed decisions, and FR-001/FR-002 require the decision surface after every round while
+  W27 deliberately removed it for a clean pass. Both behaviors are maintainer rulings with recorded
+  reasons (forgeable authority; numbers index nothing for a human). Both diverge from frozen
+  requirements that were never amended. Three independent rounds have now found it. The crew does
+  not reconcile a spec against a ruling on its own - amend the requirements to carry the two
+  exceptions, or overturn the rulings knowingly.
+- **Citation**: the W50 entitlement rule; the evidence rule (ownership is a fact the store already
+  publishes, not an inference); W27/W49 for the open item.
+- **Verification**: six RED cases against the shipped build - the grant join and its
+  wrong-ref/no-ref/undelivered arms, the mint stamp not spending the capture, the retire-and-
+  re-approve recovery, and traversal/absolute rejection - 57/57 in the authority suite after, 74/74
+  across the classifier-consumer suites, all three plan commands green. Two structural pins from
+  rounds 18-19 were corrected rather than widened: one named the resolver this round replaced, and
+  one forbade the token `OrdinalIgnoreCase` outright when what must be forbidden is a HARD-CODED
+  comparison - the volume-aware branch legitimately selects it.
+
 ### DRIFT-199-I001-129 - the double-spend block refused the maintainer's own approval: an instant compared as a rendered string (resolved)
 
 - **Observed**: 2026-08-25, live. The maintainer typed `approved for review round`; the launch

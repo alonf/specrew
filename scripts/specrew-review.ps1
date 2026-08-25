@@ -1259,28 +1259,61 @@ if ($Live) {
                 # a DELIVERED run that started after this capture was observed IS the round it paid
                 # for. Unparseable evidence answers "no block" - a fabricated block would lock a
                 # human out of a round they own, which is worse than the marker it replaces.
-                if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Get-SpecrewDeliveredRoundForCapture' -ErrorAction SilentlyContinue)) {
+                # Round-19 (DRIFT-199-I001-130): OWNERSHIP IS JOINED, AND THE BLOCK SELF-HEALS.
+                #
+                # The time inference this replaces attributed ANY later completed round to a pending
+                # approval, and its printed recovery could not work: re-typing the phrase produced
+                # the same hash, the writer kept the old capture, and the block fired forever. Now
+                # the capture carries the ref it minted, ownership is a join through the grant, and
+                # a delivered round found for THIS capture RETIRES it - completing the consumption
+                # that failed earlier - so the human's next approval is a clean act rather than a
+                # wedge.
+                if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Get-SpecrewDeliveredRoundForMintedRef' -ErrorAction SilentlyContinue)) {
+                    $mintedRef = if ($capturedRoundApproval.PSObject.Properties['minted_ref']) { [string]$capturedRoundApproval.minted_ref } else { '' }
                     $alreadyDelivered = $null
-                    try {
-                        # Round-19 (DRIFT-199-I001-129): the STORED VALUE, never a rendering of it -
-                        # stringifying a Kind=Utc DateTime drops the frame and skews the comparison
-                        # by the machine's offset, which is how this block refused a fresh approval.
-                        $alreadyDelivered = Get-SpecrewDeliveredRoundForCapture `
-                            -CaptureObservedAt $capturedRoundApproval.observed_at -RunResults $campaignRunResults
+                    if (-not [string]::IsNullOrWhiteSpace($mintedRef)) {
+                        try {
+                            $alreadyDelivered = Get-SpecrewDeliveredRoundForMintedRef -ProjectRoot $resolvedProjectPath `
+                                -CampaignId ([string]$approvalIdentity.campaign_id) -AuthorizationRef $mintedRef
+                        }
+                        catch { $alreadyDelivered = $null }
                     }
-                    catch { $alreadyDelivered = $null }
                     if ($null -ne $alreadyDelivered) {
-                        Write-Host 'A review already ran on this approval - Specrew can see the completed round in its own records.' -ForegroundColor Yellow
+                        $retired = $null
+                        try { $retired = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath -AuthorizationRef $mintedRef }
+                        catch { $retired = $null }
+                        Write-Host 'That approval already paid for a review - Specrew found the completed round it authorized.' -ForegroundColor Yellow
                         Write-Host ''
-                        Write-Host ('That review was {0}, which ran after the approval was given.' -f [string]$alreadyDelivered.run_id)
-                        Write-Host 'Starting another now would spend a second review on the same approval, which the human did not give.'
-                        Write-Host ''
-                        Write-Host 'If they want another round, ask them for it: their typed reply `approved for review round`, as a normal chat message - a reply inside a question UI or picker is not captured.' -ForegroundColor Cyan
+                        Write-Host ('The review was {0}, recorded as {1}.' -f [string]$alreadyDelivered.run_id, $mintedRef)
+                        if ($null -ne $retired -and [bool]$retired.consumed) {
+                            if (Get-Command -Name 'Clear-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
+                                Clear-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath
+                            }
+                            Write-Host 'It is now marked as used, so nothing is left half-recorded.'
+                            Write-Host ''
+                            Write-Host 'If they want ANOTHER round, ask them for it: their typed reply `approved for review round`, as a normal chat message - a reply inside a question UI or picker is not captured. That reply will work.' -ForegroundColor Cyan
+                        }
+                        else {
+                            Write-Host 'Specrew could not mark it as used, so this storage problem is still present.' -ForegroundColor Yellow
+                            Write-Host ('The record is at: {0}' -f (Join-Path $resolvedProjectPath '.specrew/review/round-approval/pending-round-approval.json'))
+                            Write-Host 'Once that file can be written again, run this command and Specrew will finish recording it.'
+                        }
                         exit 1
                     }
                 }
                 $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($roundsRun + 1)
                 $approvalMinted = $true
+                # Round-19 (DRIFT-199-I001-130): record WHICH grant this capture became, so "has this
+                # approval already bought a round?" is a join rather than a guess from timestamps.
+                # Stamping the mint does not spend it - an undelivered attempt keeps the entitlement.
+                if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Set-SpecrewReviewRoundApprovalMintedRef' -ErrorAction SilentlyContinue)) {
+                    $mintStamp = $null
+                    try { $mintStamp = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef }
+                    catch { $mintStamp = $null }
+                    if ($null -eq $mintStamp -or -not [bool]$mintStamp.stamped) {
+                        [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_MINT_NOT_RECORDED ' + $(if ($null -ne $mintStamp) { [string]$mintStamp.reason } else { 'no-result' }))
+                    }
+                }
                 # W50 (supersedes the W44 stamp-at-mint): THE ALLOWANCE METERS ATTEMPTS; THE HUMAN
                 # AUTHORIZES DELIVERIES. The captured phrase is an entitlement to one DELIVERED review,
                 # so it is consumed after the run - and only when the run delivered. The mint still

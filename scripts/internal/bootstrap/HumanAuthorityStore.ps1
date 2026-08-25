@@ -451,6 +451,11 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         observed_at = $NowUtc
         spent_at = $null
         authorization_ref = $null
+        # Round-19 (DRIFT-199-I001-130): present from birth, so ownership has a STABLE SHAPE to
+        # join on. A reader that has to test whether the field exists is one StrictMode throw away
+        # from treating "no round yet" as an error.
+        minted_ref = ''
+        minted_at = ''
     }
 
     if ([IO.File]::Exists($path)) {
@@ -537,6 +542,98 @@ function ConvertTo-SpecrewAuthorityInstant {
             ([Globalization.DateTimeStyles]::RoundtripKind -bor [Globalization.DateTimeStyles]::AssumeUniversal), [ref]$parsed)) {
         return $parsed
     }
+    return $null
+}
+
+function Set-SpecrewReviewRoundApprovalMintedRef {
+    # W61 / round-19 finding (DRIFT-199-I001-130): OWNERSHIP IS RECORDED, NOT INFERRED.
+    #
+    # The capture now carries the authorization reference minted FROM it, so "has this approval
+    # already bought a round?" is a join through published facts rather than a guess from
+    # timestamps. Stamping the mint does NOT spend the capture - an undelivered attempt keeps the
+    # entitlement, which is the W50 rule - it only records which grant this act became.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'pending-round-approval.json'
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ stamped = $false; reason = 'no-pending-capture' } }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ stamped = $false; reason = 'pending-capture-empty' } }
+    $fact | Add-Member -NotePropertyName 'minted_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
+    $fact | Add-Member -NotePropertyName 'minted_at' -NotePropertyValue $NowUtc -Force
+    $json = $fact | ConvertTo-Json -Depth 8
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ stamped = $false; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ stamped = $false; reason = 'readback-failed' } }
+    if ($null -eq $verified -or [string]$verified.minted_ref -cne [string]$AuthorizationRef) {
+        return [pscustomobject]@{ stamped = $false; reason = 'mint-ref-not-durable' }
+    }
+    return [pscustomobject]@{ stamped = $true; fact = $verified; reason = 'stamped' }
+}
+
+function Get-SpecrewDeliveredRoundForMintedRef {
+    # W61 / round-19 findings (DRIFT-199-I001-130): THE JOIN, replacing the time inference.
+    #
+    # "Did this approval already buy a delivered round?" is answered by following the facts the
+    # store published: capture.minted_ref -> grants/*.json (authorization_ref) -> grant_id ->
+    # reservations/<grant_id>/**/generation-*.json (run_id) -> runs/<run_id>/result.json. Asking
+    # instead "did ANY completed run start after this capture?" attributed an unrelated round to a
+    # pending approval and refused it - the round-19 major - and made the printed recovery
+    # unreachable, because a re-typed phrase kept the old timestamp - the round-19 blocking wedge.
+    #
+    # Returns the delivered run result, or $null. An unreadable store answers $null: a fabricated
+    # block locks a human out of a round they own, which is the worse failure.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$AuthorizationRef
+    )
+    if ([string]::IsNullOrWhiteSpace($AuthorizationRef) -or [string]::IsNullOrWhiteSpace($CampaignId)) { return $null }
+    $campaignRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) (".specrew/review/authority/campaigns/" + $CampaignId)
+    if (-not (Test-Path -LiteralPath $campaignRoot -PathType Container)) { return $null }
+    try {
+        $grantIds = [Collections.Generic.List[string]]::new()
+        foreach ($grantFile in @(Get-ChildItem -LiteralPath (Join-Path $campaignRoot 'grants') -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+            $grant = $null
+            try { $grant = Get-Content -LiteralPath $grantFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+            if ($null -eq $grant -or -not $grant.PSObject.Properties['authorization_ref']) { continue }
+            if ([string]$grant.authorization_ref -cne $AuthorizationRef) { continue }
+            if ($grant.PSObject.Properties['grant_id'] -and -not [string]::IsNullOrWhiteSpace([string]$grant.grant_id)) {
+                $grantIds.Add([string]$grant.grant_id) | Out-Null
+            }
+        }
+        if ($grantIds.Count -eq 0) { return $null }
+        foreach ($grantId in $grantIds) {
+            $reservationRoot = Join-Path (Join-Path $campaignRoot 'reservations') $grantId
+            if (-not (Test-Path -LiteralPath $reservationRoot -PathType Container)) { continue }
+            foreach ($generation in @(Get-ChildItem -LiteralPath $reservationRoot -Filter '*.json' -File -Recurse -ErrorAction SilentlyContinue)) {
+                $reservation = $null
+                try { $reservation = Get-Content -LiteralPath $generation.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+                if ($null -eq $reservation -or -not $reservation.PSObject.Properties['run_id']) { continue }
+                $runId = [string]$reservation.run_id
+                if ([string]::IsNullOrWhiteSpace($runId)) { continue }
+                $resultPath = Join-Path (Join-Path (Join-Path $campaignRoot 'runs') $runId) 'result.json'
+                if (-not [IO.File]::Exists($resultPath)) { continue }
+                $result = $null
+                try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 -ErrorAction Stop } catch { continue }
+                if ($null -eq $result -or -not $result.PSObject.Properties['runtime_outcome']) { continue }
+                # DELIVERED only: an attempt that never reached a reviewer spends nothing (W50).
+                if ([string]$result.runtime_outcome -ceq 'completed') { return $result }
+            }
+        }
+    }
+    catch { return $null }
     return $null
 }
 
