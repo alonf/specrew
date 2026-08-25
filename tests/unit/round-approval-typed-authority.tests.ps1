@@ -1162,3 +1162,96 @@ Describe 'W63 round 21: the pause gate must actually run, be bound to its pause,
     }
 }
 
+
+Describe 'W64 round 22: authority machinery fails CLOSED, proven on a damaged installation' {
+    # Round-22 finding (DRIFT-199-I001-133): every authority-bearing path loads the store inside a
+    # swallowed catch and then runs its gate only if the functions "happen to exist". A missing,
+    # unreadable or broken HumanAuthorityStore therefore did not refuse - it DISABLED the gate, and
+    # an agent-supplied flag could replenish spend, launch a paid round, abandon a campaign, or
+    # complete sign-off with AuthorizedBy='human' and no captured human anywhere. The generalization
+    # of round 21's unreachable gate: there, one path could not load the store; here, none of them
+    # cared whether it loaded.
+    #
+    # PROVEN ON A DAMAGED INSTALLATION, not on the function. Round 21's lesson was that a
+    # function-level test passes against a gate a consumer never reaches, so this copies the shipped
+    # scripts tree, deletes the authority store from the copy, and runs the copied CLI exactly as a
+    # consumer would.
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+
+        $script:DamagedRoot = Join-Path ([IO.Path]::GetTempPath()) ('w64-install-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $script:DamagedRoot -Force | Out-Null
+        # The CLI resolves shared governance from its PARENT, so a faithful installation copy needs
+        # the sibling tree too - discovered by the first run of this case, which died at startup
+        # instead of reaching the gate under test.
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts') -Destination (Join-Path $script:DamagedRoot 'scripts') -Recurse -Force
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'extensions') -Destination (Join-Path $script:DamagedRoot 'extensions') -Recurse -Force
+        Remove-Item -LiteralPath (Join-Path $script:DamagedRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1') -Force
+        $script:DamagedCli = Join-Path $script:DamagedRoot 'scripts/specrew-review.ps1'
+
+        function script:Invoke-DamagedCli {
+            param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string[]]$CliArgs)
+            $command = "`$env:CLAUDECODE = '1'; pwsh -NoProfile -File '" + $script:DamagedCli + "' -ProjectPath '" + $Root + "' -FeatureId 001-fixture --live " + ($CliArgs -join ' ') + "; exit `$LASTEXITCODE"
+            $output = @(& pwsh -NoProfile -Command $command 2>&1 | ForEach-Object { [string]$_ })
+            return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Text = ($output -join "`n") }
+        }
+    }
+    AfterAll { Remove-Item -LiteralPath $script:DamagedRoot -Recurse -Force -ErrorAction SilentlyContinue }
+
+    It 'ACCEPTANCE: a damaged installation refuses to approve a round rather than approving without the human' {
+        $root = New-CampaignFixture
+        try {
+            $run = Invoke-DamagedCli -Root $root -CliArgs @('--approve-round')
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match '(?i)cannot check'
+            $run.Text | Should -Not -Match '(?i)Round approved' -Because 'a broken installation must never mint authority'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'ACCEPTANCE: a damaged installation refuses to replenish the allowance' {
+        $root = New-CampaignFixture
+        try {
+            $run = Invoke-DamagedCli -Root $root -CliArgs @('--remediate', 'allowance-reset', '--ack-reason', '"because"')
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match '(?i)cannot check'
+            $run.Text | Should -Not -Match '(?i)topped up' -Because 'replenishing spend authority is authority-bearing'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'ACCEPTANCE: a damaged installation refuses to stop the review, which would complete sign-off' {
+        # A REAL pending pause: the assertion fires when the CLI is about to take an
+        # authority-bearing action, and with no pause waiting there is no action to take - refusing
+        # with "cannot check authority" there would be a confusing answer to a different question.
+        $root = New-PendingPauseFixture
+        try {
+            $run = Invoke-DamagedCli -Root $root -CliArgs @('--pause-choice', '2')
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match '(?i)cannot check'
+            $run.Text | Should -Not -Match '(?i)sign-off is complete'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the refusal names what is wrong and what to do, without blaming the human' {
+        $root = New-CampaignFixture
+        try {
+            $run = Invoke-DamagedCli -Root $root -CliArgs @('--approve-round')
+            $run.Text | Should -Match '(?i)specrew update'
+            $run.Text | Should -Match '(?i)nothing (was|has been) (spent|recorded)'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'an unknown session context is treated as an agent session, not as a human at a terminal' {
+        # The other half of the fail-open structure: when the session-detection function is absent,
+        # the CLI assumed "not an agent" - the reading that REMOVES the requirement for a captured
+        # phrase. Absent evidence about who is invoking must mean the conservative answer.
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $cli | Should -Not -Match '\$insideAgentSession = \$false' -Because 'unknown context must default to requiring the human, not to trusting the caller'
+        $cli | Should -Not -Match '\$insideAgentSessionReset = \$false' -Because 'the allowance-reset path shares the rule'
+    }
+}
+

@@ -102,6 +102,34 @@ if ($ListHosts) {
     return
 }
 
+function Assert-SpecrewAuthorityMachineryReady {
+    # W64 / round-22 finding (DRIFT-199-I001-133): AUTHORITY MACHINERY FAILS CLOSED.
+    #
+    # Every authority-bearing path loaded the store inside a swallowed catch and then ran its gate
+    # only if the functions "happened to exist". A missing, unreadable or broken
+    # HumanAuthorityStore therefore did not refuse - it DISABLED the gate, and an agent-supplied
+    # flag could replenish spend, launch a paid round, abandon a campaign, or complete sign-off with
+    # AuthorizedBy='human' and no captured human anywhere. The generalization of round 21: there one
+    # path could not load the store; here none of them cared whether it loaded.
+    #
+    # Called AFTER the site's own dot-source (which must stay at script scope - a dot-source inside a
+    # function dies with the function). Checks only; refuses in consumer language and exits.
+    param(
+        [Parameter(Mandatory)][string[]]$RequiredFunctions,
+        [Parameter(Mandatory)][string]$Action
+    )
+    $missing = @($RequiredFunctions | Where-Object { -not (Get-Command -Name $_ -ErrorAction SilentlyContinue) })
+    if ($missing.Count -eq 0) { return }
+    Write-Host ('Specrew cannot check whether the human authorized this, so it will not {0}.' -f $Action) -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host 'Its authority machinery did not load, which means every check that protects the human''s decisions is unavailable right now. Rather than continue without them, Specrew stops here.'
+    Write-Host 'Nothing was spent and nothing was recorded.'
+    Write-Host ''
+    Write-Host 'This is an installation problem, not something you did. Repair it with:  specrew update --project-path <this project>' -ForegroundColor Cyan
+    [Console]::Error.WriteLine('[specrew-review] WARN AUTHORITY_MACHINERY_UNAVAILABLE ' + ($missing -join ','))
+    exit 1
+}
+
 function Show-Usage {
     @'
 specrew review - run live continuous co-review or replay persisted reviewer evidence
@@ -885,11 +913,14 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     -not (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue)) {
                     try { . $humanAuthorityStorePathReset } catch { $null = $_ }
                 }
+                Assert-SpecrewAuthorityMachineryReady -Action 'replenish the review rounds' `
+                    -RequiredFunctions @('Get-SpecrewAllowanceResetAuthorization', 'Test-SpecrewInsideAgentSession')
                 $capturedAllowanceReset = $null
-                $insideAgentSessionReset = $false
-                if (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) {
-                    try { $insideAgentSessionReset = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSessionReset = $false }
-                }
+                # Round-22: an UNKNOWN session context reads as an agent session - the answer that
+                # keeps the human's approval required. Assuming "not an agent" removes the
+                # requirement, which is the fail-open direction on an authority path.
+                $insideAgentSessionReset = $true
+                try { $insideAgentSessionReset = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSessionReset = $true }
                 if (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue) {
                     try { $capturedAllowanceReset = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedAllowanceReset = $null }
                 }
@@ -1061,10 +1092,11 @@ if ($Live) {
                     -not (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
                     try { . $humanAuthorityStorePath } catch { $null = $_ }
                 }
-                $insideAgentSession = $false
-                if (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) {
-                    try { $insideAgentSession = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSession = $false }
-                }
+                Assert-SpecrewAuthorityMachineryReady -Action 'approve a review round' `
+                    -RequiredFunctions @('Get-SpecrewReviewRoundApprovalAuthorization', 'Test-SpecrewInsideAgentSession')
+                # Round-22: unknown context reads as an agent session (see the reset path above).
+                $insideAgentSession = $true
+                try { $insideAgentSession = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSession = $true }
                 if (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue) {
                     try { $capturedRoundApproval = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedRoundApproval = $null }
                 }
@@ -1481,6 +1513,8 @@ if ($Live) {
                         -not (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
                         try { . $pauseStorePath } catch { $null = $_ }
                     }
+                    Assert-SpecrewAuthorityMachineryReady -Action 'record that decision' `
+                        -RequiredFunctions @('Get-SpecrewPauseDecisionAuthorization', 'Complete-SpecrewPauseDecisionAuthorization', 'Test-SpecrewInsideAgentSession')
                 }
                 if ($choice -cin @('stop-here', 'abandon') -and
                     (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) -and

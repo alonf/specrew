@@ -535,6 +535,40 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-133 - round 22: authority machinery failed OPEN, and a damaged installation could authorize anything (resolved)
+
+- **Observed**: 2026-08-25, run-20260825-161544838-699496c4 - terminal, complete, current, ONE
+  finding. The requirement conflict was NOT raised this round, which makes this the first round in
+  six whose entire content was a defect the crew can fix.
+- **The finding, and why it is the right generalization.** Every authority-bearing path dot-sourced
+  `HumanAuthorityStore.ps1` inside a swallowed catch and then ran its gate only if the functions
+  "happened to exist". A missing, unreadable or broken store therefore did not refuse - it DISABLED
+  the gate. On a damaged or incomplete installation an agent-supplied CLI flag could replenish
+  spend, launch a paid round, abandon a campaign, or COMPLETE SIGN-OFF with `AuthorizedBy='human'`
+  and no captured human anywhere. Round 21 found ONE path that could not load the store; round 22
+  found that NONE of them cared whether it loaded.
+- **The second half, easy to miss**: absent session detection was read as "not an agent session" -
+  the reading that REMOVES the requirement for a captured phrase. Unknown evidence about who is
+  invoking now reads as an agent session, the answer that keeps the human's approval required.
+- **Resolution**: `Assert-SpecrewAuthorityMachineryReady` runs after each site's own dot-source
+  (which stays at script scope - a dot-source inside a function dies with the function, a trap this
+  log already records) and refuses in consumer language when any required function is absent:
+  what could not be checked, that nothing was spent or recorded, that this is an installation
+  problem rather than something the reader did, and the one command that repairs it. Applied to all
+  three authority paths.
+- **PROVEN ON A DAMAGED INSTALLATION, which is the point.** Round 21's lesson was that a
+  function-level test passes against a gate a consumer never reaches. So these cases copy the
+  shipped `scripts/` and `extensions/` trees, DELETE the authority store from the copy, and run the
+  copied CLI as a consumer would - each of the three authority actions refuses, and the refusal
+  names the remedy. The first run of that fixture died at startup because the copy lacked the
+  sibling `extensions/` tree the CLI resolves shared governance from: the fixture itself had to be
+  made faithful before it could prove anything, which is method rule 5 arriving one more time.
+- **Citation**: the W44 rule (authority is the human's typed act); fail-closed on authority paths -
+  a check that cannot run is not a check that passed.
+- **Verification**: five RED cases against the shipped build - three end-to-end refusals on a
+  damaged installation, the refusal's content, and the session-default pin - 71/71 in the authority
+  suite after, 22/22 across the pause and flag-parity suites, all three plan commands green.
+
 ### DRIFT-199-I001-132 - round 21: the gate that guarded sign-off never ran (3 of 4 resolved; the requirement conflict OPEN, fifth confirmation)
 
 - **Observed**: 2026-08-25, run-20260825-<round-21> - terminal, complete, current, four findings, all
