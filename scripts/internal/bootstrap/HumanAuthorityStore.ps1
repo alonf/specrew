@@ -388,7 +388,7 @@ function Test-SpecrewReviewRoundApprovalPhrase {
             # stated condition held. This is SPEND authority: the conservative floor scans the whole
             # tail, and a false negative costs the human one plain retype, never a spent round.
             $negated = ($lower -match '^\s*(?:do\s*not|do\s+not|never|not\s+yet|hold\s+off|wait|stop)\b') -or
-                ($tail -match '\b(?:do\s*not|don''t|dont|never|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b')
+                ($tail -match '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b')
             if ($tail -notmatch '\b(later|after|once|when|unless|if)\b' -and -not $negated) {
                 $r.Matched = $true; $r.Kind = 'typed-phrase'; $r.Phrase = $trimmed
                 return $r
@@ -543,6 +543,155 @@ function ConvertTo-SpecrewAuthorityInstant {
         return $parsed
     }
     return $null
+}
+
+function Get-SpecrewPauseDecisionRoot {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/pause-decision'
+}
+
+function Test-SpecrewPauseDecisionPhrase {
+    # W62 / round-20 finding (DRIFT-199-I001-131): EVERY PAUSE CHOICE CARRIES THE HUMAN.
+    #
+    # Choices 2 and 3 were exempt from the captured-approval gate because they spend no round - but
+    # stopping here passes `AuthorizedBy='human'` into the landing, writes an identity-bound human
+    # disposition, and can COMPLETE SIGN-OFF. So an agent invoking `--pause-choice 2` manufactured
+    # the human authorization for the most consequential act in the lifecycle: the W44 hole, one
+    # door down, on the door that matters most. These are the two typed decisions the W49 menu
+    # already shows the human; now they are authority, captured like every other.
+    #
+    # Same conservative shape as the round-approval recognizer: the decision lives on its own line,
+    # a closed tail admits instructions but not prose, and questions, deferrals, reversals, mentions
+    # and machinery envelopes are not acts.
+    [OutputType([pscustomobject])]
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+
+    $r = [pscustomobject]@{ Matched = $false; Choice = $null; Phrase = $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $trimmed = $Text.Trim()
+    if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b|command-name\b|local-command\b|bash-stdout\b)') { return $r }
+    $lower = (Get-SpecrewAuthorityApprovalLine -Text $trimmed).ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($lower) -or $lower.EndsWith('?')) { return $r }
+
+    $shapes = @(
+        @{ Choice = 'stop-here'; Pattern = '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?(?:want\s+to\s+|would\s+like\s+to\s+)?stop\s+(?:the\s+)?review\s+here\b' }
+        @{ Choice = 'abandon'; Pattern = '^\s*(?:(?:yes|confirmed)\s*[,;:\-]\s*)?(?:(?:i|we)\s+)?(?:want\s+to\s+|would\s+like\s+to\s+)?abandon\s+(?:this\s+)?review\s+campaign\b' }
+    )
+    foreach ($shape in $shapes) {
+        $anchor = [regex]::Match($lower, [string]$shape.Pattern)
+        if (-not $anchor.Success) { continue }
+        $tail = $lower.Substring($anchor.Length)
+        if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
+        if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
+        if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait)\b') { return $r }
+        if ($tail -match "\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b") { return $r }
+        $r.Matched = $true; $r.Choice = [string]$shape.Choice; $r.Phrase = $trimmed
+        return $r
+    }
+    return $r
+}
+
+function Write-SpecrewPauseDecisionAuthorization {
+    # SPECREW-AUTHORITY-CONTROL: pause-decision
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Response,
+        [AllowNull()][string]$HostKind,
+        [AllowNull()][string]$SourceEvent,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $event = ConvertTo-SpecrewHumanAuthoritySourceEvent -SourceEvent $SourceEvent
+    $evidenceSource = 'hook-captured-user-prompt'
+    if ($null -eq $event) {
+        if (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) { $event = 'Stop'; $evidenceSource = 'hook-captured-from-transcript' }
+        else { return $null }
+    }
+    $recognized = Test-SpecrewPauseDecisionPhrase -Text $Response
+    if (-not [bool]$recognized.Matched) { return $null }
+    $root = Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot
+    [IO.Directory]::CreateDirectory($root) | Out-Null
+    $path = Join-Path $root (([string]$recognized.Choice) + '.json')
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-pause-decision'; authority_kind = 'human'
+        authorized_by = 'unattributed-human'; choice = [string]$recognized.Choice
+        verdict_text = [string]$recognized.Phrase
+        response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
+        evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
+        observed_at = $NowUtc; spent_at = $null; authorization_ref = $null
+    }
+    if ([IO.File]::Exists($path)) {
+        $existing = $null
+        try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
+        if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
+            [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
+            [string]$existing.response_hash -ceq [string]$fact.response_hash) { return $existing }
+    }
+    $json = $fact | ConvertTo-Json -Depth 8
+    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    try { ($fact | ConvertTo-Json -Compress -Depth 8) | Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Encoding UTF8 } catch { $null = $_ }
+    return $fact
+}
+
+function Get-SpecrewPauseDecisionAuthorization {
+    # The unspent captured decision for ONE choice, or $null. A decision for stopping here never
+    # authorizes abandoning the campaign: they are different acts with different consequences.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][ValidateSet('stop-here', 'abandon')][string]$Choice
+    )
+    $path = Join-Path (Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot) ($Choice + '.json')
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $item = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+    if ($null -eq $item -or $item.Length -le 0 -or $item.Length -gt 65536) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('schema_version', 'fact_type', 'authority_kind', 'choice', 'verdict_text', 'response_hash', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'review-pause-decision' -or [string]$fact.authority_kind -cne 'human') { return $null }
+    if ([string]$fact.choice -cne $Choice) { return $null }
+    if ([string]$fact.response_hash -cne (Get-SpecrewHumanAuthorityHash -Text ([string]$fact.verdict_text))) { return $null }
+    $recognized = Test-SpecrewPauseDecisionPhrase -Text ([string]$fact.verdict_text)
+    if (-not [bool]$recognized.Matched -or [string]$recognized.Choice -cne $Choice) { return $null }
+    if ($fact.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$fact.spent_at)) { return $null }
+    return $fact
+}
+
+function Complete-SpecrewPauseDecisionAuthorization {
+    # One decision, one landing - stamped spent with the reference it became, read back like every
+    # other consumption in this store.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][ValidateSet('stop-here', 'abandon')][string]$Choice,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Join-Path (Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot) ($Choice + '.json')
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'no-pending-decision' } }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-decision-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-decision-empty' } }
+    $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
+    $fact | Add-Member -NotePropertyName 'authorization_ref' -NotePropertyValue ([string]$AuthorizationRef) -Force
+    $json = $fact | ConvertTo-Json -Depth 8
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'readback-failed' } }
+    if ($null -eq $verified -or [string]::IsNullOrWhiteSpace([string]$verified.spent_at)) {
+        return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'stamp-not-durable' }
+    }
+    return [pscustomobject]@{ consumed = $true; fact = $verified; reason = 'consumed' }
 }
 
 function Set-SpecrewReviewRoundApprovalMintedRef {
@@ -974,7 +1123,7 @@ function Test-SpecrewAllowanceResetPhrase {
     if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
     if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait|stop)\b') { return $r }
     # Round-16 (DRIFT-199-I001-126): a reversal AFTER the anchor is the same refusal as one before it.
-    if ($tail -match '\b(?:do\s*not|don''t|dont|never|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b') { return $r }
+    if ($tail -match '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b') { return $r }
     $r.Matched = $true; $r.Phrase = $trimmed
     return $r
 }

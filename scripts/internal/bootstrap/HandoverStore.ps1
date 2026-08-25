@@ -871,6 +871,18 @@ function Update-SpecrewRollingHandover {
             }
             catch { $null = $_ }
         }
+        # Round-20 (DRIFT-199-I001-131): the pause decisions the menu shows the human - stopping the
+        # review here, abandoning the campaign - are AUTHORITY, because stopping here completes
+        # sign-off with an identity-bound human disposition. They are captured on the same path as
+        # every other typed act; a phrase nothing captures is a phrase nobody can type.
+        if ((Get-Command Write-SpecrewPauseDecisionAuthorization -ErrorAction SilentlyContinue) -and
+            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+            try {
+                Write-SpecrewPauseDecisionAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+                    -HostKind $fromHost -SourceEvent $Source | Out-Null
+            }
+            catch { $null = $_ }
+        }
         # W50 rider: an allowance reset replenishes spend authority, so it takes the same typed-phrase
         # capture as the round approval - a bare agent invocation was the W44 gap one door down.
         if ((Get-Command Write-SpecrewAllowanceResetAuthorization -ErrorAction SilentlyContinue) -and

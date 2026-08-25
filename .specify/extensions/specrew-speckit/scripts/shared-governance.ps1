@@ -7028,7 +7028,7 @@ function Test-SpecrewCoverageDeferralPhrase {
     # Round-16 (DRIFT-199-I001-126): a reversal AFTER the anchor is the same refusal as one before
     # it. The negation check was anchored to the start of the utterance and could not see
     # "..., but do not run it" - which minted authority against the human's explicit refusal.
-    if ($tail -match "\b(?:do\s*not|don''t|dont|never|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b") { return $r }
+    if ($tail -match "\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b") { return $r }
     $r.Matched = $true; $r.Phrase = $trimmed
     return $r
 }

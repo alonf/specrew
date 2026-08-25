@@ -1458,6 +1458,42 @@ if ($Live) {
                 }
                 $answeredRunId = [string](Get-ReviewAuthorityProperty -Object $outstanding -Name 'run_id')
 
+                # Round-20 finding (DRIFT-199-I001-131): EVERY PAUSE CHOICE CARRIES THE HUMAN.
+                #
+                # Choices 2 and 3 were exempt from the captured-decision gate because they spend no
+                # round - but stopping here passes AuthorizedBy='human' into the landing, writes an
+                # identity-bound human disposition, and can COMPLETE SIGN-OFF. An agent invoking the
+                # flag therefore manufactured the human authorization for the most consequential act
+                # in the lifecycle: the W44 hole, one door down, on the door that matters most.
+                #
+                # Same shape as W44: inside an agent session the typed decision must be captured; a
+                # human at their own terminal is self-evidently authorized by their own invocation.
+                $pauseDecisionAuthorization = $null
+                if ($choice -cin @('stop-here', 'abandon') -and
+                    (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) -and
+                    (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                    try { $pauseDecisionAuthorization = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice }
+                    catch { $pauseDecisionAuthorization = $null }
+                    if ((Test-SpecrewInsideAgentSession) -and $null -eq $pauseDecisionAuthorization) {
+                        $decisionPhrase = if ($choice -ceq 'stop-here') { 'stop the review here' } else { 'abandon this review campaign' }
+                        $decisionEffect = if ($choice -ceq 'stop-here') {
+                            'Stopping here records their acceptance of the remaining findings and completes review sign-off.'
+                        }
+                        else { 'Abandoning ends the campaign; nothing further runs and nothing is signed off.' }
+                        Write-Host 'That decision is the human''s, and no decision from them has been captured.' -ForegroundColor Yellow
+                        Write-Host ''
+                        Write-Host $decisionEffect
+                        Write-Host ''
+                        Write-Host 'Ask them for it in the conversation. Their typed reply, as a normal chat message - a reply inside a question UI or picker is not captured:' -ForegroundColor Cyan
+                        Write-Host ''
+                        Write-Host ('  {0}' -f $decisionPhrase) -ForegroundColor Cyan
+                        Write-Host ''
+                        Write-Host 'Once they have typed it, run this same command again - running it is your job; deciding is theirs.'
+                        Write-Host 'From their own terminal they can run it directly, where their invocation is itself the decision.'
+                        exit 1
+                    }
+                }
+
                 # The menu withdrawing option 1 is presentation; this is enforcement. A caller can
                 # always type the flag directly, so fix-and-continue is refused before the immutable
                 # answer is written when the reviewer-invoked round budget is exhausted. A corrupt
@@ -1509,6 +1545,17 @@ if ($Live) {
                         # Recorded only now that it has actually landed. Ordering, not bookkeeping: this
                         # is the line that decides whether a failure is recoverable.
                         Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
+                        # Round-20: one typed decision, one landing. Consumed only on the landing that
+                        # used it - a refused landing leaves the human's decision standing, the same
+                        # rule the round entitlement follows.
+                        if ($null -ne $pauseDecisionAuthorization -and (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                            $pauseConsumption = $null
+                            try { $pauseConsumption = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -AuthorizationRef $landingRef }
+                            catch { $pauseConsumption = $null }
+                            if ($null -eq $pauseConsumption -or -not [bool]$pauseConsumption.consumed) {
+                                [Console]::Error.WriteLine('[specrew-review] WARN PAUSE_DECISION_NOT_CONSUMED ' + $(if ($null -ne $pauseConsumption) { [string]$pauseConsumption.reason } else { 'no-result' }))
+                            }
+                        }
                     }
                     if ($Json) { $landing | ConvertTo-Json -Depth 30; exit $(if ([bool]$landing.landed) { 0 } else { 1 }) }
                     if ([bool]$landing.landed) {

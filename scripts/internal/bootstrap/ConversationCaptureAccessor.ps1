@@ -217,7 +217,23 @@ function Test-SpecrewHumanVerdictToken {
 
         # A deferral inside the CLAUSE still defers ("approve once the tests pass") - the conservative floor is
         # unchanged. After a delimiter the same word is ordinary instruction wording and no longer blocks.
-        $deferred = $clause -match '\b(later|after|once|when|unless)\b'
+        # Round-20 finding (DRIFT-199-I001-131): if belongs to the deferral set here too. The SPEND
+        # recognizers were taught the full set in round 14; this recognizer - the one that authorizes
+        # BOUNDARY CROSSINGS, the highest-stakes authority in the system - kept the five-word list, so
+        # "approved for tasks if the tests pass" crossed immediately on a condition the human attached.
+        # Method rule 6's own demand, missed in the file that mattered most.
+        $deferred = $clause -match '\b(later|after|once|when|unless|if)\b'
+        # Round-20 (DRIFT-199-I001-131), the second half: a condition can sit just PAST the
+        # delimiter - "approved for plan, if you have time" - where the clause scan cannot see it,
+        # while an instruction that merely CONTAINS a deferral word - "approved for tasks, and send
+        # back the draft doc when you are done" - must still approve. The distinguishing feature is
+        # grammatical, not positional: a conditional CONJUNCTION opening the trailing clause governs
+        # the approval, whereas a deferral word buried inside an instruction does not.
+        $tailParts = [regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s', 2)
+        if (@($tailParts).Count -gt 1 -and
+            ([string]$tailParts[1]).TrimStart() -match '^(later|after|once|when|unless|if|provided|assuming|contingent|subject\s+to)\b') {
+            $deferred = $true
+        }
 
         if ($isRecognizedPhrase -and -not $deferred) {
             $clauseBoundaries = New-Object System.Collections.Generic.List[string]
@@ -234,6 +250,13 @@ function Test-SpecrewHumanVerdictToken {
             if ($leadingApproval.Groups[1].Success) { $r.ApprovalOption = [int]$leadingApproval.Groups[1].Value }
             $r.IsApproval = $true; $r.Action = 'approve'; return $r
         }
+        # Round-20 (DRIFT-199-I001-131): a RECOGNIZED phrase whose clause is DEFERRED returns here
+        # rather than falling through to the generic fallback below. That fallback's own deferral
+        # window reaches only 16 characters past the verb, so a longer boundary name - "approved for
+        # before-implement if the lanes are green" - pushed the condition out of range and the
+        # utterance was approved after this branch had already judged it conditional. The
+        # conservative floor belongs to whichever branch recognized the phrase.
+        if ($deferred) { return $r }
     }
 
     # Send-back / reject FIRST: a turn that says "send back" (even alongside praise) is NOT an approval.
@@ -250,7 +273,7 @@ function Test-SpecrewHumanVerdictToken {
     }
     # Negated / deferred approval -> NOT an approval (defends "do not approve", "not yet", "hold off ... approve").
     if ($lower -match "\b(do\s*not|don'?t|never|not\s+yet|hold\s+off|wait|stop)\b[^.!?]{0,24}\bapprov") { return $r }
-    if ($lower -match "\bapprov\w*\b[^.!?]{0,16}\b(later|after|once|when|unless)\b") { return $r }
+    if ($lower -match "\bapprov\w*\b[^.!?]{0,16}\b(later|after|once|when|unless|if)\b") { return $r }
     # F-174 iter-11 (review-signoff P3-1, INTEGRITY): a verdict approval is imperative/declarative, NEVER a
     # question. An approve-bearing INTERROGATIVE ("approve?", "is this ready to approve?", "can you explain
     # before I approve?", "should I approve this or not?") is deliberation, not authorization - reject it so the

@@ -535,6 +535,51 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-131 - round 20: a conditional boundary verdict crossed immediately, and a pause flag minted a human (2 of 3 resolved; the requirement conflict OPEN, fourth confirmation)
+
+- **Observed**: 2026-08-25, run-20260825-<round-20> - terminal, complete, current, three findings,
+  two blocking. Both blocking findings are governance holes in the two highest-stakes authorities in
+  the system: boundary crossings, and sign-off.
+- **BLOCKING 1 - `if` was missing from the deferral set in the BOUNDARY recognizer.** Round 14 taught
+  the full set - later/after/once/when/unless/IF - to the SPEND recognizers, in one file. The
+  boundary verdict recognizer lives in another file and kept the five-word list, so
+  `approved for tasks if the tests pass` recorded a boundary authorization immediately and the
+  lifecycle could cross on a condition the human had attached. **Method rule 6's own demand -
+  every FILE that carries a copy of the rule - written by this crew four rounds ago and then missed
+  in the file that matters most.**
+- **Two further holes surfaced while fixing it, neither in the finding**: (a) a RECOGNIZED phrase
+  judged conditional fell THROUGH to the generic fallback, whose own deferral window reaches only 16
+  characters past the verb - so a longer boundary name ("approved for before-implement if the lanes
+  are green") pushed the condition out of range and the fallback approved what the clause check had
+  already refused; the conservative floor now belongs to whichever branch recognized the phrase.
+  (b) The clause scan reads only up to the first delimiter, so a condition just PAST it
+  ("approved for plan, if you have time") was invisible - while an instruction that merely CONTAINS
+  a deferral word ("approved for tasks, and send back the draft doc when you are done") must still
+  approve. The distinguishing feature is grammatical, not positional: a conditional CONJUNCTION
+  OPENING the trailing clause governs the approval; a deferral word buried inside an instruction
+  does not.
+- **BLOCKING 2 - a pause flag minted human authority for sign-off.** `--pause-choice 2` was exempt
+  from the captured-decision gate because it spends no round - but stopping here passes
+  `AuthorizedBy='human'` into the landing, writes an identity-bound human disposition, and COMPLETES
+  REVIEW SIGN-OFF. An agent invoking the flag therefore manufactured the human's authorization for
+  the most consequential act in the lifecycle: the W44 hole, one door down, on the door that matters
+  most. Both non-spending choices are now typed decisions with their own capture family -
+  `stop the review here` and `abandon this review campaign`, the exact phrases the W49 menu already
+  shows the human - captured on the same path as every other authority, gated inside an agent
+  session, self-evident from a human's own terminal, and consumed only on the landing that used
+  them. A decision captured for one choice never authorizes the other.
+- **OPEN, fourth confirmation - the numbered-options half of the requirement conflict.** SC-001 and
+  FR-002 require three numbered options and a numbered reply; W49 deliberately renders unnumbered
+  typed decisions because numbers index nothing a human can type and taught bare-number replies that
+  are never authority here. Recorded, unresolved, and now found by four consecutive independent
+  rounds. It is a spec-versus-ruling reconciliation, which is the maintainer's alone.
+- **Citation**: FR-010 (a conditional approval is not an approval); the W44 rule (authority is the
+  human's typed act, never the agent's invocation); method rule 6.
+- **Verification**: four RED cases against the shipped build - conditional boundary verdicts in four
+  shapes, the pause-decision recognizer's accept/refuse matrix, the capture/read-back/retire cycle
+  with cross-choice isolation, and the CLI + capture-path structural pins - 61/61 in the authority
+  suite after, the capture and verdict-capture suites green, all three plan commands green.
+
 ### DRIFT-199-I001-130 - round 19: the double-spend block owned the wrong round, and its printed recovery could not recover (3 of 4 resolved; the requirement conflict OPEN and now three-times confirmed)
 
 - **Observed**: 2026-08-25, run-20260825-114427952-03c89386 - terminal, complete, current, four
