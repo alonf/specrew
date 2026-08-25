@@ -506,6 +506,41 @@ function Get-SpecrewReviewRoundApprovalAuthorization {
     return $fact
 }
 
+function Get-SpecrewDeliveredRoundForCapture {
+    # W59 / round-18 finding (DRIFT-199-I001-128): DERIVE THE BLOCK FROM EVIDENCE THAT ALREADY
+    # EXISTS, not from a marker written at the moment of failure.
+    #
+    # Round 17 blocked the double spend with a marker file - and that write fails for exactly the
+    # reason the consumption write failed (unwritable directory, full disk), so once storage
+    # recovered nothing stopped the next mint. Third consecutive round finding the fix one layer
+    # short of enforcement. The store already holds the answer: a DELIVERED run that started after
+    # the capture was observed IS the round that capture paid for, published before any of this
+    # could fail. If such a run exists while the capture is still unspent, the entitlement is
+    # already used, whatever the stamp says.
+    #
+    # Returns the delivered run, or $null. UNPARSEABLE TIMES ANSWER NULL: absent evidence is not
+    # evidence, and this must never fabricate a block that locks a human out of a round they own.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CaptureObservedAt,
+        [AllowNull()][object[]]$RunResults
+    )
+    if ([string]::IsNullOrWhiteSpace($CaptureObservedAt) -or $null -eq $RunResults) { return $null }
+    $observed = [DateTimeOffset]::MinValue
+    if (-not [DateTimeOffset]::TryParse($CaptureObservedAt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$observed)) { return $null }
+    foreach ($run in @($RunResults)) {
+        if ($null -eq $run) { continue }
+        $outcomeProperty = $run.PSObject.Properties['runtime_outcome']
+        if (-not $outcomeProperty -or [string]$outcomeProperty.Value -cne 'completed') { continue }
+        $startedProperty = $run.PSObject.Properties['started_at']
+        if (-not $startedProperty) { continue }
+        $started = [DateTimeOffset]::MinValue
+        if (-not [DateTimeOffset]::TryParse([string]$startedProperty.Value, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$started)) { continue }
+        if ($started -gt $observed) { return $run }
+    }
+    return $null
+}
+
 function Get-SpecrewUnconsumedDeliveryPath {
     param([Parameter(Mandatory)][string]$ProjectRoot)
     return Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'delivered-unconsumed.json'

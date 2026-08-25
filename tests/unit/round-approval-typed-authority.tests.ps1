@@ -661,7 +661,7 @@ Describe 'W57 round 16: authority must survive a reversal, a lost stamp, and a p
 
     It 'the CLI blocks on an unconsumed approval rather than accepting the delivery quietly' {
         $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $branch = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,4000}?break').Value
+        $branch = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,20000}?break').Value
         $branch | Should -Not -BeNullOrEmpty
         $branch.Contains('consumed') | Should -BeTrue -Because 'the delivered branch must read the consumption result, not discard it'
         $branch | Should -Not -Match '\}\s*catch\s*\{\s*\$null = \$_\s*\}' -Because 'swallowing the consumption error is the defect'
@@ -733,10 +733,62 @@ Describe 'W58 round 17: a claim about the frozen tree is checked, and a delivere
 
     It 'the CLI writes that fact on a failed consumption and refuses to mint while it stands' {
         $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
-        $delivered = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,4500}?break').Value
+        $delivered = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,20000}?break').Value
         $delivered.Contains('Write-SpecrewUnconsumedDeliveryFact') | Should -BeTrue -Because 'a warning is not a control - the state must survive the process'
-        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,6000}?\$approvalMinted = \$true').Value
+        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,20000}?\$approvalMinted = \$true').Value
         $mint.Contains('Get-SpecrewUnconsumedDeliveryFact') | Should -BeTrue -Because 'the mint gate must fail closed on a delivered round that was never marked paid'
     }
 }
 
+
+Describe 'W59 round 18: the double-spend block is derived from delivery evidence, not from a marker that can also fail' {
+    BeforeAll { . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1') }
+
+    It 'an unspent capture older than a DELIVERED run has already bought its review' {
+        # Round-18 finding (DRIFT-199-I001-128): round 17 blocked the double spend with a marker
+        # file - and the marker write can fail for exactly the reason the consumption write failed
+        # (unwritable directory, full disk), leaving nothing to block the next mint once storage
+        # recovers. THIRD consecutive round finding my fix one layer short of enforcement. The block
+        # is now DERIVED from evidence that was already published before the failure could occur:
+        # a delivered run that started after the capture was observed IS that capture's round.
+        $captureObserved = '2026-08-25T10:00:00.0000000+00:00'
+        $deliveredAfter = @([pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T10:05:00.0000000+00:00'; run_id = 'run-after' })
+        $deliveredBefore = @([pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T09:00:00.0000000+00:00'; run_id = 'run-before' })
+        $undelivered = @([pscustomobject]@{ runtime_outcome = 'launch-failed'; started_at = '2026-08-25T10:05:00.0000000+00:00'; run_id = 'run-failed' })
+
+        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults $deliveredAfter) |
+            Should -Not -BeNullOrEmpty -Because 'a delivered run after the capture is the round that capture paid for'
+        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults $deliveredBefore) |
+            Should -BeNullOrEmpty -Because 'a round that ran BEFORE the human typed cannot have been bought by it'
+        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults $undelivered) |
+            Should -BeNullOrEmpty -Because 'an undelivered attempt spends nothing - the W50 entitlement rule'
+        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $captureObserved -RunResults @()) |
+            Should -BeNullOrEmpty
+        # Unparseable timestamps must not fabricate a block: absent evidence is not evidence.
+        (Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt 'not-a-time' -RunResults $deliveredAfter) |
+            Should -BeNullOrEmpty
+    }
+
+    It 'the fallback marker verifies its own postcondition' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w59-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $written = Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $root -RunId 'run-x' -AuthorizationRef 'cmp-x-round-1' -Reason 'stamp-not-durable'
+            $written | Should -Not -BeNullOrEmpty -Because 'a successful write reports the fact it can read back'
+            # A directory at the file path makes the write unserviceable: the writer must report that
+            # rather than returning a fact nobody can read.
+            $root2 = Join-Path ([IO.Path]::GetTempPath()) ('w59-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root2 '.specrew/review/round-approval/delivered-unconsumed.json') -Force | Out-Null
+            Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $root2 -RunId 'run-y' -AuthorizationRef 'cmp-y-round-1' -Reason 'stamp-not-durable' |
+                Should -BeNullOrEmpty -Because 'an unverifiable marker must not report success'
+            Remove-Item -LiteralPath $root2 -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the CLI derives the block from run results, not only from the marker' {
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,20000}?\$approvalMinted = \$true').Value
+        $mint.Contains('Get-SpecrewDeliveredRoundForCapture') | Should -BeTrue -Because 'the block survives a failed marker write only if it is derived from published evidence'
+    }
+}

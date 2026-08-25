@@ -535,6 +535,45 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-128 - round 18: the marker could fail for the same reason the stamp did (resolved; the FR-001/FR-002 conflict confirmed independently and still OPEN)
+
+- **Observed**: 2026-08-25, run-20260825-083804603-cc21ee4d - terminal, complete, current, two
+  findings, both minor by demotion, both right.
+- **The finding, and the pattern it completes.** Round 17 blocked the double spend with a MARKER
+  written at the moment the consumption stamp failed - and that write fails for exactly the reason
+  the stamp failed (unwritable directory, full disk). Once storage recovered, the capture was still
+  unspent, no marker existed, and the next `--approve-round` could mint and deliver a second paid
+  review from one human approval. **Three consecutive rounds have now found the same shape in the
+  crew's own fixes**: round 16 fixed the silence and left the reuse (report-don't-control), round 17
+  fixed the reuse with a control that shares the failure mode it guards against, round 18 named
+  that. The class: *a recovery written at the moment of failure inherits the failure*.
+- **Resolution - derive, do not mark.** `Get-SpecrewDeliveredRoundForCapture` reads what the store
+  ALREADY published before anything could fail: a DELIVERED run (`runtime_outcome: completed`) whose
+  `started_at` is later than the capture's `observed_at` IS the round that capture paid for. The
+  mint gate blocks on that, reusing the run-results enumeration it already performs for the round
+  number. Unparseable evidence answers NO BLOCK, deliberately: a fabricated block locks a human out
+  of a round they own, which is worse than the marker it replaces. The marker survives as a second
+  line that names the reason, and its own write result is now checked and reported - the first half
+  of the finding - rather than discarded.
+- **The FR-001/FR-002 conflict, confirmed independently.** The second finding is DRIFT-127's open
+  item, raised again by a round that had READ the drift entry: *"W27 may be the intended newer
+  policy, but the frozen authoritative requirement was never amended, so the candidate does not
+  satisfy its current contract."* That is the same reconciliation the crew recorded and the same one
+  it declines to make alone - amend FR-001/FR-002 with the clean-pass exception, or overturn W27
+  knowingly. Two independent rounds now agree it is a real spec/code divergence; neither can decide
+  which side moves. It stays OPEN, and every future round will keep finding it until it is ruled.
+- **Citation**: the W50 entitlement rule (one approval, one delivered review); the evidence rule -
+  the block is now derived from published facts rather than from a write that has to succeed at the
+  worst possible moment.
+- **Verification**: three RED cases - the delivered-after-capture derivation with its before/
+  undelivered/empty/unparseable arms, the marker's own postcondition, and the CLI structural pin on
+  the derived gate - red against the shipped build, 47/47 in the authority suite after, all three
+  plan commands green.
+- **Method note carried with it**: two structural pins in that suite window on CHARACTER COUNTS from
+  an anchor, and both went red purely because the branch they pin grew. Widened generously with the
+  reason recorded - a pin that fails on growth rather than on regression teaches the reader to
+  widen it without looking, which is how a real regression eventually gets widened past.
+
 ### DRIFT-199-I001-127 - round 17: an unchecked claim about the frozen tree, and a warning mistaken for a control (2 of 3 resolved; 1 OPEN as a ruling conflict)
 
 - **Observed**: 2026-08-25, run-20260824-232952638-f8c98bb4 - terminal, complete, current, three

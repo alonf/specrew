@@ -1244,12 +1244,38 @@ if ($Live) {
                 # The invoked filter is FR-014's, reused so a round that never reached a reviewer does
                 # not advance the number - the same discriminator the continuation counter uses.
                 $roundsRun = 0
+                $campaignRunResults = @()
                 try {
-                    $roundsRun = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') `
-                            -CampaignId $approvalIdentity.campaign_id |
+                    $campaignRunResults = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot (Join-Path $resolvedProjectPath '.specrew/review/authority') `
+                            -CampaignId $approvalIdentity.campaign_id)
+                    $roundsRun = @($campaignRunResults |
                             Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'runtime_outcome') -notin @('preflight-failed', 'claim-contended', 'launch-failed') }).Count
                 }
-                catch { $roundsRun = 0 }
+                catch { $roundsRun = 0; $campaignRunResults = @() }
+                # Round-18 finding (DRIFT-199-I001-128): THE DOUBLE-SPEND BLOCK IS DERIVED, NOT
+                # MARKED. Round 17 wrote a marker when the consumption stamp failed - and that write
+                # fails for the same reason the stamp did, so once storage recovered nothing stopped
+                # the next mint. The store already published the answer before anything could fail:
+                # a DELIVERED run that started after this capture was observed IS the round it paid
+                # for. Unparseable evidence answers "no block" - a fabricated block would lock a
+                # human out of a round they own, which is worse than the marker it replaces.
+                if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Get-SpecrewDeliveredRoundForCapture' -ErrorAction SilentlyContinue)) {
+                    $alreadyDelivered = $null
+                    try {
+                        $alreadyDelivered = Get-SpecrewDeliveredRoundForCapture `
+                            -CaptureObservedAt ([string]$capturedRoundApproval.observed_at) -RunResults $campaignRunResults
+                    }
+                    catch { $alreadyDelivered = $null }
+                    if ($null -ne $alreadyDelivered) {
+                        Write-Host 'A review already ran on this approval - Specrew can see the completed round in its own records.' -ForegroundColor Yellow
+                        Write-Host ''
+                        Write-Host ('That review was {0}, which ran after the approval was given.' -f [string]$alreadyDelivered.run_id)
+                        Write-Host 'Starting another now would spend a second review on the same approval, which the human did not give.'
+                        Write-Host ''
+                        Write-Host 'If they want another round, ask them for it: their typed reply `approved for review round`, as a normal chat message - a reply inside a question UI or picker is not captured.' -ForegroundColor Cyan
+                        exit 1
+                    }
+                }
                 $campaignGrantAuthorizationRef = '{0}-round-{1}' -f $approvalIdentity.campaign_id, ($roundsRun + 1)
                 $approvalMinted = $true
                 # W50 (supersedes the W44 stamp-at-mint): THE ALLOWANCE METERS ATTEMPTS; THE HUMAN
@@ -1521,9 +1547,17 @@ if ($Live) {
                             # from one approval. The state is durable now, and the mint gate refuses
                             # while it stands.
                             if (Get-Command -Name 'Write-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
-                                Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath `
+                                # Round-18: this marker is now the SECOND line, not the only one -
+                                # the derived block above survives its failure - but a marker that
+                                # could not be written is still worth saying out loud, because it is
+                                # the same storage failure the stamp just hit.
+                                $markerFact = Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath `
                                     -RunId ([string]$campaignRun.run_id) -AuthorizationRef $campaignGrantAuthorizationRef `
-                                    -Reason $consumptionReason | Out-Null
+                                    -Reason $consumptionReason
+                                if ($null -eq $markerFact) {
+                                    if (-not $Quiet) { Write-Host 'Specrew could not write that note either, so this storage problem is wider than one file. The completed round is still in the records, and that is what blocks a second one.' -ForegroundColor Yellow }
+                                    [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_MARKER_NOT_WRITTEN ' + $consumptionReason)
+                                }
                             }
                         }
                         elseif (Get-Command -Name 'Clear-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
