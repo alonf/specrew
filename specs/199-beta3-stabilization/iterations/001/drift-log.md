@@ -535,6 +535,34 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-137 - AMENDMENT: the contract catches up to two rulings it had lagged (spec amended, code unchanged)
+
+- **This entry is not drift-to-be-corrected.** The code was right and the contract lagged it. Two
+  maintainer rulings changed behaviour deliberately; nobody amended the requirements they contradicted,
+  so for weeks the frozen spec described a build that no longer existed - and six of the last eight
+  independent rounds spent a finding slot re-reporting the same divergence, correctly, because a
+  reviewer reads the contract. Ruled 2026-08-26: **amend the requirements; the spec is what is stale.**
+- **FR-001 and SC-001 take W27's clean-pass carve-out** (from DRIFT-199-I001-077, ruled 2026-08-19).
+  The surface renders when a decision EXISTS. A complete, current, approvable `pass` leaves none, and
+  rendering one manufactured forgeable authority: a live walk recorded a grant, a pause-decision and a
+  human-disposition, all marked `human`, for a round the human never authorized and a decision they
+  never made.
+- **FR-002 and SC-001 take W49's form** (from DRIFT-199-I001-110, ruled 2026-08-23): three typed
+  decisions with consequences stated on each, no numbered labels. A menu must not teach a reply shape
+  the authority layer can never accept - and since the pause-decision gate landed, `stop the review
+  here` and `abandon this review campaign` REQUIRE captured typed decisions, so a bare numeral
+  instructs the human to produce nothing.
+- **Both amendments carry their ruling's REASON inline, by direction.** A future reader must see why
+  the requirement says what it says without excavating this log. The reasons are the load-bearing
+  part: a requirement that records only its conclusion invites the next author to "simplify" it back
+  into the defect - which is precisely how a carve-out that exists to prevent forged authority would
+  be deleted as an inconsistency.
+- **What this closes**: the conflict recorded open in DRIFT-199-I001-127 and -131 and confirmed
+  independently in rounds 17, 18, 20, 21, 22 and 23. No round can return clean while a frozen
+  requirement describes a build that was deliberately replaced.
+- **Verification**: the amended text is the contract the next round reads; the code is untouched by
+  this entry, which is the point of recording it as an amendment.
+
 ### DRIFT-199-I001-136 - the lane gap gets two gates, split by cost (resolved by ruling)
 
 - **Ruled**: 2026-08-26, after DRIFT-199-I001-134 measured 45 named suites against 384 on disk. The

@@ -292,14 +292,33 @@ timeout-message fixture asserts the message names `co_review_timeout_seconds`.
 Review-loop economics (bridge — beta4 replaces the pause plumbing; the decision-surface
 contract is durable):
 
-- **FR-001**: After every campaign round's ingest, the engine MUST render the decision
-  surface and terminate the round loop (pause as the orchestrator's terminal state);
-  no reviewer invocation or spend may occur while the decision is pending.
+- **FR-001**: After every campaign round's ingest that leaves a DECISION TO MAKE, the
+  engine MUST render the decision surface and terminate the round loop (pause as the
+  orchestrator's terminal state); no reviewer invocation or spend may occur while the
+  decision is pending. A round returning a complete, current, approvable `pass` leaves
+  no decision: the engine renders no surface and states plainly that none is needed.
+  **Why this carve-out exists, and why removing it is a regression:** the surface was
+  once rendered after every round including clean ones, and it asked for an answer the
+  machinery never consulted — the signoff gate already released the boundary on that
+  result shape. Worse than useless, it MANUFACTURED FORGEABLE AUTHORITY: a live walk
+  recorded a grant, a pause-decision and a human-disposition, all marked `human`, for a
+  round the human never authorized and a decision they never made. Ceremony is not
+  merely annoying; a question nobody needed still gets STORED as a human decision. The
+  amendment records the behaviour ruled on 2026-08-19 (drift DRIFT-199-I001-077, "W27").
 - **FR-002**: The decision surface MUST show findings grouped by severity with
   locations, minors as visibly non-gating, cumulative cost (rounds, minutes), budget
-  position, a one-line severity-derived recommendation, and three numbered options
-  (fix-and-continue / stop-here / abandon) whose consequences are stated in the option
-  text, plus the explicit nothing-spends-until-you-answer line.
+  position, a one-line severity-derived recommendation, and three TYPED DECISIONS
+  (`run another round` / `stop the review here` / `abandon this review campaign`) whose
+  consequences are stated in the option text, plus the explicit
+  nothing-spends-until-you-answer line. The decisions carry NO numbered labels.
+  **Why this form, and why numbering it back is a regression:** a number indexes nothing
+  the authority layer can accept. Every authority in this system is a typed phrase
+  captured from the human's own chat turn, and since the pause-decision gate landed, both
+  `stop the review here` and `abandon this review campaign` REQUIRE such a capture — so a
+  menu offering "reply 2" instructs the human to produce something that creates no
+  authority at all, and then blames them when nothing happens. Numbered labels also teach
+  bare-number replies, which this system can never treat as authority. The amendment
+  records the behaviour ruled on 2026-08-23 (drift DRIFT-199-I001-110, "W49").
 - **FR-003**: Continuation MUST always be an explicit human choice consuming a
   single-run grant; agents MUST NOT mint continuation authorizations from a prior
   grant; a default round budget of 4 per campaign MUST force refusal of further
@@ -476,8 +495,15 @@ Method (binding on every fix):
 Each criterion is proven by a RED-first fixture through the shipped entry point
 (FR-023); the ten were confirmed at the requirements-nfr lens:
 
-- **SC-001**: After every campaign round the decision surface renders and nothing
-  spends until a numbered human reply.
+- **SC-001**: After every campaign round that leaves a decision to make, the decision
+  surface renders and nothing spends until the human's TYPED DECISION — one of the three
+  phrases named in FR-002, sent as an ordinary chat message. A clean round (complete,
+  current, approvable `pass`) renders no surface and says so; a reply inside a question
+  UI or picker is not captured and therefore authorizes nothing.
+  **Why measured this way:** rendering a surface after a clean round stored a human
+  decision nobody made (FR-001's carve-out), and a numbered reply cannot become authority
+  in a system whose every authority is a captured phrase (FR-002's form). Measuring the
+  old shape would pass a build that had reintroduced both defects.
 - **SC-002**: Budget exhaustion hard-refuses continuation without an explicit human
   reset.
 - **SC-003**: Zero stale-review blocks on records-only deltas; an authorized in-flight

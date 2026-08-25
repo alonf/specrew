@@ -1086,6 +1086,48 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
     catch { $null = $_; return $null }
 }
 
+function Get-ReviewCampaignFindingMixLines {
+    # W67 (maintainer ruling, 2026-08-26): STATE THE WHOLE MIX, IN ONE PLACE.
+    #
+    # The reader used to assemble it themselves out of three separate places - a gating list, a
+    # trailing minors sentence, a demotion note - with no total anywhere and, crucially, no sentence
+    # that said nothing blocked even when nothing did. A human deciding whether stopping here is safe
+    # had to infer safety from the ABSENCE of a warning, which is the reading people get wrong when
+    # they are tired.
+    #
+    # So: how many findings, how many block, how many need their acceptance, how many are notes -
+    # and when nothing blocks, that stated plainly, so stopping here reads as the ordinary next step
+    # rather than a concession they are talking themselves into.
+    [OutputType([string[]])]
+    param(
+        [int]$Blocking = 0,
+        [int]$Major = 0,
+        [int]$Minor = 0
+    )
+    $total = $Blocking + $Major + $Minor
+    $lines = [System.Collections.Generic.List[string]]::new()
+    if ($total -le 0) { return @($lines) }
+
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add(('{0} block{1} sign-off' -f $(if ($Blocking -eq 0) { 'none' } else { $Blocking }), $(if ($Blocking -eq 1) { 's' } else { '' }))) | Out-Null
+    $parts.Add(('{0} need{1} your acceptance' -f $Major, $(if ($Major -eq 1) { 's' } else { '' }))) | Out-Null
+    $parts.Add(('{0} {1} note{2}' -f $Minor, $(if ($Minor -eq 1) { 'is a' } else { 'are' }), $(if ($Minor -eq 1) { '' } else { 's' }))) | Out-Null
+    $lines.Add(('This round: {0} finding{1} - {2}.' -f $total, $(if ($total -eq 1) { '' } else { 's' }), ($parts -join ', '))) | Out-Null
+
+    if ($Blocking -eq 0) {
+        # Said plainly, and said DIFFERENTLY depending on whether anything still needs them: majors
+        # do not block, but they do need an explicit acceptance, and telling the human nothing needs
+        # them would be false.
+        if ($Major -gt 0) {
+            $lines.Add('Nothing here blocks sign-off. Stopping the review here accepts those findings as follow-ups and completes sign-off; that acceptance is recorded as yours.') | Out-Null
+        }
+        else {
+            $lines.Add('Nothing here blocks sign-off, and nothing needs your acceptance. Stopping the review here is the ordinary next step: the notes are carried as follow-ups and sign-off completes.') | Out-Null
+        }
+    }
+    return @($lines)
+}
+
 function Format-ReviewCampaignOutstandingPause {
     # The SAME unanswered question, met on a LATER invocation.
     #
@@ -1151,8 +1193,10 @@ function Format-ReviewCampaignOutstandingPause {
     else {
         $lines.Add('That round found nothing that needs your attention.')
     }
-    if ($minor -gt 0) {
-        $lines.Add(('It also recorded {0} minor finding{1}, saved as follow-ups; they never block your sign-off.' -f $minor, $(if ($minor -eq 1) { '' } else { 's' })))
+    # W67: the whole mix, in one place, on the surface a returning consumer meets - they are exactly
+    # who cannot reconstruct it from memory.
+    foreach ($mixLine in @(Get-ReviewCampaignFindingMixLines -Blocking $blocking -Major $major -Minor $minor)) {
+        $lines.Add($mixLine)
     }
     # Carried for the same reason it is carried on the live surface: a demotion the human cannot see is
     # a silencing, and coming back a day later is exactly when it would go unnoticed.
@@ -1235,8 +1279,10 @@ function Format-ReviewCampaignPauseSurface {
         $lines.Add('Nothing found that needs your attention.')
     }
 
-    if ([int]$Decision.minor_count -gt 0) {
-        $lines.Add(('  Also recorded: {0} minor finding{1} - saved as follow-ups, they never block your sign-off.' -f $Decision.minor_count, $(if ([int]$Decision.minor_count -eq 1) { '' } else { 's' })))
+    # W67: the whole mix, in one place, instead of a minors-only footnote the reader had to combine
+    # with the gating list above to learn what this round actually amounts to.
+    foreach ($mixLine in @(Get-ReviewCampaignFindingMixLines -Blocking ([int]$Decision.blocking_count) -Major ([int]$Decision.major_count) -Minor ([int]$Decision.minor_count))) {
+        $lines.Add($mixLine)
     }
 
     # T005/FR-006 visibility (maintainer ruling 2026-08-10). A demoted finding is sitting in the minor

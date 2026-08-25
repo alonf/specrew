@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "65992ee5253999396457c9554723bed9538e374dc75fea0af562387fd056a69e",
+  "runtime_bundle_sha256": "0e5923a0525eda1a8b9422a6780a83b58266eea31ba16918834b5b9b97c003e2",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -25,7 +25,7 @@
     },
     {
       "path": "continuous-co-review-navigator.ps1",
-      "sha256": "e063aa92e2f1b6c44c52d9f03d8e1aaa40c1a8966b8a35fca379164c552dd699"
+      "sha256": "ced43685686b6a1e353d6fa848f2751b4d4aa044196c2a9a777c2d8478edef0f"
     },
     {
       "path": "escalation-latch.ps1",

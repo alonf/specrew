@@ -155,7 +155,12 @@ Describe 'Campaign pause core (T001)' {
         }
 
         It 'shows the minors as saved follow-ups that do not block' {
-            $script:Surface | Should -Match '3 minor'
+            # W67 (2026-08-26) replaced the trailing "3 minor findings" footnote with the whole mix
+            # stated in one place - total, blocking, needing acceptance, notes - because a reader had
+            # to combine three separate lines to learn what the round amounted to, and no line said
+            # nothing blocked even when nothing did. The property this case exists for is unchanged:
+            # the minors are visible AS non-gating follow-ups.
+            $script:Surface | Should -Match '(?i)3 are notes'
             $script:Surface | Should -Match 'follow-up'
         }
 
