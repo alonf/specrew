@@ -506,6 +506,65 @@ function Get-SpecrewReviewRoundApprovalAuthorization {
     return $fact
 }
 
+function Get-SpecrewUnconsumedDeliveryPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'delivered-unconsumed.json'
+}
+
+function Write-SpecrewUnconsumedDeliveryFact {
+    # W58 / round-17 finding (DRIFT-199-I001-127): A WARNING IS NOT A CONTROL.
+    #
+    # Round 16 made a failed consumption stamp VISIBLE; round 17 observed that visibility does not
+    # stop it - the capture stayed unspent, so the next invocation minted a fresh round-numbered
+    # grant and started a SECOND paid review from one human approval. The delivered-but-unconsumed
+    # state is therefore durable, and the mint gate fails closed on it: a round that was delivered
+    # and could not be marked paid blocks further spending until a human resolves it.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$RunId,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [Parameter(Mandatory)][string]$Reason,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $ProjectRoot
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'review-round-delivered-unconsumed'
+        run_id = [string]$RunId; authorization_ref = [string]$AuthorizationRef
+        reason = [string]$Reason; observed_at = $NowUtc
+    }
+    try {
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
+        $json = $fact | ConvertTo-Json -Depth 6
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return $null }
+    return $fact
+}
+
+function Get-SpecrewUnconsumedDeliveryFact {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $fact = $null
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { return $null }
+    foreach ($name in @('fact_type', 'authorization_ref', 'reason', 'observed_at')) {
+        $property = $fact.PSObject.Properties[$name]
+        if (-not $property -or [string]::IsNullOrWhiteSpace([string]$property.Value)) { return $null }
+    }
+    if ([string]$fact.fact_type -cne 'review-round-delivered-unconsumed') { return $null }
+    return $fact
+}
+
+function Clear-SpecrewUnconsumedDeliveryFact {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $path = Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $ProjectRoot
+    try { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } } catch { $null = $_ }
+}
+
 function Test-SpecrewApprovalWithdrawalPhrase {
     # W57 / round-16 finding (DRIFT-199-I001-126): the CLI's undelivered-round refusal tells the
     # human they may "withdraw the approval (say so, and nothing further runs)" - and nothing

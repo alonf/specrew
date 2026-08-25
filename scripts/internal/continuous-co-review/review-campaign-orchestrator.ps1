@@ -2083,7 +2083,7 @@ function Invoke-ReviewCampaignRun {
             }
         }
         catch { $targetHasSource = $false }
-        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason $failureReason -ControllerDegradeReason $degradeReason -TargetHasSource $targetHasSource
+        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason $failureReason -ControllerDegradeReason $degradeReason -TargetHasSource $targetHasSource -TargetRoot ([string]$snapshot.snapshot_path)
         if ($ingress.published) {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null
             $findingCount = if ($ingress.candidate_category -ceq 'valid' -and [string]$ingress.result.completion -ceq 'complete' -and [string]$ingress.result.validation -ceq 'valid') { @($ingress.result.findings).Count } else { $null }

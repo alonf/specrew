@@ -1195,6 +1195,25 @@ if ($Live) {
             #
             # An explicit --authorization-ref still wins, untouched.
             $approvalMinted = $false
+            # Round-17 finding (DRIFT-199-I001-127): FAIL CLOSED ON A DELIVERED ROUND THAT WAS NEVER
+            # MARKED PAID. A consumption failure after delivery leaves the capture reusable; without
+            # this gate the next invocation mints a new round-numbered grant and spends a second paid
+            # review on one human approval. Refusing here costs a manual step; not refusing costs a
+            # round the human never authorized.
+            if ($roundApprovalRequested -and (Get-Command -Name 'Get-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue)) {
+                $unconsumedDelivery = $null
+                try { $unconsumedDelivery = Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath } catch { $unconsumedDelivery = $null }
+                if ($null -ne $unconsumedDelivery) {
+                    Write-Host 'A review already ran on this approval, and Specrew could not record that it was used.' -ForegroundColor Yellow
+                    Write-Host ''
+                    Write-Host ('That review was {0}, recorded as {1}.' -f [string]$unconsumedDelivery.run_id, [string]$unconsumedDelivery.authorization_ref)
+                    Write-Host 'Starting another one now would spend a second review on the same approval, which the human did not give.'
+                    Write-Host ''
+                    Write-Host ('The unresolved record is at: {0}' -f (Get-SpecrewUnconsumedDeliveryPath -ProjectRoot $resolvedProjectPath))
+                    Write-Host 'Once you have checked that the earlier review was the one you meant, delete that file and run this again.'
+                    exit 1
+                }
+            }
             if ([string]::IsNullOrWhiteSpace($campaignGrantAuthorizationRef) -and $roundApprovalRequested) {
                 # W50: VIABILITY BEFORE SPEND. On the walk this resolution succeeded, the capture was
                 # stamped spent, and the invocation then crashed downstream - the human's approval was
@@ -1496,6 +1515,20 @@ if ($Live) {
                                 Write-Host 'Say so and it stops there, or check that file before approving anything further.'
                             }
                             [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_NOT_CONSUMED ' + $consumptionReason)
+                            # Round-17 finding (DRIFT-199-I001-127): the warning above was round 16's
+                            # fix, and visibility is not a control - the capture stayed unspent, so the
+                            # next invocation minted a fresh grant and started a SECOND paid review
+                            # from one approval. The state is durable now, and the mint gate refuses
+                            # while it stands.
+                            if (Get-Command -Name 'Write-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
+                                Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath `
+                                    -RunId ([string]$campaignRun.run_id) -AuthorizationRef $campaignGrantAuthorizationRef `
+                                    -Reason $consumptionReason | Out-Null
+                            }
+                        }
+                        elseif (Get-Command -Name 'Clear-SpecrewUnconsumedDeliveryFact' -ErrorAction SilentlyContinue) {
+                            # A landed consumption ends any prior unresolved state for this project.
+                            Clear-SpecrewUnconsumedDeliveryFact -ProjectRoot $resolvedProjectPath
                         }
                     }
                     break

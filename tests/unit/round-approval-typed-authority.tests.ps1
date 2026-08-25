@@ -668,3 +668,75 @@ Describe 'W57 round 16: authority must survive a reversal, a lost stamp, and a p
     }
 }
 
+
+Describe 'W58 round 17: a claim about the frozen tree is checked, and a delivered round cannot be paid for twice' {
+    BeforeAll { . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-result-ingestor.ps1') }
+
+    It 'BLOCKING: a declared path that is not in the frozen target does not buy source coverage' {
+        # Round-17 finding (DRIFT-199-I001-127): nothing ever checked declared coverage against the
+        # tree it claimed to describe. `examined_paths: ["src/nonexistent.cs"]` classified as source
+        # by NAME, skipped the no-source degrade, and let a complete/pass result authorize a snapshot
+        # whose code was never opened - the exact hollow-review shape W33 exists to catch, reachable
+        # by a reviewer that simply names a file. Declared paths are now resolved inside the frozen
+        # root; a path that identifies no file there counts as nothing.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w58-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root 'src') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $root 'src/real.cs') -Value 'class R {}' -Encoding UTF8
+        try {
+            $declared = Resolve-ReviewDeclaredCoverage -Candidate ([pscustomobject]@{ examined_paths = @('src/nonexistent.cs') }) -TargetRoot $root
+            @($declared.source_paths).Count | Should -Be 0 -Because 'a file that is not in the frozen tree was not examined in it'
+            [bool]$declared.declared | Should -BeTrue -Because 'the reviewer did declare something; it just does not resolve'
+
+            $real = Resolve-ReviewDeclaredCoverage -Candidate ([pscustomobject]@{ examined_paths = @('src/real.cs', 'src/nonexistent.cs') }) -TargetRoot $root
+            @($real.source_paths).Count | Should -Be 1 -Because 'only the path that resolves counts'
+            @($real.source_paths)[0] | Should -Be 'src/real.cs'
+
+            # Windows-shaped and ./-prefixed declarations still resolve - a reviewer's spelling is not
+            # the thing under test.
+            $shapes = Resolve-ReviewDeclaredCoverage -Candidate ([pscustomobject]@{ examined_paths = @('.\src\real.cs') }) -TargetRoot $root
+            @($shapes.source_paths).Count | Should -Be 1 -Because 'path spelling is normalized before resolution'
+
+            # A traversal escape resolves to nothing: it is not IN the frozen root.
+            $escape = Resolve-ReviewDeclaredCoverage -Candidate ([pscustomobject]@{ examined_paths = @('../outside/secret.cs') }) -TargetRoot $root
+            @($escape.source_paths).Count | Should -Be 0 -Because 'a path outside the frozen root is not coverage of it'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'without a target root the classifier keeps its by-name behavior, so existing callers are unchanged' {
+        # FAIL-OPEN on absence, the W33 precedent: a caller that cannot supply the frozen root gets
+        # exactly today's answer rather than a fabricated degrade.
+        $byName = Resolve-ReviewDeclaredCoverage -Candidate ([pscustomobject]@{ examined_paths = @('src/anything.cs') })
+        @($byName.source_paths).Count | Should -Be 1
+    }
+
+    It 'MAJOR: a delivered round whose stamp did not land blocks the next mint instead of warning' {
+        # Round-17 finding: the round-16 fix reported the failed consumption and stopped there, so the
+        # capture stayed unspent and the NEXT invocation minted a fresh grant from the same approval -
+        # a second paid review from one human act. The delivered-unconsumed state is now a durable
+        # fact, and the mint gate fails closed on it.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w58-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $root | Should -BeNullOrEmpty
+            $null = Write-SpecrewUnconsumedDeliveryFact -ProjectRoot $root -RunId 'run-x' -AuthorizationRef 'cmp-x-round-1' -Reason 'stamp-not-durable'
+            $fact = Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $root
+            $fact | Should -Not -BeNullOrEmpty
+            [string]$fact.authorization_ref | Should -Be 'cmp-x-round-1'
+            [string]$fact.reason | Should -Be 'stamp-not-durable'
+            # Clearing is explicit: the state ends when the approval it names is actually spent.
+            Clear-SpecrewUnconsumedDeliveryFact -ProjectRoot $root
+            Get-SpecrewUnconsumedDeliveryFact -ProjectRoot $root | Should -BeNullOrEmpty
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the CLI writes that fact on a failed consumption and refuses to mint while it stands' {
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $delivered = [regex]::Match($cli, '(?s)DELIVERY, and only delivery, consumes the entitlement\..{0,4500}?break').Value
+        $delivered.Contains('Write-SpecrewUnconsumedDeliveryFact') | Should -BeTrue -Because 'a warning is not a control - the state must survive the process'
+        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,6000}?\$approvalMinted = \$true').Value
+        $mint.Contains('Get-SpecrewUnconsumedDeliveryFact') | Should -BeTrue -Because 'the mint gate must fail closed on a delivered round that was never marked paid'
+    }
+}
+

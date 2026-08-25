@@ -535,6 +535,50 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-127 - round 17: an unchecked claim about the frozen tree, and a warning mistaken for a control (2 of 3 resolved; 1 OPEN as a ruling conflict)
+
+- **Observed**: 2026-08-25, run-20260824-232952638-f8c98bb4 - terminal, complete, current, three
+  findings: one blocking, two major. Two were real defects and are fixed; the third contradicts a
+  recorded maintainer ruling and is left OPEN rather than "fixed" into a reversal of that ruling.
+- **BLOCKING - declared coverage was never checked against the tree it described.** Nothing resolved
+  an examined path: `examined_paths: ["src/nonexistent.cs"]` classified as source BY NAME, skipped
+  the W33 no-source degrade, and let a complete/pass result authorize a snapshot whose code was
+  never opened. The hollow review W33 exists to catch, reachable by a reviewer that simply names a
+  file. `Resolve-ReviewDeclaredCoverage` now takes the frozen root - supplied by the orchestrator,
+  the only holder of the snapshot, exactly as `-TargetHasSource` already was - and counts a path as
+  source only when it resolves to a file INSIDE that root. Windows-shaped and `./`-prefixed
+  declarations normalize first (a reviewer's spelling is not the thing under test); a traversal
+  escape counts as nothing. Absent root keeps today's by-name behavior, the same fail-open default.
+- **MAJOR - a warning is not a control, which round 16 had just demonstrated.** Round 16 made a
+  failed consumption stamp VISIBLE after a delivered round; round 17 observed that visibility does
+  not stop it - the capture stayed unspent, so the next invocation minted a fresh round-numbered
+  grant and started a SECOND paid review on one human approval. The delivered-but-unconsumed state
+  is now a durable fact (`delivered-unconsumed.json`) and the mint gate FAILS CLOSED on it, naming
+  the earlier run, the ref it was recorded as, and the file to check before spending again. A
+  landed consumption clears it. **This is the sharper form of a rule this feature already carries**:
+  a control that only reports is a control that only documents the loss.
+- **OPEN - "clean rounds suppress the required decision surface" contradicts W27 (DRIFT-199-I001-077).**
+  The reviewer cites FR-001/FR-002 requiring the decision surface and its three options after EVERY
+  round, and reads the clean-pass auto-release as bypassing them. That behavior is not an oversight:
+  W27 REMOVED that surface on a complete/current/approvable pass, by maintainer ruling, after the
+  KeyContextAI walk showed the ceremony manufacturing forgeable authority - a grant, a pause-decision
+  and a human-disposition recorded for a round the human never authorized and a decision they never
+  made. Its closing line is the general rule: *ceremony is not merely annoying, it manufactures
+  forgeable authority, because a question nobody needed still gets stored as a human decision.*
+  Reverting it would reopen that surface, so the crew does not. **What is genuinely wrong is that
+  FR-001/FR-002 still read as unconditional** - the ruling changed the behavior and never amended
+  the requirement, so the spec and the code disagree and an independent reviewer is right to say so
+  every time it reads them. The reconciliation is the maintainer's: amend FR-001/FR-002 to carry
+  the W27 exception (the surface is required after a round that leaves a decision to make), or
+  overturn W27 knowingly. Recorded here so the disagreement is a decision rather than a recurring
+  finding.
+- **Citation**: W33 (declared coverage is evidence about a specific tree); the W50 entitlement rule
+  (one approval, one delivered review); DRIFT-077/W27 for the open item.
+- **Verification**: four RED cases - the nonexistent path buying no coverage, the resolving path
+  still counting, spelling shapes and traversal escapes, the durable fact's write/read/clear, and
+  the CLI structural pins on both the write and the gate - red against the shipped build, 44/44 in
+  the authority suite after, and the five classifier-consumer suites green.
+
 ### DRIFT-199-I001-126 - round 16: a reversal that minted, a workflow that hid, a promise nobody kept, a stamp nobody checked (resolved)
 
 - **Observed**: 2026-08-25, run-20260824-220050018-c523ad86 - terminal, complete, current, FOUR
