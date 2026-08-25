@@ -194,6 +194,14 @@ jobs:
         with:
           node-version: '24'
 
+      # The honesty registry below runs generator-markdown-parity, which refuses to fake a pass:
+      # with markdownlint absent it exits 2 as INCONCLUSIVE rather than green. `needs: lint`
+      # ORDERS the jobs but does not share the lint runner's tools, so this lane reported
+      # INCONCLUSIVE on every run (the standing main red carried as a chore from the beta2
+      # closeout). Installing the tool here is what lets the lane report a real result.
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
 
