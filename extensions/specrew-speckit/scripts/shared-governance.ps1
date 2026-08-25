@@ -6616,7 +6616,7 @@ function Test-SpecrewReviewAuthorshipSourcePath {
     # workflows as reviewable, so the two consumers disagreed. The exemption now names the
     # GOVERNANCE RECORDS and host mirrors it was always about; everything else under .github,
     # workflows and composite actions included, is reviewable source.
-    if ($p -match '(?i)^\.(specrew|squad|specify|agents|cursor|copilot|claude)/') { return $false }
+    if ($p -match '(?i)^(?:\.specrew|\.squad|\.specify|\.agents|\.cursor|\.copilot|\.claude)/') { return $false }
     if ($p -match '(?i)^\.github/(?:skills|agents|prompts|instructions|chatmodes|ISSUE_TEMPLATE)/') { return $false }
     if ($p -match '(?i)^\.github/[^/]+\.md$') { return $false }
     # W37 REVERTED HERE, DELIBERATELY. Excluding scripts/internal/continuous-co-review/ as "a deployed
@@ -7386,7 +7386,13 @@ function Get-SpecrewQualifyingIndependentRun {
             try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 } catch { continue }
             if ($null -eq $result) { continue }
             if ([string]$result.completion -cne 'complete') { continue }
-            if ([string]$result.verdict -notin @('pass', 'findings')) { continue }
+            # DRIFT-199-I001-134: StrictMode-safe, the rule this file already applies to
+            # target_digest. A stored result WITHOUT a verdict - a run that produced none, which is
+            # exactly what a 'not-produced' validation records - threw here and took the whole
+            # validator down as an unexpected-validator-error, so the refusal it was supposed to
+            # reach never surfaced. An absent verdict is not a passing one.
+            $resultVerdict = if ($result.PSObject.Properties['verdict']) { [string]$result.verdict } else { '' }
+            if ($resultVerdict -notin @('pass', 'findings')) { continue }
             if ([string]$result.currentness -cne 'current') { continue }
             if ([string]$result.validation -cne 'valid') { continue }
             $sourceCount = $null
@@ -7433,7 +7439,7 @@ function Get-SpecrewDerivedIndependenceBlock {
         $r = $qualifying.result
         $findingCount = @($r.findings).Count
         [void]$lines.Add(('- Run: {0} (harness {1})' -f [string]$r.run_id, [string]$r.harness_id))
-        [void]$lines.Add(('- Outcome: {0}, {1}, {2}, {3} - {4} finding(s)' -f [string]$r.verdict, [string]$r.completion, [string]$r.currentness, [string]$r.validation, $findingCount))
+        [void]$lines.Add(('- Outcome: {0}, {1}, {2}, {3} - {4} finding(s)' -f $(if ($r.PSObject.Properties['verdict']) { [string]$r.verdict } else { 'unknown' }), $(if ($r.PSObject.Properties['completion']) { [string]$r.completion } else { 'unknown' }), $(if ($r.PSObject.Properties['currentness']) { [string]$r.currentness } else { 'unknown' }), $(if ($r.PSObject.Properties['validation']) { [string]$r.validation } else { 'unknown' }), $findingCount))
         [void]$lines.Add(('- Reviewed tree: {0}' -f [string]$r.target_digest))
         if ($null -eq $qualifying.source_count) {
             # LABEL, DO NOT LAUNDER. Derived from the KeyContextAI store this branch names
@@ -7469,4 +7475,4 @@ function Get-SpecrewEmbeddedIndependenceBlock {
     if ($end -lt 0) { return $null }
     return $text.Substring($start, ($end - $start) + $script:SpecrewDerivedIndependenceClose.Length)
 }
-# specrew-self-provenance-ok: DRIFT-198-I011-003,DRIFT-198-I011-005,DRIFT-198-I011-006,DRIFT-198-I011-012,F-028,F-040,F-047,F-174; implementation history is recorded for maintainers and is never emitted as consumer instruction
+# specrew-self-provenance-ok: DRIFT-198-I011-003,DRIFT-198-I011-005,DRIFT-198-I011-006,DRIFT-198-I011-012,DRIFT-199-I001-037,DRIFT-199-I001-120,DRIFT-199-I001-122,DRIFT-199-I001-125,DRIFT-199-I001-126,F-028,F-040,F-047,F-174,DRIFT-199-I001-134; implementation history is recorded for maintainers and is never emitted as consumer instruction

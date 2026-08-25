@@ -367,7 +367,12 @@ Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 
 # (g) confirmation_required + missing confirmation -> FAIL naming SC-026
 [System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"full","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
 $scE1 = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath)
-Assert-True ($scE1.Count -eq 1 -and (($scE1 -join '|') -match 'SC-026') -and (($scE1 -join '|') -match "'a'")) 'SC-026: missing confirmation provenance FAILS (names SC-026 + the lens)'
+# W46 (2026-08-22) ruled internal requirement ids OUT of emitted strings - they are Specrew's inside
+# voice and they collide with a consumer's own id namespace - so this refusal now names the MEANING
+# and the lens instead of 'SC-026'. The id lives in this comment, which is the sanctioned half of the
+# provenance rule. Pin the meaning; assert the id is gone rather than present.
+Assert-True ($scE1.Count -eq 1 -and (($scE1 -join '|') -match 'confirmation provenance') -and (($scE1 -join '|') -match "'a'")) 'missing confirmation provenance FAILS (names what is missing + the lens)'
+Assert-True ((($scE1 -join '|') -cnotmatch '\b(?:SC|FR|NFR)-[0-9]{1,4}\b')) 'the refusal carries no bare requirement id - W46'
 # (h) confirmation_required + invalid enum value -> FAIL
 [System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"full","moved_on":true,"confirmation":"agreed"}}}', [System.Text.UTF8Encoding]::new($false))
 Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 1) 'SC-026: invalid confirmation value (not in the enum) FAILS'

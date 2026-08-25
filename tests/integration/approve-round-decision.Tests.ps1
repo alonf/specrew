@@ -19,11 +19,12 @@ Set-StrictMode -Version Latest
 
 Describe 'T014: approving a round is a decision the system files, not an identifier the human invents' {
     BeforeAll {
+        . (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
         $script:Cli = Join-Path $script:RepoRoot 'scripts/specrew-review.ps1'
 
         function script:New-ApprovalProject {
-            param([Parameter(Mandatory)][string]$Root, [string]$AuthorizationRef = '')
+            param([Parameter(Mandatory)][string]$Root, [string]$AuthorizationRef = '', [switch]$NoCapture)
             New-Item -ItemType Directory -Path (Join-Path $Root 'specs/001-demo/iterations/007') -Force | Out-Null
             New-Item -ItemType Directory -Path (Join-Path $Root '.specrew') -Force | Out-Null
             & git -C $Root init -q 2>&1 | Out-Null
@@ -49,6 +50,16 @@ Describe 'T014: approving a round is a decision the system files, not an identif
             }
             [IO.File]::WriteAllText((Join-Path $Root '.specrew/reviewer-hosts.json'),
                 ($hosts | ConvertTo-Json -Depth 6 -Compress), [Text.UTF8Encoding]::new($false))
+            # W44 (2026-08-22) moved the authority for a round from the FLAG to the human's typed
+            # phrase: `--approve-round` relays an approval, it no longer is one. Every case here is
+            # about what the system does with an approval it HAS - minting one slot, reusing it,
+            # outranking a stale reference - so the fixture carries a genuine captured phrase, which
+            # is the state those cases always meant to describe. The case asserting the refusal
+            # WITHOUT one passes -NoCapture.
+            if (-not $NoCapture) {
+                $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $Root `
+                    -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            }
             return $Root
         }
 
@@ -109,10 +120,13 @@ Describe 'T014: approving a round is a decision the system files, not an identif
         # The defect that produced this task. A missing approval used to surface as
         # "requested-host-not-available: 'codex' is not installed+authorized+cataloged", which reads as
         # a missing TOOL and sends the consumer to reinstall something that works.
-        $root = script:New-ApprovalProject -Root (Join-Path $TestDrive 'no-approval')
+        $root = script:New-ApprovalProject -Root (Join-Path $TestDrive 'no-approval') -NoCapture
         $output = script:Invoke-Cli -Root $root
 
-        $output | Should -Match '(?i)needs your approval'
+        # W44 also changed WHOSE approval the sentence names: the refusal an agent reads says "the
+        # human's approval", because the agent is the reader and the human is the authority. The
+        # property is unchanged - the refusal names APPROVAL rather than a missing tool.
+        $output | Should -Match "(?i)needs the human's approval"
         $output | Should -Match ([regex]::Escape('specrew review --live --approve-round')) -Because 'a refusal must name the exact command that clears it'
 
         # THE NEGATIVE THAT MATTERS: it must not read as a broken installation.

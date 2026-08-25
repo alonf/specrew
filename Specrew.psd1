@@ -336,6 +336,7 @@
         'scripts/internal/host-flag-translation.ps1',
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
+        'scripts/internal/install-local-build.ps1',
         'scripts/internal/instruction-deploy.ps1',
         'scripts/internal/instruction-file-merge.ps1',
         'scripts/internal/invoke-module-release.ps1',

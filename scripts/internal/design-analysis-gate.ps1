@@ -163,7 +163,14 @@ function Get-SpecrewDesignAnalysisNamedOption {
     foreach ($match in $matchedItems) {
         $value = $match.Groups[1].Value.Trim()
         $normalized = if ($value -match '(?i)^option\s+([A-Z])$') {
-            'Option ' + $matchedItems[1].ToUpperInvariant()
+            # DRIFT-199-I001-134: W42 renamed the automatic `$Matches` to `$matchedItems` to remove
+            # the collision it was fixing - and the rename reached this line, where the index is
+            # into the CAPTURE GROUP of the `-match` above, not into the match COLLECTION. The
+            # result threw on every "Option X" text: out of range with one match, and a
+            # method-not-found on a Match object with more. Three suites had been failing on it,
+            # all of them outside the verification lanes. The capture is $Matches[1]; the
+            # collection stays $matchedItems.
+            'Option ' + $Matches[1].ToUpperInvariant()
         } elseif ($value -match '(?i)^by[-\s]?the[-\s]?book$') {
             'By-the-book'
         } elseif ($value -match '(?i)^simplest$') {

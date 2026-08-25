@@ -239,7 +239,7 @@ function Test-ReviewExaminedPathIsSource {
     # workflows as reviewable, so the two consumers disagreed. The exemption now names the
     # GOVERNANCE RECORDS and host mirrors it was always about; everything else under .github,
     # workflows and composite actions included, is reviewable source.
-    if ($p -match '(?i)^\.(specrew|squad|specify|agents|cursor|copilot|claude)/') { return $false }
+    if ($p -match '(?i)^(?:\.specrew|\.squad|\.specify|\.agents|\.cursor|\.copilot|\.claude)/') { return $false }
     if ($p -match '(?i)^\.github/(?:skills|agents|prompts|instructions|chatmodes|ISSUE_TEMPLATE)/') { return $false }
     if ($p -match '(?i)^\.github/[^/]+\.md$') { return $false }
     if ($p -match '(?i)\.(md|markdown|txt|rst|adoc)$') { return $false }

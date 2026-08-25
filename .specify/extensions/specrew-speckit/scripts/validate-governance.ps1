@@ -1132,7 +1132,10 @@ function Test-ReviewCitedRunEvidence {
 
         $weak = [System.Collections.Generic.List[string]]::new()
         if ([string]$result.completion -ne 'complete') { $weak.Add("completion '$([string]$result.completion)'") | Out-Null }
-        if ([string]$result.verdict -notin @('pass', 'findings')) { $weak.Add("verdict '$([string]$result.verdict)'") | Out-Null }
+        # DRIFT-199-I001-134: StrictMode-safe (see the target_digest precedent below). A result with
+        # no verdict is weak evidence, not a crash.
+        $citedVerdict = if ($result.PSObject.Properties['verdict']) { [string]$result.verdict } else { '' }
+        if ($citedVerdict -notin @('pass', 'findings')) { $weak.Add("verdict '$citedVerdict'") | Out-Null }
         if ([string]$result.currentness -ne 'current') { $weak.Add("currentness '$([string]$result.currentness)'") | Out-Null }
         # W38: `currentness` IS A FIELD THE RUN WROTE ABOUT THE TREE THAT EXISTED THEN.
         #
@@ -1266,7 +1269,7 @@ function Test-ReviewCitedRunEvidence {
                         $rel = $_.Trim().Replace([char]92, [char]47)
                         while ($rel.StartsWith('./')) { $rel = $rel.Substring(2) }
                         -not ($rel -match '(?i)^(specs|docs)/') -and
-                        -not ($rel -match '(?i)^\.(specrew|squad|specify|agents|cursor|copilot|claude)/') -and
+                        -not ($rel -match '(?i)^(?:\.specrew|\.squad|\.specify|\.agents|\.cursor|\.copilot|\.claude)/') -and
                         # Round-16 (DRIFT-199-I001-126): .github workflows and actions are executable
                         # source; only the governance records and host mirrors under it are records.
                         -not ($rel -match '(?i)^\.github/(?:skills|agents|prompts|instructions|chatmodes|ISSUE_TEMPLATE)/') -and
@@ -6072,4 +6075,4 @@ catch {
     }
     Write-ValidatorSummaryAndExit -ProjectRoot $summaryProjectRoot -ExitCode 1 -HardWarnings 1
 }
-# specrew-self-provenance-ok: DRIFT-198-I009-033,F-025,F-028,F-030,F-033,F-040,F-047,F-049; implementation history is recorded for maintainers and is never emitted as consumer instruction
+# specrew-self-provenance-ok: DRIFT-198-I009-033,DRIFT-199-I001-122,DRIFT-199-I001-126,F-025,F-028,F-030,F-033,F-040,F-047,F-049,DRIFT-199-I001-134; implementation history is recorded for maintainers and is never emitted as consumer instruction

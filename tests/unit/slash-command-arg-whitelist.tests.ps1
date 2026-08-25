@@ -139,6 +139,14 @@ Set-Content -LiteralPath (Join-Path $liveScratch 'README.md') -Value 'scratch' -
 & git -C $liveScratch add . 2>$null | Out-Null
 & git -C $liveScratch commit -m baseline 2>$null | Out-Null
 try {
+    # W44 (2026-08-22) put a captured-approval gate in front of --approve-round, so inside an agent
+    # session this command now refuses BEFORE the deterministic preflight this case is about. The
+    # subject here is the argument whitelist and the preflight refusal behind it, not the approval
+    # gate - so the fixture carries a genuine captured approval, exactly as an approved round does,
+    # and the case goes on measuring what its name says.
+    . (Join-Path $repoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+    $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $liveScratch `
+        -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
     $result = Invoke-Specrew -CommandArgs @('review', '--live', '--project-path', $liveScratch, '--feature', $liveFeature, '--iteration', $liveIteration, '--approve-round')
     Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --live passes whitelist check'
     Assert-True -Condition ($result.ExitCode -ne 0) -Message 'specrew review --live with incomplete deterministic preflight exits non-zero'

@@ -57,6 +57,15 @@ $fixtureRoot = Join-Path $repoRoot 'tests\integration\fixtures\feature-018-dashb
 
 . $rendererPath
 
+# DRIFT-199-I001-134: this file asserts what the renderer decides from TERMINAL CAPABILITY, and the
+# renderer also honours the ambient no-colour preference (NO_COLOR / --no-color) - which is set in
+# some agent sessions, including the one this walk ran in. With it set, every "rich" expectation
+# below reads monochrome and the suite fails for a reason that has nothing to do with the code.
+# Cleared for the duration and restored after, so the cases measure capability rather than the
+# machine they happen to run on. Same discipline as the TEMP restoration in the co-review suites.
+$script:PriorNoColor = $env:NO_COLOR
+[Environment]::SetEnvironmentVariable('NO_COLOR', $null)
+
 $richOverride = @{
     IsWindows              = $false
     Term                   = 'xterm-256color'
@@ -198,4 +207,7 @@ Assert-True -Condition ($recentEntryOne.label -ne $recentEntryTwo.label) -Messag
 Assert-True -Condition ($recentEntryOne.label -eq 'F-017 · iter-001') -Message 'Recent Shipped labels should combine the feature code with the iteration token.'
 
 Write-Pass 'Feature 018 dashboard unit coverage: render-profile precedence, rich rendering, override knobs, sparkline scope, roadmap truncation, and ANSI stripping with Unicode preservation'
+# Restore the ambient no-colour preference this file cleared at the top: a suite that mutates the
+# session and walks away is the shared-state defect recorded in DRIFT-199-I001-134.
+[Environment]::SetEnvironmentVariable('NO_COLOR', $script:PriorNoColor)
 exit 0

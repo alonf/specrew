@@ -265,7 +265,9 @@ try {
         [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"<TBD>","depth":"moderate"}}}', [System.Text.UTF8Encoding]::new($false))
         $sc021Blocked = $false
         try { Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature' | Out-Null }
-        catch { $sc021Blocked = ($_.Exception.Message -match 'SC-021' -and $_.Exception.Message -match 'architecture-core') }
+        # W46: the refusal names the lens and what is incomplete, not the requirement id (see the
+# design-analysis-gate suite for the same update). The id stays here, in the comment.
+catch { $sc021Blocked = ($_.Exception.Message -match 'architecture-core' -and $_.Exception.Message -cnotmatch '\b(?:SC|FR|NFR)-[0-9]{1,4}\b') }
         Assert-True $sc021Blocked 'SC-021: sync-specify is BLOCKED when an A4 workshop artifact has an incomplete per-lens record (names the lens)'
         [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
         $sc021Ok = Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature'
@@ -280,7 +282,8 @@ try {
         [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"confirmation_required":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
         $sc026Blocked = $false
         try { Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature' | Out-Null }
-        catch { $sc026Blocked = ($_.Exception.Message -match 'SC-026' -and $_.Exception.Message -match 'architecture-core') }
+        # W46: the refusal names the lens and the missing provenance, not the requirement id.
+        catch { $sc026Blocked = ($_.Exception.Message -match 'confirmation provenance' -and $_.Exception.Message -match 'architecture-core') }
         Assert-True $sc026Blocked 'SC-026: sync-specify is BLOCKED when a confirmation_required artifact omits a lens provenance (fires through the real gate entry, names the lens)'
         [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"confirmation_required":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true,"confirmation":"human-confirmed","confirmation_scope":"lens-question"}}}', [System.Text.UTF8Encoding]::new($false))
         $sc026Ok = Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature'
