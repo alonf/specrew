@@ -535,6 +535,55 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-134 - "lanes green" was never "no failing tests", and eight suites had been red for days (resolved)
+
+- **Observed**: 2026-08-25, by the maintainer, on being told that eight failures outside the
+  verification lanes were "pre-existing": *"what do you mean pre-existing, I thought we were in a no
+  failure situation"*. The word was doing exactly the work the cap-release notice's silence did one
+  ruling earlier - making an unmet condition sound like a settled one.
+- **The mechanism, measured**: the verification plan names 45 suite files across its three commands;
+  376 exist on disk. Every round of this walk ran the lanes, saw green, and reported green - while
+  331 suites went unrun and eight of them were red. The crew's own coverage instrument had a
+  coverage gap, and the report inherited it.
+- **The eight, each a real signal rather than noise:**
+  1. **Five authority controls had no consumer marker.** `review-round-approval`, `allowance-reset`,
+     `pause-decision`, `approval-withdrawal`, `coverage-deferral` - every one genuinely consumed in
+     production, none marked, so the derived audit could not see the contract it exists to enforce.
+     Markers added at the real consumption sites.
+  2-3. **Two pause-surface cases still asserted the pre-W49 numbered menu**, red since that ruling
+     landed. Updated to the ruled shape; the frozen FR-002/SC-001 text still says numbered, which
+     remains the maintainer's open reconciliation.
+  4. **A same-host advisory pin still expected W44's superseded imperative** ("Authorize an
+     INDEPENDENT reviewer once") after W44 turned it into an ask directed at the human.
+  5. **A scope pin still expected a task id inside emitted prose** that W46 had deliberately removed.
+  6. **The engine-baseline evidence case still asserted an EMPTY baseline** after W39 added exactly
+     one engine control variable. Rewritten to name the whole set, so a further addition still
+     demands its own runtime evidence - which is what that case is for.
+  7. **The flush-race forensic had its signature inverted, and the corpus proved it.** It flagged
+     "reread attempted, not recovered" as a suspect race; the five flagged records read 1739-3259
+     characters against twelve genuine six-header packets at 2465-5247. They are FULL-LENGTH prose
+     messages containing one to three '## ' headings, not truncated packet reads - and an attempted
+     reread that recovers nothing is the bounded tail-8 read CONFIRMING no packet is present. The
+     real gap is a partial read where the reread was never attempted; the rule now says so.
+  8. **A fail-open case was silently measuring the opposite of its own name.** Eight sibling suites
+     redirect `TEMP` to a repo-local scratch directory and none restored it, so a later case building
+     a "project with no git repo" fixture landed INSIDE this repository, git walked up to the
+     enclosing repo, the digest computed, and "claims nothing when the current tree cannot be
+     computed" tested a tree that could. Session-scoped environment mutation without restoration.
+     All eight now restore `TEMP`, and the affected case asserts its own precondition - a base
+     outside every git repository - so it cannot quietly invert again.
+- **The class**: three of the eight (2, 3, 4, 5, 6) are RULINGS THAT MOVED THE CODE AND LEFT THEIR
+  PINS BEHIND. A pin outside the lanes does not fail loudly when the rule it encodes is superseded;
+  it just sits red where nobody looks. Two more (7, 8) are checks that were measuring something
+  other than what they claimed, which is worse than a red - a green one of those is a false
+  assurance.
+- **Citation**: honest state - a count-claim must match the artifacts; the evidence rule - "the lanes
+  are green" is evidence about the lanes, not about the suite.
+- **Verification**: `tests/continuous-co-review/unit` now runs 1330 passed / 0 failed / 11 skipped,
+  from 1322/8. The disk-wide census (`tests/full-powershell-test-sweep.ps1`) is the instrument that
+  answers the question the lanes cannot, and the lane-coverage gap it measures is recorded here for
+  the maintainer: 45 of 376.
+
 ### DRIFT-199-I001-133 - round 22: authority machinery failed OPEN, and a damaged installation could authorize anything (resolved)
 
 - **Observed**: 2026-08-25, run-20260825-161544838-699496c4 - terminal, complete, current, ONE

@@ -7,6 +7,15 @@ Describe 'Proposal 197 T031 TG-011 reviewer host catalog obeys implementation-ru
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         $script:ScratchTmp = Join-Path $script:RepoRoot '.scratch/tmp'
         New-Item -ItemType Directory -Path $script:ScratchTmp -Force | Out-Null
+        # Round-23 (DRIFT-199-I001-134): CAPTURED so the redirect can be UNDONE. These suites point
+        # TEMP at a repo-local scratch dir on purpose, and none of them restored it - so every later
+        # suite in the same session inherited a TEMP INSIDE the repository. That silently broke a
+        # fail-open test elsewhere: its "project with no git repo" fixture landed inside this repo,
+        # git walked up to the enclosing repository, the digest computed after all, and the case
+        # asserting "claim nothing when the tree cannot be computed" measured the opposite of what it
+        # says. Session-scoped environment mutation without restoration is a shared-state defect.
+        $script:PriorTemp = $env:TEMP
+        $script:PriorTmp = $env:TMP
         $env:TEMP = $script:ScratchTmp
         $env:TMP = $script:ScratchTmp
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
@@ -273,5 +282,11 @@ Describe 'Proposal 197 T031 TG-011 reviewer host catalog obeys implementation-ru
         $source = Get-Content -LiteralPath $sourcePath -Raw
 
         $source | Should -Not -Match '(?i)web_search|Invoke-WebRequest|Invoke-RestMethod|curl\s+https?|fetch\s*\(|live web'
+    }
+
+    AfterAll {
+        # Restore the session TEMP so no later suite inherits a repo-local one (see BeforeAll).
+        [Environment]::SetEnvironmentVariable('TEMP', $script:PriorTemp)
+        [Environment]::SetEnvironmentVariable('TMP', $script:PriorTmp)
     }
 }

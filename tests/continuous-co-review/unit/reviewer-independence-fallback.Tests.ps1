@@ -142,7 +142,13 @@ Describe 'T093 navigator surfaces the same-host label + upgrade ask' {
             $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $repo
             $notes = @($reap.inject_notes) -join ' || '
             $notes | Should -Match 'SAME-HOST' -Because 'a same-host fallback review is surfaced as such (FR-035)'
-            $notes | Should -Match 'Authorize an INDEPENDENT reviewer once' -Because 'the one-time upgrade ask rides the surfaced verdict'
+            # W44 (2026-08-22) turned this advisory from an instruction the AGENT could act on
+            # ("Authorize an INDEPENDENT reviewer once") into an ask directed at the human, because
+            # approving a round is the human's act and an advisory that tells the agent to authorize
+            # is the shape W44 removed. The property is unchanged - the one-time upgrade ask rides
+            # the surfaced verdict - so the pin follows the ruled wording rather than the old one.
+            $notes | Should -Match 'approve an INDEPENDENT reviewer round once' -Because 'the one-time upgrade ask rides the surfaced verdict'
+            $notes | Should -Match 'Ask the human' -Because 'W44: the agent asks; the human authorizes'
         }
         finally {
             Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue

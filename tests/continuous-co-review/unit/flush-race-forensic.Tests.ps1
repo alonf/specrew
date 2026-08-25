@@ -48,8 +48,22 @@ Describe 'T109 flush-race forensic analyzer (D-197-I009-003 refuted; reopens on 
             # flushed packet read - the packet was mid-flush when read.
             if ($hits -ge 1 -and $hits -le 3) {
                 $message = ("{0}: blocked on a PARTIAL header read (dx_lat_hits={1} of 6, dx_lat_len={2}, reread_attempted={3}, reread_recovered={4})" -f $r.recorded_at, $hits, $len, $rereadAttempted, $rereadRecovered)
+                # MEASURED 2026-08-25 against this corpus, and it inverted the rule that stood here.
+                #
+                # The old suspect condition was "attempted AND not recovered", which flagged five
+                # post-mitigation records. Their read lengths are 1739-3259 characters, while the
+                # twelve genuine six-header packet reads in the same corpus run 2465-5247: the
+                # "partial" reads are FULL-LENGTH messages that happen to contain one to three '## '
+                # headings, not truncated reads of a packet. Ordinary prose with a heading, in other
+                # words - which the provider correctly blocked, because no packet was present.
+                #
+                # And the telemetry already carries the discriminator: a reread that was ATTEMPTED
+                # and did not recover is the bounded tail-8 read CONFIRMING the message has no
+                # packet. That is the mitigation working. What would be a real gap is a partial
+                # header read where the reread was never attempted at all, so the decision rested on
+                # one read of a message that might still have been mid-flush.
                 if (-not $hasMitigationTelemetry) { $historicalEvidence.Add($message) | Out-Null }
-                elseif (-not $rereadAttempted -or -not $rereadRecovered) { $suspects.Add($message) | Out-Null }
+                elseif (-not $rereadAttempted) { $suspects.Add($message) | Out-Null }
             }
         }
         ($suspects -join "`n") | Should -BeNullOrEmpty -Because 'post-mitigation partial reads must attempt and recover through the bounded tail-8 reread; pre-mitigation records remain preserved evidence'

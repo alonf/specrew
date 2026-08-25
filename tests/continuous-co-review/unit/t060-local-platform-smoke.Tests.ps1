@@ -38,7 +38,13 @@ Describe 'T060 local Windows and Linux smoke package' {
         $script:Source | Should -Match 'Complete one bounded risk-based code review'
         $script:Source | Should -Match 'Selected\s+live path: harness=\$HostName; platform=\$platformName'
         $script:Source | Should -Match 'Prioritize the common campaign/file contract plus\s+the selected harness adapter and selected OS runtime integration'
-        $script:Source | Should -Match 'T061 is the separate final independent signoff'
+        # W46 (2026-08-22) ruled internal task/requirement ids out of EMITTED strings, and this
+        # sentence is part of the reviewer's prompt - so "T061 is the separate final independent
+        # signoff" became "A separate final independent signoff follows." The scoping property the
+        # pin exists for is unchanged; only the id is gone, which is the rule working.
+        $script:Source | Should -Match 'separate final independent signoff'
+        [regex]::Match($script:Source, '(?s)A separate final independent signoff.{0,200}').Value |
+            Should -Not -Match '\bT0\d{2}\b' -Because 'W46: the id lives in comments, not in text a reviewer reads'
         $script:Source | Should -Match 'external provider-quota constraint as\s+execution context, not code-review'
         $script:Source | Should -Match 'Do not\s+review project-completion or gate status in this code-review run'
         $script:Source | Should -Match 'grounded\s+defect in the frozen code makes that\s+step unsafe or impossible'

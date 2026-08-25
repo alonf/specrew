@@ -165,10 +165,18 @@ Describe 'Campaign pause core (T001)' {
             $script:Surface | Should -Match '3 of 4'
         }
 
-        It 'offers numbered options and states that nothing spends until the human answers' {
-            $script:Surface | Should -Match '(?m)^\s*1\.'
-            $script:Surface | Should -Match '(?m)^\s*2\.'
-            $script:Surface | Should -Match '(?m)^\s*3\.'
+        It 'offers the three TYPED decisions and states that nothing spends until the human answers' {
+            # W49 (maintainer ruling, 2026-08-23) replaced the numbered menu with typed decisions,
+            # each carrying its consequence: a number indexes nothing a human can type, and numbered
+            # labels taught bare-number replies that are never authority in this system. This case
+            # asserted the superseded contract and had been red ever since - outside both verification
+            # lanes, which is why nobody saw it. Updated to the ruled shape; the FROZEN FR-002/SC-001
+            # text still says "numbered", and reconciling that is the maintainer's open item
+            # (DRIFT-199-I001-127/-131, five independent confirmations).
+            $script:Surface | Should -Match 'run another round'
+            $script:Surface | Should -Match 'stop the review here'
+            $script:Surface | Should -Match 'abandon this review campaign'
+            $script:Surface | Should -Not -Match '(?m)^\s*\d\.\s' -Because 'W49: the typed decision is the answer, not a number'
             $script:Surface | Should -Match '[Nn]othing runs and nothing is spent until you answer'
         }
 
@@ -178,15 +186,19 @@ Describe 'Campaign pause core (T001)' {
             }
         }
 
-        It 'renders the exhausted-budget refusal as prose with only two numbered options' {
+        It 'renders the exhausted-budget refusal as prose, withdrawing only the decision that spends' {
+            # Same W49 update. The property under test is unchanged and is the one that matters: with
+            # the allowance spent, the decision that would spend a round is WITHDRAWN from the menu
+            # while the two that spend nothing remain, and the replenishment path is named.
             $exhausted = Format-ReviewCampaignPauseSurface -ProjectName 'linkcheck' -Decision (
                 Resolve-ReviewCampaignPauseDecision -Findings @((script:New-Finding -Severity 'major')) -RoundsUsed 4 -BudgetTotal 4 -ElapsedMinutes 60
             )
             $exhausted | Should -Match '4 of 4'
             $exhausted | Should -Match 'allowance-reset'
-            $exhausted | Should -Not -Match '(?m)^\s*1\.'
-            $exhausted | Should -Match '(?m)^\s*2\.'
-            $exhausted | Should -Match '(?m)^\s*3\.'
+            $exhausted | Should -Not -Match 'run another round' -Because 'a menu must not offer a round it cannot grant'
+            $exhausted | Should -Match 'stop the review here'
+            $exhausted | Should -Match 'abandon this review campaign'
+            $exhausted | Should -Not -Match '(?m)^\s*\d\.\s'
         }
     }
 

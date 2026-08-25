@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "06772511ed77ef7e387237fc600a63e7203341eb00479db8bda3d76a756cca98",
+  "runtime_bundle_sha256": "b6eebaff8f525e74d52168587d7c13ce2c28f2dabd4c3a3bc2b415745fcc6af3",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -73,7 +73,7 @@
     },
     {
       "path": "review-authority-store.ps1",
-      "sha256": "ffc5f036892f57009b72832644244ffafc89c4014d674345f378d374b4ba43ca"
+      "sha256": "ec3dedcf0f58ed33202abe4a0c367300bef33186687300c6189eba45dddb00e6"
     },
     {
       "path": "review-blackboard-writer.ps1",

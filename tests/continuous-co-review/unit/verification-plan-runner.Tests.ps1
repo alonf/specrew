@@ -365,8 +365,14 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
         $result.all_succeeded | Should -BeTrue -Because 'the engine baseline (empty) is sufficient to launch a child on this platform - runtime evidence, not assertion'
         Get-Content -LiteralPath (Join-Path $repo 'launched.txt') -Raw | Should -Be 'ok'
-        # And the baseline function itself is EMPTY on this platform - any future addition demands new evidence.
-        @(Get-ContinuousCoReviewVerificationEngineBaseline).Count | Should -Be 0
+        # The baseline is EXACTLY the engine's own control variable, and nothing else. It was empty
+        # until W39 (2026-08-23) added SPECREW_REVIEW_PREFLIGHT - the marker that scopes ONE cited-run
+        # freshness rule out of a review preflight, so the round that would refresh a stale citation
+        # is not blocked by that citation. This case still carries the evidence the addition demands:
+        # the child above launched and exited 0, and the variable carries no value that changes what a
+        # command DOES. Any FURTHER addition demands its own paired runtime evidence, which is the
+        # standing rule this assertion enforces - by naming the whole set rather than counting it.
+        @(Get-ContinuousCoReviewVerificationEngineBaseline) | Should -Be @('SPECREW_REVIEW_PREFLIGHT')
         # The constructed map carries ONLY declared refs that exist ambiently - nothing implicit.
         @((Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs @()).Keys).Count | Should -Be 0
     }

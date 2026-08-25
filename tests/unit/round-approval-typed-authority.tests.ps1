@@ -1255,3 +1255,126 @@ Describe 'W64 round 22: authority machinery fails CLOSED, proven on a damaged in
     }
 }
 
+
+Describe 'W65 round 23: a PARTIAL authority store is a damaged one, and every fact file is classified' {
+    # Round-23 finding (DRIFT-199-I001-134): the round-22 readiness assertion checked only the two
+    # functions its own gate calls, while the same path later relies on the mint stamp, the
+    # ownership join, the entitlement resolver and the consumption - each behind an optional
+    # Get-Command branch. A partially deployed or validly TRUNCATED older store keeps the two
+    # checked functions and lacks the rest: the reviewer launches, the approval is never linked and
+    # never consumed, and a later invocation spends again. The allowance-reset assertion had the
+    # same gap around its consumption.
+    #
+    # AND THE FIXTURE COULD NOT HAVE SEEN IT: round 22's damaged installation deletes the WHOLE
+    # store, so every function vanishes together and the partial case never arises. Method rule 5,
+    # arriving against a fixture this crew wrote one round earlier - so this one truncates the store
+    # at a function boundary, which is exactly what an older deployed copy looks like.
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+
+        function script:New-PartialInstallation {
+            # Copy the shipped trees, then CUT the store at a named function - every function above
+            # the cut survives, everything from it down is gone. A truncated older store, verbatim.
+            param([Parameter(Mandatory)][string]$CutAtFunction)
+            $installRoot = Join-Path ([IO.Path]::GetTempPath()) ('w65-install-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
+            Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts') -Destination (Join-Path $installRoot 'scripts') -Recurse -Force
+            Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'extensions') -Destination (Join-Path $installRoot 'extensions') -Recurse -Force
+            $storePath = Join-Path $installRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1'
+            $text = Get-Content -LiteralPath $storePath -Raw -Encoding UTF8
+            $cutAt = $text.IndexOf("function $CutAtFunction")
+            if ($cutAt -lt 0) { throw "cut point not found: $CutAtFunction" }
+            Set-Content -LiteralPath $storePath -Value $text.Substring(0, $cutAt) -Encoding UTF8 -NoNewline
+            return $installRoot
+        }
+
+        function script:Invoke-InstallationCli {
+            param([Parameter(Mandatory)][string]$InstallRoot, [Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string[]]$CliArgs)
+            $cli = Join-Path $InstallRoot 'scripts/specrew-review.ps1'
+            $command = "`$env:CLAUDECODE = '1'; pwsh -NoProfile -File '" + $cli + "' -ProjectPath '" + $Root + "' -FeatureId 001-fixture --live " + ($CliArgs -join ' ') + "; exit `$LASTEXITCODE"
+            $output = @(& pwsh -NoProfile -Command $command 2>&1 | ForEach-Object { [string]$_ })
+            return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Text = ($output -join "`n") }
+        }
+    }
+
+    It 'ACCEPTANCE: a store missing the MINT and CONSUMPTION controls refuses to approve a round' {
+        # The store keeps Get-SpecrewReviewRoundApprovalAuthorization and
+        # Test-SpecrewInsideAgentSession - the two the round-22 assertion checked - and loses
+        # everything that links and retires the approval afterwards.
+        $installRoot = New-PartialInstallation -CutAtFunction 'Get-SpecrewPendingPauseIdentity'
+        $root = New-CampaignFixture
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $run = Invoke-InstallationCli -InstallRoot $installRoot -Root $root -CliArgs @('--approve-round')
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match '(?i)cannot check'
+            $run.Text | Should -Not -Match '(?i)Round approved' -Because 'launching a paid round whose approval can never be retired is the defect'
+            # And the human's approval is untouched: a refusal before the act spends nothing.
+            [string]((Get-Content (Join-Path $root '.specrew/review/round-approval/pending-round-approval.json') -Raw | ConvertFrom-Json).spent_at) |
+                Should -BeNullOrEmpty
+        }
+        finally {
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'the readiness sets name every authority function their own path calls' {
+        # Structural, and deliberately mechanical: the assertion must not drift behind the code it
+        # protects. Each required set is compared against the functions that path actually guards.
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        foreach ($required in @('Set-SpecrewReviewRoundApprovalMintedRef', 'Get-SpecrewDeliveredRoundForMintedRef',
+                'Complete-SpecrewReviewRoundApprovalAuthorization', 'Resolve-SpecrewRoundEntitlementOutcome')) {
+            $cli | Should -Match ("(?s)Assert-SpecrewAuthorityMachineryReady -Action 'approve a review round'.{0,900}?" + [regex]::Escape($required)) -Because "the round path calls $required"
+        }
+        $cli | Should -Match "(?s)Assert-SpecrewAuthorityMachineryReady -Action 'replenish the review rounds'.{0,600}?Complete-SpecrewAllowanceResetAuthorization" -Because 'the reset path consumes its own capture'
+    }
+
+    It 'BLOCKING-CLASS: an enumerated fact file that redirects elsewhere is refused, not followed' {
+        # Round-23 finding: the store checks its ROOT and the requested parent for links, then
+        # enumerates child JSON files and hands each absolute path straight to the reader. A
+        # symlinked fact file under an ordinary directory was therefore followed and its external
+        # target accepted after contract validation - the store's stated refusal of redirecting
+        # paths applied to directories only.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w65-store-' + [guid]::NewGuid().ToString('N'))
+        $store = Join-Path $root '.specrew/review/authority'
+        $outside = Join-Path $root 'outside'
+        New-Item -ItemType Directory -Path $outside -Force | Out-Null
+        $campaign = 'cmp-link-i001'
+        $grantsDir = Join-Path $store "campaigns/$campaign/grants"
+        New-Item -ItemType Directory -Path $grantsDir -Force | Out-Null
+        try {
+            $foreign = Join-Path $outside 'foreign-grant.json'
+            ([pscustomobject]@{ authority_kind = 'human'; authorization_ref = 'cmp-link-i001-round-9'; campaign_id = $campaign
+                    fact_type = 'grant'; grant_id = 'grant-forged1'; observed_at = '2026-08-25T10:00:00.0000000+00:00'
+                    schema_version = '1.0'; slots = 1 } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $foreign -Encoding UTF8
+            $link = Join-Path $grantsDir 'grant-forged1.json'
+            $made = $true
+            try { New-Item -ItemType SymbolicLink -Path $link -Target $foreign -ErrorAction Stop | Out-Null }
+            catch { $made = $false }
+            if (-not $made) { Set-ItResult -Skipped -Because 'this machine does not allow creating symlinks without elevation; the containment rule is pinned structurally below' }
+            else {
+                Test-ReviewAuthorityFactPathContained -Path $link | Should -BeFalse -Because 'a fact file that redirects out of the store is not a fact of this store'
+                $plain = Join-Path $grantsDir 'grant-real.json'
+                Copy-Item -LiteralPath $foreign -Destination $plain -Force
+                Test-ReviewAuthorityFactPathContained -Path $plain | Should -BeTrue -Because 'an ordinary file inside the store is fine'
+            }
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the ONE reader classifies the file, so every enumeration inherits the rule' {
+        # The module states that every read, write and enumeration resolves through one function,
+        # and that hardening it there covers the module rather than each call site. The file-level
+        # rule belongs in the same place: classified inside the reader, so an enumeration added
+        # later cannot forget it - which is how this defect happened, with directory containment
+        # hardened at the choke point and file containment left to the callers.
+        $storeSource = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-store.ps1') -Raw -Encoding UTF8
+        $storeSource.Contains('function Test-ReviewAuthorityFactPathContained') | Should -BeTrue -Because 'the containment rule needs a name to be reused'
+        $reader = [regex]::Match($storeSource, '(?s)function Read-ReviewAuthorityFactFile.{0,3000}?\n\}').Value
+        $reader | Should -Not -BeNullOrEmpty
+        $reader.Contains('Test-ReviewAuthorityFactPathContained') | Should -BeTrue -Because 'the file is classified before it is opened, at the point every caller passes through'
+    }
+}
+

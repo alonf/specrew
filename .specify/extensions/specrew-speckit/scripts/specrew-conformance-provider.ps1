@@ -1386,6 +1386,7 @@ try {
                 # does not. The ONE shared currency decision lives in shared-governance.
                 $deferralCurrent = $false
                 if ($null -ne $coverageDeferral -and (Get-Command Test-SpecrewCoverageDeferralCurrent -ErrorAction SilentlyContinue)) {
+                    # SPECREW-AUTHORITY-CONSUMER: coverage-deferral
                     try { $deferralCurrent = [bool](Test-SpecrewCoverageDeferralCurrent -ProjectRoot $projectRoot -Deferral $coverageDeferral -CoverageState $coverageDecisionState) } catch { $deferralCurrent = $false }
                 }
                 if (-not $deferralCurrent) { $coverageDecisionBlock = $true }

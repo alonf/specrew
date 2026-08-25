@@ -914,13 +914,17 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     try { . $humanAuthorityStorePathReset } catch { $null = $_ }
                 }
                 Assert-SpecrewAuthorityMachineryReady -Action 'replenish the review rounds' `
-                    -RequiredFunctions @('Get-SpecrewAllowanceResetAuthorization', 'Test-SpecrewInsideAgentSession')
+                    -RequiredFunctions @(
+                        'Get-SpecrewAllowanceResetAuthorization',
+                        'Complete-SpecrewAllowanceResetAuthorization',
+                        'Test-SpecrewInsideAgentSession')
                 $capturedAllowanceReset = $null
                 # Round-22: an UNKNOWN session context reads as an agent session - the answer that
                 # keeps the human's approval required. Assuming "not an agent" removes the
                 # requirement, which is the fail-open direction on an authority path.
                 $insideAgentSessionReset = $true
                 try { $insideAgentSessionReset = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSessionReset = $true }
+                # SPECREW-AUTHORITY-CONSUMER: allowance-reset
                 if (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue) {
                     try { $capturedAllowanceReset = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedAllowanceReset = $null }
                 }
@@ -1092,11 +1096,28 @@ if ($Live) {
                     -not (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue)) {
                     try { . $humanAuthorityStorePath } catch { $null = $_ }
                 }
+                # Round-23 (DRIFT-199-I001-134): EVERY function this path relies on, not just the
+                # two its first gate calls. A partially deployed or truncated older store keeps the
+                # readable-capture pair and loses the mint stamp, the ownership join, the entitlement
+                # resolver and the consumption - so the reviewer launches, the approval is never
+                # linked and never retired, and a later invocation spends again. A control set that
+                # names less than its own path protects less than its own path.
                 Assert-SpecrewAuthorityMachineryReady -Action 'approve a review round' `
-                    -RequiredFunctions @('Get-SpecrewReviewRoundApprovalAuthorization', 'Test-SpecrewInsideAgentSession')
+                    -RequiredFunctions @(
+                        'Get-SpecrewReviewRoundApprovalAuthorization',
+                        'Test-SpecrewInsideAgentSession',
+                        'Set-SpecrewReviewRoundApprovalMintedRef',
+                        'Get-SpecrewDeliveredRoundForMintedRef',
+                        'Complete-SpecrewReviewRoundApprovalAuthorization',
+                        'Resolve-SpecrewRoundEntitlementOutcome',
+                        'Write-SpecrewRoundDeliveryJournal',
+                        'Write-SpecrewUnconsumedDeliveryFact',
+                        'Get-SpecrewUnconsumedDeliveryFact',
+                        'Clear-SpecrewUnconsumedDeliveryFact')
                 # Round-22: unknown context reads as an agent session (see the reset path above).
                 $insideAgentSession = $true
                 try { $insideAgentSession = [bool](Test-SpecrewInsideAgentSession) } catch { $insideAgentSession = $true }
+                # SPECREW-AUTHORITY-CONSUMER: review-round-approval
                 if (Get-Command -Name 'Get-SpecrewReviewRoundApprovalAuthorization' -ErrorAction SilentlyContinue) {
                     try { $capturedRoundApproval = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedRoundApproval = $null }
                 }
@@ -1521,6 +1542,7 @@ if ($Live) {
                     (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
                     # Bound to the run being answered: a decision captured against another round, or
                     # against no pending pause at all, is not authority here.
+                    # SPECREW-AUTHORITY-CONSUMER: pause-decision
                     try { $pauseDecisionAuthorization = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -RunId $answeredRunId }
                     catch { $pauseDecisionAuthorization = $null }
                     if ((Test-SpecrewInsideAgentSession) -and $null -eq $pauseDecisionAuthorization) {

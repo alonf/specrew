@@ -165,6 +165,34 @@ function Write-ReviewAuthorityImmutableFact {
     }
 }
 
+function Test-ReviewAuthorityFactPathContained {
+    # Round-23 finding (DRIFT-199-I001-134): FILE-LEVEL CONTAINMENT, at the same choke point as
+    # directory-level containment.
+    #
+    # Get-ReviewAuthorityStorePath refuses a reparse point at the store root and at every existing
+    # ANCESTOR - but readers then enumerate child JSON files and hand each absolute path to the
+    # reader, and no one classified the FILE. A symlinked grant, reset, result, disposition, pause
+    # or claim file sitting under an ordinary directory was therefore followed, and its external
+    # target accepted once it passed contract validation: the store's stated refusal of redirecting
+    # paths applied to directories only. Fifth appearance of the containment class in this module,
+    # and the first at the leaf.
+    #
+    # DISCRIMINATES, as the ancestor walk does: a cloud placeholder redirects nothing - it IS the
+    # file with its content not yet local - and refusing it is what once made the product unusable
+    # from a OneDrive-backed folder. Links and unrecognised tags refuse; an absent file is not a
+    # redirect and is left to the reader's own not-found handling.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$Path)
+    try {
+        if (-not (Test-Path -LiteralPath $Path)) { return $true }
+        $item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+        $disposition = Get-SpecrewReparseDispositionForItem -Item $item
+        if (Test-SpecrewReparseRefusesRead -Disposition $disposition.disposition) { return $false }
+    }
+    catch { return $false }
+    return $true
+}
+
 function Read-ReviewAuthorityFactFile {
     [CmdletBinding()]
     param(
@@ -179,6 +207,11 @@ function Read-ReviewAuthorityFactFile {
         [AllowEmptyString()][string]$ExpectedTargetDigest = '',
         [int]$MaxBytes = 1048576
     )
+    # Round-23: classified BEFORE it is opened, here rather than at each call site, so an
+    # enumeration added later inherits the rule instead of having to remember it.
+    if (-not (Test-ReviewAuthorityFactPathContained -Path $Path)) {
+        throw "review-store-fact-link-unsupported:$Path"
+    }
     $stream = $null
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
         try { $stream = [System.IO.FileStream]::new($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read); break }

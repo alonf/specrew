@@ -535,7 +535,21 @@ Describe 'W31 a review record may not claim more than its cited run supports' {
     It 'claims nothing when the current tree cannot be computed' {
         # FAIL-OPEN: "I could not tell" must never manufacture staleness. A project with no git repo
         # cannot yield a digest, and the check must stay silent rather than refuse everything.
-        $root = Join-Path ([IO.Path]::GetTempPath()) ('w38ng-' + [guid]::NewGuid().ToString('N'))
+        # Round-23 (DRIFT-199-I001-134): THE FIXTURE STATES ITS OWN PRECONDITION. This case is about
+        # a project that CANNOT yield a digest, and it was silently measuring the opposite: eight
+        # sibling suites redirect TEMP into a repo-local scratch dir and never restore it, so the
+        # "no git repo" fixture landed INSIDE this repository, git walked up to the enclosing repo,
+        # the digest computed, and the fail-open path was never exercised. Those suites now restore
+        # TEMP; this picks a base that is genuinely outside any repository and refuses to pretend
+        # otherwise, so the case cannot quietly invert again.
+        $base = @([IO.Path]::GetTempPath(), [Environment]::GetEnvironmentVariable('TEMP', 'Machine'), [Environment]::GetFolderPath('UserProfile')) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) } |
+            Where-Object {
+                $null = & git -C $_ rev-parse --show-toplevel 2>&1
+                $LASTEXITCODE -ne 0
+            } | Select-Object -First 1
+        $base | Should -Not -BeNullOrEmpty -Because 'this case needs a directory outside every git repository to mean what it says'
+        $root = Join-Path $base ('w38ng-' + [guid]::NewGuid().ToString('N'))
         $runId = 'run-20260821-104557253-97c3785a'
         $runDir = Join-Path $root (Join-Path '.specrew' (Join-Path 'review' (Join-Path 'authority' (Join-Path 'campaigns' (Join-Path 'cmp-w38' (Join-Path 'runs' $runId))))))
         New-Item -ItemType Directory -Path $runDir -Force | Out-Null

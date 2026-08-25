@@ -863,6 +863,7 @@ function Update-SpecrewRollingHandover {
         # revokes - the CLI promises "say so, and nothing further runs", and a promise nothing reads
         # is not kept. Runs BEFORE the approval writer below so a turn cannot both withdraw and
         # re-approve; the recognizers are disjoint, and order makes that explicit rather than lucky.
+        # SPECREW-AUTHORITY-CONSUMER: approval-withdrawal
         if ((Get-Command Write-SpecrewApprovalWithdrawal -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
             try {
