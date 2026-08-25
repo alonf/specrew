@@ -1262,8 +1262,11 @@ if ($Live) {
                 if ($null -ne $capturedRoundApproval -and (Get-Command -Name 'Get-SpecrewDeliveredRoundForCapture' -ErrorAction SilentlyContinue)) {
                     $alreadyDelivered = $null
                     try {
+                        # Round-19 (DRIFT-199-I001-129): the STORED VALUE, never a rendering of it -
+                        # stringifying a Kind=Utc DateTime drops the frame and skews the comparison
+                        # by the machine's offset, which is how this block refused a fresh approval.
                         $alreadyDelivered = Get-SpecrewDeliveredRoundForCapture `
-                            -CaptureObservedAt ([string]$capturedRoundApproval.observed_at) -RunResults $campaignRunResults
+                            -CaptureObservedAt $capturedRoundApproval.observed_at -RunResults $campaignRunResults
                     }
                     catch { $alreadyDelivered = $null }
                     if ($null -ne $alreadyDelivered) {

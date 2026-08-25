@@ -535,6 +535,39 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-129 - the double-spend block refused the maintainer's own approval: an instant compared as a rendered string (resolved)
+
+- **Observed**: 2026-08-25, live. The maintainer typed `approved for review round`; the launch
+  refused with *"A review already ran on this approval - Specrew can see the completed round in its
+  own records"*, naming run-20260825-083804603-cc21ee4d. That run started at **08:52:55Z**; the
+  capture was observed at **09:16:59Z**. The round ran twenty-four minutes BEFORE the approval, and
+  the block that fired is the one this crew shipped one round earlier.
+- **Cause - a units mismatch in the authority layer, reachable only outside UTC.** Both timestamps
+  come back from `ConvertFrom-Json` as `[DateTime]` objects, not strings. PowerShell's `[string]`
+  cast renders a `Kind=Utc` value as a bare UTC clock (`08/25/2026 09:16:59`) but renders a value
+  parsed from a `+00:00` offset in LOCAL time (`08/25/2026 11:52:55`). Re-parsing both with
+  `RoundtripKind` then assumed local for each, so the capture landed at 06:16:59Z and the run at
+  08:52:55Z - the two instants compared in DIFFERENT FRAMES, skewed by the machine's +03:00 offset,
+  which inverted their order. On a UTC machine the defect is invisible.
+- **The shape worth carrying**: the helper's own contract said "unparseable evidence answers no
+  block", and nothing was unparseable - both values parsed cleanly into the WRONG instant. A guard
+  written to fail open failed CLOSED instead, against the human it exists to protect, because the
+  failure mode it anticipated was not the one it had.
+- **Resolution**: `ConvertTo-SpecrewAuthorityInstant` - objects keep their own instant
+  (`DateTimeOffset` as-is; `DateTime` by its Kind, Unspecified read as UTC because the store writes
+  UTC), and only genuine strings are parsed, with `AssumeUniversal` so a naive string is never read
+  as local. Every stored-time comparison in this store goes through it, and the CLI hands over the
+  STORED VALUE rather than a rendering of it - pinned structurally, since `[string]$fact.field` is
+  the exact keystroke that caused this.
+- **Nothing was lost**: the capture stayed unspent throughout, so the human's approval survived its
+  own false refusal - the entitlement rule holding under a defect in the code that implements it.
+- **Citation**: the W50 entitlement rule; the evidence rule - a comparison is evidence only if both
+  sides are measured in the same units.
+- **Verification**: four RED cases against the shipped build - the live false positive rebuilt from
+  the two exact stored shapes, the genuine block still firing, an equivalence matrix over
+  Z-suffixed / offset-bearing / DateTime-object spellings of one instant, and a structural pin
+  against re-stringifying - 51/51 in the authority suite after.
+
 ### DRIFT-199-I001-128 - round 18: the marker could fail for the same reason the stamp did (resolved; the FR-001/FR-002 conflict confirmed independently and still OPEN)
 
 - **Observed**: 2026-08-25, run-20260825-083804603-cc21ee4d - terminal, complete, current, two

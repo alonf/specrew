@@ -792,3 +792,49 @@ Describe 'W59 round 18: the double-spend block is derived from delivery evidence
         $mint.Contains('Get-SpecrewDeliveredRoundForCapture') | Should -BeTrue -Because 'the block survives a failed marker write only if it is derived from published evidence'
     }
 }
+
+Describe 'W60 the delivered-round comparison uses instants, not locale-rendered strings' {
+    BeforeAll { . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1') }
+
+    It 'THE LIVE FALSE POSITIVE: a fresh approval is not blocked by an EARLIER delivered round' {
+        # Round-19 walk (DRIFT-199-I001-129), found by the round-18 block refusing the maintainer's
+        # own approval: both timestamps arrive from ConvertFrom-Json as DateTime objects, and
+        # [string] renders a Kind=Utc value as a bare UTC clock while rendering a +00:00 value as
+        # LOCAL - so the two instants were compared in different frames and skewed by the machine's
+        # offset. The delivered round (08:52Z) predates the capture (09:16Z) and must not block it.
+        $stored = '{"observed_at":"2026-08-25T09:16:59.8263433Z"}' | ConvertFrom-Json
+        $run = '{"runtime_outcome":"completed","started_at":"2026-08-25T08:52:55.5802455+00:00","run_id":"run-earlier"}' | ConvertFrom-Json
+        Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $stored.observed_at -RunResults @($run) |
+            Should -BeNullOrEmpty -Because 'a round that ran BEFORE the human typed cannot have been bought by that approval'
+    }
+
+    It 'still blocks when the delivered round genuinely followed the approval, in the same shapes' {
+        $stored = '{"observed_at":"2026-08-25T09:16:59.8263433Z"}' | ConvertFrom-Json
+        $later = '{"runtime_outcome":"completed","started_at":"2026-08-25T10:30:00.0000000+00:00","run_id":"run-later"}' | ConvertFrom-Json
+        $blocked = Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $stored.observed_at -RunResults @($later)
+        $blocked | Should -Not -BeNullOrEmpty
+        [string]$blocked.run_id | Should -Be 'run-later'
+    }
+
+    It 'treats every stored time shape as the instant it names' {
+        # Offset-bearing, Z-suffixed, and DateTime objects of each Kind must all mean one instant.
+        $observedUtcString = '2026-08-25T09:00:00.0000000Z'
+        $observedOffsetString = '2026-08-25T12:00:00.0000000+03:00'   # the same instant, written differently
+        $runAt0930 = [pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T09:30:00.0000000Z'; run_id = 'run-0930' }
+        foreach ($shape in @($observedUtcString, $observedOffsetString, ([DateTime]::SpecifyKind([DateTime]::Parse('2026-08-25T09:00:00'), 'Utc')))) {
+            Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $shape -RunResults @($runAt0930) |
+                Should -Not -BeNullOrEmpty -Because '09:30Z follows 09:00Z however 09:00Z was written'
+        }
+        $runAt0830 = [pscustomobject]@{ runtime_outcome = 'completed'; started_at = '2026-08-25T08:30:00.0000000Z'; run_id = 'run-0830' }
+        foreach ($shape in @($observedUtcString, $observedOffsetString)) {
+            Get-SpecrewDeliveredRoundForCapture -CaptureObservedAt $shape -RunResults @($runAt0830) |
+                Should -BeNullOrEmpty -Because '08:30Z precedes 09:00Z however 09:00Z was written'
+        }
+    }
+
+    It 'the CLI hands the stored value over, not a locale rendering of it' {
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        $mint = [regex]::Match($cli, '(?s)\$approvalMinted = \$false.{0,20000}?\$approvalMinted = \$true').Value
+        $mint | Should -Not -Match '-CaptureObservedAt \(\[string\]' -Because 'stringifying a stored DateTime is what skewed the comparison by the machine offset'
+    }
+}

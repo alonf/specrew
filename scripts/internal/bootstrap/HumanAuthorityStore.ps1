@@ -506,6 +506,40 @@ function Get-SpecrewReviewRoundApprovalAuthorization {
     return $fact
 }
 
+function ConvertTo-SpecrewAuthorityInstant {
+    # W60 / round-19 walk (DRIFT-199-I001-129): AN INSTANT IS NOT A RENDERED STRING.
+    #
+    # Found by the round-18 double-spend block refusing the maintainer's own fresh approval. Both
+    # timestamps come back from ConvertFrom-Json as [DateTime] objects, and PowerShell's [string]
+    # cast renders a Kind=Utc value as a bare UTC clock while rendering a value parsed from a
+    # `+00:00` offset in LOCAL time. Re-parsing both then assumed local, so the two instants were
+    # compared in DIFFERENT FRAMES - skewed by the machine's offset, which on this machine turned
+    # "the round ran 24 minutes BEFORE you approved" into "after". A units mismatch, in the
+    # authority layer, reachable only outside UTC.
+    #
+    # Everything that compares stored times goes through this: objects keep their own instant, and
+    # only genuine strings are parsed - offset-bearing or Z-suffixed round-trip exactly, and a
+    # naive string is read as UTC rather than silently as local, because the store writes UTC.
+    [OutputType([object])]
+    [CmdletBinding()]
+    param([AllowNull()][object]$Value)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [DateTimeOffset]) { return $Value }
+    if ($Value -is [DateTime]) {
+        $dt = [DateTime]$Value
+        if ($dt.Kind -eq [DateTimeKind]::Unspecified) { $dt = [DateTime]::SpecifyKind($dt, [DateTimeKind]::Utc) }
+        return [DateTimeOffset]::new($dt)
+    }
+    $text = ([string]$Value).Trim()
+    if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+    $parsed = [DateTimeOffset]::MinValue
+    if ([DateTimeOffset]::TryParse($text, [Globalization.CultureInfo]::InvariantCulture,
+            ([Globalization.DateTimeStyles]::RoundtripKind -bor [Globalization.DateTimeStyles]::AssumeUniversal), [ref]$parsed)) {
+        return $parsed
+    }
+    return $null
+}
+
 function Get-SpecrewDeliveredRoundForCapture {
     # W59 / round-18 finding (DRIFT-199-I001-128): DERIVE THE BLOCK FROM EVIDENCE THAT ALREADY
     # EXISTS, not from a marker written at the moment of failure.
@@ -522,20 +556,20 @@ function Get-SpecrewDeliveredRoundForCapture {
     # evidence, and this must never fabricate a block that locks a human out of a round they own.
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][AllowEmptyString()][string]$CaptureObservedAt,
+        [Parameter(Mandatory)][AllowNull()][object]$CaptureObservedAt,
         [AllowNull()][object[]]$RunResults
     )
-    if ([string]::IsNullOrWhiteSpace($CaptureObservedAt) -or $null -eq $RunResults) { return $null }
-    $observed = [DateTimeOffset]::MinValue
-    if (-not [DateTimeOffset]::TryParse($CaptureObservedAt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$observed)) { return $null }
+    if ($null -eq $CaptureObservedAt -or $null -eq $RunResults) { return $null }
+    $observed = ConvertTo-SpecrewAuthorityInstant -Value $CaptureObservedAt
+    if ($null -eq $observed) { return $null }
     foreach ($run in @($RunResults)) {
         if ($null -eq $run) { continue }
         $outcomeProperty = $run.PSObject.Properties['runtime_outcome']
         if (-not $outcomeProperty -or [string]$outcomeProperty.Value -cne 'completed') { continue }
         $startedProperty = $run.PSObject.Properties['started_at']
         if (-not $startedProperty) { continue }
-        $started = [DateTimeOffset]::MinValue
-        if (-not [DateTimeOffset]::TryParse([string]$startedProperty.Value, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind, [ref]$started)) { continue }
+        $started = ConvertTo-SpecrewAuthorityInstant -Value $startedProperty.Value
+        if ($null -eq $started) { continue }
         if ($started -gt $observed) { return $run }
     }
     return $null
