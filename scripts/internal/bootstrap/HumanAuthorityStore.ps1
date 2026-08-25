@@ -550,6 +550,37 @@ function Get-SpecrewPauseDecisionRoot {
     return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/pause-decision'
 }
 
+function Get-SpecrewPendingPauseIdentity {
+    # W63 / round-21 finding (DRIFT-199-I001-132): which pause is waiting for an answer right now.
+    # Read from the store's own published fact (campaigns/<id>/runs/<run>/pending-pause.json) so a
+    # captured decision can be BOUND to the round it answers. Returns $null when nothing is pending -
+    # which is itself the answer: a decision typed against no pause authorizes no pause.
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $campaignsRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/authority/campaigns'
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return $null }
+    $newest = $null
+    $newestAt = [DateTimeOffset]::MinValue
+    try {
+        foreach ($pauseFile in @(Get-ChildItem -LiteralPath $campaignsRoot -Filter 'pending-pause.json' -File -Recurse -ErrorAction SilentlyContinue)) {
+            $pause = $null
+            try { $pause = Get-Content -LiteralPath $pauseFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 -ErrorAction Stop } catch { continue }
+            if ($null -eq $pause -or -not $pause.PSObject.Properties['run_id']) { continue }
+            $observed = $null
+            if ($pause.PSObject.Properties['observed_at']) { $observed = ConvertTo-SpecrewAuthorityInstant -Value $pause.observed_at }
+            if ($null -eq $observed) { $observed = [DateTimeOffset]::MinValue }
+            if ($null -eq $newest -or $observed -gt $newestAt) { $newest = $pause; $newestAt = $observed }
+        }
+    }
+    catch { return $null }
+    if ($null -eq $newest) { return $null }
+    return [pscustomobject]@{
+        campaign_id = $(if ($newest.PSObject.Properties['campaign_id']) { [string]$newest.campaign_id } else { '' })
+        run_id = [string]$newest.run_id
+        target_digest = $(if ($newest.PSObject.Properties['target_digest']) { [string]$newest.target_digest } else { '' })
+    }
+}
+
 function Test-SpecrewPauseDecisionPhrase {
     # W62 / round-20 finding (DRIFT-199-I001-131): EVERY PAUSE CHOICE CARRIES THE HUMAN.
     #
@@ -609,6 +640,13 @@ function Write-SpecrewPauseDecisionAuthorization {
     }
     $recognized = Test-SpecrewPauseDecisionPhrase -Text $Response
     if (-not [bool]$recognized.Matched) { return $null }
+    # Round-21 finding (DRIFT-199-I001-132): A DECISION ANSWERS ONE PAUSE.
+    #
+    # The first cut recorded only the choice, so a phrase typed in an unrelated conversation - or
+    # against a campaign closed weeks ago - became a standing project-wide capability an agent could
+    # apply to whatever pause happened to be current. The capture now binds to the pause that was
+    # PENDING when the human typed, and a decision bound to nothing answers nothing.
+    $pending = Get-SpecrewPendingPauseIdentity -ProjectRoot $ProjectRoot
     $root = Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot
     [IO.Directory]::CreateDirectory($root) | Out-Null
     $path = Join-Path $root (([string]$recognized.Choice) + '.json')
@@ -618,14 +656,21 @@ function Write-SpecrewPauseDecisionAuthorization {
         verdict_text = [string]$recognized.Phrase
         response_hash = Get-SpecrewHumanAuthorityHash -Text ([string]$recognized.Phrase)
         evidence_source = $evidenceSource; source_event = $event; host_kind = [string]$HostKind
+        campaign_id = $(if ($null -ne $pending) { [string]$pending.campaign_id } else { '' })
+        run_id = $(if ($null -ne $pending) { [string]$pending.run_id } else { '' })
+        target_digest = $(if ($null -ne $pending) { [string]$pending.target_digest } else { '' })
         observed_at = $NowUtc; spent_at = $null; authorization_ref = $null
     }
     if ([IO.File]::Exists($path)) {
         $existing = $null
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $existing = $null }
+        # Same act = same phrase AND same pause. Round-21: without the second half, a phrase typed
+        # once while nothing was pending was returned forever - so the human re-typing it against a
+        # REAL pause got their old unbound record back and the decision could never bind.
         if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
-            [string]$existing.response_hash -ceq [string]$fact.response_hash) { return $existing }
+            [string]$existing.response_hash -ceq [string]$fact.response_hash -and
+            [string]$(if ($existing.PSObject.Properties['run_id']) { $existing.run_id } else { '' }) -ceq [string]$fact.run_id) { return $existing }
     }
     $json = $fact | ConvertTo-Json -Depth 8
     if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
@@ -640,7 +685,11 @@ function Get-SpecrewPauseDecisionAuthorization {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
-        [Parameter(Mandatory)][ValidateSet('stop-here', 'abandon')][string]$Choice
+        [Parameter(Mandatory)][ValidateSet('stop-here', 'abandon')][string]$Choice,
+        # Round-21 (DRIFT-199-I001-132): the run this decision must answer. A decision bound to a
+        # different round - or to no pause at all - is not authority for THIS one. Omitted only by
+        # readers that are reporting rather than authorizing.
+        [AllowNull()][string]$RunId
     )
     $path = Join-Path (Get-SpecrewPauseDecisionRoot -ProjectRoot $ProjectRoot) ($Choice + '.json')
     if (-not [IO.File]::Exists($path)) { return $null }
@@ -658,6 +707,11 @@ function Get-SpecrewPauseDecisionAuthorization {
     $recognized = Test-SpecrewPauseDecisionPhrase -Text ([string]$fact.verdict_text)
     if (-not [bool]$recognized.Matched -or [string]$recognized.Choice -cne $Choice) { return $null }
     if ($fact.PSObject.Properties['spent_at'] -and -not [string]::IsNullOrWhiteSpace([string]$fact.spent_at)) { return $null }
+    if (-not [string]::IsNullOrWhiteSpace($RunId)) {
+        $boundRun = if ($fact.PSObject.Properties['run_id']) { [string]$fact.run_id } else { '' }
+        # Unbound (typed when no pause was pending) or bound elsewhere: not authority for this round.
+        if ([string]::IsNullOrWhiteSpace($boundRun) -or $boundRun -cne $RunId) { return $null }
+    }
     return $fact
 }
 

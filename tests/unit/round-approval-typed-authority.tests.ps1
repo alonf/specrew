@@ -1032,3 +1032,133 @@ Describe 'W62 round 20: a condition defers every authority, and no pause choice 
     }
 }
 
+
+Describe 'W63 round 21: the pause gate must actually run, be bound to its pause, and retire on every branch' {
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        # A fixture with a REAL pending pause: the decision gate correctly sits after "is a round
+        # waiting for an answer?", because a decision cannot authorize an answer to a pause that
+        # does not exist. Built with the engine's own writers so the shape is the shipped one.
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        function script:New-PendingPauseFixture {
+            $root = New-CampaignFixture
+            $store = Join-Path $root '.specrew/review/authority'
+            $campaign = 'cmp-001-fixture-i001'
+            $runId = 'run-20260825-000000000-abcdabcd'
+            Request-ReviewAuthorityClaim -StoreRoot $store -CampaignId $campaign -RunId $runId -TargetLineage 'lin-fixture' -ObservedAt '2026-08-25T10:00:00Z' | Out-Null
+            Publish-ReviewRunResultFact -StoreRoot $store -CampaignId $campaign -RunId $runId -Fact ([pscustomobject][ordered]@{
+                    schema_version = '1.0'; campaign_id = $campaign; run_id = $runId; target_digest = 'digest-fixture'
+                    harness_id = 'fixture'; completion = 'complete'; verdict = 'findings'; runtime_outcome = 'completed'
+                    termination_verified = $true; containment = 'verified'; currentness = 'current'; validation = 'valid'
+                    can_approve_current = $false; summary = 'one major'
+                    findings = @([pscustomobject][ordered]@{ finding_id = 'finding-1'; source_local_id = 'l1'; lineage_id = 'lin-fixture'
+                            severity = 'major'; title = 'A major'; description = 'Failure scenario: something concrete goes wrong.'
+                            location = 'app.txt:1'; relevance = 'current'; resolution = 'open' })
+                    started_at = '2026-08-25T10:00:00Z'; ended_at = '2026-08-25T10:05:00Z'; duration_ms = 300000
+                }) | Out-Null
+            Write-ReviewCampaignPendingPauseFact -StoreRoot $store -Fact ([pscustomobject][ordered]@{
+                    schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = $campaign; run_id = $runId
+                    target_digest = 'digest-fixture'; blocking_count = 0; major_count = 1; minor_count = 0
+                    demoted_count = 0; rounds_used = 1; budget_total = 4; elapsed_minutes = 5.0
+                    recommendation = 'Look at the major findings.'; observed_at = '2026-08-25T10:06:00.0000000+00:00'
+                }) | Out-Null
+            return $root
+        }
+    }
+
+    It 'ACCEPTANCE: an agent relaying pause-choice 2 with no captured decision is refused, through the real CLI' {
+        # Round-21 finding, named by the reviewer only in passing ("after the load-path defect is
+        # fixed"): the round-20 gate was UNREACHABLE. HumanAuthorityStore is dot-sourced only when
+        # $roundApprovalRequested is true - that is --approve-round or pause-choice 1 - so for
+        # choices 2 and 3 the store never loaded, every Get-Command guard failed, and the gate that
+        # was supposed to stop an agent manufacturing sign-off was skipped entirely. A control that
+        # exists and never executes: the class this project already has a method rule about, and the
+        # reason this case drives the SHIPPED CLI rather than the function.
+        $root = New-PendingPauseFixture
+        try {
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '2')
+            $run.Text | Should -Match 'no decision from them has been captured'
+            $run.Text | Should -Match 'stop the review here'
+            $run.ExitCode | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'ACCEPTANCE: abandoning is gated the same way, and names its own phrase' {
+        $root = New-PendingPauseFixture
+        try {
+            $run = Invoke-ReviewCli -Root $root -Context 'agent' -CliArgs @('--pause-choice', '3')
+            $run.Text | Should -Match 'no decision from them has been captured'
+            $run.Text | Should -Match 'abandon this review campaign'
+            $run.ExitCode | Should -Be 1
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a captured decision is bound to the pause it answers, not to the project forever' {
+        # Round-21 finding: the fact carried only the choice, so a phrase typed in an unrelated
+        # conversation - or against a campaign that closed weeks ago - became a standing project-wide
+        # capability an agent could apply to whatever pause happened to be current. A decision
+        # answers ONE pending pause.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w63-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            # No pause pending: a decision typed now answers nothing and must not be standing authority.
+            $orphan = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $orphan | Should -Not -BeNullOrEmpty -Because 'the human did type it; the record is honest about what it answers'
+            [string]$orphan.run_id | Should -BeNullOrEmpty
+            Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -RunId 'run-current' |
+                Should -BeNullOrEmpty -Because 'a decision bound to no pause cannot answer this one'
+
+            # With a pause pending, the capture binds to that run and answers only it.
+            $campaign = 'cmp-fixture-i001'
+            $pauseDir = Join-Path $root ".specrew/review/authority/campaigns/$campaign/runs/run-current"
+            New-Item -ItemType Directory -Path $pauseDir -Force | Out-Null
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = $campaign
+                    run_id = 'run-current'; target_digest = 'digest-1'; blocking_count = 0; major_count = 1
+                    minor_count = 0; demoted_count = 0; rounds_used = 1; budget_total = 4; elapsed_minutes = 5.0
+                    recommendation = 'Look at the major findings.'; observed_at = '2026-08-25T10:00:00.0000000+00:00' } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $pauseDir 'pending-pause.json') -Encoding UTF8
+
+            $bound = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            [string]$bound.run_id | Should -Be 'run-current'
+            [string]$bound.campaign_id | Should -Be $campaign
+            Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -RunId 'run-current' |
+                Should -Not -BeNullOrEmpty
+            Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -RunId 'run-somewhere-else' |
+                Should -BeNullOrEmpty -Because 'this decision answered a different round'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the abandon branch retires its decision too, so it cannot answer a later campaign' {
+        # Round-21 finding: only the stop-here branch consumed the authorization; abandoning wrote
+        # the immutable pause decision and exited, leaving the captured phrase unspent and reusable.
+        $cli = Get-Content -LiteralPath $script:ReviewCli -Raw -Encoding UTF8
+        ([regex]::Matches($cli, [regex]::Escape('Complete-SpecrewPauseDecisionAuthorization'))).Count |
+            Should -BeGreaterOrEqual 2 -Because 'both landings that use a decision must retire it'
+    }
+
+    It 'BLOCKING-CLASS: a conditional wearing a modifier still defers' {
+        # Round-21 finding: the round-20 post-delimiter check matched a conditional only at the very
+        # START of the tail, so the commonest English forms - "only if", "but only if" - sailed
+        # through with a clean pre-comma clause. Modifiers before the conjunction do not make the
+        # condition stop being one.
+        foreach ($text in @('approved for plan, only if the tests pass',
+                'approved for plan, but only if the tests pass',
+                'approved for tasks - but only when codex agrees',
+                'approved for implement, just once the lanes are green',
+                'approved for plan; and only after the walk')) {
+            [bool](Test-SpecrewHumanVerdictToken -Text $text).IsApproval | Should -BeFalse -Because $text
+        }
+        # And the instruction forms this must not eat keep approving.
+        foreach ($text in @('approved for tasks, and send back the draft doc when you are done',
+                'approved for plan. changes needed in the README are noted for later',
+                'approved for implement. should I also update the changelog?',
+                'approved for before-implement - then discuss prompt 2 with me')) {
+            [bool](Test-SpecrewHumanVerdictToken -Text $text).IsApproval | Should -BeTrue -Because $text
+        }
+    }
+}
+

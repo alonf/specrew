@@ -535,6 +535,56 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-132 - round 21: the gate that guarded sign-off never ran (3 of 4 resolved; the requirement conflict OPEN, fifth confirmation)
+
+- **Observed**: 2026-08-25, run-20260825-<round-21> - terminal, complete, current, four findings, all
+  demoted to minor and all real. The sharpest one is not a finding at all: two of them referred, in
+  passing, to "the load-path defect" and "after the CLI load bug is fixed".
+- **THE UNREACHABLE GATE.** Round 20 added a gate so an agent could not manufacture the human's
+  sign-off through `--pause-choice 2`. `HumanAuthorityStore.ps1` is dot-sourced only when
+  `$roundApprovalRequested` is true - `--approve-round` or pause-choice 1 - and choices 2 and 3 are
+  by definition neither. So the store never loaded, every `Get-Command` guard in the new gate
+  failed, and the gate was skipped entirely. **The hole reported as blocking in round 20 was still
+  open after round 20 fixed it**, and the reviewer noticed only as an aside while describing two
+  other defects. This is the class this project already carries a method rule about - a control
+  that exists, reads correctly, and never executes - now with the sharpest instance yet, because
+  the guard's OWN Get-Command idiom is what silenced it. The acceptance cases for it now drive the
+  SHIPPED CLI end to end, in both choices, with a real pending pause: a function-level test would
+  have passed against the unreachable gate exactly as the unit tests did.
+- **A decision was project-wide and permanent.** The fact carried only the choice, so a phrase typed
+  in an unrelated conversation - or against a campaign closed weeks earlier - became a standing
+  capability an agent could apply to whatever pause happened to be current. The capture now binds to
+  the pause PENDING when the human typed (campaign, run, target digest, read from the store's own
+  published fact), the getter requires the run it is answering, and a decision bound to nothing
+  authorizes nothing. The same-act dedupe was narrowed with it: same phrase AND same pause, or a
+  human re-typing against a real pause would have got their old unbound record back forever.
+- **Abandoning never retired its decision.** Only the stop-here branch consumed the authorization;
+  abandon wrote the immutable pause decision and exited, leaving the phrase unspent and able to
+  abandon a LATER campaign with no new human act. One decision, one landing - on every branch that
+  lands.
+- **Modifiers do not disarm a condition.** Round 20's post-delimiter check matched a conditional
+  only at the very start of the trailing clause, so the commonest English forms - `only if`,
+  `but only if`, `and only after` - passed with a clean pre-delimiter clause. Leading modifiers are
+  stripped before the test; the conjunction must still OPEN what remains, which keeps an
+  instruction that merely contains a deferral word an approval.
+- **A hazard this work created and then hit**: the new gate contained two inline
+  `if ($choice -ceq 'stop-here')` expressions, which matched the ANCHOR of an existing structural
+  pin in `campaign-pause-wiring`. Its non-greedy match ended on the new fragment instead of the real
+  branch and reported an ordering regression that did not exist. Rewritten as a lookup, with the
+  reason recorded at the site. Source-text pins are cheap and this is their failure mode: they are
+  matched against a file that later grows text resembling their anchor.
+- **OPEN, fifth confirmation.** The numbered-options conflict again, with a new observation worth
+  the maintainer's attention: now that the CLI REQUIRES a captured typed decision for choices 2 and
+  3, a bare `2` typed in chat - which SC-001's numbered contract instructs - creates no authority at
+  all. Under W49 the menu shows the phrases, so the shipped surfaces are self-consistent; against
+  the frozen contract they are not. The two halves of the conflict have now converged into one
+  question about what the human is told to type.
+- **Verification**: five RED cases - both CLI acceptance refusals through the shipped command with a
+  real pending pause, the binding matrix (unbound answers nothing, bound answers only its run), the
+  abandon-retire pin, and five modifier-conditional shapes against four instruction shapes that must
+  still approve - 66/66 in the authority suite, 88/88 across the pause and authority suites
+  together, capture and verdict-capture green, all three plan commands green.
+
 ### DRIFT-199-I001-131 - round 20: a conditional boundary verdict crossed immediately, and a pause flag minted a human (2 of 3 resolved; the requirement conflict OPEN, fourth confirmation)
 
 - **Observed**: 2026-08-25, run-20260825-<round-20> - terminal, complete, current, three findings,

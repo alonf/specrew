@@ -230,9 +230,21 @@ function Test-SpecrewHumanVerdictToken {
         # grammatical, not positional: a conditional CONJUNCTION opening the trailing clause governs
         # the approval, whereas a deferral word buried inside an instruction does not.
         $tailParts = [regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s', 2)
-        if (@($tailParts).Count -gt 1 -and
-            ([string]$tailParts[1]).TrimStart() -match '^(later|after|once|when|unless|if|provided|assuming|contingent|subject\s+to)\b') {
-            $deferred = $true
+        if (@($tailParts).Count -gt 1) {
+            # Round-21 finding (DRIFT-199-I001-132): MODIFIERS DO NOT DISARM A CONDITION. The
+            # round-20 check matched a conditional only at the very START of the trailing clause, so
+            # the commonest English forms - "only if", "but only if", "and only after" - passed with
+            # a clean pre-delimiter clause. Leading modifiers are stripped before the test; the
+            # conjunction still has to OPEN what remains, which is what keeps an instruction that
+            # merely contains a deferral word ("and send back the draft doc when you are done") an
+            # approval.
+            $trailingClause = ([string]$tailParts[1]).TrimStart()
+            while ($trailingClause -match '^(?:but|only|just|and|then|also|please|strictly)\s+') {
+                $trailingClause = ($trailingClause -replace '^(?:but|only|just|and|then|also|please|strictly)\s+', '').TrimStart()
+            }
+            if ($trailingClause -match '^(later|after|once|when|unless|if|provided|assuming|contingent|subject\s+to)\b') {
+                $deferred = $true
+            }
         }
 
         if ($isRecognizedPhrase -and -not $deferred) {

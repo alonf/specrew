@@ -1469,17 +1469,36 @@ if ($Live) {
                 # Same shape as W44: inside an agent session the typed decision must be captured; a
                 # human at their own terminal is self-evidently authorized by their own invocation.
                 $pauseDecisionAuthorization = $null
+                if ($choice -cin @('stop-here', 'abandon')) {
+                    # Round-21 finding (DRIFT-199-I001-132): LOAD THE STORE ON THIS PATH TOO. The
+                    # round-20 gate was unreachable - HumanAuthorityStore is dot-sourced only when a
+                    # ROUND approval is requested, which choices 2 and 3 never are, so every
+                    # Get-Command guard below failed and the gate protecting sign-off was skipped
+                    # entirely. A control that exists and never executes, in the same file that
+                    # already carries the method rule about exactly that.
+                    $pauseStorePath = Join-Path $PSScriptRoot 'internal/bootstrap/HumanAuthorityStore.ps1'
+                    if ((Test-Path -LiteralPath $pauseStorePath -PathType Leaf) -and
+                        -not (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                        try { . $pauseStorePath } catch { $null = $_ }
+                    }
+                }
                 if ($choice -cin @('stop-here', 'abandon') -and
                     (Get-Command -Name 'Test-SpecrewInsideAgentSession' -ErrorAction SilentlyContinue) -and
                     (Get-Command -Name 'Get-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
-                    try { $pauseDecisionAuthorization = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice }
+                    # Bound to the run being answered: a decision captured against another round, or
+                    # against no pending pause at all, is not authority here.
+                    try { $pauseDecisionAuthorization = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -RunId $answeredRunId }
                     catch { $pauseDecisionAuthorization = $null }
                     if ((Test-SpecrewInsideAgentSession) -and $null -eq $pauseDecisionAuthorization) {
-                        $decisionPhrase = if ($choice -ceq 'stop-here') { 'stop the review here' } else { 'abandon this review campaign' }
-                        $decisionEffect = if ($choice -ceq 'stop-here') {
-                            'Stopping here records their acceptance of the remaining findings and completes review sign-off.'
-                        }
-                        else { 'Abandoning ends the campaign; nothing further runs and nothing is signed off.' }
+                        # Looked up rather than branched: an inline `if ($choice -ceq 'stop-here')`
+                        # here matches the anchor of the ordering pin in campaign-pause-wiring, whose
+                        # non-greedy match then ends on this fragment instead of the real branch and
+                        # reports a regression that does not exist. Found by breaking it (round 21).
+                        $decisionPhrase = @{ 'stop-here' = 'stop the review here'; 'abandon' = 'abandon this review campaign' }[$choice]
+                        $decisionEffect = @{
+                            'stop-here' = 'Stopping here records their acceptance of the remaining findings and completes review sign-off.'
+                            'abandon'   = 'Abandoning ends the campaign; nothing further runs and nothing is signed off.'
+                        }[$choice]
                         Write-Host 'That decision is the human''s, and no decision from them has been captured.' -ForegroundColor Yellow
                         Write-Host ''
                         Write-Host $decisionEffect
@@ -1570,6 +1589,18 @@ if ($Live) {
                 Write-ReviewCampaignPauseDecisionFact -StoreRoot $campaignStoreRoot -Fact $decisionFact | Out-Null
 
                 if ($choice -ceq 'abandon') {
+                    # Round-21 finding (DRIFT-199-I001-132): this branch used the human's decision and
+                    # walked away without retiring it, leaving the captured phrase unspent and able to
+                    # abandon a LATER campaign with no new human act. One decision, one landing -
+                    # on every branch that lands, not only the one that was written first.
+                    if ($null -ne $pauseDecisionAuthorization -and (Get-Command -Name 'Complete-SpecrewPauseDecisionAuthorization' -ErrorAction SilentlyContinue)) {
+                        $abandonConsumption = $null
+                        try { $abandonConsumption = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $resolvedProjectPath -Choice $choice -AuthorizationRef "pause-abandon:$answeredRunId" }
+                        catch { $abandonConsumption = $null }
+                        if ($null -eq $abandonConsumption -or -not [bool]$abandonConsumption.consumed) {
+                            [Console]::Error.WriteLine('[specrew-review] WARN PAUSE_DECISION_NOT_CONSUMED ' + $(if ($null -ne $abandonConsumption) { [string]$abandonConsumption.reason } else { 'no-result' }))
+                        }
+                    }
                     Write-Host 'This review campaign is closed. Nothing further will run.' -ForegroundColor Cyan
                     exit 0
                 }
