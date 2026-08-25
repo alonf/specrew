@@ -160,6 +160,36 @@ punitive - and it costs more time than reading would have, which inverts the inc
 
 > **Make reading the cheapest way to pass.** Not make not-reading impossible - make it slower.
 
+### Mechanism 4 - Staged reading, in dependency order
+
+The three mechanisms above measure and reward reading. This one makes the reading *tractable*, and it
+is adopted from prior art rather than invented: Venya Brodetskiy's **progressive code review**
+(`dev.to`, Zio-Net skills) stages an AI-generated change through seven lenses in dependency order —
+purpose and behavior, then architecture and contracts, then security, experience, correctness,
+production readiness, simplicity — proposing its agenda for confirmation before spending effort, and
+pausing between lenses so that, in the author's framing, *earlier answers can challenge the
+assumptions behind later reviews*. The diagnosis behind it is the same one this proposal opens with:
+agents produce more change than a human can read line-by-line, and reviewing in the wrong order
+spends attention on details while the decisions that govern them go unchallenged.
+
+Specrew already generates the raw material. `reviewer-index.md` ships a **Read Order** across the
+closeout artifacts (review, code map, dependency report, coverage evidence, security surface,
+dashboard, diagrams). Today that order is a list in a file. Staged reading makes it the interaction:
+the boundary packet presents the artifacts one stage at a time, in dependency order, each with its
+plain-language framing, and the human's response to an earlier stage shapes what the later stages
+ask. A verdict then arrives at the end of a sequence rather than at the top of a wall of text.
+
+This composes with the other three mechanisms rather than replacing them: the duration floor and
+render proof become per-stage rather than per-gate, and quiz questions draw from the stage the human
+just completed, when the material is freshest. The compact hand-off the article ends on — a
+sub-180-word summary of purpose, decisions, risks, validation and reviewer focus — is the re-entry
+packet Specrew already renders, arrived at independently.
+
+Deliberately **not** adopted: the article's per-lens interactive pause for the *reviewer*. Specrew's
+campaign reviewers run contained and non-interactive by design, and making them conversational would
+reopen the containment surface. The staging belongs at the two ends — the reviewer declaring its
+agenda before, the human reading in stages after — never inside the sealed middle.
+
 ## Sequencing - record before enforce
 
 **Ship the measurement half first**, gating nothing:
