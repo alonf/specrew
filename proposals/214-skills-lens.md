@@ -117,6 +117,11 @@ lens's refusal paths before consumers meet them.
 
 ## Open questions
 
+- **First registry seed**: `zio-net/skills` is the natural first curated publisher — it installs at
+  project scope for Codex and Claude Code (the shape this lens must handle), and its progressive
+  code review skill is prior art this project already draws on in Proposals 212 and 215. Reviewing
+  this lens's own trust machinery against a skill from a known publisher is the gentlest possible
+  first field test.
 - **Registry curation ownership**: who maintains the shipped allowlist, and what qualifies a
   publisher — the first governance question of someone else's content.
 - **Hash target per format**: a skill may be one file or a directory tree per host; the
