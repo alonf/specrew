@@ -285,7 +285,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 151 (Boundary Handoff Contract Unification — draft, immediate small-fix)
 - 155 (Typed Boundary Gate Packets — draft, high-priority authoritative gate packet hardening)
 - 172 (Hook-Driven Session Bootstrap — draft, Tier 1; SessionStart hook = primary bootstrap + SessionEnd handover + agent-rendered Resume/New/Pick menu; composes shipped 146 + 130/143/077)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 171, 173, 174, 175, 176, 177, 178, 179, 183, 188, 190, 207, 208, 209, 210, 213, 214 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 171, 173, 174, 175, 176, 177, 178, 179, 183, 188, 190, 207, 208, 209, 210, 211, 212, 213, 214 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 
