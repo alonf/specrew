@@ -73,8 +73,42 @@ jobs:
 
           Write-Host "Pre-publish validation PASSED. Proceeding to publication." -ForegroundColor Green
 
+  full-test-census:
+    # THE RELEASE GATE (maintainer ruling, 2026-08-26). Every named test file on disk is EXECUTED
+    # before any tag is published - not the curated verification lanes, the whole tree.
+    #
+    # Measured cause: the per-round lanes named 45 suite files while 384 existed, so "lanes green"
+    # was reported as "no failing tests" for days while twelve suites were red - two of them live
+    # product defects and two of them checks measuring the wrong universe. The lanes stay fast and
+    # curated on purpose; this is the cadence where slow is affordable, and the rule is that a tag
+    # cannot be cut on lane-green alone.
+    #
+    # windows-latest deliberately: it is the platform the publish job runs on, so the census
+    # measures the same environment the package is built in. NEVER add continue-on-error or an `if`
+    # that can skip this - a gate that can be waved through is not a gate.
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Execute every named test file on disk
+        shell: pwsh
+        run: |
+          ./tests/full-powershell-test-sweep.ps1 -MaxParallel 4 -PerFileTimeoutSeconds 420
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host 'Release gate FAILED: at least one test file on disk did not pass.' -ForegroundColor Red
+            Write-Host 'The verification lanes are a curated subset; this gate is the whole tree.' -ForegroundColor Yellow
+            exit 1
+          }
+          Write-Host 'Release gate PASSED: every named test file on disk is green.' -ForegroundColor Green
+
   publish-module:
-    needs: prepublish-validation
+    needs: [prepublish-validation, full-test-census]
     runs-on: windows-latest
 
     steps:

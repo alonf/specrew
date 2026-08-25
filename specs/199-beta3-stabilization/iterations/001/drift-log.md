@@ -535,6 +535,63 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### DRIFT-199-I001-136 - the lane gap gets two gates, split by cost (resolved by ruling)
+
+- **Ruled**: 2026-08-26, after DRIFT-199-I001-134 measured 45 named suites against 384 on disk. The
+  maintainer split the fix by cost rather than choosing between speed and coverage.
+- **The fast half - a membership guard that lists and compares, never executes.**
+  `tests/unit/every-suite-is-named-by-a-lane.tests.ps1` reads the suite names out of the
+  verification plan, reads the release-cadence manifest, lists what is on disk, and fails if
+  anything is in neither. It runs in the class-guard lane, costs seconds, and turns red the moment a
+  suite is added without a home. **This is the durable half**: the failure arrives when the file is
+  written, not weeks later when someone thinks to run a census.
+- **The slow half - the whole tree executed before any tag.** `full-test-census` is a new job in the
+  publish workflow, on the same platform the package is built on, and `publish-module` now needs
+  BOTH it and the existing pre-publish validation. A tag cannot be cut on lane-green alone. The
+  comment at the job says the part that matters: never add `continue-on-error` or a skipping `if` -
+  a gate that can be waved through is not a gate.
+- **The cadence split is written down rather than implied.** `.specrew/release-gate-suites.txt`
+  lists the 340 suites whose declared cadence is RELEASE, with the instructions for moving a suite
+  between cadences at the top. The list is not decoration: the membership guard consumes it every
+  round, so it cannot rot into an inert declaration - which would have been this ruling's own
+  version of the class it exists to close.
+- **Verification, end to end rather than by inspection**: with a new suite present in no lane the
+  FAST LANE exits 1; with it removed the fast lane exits 0. The guard also carries its own mutation
+  proof (a phantom path must be detected by the comparison, or the comparison is what is broken) and
+  a stale-name check for the mirror failure - a lane naming a deleted file runs nothing and reports
+  success for it.
+
+### DRIFT-199-I001-135 - round 23: a PARTIAL authority store passed the readiness check, and enumerated fact files bypassed containment (resolved)
+
+- **Observed**: 2026-08-25, run-20260825-164857193-6bedbc1a - terminal, complete, current, four
+  findings. Two were fixable and are fixed; two are the standing requirement conflict, which is the
+  maintainer's to rule and is escalated rather than reconciled.
+- **A partial store passed the fail-closed check.** The round-22 readiness assertion named only the
+  two functions its own gate calls, while the same path relies on the mint stamp, the ownership
+  join, the entitlement resolver and the consumption - each behind an optional `Get-Command`. A
+  partially deployed or validly TRUNCATED older store keeps the two checked functions and loses the
+  rest: the reviewer launches, the approval is never linked and never retired, and a later
+  invocation spends again. Both readiness sets now name every authority function their own path
+  calls. **A control set that names less than its own path protects less than its own path.**
+- **The fixture could not have seen it, which is the sharper half.** Round 22's damaged-installation
+  fixture deletes the WHOLE store, so every function vanishes together and the partial case never
+  arises - method rule 5 landing on a fixture this crew wrote one round earlier. The new case
+  TRUNCATES the store at a function boundary, which is exactly what an older deployed copy looks
+  like, and proves the refusal through the shipped CLI.
+- **Enumerated fact files bypassed reparse containment.** `Get-ReviewAuthorityStorePath` refuses a
+  link at the store root and at every existing ancestor, and readers then enumerated child JSON
+  files and handed each absolute path to the reader - so a symlinked grant, reset, result,
+  disposition, pause or claim file under an ordinary directory was followed and its external target
+  accepted once it passed contract validation. The store's stated refusal of redirecting paths
+  applied to DIRECTORIES only. `Test-ReviewAuthorityFactPathContained` now classifies the FILE, at
+  the one reader every caller passes through, so an enumeration added later inherits the rule
+  instead of having to remember it. It discriminates as the ancestor walk does: a cloud placeholder
+  redirects nothing and is not refused.
+- **Verification**: four RED cases against the shipped build - the truncated-store refusal through
+  the CLI, the readiness sets naming every function their path calls, the symlinked fact file (which
+  this machine could create, so the case ran rather than skipped), and the reader-level containment
+  pin - 75/75 in the authority suite after.
+
 ### DRIFT-199-I001-134 - "lanes green" was never "no failing tests", and eight suites had been red for days (resolved)
 
 - **Observed**: 2026-08-25, by the maintainer, on being told that eight failures outside the
@@ -3916,6 +3973,53 @@ immediately. DRIFT-199-I001-118, -120, -122, -123.*
 *The tell that the rule applies: the fix touches a regex, a `Split`, or a `Substring` near an
 approval/refusal return. The cheap discipline: enumerate the returns the verb can reach, and write the
 SAME adversarial case against each, varying only the delimiter.*
+
+**RULED 2026-08-26 by the maintainer, from the contamination pair in DRIFT-199-I001-134.**
+
+> **RULE — A TEST ASSERTS ITS OWN PRECONDITION. A green test of the wrong universe is worse than a
+> red one:** a red test asks to be looked at, while a green one certifies something nobody
+> measured. Where a case depends on a condition it does not create — no repository here, no colour
+> support, an empty environment, a clock, a volume's case rule — it states that condition as an
+> assertion before the behaviour it is really about.
+
+*Evidence, the pair that produced the rule, both found in one sweep. **(a)** Eight suites redirect
+`TEMP` into a repo-local scratch directory and none restored it, so a later case building a "project
+with no git repo" fixture landed INSIDE the repository, git walked up to the enclosing repo, the
+digest computed, and the case named `claims nothing when the current tree cannot be computed` spent
+its life testing a tree that could. It was GREEN whenever it ran alone and red only in suite order,
+which reads as flakiness rather than as a false assurance. **(b)** A dashboard case asserting rich
+rendering inherits `NO_COLOR` from whatever session runs it, so it measured the machine rather than
+the code. Both now state their precondition — a base outside every repository; a cleared and
+restored colour preference — and both suites restore what they mutate.*
+
+*The corollary worth carrying: **session-scoped mutation without restoration is a shared-state
+defect, whoever wrote it.** A suite that changes `TEMP`, `NO_COLOR`, the working directory or the
+current culture and walks away has not written a test, it has written a trap for whatever runs next.*
+
+**RECORDED 2026-08-26 — the inert-control class reaches four instances.**
+
+The class: a control that exists, reads correctly, and never executes. Rule 4 already names its
+sharpest form (a control proven only off the path its own remedy names). The maintainer asked that
+the fourth instance be recorded with the other three, because the class has now outlived every
+individual fix:
+
+1. **An evidence marker with no producer** — the control was computed and nothing ever wrote it.
+2. **The W43 deployed-extension stamp, unreachable on the update path** — written after the early
+   `-PassThru` return that every real caller takes, so the integrity check failed open for every
+   project (DRIFT-199-I001-099).
+3. **The sign-off gate that never ran** — the round-20 pause-decision gate, guarded by `Get-Command`
+   on functions the CLI only loaded when a ROUND approval was requested, which pause choices 2 and 3
+   never are (DRIFT-199-I001-132).
+4. **331 suites in no lane** — the verification plan named 45 of 384 test files, so twelve failing
+   suites, two of them live product defects, went unreported for days while every round said green
+   (DRIFT-199-I001-134).
+
+*What makes this class survive its own fixes: each instance is DIFFERENT MACHINERY, and the guard
+that would have caught it is always one level up from where the fix went. The countermeasure that
+finally holds is structural rather than vigilant — a membership comparison that fails the moment a
+surface exists outside the set that checks it, which is what the 2026-08-26 ruling installs for
+suites: `every-suite-is-named-by-a-lane` in the fast lane, and the whole tree executed before any
+tag.*
 
 ### THE MEASUREMENT THAT CARRIES WITH IT — the economics case for the standing-grant proposal
 
