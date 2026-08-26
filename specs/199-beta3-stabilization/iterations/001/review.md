@@ -7,47 +7,54 @@
 ## Independent review
 
 <!--
-  NO EVIDENCE MARKER AND NO DERIVED BLOCK, DELIBERATELY, AND THIS IS NOT AN OVERSIGHT.
+  THE BLOCK IS RESTORED, and this is the first time in this iteration that it names a run which
+  actually covers the code as it stands. It is DERIVED from the review store and recomputed at
+  validation, so it cannot be authored or edited here; the prose around it is what this record says
+  for itself.
 
-  Restoring the derived block was attempted on 2026-08-26 and the validator refused it, correctly:
-
-    it reviewed tree a7c559de and 5 source file(s) have changed since:
-    scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/HumanAuthorityStore.ps1,
-    scripts/specrew-review.ps1 (+2 more).
-
-  Those five files are the FIX for what that very round found. So the block cannot name it: a round
-  whose findings have been repaired no longer describes the tree that exists after the repair. That
-  is not a defect in the block. It is the review->repair->stale loop, stated by the machinery.
-
-  Leaving the citation in place would keep this record READING clean while its claim had quietly
-  expired - the precise failure W31, W33 and W38 exist to stop, and the one this project shipped
-  against itself. So the claim is withdrawn rather than dressed up.
-
-  The block is restored when a round completes against a tree nobody has changed since.
+  W67 (2026-08-26) is why it can be trusted now: the generator used to select a run on the
+  `currentness` field FROZEN into result.json at ingest, so it would have named a run whose tree had
+  moved and called it current. It now asks the same source-aware question the validator has asked
+  since W38, against the tree that exists now.
 -->
 
-**Fifteen independent rounds have completed against this iteration since 2026-08-21** - twenty-four
-across the campaign's whole life, returning sixty-nine findings between them - the most recent being `run-20260826-001211608-df54328d` (codex, terminal / complete / current / valid, 3 findings,
-against tree `a7c559de`, declaring 17 examined paths of which 13 were source). Every one of those
-rounds was real and every finding it returned was real; each is dispositioned in the drift log with
-the mutation that proves its fix.
+<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->
+<!-- Derived from the review authority store. Do not hand-edit: the validator recomputes it. -->
+- Run: run-20260826-102845091-9b2b1555 (harness codex-cli-file-primary)
+- Outcome: findings, complete, current, valid - 3 finding(s)
+- Reviewed tree: 2d7f2c62c9c673fc630c0a76ac454015e6424138
+- Coverage: 21 source path(s) of 25 declared and checked against the frozen target.
+<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->
 
-**No round covers this record as it now stands, and that is a consequence of the rounds working.**
-Round 24 found three defects in the authority layer - the two capture branches had drifted apart, a
-broken approval-to-round link still launched a reviewer, and a lost consumption stamp left an
-allowance reset reusable. Fixing them changed five source files, which moved the reviewed-state
-digest from `a7c559de` to a tree no round has read. The independence claim is therefore **withdrawn
-pending a fresh round**, not restated.
+**What that run is.** An independent codex round, invoked under verified containment against a frozen
+copy of this tree, which read 21 source paths of the 25 it declared and returned three findings. It is
+the twenty-sixth completed round of this campaign and the first to cover the source as it now stands -
+every earlier round reviewed a tree that later changed, usually because its own findings were fixed.
 
-**What this record does not claim.** Its per-task verdicts and the prose around them were written
-by the implementing session, and the authorship fact says so rather than hiding it: this document
+**What the three findings are, and what this record does NOT claim about them.** All three were
+classified minor: two were reported as major by the reviewer and demoted by the engine for want of a
+concrete failure scenario, which is the demotion rule working as designed and, on at least one of
+them, understating the case. They are open and dispositioned in the drift log, not repaired:
+
+1. a failed withdrawal delete leaves the retracted approval spendable - the fail-open class;
+2. a pause decision can bind to an already-answered pause from another campaign, wedging the live one;
+3. an interrupted starter materialization cannot restore its templates sidecar.
+
+**So this record rests on a real independent review of these files, with three known open findings.**
+It does not claim they are absent, and it does not claim they are harmless. Repairing them would move
+the tree and this run would stop covering it - the review-repair-stale loop - so the disposition is
+the maintainer's to make at sign-off rather than mine to pre-empt.
+
+**What this record does not claim.** Its per-task verdicts and the prose around them were written by
+the implementing session, and the authorship fact says so rather than hiding it: this document
 reports `review-authorship-unobserved` for the verdicts authored on 2026-08-17, because the
 machinery that observes authorship (W34-B) did not exist then and backfilling it would be an
-assertion rather than an observation. What is independent here is the sequence of rounds named
-above and the findings they returned. What is mine is the judgement in the table below.
+assertion rather than an observation. What is independent here is the run the block names. What is
+mine is the judgement in the table below.
 
-The three earliest rounds this record once rested on reviewed a tree from 2026-08-17 and declared no
-coverage at all. They are named here as history, not as evidence.
+The twenty-four earlier completed rounds are history rather than evidence. Sixteen of the campaign's
+twenty-five completed rounds ran since 2026-08-21, and between them they have returned seventy-two
+findings, these three included.
 
 ## Task Verdicts
 

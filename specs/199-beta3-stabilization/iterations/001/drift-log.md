@@ -591,6 +591,54 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-140 - round 25 DELIVERED and covers this tree; its three findings are OPEN, not repaired
+
+**The first covering round of this iteration.** `run-20260826-102845091-9b2b1555`, codex, terminal /
+complete / current / valid, 21 source paths read of 25 declared, against tree `2d7f2c62`. Twenty-five
+rounds have completed on this campaign; this is the first whose reviewed tree is the tree that exists,
+because every earlier one was invalidated by the repair of its own findings.
+
+**The attempt before it did not deliver, and the cause was mine.** I invoked the CLI without `--host
+codex`, so the selection policy chose `claude-code-file-primary` - the model that wrote the code
+reviewing its own work, which could not have been independent evidence even had it finished. It
+partialled at 598.1s against a 600s window (codex runs a 900s one) having read 5 paths. The engine
+refused it as evidence exactly as designed - `completion=partial`, `verdict=incomplete`, "it found
+nothing AND cleared nothing" - did not spend the human's approval, minted one automatic retry, and
+paused that retry for a human decision rather than running it. **The machinery behaved correctly at
+every step of a failure I caused**, which is the most useful thing this partial produced.
+
+**The three findings, all classified minor, two of them demoted from major for want of a concrete
+failure scenario. They are OPEN.**
+
+1. **A failed withdrawal delete leaves the retracted approval spendable.**
+   `Write-SpecrewApprovalWithdrawal` journals the withdrawal and then deletes
+   `pending-round-approval.json`; if that delete fails it returns null with the unspent approval file
+   intact, `Invoke-SpecrewTypedAuthorityCapture` discards every writer result, and
+   `Get-SpecrewReviewRoundApprovalAuthorization` never consults the withdrawal journal. The next
+   `--approve-round` can then spend authority the human explicitly withdrew.
+   **This is the fail-open class the maintainer named, one round earlier, as the most severe this
+   system has** - and it is in code I wrote in that same round: the router that discards writer
+   results is DRIFT-199-I001-138's own fix. I closed the capture gap and left the consumption of the
+   result open, which is the report-don't-control shape corrected three times on the round-approval
+   path and not once here.
+2. **A pause decision can bind to an answered pause from another campaign.**
+   `Get-SpecrewPendingPauseIdentity` scans every `pending-pause.json` in the project and takes the
+   newest `observed_at`, without scoping to the active campaign and without excluding pauses that
+   already have a sibling decision - which the canonical `Get-ReviewCampaignPendingPause` reader does
+   exclude. Two readers of one question again, and retyping the phrase repeats the wrong binding, so
+   the live campaign wedges.
+3. **An interrupted starter materialization cannot restore its templates sidecar.**
+   `verification-plan.json` is written first and `verification-plan.templates.md` second; a stop
+   between them leaves the unmarked plan looking like an explicit consumer plan, so the next init
+   returns through `preserved-explicit-plan` and never recreates the sidecar FR-012 promises.
+
+**WHY THEY ARE NOT FIXED HERE.** The maintainer's instruction was to fix blocking or major and stop
+short of minors; the engine returned neither. And repairing any of them moves the tree, at which point
+this run stops covering it - the review-repair-stale loop - with the round allowance now at 4 of 4.
+So the disposition is a decision to be made at sign-off with the cost visible, rather than one an
+agent takes by reflex. Finding 1 in particular deserves that decision explicitly, because its class
+was ruled severe one round ago and its label here is minor.
+
 ### RULED 2026-08-26, NO CHANGE - a typed approval that CLOSES a ruling is not captured, and the anchor stays
 
 **Measured, not inferred.** `Test-SpecrewReviewRoundApprovalPhrase` against four shapes of the same act:
