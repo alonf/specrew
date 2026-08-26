@@ -4749,6 +4749,25 @@ restored colour preference — and both suites restore what they mutate.*
 defect, whoever wrote it.** A suite that changes `TEMP`, `NO_COLOR`, the working directory or the
 current culture and walks away has not written a test, it has written a trap for whatever runs next.*
 
+**METHOD RULE 11 (maintainer ruling, 2026-08-27) — A SHARED VOCABULARY IS A FUNCTION, SO THE SIXTH
+SITE INHERITS IT.**
+
+Stated structurally, because the obvious version - "do not duplicate the conjunction set" - is a rule
+about diligence and would fail the same way the set did.
+
+W73's conjunction set lived inline in five places and agreed in none. The fix is not that someone must
+remember to update five copies; it is that **there is one `Get-SpecrewConditionalConjunctionPattern`
+and one `Test-SpecrewConditionalDeferralClause`, and every recognizer calls them.** Adding a hedge word
+reaches all five sites at once, and a sixth recognizer written next year inherits the rule by calling
+the function it must call anyway to answer the question.
+
+**The test to apply: if a new call site could get this wrong, the rule is still advice.** A vocabulary,
+a comparison, a classification or an ordering shared by more than one reader is a function - not a
+constant copied where each author happened to need it.
+
+**And method rule 6 did not catch this, which is the point.** Rule 6 demanded a recognizer fix be
+proven against every branch and delimiter. This was a duplicated VOCABULARY, not a branch, so the rule
+looked satisfied while the neighbouring case walked straight through.
 **METHOD RULE 10 (maintainer ruling, 2026-08-26) — WHEN A FIX CORRECTS A READER, THE SAME COMMIT
 CHECKS EVERY OTHER READER OF THAT CONCERN.**
 
@@ -4817,6 +4836,35 @@ goes through it.
 And the corollary that cost three cycles in one block: **a case naming a production call site needs a
 production-shaped fixture.** A repo with no commit, or no `specs/<feature>/`, is not the project the
 code runs in, and every gap in the fixture reads as a defect in the code until someone checks.
+### CLOSING OBSERVATION ON THIS METHOD SECTION (maintainer ruling, 2026-08-27) — THE RULES ARE HOW THE MECHANISMS WERE FOUND; THEY ARE NOT THE MECHANISMS
+
+Read this before the rules above, because it is what they add up to.
+
+**Every rule in this section was written after an instance, and the pattern is that each one then
+failed on that instance's NEIGHBOUR.** Three times, measured:
+
+1. **The W70 wedge.** I wrote in a source comment that the rule must not "trade a forgery for a wedge,
+   which is the round-19 lesson" - and the rule introduced in that same commit, beneath that sentence,
+   traded exactly that. Named in the moment, in writing, one round after being ruled against on it.
+2. **Method rule 10, at its own authorship.** The rule says a fix correcting a reader checks every
+   other reader of that concern. It was recorded in the very commit that fixed one reader of
+   `currentness` and left its sibling in the signoff gate untouched, which round 30 then graded
+   blocking.
+3. **Method rule 6, at rule 11.** Rule 6 demanded a recognizer fix be proven against every branch and
+   delimiter. W73 was a duplicated VOCABULARY rather than a branch, so rule 6 read as satisfied while
+   the neighbouring case walked straight through.
+
+**And every rule here that actually held did so because it stopped being a rule and became a
+mechanism.** Rule 6's mutation demand holds because mutations are executed, not remembered - it found
+the eighth, ninth and tenth inert controls when green runs found none. The membership guard holds
+because it lists and compares. The class-guard lane holds because it runs. Rule 11 is stated
+structurally for this reason: one function every caller must call anyway.
+
+**So the honest summary is that this section is a record of how the mechanisms were discovered, not a
+substitute for them.** A reader tempted to apply these as a checklist should expect them to fail on
+the case adjacent to the one that produced each - that is the measured behaviour, three times over.
+The value of a rule here is that it survived long enough to be turned into something that executes.
+Where one has not been, treat it as an open liability rather than a control.
 **METHOD RULE 7 (maintainer ruling, 2026-08-26) — A GUARD THAT CONSUMES ITS OWN PRECONDITION SURVIVES
 RE-OFFER; A GUARD THAT READS A MUTABLE FLAG DOES NOT.**
 
@@ -4891,6 +4939,21 @@ surface exists outside the set that checks it, which is what the 2026-08-26 ruli
 suites: `every-suite-is-named-by-a-lane` in the fast lane, and the whole tree executed before any
 tag.*
 
+### THE DEMOTION RULE, RESOLVED BY ITS OWN TREND (recorded 2026-08-27)
+
+Rounds 24 and 25 are recorded here as occasions where the demotion rule UNDERSTATED: findings the
+reviewer graded major or blocking were demoted to minor for want of a concrete failure scenario, and
+the maintainer ruled at least one demoted class the most severe this system has.
+
+**Round 30 is the first round of this campaign the engine graded BLOCKING on its own account, with
+nothing to adjudicate between reviewer and engine.** And the important half: **severity did not rise.**
+Its findings were of a piece with the earlier ones - a recognizer accepting conditional authority, an
+exemption refusing to preserve a pass. What changed is that the demotion rule stopped understating
+them.
+
+So the earlier finding resolved itself, and it is recorded beside the two occasions it did not -
+because a rule that misfires twice and then stops is a different thing from a rule that is wrong, and
+the record should be able to tell them apart later.
 ### THE MEASUREMENT THAT CARRIES WITH IT — the economics case for the standing-grant proposal
 
 **Recorded here at maintainer direction (2026-08-24) so beta4 planning finds it where it scopes, not
