@@ -26,6 +26,40 @@
 
 Set-StrictMode -Version Latest
 
+function Get-SpecrewConditionalConjunctionPattern {
+    # W73 / round-30 finding, graded BLOCKING: THE WORDS A PERSON ACTUALLY HEDGES WITH.
+    #
+    # The set (later|after|once|when|unless|if) lived inline in FIVE places across three files, and
+    # exactly one of them - the post-delimiter branch below - also knew provided|assuming|contingent|
+    # subject to. So `approved for review round, provided the tests pass` reached none of the branches
+    # that would have caught it and was returned as an unconditional approval: the human said "if", the
+    # ledger said "yes", and an agent could spend a round, cross a boundary, stop a campaign or reset
+    # the allowance before the stated condition held.
+    #
+    # One pattern, one place. Adding a word here reaches every recognizer at once, which is the whole
+    # reason it is a function and not a string repeated where each author happened to need it.
+    return '(?:later|after|once|when|unless|if|provided|providing|assuming|contingent|subject\s+to|as\s+long\s+as|so\s+long\s+as|pending)'
+}
+
+function Test-SpecrewConditionalDeferralClause {
+    # Does this clause carry a condition? -AnchoredAtStart for a delimited tail, where only the OPENING
+    # of the clause can qualify the phrase; unanchored for a same-clause tail, which the callers have
+    # already scoped to the approval LINE - so an instruction block on later lines is untouched and the
+    # W56 shape (approval, then instructions) still mints.
+    #
+    # CONSERVATIVE FLOOR, and the reason is recorded at the round-approval site: this guards SPEND
+    # authority, so a false negative costs the human one plain retype while a false positive spends a
+    # round they conditioned. The floor is the documented posture, not an accident of this fix.
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][AllowNull()][string]$Text,
+        [switch]$AnchoredAtStart
+    )
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $pattern = Get-SpecrewConditionalConjunctionPattern
+    if ($AnchoredAtStart) { return [bool]($Text -match ('^\s*' + $pattern + '\b')) }
+    return [bool]($Text -match ('\b' + $pattern + '\b'))
+}
 function Get-SpecrewConversationProp {
     # StrictMode-safe property read: the value if present on the object, else $null.
     param([AllowNull()]$Object, [Parameter(Mandatory)][string]$Name)
@@ -222,7 +256,7 @@ function Test-SpecrewHumanVerdictToken {
         # BOUNDARY CROSSINGS, the highest-stakes authority in the system - kept the five-word list, so
         # "approved for tasks if the tests pass" crossed immediately on a condition the human attached.
         # Method rule 6's own demand, missed in the file that mattered most.
-        $deferred = $clause -match '\b(later|after|once|when|unless|if)\b'
+        $deferred = Test-SpecrewConditionalDeferralClause -Text $clause
         # Round-20 (DRIFT-199-I001-131), the second half: a condition can sit just PAST the
         # delimiter - "approved for plan, if you have time" - where the clause scan cannot see it,
         # while an instruction that merely CONTAINS a deferral word - "approved for tasks, and send
@@ -242,7 +276,7 @@ function Test-SpecrewHumanVerdictToken {
             while ($trailingClause -match '^(?:but|only|just|and|then|also|please|strictly)\s+') {
                 $trailingClause = ($trailingClause -replace '^(?:but|only|just|and|then|also|please|strictly)\s+', '').TrimStart()
             }
-            if ($trailingClause -match '^(later|after|once|when|unless|if|provided|assuming|contingent|subject\s+to)\b') {
+            if (Test-SpecrewConditionalDeferralClause -Text $trailingClause -AnchoredAtStart) {
                 $deferred = $true
             }
         }
@@ -285,7 +319,7 @@ function Test-SpecrewHumanVerdictToken {
     }
     # Negated / deferred approval -> NOT an approval (defends "do not approve", "not yet", "hold off ... approve").
     if ($lower -match "\b(do\s*not|don'?t|never|not\s+yet|hold\s+off|wait|stop)\b[^.!?]{0,24}\bapprov") { return $r }
-    if ($lower -match "\bapprov\w*\b[^.!?]{0,16}\b(later|after|once|when|unless|if)\b") { return $r }
+    if ($lower -match ("\bapprov\w*\b[^.!?]{0,16}\b" + (Get-SpecrewConditionalConjunctionPattern) + "\b")) { return $r }
     # F-174 iter-11 (review-signoff P3-1, INTEGRITY): a verdict approval is imperative/declarative, NEVER a
     # question. An approve-bearing INTERROGATIVE ("approve?", "is this ready to approve?", "can you explain
     # before I approve?", "should I approve this or not?") is deliberation, not authorization - reject it so the

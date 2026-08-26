@@ -591,6 +591,60 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-147 - W73/W74: round 30 - two findings the engine itself graded BLOCKING (resolved)
+
+`run-20260826-221906829-6b651c05`, codex, terminal / complete / **current** / valid, 1,013.4s. **The
+first round of this campaign whose findings the engine graded blocking on its own account** - no
+demotion, no reviewer/engine disagreement to adjudicate.
+
+**W73 - a CONDITIONAL reply minted immediate authority.** The set
+`(later|after|once|when|unless|if)` lived inline in FIVE places across three files, and exactly ONE of
+them - the post-delimiter branch - also knew `provided|assuming|contingent|subject to`. So
+`approved for review round, provided the tests pass` reached no branch that would have caught it and
+returned as an unconditional approval. Same for the pause decisions and the allowance reset. **The
+human said "if"; the ledger said "yes"**, and an agent could spend a round, cross a boundary, stop a
+campaign or reset the allowance before the stated condition held.
+
+Resolved with `Get-SpecrewConditionalConjunctionPattern` and `Test-SpecrewConditionalDeferralClause` -
+one set, one clause rule, read by all five sites, with the anchored/unanchored distinction the
+delimited and same-clause tails actually need. The tails are already scoped to the approval LINE, so
+W56's approval-then-instructions shape is untouched. Conservative floor kept, for the reason already
+recorded at the round-approval site: a false negative costs one plain retype; a false positive spends
+a round the human conditioned.
+
+**W74 - a records-only commit during a round still killed its pass.** The signoff exemption gated
+preservation on `can_approve_current`, composed at ingest as
+`complete AND currentness='current' AND verdict='pass' AND termination verified`. Currentness is
+snapshot-exact, so a records commit landing WHILE the reviewer ran made the flag false for a complete,
+valid, passing, contained result - and the exemption refused to preserve the very pass it exists to
+preserve. Governance REQUIRES records commits, so each one could invalidate the running round, and so
+could the next retry.
+
+Resolved by asking the half the flag was borrowed for - complete, valid, **passing, contained**,
+terminated - and letting the verified source-aware delta supply currentness, which it does better than
+a frozen flag. The round-5 rule survives: the exemption preserves an authorizing result and still
+cannot promote one, proved by the findings-verdict and unverified-containment cases.
+
+**THIS IS THE SIBLING OF THE READER I FIXED ONE COMMIT EARLIER, MISSED UNDER THE RULE THAT COMMIT
+RECORDED.** W72 stopped the independence selector reading the frozen `currentness` as the answer.
+**Method rule 10 - when a fix corrects a reader, the same commit checks every other reader of that
+concern - was written in that same commit, and I did not apply it to the fix it accompanied.** The
+rule was correct, freshly stated, self-authored, and one commit old.
+
+**That is the second time in this feature that a rule failed at the moment of its own authorship** -
+the first being the W70 wedge behind method rule 9. Two instances now say the same thing: **a rule
+recorded is not a rule applied, and the gap between them is not closed by having just written it.**
+Rule 9 argued mechanisms over discipline from one instance; this is the second, and it lands on the
+rule that was supposed to prevent exactly this class.
+
+**Proof.** Four mutations, each turning its own case red: narrow the conjunction set back to six; make
+the round-approval recognizer stop asking the rule; restore the frozen flag in the signoff exemption;
+drop the containment clause.
+
+**A fourth under-shaped fixture, and the diagnosis method that finally worked.** The W74 fixture failed
+the result contract three times while I guessed at required fields. Asking the validator directly -
+`Test-ReviewAuthorityContractObject` returned `empty-value:failure_reason` - answered in one call what
+three rounds of guessing had not. **When a fixture is rejected by a contract, ask the contract.**
 ### DRIFT-199-I001-146 - W72: round 29 - the narrow guarantee holds; one torn-line sibling, and a covering round I spoiled myself
 
 `run-20260826-194901162-77511bab`, codex, terminal / complete / **snapshot-moved**, 702.3s, **two

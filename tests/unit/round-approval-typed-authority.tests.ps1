@@ -2297,3 +2297,79 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
+Describe 'W73 round 30: a CONDITIONAL reply is not authority, in every recognizer' {
+    # Round 30 graded this BLOCKING on its own account - not demoted - and it is the fabrication class:
+    # a human expresses conditional approval and the machinery records it as unconditional, so an agent
+    # crosses a boundary, spends a round, stops a campaign or resets allowance before the condition is
+    # met. The human said "if"; the ledger says "yes".
+    #
+    # Five copies of the same six-word set (later|after|once|when|unless|if) across three files, and
+    # exactly ONE of them - the post-delimiter branch in ConversationCaptureAccessor - also knows
+    # provided|assuming|contingent|subject to. So the words a person actually reaches for when hedging
+    # were the ones no recognizer checked in the same clause.
+
+    BeforeAll {
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1')
+    }
+
+    It 'RED-FIRST: conditional ROUND approval is not an approval' {
+        foreach ($text in @(
+                'approved for review round provided the tests pass'
+                'approved for review round, provided the tests pass'
+                'approved for review round assuming CI is green'
+                'approved for review round, subject to the final check'
+                'approved for review round contingent on the lanes staying green')) {
+            [bool](Test-SpecrewReviewRoundApprovalPhrase -Text $text).Matched |
+                Should -BeFalse -Because ("a condition is not a yes: " + $text)
+        }
+    }
+
+    It 'RED-FIRST: conditional PAUSE decisions are not decisions' {
+        foreach ($text in @(
+                'stop the review here, subject to the final check'
+                'stop the review here provided nothing else is outstanding'
+                'abandon this review campaign assuming the rewrite lands')) {
+            [bool](Test-SpecrewPauseDecisionPhrase -Text $text).Matched |
+                Should -BeFalse -Because ("stopping or abandoning on a condition is not stopping: " + $text)
+        }
+    }
+
+    It 'RED-FIRST: a conditional ALLOWANCE RESET does not replenish' {
+        foreach ($text in @(
+                'approved for allowance reset provided the budget holds'
+                'approved for allowance reset, assuming we still need it')) {
+            [bool](Test-SpecrewAllowanceResetPhrase -Text $text).Matched |
+                Should -BeFalse -Because ("lifting a spend limit on a condition is not lifting it: " + $text)
+        }
+    }
+
+    It 'the UNCONDITIONAL phrases still work - the rule bounds hedges, not humans' {
+        # The control that stops this becoming a wedge. Every phrase the docs tell a human to type must
+        # still mint, including W56's approval-followed-by-instructions shape.
+        [bool](Test-SpecrewReviewRoundApprovalPhrase -Text 'approved for review round').Matched | Should -BeTrue
+        [bool](Test-SpecrewReviewRoundApprovalPhrase -Text "approved for review round`n`nRun it with --host codex.").Matched | Should -BeTrue
+        [bool](Test-SpecrewPauseDecisionPhrase -Text 'stop the review here').Matched | Should -BeTrue
+        [bool](Test-SpecrewAllowanceResetPhrase -Text 'approved for allowance reset').Matched | Should -BeTrue
+        # And a phrase that merely CONTAINS a condition word about something else is still an approval.
+        [bool](Test-SpecrewReviewRoundApprovalPhrase -Text 'approved for review round. The iffy test is unrelated.').Matched |
+            Should -BeTrue -Because 'the guard keys on a conditional CLAUSE, not on a substring'
+    }
+
+    It 'ONE rule, read by every recognizer, so the sets cannot drift again' {
+        # The divergence class, at five call sites. The words lived in five places and agreed in none.
+        $sources = @(
+            (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+            (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1')
+        )
+        foreach ($source in $sources) {
+            # CODE lines only. A comment quoting the old set is documentation of what was fixed, not a
+            # second copy of it - and the entry explaining this fix necessarily names the words.
+            $codeLines = @(Get-Content -LiteralPath $source -Encoding UTF8 | Where-Object { $_ -notmatch '^\s*#' })
+            $inline = @($codeLines | Where-Object { $_ -match '\(later\|after\|once\|when\|unless\|if' })
+            @($inline).Count | Should -Be 0 -Because ("the conjunction set must live in one place, not inline in " + (Split-Path $source -Leaf))
+        }
+        $store = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1') -Raw -Encoding UTF8
+        $store | Should -Match 'function Test-SpecrewConditionalDeferralClause' -Because 'one named rule is what stops five copies disagreeing'
+    }
+}

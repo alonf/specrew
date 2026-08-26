@@ -1,6 +1,13 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# W73: the conditional-clause rule lives in the capture accessor, which loads ahead of this module in
+# every production path. Tests and tools that load this module alone still get it, because a recognizer
+# missing its deferral guard would mint conditional approvals - the failure this fix exists to end.
+if (-not (Get-Command Test-SpecrewConditionalDeferralClause -ErrorAction SilentlyContinue)) {
+    $specrewCaptureAccessor = Join-Path $PSScriptRoot 'ConversationCaptureAccessor.ps1'
+    if (Test-Path -LiteralPath $specrewCaptureAccessor -PathType Leaf) { . $specrewCaptureAccessor }
+}
 function Get-SpecrewReviewSignoffOverrideRoot {
     param([Parameter(Mandatory)][string]$ProjectRoot)
     return Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/signoff-gate'
@@ -389,7 +396,7 @@ function Test-SpecrewReviewRoundApprovalPhrase {
             # tail, and a false negative costs the human one plain retype, never a spent round.
             $negated = ($lower -match '^\s*(?:do\s*not|do\s+not|never|not\s+yet|hold\s+off|wait|stop)\b') -or
                 ($tail -match '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b')
-            if ($tail -notmatch '\b(later|after|once|when|unless|if)\b' -and -not $negated) {
+            if (-not (Test-SpecrewConditionalDeferralClause -Text $tail) -and -not $negated) {
                 $r.Matched = $true; $r.Kind = 'typed-phrase'; $r.Phrase = $trimmed
                 return $r
             }
@@ -947,7 +954,7 @@ function Test-SpecrewPauseDecisionPhrase {
         if (-not $anchor.Success) { continue }
         $tail = $lower.Substring($anchor.Length)
         if (-not ([string]::IsNullOrWhiteSpace($tail) -or $tail -match '^\s*[-,.;:]')) { return $r }
-        if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
+        if (Test-SpecrewConditionalDeferralClause -Text $tail) { return $r }
         if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait)\b') { return $r }
         if ($tail -match "\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b") { return $r }
         $r.Matched = $true; $r.Choice = [string]$shape.Choice; $r.Phrase = $trimmed
@@ -1543,7 +1550,7 @@ function Test-SpecrewAllowanceResetPhrase {
     # Round-14 finding (DRIFT-199-I001-123): the whole TAIL, not element zero of a delimiter split -
     # which is empty by construction - or "approved for allowance reset, after we verify the
     # failures" replenishes spend authority before the stated condition holds.
-    if ($tail -match '\b(later|after|once|when|unless|if)\b') { return $r }
+    if (Test-SpecrewConditionalDeferralClause -Text $tail) { return $r }
     if ($lower -match '^\s*(?:do\s*not|never|not\s+yet|hold\s+off|wait|stop)\b') { return $r }
     # Round-16 (DRIFT-199-I001-126): a reversal AFTER the anchor is the same refusal as one before it.
     if ($tail -match '\b(?:do\s*not|don''t|dont|never|not\s+yet|no\s+longer|cancel|withdraw|revoke|rescind|retract|hold\s+off|stand\s+down|stop|abort|scratch\s+that|never\s+mind|nevermind|actually\s+(?:stop|no|not)|disregard|ignore\s+that)\b') { return $r }
