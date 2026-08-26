@@ -1903,3 +1903,187 @@ Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
         $guardIndex | Should -BeLessThan $loopIndex -Because 'a turn already exhausted must not reach any writer at all'
     }
 }
+
+Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fail closed when it cannot record' {
+    # Round 27 covered the tree W69 landed on and reported two BLOCKING findings against W69 itself,
+    # plus the campaign-scoping half of W68 that I had left as "secondary hardening". The engine
+    # demoted all of them to minor for want of a concrete failure scenario; the substance is that the
+    # ruling W69 implements does not hold on a host that delivers BOTH prompt text and a transcript.
+    #
+    # A fix that does not fix the thing it was ruled to fix is not a minor.
+
+    BeforeAll {
+        foreach ($dependency in @('ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
+            . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
+        }
+
+        function script:New-ChannelRoot {
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w70-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            return $root
+        }
+    }
+
+    It 'RED-FIRST: prompt-entry and Stop are the same human turn, and it mints ONCE across both' {
+        # THE BLOCKING FINDING. Identity hashes SourceEvent, position and arrival, all of which differ
+        # between the two deliveries of ONE utterance. So prompt-entry mints, the agent consumes it
+        # during the turn, and the end-of-turn Stop computes a different id and writes the spent
+        # authorization back as fresh - the exact regeneration W69 was ruled to end, still open through
+        # the one door W69 did not look at.
+        $root = New-ChannelRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T15:40:45Z' `
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'precondition: prompt-entry minted the human act'
+
+            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            [bool]$done.consumed | Should -BeTrue -Because 'precondition: the round spent it during the turn'
+
+            # The SAME utterance, delivered again at end-of-turn by the other channel.
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T15:52:10Z' `
+                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'one human utterance is one act however many channels deliver it'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a Stop-only host still mints a genuine retype, so the cross-channel rule wedges nobody' {
+        # The rule is scoped to "Stop must not re-mint what PROMPT-ENTRY already minted". Where
+        # prompt-entry is dead - the host the backstop exists for - a retype is a later turn and still
+        # mints. Without this the fix would trade a forgery for a wedge, which is the round-19 lesson.
+        $root = New-ChannelRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'on a prompt-entry-less host the backstop is the only channel, and a retype is a new act'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'prompt-entry SEEING content is not prompt-entry CAPTURING it, so the backstop still mints' {
+        # The cross-channel rule keys on a real mint, never on a sighting - and this is the case that
+        # proves the difference. Without it, a mutation making the rule key on sightings stayed green:
+        # prompt-entry reserves EVERY turn it is offered, so a sighting-keyed rule would silence the
+        # backstop for every phrase prompt-entry saw and failed to capture, which is precisely the set
+        # of turns the backstop exists for.
+        $root = New-ChannelRoot
+        try {
+            $hash = Get-SpecrewHumanAuthorityHash -Text 'approved for review round'
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            New-Item -ItemType Directory -Path (Split-Path -Parent $ledger) -Force | Out-Null
+            # What prompt-entry leaves behind when it sees a turn and captures nothing: a reservation
+            # with an EMPTY minted list.
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'typed-turn-exhausted'
+                    turn_id = 'some-other-turn-id'; content_hash = $hash; host_kind = 'claude'
+                    source_event = 'UserPromptSubmit'; minted = ''
+                    observed_at = '2026-08-26T15:40:45Z' } | ConvertTo-Json -Compress) |
+                Set-Content -LiteralPath $ledger -Encoding UTF8
+
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T15:40:45Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'the backstop exists for turns prompt-entry saw and did not capture'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: a turn that cannot be RECORDED as exhausted does not mint at all' {
+        # THE SECOND BLOCKING FINDING, and it is the report-don't-control shape reintroduced in my own
+        # fix: the registration was piped to Out-Null and its exceptions swallowed, so if the ledger
+        # could not be appended the approval existed and the turn was never marked - and the next Stop
+        # re-offered it. A limit that silently stops limiting is worse than no limit, because the
+        # ledger still looks like one.
+        $root = New-ChannelRoot
+        $handle = $null
+        try {
+            # Create the ledger, then hold it so it can be READ but never APPENDED. The exhaustion
+            # check therefore succeeds (nothing recorded yet) and only the registration fails, which
+            # isolates this branch from the locked-ledger case that covers the reader.
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            New-Item -ItemType Directory -Path (Split-Path -Parent $ledger) -Force | Out-Null
+            [IO.File]::WriteAllText($ledger, '', [Text.UTF8Encoding]::new($false))
+            $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'if the one-turn limit cannot be recorded, the mint it is supposed to bound must not happen'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'RED-FIRST: a TORN ledger line means exhausted, not "carry on"' {
+        # The reader skipped malformed lines, so an interrupted append produced exactly the false-fresh
+        # result the ledger exists to prevent. A line it cannot parse is a line it cannot rule out.
+        $root = New-ChannelRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            # An interrupted append: the tail of the file is half a record.
+            Add-Content -LiteralPath $ledger -Value '{"schema_version":"1.0","fact_type":"typed-turn-exh' -Encoding UTF8
+
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:00:00Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'a line it cannot read is a turn it cannot rule out'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: a pause decision binds to the campaign being answered, not the newest one anywhere' {
+        # The major finding, and the half of W68 I left undone. Excluding ANSWERED pauses fixed the
+        # reported wedge; scoping was called secondary hardening and was not. With two campaigns each
+        # holding an unanswered pause, the human answering the active feature is bound to whichever
+        # campaign paused most recently, the CLI rejects it for the run actually waiting, and retyping
+        # repeats the binding. Same wedge, reached by the door left open.
+        $root = New-ChannelRoot
+        try {
+            $t0 = [DateTimeOffset]::UtcNow.AddHours(-3)
+            $campaigns = Join-Path $root '.specrew/review/authority/campaigns'
+            foreach ($c in @(
+                    @{ id = 'cmp-active'; run = 'run-20260826-000000001-aaaaaaaa'; at = $t0 }
+                    @{ id = 'cmp-other'; run = 'run-20260826-000000002-bbbbbbbb'; at = $t0.AddHours(2) })) {
+                $runDir = Join-Path $campaigns ($c.id + '/runs/' + $c.run)
+                New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+                ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = $c.id
+                        run_id = $c.run; target_digest = 'dddd'; observed_at = $c.at.ToString('o') } |
+                    ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'pending-pause.json') -Encoding UTF8
+            }
+            # Answering the ACTIVE campaign, which is not the newest pause in the project.
+            $identity = Get-SpecrewPendingPauseIdentity -ProjectRoot $root -CampaignId 'cmp-active'
+            $identity | Should -Not -BeNullOrEmpty
+            [string]$identity.campaign_id | Should -Be 'cmp-active' -Because 'the decision belongs to the campaign the human is answering'
+            [string]$identity.run_id | Should -Be 'run-20260826-000000001-aaaaaaaa'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'with no campaign named it still answers, so an unscoped caller is not broken' {
+        # Fail-open on SCOPE only: callers that cannot name a campaign keep the project-wide behaviour,
+        # minus answered pauses. Refusing them would wedge every caller that has no campaign to give.
+        $root = New-ChannelRoot
+        try {
+            $runDir = Join-Path $root '.specrew/review/authority/campaigns/cmp-solo/runs/run-20260826-000000009-eeeeeeee'
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = 'cmp-solo'
+                    run_id = 'run-20260826-000000009-eeeeeeee'; target_digest = 'eeee'
+                    observed_at = ([DateTimeOffset]::UtcNow.AddHours(-1)).ToString('o') } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'pending-pause.json') -Encoding UTF8
+            [string](Get-SpecrewPendingPauseIdentity -ProjectRoot $root).campaign_id | Should -Be 'cmp-solo'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}

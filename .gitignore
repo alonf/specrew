@@ -74,6 +74,7 @@ testResults.xml
 # Review runtime evidence and captured-authority facts are runtime state, never tracked
 # (the review-evidence ruling; the store is the authority, git is not its mirror)
 .specrew/review/authority/
+.specrew/authority/
 .specrew/review/round-approval/
 .specrew/review/allowance-reset/
 .specrew/review/coverage-disposition/

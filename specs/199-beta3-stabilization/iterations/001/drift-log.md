@@ -591,6 +591,69 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-143 - W70: round 27 found W69 did not hold across CHANNELS, and could switch itself off (resolved)
+
+Round 27 (`run-20260826-154358068-adbbbb82`, codex, terminal / complete / current / valid, 1,229.9s)
+covered the tree W69 landed on and returned four findings. The engine classified all four minor; **the
+reviewer reported two as BLOCKING and one as major**. Taken on substance rather than label: a fix that
+does not fix the thing it was ruled to fix is not a minor, and two of these are W69 failing to hold.
+
+**Finding 1 (BLOCKING) - one utterance, two channels, two identities.** `Get-SpecrewTypedTurnIdentity`
+hashes source event, position and arrival, and ALL THREE differ between prompt-entry and Stop for the
+same human turn. On a host that delivers both, prompt-entry mints, the agent consumes it during the
+turn, and the end-of-turn Stop computes a different id and writes the spent authorization back as
+fresh. **W69's regeneration, still open through the one door W69 did not look at.**
+
+Resolved: a STOP offer is also exhausted when prompt-entry already MINTED this content on this host.
+Keyed on a real mint and never on a sighting - prompt-entry sees every turn, and the backstop exists
+precisely for the turns prompt-entry saw and did not capture. A Stop-only host is untouched, so a
+retype there still mints.
+
+**Finding 2 (BLOCKING) - a limit that could switch itself off.** The registration ran AFTER the
+writers, piped to `Out-Null`, exceptions swallowed. If the ledger could not be appended, the approval
+existed and the turn was never marked, so the next Stop re-offered it and the one-turn rule silently
+stopped applying. **Report-don't-control, reintroduced in my own fix for report-don't-control.**
+
+Resolved by RESERVING BEFORE MINTING: no ledger line, no mint. The cost is a reservation line for
+turns that mint nothing - a bounded, auditable price for a control that cannot be switched off by a
+full disk. A torn ledger line now also reads as exhausted; the reader used to `continue` past anything
+it could not parse, which is the false-fresh answer the ledger exists to prevent.
+
+**Finding 3 (major) - pause decisions bound to the newest campaign project-wide.** The half of W68 I
+called "secondary hardening" and left. Scoping added; fail-open on scope alone, because a caller with
+no campaign to name must keep working.
+
+**Finding 4 (minor) - the starter templates sidecar - CARRIED**, per the standing instruction.
+
+**Proof.** Six mutations, each turning its own case red: remove the cross-channel rule; key it on
+sightings instead of mints; forgive a torn line; let a failed reservation proceed; remove pause
+scoping; and the earlier ones re-run. One did not bite first time - nothing covered "prompt-entry saw
+this content and did not capture it", which is the backstop's entire purpose - closed with a case that
+writes a reservation with an empty minted list. **Ninth instance of the inert-control class.**
+
+**TWO DEFECTS FOUND IN MY OWN TOOLING WHILE PROVING THIS, both worth recording because both could have
+shipped:**
+
+1. **`Add-Content` raises a NON-TERMINATING error.** `try { Add-Content ... } catch { return $false }`
+   never fires: the append failed, the catch was skipped, and the reservation returned success it had
+   not achieved. Fixed with `-ErrorAction Stop` AND a read-back, because "the write did not throw" is
+   not "the record is there". The locked-ledger case had been passing for the wrong reason.
+2. **`[IO.File]::ReadLines` is a LAZY enumerator.** Three readers I had written return from inside the
+   loop, leaving the file handle open until collection - a control whose own reader holds the file it
+   is checking. It surfaced as sharing violations in the suites that deliberately lock these ledgers.
+   All three moved to `ReadAllLines`.
+
+**AND A PROCESS FAILURE OF MINE, recorded because the risk was real.** The mutation harness restored
+the file in a `finally`; a tool timeout killed the process before it ran, and a mutated line -
+`if ($false) { return }` - was left standing in the working tree. The next test run reported it as a
+genuine failure and I began diagnosing a defect that did not exist. Then, repairing it, I ran
+`git checkout --` on a file that still held uncommitted work and **destroyed the W70 store changes**,
+which had to be reapplied from the patch script.
+
+Both corrected: mutations now run ONE PER PROCESS, and the harness never depends on its own survival.
+**A verification tool that can leave the tree mutated is a tool that can make a green build look red
+and a red build look green** - the same class as everything else in this log, in the machinery used to
+find it.
 ### DRIFT-199-I001-142 - W69: typed-turns-v1 COMPLETED - a turn mints at most once, ever (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, on the regeneration measured at ground truth the same day.

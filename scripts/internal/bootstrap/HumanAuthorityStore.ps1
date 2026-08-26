@@ -534,27 +534,54 @@ function Get-SpecrewExhaustedTurnLedgerPath {
 }
 
 function Test-SpecrewTypedTurnExhausted {
-    # Has this exact turn already minted? Append-only ledger, read as a set.
+    # Has this turn already minted? Append-only ledger, read as a set.
     #
     # FAILS CLOSED on an unreadable ledger, and that direction is deliberate: the cost of a false
     # "exhausted" is that the human types the phrase again, while the cost of a false "fresh" is a
     # forged authority. This is the same call made for the withdrawal journal in W68, for the same
     # reason.
+    #
+    # W70 / round-27 finding: A TORN LINE IS NOT A LINE TO SKIP. The reader used to `continue` past
+    # anything it could not parse, so an interrupted append - the exact failure the two-phase write
+    # below exists to survive - produced the false-fresh answer this ledger exists to prevent. A record
+    # it cannot read is a turn it cannot rule out.
+    #
+    # W70 / round-27 finding, reported BLOCKING: ONE UTTERANCE, ONE ACT, HOWEVER MANY CHANNELS CARRY IT.
+    # Identity hashes the source event, position and arrival, all of which differ between prompt-entry
+    # and Stop for the SAME human turn. On a host that delivers both, prompt-entry minted, the agent
+    # consumed it during the turn, and the end-of-turn Stop computed a different id and wrote the spent
+    # authorization back as fresh - W69's regeneration, still open through the one door W69 did not
+    # look at. So a STOP offer is also exhausted when prompt-entry already MINTED this content on this
+    # host. Keyed on a real mint, never on a mere sighting: prompt-entry sees every turn, and the
+    # backstop exists precisely to catch the ones prompt-entry saw and did not capture.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId,
+        [AllowEmptyString()][AllowNull()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent
     )
     if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
     $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
     if (-not [IO.File]::Exists($path)) { return $false }
+    $isStopOffer = (([string]$SourceEvent).Trim().ToLowerInvariant() -in @('stop', 'stop-transcript'))
     try {
-        foreach ($line in [IO.File]::ReadLines($path)) {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $entry = $null
-            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
-            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) { continue }
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { return $true }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) { return $true }
             if ([string]$entry.turn_id -ceq [string]$TurnId) { return $true }
+            if (-not $isStopOffer -or [string]::IsNullOrWhiteSpace($ContentHash)) { continue }
+            if (-not $entry.PSObject.Properties['content_hash'] -or -not $entry.PSObject.Properties['minted']) { continue }
+            if ([string]$entry.content_hash -cne [string]$ContentHash) { continue }
+            if ([string]::IsNullOrWhiteSpace([string]$entry.minted)) { continue }
+            $entryHost = if ($entry.PSObject.Properties['host_kind']) { [string]$entry.host_kind } else { '' }
+            if ($entryHost -cne [string]$HostKind) { continue }
+            $entrySource = if ($entry.PSObject.Properties['source_event']) { [string]$entry.source_event } else { '' }
+            if ($entrySource.Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) { continue }
+            return $true
         }
     }
     catch { return $true }
@@ -571,6 +598,7 @@ function Register-SpecrewExhaustedTurn {
         [AllowEmptyString()][AllowNull()][string]$HostKind,
         [AllowEmptyString()][AllowNull()][string]$SourceEvent,
         [AllowEmptyString()][AllowNull()][string]$MintedWriters,
+        [AllowEmptyString()][AllowNull()][string]$ContentHash,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
     if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
@@ -579,11 +607,23 @@ function Register-SpecrewExhaustedTurn {
         [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
         $entry = [pscustomobject][ordered]@{
             schema_version = '1.0'; fact_type = 'typed-turn-exhausted'; turn_id = [string]$TurnId
+            content_hash = [string]$ContentHash
             host_kind = [string]$HostKind; source_event = [string]$SourceEvent
             minted = [string]$MintedWriters; observed_at = $NowUtc
         }
-        ($entry | ConvertTo-Json -Compress -Depth 6) | Add-Content -LiteralPath $path -Encoding UTF8
-        return $true
+        # -ErrorAction Stop, and it is load-bearing. Add-Content raises a NON-TERMINATING error, so a
+        # plain try/catch around it never fires: the append failed, the catch was skipped, and this
+        # returned $true. A reservation that reports success it did not achieve is precisely the
+        # failure the reservation exists to prevent, and it was found by the case that locks the ledger.
+        $line = ($entry | ConvertTo-Json -Compress -Depth 6)
+        Add-Content -LiteralPath $path -Value $line -Encoding UTF8 -ErrorAction Stop
+        # And READ IT BACK, because "the write did not throw" is not "the record is there" - the same
+        # postcondition rule the round-approval and allowance-reset consumptions were corrected to.
+        $confirmed = $false
+        foreach ($written in [IO.File]::ReadAllLines($path)) {
+            if ([string]$written -ceq [string]$line) { $confirmed = $true; break }
+        }
+        return $confirmed
     }
     catch { return $false }
 }
@@ -652,7 +692,7 @@ function Test-SpecrewApprovalIsWithdrawn {
     if ($Fact.PSObject.Properties['observed_at']) { $approvedAt = ConvertTo-SpecrewAuthorityInstant -Value $Fact.observed_at }
     if ($null -eq $approvedAt) { return $true }
     try {
-        foreach ($line in [IO.File]::ReadLines($journal)) {
+        foreach ($line in [IO.File]::ReadAllLines($journal)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $entry = $null
             try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
@@ -712,8 +752,19 @@ function Get-SpecrewPendingPauseIdentity {
     # Read from the store's own published fact (campaigns/<id>/runs/<run>/pending-pause.json) so a
     # captured decision can be BOUND to the round it answers. Returns $null when nothing is pending -
     # which is itself the answer: a decision typed against no pause authorizes no pause.
+    #
+    # W70 / round-27 finding: SCOPED TO THE CAMPAIGN BEING ANSWERED. W68 excluded ANSWERED pauses,
+    # which fixed the reported wedge and left the other half standing: with two campaigns each holding
+    # an unanswered pause, the human answering the active feature was bound to whichever campaign
+    # paused most recently, the CLI rejected it for the run actually waiting, and retyping repeated the
+    # binding. I called scoping secondary hardening at the time; it was the same wedge through the door
+    # left open. Fail-open on SCOPE ALONE - a caller with no campaign to name keeps the project-wide
+    # behaviour, because refusing them would wedge every caller that cannot supply one.
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$ProjectRoot)
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowEmptyString()][AllowNull()][string]$CampaignId
+    )
     $campaignsRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/authority/campaigns'
     if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return $null }
     $newest = $null
@@ -736,6 +787,10 @@ function Get-SpecrewPendingPauseIdentity {
             # module and it must not take a dependency on the review-authority reader to answer a
             # question about a file sitting next to the one it already opened.
             if ([IO.File]::Exists([IO.Path]::Combine($pauseFile.DirectoryName, 'pause-decision.json'))) { continue }
+            if (-not [string]::IsNullOrWhiteSpace($CampaignId)) {
+                $pauseCampaign = if ($pause.PSObject.Properties['campaign_id']) { [string]$pause.campaign_id } else { '' }
+                if ($pauseCampaign -cne [string]$CampaignId) { continue }
+            }
             $observed = $null
             if ($pause.PSObject.Properties['observed_at']) { $observed = ConvertTo-SpecrewAuthorityInstant -Value $pause.observed_at }
             if ($null -eq $observed) { $observed = [DateTimeOffset]::MinValue }

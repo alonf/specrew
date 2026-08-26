@@ -788,10 +788,40 @@ function Invoke-SpecrewTypedAuthorityCapture {
         }
         catch { $turnId = '' }
     }
+    $contentHash = ''
+    if (Get-Command Get-SpecrewHumanAuthorityHash -ErrorAction SilentlyContinue) {
+        try { $contentHash = [string](Get-SpecrewHumanAuthorityHash -Text ([string]$Response)) } catch { $contentHash = '' }
+    }
     if (-not [string]::IsNullOrWhiteSpace($turnId) -and (Get-Command Test-SpecrewTypedTurnExhausted -ErrorAction SilentlyContinue)) {
         $exhausted = $true
-        try { $exhausted = [bool](Test-SpecrewTypedTurnExhausted -ProjectRoot $ProjectRoot -TurnId $turnId) } catch { $exhausted = $true }
+        try {
+            $exhausted = [bool](Test-SpecrewTypedTurnExhausted -ProjectRoot $ProjectRoot -TurnId $turnId `
+                    -ContentHash $contentHash -HostKind $HostKind -SourceEvent $SourceEvent)
+        }
+        catch { $exhausted = $true }
         if ($exhausted) { return }
+    }
+    # W70 / round-27 finding, reported BLOCKING: RESERVE BEFORE MINTING, SO A LIMIT THAT CANNOT BE
+    # RECORDED IS A LIMIT THAT REFUSES.
+    #
+    # The registration used to run AFTER the writers, piped to Out-Null with its exceptions swallowed -
+    # the report-don't-control shape this session has corrected four times, reintroduced in my own fix
+    # for it. If the ledger could not be appended the approval existed and the turn was never marked,
+    # so the next Stop re-offered it and the one-turn rule silently stopped applying. A limit that
+    # quietly stops limiting is worse than none, because the ledger still looks like one.
+    #
+    # Reserving first makes the failure unmissable by construction: no ledger line, no mint. The cost
+    # is a reservation line for turns that mint nothing, which is a bounded, auditable price for a
+    # control that cannot be switched off by a full disk.
+    if (-not [string]::IsNullOrWhiteSpace($turnId)) {
+        if (-not (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) { return }
+        $reserved = $false
+        try {
+            $reserved = [bool](Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId `
+                    -HostKind $HostKind -SourceEvent $SourceEvent -MintedWriters '' -ContentHash $contentHash -NowUtc $NowUtc)
+        }
+        catch { $reserved = $false }
+        if (-not $reserved) { return }
     }
     $mintedBy = [System.Collections.Generic.List[string]]::new()
     foreach ($writerName in @(
@@ -817,13 +847,14 @@ function Invoke-SpecrewTypedAuthorityCapture {
         }
         catch { $null = $_ }
     }
-    # Only a turn that MINTED is exhausted. An ordinary chat turn matches no recognizer and writes
-    # nothing, and recording those would grow the ledger without bounding anything.
+    # Phase two: record WHAT minted. The reservation above already bounds the turn; this line is what
+    # the cross-channel rule reads, because "prompt-entry saw this content" must never mean the same as
+    # "prompt-entry captured it" - the backstop exists for turns prompt-entry saw and did not capture.
     if ($mintedBy.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
         (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) {
         try {
             Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId -HostKind $HostKind `
-                -SourceEvent $SourceEvent -MintedWriters ($mintedBy -join ',') -NowUtc $NowUtc | Out-Null
+                -SourceEvent $SourceEvent -MintedWriters ($mintedBy -join ',') -ContentHash $contentHash -NowUtc $NowUtc | Out-Null
         }
         catch { $null = $_ }
     }
