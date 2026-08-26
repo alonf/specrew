@@ -591,7 +591,7 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
-### OBSERVED 2026-08-26, pending ruling - a typed approval that CLOSES a ruling is not captured, and I will not widen the recognizer myself
+### RULED 2026-08-26, NO CHANGE - a typed approval that CLOSES a ruling is not captured, and the anchor stays
 
 **Measured, not inferred.** `Test-SpecrewReviewRoundApprovalPhrase` against four shapes of the same act:
 
@@ -618,6 +618,19 @@ unsafe widening makes. The measurement is mine to bring; the rule is the maintai
 
 **What it costs to leave**: the human types the phrase again, bare. That is the W54 cost - answering
 the same question twice - which is a real cost and is why this is worth a ruling rather than a shrug.
+
+**RULING (maintainer, 2026-08-26): DO NOT WIDEN IT. The leading anchor stays, and the reason is this
+workflow.** Drafted messages are relayed into the agent session, and those drafts CONTAIN THE PHRASE
+AS INSTRUCTION TEXT - the thing the human is being told to type. A non-anchored rule would mint an
+approval on every relay of advice.
+
+That is a sharper reason than the one the refusal was based on. I declined on the general principle
+that an agent must not widen the gate it is standing at, which is right but generic; the ruling names
+a specific, live, recurring shape in this project's own workflow where a non-anchored recognizer
+would fabricate authority from a message that is explicitly ABOUT authority rather than an exercise of
+it. The W54 cost is real and is accepted: the human retypes the phrase bare.
+
+**Closed: no change. The defect was in how the message was written, not in the gate.**
 ### DRIFT-199-I001-139 - W67: the independence block asked the currentness question of a field that answered it once (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, overturning a retraction I had written an hour earlier in this same
