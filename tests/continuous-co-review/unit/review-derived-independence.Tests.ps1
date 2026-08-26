@@ -243,3 +243,146 @@ Describe 'Item 6 the ramp promotes itself' {
         finally { Remove-Item -LiteralPath $project.Root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
+Describe 'W67 the block derives currentness the way the validator does, not from the frozen field' {
+    # Maintainer ruling, 2026-08-26. The generator selected a run on `currentness` FROZEN into
+    # result.json at ingest, while the validator recomputes the same question against the tree that
+    # exists now (W38, source-aware per DRIFT-007). So the block would put a present-tense claim into
+    # review.md that a run covers a tree it does not - in the signoff evidence of the feature whose
+    # subject is evidence honesty - and the validator's recompute would contradict it on the same page.
+    #
+    # One reader's rule, asked at every reader. These cases use a REAL git fixture, because the rule is
+    # a tree diff: a fixture with no object store exercises only the fail-open arm, which is the arm
+    # that was never broken.
+
+    BeforeAll {
+        # The digest helper is what turns a working tree into the tree-id the rule compares, so these
+        # cases need it loaded; the suites above never did, which is why they only ever reached the
+        # fail-open arm.
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1')
+
+        function script:New-GitTreeProject {
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w67-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root 'src') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Encoding UTF8 -Value 'specrew_version: "0.40.0"'
+            Set-Content -LiteralPath (Join-Path $root 'src/Engine.cs') -Encoding UTF8 -Value 'class Engine { }'
+            & git init -q -b main $root 2>&1 | Out-Null
+            & git -C $root add -A 2>&1 | Out-Null
+            & git -C $root -c user.name=t -c user.email=t@t commit -q -m init 2>&1 | Out-Null
+            return $root
+        }
+        function script:Get-FixtureTreeId {
+            param([Parameter(Mandatory)][string]$Root)
+            $state = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $Root
+            if ($null -eq $state -or -not [bool]$state.ok) { throw 'fixture digest failed' }
+            return [string]$state.tree_id
+        }
+        function script:Add-FixtureRun {
+            param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$TreeId,
+                [string]$RunId = 'run-20260826-111111111-aabbccdd')
+            $runDir = Join-Path $Root ".specrew/review/authority/campaigns/cmp-w67/runs/$RunId"
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $result = [ordered]@{
+                schema_version = '1.0'; campaign_id = 'cmp-w67'; run_id = $RunId
+                harness_id = 'codex-cli-file-primary'; completion = 'complete'; verdict = 'pass'
+                currentness = 'current'; validation = 'valid'; target_digest = $TreeId
+                examined_paths = @('src/Engine.cs'); findings = @()
+            }
+            [IO.File]::WriteAllText((Join-Path $runDir 'result.json'), ($result | ConvertTo-Json -Depth 8 -Compress), [Text.UTF8Encoding]::new($false))
+            return $RunId
+        }
+    }
+
+    It 'PRECONDITION: a run against the tree that exists now still qualifies and is named' {
+        # Without this control the case below could pass because the fixture never qualified at all.
+        $root = New-GitTreeProject
+        try {
+            $tree = Get-FixtureTreeId -Root $root
+            $runId = Add-FixtureRun -Root $root -TreeId $tree
+            $block = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $root
+            $block | Should -Match ([regex]::Escape($runId)) -Because 'a covering run is exactly what the block exists to name'
+            $block | Should -Match '1 source path\(s\)'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: a run whose SOURCE has moved since no longer qualifies, and the block says so' {
+        $root = New-GitTreeProject
+        try {
+            $tree = Get-FixtureTreeId -Root $root
+            $runId = Add-FixtureRun -Root $root -TreeId $tree
+            # The code the run read is not the code that is here now.
+            Set-Content -LiteralPath (Join-Path $root 'src/Engine.cs') -Encoding UTF8 -Value 'class Engine { void Added() { } }'
+
+            Get-SpecrewQualifyingIndependentRun -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'the frozen field says current; the tree says otherwise, and the tree is the fact'
+            $block = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $root
+            $block | Should -Match 'does not cover the current source'
+            $block | Should -Match ([regex]::Escape($tree.Substring(0, 8))) -Because 'naming the tree it DID review is what makes the claim checkable'
+            # THE RUN ID MUST NOT APPEAR. The validator reads any run id in the block as the evidence
+            # the record rests on, so a non-coverage arm that names one would be refused as a stale
+            # citation - the block would state non-coverage and be read as a claim of coverage.
+            $block | Should -Not -Match 'run-\d{8}-\d{9}-[0-9a-f]{8}'
+            $runId | Should -Not -BeNullOrEmpty
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a run stays qualifying when only RECORDS moved, so writing the record cannot stale it' {
+        # DRIFT-007's rule, which the generator must inherit along with the recompute. Without this the
+        # fix would wedge every project at the commit that records its own review.
+        $root = New-GitTreeProject
+        try {
+            $tree = Get-FixtureTreeId -Root $root
+            $runId = Add-FixtureRun -Root $root -TreeId $tree
+            New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-thing/iterations/001') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root 'specs/001-thing/iterations/001/state.md') -Encoding UTF8 -Value '# State'
+            $block = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $root
+            $block | Should -Match ([regex]::Escape($runId)) -Because 'recording a review must not invalidate it'
+            $block | Should -Not -Match 'does not cover the current source'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'FAILS OPEN when the tree cannot be resolved: absence of proof is not staleness' {
+        # Every fixture in this file that predates W67 lives in a directory with no git object store.
+        # The rule must stay quiet there, the same posture the validator takes - "I could not tell"
+        # must never manufacture staleness.
+        $root = New-StoreProject -DeclareExamined -ExaminedPaths @('src/Engine.cs')
+        try {
+            $block = Get-SpecrewDerivedIndependenceBlock -ProjectRoot $root
+            $block | Should -Match 'run-20260820-083412478-d85dda20' -Because 'no object store means no answer, and no answer is not a refusal'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a reviewed tree that has LEFT the object store is not-knowing, and is left for the validator to refuse' {
+        # My first cut excluded these too, and review-record-survives-its-own-commit went red: the
+        # block would have said "no run qualifies", the record would have validated CLEAN, and a record
+        # whose only evidence cannot be checked would have quietly received a pass. W38 reports
+        # not-comparable as a WEAK claim and refuses it at the validator; staleness is a different
+        # answer from not knowing, and only staleness belongs to this selector.
+        $root = New-GitTreeProject
+        try {
+            $runId = Add-FixtureRun -Root $root -TreeId ('0' * 40)
+            $qualifying = Get-SpecrewQualifyingIndependentRun -ProjectRoot $root
+            $qualifying | Should -Not -BeNullOrEmpty -Because 'dropping it here would silence the refusal that is supposed to fire downstream'
+            (Get-SpecrewDerivedIndependenceBlock -ProjectRoot $root) | Should -Match ([regex]::Escape($runId)) -Because 'the validator refuses what the block names, and it can only name what it is given'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the generator and the validator answer the currentness question with the SAME rule' {
+        # The structural half of the ruling: not "both are correct today" but "there is one rule".
+        $governance = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1') -Raw -Encoding UTF8
+        $validator = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1') -Raw -Encoding UTF8
+        $selector = [regex]::Match($governance, '(?s)function Get-SpecrewQualifyingIndependentRun.*?\r?\n\}').Value
+        $selector | Should -Not -BeNullOrEmpty
+        $selector | Should -Match 'Get-SpecrewReviewRunCoversCurrentSource' -Because 'the selector must ASK the question rather than read a field that answered it once'
+        $validator | Should -Match 'Get-SpecrewReviewedTreeSourceDrift' -Because 'the validator already asks it; the point is that both ask the same thing'
+        # And the shared rule is the one place the source-awareness lives.
+        $shared = [regex]::Match($governance, '(?s)function Get-SpecrewReviewRunCoversCurrentSource.*?\r?\n\}').Value
+        $shared | Should -Match 'Get-SpecrewReviewedTreeSourceDrift'
+    }
+}

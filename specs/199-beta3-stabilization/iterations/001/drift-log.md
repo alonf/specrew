@@ -535,9 +535,12 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
-### The derived independence block and the validator divide the work - RETRACTION of a finding I recorded here (2026-08-26)
+### The derived independence block and the validator divide the work - RETRACTION, itself OVERTURNED the same day (2026-08-26)
 
-I recorded this as a beta4 item and it was wrong, so the retraction stands where the claim did.
+**Read DRIFT-199-I001-139 first: the maintainer overturned this retraction and the original finding
+stands.** The reasoning below is kept unedited because the error in it is instructive - I judged a
+finding by whether the system contains its consequence, when the standard is whether the artifact
+tells the truth on the page a human signs off from.
 
 **What I claimed**: `Get-SpecrewQualifyingIndependentRun` selects a run on the FROZEN `currentness`
 field rather than the live tree, so the block would render `Outcome: ..., current, ...` about a tree
@@ -587,6 +590,69 @@ dead branch.
 **The fix when beta4 takes it**: derive the detector's phrase list and the `ValidateSet` from the same
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
+
+### DRIFT-199-I001-139 - W67: the independence block asked the currentness question of a field that answered it once (resolved by ruling)
+
+**Maintainer ruling, 2026-08-26**, overturning a retraction I had written an hour earlier in this same
+file. Both the finding and the retraction are kept, because the disagreement is the useful part.
+
+**The defect.** `Get-SpecrewQualifyingIndependentRun` selected a run on `currentness` - a field frozen
+into `result.json` when the run ended - while `validate-governance.ps1` has recomputed the same
+question against the tree that exists now since W38, source-aware since DRIFT-007. One question, two
+readers, two answers. Rendering the block from the frozen field would have put a present-tense claim
+into `review.md` that a run covers a tree it does not, **in the signoff evidence of the feature whose
+subject is evidence honesty**, with the validator's recompute contradicting it on the same page.
+
+**What I got wrong, and it is worth stating precisely.** I found this, recorded it as a beta4 item,
+then retracted it after measuring that the validator refuses the record. My reasoning was: the false
+claim never reaches anyone, therefore it is not a defect. The ruling: *the block is what a human reads
+when deciding whether to sign off.* A false line on that page is not made true by a refusal that fires
+somewhere else. I had judged the finding by whether the system contains the consequence; the standard
+is whether the artifact tells the truth. **The retraction was the error, not the finding.**
+
+**The fix, and it is the same correction this cycle has now made three times**: one rule, asked at
+every reader, instead of a copy per reader.
+
+- `Get-SpecrewReviewRunCoversCurrentSource` is the rule - resolve the tree that exists now, compare
+  against the run's frozen `target_digest`, and ask `Get-SpecrewReviewedTreeSourceDrift` whether any
+  SOURCE moved. Records do not stale a run (DRIFT-007), so recording a review still cannot invalidate
+  it. Unresolvable trees fail OPEN, because "I could not tell" must never manufacture staleness; a
+  reviewed tree that has left the object store does not, because then the citation cannot be checked
+  at all, which is the validator's own reading.
+- `Get-SpecrewReviewRunCandidates` is the one filter chain both consumers read. The selector is now a
+  filter over it. A second copy of that chain for the block's non-coverage arm is exactly the
+  divergence DRIFT-199-I001-138 had just been about, and it would have landed here next.
+- The frozen field is KEPT as a floor: a run that knew it was not current when it ended never was.
+  W67 adds the live question on top rather than replacing the stored one - which is also what the
+  validator does, so the two readers now agree clause for clause.
+
+**The block's non-coverage arm names the tree and never the run id.** The validator reads any run id
+inside the block as the evidence the record rests on, so naming one in a statement of NON-coverage
+would turn it into a stale citation - the block would say "does not cover" and be read as a claim of
+coverage. It names the CITED tree and not the current one, and not the moved-file list, so the text
+changes only when the store does; the block is recomputed and byte-compared at validation, and a
+per-commit rewrite would read as tampering.
+
+**What it says now, against this project:**
+
+> - No run in this project's review store qualifies as an independent review of the current tree.
+> - The most recent completed run reviewed tree a7c559de... and does not cover the current source:
+>   source files have changed since it read them.
+> - It is evidence about the tree it read. It is not evidence about the code as it stands.
+
+**Proof.** Four mutations, each reverting one clause, each turning its own case red against an
+otherwise green suite (18 cases): make the selector read the frozen field; make the rule compare all
+changed files instead of source (records would stale every run at its own recording commit); make the
+unresolvable-tree arm refuse instead of failing open (4 red - every pre-W67 fixture in the file lives
+in a directory with no object store); make the non-coverage arm name the run id.
+
+**A fixture note that is the point of the fixture.** These cases build a REAL git repository and take
+a real reviewed-state digest, because the rule is a tree diff. Every fixture in this suite before them
+had no object store, so they exercised only the fail-open arm - the one arm that was never broken.
+That is the same blind spot method rule 5 names, in the file whose subject is measuring trees.
+
+**Consequence, accepted rather than worked around**: with the block truthful, signoff needs a round
+that covers the current source. One was approved in the same ruling.
 
 ### DRIFT-199-I001-138 - round 24: the two capture branches had drifted apart, a broken link still launched a round, and a lost stamp left a reset reusable (resolved)
 

@@ -7366,16 +7366,78 @@ function Get-SpecrewReviewedTreeSourceDrift {
     return [pscustomobject]@{ comparable = $true; changed = @($changed); source = @($source); reason = 'compared' }
 }
 
-function Get-SpecrewQualifyingIndependentRun {
-    # A run qualifies as evidence of an independent review of code when the store says it completed,
-    # against the current tree, with a valid candidate and a reviewed outcome - and, when it declared
-    # its coverage at all (W33), that coverage included source. A run that declared nothing is left
-    # eligible on purpose: every reviewer deployed before W33 declares nothing, and refusing them all
-    # would wedge the gate shut on the past.
+function Get-SpecrewReviewCurrentTreeId {
+    # The tree that exists NOW, as a reviewed-state digest. Fail-open to '' - no git, a detached
+    # state, the helper absent: nothing is claimed, which is the posture every other check here takes.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    try {
+        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+            $helper = Join-Path $ProjectRoot 'scripts/internal/continuous-co-review/reviewed-state-digest.ps1'
+            if (Test-Path -LiteralPath $helper -PathType Leaf) { . $helper }
+        }
+        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) { return '' }
+        $state = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot
+        if ($null -eq $state -or -not [bool]$state.ok) { return '' }
+        return [string]$state.tree_id
+    }
+    catch { return '' }
+}
+
+function Get-SpecrewReviewRunCoversCurrentSource {
+    # W67 (maintainer ruling, 2026-08-26): THE CURRENTNESS QUESTION, ASKED - NOT READ.
+    #
+    # `currentness` is a field the run wrote about the tree that existed THEN. The validator has
+    # recomputed it against the tree that exists now since W38; the block generator went on reading
+    # the frozen field, so the two readers of one question could disagree - and did. The block would
+    # have put a present-tense claim into review.md that a run covers a tree it does not, in the
+    # signoff evidence of the feature whose subject is evidence honesty, with the validator's
+    # recompute contradicting it on the same page.
+    #
+    # So the rule lives here and every reader asks it. Source-aware via DRIFT-007, so RECORDING a
+    # review cannot stale it - exact tree equality made every run stale at its own recording commit.
+    #
+    # FAIL-OPEN when the trees cannot be resolved: "I could not tell" must never manufacture
+    # staleness. NOT-COMPARABLE is different and is NOT fail-open - a reviewed tree that has left the
+    # object store means the citation can no longer be checked, which is the validator's own reading.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowNull()]$Result,
+        [AllowEmptyString()][string]$CurrentTreeId = ''
+    )
+    $answer = [pscustomobject]@{ covers = $true; established = $false; reason = 'unresolvable'; cited = ''; current = ''; source = @() }
+    if ($null -eq $Result) { return [pscustomobject]@{ covers = $false; established = $true; reason = 'no-result'; cited = ''; current = ''; source = @() } }
+    $cited = if ($Result.PSObject.Properties['target_digest']) { [string]$Result.target_digest } else { '' }
+    if ([string]::IsNullOrWhiteSpace($CurrentTreeId)) { $CurrentTreeId = Get-SpecrewReviewCurrentTreeId -ProjectRoot $ProjectRoot }
+    $answer.cited = $cited
+    $answer.current = [string]$CurrentTreeId
+    if ([string]::IsNullOrWhiteSpace($cited) -or [string]::IsNullOrWhiteSpace($CurrentTreeId)) { return $answer }
+    if ($cited -ceq $CurrentTreeId) {
+        return [pscustomobject]@{ covers = $true; established = $true; reason = 'identical'; cited = $cited; current = [string]$CurrentTreeId; source = @() }
+    }
+    $drift = $null
+    if (Get-Command -Name 'Get-SpecrewReviewedTreeSourceDrift' -ErrorAction SilentlyContinue) {
+        $drift = Get-SpecrewReviewedTreeSourceDrift -ProjectRoot $ProjectRoot -CitedTreeId $cited -CurrentTreeId $CurrentTreeId
+    }
+    if ($null -eq $drift -or -not [bool]$drift.comparable) {
+        $reason = if ($null -ne $drift) { [string]$drift.reason } else { 'drift-helper-absent' }
+        return [pscustomobject]@{ covers = $false; established = $false; reason = $reason; cited = $cited; current = [string]$CurrentTreeId; source = @() }
+    }
+    if (@($drift.source).Count -gt 0) {
+        return [pscustomobject]@{ covers = $false; established = $true; reason = 'source-moved'; cited = $cited; current = [string]$CurrentTreeId; source = @($drift.source) }
+    }
+    return [pscustomobject]@{ covers = $true; established = $true; reason = 'records-only'; cited = $cited; current = [string]$CurrentTreeId; source = @() }
+}
+
+function Get-SpecrewReviewRunCandidates {
+    # Every run the store holds that could evidence a review, newest LAST, each carrying the coverage
+    # answer for the tree that exists now. Both the qualifying selector and the block's non-coverage
+    # arm read this ONE list: keeping two copies of the filter chain is the divergence this whole
+    # cycle has been correcting, and it would land here next.
     param([Parameter(Mandatory)][string]$ProjectRoot)
     $campaignsRoot = Join-Path $ProjectRoot '.specrew/review/authority/campaigns'
-    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return $null }
-    $qualifying = [System.Collections.Generic.List[object]]::new()
+    if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return @() }
+    $currentTreeId = Get-SpecrewReviewCurrentTreeId -ProjectRoot $ProjectRoot
+    $candidates = [System.Collections.Generic.List[object]]::new()
     foreach ($campaign in @(Get-ChildItem -LiteralPath $campaignsRoot -Directory -ErrorAction SilentlyContinue)) {
         $runsRoot = Join-Path $campaign.FullName 'runs'
         if (-not (Test-Path -LiteralPath $runsRoot -PathType Container)) { continue }
@@ -7386,44 +7448,61 @@ function Get-SpecrewQualifyingIndependentRun {
             try { $result = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20 } catch { continue }
             if ($null -eq $result) { continue }
             if ([string]$result.completion -cne 'complete') { continue }
-            # DRIFT-199-I001-134: StrictMode-safe, the rule this file already applies to
-            # target_digest. A stored result WITHOUT a verdict - a run that produced none, which is
-            # exactly what a 'not-produced' validation records - threw here and took the whole
-            # validator down as an unexpected-validator-error, so the refusal it was supposed to
-            # reach never surfaced. An absent verdict is not a passing one.
+            # DRIFT-199-I001-134: StrictMode-safe. An absent verdict is not a passing one.
             $resultVerdict = if ($result.PSObject.Properties['verdict']) { [string]$result.verdict } else { '' }
             if ($resultVerdict -notin @('pass', 'findings')) { continue }
+            # The FROZEN field is still a floor: a run that knew it was not current when it ended
+            # never was. W67 adds the live question on top; it does not replace this one.
             if ([string]$result.currentness -cne 'current') { continue }
             if ([string]$result.validation -cne 'valid') { continue }
             $sourceCount = $null
             if ($result.PSObject.Properties['examined_paths']) {
                 $declared = @(@($result.examined_paths) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-                # Round-13 finding (DRIFT-199-I001-122): a PRESENT empty list is declared ZERO
-                # coverage - the ingress refuses new ones since the round-11 fix, but results
-                # persisted before it are read HERE, and treating them like legacy absence let a
-                # run that declared it read nothing qualify as independent-review evidence. Only
-                # ABSENCE of the field keeps the legacy unknown-coverage path.
+                # Round-13 finding (DRIFT-199-I001-122): a PRESENT empty list is declared ZERO coverage.
                 if (@($declared).Count -eq 0) { continue }
                 $sourceCount = @($declared | Where-Object { Test-SpecrewDerivedCoverageSourcePath -Path $_ }).Count
                 if ($sourceCount -eq 0) { continue }
             }
-            [void]$qualifying.Add([pscustomobject]@{ result = $result; source_count = $sourceCount })
+            $coverage = Get-SpecrewReviewRunCoversCurrentSource -ProjectRoot $ProjectRoot -Result $result -CurrentTreeId $currentTreeId
+            [void]$candidates.Add([pscustomobject]@{ result = $result; source_count = $sourceCount; coverage = $coverage })
         }
     }
-    if ($qualifying.Count -eq 0) { return $null }
-    # "Latest" is a TIME claim (the DRIFT-120 rule, applied to this walk too - the same lexicographic
-    # selection lived one function over): order by the result's own ended_at, ordinal run id only as
-    # the deterministic tie-breaker.
-    return (@($qualifying) | Sort-Object -Property @{ Expression = {
+    if ($candidates.Count -eq 0) { return @() }
+    # "Latest" is a TIME claim (the DRIFT-120 rule): order by the result's own ended_at, ordinal run
+    # id only as the deterministic tie-breaker.
+    return @($candidates | Sort-Object -Property @{ Expression = {
                 $parsedEnded = [System.DateTimeOffset]::MinValue
                 $endedRaw = if ($_.result.PSObject.Properties['ended_at']) { [string]$_.result.ended_at } else { '' }
                 if (-not [string]::IsNullOrWhiteSpace($endedRaw)) {
                     $null = [System.DateTimeOffset]::TryParse($endedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEnded)
                 }
                 $parsedEnded
-            } }, @{ Expression = { [string]$_.result.run_id } } | Select-Object -Last 1)
+            } }, @{ Expression = { [string]$_.result.run_id } })
 }
 
+function Get-SpecrewQualifyingIndependentRun {
+    # A run qualifies as evidence of an independent review of code when the store says it completed,
+    # with a valid candidate and a reviewed outcome - when, if it declared its coverage at all (W33),
+    # that coverage included source - AND when it still COVERS the source that exists now.
+    #
+    # W67 (maintainer ruling, 2026-08-26): that last clause used to read the run's frozen
+    # `currentness` field, so this reader and the validator answered one question two ways. It now
+    # asks Get-SpecrewReviewRunCoversCurrentSource, which is the rule the validator has applied since
+    # W38. A run that declared nothing is still left eligible on purpose: every reviewer deployed
+    # before W33 declares nothing, and refusing them all would wedge the gate shut on the past.
+    #
+    # EXCLUDED ONLY WHEN NON-COVERAGE IS ESTABLISHED. "The reviewed tree is gone from the object store"
+    # is not staleness - it is not knowing, which W38 reports as a WEAK claim and refuses at the
+    # validator rather than treating as stale. Dropping such a run here would silence that refusal:
+    # the block would say "no run qualifies", the record would validate clean, and a record whose only
+    # evidence cannot be checked would have quietly received a pass. Caught by
+    # review-record-survives-its-own-commit, which pins exactly that.
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    $covering = @(Get-SpecrewReviewRunCandidates -ProjectRoot $ProjectRoot |
+            Where-Object { [bool]$_.coverage.covers -or -not [bool]$_.coverage.established })
+    if ($covering.Count -eq 0) { return $null }
+    return ($covering | Select-Object -Last 1)
+}
 function Get-SpecrewDerivedIndependenceBlock {
     # The canonical block, byte-stable for a given store state so recomputation can compare it.
     param([Parameter(Mandatory)][string]$ProjectRoot)
@@ -7433,6 +7512,22 @@ function Get-SpecrewDerivedIndependenceBlock {
     $qualifying = Get-SpecrewQualifyingIndependentRun -ProjectRoot $ProjectRoot
     if ($null -eq $qualifying) {
         [void]$lines.Add('- No run in this project''s review store qualifies as an independent review of the current tree.')
+        # W67: SAY WHY, when the store can say why. A run that ran and no longer reaches the code is a
+        # different fact from no run at all, and the difference is the one a human deciding on signoff
+        # needs. The RUN ID is deliberately absent: the validator reads any run id in this block as the
+        # evidence the record rests on, so naming one here would turn a statement of non-coverage into
+        # a stale citation - the block would say "does not cover" and be read as a claim of coverage.
+        #
+        # The CITED tree is named and the current one is not, so this text changes only when the store
+        # does. Rendering the moved-file list would rewrite the block on every commit, and the block is
+        # recomputed and compared at validation.
+        $uncovered = @(Get-SpecrewReviewRunCandidates -ProjectRoot $ProjectRoot |
+                Where-Object { -not [bool]$_.coverage.covers -and [bool]$_.coverage.established })
+        if ($uncovered.Count -gt 0) {
+            $newest = ($uncovered | Select-Object -Last 1)
+            [void]$lines.Add(('- The most recent completed run reviewed tree {0} and does not cover the current source: source files have changed since it read them.' -f [string]$newest.coverage.cited))
+            [void]$lines.Add('- It is evidence about the tree it read. It is not evidence about the code as it stands.')
+        }
         [void]$lines.Add('- Any independence this record claims rests on something other than a campaign run, and must say what.')
     }
     else {
