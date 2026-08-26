@@ -765,9 +765,35 @@ function Invoke-SpecrewTypedAuthorityCapture {
         [AllowEmptyString()][AllowNull()][string]$Response,
         [AllowEmptyString()][AllowNull()][string]$HostKind,
         [AllowEmptyString()][AllowNull()][string]$SourceEvent,
-        [AllowEmptyString()][AllowNull()][string]$NowUtc
+        [AllowEmptyString()][AllowNull()][string]$NowUtc,
+        [AllowEmptyString()][AllowNull()][string]$TurnPosition,
+        [AllowEmptyString()][AllowNull()][string]$TurnArrival
     )
     if ([string]::IsNullOrWhiteSpace($Response)) { return }
+    # W69 (maintainer ruling, 2026-08-26): A TURN MINTS AT MOST ONCE, EVER.
+    #
+    # The Stop backstop re-offers the most recent human turn at the end of EVERY assistant turn. Once a
+    # capture was spent, the writer's unspent-and-same-hash return no longer applied and it fell
+    # through to a fresh unspent write - so one typed phrase became an unlimited supply of authority,
+    # with a ledger that looked correct because a human really had typed it, once.
+    #
+    # THE CHECK RUNS HERE, BEFORE THE WRITER LOOP, and is not conditioned on any slot's spent state -
+    # that conditioning is what the defect was. A turn already exhausted reaches no writer at all, so
+    # every writer below inherits the rule and one added later cannot miss it.
+    $turnId = ''
+    if (Get-Command Get-SpecrewTypedTurnIdentity -ErrorAction SilentlyContinue) {
+        try {
+            $turnId = [string](Get-SpecrewTypedTurnIdentity -Response $Response -HostKind $HostKind `
+                    -SourceEvent $SourceEvent -TurnPosition $TurnPosition -TurnArrival $TurnArrival)
+        }
+        catch { $turnId = '' }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($turnId) -and (Get-Command Test-SpecrewTypedTurnExhausted -ErrorAction SilentlyContinue)) {
+        $exhausted = $true
+        try { $exhausted = [bool](Test-SpecrewTypedTurnExhausted -ProjectRoot $ProjectRoot -TurnId $turnId) } catch { $exhausted = $true }
+        if ($exhausted) { return }
+    }
+    $mintedBy = [System.Collections.Generic.List[string]]::new()
     foreach ($writerName in @(
             'Write-SpecrewApprovalWithdrawal'
             'Write-SpecrewReviewRoundApprovalAuthorization'
@@ -783,7 +809,21 @@ function Invoke-SpecrewTypedAuthorityCapture {
             # Not every writer takes the caller's clock; the ones that do must use it rather than
             # stamping their own, so one turn's facts share one instant.
             if ($writer.Parameters.ContainsKey('NowUtc') -and -not [string]::IsNullOrWhiteSpace($NowUtc)) { $splat['NowUtc'] = $NowUtc }
-            & $writer @splat | Out-Null
+            # The RESULT IS READ now, not discarded. Discarding it is what let a withdrawal whose
+            # delete failed report nothing and be believed (W68); here it is what tells us the turn
+            # actually minted something and must be marked exhausted.
+            $written = & $writer @splat
+            if ($null -ne $written) { [void]$mintedBy.Add($writerName) }
+        }
+        catch { $null = $_ }
+    }
+    # Only a turn that MINTED is exhausted. An ordinary chat turn matches no recognizer and writes
+    # nothing, and recording those would grow the ledger without bounding anything.
+    if ($mintedBy.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
+        (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) {
+        try {
+            Register-SpecrewExhaustedTurn -ProjectRoot $ProjectRoot -TurnId $turnId -HostKind $HostKind `
+                -SourceEvent $SourceEvent -MintedWriters ($mintedBy -join ',') -NowUtc $NowUtc | Out-Null
         }
         catch { $null = $_ }
     }
@@ -888,8 +928,12 @@ function Update-SpecrewRollingHandover {
         # W66 / round-24 finding (DRIFT-199-I001-138): the six hand-written writer blocks that used to
         # stand here are one call now, because the Stop backstop's copy of the same list had drifted
         # from this one and nobody could see it from either side.
+        # A prompt event IS one arrival, so the event's own clock is its arrival and there is no
+        # position to speak of. A second submit of the same text is a second event with a later clock,
+        # which is a second act - correctly.
         Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-            -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc
+            -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc `
+            -TurnPosition 'prompt-entry' -TurnArrival $NowUtc
         # The workshop RECEIPT is not one of them: it records that a phrase was seen, which is
         # evidence rather than authority, and it belongs only to the branch the human types into.
         if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
@@ -1140,9 +1184,17 @@ function Update-SpecrewRollingHandover {
                     if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $roundApprovalTurns[$rat])) { continue }
                     # THE SAME TABLE the prompt-entry branch calls. It used to be a copy of it, three
                     # writers short - see Invoke-SpecrewTypedAuthorityCapture for what that cost.
+                    # POSITION AND ARRIVAL COME FROM THE TURN, NOT FROM THIS PASS. $NowUtc is the clock
+                    # of the Stop event, which is different every time the same turn is re-offered - so
+                    # using it here would make each re-offer look like a new act, which is the whole
+                    # defect. The transcript is append-only, so a turn's index is stable, and a retype
+                    # lands at a later index.
+                    $ratArrival = ''
+                    if ($roundApprovalTurns[$rat].PSObject.Properties['timestamp']) { $ratArrival = [string]$roundApprovalTurns[$rat].timestamp }
                     Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
                         -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
-                        -SourceEvent 'stop-transcript' -NowUtc $NowUtc
+                        -SourceEvent 'stop-transcript' -NowUtc $NowUtc `
+                        -TurnPosition ([string]$rat) -TurnArrival $ratArrival
                     break
                 }
             }

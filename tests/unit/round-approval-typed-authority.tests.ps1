@@ -1738,3 +1738,168 @@ Describe 'W68 round 25: a withdrawal that cannot delete still revokes, and a pau
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
+Describe 'W69 typed-turns-v1 completed: a TURN mints at most once, ever' {
+    # Maintainer ruling, 2026-08-26, after the regeneration was measured at ground truth.
+    #
+    # typed-turns-v1 said only a real human turn mints authority. Its unstated half - never needed
+    # until the Stop backstop began re-offering turns - is that each turn mints AT MOST ONCE. The
+    # phrase is the CONTENT of an act; the turn is the act. Content was always a proxy for identity,
+    # and the backstop is where the proxy fails: it re-offers the most recent human turn at the end of
+    # every assistant turn, and once a capture is spent the writer's unspent-and-same-hash return no
+    # longer applies, so it falls through and writes a fresh unspent one. One typed phrase became an
+    # unlimited supply of rounds, with a ledger that looked correct.
+    #
+    # Fixed at the SHARED ROUTER so every writer it reaches inherits it.
+
+    BeforeAll {
+        # The router lives in the handover store, which is where both capture branches call it from.
+        foreach ($dependency in @('ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
+            . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
+        }
+
+        function script:New-TurnRoot {
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w69-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            return $root
+        }
+    }
+
+    It 'RED-FIRST: the same turn re-offered after its capture was SPENT does not mint again' {
+        # The measured defect, as a case. Capture, consume, then re-offer the identical turn exactly as
+        # the backstop does on the next end-of-turn.
+        $root = New-TurnRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.ToString('o')) `
+                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'precondition: the turn minted once, which is its whole entitlement'
+
+            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            [bool]$done.consumed | Should -BeTrue -Because 'precondition: the round really did spend it'
+
+            # SAME turn: same position, same arrival, same text. A later Stop, nothing new from the human.
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(5).ToString('o')) `
+                -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'the human typed once; a turn mints at most once, ever'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the exhausted-turn check runs BEFORE the spent test, not conditioned on it' {
+        # The ruling names this precisely: today `spent_at` empty is a PRECONDITION of the idempotent
+        # return, so a spent slot fails that clause and falls through to a fresh write. The turn check
+        # must not sit behind the same condition, or it inherits the same hole.
+        $root = New-TurnRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+            $path = Join-Path $root '.specrew/review/round-approval/pending-round-approval.json'
+            [IO.File]::Exists($path) | Should -BeTrue -Because 'precondition: there is a capture to spend'
+            # Delete the slot entirely - the most extreme "no unspent record to match" state there is.
+            [IO.File]::Delete($path)
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+            [IO.File]::Exists($path) | Should -BeFalse -Because 'the turn was already exhausted; the state of the slot is not what decides that'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a genuine RETYPE is a new turn and still mints' {
+        # Nothing is lost by the rule: a human typing twice is two acts. Losing this would be the
+        # round-19 wedge in yet another costume.
+        $root = New-TurnRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '3' -TurnArrival '2026-08-26T09:00:00Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
+
+            # The human types it again: a LATER turn in the transcript, its own arrival.
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-26T11:30:00Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'two typed acts are two authorities; the rule bounds re-offers, not humans'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'EVERY writer the router reaches inherits the rule, not only the round approval' {
+        # DRIFT-199-I001-138 widened the writer set the backstop feeds; the regeneration shape reached
+        # all of them. Proven on the withdrawal and the pause decision as well, because a re-minted
+        # withdrawal or pause decision is the same forgery wearing different clothes.
+        $root = New-TurnRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'stop the review here' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z'
+            $first = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
+            $first | Should -Not -BeNullOrEmpty -Because 'precondition: the pause decision minted once'
+            $null = Complete-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' -AuthorizationRef 'landing-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'stop the review here' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '4' -TurnArrival '2026-08-26T09:10:00Z'
+            Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here' |
+                Should -BeNullOrEmpty -Because 'a re-minted pause decision is the same forgery in different clothes'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'END TO END through the Stop backstop: the same transcript turn does not re-mint after being spent' {
+        # THE ACTUAL DEFECT PATH, and the cases above do not reach it - they call the router directly
+        # with an explicit identity, so the wiring that supplies it is untested by them. Proven when a
+        # mutation swapping the turn's arrival for the Stop event's clock left the suite green: the
+        # inert-control class again, this time hiding the one line where the regeneration lived.
+        $root = New-TurnRoot
+        try {
+            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'precondition: the backstop really does mint from this transcript'
+
+            $done = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            [bool]$done.consumed | Should -BeTrue -Because 'precondition: a round spent it'
+
+            # The next end-of-turn, with nothing new from the human: the same transcript, re-read.
+            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'this is the regeneration that was measured in production; one turn, one mint'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a ledger it cannot read means EXHAUSTED, not "mint away"' {
+        # The fail-closed branch's own case, which its first cut did not have. A false "exhausted"
+        # costs the human a retype; a false "fresh" forges an authority.
+        $root = New-TurnRoot
+        $handle = $null
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-26T08:00:00Z'
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            [IO.File]::Exists($ledger) | Should -BeTrue -Because 'precondition: a mint records its turn'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+
+            $handle = [IO.File]::Open($ledger, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '5' -TurnArrival '2026-08-26T09:00:00Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'if it cannot tell whether this turn already minted, it must not mint'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'the check is in the ROUTER, ahead of the writer loop, so a writer added later cannot miss it' {
+        $handover = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1') -Raw -Encoding UTF8
+        $router = [regex]::Match($handover, '(?s)function Invoke-SpecrewTypedAuthorityCapture.*?\r?\n\}').Value
+        $router | Should -Not -BeNullOrEmpty
+        $guardIndex = $router.IndexOf('Test-SpecrewTypedTurnExhausted')
+        $loopIndex = $router.IndexOf('foreach ($writerName in')
+        $guardIndex | Should -BeGreaterThan -1 -Because 'the rule lives at the one place every writer passes through'
+        $loopIndex | Should -BeGreaterThan -1
+        $guardIndex | Should -BeLessThan $loopIndex -Because 'a turn already exhausted must not reach any writer at all'
+    }
+}

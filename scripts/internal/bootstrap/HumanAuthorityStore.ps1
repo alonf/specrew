@@ -462,9 +462,19 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
         $existing = $null
         try { $existing = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
         catch { $existing = $null }
-        # An UNSPENT capture of the same utterance is the same act - do not re-mint. A different
-        # utterance, or a spent slot, is superseded by the newer human act: both are human, so replacing
-        # one with the other fabricates nothing. History goes to the journal either way.
+        # An UNSPENT capture of the same utterance is the same act - do not re-mint.
+        #
+        # W69 (2026-08-26) REPLACES what this comment used to claim. It said a spent slot "is superseded
+        # by the newer human act ... replacing one with the other fabricates nothing". That premise is
+        # inverted whenever the Stop backstop re-offers a turn: THERE IS NO NEWER HUMAN ACT. Replacing a
+        # spent record with a re-offer of its own source fabricates a human act that did not happen a
+        # second time - the forged-disposition class, reached by machinery rather than by an agent,
+        # which is why it outranks the hole it mirrors: the evidence looks correct.
+        #
+        # The condition below is unchanged and is still not sufficient on its own - `spent_at` empty is
+        # a PRECONDITION of this return, so a spent slot falls through to a fresh write. What stops that
+        # now is upstream: the router refuses a turn that has already minted, BEFORE any writer is
+        # called, so this branch is never reached by a re-offer.
         if ($null -ne $existing -and $existing.PSObject.Properties['spent_at'] -and
             [string]::IsNullOrWhiteSpace([string]$existing.spent_at) -and
             [string]$existing.response_hash -ceq [string]$fact.response_hash) {
@@ -483,6 +493,99 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
     # W54: the human typed it in the chat, so any standing picker diagnosis is now history.
     Clear-SpecrewQuestionUiPhraseObservation -ProjectRoot $ProjectRoot
     return $fact
+}
+
+function Get-SpecrewTypedTurnIdentity {
+    # W69 (maintainer ruling, 2026-08-26): THE TURN IS THE ACT; THE PHRASE IS ONLY ITS CONTENT.
+    #
+    # typed-turns-v1 is not changed by this, it is COMPLETED. Its stated rule is that only a real human
+    # turn mints authority; the unstated half - never needed until the Stop backstop began re-offering
+    # turns - is that each turn mints AT MOST ONCE, EVER. Content was always a proxy for identity, and
+    # the backstop is exactly where the proxy fails: the same turn arrives again at the end of every
+    # assistant turn, identical in every byte, and nothing about the phrase can tell that apart from a
+    # human typing it a second time.
+    #
+    # Identity is POSITION + CONTENT + ARRIVAL, hashed to one stable id per host. Position and arrival
+    # come from the turn as the host delivered it; a genuine retype lands at a different position with
+    # a different arrival and is therefore a different act, which is the property that keeps the rule
+    # from wedging anyone.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Response,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$TurnPosition,
+        [AllowEmptyString()][AllowNull()][string]$TurnArrival
+    )
+    if ([string]::IsNullOrWhiteSpace($Response)) { return '' }
+    $parts = @(
+        [string]$HostKind
+        [string]$SourceEvent
+        [string]$TurnPosition
+        [string]$TurnArrival
+        (Get-SpecrewHumanAuthorityHash -Text ([string]$Response))
+    ) -join '|'
+    return (Get-SpecrewHumanAuthorityHash -Text $parts)
+}
+
+function Get-SpecrewExhaustedTurnLedgerPath {
+    param([Parameter(Mandatory)][string]$ProjectRoot)
+    return (Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/authority/exhausted-turns.jsonl')
+}
+
+function Test-SpecrewTypedTurnExhausted {
+    # Has this exact turn already minted? Append-only ledger, read as a set.
+    #
+    # FAILS CLOSED on an unreadable ledger, and that direction is deliberate: the cost of a false
+    # "exhausted" is that the human types the phrase again, while the cost of a false "fresh" is a
+    # forged authority. This is the same call made for the withdrawal journal in W68, for the same
+    # reason.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId
+    )
+    if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $false }
+    try {
+        foreach ($line in [IO.File]::ReadLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) { continue }
+            if ([string]$entry.turn_id -ceq [string]$TurnId) { return $true }
+        }
+    }
+    catch { return $true }
+    return $false
+}
+
+function Register-SpecrewExhaustedTurn {
+    # Record that this turn has minted. Append-only: the ledger is history, and history that can be
+    # rewritten is not a control.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$MintedWriters,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    if ([string]::IsNullOrWhiteSpace($TurnId)) { return $false }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        $entry = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'typed-turn-exhausted'; turn_id = [string]$TurnId
+            host_kind = [string]$HostKind; source_event = [string]$SourceEvent
+            minted = [string]$MintedWriters; observed_at = $NowUtc
+        }
+        ($entry | ConvertTo-Json -Compress -Depth 6) | Add-Content -LiteralPath $path -Encoding UTF8
+        return $true
+    }
+    catch { return $false }
 }
 
 function Get-SpecrewReviewRoundApprovalAuthorization {

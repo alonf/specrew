@@ -591,7 +591,77 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
-### OBSERVED 2026-08-26, STOPPED - a SPENT approval is regenerated from the same human turn, and I did not spend the one now standing
+### DRIFT-199-I001-142 - W69: typed-turns-v1 COMPLETED - a turn mints at most once, ever (resolved by ruling)
+
+**Maintainer ruling, 2026-08-26**, on the regeneration measured at ground truth the same day.
+
+**The rule.** typed-turns-v1 is not changed by this, it is completed. Its stated half is that only a
+real human turn mints authority. Its unstated half - never needed until the Stop backstop began
+re-offering turns - is that **each turn mints at most once, ever**. The phrase is the CONTENT of an
+act; the turn is the act. Content was always a proxy for identity, and the backstop is exactly where
+the proxy fails.
+
+**The defect, verified at ground truth by the maintainer** at `HumanAuthorityStore.ps1:469-471`: the
+idempotent return requires `spent_at` EMPTY **and** a hash match, so a spent slot fails the first
+clause and falls through to a fresh unspent write. The Stop backstop re-offers the most recent human
+turn at the end of every assistant turn, so after each delivered round the next end-of-turn minted a
+brand-new approval from a phrase the human typed once.
+
+**The comment above it stated the inverted premise** - "a spent slot is superseded by the newer human
+act ... replacing one with the other fabricates nothing" - and was REPLACED rather than edited, as
+ruled. When the backstop re-offers a turn **there is no newer human act**, so replacing a spent record
+with a re-offer of its own source fabricates a human act that did not happen a second time. That is
+the forged-disposition class reached by machinery instead of by an agent, and it is why it outranks
+the hole it mirrors (W44): the evidence looks correct.
+
+**The fix, at the shared router, once**, so every writer DRIFT-199-I001-138 reached inherits it -
+withdrawal, pause decision, override, workshop repair, round approval, allowance reset, coverage
+deferral:
+
+1. **Identity is the turn**: position + content + arrival, hashed to one stable id per host
+   (`Get-SpecrewTypedTurnIdentity`). Both branches supply it. Prompt-entry IS one arrival, so the
+   event clock is its arrival; the Stop branch takes position and arrival FROM THE TURN, never from
+   the pass, because the pass clock differs on every re-offer, which is the whole defect.
+2. **Exhaustion is permanent and checked FIRST.** `Test-SpecrewTypedTurnExhausted` runs in the router
+   BEFORE the writer loop and is not conditioned on any slot's spent state - that conditioning was the
+   defect. An exhausted turn reaches no writer at all.
+3. **A retype is a new turn and still mints.** A later position and a later arrival are a different
+   act. Nothing is lost: a human typing twice is two acts.
+
+**The router now READS its writers' results** rather than discarding them - both to know which writers
+minted, and because discarding them is what let W68's failed withdrawal report nothing and be believed.
+
+**BOUNDARY-VERDICT CAPTURE: CHECKED, AND IT DOES NOT SHARE THIS DEFECT.** Asked because the maintainer
+asked, and answered by measurement rather than by reading: a fixture project with a pending
+`plan -> tasks` crossing, the same transcript offered twice.
+
+| offer | captured | authorized | reason | history |
+| --- | --- | --- | --- | --- |
+| 1 | True | True | authorized | 1 |
+| 2 (re-offer of the SAME turn) | True | **False** | `not-pending` | 1 |
+
+It uses a different writer (`Add-SpecrewBoundaryAuthorization`) behind the pending-crossing guard, so
+once a crossing is paid there is no pending crossing for a re-offer to authorize. **The protections
+differ in KIND, and the difference is the lesson**: the boundary path is guarded by a STATE MACHINE
+that consumes its own precondition, the round-approval path by a MUTABLE FLAG on a slot that could be
+overwritten. The state machine held; the flag did not. One `approved for before-implement` cannot
+re-mint across turns.
+
+**Proof.** Five mutations, each turning its own case red against an otherwise green suite (95 cases):
+stop checking exhaustion; stop recording what minted; use the pass clock instead of the turn's
+arrival; drop position from the identity; stop failing closed on a corrupt ledger.
+
+**TWO of those five were inert on the first pass, and both mattered.** No case reached the Stop
+branch's identity wiring - the cases called the router directly with an explicit identity - so the one
+line where the regeneration actually lived was untested; and nothing locked the ledger. Closed with an
+end-to-end case through `Update-SpecrewRollingHandover` (the real defect path) and a locked-ledger
+case. **Seventh and eighth instances of the inert-control class**, both found by mutation and not by
+green, in the same session as the fifth and sixth.
+
+**The regenerated approval was retired, not spent.** The capture standing at 11:02:22 was consumed
+with reference `retired-w69-regeneration` so nothing can spend it. The covering round waits for a
+phrase typed after this landed.
+### RULED and RESOLVED (see DRIFT-199-I001-142) - a SPENT approval is regenerated from the same human turn, and I did not spend the one now standing
 
 **Found by dogfooding, not by review.** About to run the authorized covering round, I checked what
 authority it would spend and found a standing unspent `approved for review round` observed at
