@@ -591,6 +591,36 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-146 - W72: round 29 - the narrow guarantee holds; one torn-line sibling, and a covering round I spoiled myself
+
+`run-20260826-194901162-77511bab`, codex, terminal / complete / **snapshot-moved**, 702.3s, **two
+findings** - down from five. One is the carried starter sidecar. **No turn-identity findings at all**,
+which is the first time in five rounds that the authority core came back clean, and is the evidence
+that the narrow guarantee has a surface small enough to be right about.
+
+**The one real finding, reported BLOCKING: a torn line in the withdrawal journal read as "carry on".**
+`Test-SpecrewApprovalIsWithdrawn` documented itself as failing closed on an unreadable journal and
+then `continue`d past individual unparseable LINES - so an interrupted append, **the exact failure the
+independent journal was added to survive**, left a torn record that was ignored and the still-present
+approval read as usable after the human revoked it.
+
+**W70 fixed precisely this in the exhausted-turn ledger reader and left this sibling untouched.** Two
+readers of one concern, corrected one at a time - the fifth instance of that shape in this feature,
+and the second where the fix and the gap were in the same file. Mutation-proved.
+
+**AND A SELF-INFLICTED LOSS WORTH RECORDING: I spoiled my own covering round.** The run came back
+`snapshot-moved`, not `current`, because I committed the method-rule appendix (`0098e9fb`) WHILE the
+round was running. I had reasoned that records-only changes do not stale a run - true of the
+SOURCE-drift rule, and irrelevant here, because `currentness` is computed at ingest by comparing the
+frozen target against the tree as it then stood. Any commit during the window moves it.
+
+**So the rule is simpler than the one I was applying: nothing is committed while a round is in
+flight.** Not source, not records, not an appendix. The source-awareness that lets a record survive a
+review does not extend to the snapshot the review is measured against, and I applied a true rule
+outside the domain where it holds - which is its own small instance of the class this log keeps
+recording.
+
+Cost: one round, and the covering evidence has to be obtained again against a still tree.
 ### DRIFT-199-I001-145 - W71: the cross-channel guess is withdrawn; the second channel is OBSERVED (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, on round 28. The ruling also corrected my framing: stopping was not

@@ -774,8 +774,18 @@ function Test-SpecrewApprovalIsWithdrawn {
         foreach ($line in @($journals | ForEach-Object { [IO.File]::ReadAllLines($_) })) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $entry = $null
-            try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
-            if ($null -eq $entry -or -not $entry.PSObject.Properties['fact_type']) { continue }
+            # W72 / round-29, reported BLOCKING: A TORN LINE IS A REVOCATION IT CANNOT RULE OUT.
+            #
+            # This reader documented itself as failing closed on an unreadable journal and then skipped
+            # individual unparseable LINES - so an interrupted append, which is the exact failure the
+            # independent journal exists to survive, left a torn record that was ignored and the
+            # still-present approval read as usable after the human revoked it.
+            #
+            # W70 fixed precisely this in the exhausted-turn ledger reader and left this sibling alone:
+            # two readers of one concern, corrected one at a time. The rule is the same in both, so it
+            # reads the same in both.
+            try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { return $true }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['fact_type']) { return $true }
             if ([string]$entry.fact_type -cne 'review-round-approval-withdrawn') { continue }
             if (-not $entry.PSObject.Properties['observed_at']) { continue }
             $withdrawnAt = ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at

@@ -2232,6 +2232,32 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         }
     }
 
+    It 'RED-FIRST: a TORN line in the withdrawal journal means withdrawn, not "carry on"' {
+        # Round-29, reported BLOCKING. Test-SpecrewApprovalIsWithdrawn documents itself as failing
+        # closed on an unreadable journal, and then skipped individual unparseable LINES - so an
+        # interrupted append (the exact failure the independent journal exists to survive) left a torn
+        # record that was ignored, and the still-present approval read as usable after the human
+        # revoked it.
+        #
+        # W70 fixed precisely this in the exhausted-turn ledger reader and left its sibling untouched:
+        # two readers of one concern, corrected one at a time, for the fifth time in this feature.
+        $root = New-W71Root
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'precondition: the approval reads as usable before anything is torn'
+
+            $independent = Join-Path $root '.specrew/authority/withdrawals.jsonl'
+            New-Item -ItemType Directory -Path (Split-Path -Parent $independent) -Force | Out-Null
+            Add-Content -LiteralPath $independent -Value '{"schema_version":"1.0","fact_type":"review-round-approval-with' -Encoding UTF8
+
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'a withdrawal record it cannot read is a revocation it cannot rule out'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'RED-FIRST: the PRODUCTION writer binds a pause decision to the active feature campaign' {
         # Round-28 finding, and the tenth inert-control instance: W70 added -CampaignId to the helper
         # and the test exercised the helper. The production writer calls it with ProjectRoot alone, so
