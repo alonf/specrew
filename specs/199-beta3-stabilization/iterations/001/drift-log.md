@@ -4646,6 +4646,45 @@ restored colour preference — and both suites restore what they mutate.*
 defect, whoever wrote it.** A suite that changes `TEMP`, `NO_COLOR`, the working directory or the
 current culture and walks away has not written a test, it has written a trap for whatever runs next.*
 
+**METHOD RULE 8 (maintainer ruling, 2026-08-26) — REDUNDANCY IS COUNTED IN FAILURE DOMAINS, NOT IN
+CODE PATHS.**
+
+The withdrawal had three ways to revoke an approval: stamp the pending fact, append to the journal
+beside it, delete the file. All three lived under one directory. **One unwritable directory defeated
+all three at once, so three paths in one place is one path wearing three hats.**
+
+**And that is worse than having one path, because the appearance of redundancy stops anyone looking.**
+Three independent-looking mechanisms read as belt-and-braces in review; nobody counts how many of them
+share a disk, a permission, a lock, a mount. The count that matters is not how many code paths exist
+but how many distinct things must fail to defeat them all.
+
+The fix is the fourth path in a DIFFERENT ROOT (`.specrew/authority/`), which the reader also consults.
+If both roots are unwritable the project has no working store, and that is an honest floor rather than
+a hidden one.
+
+**Apply it by asking, of any control with a fallback: what single failure takes out every branch?** If
+the answer is one directory, one file handle, one process, or one clock, the fallback is decoration.
+
+**METHOD RULE 9 (maintainer ruling, 2026-08-26) — MECHANISMS OVER DISCIPLINE, AND THE W70 WEDGE IS THE
+EVIDENCE.**
+
+This project's strongest single datum for preferring a check that runs over care taken:
+
+In W70 I wrote, in a source comment, that the rule "must not trade a forgery for a wedge, which is the
+round-19 lesson" — and the rule introduced **in that same commit, directly beneath that sentence**,
+traded exactly that. I had been ruled against on precisely this trade one round earlier. I named the
+failure mode, in the moment, in writing, and committed it anyway.
+
+**Whoever reads this appendix later will be tempted to conclude the opposite** — that the lesson is to
+be more careful, to read one's own comments, to slow down. It is not. **If naming the failure mode in
+the moment does not prevent it, nothing about care will.** Discipline had every advantage here: the
+rule was fresh, explicit, self-authored, and one round old. It still failed.
+
+What caught it was not care. It was an independent round that ran and returned a finding. **The
+conclusion is to build checks that execute — mutation proofs, class guards, membership comparisons,
+independent review — and to treat every "we will remember to" as an unbounded liability.** The eight
+inert-control instances in this log say the same thing from the other direction: a control nobody runs
+is indistinguishable from a control nobody wrote.
 **METHOD RULE 6, SHARPENED (maintainer ruling, 2026-08-26) — THE MUTATION MUST NAME THE PATH, NOT
 JUST THE CODE.**
 
