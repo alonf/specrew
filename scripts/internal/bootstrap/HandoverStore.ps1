@@ -738,6 +738,57 @@ function Invoke-SpecrewBoundaryVerdictCapture {
     }
 }
 
+function Invoke-SpecrewTypedAuthorityCapture {
+    # ONE TABLE, BOTH CAPTURE BRANCHES. Round-24 finding (DRIFT-199-I001-138) reported the pause
+    # decisions missing from the Stop transcript backstop. The cause was older and larger than the
+    # report: prompt-entry and the Stop backstop each carried their OWN hand-copied list of authority
+    # writers, and the lists had silently drifted - seven writers on one side, three on the other. So
+    # on a host whose prompt event carries no text (claude, which is the entire reason the backstop
+    # exists) a typed `stop the review here` never landed and every later --pause-choice 2 refused
+    # forever; a typed WITHDRAWAL never landed either, which fails OPEN and leaves an approval the
+    # human retracted still spendable. A rule kept at the call sites instead of at the one place every
+    # caller passes through - the same shape as the path comparer and the fact-file classifier before it -
+    # so it now lives here.
+    #
+    # ORDER IS LOAD-BEARING: the withdrawal is offered the turn BEFORE the approval it revokes, so one
+    # turn cannot both withdraw and re-approve. The recognizers are disjoint; the order makes that
+    # explicit rather than lucky.
+    #
+    # Offering the turn to every writer grants nothing: each applies its own recognizer, at most one
+    # can match, and a turn that matches none writes nothing. Fully fail-open - a writer that throws
+    # must never break the end of a human's turn.
+    #
+    # SPECREW-AUTHORITY-CONSUMER: approval-withdrawal
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowEmptyString()][AllowNull()][string]$Response,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$NowUtc
+    )
+    if ([string]::IsNullOrWhiteSpace($Response)) { return }
+    foreach ($writerName in @(
+            'Write-SpecrewApprovalWithdrawal'
+            'Write-SpecrewReviewRoundApprovalAuthorization'
+            'Write-SpecrewPauseDecisionAuthorization'
+            'Write-SpecrewAllowanceResetAuthorization'
+            'Write-SpecrewCoverageDeferralAuthorization'
+            'Write-SpecrewReviewSignoffOverrideAuthorization'
+            'Write-SpecrewWorkshopRepairAuthorization')) {
+        $writer = Get-Command $writerName -ErrorAction SilentlyContinue
+        if ($null -eq $writer) { continue }
+        try {
+            $splat = @{ ProjectRoot = $ProjectRoot; Response = $Response; HostKind = $HostKind; SourceEvent = $SourceEvent }
+            # Not every writer takes the caller's clock; the ones that do must use it rather than
+            # stamping their own, so one turn's facts share one instant.
+            if ($writer.Parameters.ContainsKey('NowUtc') -and -not [string]::IsNullOrWhiteSpace($NowUtc)) { $splat['NowUtc'] = $NowUtc }
+            & $writer @splat | Out-Null
+        }
+        catch { $null = $_ }
+    }
+}
+
 function Update-SpecrewRollingHandover {
     # F-174 iter-9.1: THE single handover-save orchestration. Every trigger source - the Stop hook, the
     # PostToolUse hook, and the design-workshop skill - calls THIS; none re-implement the save. It resolves
@@ -834,76 +885,17 @@ function Update-SpecrewRollingHandover {
     if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
 
     if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')) {
-        if ((Get-Command Write-SpecrewReviewSignoffOverrideAuthorization -ErrorAction SilentlyContinue) -and
-            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            Write-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                -HostKind $fromHost -SourceEvent $Source | Out-Null
-        }
-        if ((Get-Command Write-SpecrewWorkshopRepairAuthorization -ErrorAction SilentlyContinue) -and
-            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            Write-SpecrewWorkshopRepairAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                -HostKind $fromHost -SourceEvent $Source | Out-Null
-        }
+        # W66 / round-24 finding (DRIFT-199-I001-138): the six hand-written writer blocks that used to
+        # stand here are one call now, because the Stop backstop's copy of the same list had drifted
+        # from this one and nobody could see it from either side.
+        Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot -Response $LastUserMessage `
+            -HostKind $fromHost -SourceEvent $Source -NowUtc $NowUtc
+        # The workshop RECEIPT is not one of them: it records that a phrase was seen, which is
+        # evidence rather than authority, and it belongs only to the branch the human types into.
         if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
             -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
             Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
                 -HostKind $fromHost -SourceEvent $Source | Out-Null
-        }
-        # W44: round approval is a typed phrase like every other authority - captured here from the
-        # human's own prompt entry, consumed by `specrew review --approve-round` as its authorization.
-        if ((Get-Command Write-SpecrewReviewRoundApprovalAuthorization -ErrorAction SilentlyContinue) -and
-            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            try {
-                Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                    -HostKind $fromHost -SourceEvent $Source | Out-Null
-            }
-            catch { $null = $_ }
-        }
-        # Round-16 (DRIFT-199-I001-126): a WITHDRAWAL is captured on the same path as the approval it
-        # revokes - the CLI promises "say so, and nothing further runs", and a promise nothing reads
-        # is not kept. Runs BEFORE the approval writer below so a turn cannot both withdraw and
-        # re-approve; the recognizers are disjoint, and order makes that explicit rather than lucky.
-        # SPECREW-AUTHORITY-CONSUMER: approval-withdrawal
-        if ((Get-Command Write-SpecrewApprovalWithdrawal -ErrorAction SilentlyContinue) -and
-            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            try {
-                Write-SpecrewApprovalWithdrawal -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                    -HostKind $fromHost -SourceEvent $Source | Out-Null
-            }
-            catch { $null = $_ }
-        }
-        # Round-20 (DRIFT-199-I001-131): the pause decisions the menu shows the human - stopping the
-        # review here, abandoning the campaign - are AUTHORITY, because stopping here completes
-        # sign-off with an identity-bound human disposition. They are captured on the same path as
-        # every other typed act; a phrase nothing captures is a phrase nobody can type.
-        if ((Get-Command Write-SpecrewPauseDecisionAuthorization -ErrorAction SilentlyContinue) -and
-            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            try {
-                Write-SpecrewPauseDecisionAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                    -HostKind $fromHost -SourceEvent $Source | Out-Null
-            }
-            catch { $null = $_ }
-        }
-        # W50 rider: an allowance reset replenishes spend authority, so it takes the same typed-phrase
-        # capture as the round approval - a bare agent invocation was the W44 gap one door down.
-        if ((Get-Command Write-SpecrewAllowanceResetAuthorization -ErrorAction SilentlyContinue) -and
-            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            try {
-                Write-SpecrewAllowanceResetAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                    -HostKind $fromHost -SourceEvent $Source | Out-Null
-            }
-            catch { $null = $_ }
-        }
-        # W52: the chosen-absence disposition - `continue without coverage until the review phase` -
-        # recorded from the human's own words so the signoff gate can distinguish deliberate deferral
-        # from nobody noticing.
-        if ((Get-Command Write-SpecrewCoverageDeferralAuthorization -ErrorAction SilentlyContinue) -and
-            -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
-            try {
-                Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $ProjectRoot -Response $LastUserMessage `
-                    -HostKind $fromHost -SourceEvent $Source | Out-Null
-            }
-            catch { $null = $_ }
         }
         Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
@@ -1146,19 +1138,11 @@ function Update-SpecrewRollingHandover {
                 }
                 for ($rat = $roundApprovalTurns.Count - 1; $rat -ge 0; $rat--) {
                     if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $roundApprovalTurns[$rat])) { continue }
-                    Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $ProjectRoot `
+                    # THE SAME TABLE the prompt-entry branch calls. It used to be a copy of it, three
+                    # writers short - see Invoke-SpecrewTypedAuthorityCapture for what that cost.
+                    Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $ProjectRoot `
                         -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
-                        -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
-                    if (Get-Command Write-SpecrewAllowanceResetAuthorization -ErrorAction SilentlyContinue) {
-                        Write-SpecrewAllowanceResetAuthorization -ProjectRoot $ProjectRoot `
-                            -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
-                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
-                    }
-                    if (Get-Command Write-SpecrewCoverageDeferralAuthorization -ErrorAction SilentlyContinue) {
-                        Write-SpecrewCoverageDeferralAuthorization -ProjectRoot $ProjectRoot `
-                            -Response ([string]$roundApprovalTurns[$rat].text) -HostKind $fromHost `
-                            -SourceEvent 'stop-transcript' -NowUtc $NowUtc | Out-Null
-                    }
+                        -SourceEvent 'stop-transcript' -NowUtc $NowUtc
                     break
                 }
             }

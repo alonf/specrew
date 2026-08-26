@@ -535,6 +535,147 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
+### BETA4 — the derived independence block renders a FROZEN currentness as a present-tense claim (recorded 2026-08-26, not fixed)
+
+Found while executing step 4 of the 2026-08-26 sequencing ruling - writing the derived independence
+block into `review.md` - which is the one place the claim is read by a human deciding whether to sign
+off.
+
+**What it does.** `Get-SpecrewQualifyingIndependentRun` documents itself as selecting a run that
+completed "against the current tree", and then implements that as `[string]$result.currentness -cne
+'current'` - a field FROZEN into `result.json` when the run ended. Nothing recomputes it. So every
+edit made after a review leaves the block still rendering `Outcome: findings, complete, **current**,
+valid`, in the present tense, about a tree that no longer exists.
+
+**Measured on this branch, at the moment the block was written:**
+
+- block names `run-20260826-001211608-df54328d`, reviewed tree `a7c559de12c76aaca5ea373b719641017973d396`
+- live reviewed-state digest: `a0159e32784fd3ed8b0abb90eb765fdd734565e4`
+
+The three fixes that round 24 asked for are exactly what moved the digest, so the block asserts
+currentness about a tree that predates the response to its own findings.
+
+**Why this is the block's own defect and not a caller's.** W34-A exists for one sentence - "the
+independent review ran and passed against this exact tree" - and the block was built because that
+sentence is a pure function of the store and should never be hand-written. Rendering a stored field
+as a live claim reproduces the falsity in derived form, which is worse than the hand-written version
+it replaced: it carries the authority of having been computed.
+
+**Mitigation that already holds, and why this is a minor rather than a block.** The `reviewed tree`
+digest is printed beside it, so the claim is checkable by anyone who computes the current digest, and
+the SIGN-OFF GATE does not rely on this field: the navigator's freshness rule compares a passing run's
+`reviewed_tree_id` against the current reviewed-state digest (`continuous-co-review-navigator.ps1`, the
+FRESHNESS clause). A stale run therefore cannot silently authorize a sign-off. What it can do is
+mislead the human reading `review.md`, which is the surface this block was written for.
+
+**Not fixed here, deliberately** - per the maintainer's 2026-08-26 constraint that outstanding minors
+be carried to beta4 rather than repaired: "each fix re-stales the evidence, which is the loop itself."
+Fixing this one would move the digest again and re-open exactly that loop, one step before the tree is
+handed over.
+
+**The fix when beta4 takes it**: recompute currentness at render time by comparing the run's
+`target_digest` against the live reviewed-state digest, and say `reviewed an EARLIER tree` when they
+differ, naming both digests. The selector's doc comment should then match its code, which today it
+does not.
+
+### BETA4 — the W54 picker diagnosis covers three of the five typed authorities (recorded 2026-08-26, not fixed)
+
+Noticed while consolidating the capture routing for DRIFT-199-I001-138, in the table one level down
+from the one that had drifted.
+
+`Write-SpecrewQuestionUiPhraseObservation` accepts a `ValidateSet` of exactly three phrase kinds -
+`review-round-approval`, `allowance-reset`, `coverage-deferral` - and the Stop-branch detector that
+feeds it scans for those same three phrases. The two pause decisions and the approval withdrawal
+cannot be observed at all, and the pause refusal never consults the observation.
+
+So a human who answers a pause through a question UI gets the plain "no decision has been captured"
+refusal with no sentence naming the actual cause, and the agent is free to re-ask through the same
+picker - which is the exact measured failure W54 was written to stop (three asks for one decision on
+the KeyContextAI walk), reproduced for the phrases W54 did not enumerate.
+
+**Not an inert control.** The three existing call sites are all round-approval or allowance-reset
+refusals, so nothing reads an observation that can never be written. It is a gap in coverage, not a
+dead branch.
+
+**The fix when beta4 takes it**: derive the detector's phrase list and the `ValidateSet` from the same
+place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
+Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
+
+### DRIFT-199-I001-138 - round 24: the two capture branches had drifted apart, a broken link still launched a round, and a lost stamp left a reset reusable (resolved)
+
+Independent codex round 24 (`run-20260826-001211608-df54328d`, terminal / complete / current) returned
+three findings, all in the authority layer, all real. The reviewer reported all three as major; the
+engine demoted them to minor for want of a concrete failure scenario, which is the demotion rule
+working as designed and, in this case, understating two of them.
+
+**Finding 1 - the pause decisions never reached the Stop transcript backstop.** The prompt-entry branch
+routed `stop the review here` and `abandon this review campaign` to `Write-SpecrewPauseDecisionAuthorization`;
+the Stop backstop routed only round approval, allowance reset and coverage deferral. The Stop backstop
+exists *because* claude's prompt event may carry no text at all - the file says so, a dozen lines above
+the omission - so on that host a human could type a pause decision and every later `--pause-choice 2`
+or `3` would refuse forever, citing an authority the human had already given. The gate that requires
+the capture (DRIFT-199-I001-131, round 20) landed four rounds before the capture path was complete.
+
+**The cause was older and larger than the report.** Each capture branch carried its own hand-copied
+list of writers. Prompt-entry had seven; the Stop backstop had three. Nothing compared them, so neither
+side could see the gap from where it stood. Beyond the two pause decisions the Stop branch was also
+missing `Write-SpecrewApprovalWithdrawal` - and that one fails OPEN: a human who typed a withdrawal on
+claude had it silently discarded, leaving an approval they had explicitly retracted still spendable.
+The reviewer found one instance; the class was four.
+
+**A SHAPE THIS FEATURE HAS CORRECTED BEFORE** - a rule kept at the call sites instead of at the one
+place every caller passes through. The path comparer (DRIFT-199-I001-121), the fact-file classifier that
+round 23 moved into the single reader (DRIFT-199-I001-135), and now this. It is deliberately NOT recorded
+as a numbered class instance: the earlier two were counted under their own headings and no appendix rule
+enumerates this one, so a count here would be invented rather than measured. The fix:
+`Invoke-SpecrewTypedAuthorityCapture` is the one routing table, and both branches call it. Order is preserved inside it - withdrawal before the approval it revokes - and
+each writer still applies its own recognizer, so offering a turn to all seven grants nothing; at most
+one can match.
+
+**Finding 2 - a failed approval-to-grant stamp still launched the reviewer.** `Set-SpecrewReviewRoundApprovalMintedRef`
+verifies its own write and returns `stamped=false`, and the CLI printed `ROUND_APPROVAL_MINT_NOT_RECORDED`
+and continued into the run. Without a durable `minted_ref` the delivered round cannot be joined back to
+the approval that paid for it (`Get-SpecrewDeliveredRoundForMintedRef`), so if the consumption write
+also failed - or the process died first - the next invocation minted a fresh round from the same human
+approval and spent it twice. **Report-and-then-rely-on-it, the third correction of that shape on this
+path.** It now refuses before launch, in consumer language, saying plainly that nothing was spent and
+the approval still stands.
+
+**Finding 3 - a lost consumption stamp left the allowance reset reusable.** The CLI called
+`Complete-SpecrewAllowanceResetAuthorization` inside a swallowed catch, discarded the result, printed
+success and exited 0; the helper had no read-back postcondition. A transient write failure therefore
+left the captured phrase unspent after the reset had landed, and a later agent invocation could
+replenish the allowance again from that one approval. Two fixes, both mirroring corrections the
+round-approval path had already received and this one had not:
+
+- The completion returns `{ consumed; fact; reason }` and reports `consumed=$true` only when the stamp
+  reads back durably - the W57 rule from round 16, arrived at here eight rounds later because the two
+  paths were fixed one at a time instead of as one class. The CLI reads the outcome and says so in the
+  human's own surface rather than only on stderr.
+- `Get-SpecrewLandedResetForAllowanceCapture` is the derived guard, mirroring W61's join: a budget reset
+  recorded at or after a capture was observed IS that capture's reset, so a lost stamp can no longer buy
+  a second one. The stale capture is retired rather than refused, which keeps the recovery open - a
+  freshly typed phrase is a new capture with a later timestamp and the guard leaves it alone. Wedging
+  the re-typed phrase would have been the round-19 mistake repeated one door down.
+
+**Proof.** Five mutations, each reverting one fix, each turning exactly its own case red against an
+otherwise green suite (83 cases): drop the pause writer from the router; drop the withdrawal writer;
+restore the mint warning-and-continue; delete the reset read-back; make the landed-reset guard answer
+nothing.
+
+**One of those mutations did not bite on the first attempt, and that is recorded on purpose.** Deleting
+the reset read-back left the suite green, because the only case exercising it forced the *write* to
+throw and never reached the verification branch. That is the **FIFTH instance of the inert-control
+class**. Closed by a case whose writer succeeds and changes nothing - a silent no-op `Write-SpecrewFileAtomic` -
+which is precisely the shape a read-back exists for.
+
+**A test measuring its own runtime, caught by the appendix rule it prompted.** The first cut of the
+landed-reset case put the reset five seconds in the future and compared it against a phrase stamped
+with the wall clock, so it measured how fast the test ran. Rewritten on fixed instants, all in the past.
+
+**Lanes**: class-guards 25s, slice-suites 231s, iteration-001 governance 15s - all green. Disk-wide
+census run before the tag gate, per DRIFT-199-I001-136.
+
 ### DRIFT-199-I001-137 - AMENDMENT: the contract catches up to two rulings it had lagged (spec amended, code unchanged)
 
 - **This entry is not drift-to-be-corrected.** The code was right and the contract lagged it. Two
@@ -4041,6 +4182,13 @@ individual fix:
 4. **331 suites in no lane** — the verification plan named 45 of 384 test files, so twelve failing
    suites, two of them live product defects, went unreported for days while every round said green
    (DRIFT-199-I001-134).
+5. **A read-back postcondition its only test never reached** — the allowance-reset consumption's
+   `stamp-not-durable` branch, whose single case forced the *write* to throw and returned before the
+   verification ever ran. Deleting the entire branch left the suite green. Added 2026-08-26 from
+   DRIFT-199-I001-138, and it is the first instance the class caught *itself*: the mutation proof
+   required by method rule 6 is what exposed it, one round after the ruling that recorded instances
+   1–4. **The mutation, not the green, is the evidence** — a control asserted only through the path
+   that returns before it is a control nobody has run.
 
 *What makes this class survive its own fixes: each instance is DIFFERENT MACHINERY, and the guard
 that would have caught it is always one level up from where the fix went. The countermeasure that

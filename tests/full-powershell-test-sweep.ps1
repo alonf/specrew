@@ -173,6 +173,15 @@ Write-Host ("Full PowerShell test sweep: files={0}, pester={1}, scripts={2}, fai
         $files.Count, $pesterCount, $scriptCount, $failed.Count, $contaminated)
 if ($contaminated) {
     Write-Host 'FAIL: the caller working-tree status changed during the sweep.' -ForegroundColor Red
+    # NAME WHAT MOVED. This refusal used to report the class and stop, so the reader was told a file
+    # changed and never which one - and the only way to find out was to re-run the whole hour-long
+    # sweep while guessing. A refusal that names no reachable action is one this project has a rule
+    # against; the sweep was exempt from it only because nobody had hit the branch until 2026-08-26.
+    $before = [Collections.Generic.HashSet[string]]::new([string[]]$baseline, [StringComparer]::Ordinal)
+    $now = [Collections.Generic.HashSet[string]]::new([string[]]$after, [StringComparer]::Ordinal)
+    foreach ($line in @($after | Where-Object { -not $before.Contains($_) })) { Write-Host ("  appeared: {0}" -f $line) -ForegroundColor Red }
+    foreach ($line in @($baseline | Where-Object { -not $now.Contains($_) })) { Write-Host ("  cleared:  {0}" -f $line) -ForegroundColor Red }
+    Write-Host 'A file listed here was changed while the sweep ran - by a test, or by whatever else was working in this repo at the time.'
     exit 1
 }
 if ($failed.Count -gt 0) {

@@ -917,6 +917,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                     -RequiredFunctions @(
                         'Get-SpecrewAllowanceResetAuthorization',
                         'Complete-SpecrewAllowanceResetAuthorization',
+                        'Get-SpecrewLandedResetForAllowanceCapture',
                         'Test-SpecrewInsideAgentSession')
                 $capturedAllowanceReset = $null
                 # Round-22: an UNKNOWN session context reads as an agent session - the answer that
@@ -927,6 +928,32 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                 # SPECREW-AUTHORITY-CONSUMER: allowance-reset
                 if (Get-Command -Name 'Get-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue) {
                     try { $capturedAllowanceReset = Get-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath } catch { $capturedAllowanceReset = $null }
+                }
+                # W66 / round-24 finding (DRIFT-199-I001-138): DERIVED REUSE GUARD, mirroring W61.
+                #
+                # If a budget reset already landed at or after this capture was observed, then THIS
+                # capture is what paid for it - nothing else could have authorized it - even when the
+                # stamp that should have recorded that never got written. Retire it here rather than
+                # replenish a second time from one human decision. A freshly typed phrase is a new
+                # capture with a later timestamp, so the recovery the refusal below prints still works;
+                # wedging it would repeat the round-19 mistake one door down.
+                if ($null -ne $capturedAllowanceReset -and
+                    (Get-Command -Name 'Get-SpecrewLandedResetForAllowanceCapture' -ErrorAction SilentlyContinue)) {
+                    $guardIdentity = $null
+                    try { $guardIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId) } catch { $guardIdentity = $null }
+                    if ($null -ne $guardIdentity) {
+                        $landedReset = $null
+                        try {
+                            $landedReset = Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $resolvedProjectPath `
+                                -CampaignId ([string]$guardIdentity.campaign_id) -CaptureObservedAt ([string]$capturedAllowanceReset.observed_at)
+                        }
+                        catch { $landedReset = $null }
+                        if ($null -ne $landedReset) {
+                            $landedRef = if ($landedReset.PSObject.Properties['reset_id']) { [string]$landedReset.reset_id } else { 'already-landed' }
+                            try { Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference $landedRef | Out-Null } catch { $null = $_ }
+                            $capturedAllowanceReset = $null
+                        }
+                    }
                 }
                 if ($insideAgentSessionReset -and $null -eq $capturedAllowanceReset) {
                     Write-Host 'Replenishing the review rounds is the human''s decision, and no approval from them has been captured.' -ForegroundColor Yellow
@@ -975,12 +1002,30 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                             -RunId ([string](Get-ReviewAuthorityProperty -Object $outstandingAtReset -Name 'run_id')) `
                             -Choice 'fix-and-continue' -ObservedAt ([DateTimeOffset]::UtcNow.ToString('o'))) | Out-Null
                 }
+                # The outcome is READ, not discarded: a swallowed failure here is what let one approval
+                # replenish the allowance twice. The reset itself has already landed and stands, so this
+                # is reported rather than refused - and the derived guard above is what makes the
+                # unstamped capture harmless.
+                $resetConsumed = $null
                 if ($null -ne $capturedAllowanceReset -and (Get-Command -Name 'Complete-SpecrewAllowanceResetAuthorization' -ErrorAction SilentlyContinue)) {
-                    try { Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference ([string]$resetFact.reset_id) | Out-Null } catch { $null = $_ }
+                    try { $resetConsumed = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $resolvedProjectPath -Reference ([string]$resetFact.reset_id) } catch { $resetConsumed = $null }
                 }
-                if ($Json) { $resetFact | ConvertTo-Json -Depth 10; exit 0 }
+                $resetStampLost = ($null -ne $capturedAllowanceReset -and ($null -eq $resetConsumed -or -not [bool]$resetConsumed.consumed))
+                if ($resetStampLost) {
+                    $resetStampReason = if ($null -ne $resetConsumed) { [string]$resetConsumed.reason } else { 'no-result' }
+                    [Console]::Error.WriteLine('[specrew-review] WARN ALLOWANCE_RESET_NOT_STAMPED ' + $resetStampReason)
+                }
+                if ($Json) {
+                    $resetFact | Add-Member -NotePropertyName 'approval_stamped' -NotePropertyValue (-not $resetStampLost) -Force
+                    $resetFact | ConvertTo-Json -Depth 10; exit 0
+                }
                 Write-Host 'Your review rounds are topped up. The rounds already run stay on the record; they no longer count against your allowance.' -ForegroundColor Green
                 Write-Host ''
+                if ($resetStampLost) {
+                    Write-Host 'One thing to know: Specrew could not mark your approval as used. The top-up itself is recorded and stands.' -ForegroundColor Yellow
+                    Write-Host 'That approval cannot be used a second time - the top-up already on record is what it paid for - so type the phrase again if you want another one later.'
+                    Write-Host ''
+                }
                 Write-Host 'Run the next review with:  specrew review --live --approve-round   (in a conversation, the typed reply `approved for review round` is this approval, as a normal chat message - a reply inside a question UI or picker is not captured)' -ForegroundColor Cyan
                 exit 0
             }
@@ -1364,7 +1409,23 @@ if ($Live) {
                     try { $mintStamp = Set-SpecrewReviewRoundApprovalMintedRef -ProjectRoot $resolvedProjectPath -AuthorizationRef $campaignGrantAuthorizationRef }
                     catch { $mintStamp = $null }
                     if ($null -eq $mintStamp -or -not [bool]$mintStamp.stamped) {
-                        [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_MINT_NOT_RECORDED ' + $(if ($null -ne $mintStamp) { [string]$mintStamp.reason } else { 'no-result' }))
+                        # Round-24 finding (DRIFT-199-I001-138): REFUSE BEFORE LAUNCH, do not warn and
+                        # continue. Without a durable minted_ref the capture cannot be JOINED to the
+                        # run it pays for, so if the consumption write also fails - or the process dies
+                        # first - the next invocation mints a fresh round from the same human approval
+                        # and spends it twice. Reporting a broken link and then relying on it is the
+                        # report-don't-control shape this path has now been corrected for three times.
+                        $mintReason = if ($null -ne $mintStamp) { [string]$mintStamp.reason } else { 'no-result' }
+                        Write-Host 'Specrew could not record which round this approval is paying for, so it will not start the review.' -ForegroundColor Yellow
+                        Write-Host ''
+                        Write-Host 'Without that record it cannot tell later whether this approval was already used, and the safe assumption would cost the human a second review they never asked for.'
+                        Write-Host 'Nothing was spent: their approval is untouched and still standing.'
+                        Write-Host ''
+                        Write-Host ('What Specrew saw: {0}' -f $mintReason)
+                        Write-Host ('The record it could not write: {0}' -f (Join-Path $resolvedProjectPath '.specrew/review/round-approval/pending-round-approval.json'))
+                        Write-Host 'Once that file can be written again, run this command and the round starts normally.'
+                        [Console]::Error.WriteLine('[specrew-review] WARN ROUND_APPROVAL_MINT_NOT_RECORDED ' + $mintReason)
+                        exit 1
                     }
                 }
                 # W50 (supersedes the W44 stamp-at-mint): THE ALLOWANCE METERS ATTEMPTS; THE HUMAN

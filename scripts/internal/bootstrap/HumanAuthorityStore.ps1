@@ -1254,15 +1254,75 @@ function Complete-SpecrewAllowanceResetAuthorization {
         [Parameter(Mandatory)][string]$Reference,
         [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
     )
+    # W66 / round-24 finding (DRIFT-199-I001-138): SAY WHAT HAPPENED, AND VERIFY IT.
+    #
+    # The caller swallowed every error here, discarded the result, printed success and exited 0 - so a
+    # transient failure writing the stamp left the human's `approved for allowance reset` unspent even
+    # though the reset itself had landed, and a later agent invocation could replenish the allowance
+    # again from that same one approval. Every exit now returns { consumed; fact; reason }, and
+    # consumed=$true only when the stamp reads back durably: the identical rule the round-approval
+    # consumption was corrected to in round 16, arrived at here eight rounds later because the two
+    # paths were fixed one at a time instead of as one class.
     $path = Join-Path (Get-SpecrewAllowanceResetRoot -ProjectRoot $ProjectRoot) 'pending-allowance-reset.json'
-    if (-not [IO.File]::Exists($path)) { return $null }
+    if (-not [IO.File]::Exists($path)) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'no-pending-capture' } }
     $fact = $null
-    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { return $null }
-    if ($null -eq $fact) { return $null }
+    try { $fact = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-unreadable' } }
+    if ($null -eq $fact) { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'pending-capture-empty' } }
     $fact | Add-Member -NotePropertyName 'spent_at' -NotePropertyValue $NowUtc -Force
     $fact | Add-Member -NotePropertyName 'reset_reference' -NotePropertyValue ([string]$Reference) -Force
     $json = $fact | ConvertTo-Json -Depth 8
-    if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
-    else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
-    return $fact
+    try {
+        if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $json }
+        else { [IO.File]::WriteAllText($path, $json, [Text.UTF8Encoding]::new($false)) }
+    }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = ('write-failed:' + $_.Exception.Message) } }
+    $verified = $null
+    try { $verified = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop }
+    catch { return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'readback-failed' } }
+    if ($null -eq $verified -or -not $verified.PSObject.Properties['spent_at'] -or
+        [string]::IsNullOrWhiteSpace([string]$verified.spent_at) -or
+        [string]$verified.reset_reference -cne [string]$Reference) {
+        return [pscustomobject]@{ consumed = $false; fact = $null; reason = 'stamp-not-durable' }
+    }
+    return [pscustomobject]@{ consumed = $true; fact = $verified; reason = 'consumed' }
+}
+
+function Get-SpecrewLandedResetForAllowanceCapture {
+    # THE DERIVED GUARD, mirroring W61's join: "has this approval already been spent?" is answered
+    # from the facts the store published, never from a marker that can itself fail to be written. A
+    # budget reset recorded at or after this capture was observed IS this capture's reset - nothing
+    # else could have authorized it - so a lost stamp can no longer replenish the allowance twice.
+    #
+    # Returns the landed reset fact, or $null. A re-typed phrase is a NEW capture with a later
+    # observed_at, so this leaves the human's recovery path open: refusing that was the round-19
+    # wedge, and repeating it here would be the same mistake one door down. An unreadable store also
+    # answers $null - a fabricated block locks a human out of a reset they own, which is worse.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CaptureObservedAt
+    )
+    if ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($CaptureObservedAt)) { return $null }
+    $root = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) ('.specrew/review/authority/campaigns/' + $CampaignId + '/budget-resets')
+    if (-not [IO.Directory]::Exists($root)) { return $null }
+    $capturedAt = $null
+    try { $capturedAt = ConvertTo-SpecrewAuthorityInstant -Value $CaptureObservedAt } catch { return $null }
+    if ($null -eq $capturedAt) { return $null }
+    $landed = $null
+    $landedAt = $null
+    try {
+        foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.json')) {
+            $reset = $null
+            try { $reset = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+            if ($null -eq $reset -or -not $reset.PSObject.Properties['observed_at']) { continue }
+            $resetAt = $null
+            try { $resetAt = ConvertTo-SpecrewAuthorityInstant -Value $reset.observed_at } catch { continue }
+            if ($null -eq $resetAt -or $resetAt -lt $capturedAt) { continue }
+            if ($null -eq $landedAt -or $resetAt -lt $landedAt) { $landed = $reset; $landedAt = $resetAt }
+        }
+    }
+    catch { return $null }
+    return $landed
 }

@@ -425,13 +425,17 @@ Describe 'W44 the hooks feed the capture' {
         $handoverStore = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1') -Raw -Encoding UTF8
         $promptBlock = [regex]::Match($handoverStore, "(?s)if \(\`$Source -in @\('UserPromptSubmit'.+?prompt-submit-verdict-capture").Value
         $promptBlock | Should -Not -BeNullOrEmpty
-        $promptBlock.Contains('Write-SpecrewReviewRoundApprovalAuthorization') | Should -BeTrue -Because 'the phrase must be captured the moment the human types it, so the agent can run the round in the same turn'
+        # W66 (round-24 finding, DRIFT-199-I001-138) moved the writer list into one router both capture
+        # branches call, because the two hand-copied lists had drifted apart. The rule this case
+        # protects is unchanged - the human's typed turn must be offered to the authority writers here -
+        # so it now names the router instead of one writer inside it.
+        $promptBlock.Contains('Invoke-SpecrewTypedAuthorityCapture') | Should -BeTrue -Because 'the phrase must be captured the moment the human types it, so the agent can run the round in the same turn'
     }
 
     It 'the Stop backstop relays only a verified human transcript turn' {
         $handoverStore = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1') -Raw -Encoding UTF8
         $stopBlock = [regex]::Match($handoverStore, "(?s)if \(\`$isEndOfTurn\) \{.+?^    \}", [System.Text.RegularExpressions.RegexOptions]::Multiline).Value
-        $stopBlock.Contains('Write-SpecrewReviewRoundApprovalAuthorization') | Should -BeTrue -Because 'observed on claude: prompt events may not deliver text, and verdict capture lands at Stop'
+        $stopBlock.Contains('Invoke-SpecrewTypedAuthorityCapture') | Should -BeTrue -Because 'observed on claude: prompt events may not deliver text, and verdict capture lands at Stop'
         $stopBlock.Contains('Test-SpecrewTurnIsHumanVerdictEvidence') | Should -BeTrue -Because 'never agent text - the same provenance rule verdict capture uses'
     }
 }
@@ -1378,3 +1382,217 @@ Describe 'W65 round 23: a PARTIAL authority store is a damaged one, and every fa
     }
 }
 
+
+Describe 'W66 round 24: one routing table for typed authority, a durable mint, and a reset that cannot be reused' {
+    # Round 24 found the pause decisions missing from the Stop transcript backstop. The defect under
+    # that finding is older and larger: the two capture branches - prompt-entry and the Stop backstop -
+    # each carried their own hand-copied list of authority writers, and the lists had silently
+    # diverged - a rule enforced at each call site instead of at the one place every caller passes
+    # through, the same shape as the path comparer and the fact-file classifier before it. So these
+    # cases pin the ROUTER, not the copies.
+
+    BeforeAll {
+        function script:New-StopCaptureRoot {
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w66-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            return $root
+        }
+
+        function script:Invoke-StopCapture {
+            param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$HumanText)
+            $tp = Join-Path $Root 'transcript.jsonl'
+            $line = '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"' + $HumanText + '"}]}}'
+            [IO.File]::WriteAllLines($tp, [string[]]@($line), [Text.UTF8Encoding]::new($false))
+            $repo = $script:RepoRoot
+            # A CHILD process, so the writers one pass loads cannot leak into the next case.
+            $lines = @(
+                'Set-StrictMode -Version Latest'
+                ". '$repo/scripts/internal/bootstrap/ConversationCaptureAccessor.ps1'"
+                ". '$repo/scripts/internal/bootstrap/ClassificationEngine.ps1'"
+                ". '$repo/scripts/internal/bootstrap/ProjectMetadataAccessor.ps1'"
+                ". '$repo/scripts/internal/bootstrap/HumanAuthorityStore.ps1'"
+                ". '$repo/scripts/internal/bootstrap/HandoverStore.ps1'"
+                "Update-SpecrewRollingHandover -ProjectRoot '$Root' -TranscriptPath '$tp' -Source 'Stop' | Out-Null"
+            )
+            & pwsh -NoProfile -Command ($lines -join '; ') 2>&1 | Out-Null
+        }
+    }
+
+    It 'RED-FIRST: a typed pause decision arriving only at Stop is captured, on the host this backstop exists for' {
+        # THE FINDING. On claude the prompt event may carry no text at all - which is why the Stop
+        # backstop exists - so a human who typed `stop the review here` was never recorded, and every
+        # later `--pause-choice 2` refused forever. The human decided; the machinery could not see it.
+        $root = New-StopCaptureRoot
+        try {
+            # PRECONDITION FIRST (appendix rule: a test asserts its own precondition). If this control
+            # does not capture, the fixture's transcript shape is wrong and the case below would pass
+            # or fail for reasons that have nothing to do with pause decisions.
+            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'the fixture must be a transcript the Stop backstop actually reads'
+
+            Invoke-StopCapture -Root $root -HumanText 'stop the review here'
+            $decision = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
+            $decision | Should -Not -BeNullOrEmpty -Because 'a decision the human typed must reach the store on every supported host'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: a typed withdrawal arriving only at Stop is captured, because that one fails OPEN' {
+        # The same divergence hid a worse case than the reported one: a withdrawal that never lands
+        # leaves an approval the human RETRACTED still spendable.
+        $root = New-StopCaptureRoot
+        try {
+            Invoke-StopCapture -Root $root -HumanText 'approved for review round'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'precondition: there must be an approval to withdraw'
+            Invoke-StopCapture -Root $root -HumanText 'withdraw my approval'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'the human took it back; a retracted approval must not stay spendable'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the router carries EVERY typed-authority writer the store defines, so a new one cannot be half-wired' {
+        # DERIVED, not enumerated: the expectation is read from the writers that exist, so adding an
+        # authority writer and forgetting the router fails here rather than on a human's host.
+        $sources = @(
+            Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1'
+            Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1'
+            Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/workshop-authority-store.ps1'
+        )
+        $expected = [Collections.Generic.List[string]]::new()
+        foreach ($source in $sources) {
+            $tokens = $null; $errors = $null
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile($source, [ref]$tokens, [ref]$errors)
+            foreach ($fn in $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+                if ($fn.Name -notmatch '^Write-Specrew.*(Authorization|Withdrawal)$') { continue }
+                if ($null -eq $fn.Body.ParamBlock) { continue }
+                $names = @($fn.Body.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath })
+                # The typed-phrase shape: it takes a human's words and the event they arrived on.
+                if (@('ProjectRoot', 'Response', 'HostKind', 'SourceEvent' | Where-Object { $_ -notin $names }).Count -gt 0) { continue }
+                $expected.Add($fn.Name) | Out-Null
+            }
+        }
+        $expected.Count | Should -BeGreaterThan 4 -Because 'precondition: the scan must actually find the writers'
+        $handover = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1') -Raw -Encoding UTF8
+        $router = [regex]::Match($handover, '(?s)function Invoke-SpecrewTypedAuthorityCapture.*?\r?\n\}').Value
+        $router | Should -Not -BeNullOrEmpty -Because 'both branches must route through one named table'
+        foreach ($writer in $expected) {
+            $router.Contains($writer) | Should -BeTrue -Because ($writer + " takes a human's typed words and must be offered them on every host")
+        }
+    }
+
+    It 'neither capture branch keeps its own copy of the list' {
+        $handover = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HandoverStore.ps1') -Raw -Encoding UTF8
+        $outsideRouter = [regex]::Replace($handover, '(?s)function Invoke-SpecrewTypedAuthorityCapture.*?\r?\n\}', '')
+        $direct = @([regex]::Matches($outsideRouter, '(?m)^\s*(Write-Specrew\w*(?:Authorization|Withdrawal))\s+-ProjectRoot') |
+                ForEach-Object { $_.Groups[1].Value })
+        $direct | Should -BeNullOrEmpty -Because 'a hand-copied call site is how the two branches diverged in the first place'
+        ([regex]::Matches($handover, 'Invoke-SpecrewTypedAuthorityCapture\s+-ProjectRoot')).Count |
+            Should -BeGreaterOrEqual 2 -Because 'prompt-entry and the Stop backstop are both capture branches'
+    }
+
+    It 'RED-FIRST: a mint stamp that cannot be written refuses BEFORE launch instead of warning and running' {
+        # Round-24 finding: the CLI printed ROUND_APPROVAL_MINT_NOT_RECORDED and carried on. Without a
+        # durable minted_ref the delivered round cannot be joined back to the approval that paid for
+        # it, so the next invocation mints a second round from the same human approval.
+        $root = New-CampaignFixture
+        $handle = $null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $pending = Get-PendingFactPath -Root $root
+            # A real transient failure: the file is readable, so the approval is found, but no writer
+            # can replace it - which is exactly the shape the stamp's read-back reports.
+            $handle = [IO.File]::Open($pending, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::Read)
+            $run = Invoke-ReviewCli -Root $root -Context 'agent'
+            $run.ExitCode | Should -Be 1
+            $run.Text | Should -Match 'will not start the review'
+            $run.Text | Should -Match 'still standing' -Because 'the human must be told their approval was not spent'
+            $run.Text | Should -Not -Match 'Round approved by the human' -Because 'the round must not launch on a link that was never written'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'RED-FIRST: allowance-reset consumption reports its outcome and verifies its own stamp' {
+        $root = New-StopCaptureRoot
+        $handle = $null
+        try {
+            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $path = Join-Path $root '.specrew/review/allowance-reset/pending-allowance-reset.json'
+            [IO.File]::Exists($path) | Should -BeTrue -Because 'precondition: there must be a capture to consume'
+            $handle = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::Read)
+            $blocked = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'reset-1'
+            [bool]$blocked.consumed | Should -BeFalse -Because 'a swallowed failure that returns nothing is indistinguishable from success'
+            [string]$blocked.reason | Should -Not -BeNullOrEmpty
+            $handle.Dispose(); $handle = $null
+            $ok = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'reset-1'
+            [bool]$ok.consumed | Should -BeTrue
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'a spent approval is not standing authority'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'a write that reports success but changes nothing is NOT a consumption' {
+        # THE READ-BACK'S OWN CASE. The locked-file case above proves only the throwing branch: the
+        # first cut of this suite deleted the whole `stamp-not-durable` check and stayed green, which
+        # is the inert-control class this feature has now hit six times. A silent no-op writer is the
+        # shape that branch exists for - it succeeds, and nothing changed.
+        $root = New-StopCaptureRoot
+        try {
+            $null = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            function Write-SpecrewFileAtomic { param([string]$Path, [string]$Content) }
+            $result = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'reset-2'
+            [bool]$result.consumed | Should -BeFalse -Because 'the stamp must be readable back before the approval counts as spent'
+            [string]$result.reason | Should -Be 'stamp-not-durable'
+            Get-SpecrewAllowanceResetAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'nothing was written, so the human still holds their approval'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: an approval whose reset already landed cannot buy a second one, and a freshly typed phrase still can' {
+        # The derived guard, mirroring W61: ownership is answered from the facts the store published,
+        # not from a marker that can also fail. A reset recorded at or after the capture is the
+        # evidence that THIS capture already paid - so a lost stamp cannot replenish twice.
+        $root = New-StopCaptureRoot
+        try {
+            # FIXED INSTANTS, all in the past: the first cut of this case put the landed reset five
+            # seconds in the FUTURE and then compared it against a re-typed phrase stamped with the
+            # wall clock, so it measured how fast the test ran rather than what it claims to measure.
+            $t0 = [DateTimeOffset]::UtcNow.AddMinutes(-10)
+            $capture = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.ToString('o'))
+            $campaign = 'cmp-w66-i001'
+            $resets = Join-Path $root ('.specrew/review/authority/campaigns/' + $campaign + '/budget-resets')
+            New-Item -ItemType Directory -Path $resets -Force | Out-Null
+            $landedAt = $t0.AddMinutes(1).ToString('o')
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'round-budget-reset'; authority_kind = 'human'
+                    campaign_id = $campaign; reset_id = 'reset-landed-1'; authorized_by = 'alon'
+                    reason = 'more rounds'; observed_at = $landedAt } | ConvertTo-Json -Compress) |
+                Set-Content -LiteralPath (Join-Path $resets 'reset-landed-1.json') -Encoding UTF8
+
+            Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $root -CampaignId $campaign -CaptureObservedAt ([string]$capture.observed_at) |
+                Should -Not -BeNullOrEmpty -Because 'the reset landed after this capture, so this capture is what paid for it'
+
+            # And the recovery must actually recover: once the stale capture is retired, the human's
+            # freshly typed phrase writes a NEW fact that the guard leaves alone. A guard that wedges
+            # the re-typed phrase is the W61 mistake repeated.
+            $null = Complete-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Reference 'reset-landed-1'
+            $fresh = Write-SpecrewAllowanceResetAuthorization -ProjectRoot $root -Response 'approved for allowance reset' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.AddMinutes(2).ToString('o'))
+            ([DateTimeOffset]::Parse([string]$fresh.observed_at)) |
+                Should -BeGreaterThan ([DateTimeOffset]::Parse($landedAt)) -Because 'a re-typed phrase is a new act, not the old one resurrected'
+            Get-SpecrewLandedResetForAllowanceCapture -ProjectRoot $root -CampaignId $campaign -CaptureObservedAt ([string]$fresh.observed_at) |
+                Should -BeNullOrEmpty -Because 'no reset has landed since the human typed it again'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
