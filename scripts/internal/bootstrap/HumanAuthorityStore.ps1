@@ -508,7 +508,61 @@ function Get-SpecrewReviewRoundApprovalAuthorization {
     if (-not [bool](Test-SpecrewReviewRoundApprovalPhrase -Text ([string]$fact.verdict_text)).Matched) { return $null }
     $spent = $fact.PSObject.Properties['spent_at']
     if ($spent -and -not [string]::IsNullOrWhiteSpace([string]$spent.Value)) { return $null }
-    return $fact
+    # W68 / round-25 finding (DRIFT-199-I001-141): A WITHDRAWAL THAT COULD NOT DELETE STILL REVOKES.
+    #
+    # Write-SpecrewApprovalWithdrawal journals the human's act and THEN deletes this file. The journal
+    # is written first precisely so the record survives a failed delete - but nothing read it, so a
+    # delete that lost a race left the approval sitting here, spendable, after the human had explicitly
+    # taken it back. The maintainer ruled this class the most severe the system has, one round before
+    # it was found here, in the router introduced to fix the round-24 version of the same shape: the
+    # capture was wired and the CONSUMPTION of the writer's result was not.
+    #
+    # Revocation is decided HERE, at the reader, because that is the only place that cannot be skipped
+    # by a failed write somewhere else.
+    if (-not (Test-SpecrewApprovalIsWithdrawn -ProjectRoot $ProjectRoot -Fact $fact)) { return $fact }
+    return $null
+}
+
+function Test-SpecrewApprovalIsWithdrawn {
+    # Did the human take THIS approval back? A withdrawal journalled at or after the approval was
+    # observed revokes it.
+    #
+    # TIME, NOT A JOIN, AND DELIBERATELY. The journal's `withdrew_observed_at` names the approval it
+    # revoked, but it stores whatever `[string]` rendered from a JSON-parsed date, so it does not
+    # round-trip to the same text on every host - matching on it would fail open exactly where this
+    # control must not. The time rule fails CLOSED and stays RECOVERABLE, which is the pair that
+    # matters: an approval typed AFTER the withdrawal has a later instant and is untouched, so a human
+    # who changes their mind is never wedged (the round-19 lesson, kept).
+    #
+    # Unreadable journal answers "withdrawn". This is the one reader in this file that fails closed on
+    # corruption rather than open: everywhere else a false refusal costs a retype, but here a false
+    # ACCEPT spends authority the human revoked.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowNull()]$Fact
+    )
+    if ($null -eq $Fact) { return $false }
+    $journal = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'captures.jsonl'
+    if (-not [IO.File]::Exists($journal)) { return $false }
+    $approvedAt = $null
+    if ($Fact.PSObject.Properties['observed_at']) { $approvedAt = ConvertTo-SpecrewAuthorityInstant -Value $Fact.observed_at }
+    if ($null -eq $approvedAt) { return $true }
+    try {
+        foreach ($line in [IO.File]::ReadLines($journal)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['fact_type']) { continue }
+            if ([string]$entry.fact_type -cne 'review-round-approval-withdrawn') { continue }
+            if (-not $entry.PSObject.Properties['observed_at']) { continue }
+            $withdrawnAt = ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at
+            if ($null -eq $withdrawnAt) { continue }
+            if ($withdrawnAt -ge $approvedAt) { return $true }
+        }
+    }
+    catch { return $true }
+    return $false
 }
 
 function ConvertTo-SpecrewAuthorityInstant {
@@ -566,6 +620,19 @@ function Get-SpecrewPendingPauseIdentity {
             $pause = $null
             try { $pause = Get-Content -LiteralPath $pauseFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 -ErrorAction Stop } catch { continue }
             if ($null -eq $pause -or -not $pause.PSObject.Properties['run_id']) { continue }
+            # W68 / round-25 finding (DRIFT-199-I001-141): AN ANSWERED PAUSE IS HISTORY.
+            #
+            # This took the newest pause in the whole project without excluding ones that already carry
+            # a sibling decision - which the canonical Get-ReviewCampaignPendingPause reader DOES
+            # exclude. Two readers of one question, for the fourth time in this feature. With an older
+            # unanswered campaign and a newer answered one, a typed `stop the review here` bound to the
+            # closed run, the CLI rejected it for the run actually waiting, and retyping repeated the
+            # same wrong binding - the human answering forever while nothing moved.
+            #
+            # Scoped by DIRECTORY rather than by re-reading the store, because this is the bootstrap
+            # module and it must not take a dependency on the review-authority reader to answer a
+            # question about a file sitting next to the one it already opened.
+            if ([IO.File]::Exists([IO.Path]::Combine($pauseFile.DirectoryName, 'pause-decision.json'))) { continue }
             $observed = $null
             if ($pause.PSObject.Properties['observed_at']) { $observed = ConvertTo-SpecrewAuthorityInstant -Value $pause.observed_at }
             if ($null -eq $observed) { $observed = [DateTimeOffset]::MinValue }

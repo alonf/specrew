@@ -591,6 +591,65 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-141 - W68: a withdrawal that could not delete still revokes, and an answered pause is history (resolved)
+
+Two of round 25's three findings, repaired under the maintainer's 2026-08-26 allowance-reset
+authorization. Both were reported major and demoted to minor by the engine; the first is the class the
+maintainer had ruled, one round earlier, the most severe this system has.
+
+**Finding 1 - a failed withdrawal delete left the retracted approval spendable.**
+`Write-SpecrewApprovalWithdrawal` journals the human's act and THEN deletes the pending approval file -
+journalling first precisely so the record survives a failed delete. Nothing read the journal. So a
+delete that lost a race left the approval sitting there, unspent and spendable, after the human had
+explicitly taken it back, and the next `--approve-round` would have spent it.
+
+**It is in the router I wrote for DRIFT-199-I001-138, one round earlier.** That fix closed the CAPTURE
+gap - the Stop backstop was not offering turns to the withdrawal writer - and left the CONSUMPTION of
+the writer's result open, because `Invoke-SpecrewTypedAuthorityCapture` discards what every writer
+returns. Report-and-then-rely-on-it, corrected three times on the round-approval path and not once
+here. Fixing the half in front of me and not the half behind it is the shape worth naming.
+
+**Resolution: revocation is decided at the READER**, which is the only place a failed write elsewhere
+cannot skip. `Test-SpecrewApprovalIsWithdrawn` answers whether a withdrawal was journalled at or after
+the approval was observed.
+
+- **Time, not the join, and deliberately.** The journal's `withdrew_observed_at` names the approval it
+  revoked, but it stores whatever `[string]` rendered from a JSON-parsed date, so it does not
+  round-trip to the same text on every host. Matching on it would fail OPEN exactly where this control
+  must not. The time rule fails closed and stays recoverable: an approval typed AFTER the withdrawal
+  has a later instant and is untouched, so a human who changes their mind is never wedged - the
+  round-19 lesson, kept.
+- **Unreadable journal answers "withdrawn".** The one reader in this file that fails closed on
+  corruption. Everywhere else a false refusal costs a retype; here a false accept spends authority the
+  human revoked.
+
+**Finding 2 - a pause decision could bind to an already-answered pause from another campaign.**
+`Get-SpecrewPendingPauseIdentity` took the newest `pending-pause.json` in the whole project without
+excluding ones that already carry a sibling `pause-decision.json` - which the canonical
+`Get-ReviewCampaignPendingPause` reader does exclude. **Two readers of one question, the fourth
+instance in this feature.** With an older unanswered campaign and a newer answered one, a typed `stop
+the review here` bound to the closed run, the CLI rejected it for the run actually waiting, and
+retyping repeated the same binding: the human answering forever while nothing moved. Now an answered
+pause is skipped, checked by directory rather than by taking a dependency on the review-authority
+reader from the bootstrap module.
+
+**Finding 3 - the starter templates sidecar - is CARRIED, not repaired**, per the maintainer's standing
+instruction not to chase minors.
+
+**Proof.** Four mutations, each turning its own case red against an otherwise green suite (88 cases):
+stop consulting the journal; stop failing closed on a corrupt one; drop the later-approval rule; stop
+excluding answered pauses.
+
+**SIXTH INSTANCE of the inert-control class, found the same way as the fifth.** The fail-closed branch
+had no case that reached it - deleting it left the suite green - and only the mutation exposed that.
+Closed with a case that locks the journal so the read genuinely throws. Two rounds running, the
+mutation and not the green has been what found the untested control; that is now the strongest single
+argument in this log for method rule 6.
+
+**Cost, accepted by the ruling that authorized it**: repairing these moved the tree, so round 25 stopped
+covering it and the independence claim in `review.md` was withdrawn again pending the round now
+authorized. That is the review-repair-stale loop behaving correctly, not failing.
+
 ### DRIFT-199-I001-140 - round 25 DELIVERED and covers this tree; its three findings are OPEN, not repaired
 
 **The first covering round of this iteration.** `run-20260826-102845091-9b2b1555`, codex, terminal /

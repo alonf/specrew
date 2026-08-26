@@ -1596,3 +1596,145 @@ Describe 'W66 round 24: one routing table for typed authority, a durable mint, a
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
+Describe 'W68 round 25: a withdrawal that cannot delete still revokes, and a pause decision binds to a LIVE pause' {
+    # Round 25 (the first round to cover this tree) returned both of these as major; the engine demoted
+    # them to minor for want of a concrete failure scenario. The maintainer had ruled one round earlier
+    # that a withdrawal failing open is the most severe class this system has - and finding 1 is that
+    # class, in the router DRIFT-199-I001-138 introduced. I closed the capture gap there and left the
+    # CONSUMPTION of the writer's result open, which is the report-don't-control shape this file has now
+    # been corrected for four times.
+
+    It 'RED-FIRST: a withdrawal whose delete FAILS still revokes the approval' {
+        # The reported path: Write-SpecrewApprovalWithdrawal journals, then deletes the pending file.
+        # If the delete throws it returns $null with the approval intact, the router discards every
+        # writer result, and the reader never consults the journal - so the next --approve-round spends
+        # authority the human explicitly took back.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-wd-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        $handle = $null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
+            $pending = Join-Path $root '.specrew/review/round-approval/pending-round-approval.json'
+            [IO.File]::Exists($pending) | Should -BeTrue -Because 'precondition: there must be an approval to withdraw'
+
+            # A transient lock: readable, so the withdrawal can journal what it revokes, but the delete
+            # cannot land. This is the reviewer's stated scenario, reproduced rather than imagined.
+            $handle = [IO.File]::Open($pending, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            [IO.File]::Exists($pending) | Should -BeTrue -Because 'precondition: the delete really did fail, which is what this case is about'
+
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'the human took it back; a file that could not be deleted must not hand their authority to the next command'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'a withdrawal does NOT revoke an approval the human typed AFTERWARDS' {
+        # The recovery must recover. Revoking forever would be the round-19 wedge in another costume:
+        # the human withdraws, changes their mind, types the approval again, and is refused by a
+        # withdrawal that predates the new act.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-wd2-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $t0 = [DateTimeOffset]::UtcNow.AddMinutes(-10)
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.ToString('o'))
+            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.AddMinutes(1).ToString('o'))
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the withdrawal took effect'
+
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ($t0.AddMinutes(2).ToString('o'))
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'a later approval is a new act, not the one that was withdrawn'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a journal it cannot read means WITHDRAWN, not "carry on"' {
+        # The fail-closed branch's own case. Its first cut had none: deleting the branch left the suite
+        # green, which is the inert-control class this feature keeps hitting and which mutation - not
+        # the green - is what finds. Everywhere else in this file a false refusal costs a retype; here
+        # a false ACCEPT spends authority the human revoked, so this is the one reader that must fail
+        # closed on corruption.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-corrupt-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        $handle = $null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'precondition: the approval reads fine while the journal is readable'
+
+            $journal = Join-Path $root '.specrew/review/round-approval/captures.jsonl'
+            $handle = [IO.File]::Open($journal, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'if it cannot tell whether the human withdrew, it must not hand over their authority'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'RED-FIRST: a pause decision does not bind to an ALREADY-ANSWERED pause from another campaign' {
+        # The reported wedge: the identity reader scans every pending-pause.json in the project and
+        # takes the newest observed_at, without excluding pauses that already carry a sibling
+        # pause-decision.json - which the canonical Get-ReviewCampaignPendingPause reader does exclude.
+        # So a newer ANSWERED campaign captures the phrase, the CLI rejects it for the genuinely
+        # outstanding run, and retyping repeats the same wrong binding. Two readers of one question,
+        # for the fourth time in this feature.
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-pause-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $t0 = [DateTimeOffset]::UtcNow.AddHours(-2)
+            $campaigns = Join-Path $root '.specrew/review/authority/campaigns'
+            # OLDER campaign, still waiting for an answer - the one a typed decision belongs to.
+            $liveRun = Join-Path $campaigns 'cmp-live/runs/run-20260826-000000001-aaaaaaaa'
+            New-Item -ItemType Directory -Path $liveRun -Force | Out-Null
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = 'cmp-live'
+                    run_id = 'run-20260826-000000001-aaaaaaaa'; target_digest = 'aaaa'; observed_at = $t0.ToString('o') } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $liveRun 'pending-pause.json') -Encoding UTF8
+            # NEWER campaign, already answered - history, not a pending decision.
+            $doneRun = Join-Path $campaigns 'cmp-done/runs/run-20260826-000000002-bbbbbbbb'
+            New-Item -ItemType Directory -Path $doneRun -Force | Out-Null
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = 'cmp-done'
+                    run_id = 'run-20260826-000000002-bbbbbbbb'; target_digest = 'bbbb'; observed_at = $t0.AddHours(1).ToString('o') } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $doneRun 'pending-pause.json') -Encoding UTF8
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pause-decision'; campaign_id = 'cmp-done'
+                    run_id = 'run-20260826-000000002-bbbbbbbb'; choice = 'stop-here'; observed_at = $t0.AddHours(1).AddMinutes(5).ToString('o') } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $doneRun 'pause-decision.json') -Encoding UTF8
+
+            $identity = Get-SpecrewPendingPauseIdentity -ProjectRoot $root
+            $identity | Should -Not -BeNullOrEmpty -Because 'one pause really is outstanding'
+            [string]$identity.run_id | Should -Be 'run-20260826-000000001-aaaaaaaa' -Because 'an answered pause is history; the decision belongs to the one still waiting'
+            [string]$identity.campaign_id | Should -Be 'cmp-live'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'answers nothing when every pause has already been answered' {
+        # "There is no pause" is itself the answer, and it must not degrade into "here is an old one".
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('w68-none-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+        try {
+            $runDir = Join-Path $root '.specrew/review/authority/campaigns/cmp-done/runs/run-20260826-000000003-cccccccc'
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = 'cmp-done'
+                    run_id = 'run-20260826-000000003-cccccccc'; target_digest = 'cccc'; observed_at = ([DateTimeOffset]::UtcNow.AddHours(-1)).ToString('o') } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'pending-pause.json') -Encoding UTF8
+            ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pause-decision'; campaign_id = 'cmp-done'
+                    run_id = 'run-20260826-000000003-cccccccc'; choice = 'abandon'; observed_at = ([DateTimeOffset]::UtcNow).ToString('o') } |
+                ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'pause-decision.json') -Encoding UTF8
+            Get-SpecrewPendingPauseIdentity -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'a decision typed against no pause authorizes no pause'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
