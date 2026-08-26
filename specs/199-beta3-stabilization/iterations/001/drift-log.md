@@ -4477,6 +4477,28 @@ restored colour preference — and both suites restore what they mutate.*
 defect, whoever wrote it.** A suite that changes `TEMP`, `NO_COLOR`, the working directory or the
 current culture and walks away has not written a test, it has written a trap for whatever runs next.*
 
+**METHOD RULE 7 (maintainer ruling, 2026-08-26) — A GUARD THAT CONSUMES ITS OWN PRECONDITION SURVIVES
+RE-OFFER; A GUARD THAT READS A MUTABLE FLAG DOES NOT.**
+
+Not an observation about two functions. A design rule, because the two paths were attacked identically
+and only one held, and the difference was STRUCTURAL rather than diligence.
+
+The same human turn was re-offered by the Stop backstop after its authority had been spent:
+
+- **The round-approval path** protected itself with `spent_at`, a MUTABLE FLAG on a slot. The
+  re-offer overwrote the slot and the flag went with it. One typed phrase, unlimited authority
+  (DRIFT-199-I001-142).
+- **The boundary-verdict path** protected itself with a PENDING CROSSING that the authorization
+  CONSUMES. The re-offer was captured, found nothing pending, and was refused. Ledger unchanged.
+
+Both were written by the same people to the same standard. The flag path failed because a flag is
+data that the next write can restore; the crossing path held because the precondition was destroyed by
+the act it authorized, and no re-offer can put it back. **Prefer a state machine that eats its own
+precondition over a boolean that records that something happened.** Where a flag is unavoidable, the
+thing that clears it must not be the same thing that can rewrite it.
+
+Measured, not asserted: the boundary path was probed with the identical two-offer sequence that broke
+the other, and answered `not-pending` with its ledger at one.
 **RECORDED 2026-08-26 — the inert-control class reaches four instances.**
 
 The class: a control that exists, reads correctly, and never executes. Rule 4 already names its
@@ -4502,6 +4524,26 @@ individual fix:
    1–4. **The mutation, not the green, is the evidence** — a control asserted only through the path
    that returns before it is a control nobody has run.
 
+**UPDATED 2026-08-26 — the class reaches EIGHT instances, and the tally is now structural.**
+
+Instances five through eight landed in two sessions: a read-back branch its only case never reached
+(DRIFT-199-I001-138); a fail-closed branch on the withdrawal journal with no case at all
+(DRIFT-199-I001-141); the Stop branch's turn-identity wiring, where the regeneration actually lived,
+untested because every case called the router directly with an explicit identity; and a ledger nothing
+locked (both DRIFT-199-I001-142).
+
+**Every one of the four was found by a mutation. None was found by a green run.** That is no longer a
+coincidence worth noting, it is a property of this code, and the maintainer ruled the conclusion be
+written down as such:
+
+> **On this code, green means no case objected. Only the mutation establishes that a case exists.**
+
+**This is the strongest argument in this log for making mutation proof a STANDING REQUIREMENT rather
+than a method rule people follow well.** Method rule 6 already demands it for recognizer fixes; four
+instances in two sessions, in four different files, say the demand is not specific to recognizers. A
+rule followed well is a rule that lapses under time pressure, which is exactly when an untested
+control is most likely to be written - and an untested control is indistinguishable from a tested one
+until the day it is needed.
 *What makes this class survive its own fixes: each instance is DIFFERENT MACHINERY, and the guard
 that would have caught it is always one level up from where the fix went. The countermeasure that
 finally holds is structural rather than vigilant — a membership comparison that fails the moment a
