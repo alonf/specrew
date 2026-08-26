@@ -847,9 +847,24 @@ function Invoke-SpecrewTypedAuthorityCapture {
         }
         catch { $null = $_ }
     }
-    # Phase two: record WHAT minted. The reservation above already bounds the turn; this line is what
-    # the cross-channel rule reads, because "prompt-entry saw this content" must never mean the same as
-    # "prompt-entry captured it" - the backstop exists for turns prompt-entry saw and did not capture.
+    # W71: OBSERVE the second channel, do not block it. If another channel already minted this content
+    # on this host, that is the bounded residual the ruling accepts - at most two mints from one typed
+    # act - and it is recorded so its rate can be measured rather than assumed.
+    if ($mintedBy.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($contentHash) -and
+        (Get-Command Get-SpecrewCrossChannelMint -ErrorAction SilentlyContinue)) {
+        try {
+            $prior = Get-SpecrewCrossChannelMint -ProjectRoot $ProjectRoot -ContentHash $contentHash `
+                -HostKind $HostKind -SourceEvent $SourceEvent
+            if ($null -ne $prior -and (Get-Command Write-SpecrewCrossChannelMintObservation -ErrorAction SilentlyContinue)) {
+                Write-SpecrewCrossChannelMintObservation -ProjectRoot $ProjectRoot -TurnId $turnId `
+                    -ContentHash $contentHash -HostKind $HostKind -SourceEvent $SourceEvent `
+                    -PriorTurnId ([string]$prior.turn_id) -PriorSourceEvent ([string]$prior.source_event) `
+                    -MintedWriters ($mintedBy -join ',') -NowUtc $NowUtc | Out-Null
+            }
+        }
+        catch { $null = $_ }
+    }
+    # Phase two: record WHAT minted, which is what the observation above reads.
     if ($mintedBy.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($turnId) -and
         (Get-Command Register-SpecrewExhaustedTurn -ErrorAction SilentlyContinue)) {
         try {

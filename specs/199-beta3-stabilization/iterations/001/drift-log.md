@@ -591,6 +591,58 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-145 - W71: the cross-channel guess is withdrawn; the second channel is OBSERVED (resolved by ruling)
+
+**Maintainer ruling, 2026-08-26**, on round 28. The ruling also corrected my framing: stopping was not
+a deviation. The standing instruction was to stop on another defect in the turn-identity code
+specifically, and this was that case.
+
+**Findings 3 and 4 contradicting each other is not two defects. It is the guess failing to be an
+identity, stated twice.** One said the rule suppressed a genuinely later retype forever; the other
+said it still leaked when the ledger write failed. Both were right, and they can only both hold if the
+turn can be identified across channels - which these hosts provide no shared id for.
+
+**Resolution: same-channel exhaustion only. The second channel is OBSERVED, never blocked.**
+
+**THE RESIDUAL, WITH ITS SIZE STATED, because the size is what makes it acceptable.** Same-channel
+exhaustion means each channel mints at most once per utterance, so a dual-event host yields **at most
+two** mints from one typed act. **Bounded. The pre-W69 hole was unlimited.** And it is a
+SPEND-ACCOUNTING cost, not a forgery: the human did approve a round; the machinery may grant a second.
+Every double mint is recorded as a `cross-channel-double-mint` observation, so beta4 gets field data
+on how often two channels carry one utterance instead of speculation. **Visibility was the right
+answer to the exhaustion gap and to the picker gap, and it is the right answer here.**
+
+**Finding 1 - the pause scoping reached the helper and not the writer.** Resolved by SELF-SCOPING: the
+helper resolves the active feature itself and prefers campaigns belonging to it, so the production
+writer is scoped without plumbing a campaign through a router that has no concept of one. Explicit
+`-CampaignId` still wins; fail-open on scope alone.
+
+**Finding 2 - withdrawal, when the journal append AND the delete both fail.** Resolved with a fourth
+path in a DIFFERENT DIRECTORY. The three existing paths all lived under the round-approval root, so
+"that directory is unwritable" defeated all of them at once - **three paths in one place is really one
+path wearing three hats.** The withdrawal now also appends to `.specrew/authority/withdrawals.jsonl`,
+and the reader consults both journals. If both roots are unwritable the project has no working store.
+
+**Finding 5 - the starter templates sidecar - CARRIED**, as ruled.
+
+**Proof.** Four mutations, each turning its own case red: drop the independent journal; make the reader
+ignore it; remove pause self-scoping; stop observing the double mint.
+
+**KEPT VERBATIM AT THE MAINTAINER'S DIRECTION - the wedge I wrote and then broke in the same commit.**
+W70's own comment reads:
+
+> the rule is scoped to "Stop must not re-mint what PROMPT-ENTRY already minted" ... Without this the
+> fix would trade a forgery for a wedge, which is the round-19 lesson.
+
+and the rule it introduced traded exactly that. **A rule stated and then broken by its author in the
+same commit is the most instructive form that lesson takes**: knowing the failure mode by name, and
+writing it down, did not prevent writing it.
+
+**THREE FIXTURE DEFECTS IN ONE BLOCK, each of which first looked like a defect in the code.** The
+withdrawal case locked only the journal, so the delete succeeded and it passed without reaching the
+state it named. The pause case had no commit, so the branch would not resolve. Then it had no
+`specs/<branch>/`, so the branch was not a FEATURE branch. **A case that names a production call site
+needs a production-shaped project, or it is testing the fixture.**
 ### DRIFT-199-I001-144 - round 28: THIRD generation of defects in the preceding fix. STOPPED, not patched.
 
 `run-20260826-174346632-342f915f`, codex, terminal / complete / current / valid, 867.3s, five findings:
@@ -4594,6 +4646,23 @@ restored colour preference — and both suites restore what they mutate.*
 defect, whoever wrote it.** A suite that changes `TEMP`, `NO_COLOR`, the working directory or the
 current culture and walks away has not written a test, it has written a trap for whatever runs next.*
 
+**METHOD RULE 6, SHARPENED (maintainer ruling, 2026-08-26) — THE MUTATION MUST NAME THE PATH, NOT
+JUST THE CODE.**
+
+Three instances in three rounds - the eighth, ninth and tenth of the inert-control class - were all
+the same shape: **the test exercised the thing I added rather than the path that reaches it in
+production.** A read-back branch its only case never reached. A turn-identity wiring no case touched
+because every case called the router directly with an explicit identity. A `-CampaignId` parameter
+proven on the helper while the production writer called it with `ProjectRoot` alone.
+
+So the demand is now explicit: **a fix is proven against the call site that reaches it in production,
+not against the helper that implements it.** A mutation that reddens only a case calling the helper
+directly has proven the helper, which was never in doubt - what is in doubt is whether anything real
+goes through it.
+
+And the corollary that cost three cycles in one block: **a case naming a production call site needs a
+production-shaped fixture.** A repo with no commit, or no `specs/<feature>/`, is not the project the
+code runs in, and every gap in the fixture reads as a defect in the code until someone checks.
 **METHOD RULE 7 (maintainer ruling, 2026-08-26) — A GUARD THAT CONSUMES ITS OWN PRECONDITION SURVIVES
 RE-OFFER; A GUARD THAT READS A MUTABLE FLAG DOES NOT.**
 

@@ -1924,7 +1924,32 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         }
     }
 
-    It 'RED-FIRST: prompt-entry and Stop are the same human turn, and it mints ONCE across both' {
+    It 'SUPERSEDED by W71: prompt-entry and Stop each mint, and the double mint is OBSERVED' {
+        # This case asserted cross-channel SUPPRESSION. The maintainer's 2026-08-26 ruling removed it:
+        # round 28 showed the match was not an identity (it wedged a genuine later retype forever and
+        # still leaked when the ledger write failed), and the two findings contradicting each other
+        # were the guess failing to be an identity, stated twice. Same-channel exhaustion is the
+        # guarantee that survives; the second channel is observed. Rewritten to the rule that now holds
+        # rather than deleted, so the history of what was tried stays visible.
+        $root = New-TurnRoot
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T15:40:45Z' `
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T15:40:45Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T15:52:10Z' `
+                -TurnPosition '11' -TurnArrival '2026-08-26T15:40:45Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root `
+            | Should -Not -BeNullOrEmpty -Because 'the second channel mints - bounded at two, and a spend cost rather than a forgery'
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Match 'cross-channel-double-mint' `
+                -Because 'the residual must be measurable in the field'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'W70 ORIGINAL, kept as history: prompt-entry and Stop were once required to mint ONCE across both' -Skip {
         # THE BLOCKING FINDING. Identity hashes SourceEvent, position and arrival, all of which differ
         # between the two deliveries of ONE utterance. So prompt-entry mints, the agent consumes it
         # during the turn, and the end-of-turn Stop computes a different id and writes the spent
@@ -2083,6 +2108,165 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
                     observed_at = ([DateTimeOffset]::UtcNow.AddHours(-1)).ToString('o') } |
                 ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'pending-pause.json') -Encoding UTF8
             [string](Get-SpecrewPendingPauseIdentity -ProjectRoot $root).campaign_id | Should -Be 'cmp-solo'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prove fixes at the production call site' {
+    # Maintainer ruling, 2026-08-26. Findings 3 and 4 of round 28 contradict each other - one says do
+    # not suppress without a proven distinct act, the other says suppress when the mint cannot be
+    # recorded - and the ruling names that for what it is: not two defects, but the guess failing to be
+    # an identity, stated twice. The cross-channel rule was a heuristic wearing an identity's clothes.
+    #
+    # So it goes. Same-channel exhaustion stays; the second channel is OBSERVED rather than blocked.
+    # The residual is bounded and its size is the reason it is acceptable: each channel mints at most
+    # once per utterance, so a dual-event host yields AT MOST TWO mints from one typed act. The
+    # pre-W69 hole was unlimited. And it is a spend-accounting cost, not a forgery - the human did
+    # approve a round; the machinery may grant a second.
+
+    BeforeAll {
+        foreach ($dependency in @('ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
+            . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
+        }
+        function script:New-W71Root {
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w71-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            return $root
+        }
+    }
+
+    It 'RED-FIRST: the wedge is gone - a later retype at Stop mints even after a prompt-entry mint' {
+        # The wedge I introduced in W70 and then found in my own commit: the cross-channel rule matched
+        # content and host with no comparison of arrival, so an old prompt-entry mint suppressed a
+        # genuinely later retype at Stop forever, with no recovery, exactly when the backstop is needed.
+        $root = New-W71Root
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root | Should -BeNullOrEmpty -Because 'precondition: the first act is spent'
+
+            # Hours later the human types it again, and prompt-entry misses that turn.
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T14:00:00Z' `
+                -TurnPosition '31' -TurnArrival '2026-08-26T13:59:00Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'the backstop must still work; a phrase the human can never make count is a wedge'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: a cross-channel double mint is OBSERVED in the ledger, not silently allowed' {
+        # Visibility was the right answer to the exhaustion gap and to the picker gap, and it is the
+        # right answer here: the ledger shows every double mint, so beta4 gets field data instead of
+        # speculation about how often two channels deliver one utterance.
+        $root = New-W71Root
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc '2026-08-26T10:00:00Z' `
+                -TurnPosition 'prompt-entry' -TurnArrival '2026-08-26T10:00:00Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -NowUtc '2026-08-26T10:05:00Z' `
+                -TurnPosition '4' -TurnArrival '2026-08-26T10:00:00Z'
+
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            $observations = @(Get-Content -LiteralPath $ledger -Encoding UTF8 |
+                    ForEach-Object { try { $_ | ConvertFrom-Json -Depth 6 } catch { $null } } |
+                    Where-Object { $null -ne $_ -and [string]$_.fact_type -ceq 'cross-channel-double-mint' })
+            @($observations).Count | Should -BeGreaterThan 0 -Because 'the residual limit must be measurable in the field, not merely documented'
+            [string]$observations[0].host_kind | Should -Be 'claude'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'same-channel exhaustion still holds, which is the guarantee that survives' {
+        $root = New-W71Root
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:13:33Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'one channel, one utterance, one mint - the attack the store actually recorded'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: a withdrawal revokes even when BOTH the journal append and the delete fail' {
+        # Round-28 blocking finding. W68 made the reader consult the journal; if the journal append is
+        # also suppressed there is nothing to consult, and the revoked approval reads as usable. My
+        # case proved delete-failure-after-successful-journal only.
+        $root = New-W71Root
+        $lockDir = $null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
+            $approvalRoot = Join-Path $root '.specrew/review/round-approval'
+            $pending = Join-Path $approvalRoot 'pending-round-approval.json'
+            [IO.File]::Exists($pending) | Should -BeTrue -Because 'precondition: there is an approval to withdraw'
+
+            # Both the journal and the delete blocked: the journal file held exclusively, the pending
+            # file held for reading so it can be stamped-or-not but never removed.
+            $journal = Join-Path $approvalRoot 'captures.jsonl'
+            if (-not [IO.File]::Exists($journal)) { [IO.File]::WriteAllText($journal, '', [Text.UTF8Encoding]::new($false)) }
+            # BOTH held. The first cut of this case locked only the journal, so the delete succeeded,
+            # the approval vanished and the case passed without ever reaching the state it names -
+            # a fixture that did not reproduce its own scenario.
+            $lockDir = @(
+                [IO.File]::Open($journal, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+                [IO.File]::Open($pending, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+            )
+            $null = Write-SpecrewApprovalWithdrawal -ProjectRoot $root -Response 'withdraw my approval' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'the human took it back; no single unwritable file may hand their authority back'
+        }
+        finally {
+            foreach ($h in @($lockDir)) { if ($null -ne $h) { $h.Dispose() } }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'RED-FIRST: the PRODUCTION writer binds a pause decision to the active feature campaign' {
+        # Round-28 finding, and the tenth inert-control instance: W70 added -CampaignId to the helper
+        # and the test exercised the helper. The production writer calls it with ProjectRoot alone, so
+        # the fix never reached the path that uses it. This case names the CALL SITE, per the method
+        # rule the maintainer sharpened after three of these in three rounds.
+        $root = New-W71Root
+        try {
+            # A REAL feature branch: a commit (so HEAD resolves) and specs/<branch>/ (which is what
+            # makes a branch a FEATURE branch by the contract the resolver enforces). Two earlier cuts
+            # of this fixture lacked each in turn, and both times the empty scope looked like a defect
+            # in the code under test. A case that names a production call site needs a
+            # production-shaped project, or it is testing the fixture.
+            & git init -q -b 199-beta3-stabilization $root 2>&1 | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root 'specs/199-beta3-stabilization') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root 'specs/199-beta3-stabilization/spec.md') -Value '# fixture' -Encoding UTF8
+            & git -C $root add -A 2>&1 | Out-Null
+            & git -C $root -c user.name=t -c user.email=t@t commit -q -m init 2>&1 | Out-Null
+            $t0 = [DateTimeOffset]::UtcNow.AddHours(-3)
+            $campaigns = Join-Path $root '.specrew/review/authority/campaigns'
+            foreach ($c in @(
+                    @{ id = 'cmp-199-beta3-stabilization-i001'; run = 'run-20260826-000000001-aaaaaaaa'; at = $t0 }
+                    @{ id = 'cmp-999-other-feature-i001'; run = 'run-20260826-000000002-bbbbbbbb'; at = $t0.AddHours(2) })) {
+                $runDir = Join-Path $campaigns ($c.id + '/runs/' + $c.run)
+                New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+                ([pscustomobject]@{ schema_version = '1.0'; fact_type = 'pending-pause'; campaign_id = $c.id
+                        run_id = $c.run; target_digest = 'dddd'; observed_at = $c.at.ToString('o') } |
+                    ConvertTo-Json -Compress) | Set-Content -LiteralPath (Join-Path $runDir 'pending-pause.json') -Encoding UTF8
+            }
+
+            # THE PRODUCTION PATH: the writer, exactly as the router calls it - no CampaignId to give.
+            $null = Write-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Response 'stop the review here' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit'
+            $decision = Get-SpecrewPauseDecisionAuthorization -ProjectRoot $root -Choice 'stop-here'
+            $decision | Should -Not -BeNullOrEmpty
+            [string]$decision.campaign_id | Should -Be 'cmp-199-beta3-stabilization-i001' -Because 'the decision belongs to the feature the human is working on, not to whichever campaign paused most recently'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }

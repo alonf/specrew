@@ -546,14 +546,26 @@ function Test-SpecrewTypedTurnExhausted {
     # below exists to survive - produced the false-fresh answer this ledger exists to prevent. A record
     # it cannot read is a turn it cannot rule out.
     #
-    # W70 / round-27 finding, reported BLOCKING: ONE UTTERANCE, ONE ACT, HOWEVER MANY CHANNELS CARRY IT.
-    # Identity hashes the source event, position and arrival, all of which differ between prompt-entry
-    # and Stop for the SAME human turn. On a host that delivers both, prompt-entry minted, the agent
-    # consumed it during the turn, and the end-of-turn Stop computed a different id and wrote the spent
-    # authorization back as fresh - W69's regeneration, still open through the one door W69 did not
-    # look at. So a STOP offer is also exhausted when prompt-entry already MINTED this content on this
-    # host. Keyed on a real mint, never on a mere sighting: prompt-entry sees every turn, and the
-    # backstop exists precisely to catch the ones prompt-entry saw and did not capture.
+    # W71 (maintainer ruling, 2026-08-26): SAME CHANNEL ONLY. THE SECOND CHANNEL IS OBSERVED, NOT
+    # BLOCKED.
+    #
+    # W70 tried to make one utterance exhaust BOTH channels by matching content + host. Round 28
+    # returned two findings against it that contradict each other - one that it suppressed a genuinely
+    # later retype forever (a WEDGE, with no recovery, exactly when the backstop is needed), one that
+    # it still let a double mint through when the ledger write failed. The ruling names what that
+    # contradiction actually is: **not two defects, but the guess failing to be an identity, stated
+    # twice.** These hosts share no per-turn id; prompt-entry has an event clock, Stop has a transcript
+    # index. Everything built on top of that was a heuristic wearing an identity's clothes.
+    #
+    # THE RESIDUAL, WITH ITS SIZE STATED, because the size is what makes it acceptable: same-channel
+    # exhaustion means each channel mints AT MOST ONCE per utterance, so a dual-event host yields AT
+    # MOST TWO mints from one typed act. Bounded. The pre-W69 hole was unlimited. And it is a
+    # SPEND-ACCOUNTING cost rather than a forgery - the human did approve a round; the machinery may
+    # grant a second one.
+    #
+    # The double mint is RECORDED as an observation by the router, so beta4 gets field data on how
+    # often two channels carry one utterance rather than speculation. Visibility was the right answer
+    # to the exhaustion gap and to the picker gap; it is the right answer here.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
@@ -573,19 +585,78 @@ function Test-SpecrewTypedTurnExhausted {
             try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { return $true }
             if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) { return $true }
             if ([string]$entry.turn_id -ceq [string]$TurnId) { return $true }
-            if (-not $isStopOffer -or [string]::IsNullOrWhiteSpace($ContentHash)) { continue }
-            if (-not $entry.PSObject.Properties['content_hash'] -or -not $entry.PSObject.Properties['minted']) { continue }
-            if ([string]$entry.content_hash -cne [string]$ContentHash) { continue }
-            if ([string]::IsNullOrWhiteSpace([string]$entry.minted)) { continue }
-            $entryHost = if ($entry.PSObject.Properties['host_kind']) { [string]$entry.host_kind } else { '' }
-            if ($entryHost -cne [string]$HostKind) { continue }
-            $entrySource = if ($entry.PSObject.Properties['source_event']) { [string]$entry.source_event } else { '' }
-            if ($entrySource.Trim().ToLowerInvariant() -in @('stop', 'stop-transcript')) { continue }
-            return $true
         }
     }
     catch { return $true }
     return $false
+}
+
+function Get-SpecrewCrossChannelMint {
+    # Did ANOTHER channel already mint this content on this host? Returns the earlier ledger entry, or
+    # $null. This ANSWERS A QUESTION; it does not gate anything - W71 removed the gate because the
+    # match is not an identity. It exists so the router can record what it saw.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent
+    )
+    if ([string]::IsNullOrWhiteSpace($ContentHash)) { return $null }
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    if (-not [IO.File]::Exists($path)) { return $null }
+    $thisChannel = if ((([string]$SourceEvent).Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript')) { 'stop' } else { 'prompt-entry' }
+    try {
+        foreach ($line in [IO.File]::ReadAllLines($path)) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { continue }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['content_hash']) { continue }
+            if ([string]$entry.fact_type -cne 'typed-turn-exhausted') { continue }
+            if ([string]$entry.content_hash -cne [string]$ContentHash) { continue }
+            if (-not $entry.PSObject.Properties['minted'] -or [string]::IsNullOrWhiteSpace([string]$entry.minted)) { continue }
+            $entryHost = if ($entry.PSObject.Properties['host_kind']) { [string]$entry.host_kind } else { '' }
+            if ($entryHost -cne [string]$HostKind) { continue }
+            $entrySource = if ($entry.PSObject.Properties['source_event']) { [string]$entry.source_event } else { '' }
+            $entryChannel = if (($entrySource.Trim().ToLowerInvariant()) -in @('stop', 'stop-transcript')) { 'stop' } else { 'prompt-entry' }
+            if ($entryChannel -ceq $thisChannel) { continue }
+            return $entry
+        }
+    }
+    catch { return $null }
+    return $null
+}
+
+function Write-SpecrewCrossChannelMintObservation {
+    # A DIAGNOSTIC FACT, never authority - the same standing as the W54 picker observation. It records
+    # that one typed utterance was minted by both channels, which is the bounded residual W71 accepts,
+    # so its real-world rate can be measured instead of argued about.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TurnId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$ContentHash,
+        [AllowEmptyString()][AllowNull()][string]$HostKind,
+        [AllowEmptyString()][AllowNull()][string]$SourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$PriorTurnId,
+        [AllowEmptyString()][AllowNull()][string]$PriorSourceEvent,
+        [AllowEmptyString()][AllowNull()][string]$MintedWriters,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        $entry = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'cross-channel-double-mint'; authority_kind = 'none'
+            turn_id = [string]$TurnId; content_hash = [string]$ContentHash
+            host_kind = [string]$HostKind; source_event = [string]$SourceEvent
+            prior_turn_id = [string]$PriorTurnId; prior_source_event = [string]$PriorSourceEvent
+            minted = [string]$MintedWriters; observed_at = $NowUtc
+        }
+        Add-Content -LiteralPath $path -Value ($entry | ConvertTo-Json -Compress -Depth 6) -Encoding UTF8 -ErrorAction Stop
+        return $true
+    }
+    catch { return $false }
 }
 
 function Register-SpecrewExhaustedTurn {
@@ -662,6 +733,9 @@ function Get-SpecrewReviewRoundApprovalAuthorization {
     #
     # Revocation is decided HERE, at the reader, because that is the only place that cannot be skipped
     # by a failed write somewhere else.
+    # The stamp the withdrawal writes onto this very fact, honoured directly - the revocation path that
+    # needs no second file to have survived (W71 / round-28).
+    if ($fact.PSObject.Properties['withdrawn_at'] -and -not [string]::IsNullOrWhiteSpace([string]$fact.withdrawn_at)) { return $null }
     if (-not (Test-SpecrewApprovalIsWithdrawn -ProjectRoot $ProjectRoot -Fact $fact)) { return $fact }
     return $null
 }
@@ -686,13 +760,18 @@ function Test-SpecrewApprovalIsWithdrawn {
         [Parameter(Mandatory)][AllowNull()]$Fact
     )
     if ($null -eq $Fact) { return $false }
-    $journal = Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'captures.jsonl'
-    if (-not [IO.File]::Exists($journal)) { return $false }
+    # BOTH journals: the one beside the approval, and the independent one under the authority root
+    # that exists so an unwritable round-approval directory cannot erase a revocation (W71/round-28).
+    $journals = @(
+        (Join-Path (Get-SpecrewReviewRoundApprovalRoot -ProjectRoot $ProjectRoot) 'captures.jsonl')
+        (Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/authority/withdrawals.jsonl')
+    ) | Where-Object { [IO.File]::Exists($_) }
+    if (@($journals).Count -eq 0) { return $false }
     $approvedAt = $null
     if ($Fact.PSObject.Properties['observed_at']) { $approvedAt = ConvertTo-SpecrewAuthorityInstant -Value $Fact.observed_at }
     if ($null -eq $approvedAt) { return $true }
     try {
-        foreach ($line in [IO.File]::ReadAllLines($journal)) {
+        foreach ($line in @($journals | ForEach-Object { [IO.File]::ReadAllLines($_) })) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $entry = $null
             try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
@@ -767,6 +846,23 @@ function Get-SpecrewPendingPauseIdentity {
     )
     $campaignsRoot = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/authority/campaigns'
     if (-not (Test-Path -LiteralPath $campaignsRoot -PathType Container)) { return $null }
+    # W71 / round-28 finding: SELF-SCOPE, because the production writer has no campaign to pass.
+    #
+    # W70 added -CampaignId and the test exercised the helper with it. The writer calls this with
+    # ProjectRoot alone, so the fix never reached the path that uses it - the tenth instance of a test
+    # proving the thing added rather than the path that reaches it. Rather than plumb a campaign
+    # through a router that has no idea what one is, the helper resolves the active feature itself and
+    # prefers campaigns belonging to it. Explicit -CampaignId still wins.
+    #
+    # Fail-open on SCOPE ALONE: if no feature resolves, every campaign stays eligible, which is the
+    # pre-W70 behaviour minus answered pauses.
+    if ([string]::IsNullOrWhiteSpace($CampaignId) -and (Get-Command Resolve-SpecrewBranchFeatureRef -ErrorAction SilentlyContinue)) {
+        $activeFeature = ''
+        try { $activeFeature = [string](Resolve-SpecrewBranchFeatureRef -ProjectRoot $ProjectRoot) } catch { $activeFeature = '' }
+        if (-not [string]::IsNullOrWhiteSpace($activeFeature)) { $script:SpecrewPauseScopeFeature = $activeFeature }
+        else { $script:SpecrewPauseScopeFeature = '' }
+    }
+    else { $script:SpecrewPauseScopeFeature = '' }
     $newest = $null
     $newestAt = [DateTimeOffset]::MinValue
     try {
@@ -787,9 +883,12 @@ function Get-SpecrewPendingPauseIdentity {
             # module and it must not take a dependency on the review-authority reader to answer a
             # question about a file sitting next to the one it already opened.
             if ([IO.File]::Exists([IO.Path]::Combine($pauseFile.DirectoryName, 'pause-decision.json'))) { continue }
+            $pauseCampaign = if ($pause.PSObject.Properties['campaign_id']) { [string]$pause.campaign_id } else { '' }
             if (-not [string]::IsNullOrWhiteSpace($CampaignId)) {
-                $pauseCampaign = if ($pause.PSObject.Properties['campaign_id']) { [string]$pause.campaign_id } else { '' }
                 if ($pauseCampaign -cne [string]$CampaignId) { continue }
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($script:SpecrewPauseScopeFeature)) {
+                if ($pauseCampaign -notmatch [regex]::Escape([string]$script:SpecrewPauseScopeFeature)) { continue }
             }
             $observed = $null
             if ($pause.PSObject.Properties['observed_at']) { $observed = ConvertTo-SpecrewAuthorityInstant -Value $pause.observed_at }
@@ -1211,15 +1310,50 @@ function Write-SpecrewApprovalWithdrawal {
         withdrew_observed_at = $(if ($null -ne $withdrawn -and $withdrawn.PSObject.Properties['observed_at']) { [string]$withdrawn.observed_at } else { '' })
         host_kind = [string]$HostKind; source_event = [string]$SourceEvent; observed_at = $NowUtc
     }
+    # W71 / round-28 finding, reported BLOCKING: THREE INDEPENDENT WAYS TO REVOKE, because one
+    # unwritable file must not hand the human's authority back.
+    #
+    # W68 made the reader consult the journal, which closed "the delete failed". Round 28 found the
+    # pair: if the journal append ALSO fails there is nothing to consult, and the revoked approval
+    # reads as usable again. So the withdrawal now (1) stamps the pending fact itself, which the reader
+    # honours directly, (2) journals, and (3) deletes. Any one of the three landing is a revocation.
+    # They are attempted in that order because the stamp is the one the reader reads without needing a
+    # second file to survive.
+    $revoked = $false
+    if ($null -ne $withdrawn -and [string]::IsNullOrWhiteSpace([string]$withdrawn.spent_at)) {
+        try {
+            $withdrawn | Add-Member -NotePropertyName 'withdrawn_at' -NotePropertyValue $NowUtc -Force
+            $stampJson = $withdrawn | ConvertTo-Json -Depth 8
+            if (Get-Command Write-SpecrewFileAtomic -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $path -Content $stampJson }
+            else { [IO.File]::WriteAllText($path, $stampJson, [Text.UTF8Encoding]::new($false)) }
+            $verify = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop
+            if ($null -ne $verify -and $verify.PSObject.Properties['withdrawn_at'] -and
+                -not [string]::IsNullOrWhiteSpace([string]$verify.withdrawn_at)) { $revoked = $true }
+        }
+        catch { $revoked = $false }
+    }
     try {
         [IO.Directory]::CreateDirectory($root) | Out-Null
-        ($fact | ConvertTo-Json -Compress -Depth 8) | Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Encoding UTF8
+        Add-Content -LiteralPath (Join-Path $root 'captures.jsonl') -Value ($fact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop
+        $revoked = $true
+    }
+    catch { $null = $_ }
+    # A FOURTH PATH, IN A DIFFERENT DIRECTORY. The three above all live under the round-approval root,
+    # so "that directory is unwritable" defeats all of them at once - which is precisely the round-28
+    # scenario, and why three paths in one place is really one path wearing three hats. The authority
+    # root is independent storage; if BOTH are unwritable the project has no working store at all.
+    try {
+        $independent = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/authority/withdrawals.jsonl'
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($independent)) | Out-Null
+        Add-Content -LiteralPath $independent -Value ($fact | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8 -ErrorAction Stop
+        $revoked = $true
     }
     catch { $null = $_ }
     # An UNSPENT capture is what a withdrawal removes; a spent one is history and stays.
     if ($null -ne $withdrawn -and [string]::IsNullOrWhiteSpace([string]$withdrawn.spent_at)) {
-        try { [IO.File]::Delete($path) } catch { return $null }
+        try { [IO.File]::Delete($path); $revoked = $true } catch { $null = $_ }
     }
+    if (-not $revoked) { return $null }
     return $fact
 }
 
