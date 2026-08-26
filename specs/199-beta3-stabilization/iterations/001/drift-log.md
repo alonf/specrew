@@ -591,6 +591,60 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-144 - round 28: THIRD generation of defects in the preceding fix. STOPPED, not patched.
+
+`run-20260826-174346632-342f915f`, codex, terminal / complete / current / valid, 867.3s, five findings:
+**two reported BLOCKING, two major, one the carried minor.** Three of the five are in code W70 landed
+four hours earlier.
+
+**The pattern, measured rather than felt:**
+
+| round | found in | severity reported |
+| --- | --- | --- |
+| 25 | the router W66 built | 1 blocking-class (withdrawal fail-open) |
+| 27 | the W69 fix for W66's successor | 2 blocking |
+| 28 | the W70 fix for W67's findings | 2 blocking, 2 major |
+
+Every one of those fixes was RED-first with mutation proofs, and every one shipped defects the next
+round found. **The rate is not falling.** My verification catches what I thought of; the independent
+round catches what I did not, and the gap has not narrowed across three attempts.
+
+**Finding 1 (major) - the pause scoping I added exists only on the helper.** `Get-SpecrewPendingPauseIdentity`
+takes `-CampaignId`; the production writer calls it with `ProjectRoot` alone and has no campaign to
+pass. **My W70 test exercises the helper directly with `-CampaignId`, so it proves the parameter and
+not the wiring.** Tenth instance of the inert-control class, and the second time in two rounds that I
+tested the thing I added instead of the path that uses it.
+
+**Finding 2 (BLOCKING) - withdrawal, when BOTH the journal append and the delete fail.** W68 made the
+reader consult the journal; if the journal append is also suppressed, there is nothing to consult and
+the revoked approval reads as usable. My case proved delete-failure-after-successful-journal only.
+
+**Finding 3 (major) - and this one is a WEDGE I INTRODUCED.** The cross-channel rule matches on
+content + host + a non-empty mint, with no comparison of arrival or position, so an old prompt-entry
+mint suppresses a *genuinely later* retype at Stop **forever** - exactly when the backstop is needed,
+with no recovery, because repeating the phrase matches the same old record. I wrote in W70 that the
+rule must not "trade a forgery for a wedge, which is the round-19 lesson", and then traded one.
+
+**Finding 4 (BLOCKING) - the second ledger append is best-effort**, its result discarded and
+exceptions swallowed. If it fails after a prompt-entry writer succeeded, the ledger says the turn
+minted nothing, and Stop can mint the same utterance again - reopening the one-turn hole the two-phase
+ledger exists to close. The same discarded-result shape, now in the phase-two write.
+
+**FINDINGS 3 AND 4 PULL IN OPPOSITE DIRECTIONS, AND THAT IS THE REAL RESULT OF THIS ROUND.** 3 says
+"do not suppress on anything less than a proven distinct act"; 4 says "if the mint cannot be recorded,
+Stop must still be suppressed". Both are right. They can only be satisfied together by identifying the
+TURN across channels - and the two channels share no host-provided turn id. Prompt-entry has the event
+clock; Stop has a transcript index and timestamp. Everything I have built on top of that is a
+heuristic wearing an identity's clothes, which is why each attempt has produced a new defect at a
+different edge of the same guess.
+
+**STOPPED HERE, DELIBERATELY, AND THIS IS A DEVIATION FROM "fix those and stop".** The standing
+instruction is to repair blocking and major findings. I am not repairing these, because a fourth
+attempt at the same guess is not verification, it is repetition - and because two of these four are
+defects introduced by the previous two repairs. Fixing two of the four would also move the tree while
+the other two stand, costing another round for no covering evidence. The decision this needs is
+whether cross-channel identity can be established at all on these hosts, and that is the maintainer's
+to make, not mine to keep guessing at.
 ### DRIFT-199-I001-143 - W70: round 27 found W69 did not hold across CHANNELS, and could switch itself off (resolved)
 
 Round 27 (`run-20260826-154358068-adbbbb82`, codex, terminal / complete / current / valid, 1,229.9s)
