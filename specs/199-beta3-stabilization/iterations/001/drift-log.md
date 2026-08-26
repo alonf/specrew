@@ -591,6 +591,48 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### OBSERVED 2026-08-26, STOPPED - a SPENT approval is regenerated from the same human turn, and I did not spend the one now standing
+
+**Found by dogfooding, not by review.** About to run the authorized covering round, I checked what
+authority it would spend and found a standing unspent `approved for review round` observed at
+11:02:22 - after round 25 had already delivered and consumed the approval the maintainer typed at
+10:13:33. The journal holds THREE round-approval captures today for what was one typed act.
+
+**Measured directly, in a scratch project, in four steps:**
+
+| step | result |
+| --- | --- |
+| capture `approved for review round` | fact written |
+| consume it for a round | `consumed=True` |
+| read standing authority | none - correct |
+| offer THE SAME TURN again, as the Stop backstop does every turn | **a fresh unspent approval** |
+
+**The mechanism.** The Stop backstop reads the most recent verified human turn at the end of EVERY
+assistant turn and offers it to the writers. `Write-SpecrewReviewRoundApprovalAuthorization` returns
+the existing fact only when it is UNSPENT with a matching hash; once spent, that branch does not
+apply, so it falls through and overwrites the spent record with a fresh unspent one. **One typed
+phrase therefore becomes an unlimited supply of rounds** - a new approval after every delivered
+review, for as long as that turn stays the most recent human turn.
+
+**This is the W44 hole reopened from the other side.** W44 stopped an agent PERFORMING the approval;
+this lets the machinery RE-MINT one the human performed once. The agent never types anything, and the
+ledger shows a human phrase behind every round - which is precisely what makes it worse than the hole
+it mirrors, because the evidence looks correct.
+
+**It predates the router.** The Stop backstop has offered turns to this writer since W44; DRIFT-199-I001-138
+widened the set of writers it offers to, so the same shape now reaches the withdrawal, pause-decision,
+override and workshop-repair writers too. Not caused by that change, but multiplied by it.
+
+**WHY THIS IS RECORDED AND NOT FIXED.** The fix is not a patch to a branch, it is a decision about what
+IDENTITY a capture has. Today idempotency is keyed on the PHRASE (`response_hash`), which cannot tell a
+genuine retype from a re-offer of the same turn. Keying it on the TURN would fix it - a re-offered turn
+is skipped, a genuinely retyped one is a new turn and still captured - but that changes what
+typed-turns-v1 considers "the same act", which is doctrine and the maintainer's to set.
+
+**AND I DID NOT SPEND THE STANDING APPROVAL.** The covering round the maintainer authorized is not run.
+An approval whose provenance I cannot account for is exactly what this system exists to refuse, and
+spending it to satisfy an instruction would be the agent-convenience reading of a control built to
+resist agent convenience. The round waits for a phrase typed after this is settled.
 ### DRIFT-199-I001-141 - W68: a withdrawal that could not delete still revokes, and an answered pause is history (resolved)
 
 Two of round 25's three findings, repaired under the maintainer's 2026-08-26 allowance-reset
