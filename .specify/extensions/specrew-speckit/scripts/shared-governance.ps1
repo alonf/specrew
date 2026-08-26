@@ -7451,9 +7451,25 @@ function Get-SpecrewReviewRunCandidates {
             # DRIFT-199-I001-134: StrictMode-safe. An absent verdict is not a passing one.
             $resultVerdict = if ($result.PSObject.Properties['verdict']) { [string]$result.verdict } else { '' }
             if ($resultVerdict -notin @('pass', 'findings')) { continue }
-            # The FROZEN field is still a floor: a run that knew it was not current when it ended
-            # never was. W67 adds the live question on top; it does not replace this one.
-            if ([string]$result.currentness -cne 'current') { continue }
+            # W72 (maintainer ruling, 2026-08-26): THE FROZEN FIELD IS THE QUESTION, NOT A FLOOR.
+            #
+            # W67 kept `currentness` as a floor on top of the recomputed answer, reasoning that a run
+            # which knew it was not current when it ended never was. That reasoning is wrong about what
+            # the field measures: it is SNAPSHOT-EXACT, so it reads `snapshot-moved` after ANY commit in
+            # the review window - including a records-only one, which DRIFT-007 exists to make harmless.
+            # Keeping it as a floor made it DECISIVE, which is precisely the pre-W67 reading W67 was
+            # written to replace, reintroduced one layer up.
+            #
+            # Measured on run-20260826-194901162-77511bab: the floor excluded it from the candidate list
+            # before the recomputed answer was consulted at all. A round could be disqualified by the
+            # act of writing down what it found.
+            #
+            # The recomputed, source-aware answer is the answer WHENEVER IT CAN BE ESTABLISHED. The
+            # frozen field survives only as a FALLBACK for when it cannot - no git, a collected tree,
+            # the helper absent - because then it is the only signal there is, and a run that recorded
+            # itself as not-current with no way to check it must not be promoted by our ignorance.
+            # Caught by the pre-existing "says so plainly when nothing qualifies" case, which went red
+            # when the field was removed outright: its fixture has no object store at all.
             if ([string]$result.validation -cne 'valid') { continue }
             $sourceCount = $null
             if ($result.PSObject.Properties['examined_paths']) {
@@ -7464,6 +7480,7 @@ function Get-SpecrewReviewRunCandidates {
                 if ($sourceCount -eq 0) { continue }
             }
             $coverage = Get-SpecrewReviewRunCoversCurrentSource -ProjectRoot $ProjectRoot -Result $result -CurrentTreeId $currentTreeId
+            if (-not [bool]$coverage.established -and [string]$result.currentness -cne 'current') { continue }
             [void]$candidates.Add([pscustomobject]@{ result = $result; source_count = $sourceCount; coverage = $coverage })
         }
     }
