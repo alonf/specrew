@@ -9,43 +9,45 @@
 <!--
   NO EVIDENCE MARKER AND NO DERIVED BLOCK, DELIBERATELY, AND THIS IS NOT AN OVERSIGHT.
 
-  This record DID rest on run-20260821-104557253-97c3785a, which reviewed tree dfec403a with 17
-  source paths declared and checked. Three commits of review machinery landed after that tree -
-  W36 (advisory attribution), the baseline-provenance fact, and W37 (attribution-gated authorship)
-  - so the run no longer covers the files as they are now.
+  Restoring the derived block was attempted on 2026-08-26 and the validator refused it, correctly:
 
-  W38 makes that visible: currentness is recomputed against the current tree at validation instead
-  of being read from the field the run stored at ingest. Citing that run here now produces exactly
-  the refusal it should: "it reviewed tree dfec403a, and the files now are tree ...".
+    it reviewed tree a7c559de and 5 source file(s) have changed since:
+    scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/HumanAuthorityStore.ps1,
+    scripts/specrew-review.ps1 (+2 more).
+
+  Those five files are the FIX for what that very round found. So the block cannot name it: a round
+  whose findings have been repaired no longer describes the tree that exists after the repair. That
+  is not a defect in the block. It is the review->repair->stale loop, stated by the machinery.
 
   Leaving the citation in place would keep this record READING clean while its claim had quietly
   expired - the precise failure W31, W33 and W38 exist to stop, and the one this project shipped
   against itself. So the claim is withdrawn rather than dressed up.
 
-  A fresh round is AUTHORIZED and PENDING. It fires against the settled tree once the KeyContextAI
-  walk finishes and the module is installed, and will cover W36, baseline provenance, W37 and W38
-  together. The marker and the derived block are restored then, naming that run.
+  The block is restored when a round completes against a tree nobody has changed since.
 -->
 
-A maintainer-authorized Copilot round ran on 2026-08-21 against tree `dfec403a` and returned
-`pass` / `complete` / `valid` with zero findings, under verified containment and verified
-termination, in 478 seconds, declaring 21 examined paths of which 17 were source. That run was
-real and its result stands as a fact about the tree it read.
+**Fifteen independent rounds have completed against this iteration since 2026-08-21** - twenty-four
+across the campaign's whole life, returning sixty-nine findings between them - the most recent being `run-20260826-001211608-df54328d` (codex, terminal / complete / current / valid, 3 findings,
+against tree `a7c559de`, declaring 17 examined paths of which 13 were source). Every one of those
+rounds was real and every finding it returned was real; each is dispositioned in the drift log with
+the mutation that proves its fix.
 
-**It does not cover this record as it now stands.** Three commits of review machinery landed after
-that tree, so the independence claim it supported has expired and is withdrawn above rather than
-restated. A fresh round is authorized and pending against the settled tree.
+**No round covers this record as it now stands, and that is a consequence of the rounds working.**
+Round 24 found three defects in the authority layer - the two capture branches had drifted apart, a
+broken approval-to-round link still launched a reviewer, and a lost consumption stamp left an
+allowance reset reusable. Fixing them changed five source files, which moved the reviewed-state
+digest from `a7c559de` to a tree no round has read. The independence claim is therefore **withdrawn
+pending a fresh round**, not restated.
+
 **What this record does not claim.** Its per-task verdicts and the prose around them were written
 by the implementing session, and the authorship fact says so rather than hiding it: this document
 reports `review-authorship-unobserved` for the verdicts authored on 2026-08-17, because the
 machinery that observes authorship (W34-B) did not exist then and backfilling it would be an
-assertion rather than an observation. What is independent here is the run named above and the
-block that names it, which is derived from the store and recomputed at validation. What is mine
-is the judgement in the table below.
+assertion rather than an observation. What is independent here is the sequence of rounds named
+above and the findings they returned. What is mine is the judgement in the table below.
 
-The three earlier rounds this record previously rested on reviewed a tree from 2026-08-17, four
-days and roughly thirty commits before this one, and declared no coverage at all. They are
-superseded by the run above and are named here as history, not as evidence.
+The three earliest rounds this record once rested on reviewed a tree from 2026-08-17 and declared no
+coverage at all. They are named here as history, not as evidence.
 
 ## Task Verdicts
 

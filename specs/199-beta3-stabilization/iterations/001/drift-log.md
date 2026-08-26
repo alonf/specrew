@@ -535,49 +535,36 @@ which both fall out — is the framework-nobody-uses shape this project's own wa
 lesson about. If the out-of-band fact acquires any weight, it becomes a second path to the thing the
 campaign gate exists to control.
 
-### BETA4 — the derived independence block renders a FROZEN currentness as a present-tense claim (recorded 2026-08-26, not fixed)
+### The derived independence block and the validator divide the work - RETRACTION of a finding I recorded here (2026-08-26)
 
-Found while executing step 4 of the 2026-08-26 sequencing ruling - writing the derived independence
-block into `review.md` - which is the one place the claim is read by a human deciding whether to sign
-off.
+I recorded this as a beta4 item and it was wrong, so the retraction stands where the claim did.
 
-**What it does.** `Get-SpecrewQualifyingIndependentRun` documents itself as selecting a run that
-completed "against the current tree", and then implements that as `[string]$result.currentness -cne
-'current'` - a field FROZEN into `result.json` when the run ended. Nothing recomputes it. So every
-edit made after a review leaves the block still rendering `Outcome: findings, complete, **current**,
-valid`, in the present tense, about a tree that no longer exists.
+**What I claimed**: `Get-SpecrewQualifyingIndependentRun` selects a run on the FROZEN `currentness`
+field rather than the live tree, so the block would render `Outcome: ..., current, ...` about a tree
+that no longer exists - the KeyContextAI falsity in derived form.
 
-**Measured on this branch, at the moment the block was written:**
+**What is actually true**: the generator does read the frozen field, and that is the wrong place to
+look for the defect. W38 recomputes the tree AT VALIDATION, so the claim cannot reach anyone. Measured
+rather than argued: the block was written into `review.md` and `validate-governance.ps1` refused the
+iteration with
 
-- block names `run-20260826-001211608-df54328d`, reviewed tree `a7c559de12c76aaca5ea373b719641017973d396`
-- live reviewed-state digest: `a0159e32784fd3ed8b0abb90eb765fdd734565e4`
+> it reviewed tree a7c559de and 5 source file(s) have changed since:
+> scripts/internal/bootstrap/HandoverStore.ps1, ... This run is named by the DERIVED
+> independent-review block ... so it cannot be edited out by hand. Two things you can do: obtain a run
+> that completed against the current tree ... or ... WITHDRAW it.
 
-The three fixes that round 24 asked for are exactly what moved the digest, so the block asserts
-currentness about a tree that predates the response to its own findings.
+Both remedies named, the changed files listed. The division is deliberate: the generator answers
+"which run does the store name", the validator answers "does that still hold". Reading the first as if
+it were the second is what produced the false finding.
 
-**Why this is the block's own defect and not a caller's.** W34-A exists for one sentence - "the
-independent review ran and passed against this exact tree" - and the block was built because that
-sentence is a pure function of the store and should never be hand-written. Rendering a stored field
-as a live claim reproduces the falsity in derived form, which is worse than the hand-written version
-it replaced: it carries the authority of having been computed.
+**What this cost, and why it is recorded rather than quietly deleted**: I read one function, reasoned
+from it to a consequence, and wrote the consequence down as measured. The prose in `review.md` two
+screens above the block says W38 does this, and I had read that file. A finding is only worth its
+verification; this one had none until I ran it, and running it took ninety seconds.
 
-**Mitigation that already holds, and why this is a minor rather than a block.** The `reviewed tree`
-digest is printed beside it, so the claim is checkable by anyone who computes the current digest, and
-the SIGN-OFF GATE does not rely on this field: the navigator's freshness rule compares a passing run's
-`reviewed_tree_id` against the current reviewed-state digest (`continuous-co-review-navigator.ps1`, the
-FRESHNESS clause). A stale run therefore cannot silently authorize a sign-off. What it can do is
-mislead the human reading `review.md`, which is the surface this block was written for.
-
-**Not fixed here, deliberately** - per the maintainer's 2026-08-26 constraint that outstanding minors
-be carried to beta4 rather than repaired: "each fix re-stales the evidence, which is the loop itself."
-Fixing this one would move the digest again and re-open exactly that loop, one step before the tree is
-handed over.
-
-**The fix when beta4 takes it**: recompute currentness at render time by comparing the run's
-`target_digest` against the live reviewed-state digest, and say `reviewed an EARLIER tree` when they
-differ, naming both digests. The selector's doc comment should then match its code, which today it
-does not.
-
+**The residue, and it is not worth a beta4 item**: the block's text does render the word `current`
+from the stored field, so a reader looking at `review.md` in the window between writing the block and
+validating it sees a word that has expired. The record cannot cross a boundary in that state.
 ### BETA4 — the W54 picker diagnosis covers three of the five typed authorities (recorded 2026-08-26, not fixed)
 
 Noticed while consolidating the capture routing for DRIFT-199-I001-138, in the table one level down
