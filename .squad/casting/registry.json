@@ -1,33 +1,33 @@
 {
   "agents": {
     "spec-steward": {
-      "charter": ".squad/agents/spec-steward/charter.md",
-      "role": "Spec Steward",
       "status": "baseline",
+      "role": "Spec Steward",
+      "charter": ".squad/agents/spec-steward/charter.md",
       "name": "Spec Steward"
     },
     "planner": {
-      "charter": ".squad/agents/planner/charter.md",
-      "role": "Planner",
       "status": "baseline",
+      "role": "Planner",
+      "charter": ".squad/agents/planner/charter.md",
       "name": "Planner"
     },
     "implementer": {
-      "charter": ".squad/agents/implementer/charter.md",
-      "role": "Implementer",
       "status": "baseline",
+      "role": "Implementer",
+      "charter": ".squad/agents/implementer/charter.md",
       "name": "Implementer"
     },
     "reviewer": {
-      "charter": ".squad/agents/reviewer/charter.md",
-      "role": "Reviewer",
       "status": "baseline",
+      "role": "Reviewer",
+      "charter": ".squad/agents/reviewer/charter.md",
       "name": "Reviewer"
     },
     "retro-facilitator": {
-      "charter": ".squad/agents/retro-facilitator/charter.md",
-      "role": "Retro Facilitator",
       "status": "baseline",
+      "role": "Retro Facilitator",
+      "charter": ".squad/agents/retro-facilitator/charter.md",
       "name": "Retro Facilitator"
     }
   }
