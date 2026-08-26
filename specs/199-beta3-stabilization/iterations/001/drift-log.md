@@ -608,19 +608,38 @@ approval read as usable after the human revoked it.
 readers of one concern, corrected one at a time - the fifth instance of that shape in this feature,
 and the second where the fix and the gap were in the same file. Mutation-proved.
 
-**AND A SELF-INFLICTED LOSS WORTH RECORDING: I spoiled my own covering round.** The run came back
-`snapshot-moved`, not `current`, because I committed the method-rule appendix (`0098e9fb`) WHILE the
-round was running. I had reasoned that records-only changes do not stale a run - true of the
-SOURCE-drift rule, and irrelevant here, because `currentness` is computed at ingest by comparing the
-frozen target against the tree as it then stood. Any commit during the window moves it.
+**A LOSS I MISDIAGNOSED, CORRECTED BY THE MAINTAINER AT SOURCE.** I first recorded that I spoiled the
+round by committing the appendix (`0098e9fb`) mid-flight, and derived a rule from it: nothing is
+committed while a round is in flight. **Both were wrong, and the rule was the more dangerous half.**
 
-**So the rule is simpler than the one I was applying: nothing is committed while a round is in
-flight.** Not source, not records, not an appendix. The source-awareness that lets a record survive a
-review does not extend to the snapshot the review is measured against, and I applied a true rule
-outside the domain where it holds - which is its own small instance of the class this log keeps
-recording.
+Measured: `Get-SpecrewReviewRunCoversCurrentSource` returns `covers=False, reason=source-moved`, naming
+`HumanAuthorityStore.ps1` and `round-approval-typed-authority.tests.ps1` - **the torn-line repair, i.e.
+the round's own finding being fixed.** Given only the appendix commit it would have answered
+records-only and the round would have covered. **The round was lost to the ordinary cost of repairing
+what it found, and would have been lost had I committed nothing at all.**
 
-Cost: one round, and the covering evidence has to be obtained again against a still tree.
+**The honest rule is narrower: no SOURCE is committed while a round is in flight; records-only commits
+are safe and remain so.** The stricter version would have quietly reinstated the constraint DRIFT-007
+removed - and it would have looked justified, because the round really did fail. **A rule inferred
+from a real failure, whose real cause was something else, is the hardest kind to catch later.**
+
+**AND THE INSTANCE ACTUALLY WORTH RECORDING - one I introduced in W67 and did not see.** W67 kept the
+run's frozen `currentness` as a "floor" on top of the recomputed answer. The field is SNAPSHOT-EXACT:
+it reads `snapshot-moved` after ANY commit in the review window, records-only included. Keeping it as
+a floor made it DECISIVE - **which is exactly the pre-W67 reading W67 was written to replace,
+reintroduced one layer up by the same commit that replaced it.** Measured: the floor excluded
+run-...77511bab from the candidate list before the recomputed answer was consulted at all, so a round
+could be disqualified by the act of writing down what it found - and the maintainer's own rule that
+records-only commits are safe was untrue while it stood.
+
+**Resolved (W72): the recomputed answer is the answer whenever it can be ESTABLISHED; the frozen field
+survives only as a FALLBACK for when it cannot** - no git, a collected tree, the helper absent - because
+then it is the only signal there is, and a run that recorded itself not-current with no way to check
+must not be promoted by our ignorance. Removing it outright went red on the pre-existing "says so
+plainly when nothing qualifies" case, whose fixture has no object store: the case that stopped an
+over-correction was already in the suite. Both directions mutation-proved.
+
+Cost: one round, to the repair rather than to the record.
 ### DRIFT-199-I001-145 - W71: the cross-channel guess is withdrawn; the second channel is OBSERVED (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, on round 28. The ruling also corrected my framing: stopping was not
@@ -4676,6 +4695,18 @@ restored colour preference — and both suites restore what they mutate.*
 defect, whoever wrote it.** A suite that changes `TEMP`, `NO_COLOR`, the working directory or the
 current culture and walks away has not written a test, it has written a trap for whatever runs next.*
 
+**METHOD RULE 10 (maintainer ruling, 2026-08-26) — WHEN A FIX CORRECTS A READER, THE SAME COMMIT
+CHECKS EVERY OTHER READER OF THAT CONCERN.**
+
+Frequent enough now to have its own line. The same-file, same-concern sibling has been left behind
+five times in this feature: the path comparer, the fact-file classifier, the two capture branches, the
+pause identity versus the canonical pause reader, and - the one that named the rule - W70 fixing the
+torn-line read in the exhausted-turn ledger while leaving the withdrawal journal's reader `continue`ing
+past exactly the same damage, which round 29 then reported as blocking.
+
+The habit that fails is fixing the reader in front of you. The habit that works is asking, before the
+commit closes: **what else reads this?** Not "what else is broken" - what else answers this same
+question, and does it now answer it differently.
 **METHOD RULE 8 (maintainer ruling, 2026-08-26) — REDUNDANCY IS COUNTED IN FAILURE DOMAINS, NOT IN
 CODE PATHS.**
 

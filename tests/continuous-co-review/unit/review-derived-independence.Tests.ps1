@@ -373,6 +373,35 @@ Describe 'W67 the block derives currentness the way the validator does, not from
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'RED-FIRST: a run stored as snapshot-moved still qualifies when no SOURCE moved' {
+        # W67 kept the run's FROZEN `currentness` as a "floor" on top of the recomputed answer. The
+        # floor is the pre-W67 question, and keeping it makes it decisive: the field is snapshot-EXACT,
+        # so it reads snapshot-moved after ANY commit in the review window - including a records-only
+        # one, which DRIFT-007 exists to make harmless. A round could therefore be disqualified by the
+        # act of writing down what it found.
+        #
+        # Measured on run-20260826-194901162-77511bab: the recomputed answer named two source files,
+        # and the floor excluded the run from the candidate list before that answer was ever consulted.
+        # Reading the frozen field as the answer is exactly the reading W67 exists to replace.
+        $root = New-GitTreeProject
+        try {
+            $tree = Get-FixtureTreeId -Root $root
+            $runId = Add-FixtureRun -Root $root -TreeId $tree
+            # The run recorded itself as snapshot-moved; only RECORDS have changed since.
+            $resultPath = Join-Path $root ".specrew/review/authority/campaigns/cmp-w67/runs/$runId/result.json"
+            $result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+            $result.currentness = 'snapshot-moved'
+            [IO.File]::WriteAllText($resultPath, ($result | ConvertTo-Json -Depth 8 -Compress), [Text.UTF8Encoding]::new($false))
+            New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-thing/iterations/001') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root 'specs/001-thing/iterations/001/drift-log.md') -Value '# recorded what it found' -Encoding UTF8
+
+            $qualifying = Get-SpecrewQualifyingIndependentRun -ProjectRoot $root
+            $qualifying | Should -Not -BeNullOrEmpty -Because 'the recomputed source-aware answer is the answer; the frozen field is the question it replaced'
+            [string]$qualifying.result.run_id | Should -Be $runId
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'the generator and the validator answer the currentness question with the SAME rule' {
         # The structural half of the ruling: not "both are correct today" but "there is one rule".
         $governance = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1') -Raw -Encoding UTF8
