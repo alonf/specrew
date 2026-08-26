@@ -591,6 +591,33 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### OBSERVED 2026-08-26, pending ruling - a typed approval that CLOSES a ruling is not captured, and I will not widen the recognizer myself
+
+**Measured, not inferred.** `Test-SpecrewReviewRoundApprovalPhrase` against four shapes of the same act:
+
+| shape | matched |
+| --- | --- |
+| `approved for review round` alone | yes |
+| the phrase, then an instruction block (W56, round 15) | yes |
+| an instruction block, then the phrase | **no** |
+| a sentence, blank line, then the phrase on its own line | **no** |
+
+The maintainer's W67 ruling ended `...so: / approved for review round / Run it against the tree as it
+stands.` The phrase stands alone on its own line inside a genuine typed human turn, and nothing
+captured it. The Stop backstop reads the same turn through the same recognizer, so it refuses too.
+
+**The guard doing this is the leading anchor**, and it is not a mistake: it is what stops the agent's
+own rendered menu (`Reply with `approved for review round``) and a quoted hypothetical from minting
+authority. W56 widened the TAIL for the same human writing the same way; this is the mirror case at
+the head, and the head is where the dangerous shapes live.
+
+**WHY THIS ENTRY RECORDS AND DOES NOT FIX.** Widening this recognizer would authorize the very round
+I am waiting on. An agent that adjusts the gate it is standing at has not relayed an authorization, it
+has issued one - and the fact that the human plainly meant to approve is exactly the argument every
+unsafe widening makes. The measurement is mine to bring; the rule is the maintainer's to set.
+
+**What it costs to leave**: the human types the phrase again, bare. That is the W54 cost - answering
+the same question twice - which is a real cost and is why this is worth a ruling rather than a shrug.
 ### DRIFT-199-I001-139 - W67: the independence block asked the currentness question of a field that answered it once (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, overturning a retraction I had written an hour earlier in this same
