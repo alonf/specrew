@@ -70,6 +70,30 @@ the disposition of what is known, not the absence of findings.
 three known open findings, one of them a partial fix of this session's own work. **It does not claim
 they are absent, and it does not claim they are harmless.**
 
+### Why partial coverage was accepted, in the maintainer's reasoning
+
+Recorded here as PROSE, narrated by this record's author. It is not an authority field and is not
+dressed as one: the authorization itself lives in the review store with its own typed rationale, and
+this section exists because the reasoning is worth more than a rationale line can hold.
+
+The maintainer accepted this tree with its three open findings on four grounds:
+
+1. **All three findings FAIL SAFE.** The major refuses a valid approval rather than accepting an
+   invalid one - a bare `approved` followed by a newline and an instruction falls through, so a
+   legitimate verdict is not captured and the human retypes.
+2. **By method rule 12's test it is friction, not an outage.** The human undoes the refusal by
+   acting; nothing about it is unrecoverable, which is the distinction that separates it from the
+   ledger defect closed in W75.
+3. **The two minors mint nothing.** A missing templates sidecar and a diagnosis that omits pause
+   decisions are both absences, not fabrications.
+4. **No finding in this set can forge, promote or fabricate authority** - which is the property that
+   makes accepting it INFORMED rather than RESIGNED. A set of open findings that could put a false
+   fact in the store would not have been acceptable on any schedule.
+
+**And the coverage is checkable rather than asserted**: `run-20260827-023623882-300694ac` read tree
+`1b50ae60` at commit `081d74ba`, 22 source paths of 28, and the delta since is records-only and exempt
+under DRIFT-007 - so the gap is empty and provable, and the validator recomputes it at every
+validation rather than trusting this paragraph.
 ### What this record does not claim
 
 Its per-task verdicts and the prose around them were written by the implementing session, and the

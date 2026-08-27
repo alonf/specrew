@@ -591,6 +591,57 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### BETA4 - the override authorization cannot be amended, and the conflict is SWALLOWED (recorded 2026-08-27)
+
+**TWO defects, and the second is the more serious.**
+
+**1 - the amendment gap.** `Write-SpecrewReviewSignoffOverrideAuthorization` keys the fact on
+`request_id` and compares every field including `rationale`. A second authorization from the SAME
+human against the same request, with a fuller reason, is not an amendment - it throws
+`review-signoff-override-authorization-conflict`. **One request, one authorization, first draft
+permanent.** The immutability instinct is right for an authority fact; treating a better-argued
+re-statement by the same person as a conflict is not. A re-typed authorization should SUPERSEDE, with
+the earlier one kept as history - which is what every other fact in this store already does through
+its journal.
+
+**2 - the SILENT SWALLOW, which is why nobody found out.** The capture path catches and discards that
+throw, so the second attempt produced no error, no warning and no record. The store kept the first
+fact and reported success. **A conflict that surfaces is a decision; a conflict that is swallowed is a
+lie of omission**, and this one hid the amendment gap for as long as it took someone to read the file
+and notice the rationale had not changed.
+
+**How it surfaced, which is the instructive part.** The rationale in the store was a PLACEHOLDER I had
+written into a suggested message - `...(through)...` - and the maintainer copied it verbatim under time
+pressure. Their fuller reasoning, typed immediately afterwards, was thrown away by the conflict rule
+and silently. **An immutability rule correct in principle made a careless first draft permanent, and
+the careless draft was the agent's.**
+
+**Resolved for THIS tree without touching either fact** (maintainer ruling, option 4): the request id is
+`hash(target_tree_id | campaign_id)`, verified at source, so the records commit that writes the
+review-record prose moves the digest and mints a NEW request. A fresh authorization lands cleanly
+against it. **Nothing deleted, nothing edited** - the placeholder stays exactly where it is, as the
+authorization for the request it was typed against, and the immutability rule is honoured rather than
+worked around.
+
+**SIXTH ESCALATION INSTEAD OF RECONCILIATION**, and the maintainer noted it had the most inviting
+justification of the six: clearing or editing the file would have "improved" the record, and *every
+unsafe override argues for itself that way*. An agent deleting an authority fact because the
+replacement is better is the exact shape the refusal contract exists to forbid.
+
+### BETA4 - a durable-reasoning field typed as one chat line gets abbreviated (recorded 2026-08-27)
+
+The `rationale` on a partial-signoff override is the permanent answer to *why was accepting this
+safe*. It is collected as one line in a chat message, and **anyone under time pressure abbreviates a
+one-line field - and the abbreviation passes the length check**, because 174 characters of ellipsis is
+as valid as 967 characters of argument.
+
+Measured here twice over: the agent proposed an abbreviation, the maintainer took it, and the store
+accepted it without complaint. Neither party intended to record a placeholder as a justification.
+
+**This belongs beside proposal 212's reading-validation work** - it is the same phenomenon at a
+different gate. 212 asks whether the human READ what they approved; this asks whether the reason they
+recorded says anything. Both are about a control that checks the FORM of a human act while the
+SUBSTANCE walks past it, and neither is solved by asking people to try harder.
 ### DRIFT-199-I001-149 - round 33 DELIVERED and covers the signed-off tree; three findings, none blocking
 
 `run-20260827-023623882-300694ac`, codex, terminal / complete / **current** / valid, 973.7s, 22 source
