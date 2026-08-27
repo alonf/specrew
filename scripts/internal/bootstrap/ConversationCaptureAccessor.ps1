@@ -179,7 +179,17 @@ function Test-SpecrewHumanVerdictToken {
 
     $r = [pscustomobject]@{ Action = 'none'; IsApproval = $false; IsSendBack = $false; IsDiscuss = $false; NamedBoundaries = @(); ApprovalOption = $null }
     if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
-    $t = ($Text -replace '\s+', ' ').Trim()
+    # W75 / round-31 finding, FR-010: LINE BREAKS SURVIVE, because they end the approval clause.
+    #
+    # Collapsing them made `approved for tasks` + newline + `Run the cleanup when the review finishes.`
+    # one clause, so `when` read as a condition ON the approval and a valid boundary verdict was
+    # erased - the lifecycle then waits until the human discovers they must retype it. FR-010 says a
+    # leading recognized approval wins over following instruction wording, and the sibling
+    # round-approval recognizer has always scoped itself to the approval LINE for exactly this reason.
+    # Method rule 10's case, fourth instance: the fix existed, one reader had it, this one did not.
+    #
+    # Horizontal whitespace still collapses; only the line structure is kept.
+    $t = ($Text -replace '[^\S\r\n]+', ' ').Trim()
     $lower = $t.ToLowerInvariant()
 
     $boundaryAlternation = '(?:specify|clarify|plan|tasks|before-implement|implement|review-signoff|review|retro|iteration-closeout|iteration|closeout|feature-closeout|feature)'
@@ -232,7 +242,7 @@ function Test-SpecrewHumanVerdictToken {
         # erased. The clause is what can be a question; what follows a delimiter is instruction
         # wording, and a question there is an ordinary follow-up ("approved for implement. should I
         # also update the changelog?" was already safe via the period for the same reason).
-        $interrogativeApprovalClause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s', 2))[0].Contains('?')
+        $interrogativeApprovalClause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s|\r?\n', 2))[0].Contains('?')
         $isRecognizedPhrase = (-not $interrogativeApprovalClause) -and (
             [string]::IsNullOrWhiteSpace($afterApproval) -or
             $afterApproval -match '^\s*[,.;:]' -or
@@ -247,7 +257,7 @@ function Test-SpecrewHumanVerdictToken {
         # and turn a clear verdict ambiguous, which the caller records as un-authorized. A hyphen counts as a
         # delimiter only when SPACED, or `before-implement` and `review-signoff` would be cut in half; `->` is
         # not one either, so "approve plan -> tasks" still names the crossing's BOTH ends.
-        $clause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s', 2))[0]
+        $clause = ([regex]::Split($afterApproval, '[,.;:]|\s[-–—]\s|\r?\n', 2))[0]
 
         # A deferral inside the CLAUSE still defers ("approve once the tests pass") - the conservative floor is
         # unchanged. After a delimiter the same word is ordinary instruction wording and no longer blocks.

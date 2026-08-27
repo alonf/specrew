@@ -2048,7 +2048,7 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
         }
     }
 
-    It 'RED-FIRST: a TORN ledger line means exhausted, not "carry on"' {
+    It 'SUPERSEDED by W75: a TORN ledger line is skipped and recorded, not treated as every turn' {
         # The reader skipped malformed lines, so an interrupted append produced exactly the false-fresh
         # result the ledger exists to prevent. A line it cannot parse is a line it cannot rule out.
         $root = New-ChannelRoot
@@ -2063,7 +2063,11 @@ Describe 'W70 round 27: the one-turn rule must hold across CHANNELS and must fai
             Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
                 -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '7' -TurnArrival '2026-08-26T10:00:00Z'
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'a line it cannot read is a turn it cannot rule out'
+                # W72 asserted -BeNullOrEmpty here. The maintainer reversed it on 2026-08-27, and round
+                # 31 is why: failing closed on "can this PROJECT ever be authorized again" is an
+                # outage, not a safety property. This is a DIFFERENT turn, so it mints; the damage is
+                # recorded rather than charged to every future act.
+                Should -Not -BeNullOrEmpty -Because 'one interrupted append must not permanently end a project''s ability to be authorized'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -2232,7 +2236,7 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
         }
     }
 
-    It 'RED-FIRST: a TORN line in the withdrawal journal means withdrawn, not "carry on"' {
+    It 'SUPERSEDED by W75: a TORN withdrawal line is skipped and recorded, not read as every withdrawal' {
         # Round-29, reported BLOCKING. Test-SpecrewApprovalIsWithdrawn documents itself as failing
         # closed on an unreadable journal, and then skipped individual unparseable LINES - so an
         # interrupted append (the exact failure the independent journal exists to survive) left a torn
@@ -2253,7 +2257,10 @@ Describe 'W71 round 28: OBSERVE the second channel, do not suppress it; and prov
             Add-Content -LiteralPath $independent -Value '{"schema_version":"1.0","fact_type":"review-round-approval-with' -Encoding UTF8
 
             Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
-                Should -BeNullOrEmpty -Because 'a withdrawal record it cannot read is a revocation it cannot rule out'
+                # W72 asserted -BeNullOrEmpty here, and round 31 showed the cost: every approval,
+                # current and future, read as withdrawn forever, with retyping powerless. Same
+                # reversal, same reason.
+                Should -Not -BeNullOrEmpty -Because 'a torn line cannot mean every approval that will ever exist was withdrawn'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -2371,5 +2378,131 @@ Describe 'W73 round 30: a CONDITIONAL reply is not authority, in every recognize
         }
         $store = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1') -Raw -Encoding UTF8
         $store | Should -Match 'function Test-SpecrewConditionalDeferralClause' -Because 'one named rule is what stops five copies disagreeing'
+    }
+}
+
+Describe 'W75 round 31: a damaged ledger must not end the project, and a following line must not erase a verdict' {
+    # Maintainer ruling, 2026-08-27, on the two findings that will not ship.
+    #
+    # FINDING 1 IS MINE, from the fail-closed rule I added in W70 and repeated in W72. The distinction
+    # I missed, and the sharpest version of the wedge-versus-spend trade in this log:
+    #
+    #   Failing closed on "should this ACT be authorized" is SAFETY.
+    #   Failing closed on "can this PROJECT ever be authorized again" is an OUTAGE.
+    #
+    # A torn line returned "exhausted" for every later turn, permanently: one interrupted append and
+    # the project accepts no further approval, pause, reset or withdrawal, retyping cannot recover it,
+    # and the refusal contract forbids hand-editing the store. A consumer who hits Ctrl+C at the wrong
+    # moment is left with an ungovernable project and no sanctioned way out. Not exotic - this session
+    # had a process killed mid-operation twice.
+
+    BeforeAll {
+        foreach ($dependency in @('ConversationCaptureAccessor', 'ClassificationEngine', 'ProjectMetadataAccessor', 'HandoverStore')) {
+            . (Join-Path $script:RepoRoot ('scripts/internal/bootstrap/' + $dependency + '.ps1'))
+        }
+        function script:New-W75Root {
+            $root = Join-Path ([IO.Path]::GetTempPath()) ('w75-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
+            return $root
+        }
+    }
+
+    It 'RED-FIRST: a torn line in the turn ledger does not end the project' {
+        $root = New-W75Root
+        try {
+            # A real, complete history: one turn minted and was spent.
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z'
+            $null = Complete-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -AuthorizationRef 'round-1'
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            # Ctrl+C during an append.
+            Add-Content -LiteralPath $ledger -Value '{"schema_version":"1.0","fact_type":"typed-turn-exh' -Encoding UTF8
+
+            # A DIFFERENT turn, typed afterwards. It must still be able to mint.
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '9' -TurnArrival '2026-08-27T09:30:00Z'
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'one interrupted append must not leave a project that can never be authorized again'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: the damage is RECORDED, so a silent skip is not the price of staying usable' {
+        # Observe, do not suppress - the W71 pattern, applied to the ledger itself. Skipping a torn line
+        # without saying so would trade an outage for an invisible hole.
+        $root = New-W75Root
+        try {
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '2' -TurnArrival '2026-08-27T08:00:00Z'
+            $ledger = Join-Path $root '.specrew/authority/exhausted-turns.jsonl'
+            Add-Content -LiteralPath $ledger -Value '{"fact_type":"typed-turn-exh' -Encoding UTF8
+            $null = Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root
+            Invoke-SpecrewTypedAuthorityCapture -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'stop-transcript' -TurnPosition '11' -TurnArrival '2026-08-27T10:00:00Z'
+            (Get-Content -LiteralPath $ledger -Raw -Encoding UTF8) | Should -Match 'authority-ledger-damaged' `
+                -Because 'a ledger that lost a record must say so, or the hole is invisible'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'RED-FIRST: a torn WITHDRAWAL journal line does not make every approval unusable forever' {
+        $root = New-W75Root
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
+            $independent = Join-Path $root '.specrew/authority/withdrawals.jsonl'
+            New-Item -ItemType Directory -Path (Split-Path -Parent $independent) -Force | Out-Null
+            Add-Content -LiteralPath $independent -Value '{"schema_version":"1.0","fact_type":"review-round-approval-with' -Encoding UTF8
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -Not -BeNullOrEmpty -Because 'a torn line cannot mean every approval that ever exists was withdrawn'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a TRANSIENT read failure still fails closed, because that one recovers on its own' {
+        # The distinction the ruling names: a locked file is a temporary refusal that clears when the
+        # lock does. A torn line is permanent damage, and failing closed on it is an outage.
+        $root = New-W75Root
+        $handle = $null
+        try {
+            $null = Write-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root -Response 'approved for review round' `
+                -HostKind 'claude' -SourceEvent 'UserPromptSubmit' -NowUtc ([DateTimeOffset]::UtcNow.AddMinutes(-5).ToString('o'))
+            $journal = Join-Path $root '.specrew/review/round-approval/captures.jsonl'
+            if (-not [IO.File]::Exists($journal)) { [IO.File]::WriteAllText($journal, '', [Text.UTF8Encoding]::new($false)) }
+            $handle = [IO.File]::Open($journal, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            Get-SpecrewReviewRoundApprovalAuthorization -ProjectRoot $root |
+                Should -BeNullOrEmpty -Because 'if it cannot read at all it cannot rule out a withdrawal, and that refusal clears with the lock'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'RED-FIRST: a following-line instruction does not erase a boundary approval (FR-010)' {
+        # Not my regression - the pre-W73 build rejects this identically, verified at 26f6e4b7. But it
+        # is an FR-010 violation on the boundary-verdict path, which is a wider surface than round
+        # approvals, and the sibling recognizer already solves it by scoping to the approval line.
+        # Method rule 10's exact case, fourth instance: the fix exists, one reader has it, the other
+        # does not.
+        foreach ($text in @(
+                ("approved for tasks" + [char]10 + "Run the cleanup when the review finishes.")
+                ("approved for tasks" + [char]10 + "Once that lands, start the retro.")
+                ("approved for plan" + [char]10 + [char]10 + "If anything looks off, tell me."))) {
+            [bool](Test-SpecrewHumanVerdictToken -Text $text).IsApproval |
+                Should -BeTrue -Because ("a leading recognized approval wins over following instruction wording: " + ($text -replace [char]10, ' / '))
+        }
+    }
+
+    It 'a SAME-LINE condition still defers the boundary verdict' {
+        # The guard that must survive: the whole point of the conjunction set is that a condition ON
+        # the approval clause defers it. Only the line break is being restored as a delimiter.
+        foreach ($text in @(
+                'approved for tasks when the tests pass'
+                'approved for tasks once CI is green'
+                'approved for tasks provided the lanes hold')) {
+            [bool](Test-SpecrewHumanVerdictToken -Text $text).IsApproval |
+                Should -BeFalse -Because ("a condition in the approval clause is still a condition: " + $text)
+        }
     }
 }

@@ -589,8 +589,29 @@ function Test-SpecrewTypedTurnExhausted {
         foreach ($line in [IO.File]::ReadAllLines($path)) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $entry = $null
-            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { return $true }
-            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) { return $true }
+            try { $entry = $line | ConvertFrom-Json -Depth 6 -ErrorAction Stop } catch { $entry = $null }
+            # W75 / round-31 finding: A TORN LINE IS SKIPPED, AND RECORDED. NOT "every turn is exhausted".
+            #
+            # THE DISTINCTION I MISSED IN W70 AND REPEATED IN W72, and it is the sharpest form of the
+            # wedge-versus-spend trade in this project:
+            #
+            #   Failing closed on "should this ACT be authorized" is SAFETY.
+            #   Failing closed on "can this PROJECT ever be authorized again" is an OUTAGE.
+            #
+            # Returning $true here answered the second question. One interrupted append and the project
+            # accepted no further approval, pause, reset or withdrawal - permanently, with retyping
+            # powerless and the refusal contract forbidding a hand-edit of the store. The trigger is a
+            # Ctrl+C at the wrong moment.
+            #
+            # An unreadable line's turn_id is unknowable, so it can neither confirm nor deny exhaustion
+            # of the turn being asked about. The bounded cost of skipping it is one possible re-mint of
+            # whatever it recorded; the cost of the alternative is an ungovernable project.
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['turn_id']) {
+                if (Get-Command Write-SpecrewAuthorityLedgerDamageObservation -ErrorAction SilentlyContinue) {
+                    Write-SpecrewAuthorityLedgerDamageObservation -ProjectRoot $ProjectRoot -Journal 'exhausted-turns.jsonl' | Out-Null
+                }
+                continue
+            }
             if ([string]$entry.turn_id -ceq [string]$TurnId) { return $true }
         }
     }
@@ -659,6 +680,37 @@ function Write-SpecrewCrossChannelMintObservation {
             host_kind = [string]$HostKind; source_event = [string]$SourceEvent
             prior_turn_id = [string]$PriorTurnId; prior_source_event = [string]$PriorSourceEvent
             minted = [string]$MintedWriters; observed_at = $NowUtc
+        }
+        Add-Content -LiteralPath $path -Value ($entry | ConvertTo-Json -Compress -Depth 6) -Encoding UTF8 -ErrorAction Stop
+        return $true
+    }
+    catch { return $false }
+}
+
+function Write-SpecrewAuthorityLedgerDamageObservation {
+    # W75 / round-31 finding: a DIAGNOSTIC fact, never authority - the same standing as the W54 picker
+    # observation and the W71 double-mint one. It records that a journal lost a record, so that
+    # skipping the torn line does not trade an outage for an invisible hole.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Journal,
+        [string]$NowUtc = ([DateTimeOffset]::UtcNow.ToString('o'))
+    )
+    $path = Get-SpecrewExhaustedTurnLedgerPath -ProjectRoot $ProjectRoot
+    try {
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null
+        # Once per journal, not once per read: this is consulted on every turn, and a damaged file
+        # would otherwise append forever.
+        if ([IO.File]::Exists($path)) {
+            foreach ($existing in [IO.File]::ReadAllLines($path)) {
+                if ([string]$existing -match 'authority-ledger-damaged' -and [string]$existing -match [regex]::Escape($Journal)) { return $true }
+            }
+        }
+        $entry = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'authority-ledger-damaged'; authority_kind = 'none'
+            journal = [string]$Journal; observed_at = $NowUtc
+            detail = 'A record in this journal could not be read - almost always an append interrupted mid-write. It is skipped rather than treated as every future act, because refusing everything would leave a project that can never be authorized again.'
         }
         Add-Content -LiteralPath $path -Value ($entry | ConvertTo-Json -Compress -Depth 6) -Encoding UTF8 -ErrorAction Stop
         return $true
@@ -791,8 +843,17 @@ function Test-SpecrewApprovalIsWithdrawn {
             # W70 fixed precisely this in the exhausted-turn ledger reader and left this sibling alone:
             # two readers of one concern, corrected one at a time. The rule is the same in both, so it
             # reads the same in both.
-            try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { return $true }
-            if ($null -eq $entry -or -not $entry.PSObject.Properties['fact_type']) { return $true }
+            # W75: skipped and recorded, for the reason above. A torn line here used to mean EVERY
+            # approval - current and future - read as withdrawn, which is the same outage wearing the
+            # withdrawal reader's clothes.
+            $entry = $null
+            try { $entry = $line | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { $entry = $null }
+            if ($null -eq $entry -or -not $entry.PSObject.Properties['fact_type']) {
+                if (Get-Command Write-SpecrewAuthorityLedgerDamageObservation -ErrorAction SilentlyContinue) {
+                    Write-SpecrewAuthorityLedgerDamageObservation -ProjectRoot $ProjectRoot -Journal 'withdrawal-journal' | Out-Null
+                }
+                continue
+            }
             if ([string]$entry.fact_type -cne 'review-round-approval-withdrawn') { continue }
             if (-not $entry.PSObject.Properties['observed_at']) { continue }
             $withdrawnAt = ConvertTo-SpecrewAuthorityInstant -Value $entry.observed_at

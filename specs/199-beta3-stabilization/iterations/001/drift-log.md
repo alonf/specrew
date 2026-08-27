@@ -591,6 +591,48 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-148 - W75: round 31 - the damaged ledger that ended projects, and FR-010 on the boundary path (resolved)
+
+`run-20260826-232508244-a24252d3`, codex, terminal / complete / **current** / valid, 1,338.3s. Four
+findings, **no blocking** - the first genuinely good round this campaign has produced. All four were
+reported major by the reviewer and demoted to minor.
+
+**Finding 1 - MINE, and the one the maintainer would not ship.** `catch { return $true }` on a torn
+line returned "exhausted" for EVERY later turn, permanently. See method rule 12 for the distinction I
+missed twice: refusing an ACT when uncertain is safety; refusing the PROJECT is an outage. Resolved by
+skipping the torn line and recording `authority-ledger-damaged` - the W71 observe-don't-suppress
+pattern, applied to the ledger itself. Both readers fixed together, per rule 10.
+
+**Finding 2 - FR-010 on the boundary-verdict path, and NOT my regression.** `Test-SpecrewHumanVerdictToken`
+collapsed line breaks, so `approved for tasks` + newline + `Run the cleanup when the review finishes.`
+became one clause and `when` read as a condition, erasing a valid verdict. **I checked before
+reporting it as mine: the pre-W73 build at `26f6e4b7` rejects it identically** - `when` was already in
+the six-word set and newlines have always been collapsed. W73 widened the vocabulary; it did not
+create this. Resolved by keeping line breaks as clause delimiters, which is what the sibling
+round-approval recognizer has always done. **Method rule 10, fourth instance: the fix existed, one
+reader had it, the other did not.**
+
+**Finding 4 - the contract lagged a ruling for the second time, and I escalated rather than
+reconciled.** The reviewer is right that FR-003 carries no two-mint carve-out while W71 accepted one.
+**Amended by the maintainer, with the reason inline** - same treatment as the FR-001/FR-002 amendments,
+and for the same stated reason: a requirement recording only its conclusion invites the next author to
+simplify it back into the defect. The amendment records that cross-channel identity was attempted
+twice and failed twice, that the residual is bounded at one extra mint per channel and observed every
+time, and that it is a spend-accounting cost rather than a forgery - what may be wrong is the count,
+never the consent.
+
+**Finding 3 - the `env_refs` failure line - DEFERRED to beta4** with the authority-layer audit set.
+**Finding 5 stays carried.**
+
+**Proof.** Two mutations, each turning its own cases red: restore the torn-line wedge; collapse line
+breaks again.
+
+**A self-inflicted detour worth recording.** My patch for finding 1 replaced the parse line along with
+the branch it guarded, so `$entry` was never assigned and NOTHING was ever found exhausted - seven
+tests went red, including the W69 guarantees. The suite caught it immediately, which is what a
+regression net is for; the lesson is narrower and about tooling: **an anchor-replacement patch that
+consumes more than it restores is a silent rewrite**, and the anchors should be the smallest text that
+is unique, not the most convenient block.
 ### DRIFT-199-I001-147 - W73/W74: round 30 - two findings the engine itself graded BLOCKING (resolved)
 
 `run-20260826-221906829-6b651c05`, codex, terminal / complete / **current** / valid, 1,013.4s. **The
@@ -4836,6 +4878,30 @@ goes through it.
 And the corollary that cost three cycles in one block: **a case naming a production call site needs a
 production-shaped fixture.** A repo with no commit, or no `specs/<feature>/`, is not the project the
 code runs in, and every gap in the fixture reads as a defect in the code until someone checks.
+**METHOD RULE 12 (maintainer ruling, 2026-08-27) — FAILING CLOSED ON A DECISION IS SAFETY; FAILING
+CLOSED ON A CAPABILITY IS AN OUTAGE.**
+
+The sharpest form of the wedge-versus-spend trade in this log, and the one I got wrong twice.
+
+- **"Should THIS ACT be authorized?"** - refusing when uncertain is SAFETY. The cost is one retype.
+- **"Can this PROJECT ever be authorized again?"** - refusing when uncertain is an OUTAGE. There is no
+  retype that recovers it.
+
+W70 added a fail-closed rule for a torn ledger line and W72 repeated it for the withdrawal journal.
+Both answered the second question while appearing to answer the first: one interrupted append and the
+project accepted no further approval, pause, reset or withdrawal - permanently, with retyping powerless
+and the refusal contract forbidding a hand-edit of the store. **A consumer who hits Ctrl+C at the wrong
+moment was left with an ungovernable project and no sanctioned way out.** The trigger is not exotic;
+this session had a process killed mid-operation twice.
+
+**The test to apply before writing any fail-closed branch: name what is refused, and ask whether a
+human can undo the refusal by acting.** If they can - retype the phrase, re-run the command - it is a
+decision and failing closed is right. If they cannot, it is a capability, and failing closed on
+uncertainty converts a damaged record into a dead project.
+
+**The resolution is the same shape as W71's: OBSERVE.** The torn line is skipped, and the damage is
+recorded as `authority-ledger-damaged`, once per journal. The bounded cost is one possible re-mint of
+whatever the lost record held; the cost of the alternative is unbounded and permanent.
 ### CLOSING OBSERVATION ON THIS METHOD SECTION (maintainer ruling, 2026-08-27) — THE RULES ARE HOW THE MECHANISMS WERE FOUND; THEY ARE NOT THE MECHANISMS
 
 Read this before the rules above, because it is what they add up to.

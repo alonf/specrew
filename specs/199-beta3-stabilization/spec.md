@@ -325,6 +325,27 @@ contract is durable):
   rounds once exhausted until the human explicitly resets the allowance (the budget
   counts reviewer-invoked rounds across the whole campaign regardless of tree-state
   movement — Clarifications, 2026-08-10).
+  - **CARVE-OUT, one typed act may mint at most once PER CHANNEL** (maintainer ruling
+    2026-08-27, amending this requirement rather than reconciling it): exhaustion is
+    tracked per delivery channel, so on a host that delivers a human turn through both
+    prompt-entry and the end-of-turn transcript, one typed act MAY produce two round
+    authorizations. **At most two — bounded, and recorded as a `cross-channel-double-mint`
+    observation every time it happens.**
+  - **The reason, inline, because a requirement recording only its conclusion invites
+    the next author to simplify it back into the defect.** Cross-channel identity was
+    attempted twice and failed twice: these hosts expose no shared per-turn identifier —
+    prompt-entry has an event clock, the transcript has an index — so any match on
+    content is a heuristic, not an identity. The first attempt let a spent approval be
+    re-minted without limit; the second wedged a genuinely later retype forever, with no
+    recovery. The two findings that killed it contradicted each other, which is what a
+    guess looks like when it is asked to be an identity twice.
+  - **Why this is acceptable where the original hole was not**: the pre-fix behaviour was
+    UNLIMITED re-minting from one act; this is bounded at one extra per channel. And it is
+    a SPEND-ACCOUNTING cost, not a forgery — the human did approve a round, and the ledger
+    records a real typed act behind every authorization. What may be wrong is the count,
+    never the consent. Whether a host-provided turn identifier exists is a beta4 discovery
+    task; if one does, this carve-out is withdrawn and the requirement returns to its
+    unqualified form.
 - **FR-004**: Minor findings MUST never gate sign-off; they are auto-carried as
   recorded follow-ups.
 - **FR-005**: The stop-here option MUST compose the full landing as one action:
