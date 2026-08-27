@@ -1,21 +1,33 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-07-11T10:27:08Z",
+  "recorded_at": "2026-08-27T10:49:23Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
-    "reason": "fresh-and-covered",
-    "message": "The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor.",
-    "current_tree_id": "9b2f2f0f7fe7b8d0b59310d721aa7fc208d0ce62",
-    "matched_run_id": "20260711T102439163-8bf11302",
-    "anchor_ref": "5bca4fdf7d6aafe09d65144485c2a2156b6d4ab7",
-    "override": null,
-    "evidence_labels": {
-      "completeness": "full",
-      "independence": "independent",
-      "budget": "normal"
+    "reason": "human-authorized-partial-override",
+    "message": "Signoff allowed under a recorded human-authorized partial-coverage override.",
+    "current_tree_id": "",
+    "matched_run_id": "",
+    "anchor_ref": "",
+    "override": {
+      "schema_version": "1.0",
+      "fact_type": "review-signoff-partial-override",
+      "request_id": "override-7e5367fbe330f4c7f74c43d1",
+      "target_tree_id": "52fa21cec6cf827284ae0feb4b2ce302063943dd",
+      "campaign_id": "cmp-199-beta3-stabilization-i001",
+      "run_id": "run-20260827-023623882-300694ac",
+      "authority_kind": "human",
+      "authorized_by": "unattributed-human",
+      "verdict_text": "approved for partial review signoff - all three findings fail safe: the major refuses a valid approval rather than accepting an invalid one, and by method rule 12 the human undoes it by retyping, so it is friction and not an outage; the two minors mint nothing. No finding in this set can forge, promote or fabricate authority, which is what makes accepting it informed rather than resigned. Coverage is checkable: run-20260827-023623882-300694ac read tree 1b50ae60 at commit 081d74ba, 22 source paths of 28, and the delta since is records-only and exempt under DRIFT-007.",
+      "rationale": "all three findings fail safe: the major refuses a valid approval rather than accepting an invalid one, and by method rule 12 the human undoes it by retyping, so it is friction and not an outage; the two minors mint nothing. No finding in this set can forge, promote or fabricate authority, which is what makes accepting it informed rather than resigned. Coverage is checkable: run-20260827-023623882-300694ac read tree 1b50ae60 at commit 081d74ba, 22 source paths of 28, and the delta since is records-only and exempt under DRIFT-007.",
+      "response_hash": "85c1ef0d17ee328059fdce28351e10d25e2d6d19b983666e5e33e7b7e7405456",
+      "evidence_source": "hook-captured-user-prompt",
+      "source_event": "UserPromptSubmit",
+      "host_kind": "claude",
+      "observed_at": "2026-08-27T10:48:19.5100592Z"
     },
+    "evidence_labels": null,
     "acknowledgement": null
   }
 }

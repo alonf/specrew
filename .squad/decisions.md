@@ -28982,3 +28982,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Ceremony has a second cost beyond annoyance**: a decision the machinery does not consult still gets stored as an `authorized_by: human` fact, so an unnecessary question becomes a forgeable authority record. Removing the question is a stronger fix than authenticating the answer.
 - **Next Action**: Measure it. Count the human prompts in a walk and classify each as decision, disclosure or ceremony; the ceremony count is the number that must be zero. Enforcement that makes the AGENT inform the human (the W25 orientation lane) is disclosure, not paperwork, and does not count against this budget.
 - **Recorded At**: 2026-08-19T12:00:00Z
+
+## 2026-08-27T10:49:39Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 66403e9bc6abbb59cb465c4974f504a7f56c9652
+- **Recorded At**: 2026-08-27T10:49:23Z
