@@ -976,7 +976,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
                 if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
                     Write-Host 'Topping up the review rounds needs a reason recorded with it.' -ForegroundColor Yellow
                     Write-Host ''
-                    Write-Host 'Run:  specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
+                    Write-Host 'Their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it, run:  specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"' -ForegroundColor Cyan
                     exit 1
                 }
                 $resetIdentity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
@@ -1647,7 +1647,7 @@ if ($Live) {
                     # SPECREW-AUTHORITY-CONSUMER: review-round-budget
                     if ([bool]$budgetState.budget_exhausted) {
                         Write-Host ("The round budget for this review is spent ({0} of {1} rounds used), so another round was not authorized." -f $budgetState.rounds_used, $budgetState.budget_total) -ForegroundColor Yellow
-                        Write-Host 'Your answer was not recorded. Reset the allowance explicitly with: specrew review --remediate allowance-reset' -ForegroundColor Cyan
+                        Write-Host 'Your answer was not recorded. Topping up the allowance is the human''s decision: their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it: specrew review --remediate allowance-reset' -ForegroundColor Cyan
                         exit 1
                     }
                 }
@@ -1813,7 +1813,7 @@ if ($Live) {
                         -RunId ([string]$entitlementOutcome.run_id) -Detail ("choice={0} after={1}" -f $retryChoice, [string]$entitlementOutcome.reason) | Out-Null
                 }
                 if (-not $Json -and -not $Quiet) {
-                    Write-Host ("The review was invoked but not delivered ({0}). Retrying once automatically ({1}); the human's approval is not spent by a failure." -f [string]$entitlementOutcome.reason, $retryChoice) -ForegroundColor Yellow
+                    Write-Host ("The review was invoked but not delivered ({0}). Retrying once automatically ({1}). Their approval is NOT spent - it still buys a delivered review - but this attempt DID use one of the review rounds, so the allowance has moved." -f [string]$entitlementOutcome.reason, $retryChoice) -ForegroundColor Yellow
                 }
                 # The retry is a fresh attempt against the SAME standing entitlement: recompute the
                 # round reference so it does not collide with the failed attempt's spent slot.

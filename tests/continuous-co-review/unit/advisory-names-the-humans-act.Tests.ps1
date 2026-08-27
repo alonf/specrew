@@ -119,6 +119,21 @@ Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming t
         # not theirs. So every reader-facing line naming --pause-choice must name at least one typed
         # decision, which makes it a MAPPING line by construction; a bare answer-channel line cannot
         # pass. The review CLI joins the file set so the terminal surfaces speak the same vocabulary.
+        # W76 (2026-08-27): THE FLAGS ARE DERIVED, NOT LISTED.
+        #
+        # This audit used to name --approve-round and --pause-choice itself. The exhaustion advisory
+        # naming `--remediate allowance-reset` was written later and nobody added it here, so THE AUDIT
+        # PASSED WHILE THE SURFACE IT POLICES WAS IN VIOLATION - and it reached a human: a downstream
+        # agent read that advisory and relayed the flag, correctly, because that is what it said.
+        #
+        # A list the auditor keeps can only catch what its author remembered. Now every `--flag` in a
+        # reader-facing line is DISCOVERED, then resolved against the one table in source
+        # (Get-SpecrewAuthorityFlagPhraseMap) that the advisories themselves read. A flag in the
+        # authority table must name its phrase. A flag in neither table is reported as UNCLASSIFIED -
+        # so the next flag added forces a decision instead of passing quietly.
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        $authorityFlags = Get-SpecrewAuthorityFlagPhraseMap
+        $exemptFlags = Get-SpecrewNonAuthorityFlagExemptions
         $pauseDecisions = @('run another round', 'stop the review here', 'abandon')
         $files = @(Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review') -Filter '*.ps1' -File | ForEach-Object { $_.FullName })
         $files += (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1')
@@ -131,18 +146,37 @@ Describe 'W44 THE GENERAL PROPERTY - no advisory names the flag without naming t
                 if ($trimmed.StartsWith('#')) { continue }
                 # A line that merely parses, matches, aliases or pattern-cases the flag is not an advisory.
                 if ($line.Contains('-cmatch') -or $line.Contains('-match') -or $line.Contains('Alias(') -or $trimmed.StartsWith("'^--")) { continue }
-                if ($line.Contains($script:ApprovalFlag) -and -not (Test-NamesTheDecision -Text $line)) {
-                    [void]$offenders.Add("$(Split-Path -Leaf $file):$lineNumber [approve-round]")
+
+                # Longest form first, so `--remediate allowance-reset` is not mistaken for a bare
+                # `--remediate` and waved through by its exemption.
+                foreach ($flag in @($authorityFlags.Keys | Sort-Object { $_.Length } -Descending)) {
+                    if (-not $line.Contains($flag)) { continue }
+                    $namesIt = if ($flag -ceq '--pause-choice') {
+                        $lower = $line.ToLowerInvariant()
+                        @($pauseDecisions | Where-Object { $lower.Contains($_) }).Count -gt 0
+                    }
+                    elseif ($flag -ceq '--approve-round') { Test-NamesTheDecision -Text $line }
+                    else { $line.Contains([string]$authorityFlags[$flag]) }
+                    if (-not $namesIt) { [void]$offenders.Add("$(Split-Path -Leaf $file):$lineNumber [$flag]") }
+                    break
                 }
-                if ($line.Contains('--pause-choice')) {
-                    $lower = $line.ToLowerInvariant()
-                    $namesADecision = $false
-                    foreach ($decision in $pauseDecisions) { if ($lower.Contains($decision)) { $namesADecision = $true; break } }
-                    if (-not $namesADecision) { [void]$offenders.Add("$(Split-Path -Leaf $file):$lineNumber [pause-choice]") }
+
+                # UNCLASSIFIED flags: SPECREW'S OWN, discovered in a line that advises running a
+                # `specrew review` command. Scoped that way deliberately - the first cut matched every
+                # `--` token in these files and reported 108 offenders, almost all of them git plumbing
+                # (`--name-only`, `--show-toplevel`) and reviewer-host argv, which are command
+                # CONSTRUCTION and address no reader. An audit that cries wolf about 106 non-issues is
+                # one nobody will keep, and its two real findings would have drowned in the noise.
+                if ($line -notmatch '(?i)specrew\s+review') { continue }
+                foreach ($m in [regex]::Matches($line, '--[a-z][a-z0-9-]{2,}')) {
+                    $found = [string]$m.Value
+                    if ($authorityFlags.ContainsKey($found) -or $exemptFlags.ContainsKey($found)) { continue }
+                    if (@($authorityFlags.Keys | Where-Object { $_.StartsWith($found + ' ') }).Count -gt 0) { continue }
+                    [void]$offenders.Add("$(Split-Path -Leaf $file):$lineNumber [$found is UNCLASSIFIED - add it to the authority table or the exemption table]")
                 }
             }
         }
-        @($offenders).Count | Should -Be 0 -Because "every reader-facing line naming an answer flag must name the typed decision it carries (offenders: $($offenders -join ', '))"
+        @($offenders).Count | Should -Be 0 -Because "every reader-facing line naming an answer flag must name the typed decision it carries, and every flag must be classified (offenders: $($offenders -join ', '))"
     }
 
     It 'W54: every surface naming a captured phrase says it arrives as a normal chat message' {

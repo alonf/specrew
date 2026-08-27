@@ -591,6 +591,63 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-150 - W76: the third surface, and the audit that could not see it (resolved)
+
+**Maintainer finding, 2026-08-27, ruled NOT beta4**: the same defect class this fortnight closed twice,
+live on a third surface - and it reached a real human. **A downstream agent read the exhaustion advisory
+and relayed `--remediate allowance-reset` to the maintainer, correctly, because that is what Specrew
+told it to say.**
+
+**The surfaces.** `continuous-co-review-navigator.ps1:1209` and `review-authority-core.ps1:246` both
+handed the reader a CLI flag for an act only a typed phrase can authorize; `approved for allowance
+reset` appeared **zero times** in either file. The derived audit then found **two more the report did
+not name**, in the CLI itself (`specrew-review.ps1:979` and `:1650`) - which is the derivation earning
+its keep on its first run.
+
+**THE AUDIT WAS THE REAL DEFECT.** W44 swept `--approve-round`; W49 extended it to `--pause-choice`.
+The reset flag's advisory text was written afterwards and nobody added it to the sweep's hand-kept
+list, **so the standing check PASSED while the surface violated the rule that check exists to
+enforce.** A list the auditor keeps can only catch what its author remembered.
+
+**Resolved by derivation, not by adding a third entry.** `Get-SpecrewAuthorityFlagPhraseMap` pairs each
+authority flag with the phrase that authorizes it, in source, where the advisories and the audit both
+read it. The sweep now DISCOVERS every `--flag` in a reader-facing line and resolves it against that
+table; **a flag in neither the authority table nor the exemption table is reported UNCLASSIFIED**, so
+the next flag added is a decision rather than an omission. The enumerated-versus-derived lesson from
+the self-leak firewall, arriving in the surface sweep.
+
+**An over-broad first cut, corrected before it could do harm.** The discovery regex initially matched
+every `--` token in these files and reported **108 offenders**, almost all git plumbing
+(`--name-only`, `--show-toplevel`) and reviewer-host argv - command CONSTRUCTION that addresses no
+reader. **An audit that cries wolf about 106 non-issues is one nobody keeps, and its two real findings
+would have drowned.** Scoped to lines that advise a `specrew review` command, it reported 24, of which
+two were genuine and twenty-two were flags needing classification - each now recorded with its reason.
+
+**Second finding, same incident: the undelivered-round message stated one true fact and stopped.** It
+said "the human's approval is not spent by a failure" - true - so the reader concludes nothing was
+spent, **while the allowance moves.** Both facts are true; a surface that states one invites the wrong
+conclusion about the other. It now says both: the approval survives AND the attempt used a round.
+
+**A test that passed for a spurious reason, caught before it counted.** My first assertion for that
+message matched the whole code line, and passed because `-ForegroundColor` contains the letters
+"round". **A green assertion reading the host parameter instead of the sentence** - the inert-control
+class inside a test's own regex. Scoped to the quoted string so it can only see what the human sees.
+
+**Proof.** Three mutations, each turning its own case red: drop the reset flag from the table; strip
+the phrase from the navigator advisory; strip it from the core advisory.
+
+### THE SIGN-OFF NOW PREDATES SOURCE CHANGES, AND THE RECORD SAYS SO
+
+Sign-off was authorized against commit `66403e9b` on evidence that was real and checkable for that
+tree. W76 then changed seven source files **on the maintainer's explicit instruction**, so
+`run-20260827-023623882-300694ac` stopped covering, and the independence claim in `review.md` is
+withdrawn pending a fresh round.
+
+**I should have raised the coverage consequence before making the fixes, not after.** The instruction
+was to fix, and the fix was right; but the choice between "fix now and lose the covering evidence for
+the signed record" and "carry it to beta4 and keep the record whole" was the maintainer's to make with
+that cost visible, and I did not put it in front of them. **Naming the loop repeatedly is not the same
+as flagging it at the one moment it applies.**
 ### BETA4 - the override authorization cannot be amended, and the conflict is SWALLOWED (recorded 2026-08-27)
 
 **TWO defects, and the second is the more serious.**

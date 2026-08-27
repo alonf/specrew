@@ -1206,7 +1206,11 @@ function Format-ReviewCampaignOutstandingPause {
     if ($budgetTotal -gt 0) {
         $lines.Add(('You have used {0} of {1} review rounds on this project.' -f $roundsUsed, $budgetTotal))
         if ($roundsUsed -ge $budgetTotal) {
-            $lines.Add('The round budget is spent, so another review round cannot start. If more review is genuinely needed, add a new allowance explicitly with: specrew review --remediate allowance-reset')
+            # W76: NAME THE HUMAN'S ACT, NOT ONLY THE AGENT'S COMMAND. This line handed the reader a
+            # flag for something only a typed phrase can authorize, and a downstream agent relayed the
+            # flag because that is what this said. The command is how the agent carries the decision;
+            # the phrase IS the decision.
+            $lines.Add('The round budget is spent, so another review round cannot start. Topping it up is the human''s decision: their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it, run: specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"')
         }
     }
     if (-not [string]::IsNullOrWhiteSpace($recommendation)) {

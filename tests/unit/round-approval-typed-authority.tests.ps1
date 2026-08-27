@@ -2506,3 +2506,73 @@ Describe 'W75 round 31: a damaged ledger must not end the project, and a followi
         }
     }
 }
+
+Describe 'W76 the third surface: the reset advisory names a flag and never the phrase, and the sweep could not see it' {
+    # Maintainer finding, 2026-08-27. NOT beta4 - the same defect class this fortnight closed twice,
+    # live on a third surface, and it reached a real human: a downstream agent read the exhaustion
+    # advisory and relayed `--remediate allowance-reset` to the maintainer, correctly, because that is
+    # what Specrew told it to say.
+    #
+    # W44 swept --approve-round. W49 extended the sweep to --pause-choice. The reset flag's advisory
+    # text was added afterwards and was never swept - so the standing check PASSED while the surface
+    # violated the rule that check exists to enforce.
+    #
+    # THE SWEEP IS THE REAL DEFECT. It enumerated two flags by hand, so it could only ever catch the
+    # flags someone remembered to add to it. That is the enumerated-versus-derived lesson from the
+    # self-leak firewall, arriving in the surface sweep - and it is why fixing only the two advisory
+    # lines would leave the next flag to repeat this exactly.
+
+    BeforeAll {
+        $script:CoReviewSources = @(
+            (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+            (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-authority-core.ps1')
+        )
+    }
+
+    It 'RED-FIRST: the exhaustion advisories name the typed phrase, not only the flag' {
+        foreach ($source in $script:CoReviewSources) {
+            $text = Get-Content -LiteralPath $source -Raw -Encoding UTF8
+            if (-not $text.Contains('--remediate allowance-reset')) { continue }
+            $text | Should -Match 'approved for allowance reset' -Because (
+                (Split-Path -Leaf $source) + ' hands the human a CLI flag for an act only their typed phrase can authorize')
+        }
+    }
+
+    It 'RED-FIRST: the sweep DERIVES the authority flags it checks, rather than listing them' {
+        # The fix that matters. A sweep that names its own flags can only catch the ones its author
+        # thought of; the flag added next quarter walks past it in silence, which is exactly what
+        # happened here.
+        $sweep = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'tests/continuous-co-review/unit/advisory-names-the-humans-act.Tests.ps1') -Raw -Encoding UTF8
+        $sweep | Should -Match 'Get-SpecrewAuthorityFlagPhraseMap' -Because 'one table, read by the sweep, so a new flag is a decision rather than an omission'
+        # And the table must live in SOURCE, where the advisories can read it too - not in the test.
+        $store = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1') -Raw -Encoding UTF8
+        $store | Should -Match 'function Get-SpecrewAuthorityFlagPhraseMap' -Because 'the advisory and its audit must read the same table, or they can disagree again'
+    }
+
+    It 'RED-FIRST: an authority flag appearing in an advisory with NO table entry fails the sweep' {
+        # The derivation''s teeth: the sweep discovers flags from what the surfaces actually say. A flag
+        # it has never heard of is a decision someone must make, not something to skip quietly.
+        . (Join-Path $script:RepoRoot 'scripts/internal/bootstrap/HumanAuthorityStore.ps1')
+        $map = Get-SpecrewAuthorityFlagPhraseMap
+        $map.Keys | Should -Contain '--approve-round'
+        $map.Keys | Should -Contain '--pause-choice'
+        $map.Keys | Should -Contain '--remediate allowance-reset' -Because 'the flag that started this must be in the table it should always have been in'
+        [string]$map['--remediate allowance-reset'] | Should -Be 'approved for allowance reset'
+    }
+
+    It 'RED-FIRST: an undelivered round says BOTH facts - the approval survives AND the round is spent' {
+        # Second finding, same incident. The message states one true fact and stops, and the human
+        # reasons about the other: "not spent by a failure" reads as "nothing was spent" while the
+        # allowance moves underneath. Both facts are true; a surface that states one of them invites
+        # the wrong conclusion about the one it omits.
+        $cli = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw -Encoding UTF8
+        # THE QUOTED MESSAGE, not the code line. The first cut matched the whole line and passed
+        # because `-ForegroundColor` contains the letters "round" - a green assertion that read the
+        # host parameter instead of the sentence, which is the inert-control class inside a test's own
+        # regex. Scoped to the string literal so it can only see what the human sees.
+        $message = [regex]::Match($cli, '"The review was invoked but not delivered[^"]*"').Value
+        $message | Should -Not -BeNullOrEmpty
+        $message | Should -Match 'approval' -Because 'the entitlement surviving is the reassuring half and must stay'
+        $message | Should -Match '(?i)\bround\b|\ballowance\b' -Because 'the round IS spent, and a message that omits it lets the human conclude nothing was'
+    }
+}

@@ -243,7 +243,8 @@ function Resolve-ReviewCampaignPauseDecision {
     $budgetRefusal = if ($budgetExhausted) {
         ('The round budget for this review is spent ({0} of {1} rounds used), so another round is not on offer. ' -f $RoundsUsed, $BudgetTotal) +
         'That limit exists because repeated rounds keep costing you time and money long after they stop finding much. ' +
-        'If this review genuinely needs more rounds, you can top the allowance up yourself with: specrew review --remediate allowance-reset'
+        # W76: the phrase before the flag, for the reason recorded in Get-SpecrewAuthorityFlagPhraseMap.
+        'If this review genuinely needs more rounds, the human can top the allowance up: their typed reply `approved for allowance reset`, as a normal chat message - a reply inside a question UI or picker is not captured. Once they have typed it: specrew review --remediate allowance-reset --ack-reason "why this review needs more rounds"'
     }
     else { $null }
 

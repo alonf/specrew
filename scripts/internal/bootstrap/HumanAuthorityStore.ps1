@@ -502,6 +502,66 @@ function Write-SpecrewReviewRoundApprovalAuthorization {
     return $fact
 }
 
+function Get-SpecrewAuthorityFlagPhraseMap {
+    # W76 (maintainer finding, 2026-08-27): ONE TABLE PAIRING EACH AUTHORITY FLAG WITH THE PHRASE THAT
+    # ACTUALLY AUTHORIZES IT - read by the advisories that print them AND by the audit that checks them.
+    #
+    # This exists because the audit could not see a surface it was written to police. W44 swept
+    # `--approve-round`; W49 extended the sweep to `--pause-choice`; the exhaustion advisory naming
+    # `--remediate allowance-reset` was written afterwards and nobody added it to the sweep's hand-kept
+    # list. **So the standing check PASSED while the surface violated the rule that check enforces**,
+    # and it reached a human: a downstream agent read the advisory and relayed the flag, correctly,
+    # because that is what Specrew told it to say.
+    #
+    # A LIST THE AUDITOR KEEPS CAN ONLY CATCH WHAT ITS AUTHOR REMEMBERED. The audit now derives its
+    # flags from the surfaces themselves and resolves each against this table; a flag with no entry is
+    # a decision someone must make, not a gap that passes quietly. Adding a flag here is the one step
+    # that makes both the advisory and its audit correct at once - the enumerated-versus-derived lesson
+    # from the self-leak firewall, arriving in the surface sweep.
+    #
+    # A flag is IN THIS TABLE when running it carries a human's typed authority. Flags that carry no
+    # authority - `--live`, `--run-id`, `--ack-reason`, `--host` - are listed as exempt below, with the
+    # reason, so "not authority-bearing" is also a recorded decision rather than an omission.
+    [OutputType([hashtable])]
+    param()
+    return @{
+        '--approve-round'             = 'approved for review round'
+        '--pause-choice'              = 'stop the review here'
+        '--remediate allowance-reset' = 'approved for allowance reset'
+    }
+}
+
+function Get-SpecrewNonAuthorityFlagExemptions {
+    # Flags that appear in reader-facing text and carry NO human authority, each with the reason it is
+    # exempt. Kept beside the authority table so the audit can tell "not authority" from "forgotten",
+    # which is the distinction the sweep could not previously make.
+    [OutputType([hashtable])]
+    param()
+    return @{
+        '--live'            = 'selects the live engine; authorizes nothing'
+        '--run-id'          = 'names an existing run; authorizes nothing'
+        '--ack-reason'      = 'carries the human''s stated reason, and is refused without the typed phrase that authorizes the act'
+        '--host'            = 'selects the reviewer harness; authorizes nothing'
+        '--project-path'    = 'locates the project; authorizes nothing'
+        '--json'            = 'output shape; authorizes nothing'
+        '--remediate'       = 'the bare flag names a remediation FAMILY; each authority-bearing member is listed in the authority table by its full form'
+        '--feature'         = 'selects which feature to act on; authorizes nothing'
+        '--iteration'       = 'selects which iteration to act on; authorizes nothing'
+        '--quiet'           = 'suppresses output; authorizes nothing'
+        '--open'            = 'opens a rendered artifact for reading; authorizes nothing'
+        '--baseline-ref'    = 'names a comparison point; authorizes nothing'
+        '--checkpoint-id'   = 'names an existing checkpoint; authorizes nothing'
+        '--reconcile-run'   = 'repairs bookkeeping for a run that already happened; grants no new round'
+        '--reconcile'       = 'repairs bookkeeping; grants nothing'
+        '--timeout-seconds' = 'bounds how long a reviewer may run; authorizes nothing'
+        '--scope'           = 'narrows what is examined; authorizes nothing'
+        '--list-hosts'      = 'prints the reviewer catalogue; authorizes nothing'
+        '--ack-degraded'    = 'acknowledges a degraded runtime so the reason is recorded; it does not authorize a review, and the typed phrase is still required to run one'
+        '--flag'            = 'appears only as prose about flags in general, never as a command to run'
+        '--authorization-ref' = 'LABELS where an approval came from; it records provenance and explicitly does not stand in for one. Its own advisory says so, and the gate says command-line identity fields are not authority.'
+    }
+}
+
 function Get-SpecrewTypedTurnIdentity {
     # W69 (maintainer ruling, 2026-08-26): THE TURN IS THE ACT; THE PHRASE IS ONLY ITS CONTENT.
     #
