@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "62daed83d349d5ebafe9bb76611e5a41c78d85772d4512627834ff742875771e",
+  "runtime_bundle_sha256": "768a08fc84e5d8daa7c1fd307dda63aa6ea3732a02b8c4242853f8684eaf77b1",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -157,7 +157,7 @@
     },
     {
       "path": "review-signoff-evidence-gate.ps1",
-      "sha256": "109a0dfde1a3e9409e698be2e98723f008cfdadb2e06a8428adbe18b229ab65b"
+      "sha256": "44850292751ccfb0e9efde4e8978d140255b1112abe428a0aa605df1cc7ac8d0"
     },
     {
       "path": "review-target-port.ps1",
@@ -201,7 +201,7 @@
     },
     {
       "path": "signoff-gate-wiring.ps1",
-      "sha256": "22e6be2a095fa7f3d072eb99992932812b7a70293e8ef8053db79a99d28903a7"
+      "sha256": "d5e2743c1422888beb3b7ef2f4b26277a17f01f55ae53a68d36e6c88d96f152a"
     },
     {
       "path": "stop-intent-contract.ps1",
