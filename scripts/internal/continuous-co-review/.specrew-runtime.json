@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "4c43d119b3823168070e86f43a0269d20bfdbc0551361da0cf33af3cfd97e160",
+  "runtime_bundle_sha256": "62daed83d349d5ebafe9bb76611e5a41c78d85772d4512627834ff742875771e",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -25,7 +25,7 @@
     },
     {
       "path": "continuous-co-review-navigator.ps1",
-      "sha256": "ced43685686b6a1e353d6fa848f2751b4d4aa044196c2a9a777c2d8478edef0f"
+      "sha256": "eed3d5c189660916b0b17dc50f966be10180247329658165b8d0fa8c511e96e3"
     },
     {
       "path": "escalation-latch.ps1",
@@ -61,7 +61,7 @@
     },
     {
       "path": "review-authority-core.ps1",
-      "sha256": "108bdaa44bd83f13a0409b78c2e168ae521d73194e55055332d9efa5e41e806f"
+      "sha256": "f25a9fbeedea5cf83a7dc68d5d46e3933befbe88c7bbe852a16d84b8f9690d24"
     },
     {
       "path": "review-authority-cutover.ps1",
