@@ -591,6 +591,61 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-149 - round 33 DELIVERED and covers the signed-off tree; three findings, none blocking
+
+`run-20260827-023623882-300694ac`, codex, terminal / complete / **current** / valid, 973.7s, 22 source
+paths of 28 declared, against tree `1b50ae60` (= commit `081d74ba`). **This is the covering evidence
+the sign-off rests on**, and the only commits after it are this entry and the record describing it.
+
+**One `[major]`, and it is an INCOMPLETE FIX OF MINE from the previous round.** W75 taught
+`Test-SpecrewHumanVerdictToken` to split question and condition clauses at newlines, but
+`$isRecognizedPhrase` still does not accept a newline as the delimiter after a BARE `approved`. So
+`approved` + newline + `When the cleanup finishes...` still falls through and the condition check
+rejects a valid verdict. **The FR-010 defect was narrowed, not removed** - I fixed the delimited-clause
+forms and missed the bare form one branch over. Recoverable by retyping, unlike the outage W75 closed.
+Open, and named in `review.md` as open.
+
+**Two `[minor]`**: the starter templates sidecar (carried since round 25 by standing ruling), and the
+question-UI diagnosis covering only three of the routed phrase kinds - **which I had already recorded
+as a beta4 item on 2026-08-26, before this round independently found it.** An observation and an
+independent round agreeing is worth noting: it is the first time in this campaign that something I
+recorded as a known gap came back as a finding rather than staying quiet.
+
+### THE HARNESS COST, WITH THE NUMBER (maintainer ruling 2026-08-27, for beta4 economics)
+
+**Three harness-level failures across this campaign, two of them infrastructure rather than review:**
+
+| round | outcome | what happened |
+| --- | --- | --- |
+| 25 | partial | reviewer cut off at its 600s window having read 5 paths |
+| 31 (first attempt) | not invoked | round budget exhausted; the pause blocked the launch |
+| 32 | completion-none | reviewer exited 1 after 1,045s with **zero output** |
+
+Against 33 attempted rounds that is **roughly one in eleven yielding no evidence at all**, independent
+of code quality. **And the cost is not just the slot**: a lost round consumes the wall-clock of a
+delivered one - 600 to 1,045 seconds - while advancing nothing, and it compounds with the
+review-repair-stale loop, because the tree may move again before the retry lands.
+
+**Beta4's economics work should carry the figure rather than the impression that a round is a reliable
+unit of evidence.** The standing-grant proposal in particular is priced on rounds; one in eleven of
+them buying nothing changes that arithmetic.
+
+### A TRUE-SOUNDING CLAIM ABOUT THE STORE, BELIEVED RATHER THAN READ (recorded 2026-08-27)
+
+The maintainer wrote that a round approval was "already standing"; I repeated it and launched on that
+basis. It had been consumed by round 31 - `spent_at 02:48:27`, `ref cmp-...-round-31` - and the
+invocation refused.
+
+**Neither of us was careless. The claim was plausible, recent, and had been true a few minutes
+earlier.** What settled it was one query against the store, which is authoritative for its own state
+and cost nothing to ask. **The class is not "check more carefully" but "facts with an authoritative
+source get READ, not recalled"** - the same shape as the fixture lesson two rounds earlier (*when a
+fixture is rejected by a contract, ask the contract*), with a different oracle.
+
+**The refusal cost nothing**, which is the W50 entitlement model working exactly as designed: the
+invocation spent no round and no capture, and the failure surfaced immediately instead of quietly
+consuming something. A design that makes a wrong belief cheap is worth more than one that makes wrong
+beliefs rare.
 ### DRIFT-199-I001-148 - W75: round 31 - the damaged ledger that ended projects, and FR-010 on the boundary path (resolved)
 
 `run-20260826-232508244-a24252d3`, codex, terminal / complete / **current** / valid, 1,338.3s. Four

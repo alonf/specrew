@@ -7,45 +7,77 @@
 ## Independent review
 
 <!--
-  THE BLOCK IS WITHDRAWN AGAIN, and the reason is the loop itself rather than a defect.
-
-  run-20260826-102845091-9b2b1555 covered tree 2d7f2c62 and returned three findings. Two of them were
-  then repaired under the maintainer's 2026-08-26 allowance-reset authorization, which moved the tree,
-  which is precisely what stops that run from describing it. The validator says so exactly:
-
-    it reviewed tree 2d7f2c62 and 2 source file(s) have changed since:
-    scripts/internal/bootstrap/HumanAuthorityStore.ps1, tests/unit/round-approval-typed-authority.tests.ps1
-
-  A round is authorized and about to run against the repaired tree. The block is restored naming that
-  run, not this one.
+  The block below is DERIVED from the review store and recomputed at validation. It cannot be authored
+  or edited here; the prose around it is what this record says for itself.
 -->
 
-**The last covering round was `run-20260826-102845091-9b2b1555`** - codex, terminal / complete /
-current / valid, 21 source paths of 25 declared, against tree `2d7f2c62`. It returned three findings,
-all classified minor, two of them demoted from major by the engine for want of a concrete failure
-scenario.
+<!-- SPECREW-DERIVED-INDEPENDENT-REVIEW v1 -->
+<!-- Derived from the review authority store. Do not hand-edit: the validator recomputes it. -->
+- Run: run-20260827-023623882-300694ac (harness codex-cli-file-primary)
+- Outcome: findings, complete, current, valid - 3 finding(s)
+- Reviewed tree: 1b50ae6094439e649238c02df76293da26e2c3ce
+- Coverage: 22 source path(s) of 28 declared and checked against the frozen target.
+<!-- /SPECREW-DERIVED-INDEPENDENT-REVIEW -->
 
-**Two of the three are now repaired**, under the maintainer's authorization to reset the round
-allowance rather than carry them as open items:
+### What this record rests on, stated rather than implied
 
-1. a failed withdrawal delete left the retracted approval spendable - the fail-open class, and the
-   most severe this system has by the maintainer's 2026-08-26 ruling. The reader now consults the
-   withdrawal journal, so a delete that loses a race cannot hand back authority the human took away.
-2. a pause decision could bind to an already-answered pause from another campaign, wedging the live
-   one. An answered pause is now excluded, as the canonical reader has always excluded it.
+**The run**: `run-20260827-023623882-300694ac`, an independent codex round invoked under verified
+containment against a frozen copy of this tree, 973.7s, terminal / complete / **current** / valid.
 
-The third - an interrupted starter materialization cannot restore its templates sidecar - is carried
-as an open finding, not repaired.
+**The tree it read**: reviewed-state digest `1b50ae6094439e649238c02df76293da26e2c3ce`, which is the
+tree at commit `081d74ba`.
 
-**So this record currently rests on no covering round.** Repairing findings is what removed the
-coverage, which is the honest shape of a review loop and not a failure of one. The independence claim
-is withdrawn until the authorized round completes against the repaired tree.
+**What has changed between that tree and the one being signed off**: nothing in source. The only
+commits after `081d74ba` are this record and the drift-log entries describing the round itself, which
+are lifecycle execution records and do not stale a review (DRIFT-007). **The coverage gap is empty**,
+and that is checkable rather than asserted: the validator recomputes the source-aware delta at every
+validation and refuses this record if any source file has moved.
 
-**What this record does not claim.** Its per-task verdicts and the prose around them were written by
-the implementing session, and the authorship fact says so rather than hiding it: this document
-reports `review-authorship-unobserved` for the verdicts authored on 2026-08-17, because the
-machinery that observes authorship (W34-B) did not exist then and backfilling it would be an
-assertion rather than an observation. What is mine is the judgement in the table below.
+**Coverage**: 22 of the 28 paths the reviewer declared were source; the remaining 6 were records or
+machinery.
+
+### The three findings, open and dispositioned
+
+None blocks sign-off. All three are recorded rather than repaired, and the reason is stated below.
+
+1. **`[major]` A newline still fails to delimit a BARE boundary approval.** `Test-SpecrewHumanVerdictToken`
+   now splits question and condition clauses at newlines, but `$isRecognizedPhrase` does not accept a
+   newline as the delimiter after a bare `approved`. So `approved` + newline + `When the cleanup
+   finishes, start the retro.` still falls through and the condition check rejects the verdict, leaving
+   the human to retype - contrary to FR-010.
+   **This is an INCOMPLETE FIX OF MINE, from the same round**: W75 closed the delimited-clause forms
+   and missed the bare-approval form one branch over. It is the FR-010 defect narrowed, not removed.
+   Recoverable by retyping, unlike the ledger outage W75 closed.
+2. **`[minor]` Interrupted starter creation permanently omits the templates sidecar.** The materializer
+   writes the plan before its sidecar; an interruption between them leaves an unmarked plan that the
+   next init preserves as an explicit user plan, so the FR-012 templates are never restored. Carried
+   since round 25 by standing ruling.
+3. **`[minor]` Pause decisions are omitted from the question-UI refusal diagnosis.** The router offers
+   typed turns to the pause-decision and withdrawal writers, but the question-UI detector still knows
+   only three phrase kinds, so a picker-mediated `stop the review here` produces the generic refusal
+   and the agent may re-ask through the same invalid UI. Recorded as a beta4 item on 2026-08-26,
+   before this round independently found it.
+
+### Why these are open rather than fixed
+
+**Repairing a finding invalidates the round that found it.** The reviewed tree is frozen at invocation;
+any source change moves the digest, and the run stops covering the tree being signed off. Thirty-three
+rounds have not produced a zero-finding result, so "fix everything, then obtain covering evidence" has
+no terminal state short of one. The maintainer ruled on 2026-08-27 that the bar for this sign-off is
+the disposition of what is known, not the absence of findings.
+
+**What this record therefore claims**: an independent review covering the source as it stands, with
+three known open findings, one of them a partial fix of this session's own work. **It does not claim
+they are absent, and it does not claim they are harmless.**
+
+### What this record does not claim
+
+Its per-task verdicts and the prose around them were written by the implementing session, and the
+authorship fact says so rather than hiding it: this document reports `review-authorship-unobserved`
+for the verdicts authored on 2026-08-17, because the machinery that observes authorship (W34-B) did
+not exist then and backfilling it would be an assertion rather than an observation. What is
+independent here is the run the block names. What is mine is the judgement in the table below.
+
 ## Task Verdicts
 
 | Task | Requirement | Verdict | Notes |
