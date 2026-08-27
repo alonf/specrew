@@ -37,8 +37,25 @@ to third-party content.
 
 ## What
 
-A **skills lens** in the design workshop, running after the code/technology lens — the point
-where both selectors (domain and stack) are known — that:
+**Not a lens of its own.** A capability the workshop invokes, with two fixed touchpoints and
+demand-driven acquisition between them. This shape is corrected from the original proposal by
+field evidence — see *Timing, corrected by the field* below.
+
+**Touchpoint 1 — inventory, once, immediately after product-domain.** Cheap and offline: what is
+already installed, project-level and (read-only) user-level, reported per host so coverage gaps
+are visible ("this skill exists for claude; this project's crew runs copilot"). No network, no
+installs, no decisions. Its purpose is to tell the workshop what expertise it already has, which
+is what any later lens needs in order to know what it lacks.
+
+**Between them — acquisition on demand, at the lens that needs it.** The trigger is not a
+schedule: it is a lens reaching a question the project's current knowledge cannot answer well,
+stated as such. That moment is when a proposal is made and a decision taken.
+
+**Touchpoint 2 — a closing pass before planning**, for implementation-time skills the
+code/technology lens identified: tooling, generators, CLIs. A different category, because those
+shape how the work is done rather than what is decided.
+
+At every acquisition the capability:
 
 1. **Inventories** what is already installed: project-level skill directories across the host
    mirrors, and (read-only) user-level skill locations, reported per host so coverage gaps are
@@ -68,12 +85,50 @@ and downloads defer with a plain statement rather than failing the lens — the 
 assumption has already failed silently once in a downstream walk and is treated as the normal
 case, not the exception.
 
+### Timing, corrected by the field
+
+The original proposal placed a skills lens **after** the code/technology lens, reasoning that
+domain and stack must both be known before skills can be chosen. A dogfood walk on 2026-08-28
+disproved that, unprompted and in the first workshop to reach the UI lens.
+
+At **UI/UX — lens 4 of 6** — the agent had to answer "what should this visually follow?" for a
+WinUI reactive application and had nothing to follow. The human asked whether skills existed;
+the agent found Microsoft's official Reactor skill kit and OpenAI's curated WinUI skill, and the
+framework's own `design.md` then shaped the layout decisions. Under the original placement that
+guidance would have arrived at lens 6, two lenses after the design it governs.
+
+The premise was wrong in a specific way: **skills are not only implementation aids. They carry
+design knowledge that shapes lens decisions.** A schedule cannot know which lens will need them,
+because the need is discovered rather than planned — which is why acquisition is demand-driven
+and only inventory is scheduled.
+
+### Mid-lens installs change the agent's instructions
+
+The same walk surfaced a hazard nothing had named. The skills were installed **mid-lens**: the
+first half of UI/UX ran under one knowledge base and the second half under another, and the
+agent said so plainly — it applied the new guidance to the *next* decision in that lens.
+
+That is not wrong; new information mid-conversation is normal. But it is invisible in the record.
+The lens artifact reads as one coherent decision set when it was taken under two different sets
+of instructions, and a later reader cannot tell whether an early decision would survive the
+guidance that arrived after it. Concretely in that walk, the layout sketch was agreed before the
+framework's design guidance was read, and nobody checked whether it still held under it.
+
+Requirement: **a lens whose knowledge base changed partway through records that fact**, naming
+the acquisition and the decisions that preceded it, so those decisions are flagged for re-check
+rather than silently inheriting authority they were not given.
+
 ### Functional requirements
 
 High-level capabilities (candidate stage):
 
-- Run as a workshop lens after the code/technology lens, consuming the recorded domain and
-  stack; produce a lens record like any other (visible prose, typed human replies, receipts).
+- Run inventory once after product-domain; make its result available to every later lens so a
+  lens can state what it has before asking for more.
+- Accept an acquisition request from any lens, triggered by a stated knowledge gap rather than by
+  schedule; produce a record like any other workshop decision (visible prose, typed human
+  replies, receipts).
+- Record an acquisition against the lens that requested it, with the decisions that preceded it
+  in that lens flagged for re-check.
 - Inventory installed skills per host directory and render the coverage honestly, including
   host-format mismatches.
 - Propose from the curated registry with publisher, description, hosts served, and version
@@ -98,14 +153,15 @@ High-level capabilities (candidate stage):
 
 ## Effort
 
-- **Iteration 1 (~5 SP)**: the lens (inventory + curated-registry proposal + typed per-skill
-  decisions), project-level install via claude + copilot adapters, the skills manifest, and
-  the integrity extension.
+- **Iteration 1 (~6 SP)**: inventory at touchpoint 1; the acquisition capability callable from any
+  lens with typed per-skill decisions; curated-registry proposal; project-level install via
+  claude + copilot adapters; the skills manifest; the integrity extension; and the mid-lens
+  knowledge-change record.
 - **Iteration 2 (~3 SP)**: remaining host adapters (cursor, codex/agents), registry
   extensibility per project, decline/defer records surfaced at later lenses.
 - **Iteration 3 (~2-4 SP)**: flagged web-search fallback with unvetted-source labeling;
   user-level install consent design if demand exists.
-- **Total**: ~10 SP (8-12 range).
+- **Total**: ~11 SP (9-13 range).
 
 ## Phase placement
 
