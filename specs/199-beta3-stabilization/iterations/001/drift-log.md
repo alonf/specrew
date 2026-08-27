@@ -591,6 +591,31 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### RULING 2026-08-27 - ONE COVERING ROUND ON THE TREE THAT SHIPS, NOT A SEQUENCE ON TREES NOBODY RELEASES
+
+The hold on the tree was released by the maintainer as wrong-headed, with the reasoning recorded here
+because it settles how coverage is treated for the rest of this release:
+
+> Both walks exist to find defects, defects get fixed, fixes move the tree. Round 33's coverage was
+> never going to survive to the tag; it was going to be spent by the first walk finding regardless of
+> what anyone did. Holding preserved something that could not be preserved, at the cost of the ability
+> to fix things already called tag-blocking.
+
+**The frame from here**: fix what the walks report; accept that coverage goes stale each time and SAY
+SO plainly; and when both walks are finished and the tree is genuinely settled, take ONE covering round
+on the tree that actually ships.
+
+**Why this is the right shape and the previous practice was not.** Thirty-three rounds were spent
+chasing covering evidence for trees that then moved - each round costing 600 to 1,300 seconds and one
+slot, and each fix invalidating the round that prompted it. **A covering round is only worth what the
+tree it covers is worth**, and a tree that is about to change is worth nothing to cover. The loop was
+never converging because convergence was not available: the walks are still finding defects, and a
+defect found is a tree moved.
+
+**What replaces the per-fix round is the RECORD, not another round.** Each stale-out is stated plainly
+in `review.md` - which run covered which tree, and exactly what moved since - so the gap is always
+visible and checkable rather than implied. The record states its own limit continuously; the covering
+evidence arrives once, at the end, against the artifact that ships.
 ### DRIFT-199-I001-150 - W76: the third surface, and the audit that could not see it (resolved)
 
 **Maintainer finding, 2026-08-27, ruled NOT beta4**: the same defect class this fortnight closed twice,
@@ -643,11 +668,14 @@ tree. W76 then changed seven source files **on the maintainer's explicit instruc
 `run-20260827-023623882-300694ac` stopped covering, and the independence claim in `review.md` is
 withdrawn pending a fresh round.
 
-**I should have raised the coverage consequence before making the fixes, not after.** The instruction
-was to fix, and the fix was right; but the choice between "fix now and lose the covering evidence for
-the signed record" and "carry it to beta4 and keep the record whole" was the maintainer's to make with
-that cost visible, and I did not put it in front of them. **Naming the loop repeatedly is not the same
-as flagging it at the one moment it applies.**
+**I should have raised the coverage consequence before making the fixes, not after.** Naming the loop
+repeatedly is not the same as flagging it at the one moment it applies.
+
+**AMENDED 2026-08-27 at the maintainer's correction, because a one-sided attribution is not an honest
+record.** Their ruling: *"the price should have been named at decision time by whoever named the
+priority, and that was me."* Both halves are true and neither cancels the other - the agent saw the
+cost and reported it late; the person setting the priority owned naming its price. Recorded on both
+sides rather than settled onto one.
 ### BETA4 - the override authorization cannot be amended, and the conflict is SWALLOWED (recorded 2026-08-27)
 
 **TWO defects, and the second is the more serious.**
