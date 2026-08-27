@@ -141,6 +141,21 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
             # SPECREW-AUTHORITY-CONSUMER: partial-review-signoff
             $capturedOverride = Get-SpecrewReviewSignoffOverrideAuthorization -ProjectRoot $ProjectRoot `
                 -ExpectedTargetTreeId $treeId -ExpectedCampaignId $campaignId
+            # W77: THE ACCEPTANCE CARRIES ACROSS THE COMMITS THIS GATE'S OWN PREFLIGHT DEMANDED.
+            #
+            # The lookup above is exact-tree, so an acceptance typed at the landing is orphaned the
+            # moment the sync's preflight requires the lint commits and the owed review.md - the gate
+            # then refuses a movement it caused, and asks the human to authorize the same gap twice.
+            # Carried only across a RECORDS-ONLY delta: no source moved, so the coverage gap the human
+            # accepted is the same gap. A source delta still refuses, correctly.
+            if ($null -eq $capturedOverride -and (Get-Command Get-SpecrewCarriedSignoffOverrideAuthorization -ErrorAction SilentlyContinue)) {
+                $featureRef = if ($decision.PSObject.Properties['feature_id']) { [string]$decision.feature_id } else { '' }
+                try {
+                    $capturedOverride = Get-SpecrewCarriedSignoffOverrideAuthorization -ProjectRoot $ProjectRoot `
+                        -CurrentTreeId $treeId -CampaignId $campaignId -FeatureId $featureRef
+                }
+                catch { $capturedOverride = $null }
+            }
             if ($null -ne $capturedOverride) {
                 $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -OverrideAuthorization $capturedOverride
             }

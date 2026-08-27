@@ -591,6 +591,51 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-151 - W77: the sync's preflight moved the tree its own gate then refused as moved (resolved)
+
+**KeyContextAI walk finding, 2026-08-27.** Measured on a real landing: partial signoff accepted, the
+landing completes, the sync runs, its preflight demands the lint commits and the owed `review.md`,
+**those commits move the tree**, and the sync's gate re-evaluates coverage against the new digest and
+refuses - **asking the human to authorize the same gap a second time because the machinery moved it in
+between.**
+
+**Same family as DRIFT-008 and the digest race: a gate reasoning about a delta that exists BECAUSE OF
+the gate.** The only escape was chaining the commit and the sync in a single invocation so nothing
+moved in the window - **a workaround the operator has to discover, which is not a control.**
+
+**The mechanism, verified at source.** `gate-preflight.ps1` requires `pushed-head`, `working-tree` and
+`owed-artifact` - all three satisfied only by committing and pushing. `signoff-gate-wiring.ps1` then
+looks the acceptance up with `-ExpectedTargetTreeId` set to the tree AT GATE TIME, so an acceptance
+captured at the landing is orphaned the instant the preflight's own commits produce a new digest.
+Landing and sync judged coverage independently, and an acceptance spent at one did not carry to the
+other.
+
+**Resolved with the narrow rule, not the convenient one.** `Get-SpecrewCarriedSignoffOverrideAuthorization`
+carries an acceptance across a **RECORDS-ONLY** delta and only that: the human accepted a COVERAGE GAP,
+and records moving does not change that gap because no source moved. It is the same source-aware
+question DRIFT-007 settled everywhere else, asked here of the ACCEPTANCE rather than of the run. A
+source delta still refuses - that is a genuinely different gap and deserves a fresh acceptance - and
+the carry is scoped to the campaign the acceptance was typed against.
+
+**I had hit this three times myself in this session and never named it.** Each time I committed
+records, re-ran the sync, and treated the refusal as the normal cost of moving. The walk named it in
+one paragraph. **A defect you route around often enough stops looking like a defect** - which is the
+argument for the walks existing at all, and the reason "the operator discovers a workaround" belongs
+in the finding rather than in the folklore.
+
+**Proof.** Three mutations, each turning its own case red: drop the records-only rule from the carry;
+drop the campaign scope; disable the wiring's call.
+
+**A structural assertion that could not see a disabled call.** The wiring case first asserted only that
+the call EXISTS, so replacing its guard with `if ($false)` left the text in place and the case green -
+the inert-control class, inside a test, for the eleventh time in this feature. Now the guard must
+branch on `$capturedOverride`, so a constant-false guard shows up as a missing reference. **Stated in
+the test as still structural**: it proves the call is wired and reachable, not that the gate allows;
+the three cases above prove the rule itself against real git trees.
+
+**Coverage: this fix moves the tree again, and no run covers it.** Per the 2026-08-27 ruling, that is
+expected and stated rather than chased - the covering round comes once, at the end, on the tree that
+ships.
 ### RULING 2026-08-27 - ONE COVERING ROUND ON THE TREE THAT SHIPS, NOT A SEQUENCE ON TREES NOBODY RELEASES
 
 The hold on the tree was released by the maintainer as wrong-headed, with the reasoning recorded here

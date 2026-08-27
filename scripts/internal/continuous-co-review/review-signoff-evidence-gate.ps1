@@ -345,6 +345,66 @@ function New-ReviewCampaignVerdictPacketDecision {
     }
 }
 
+function Get-SpecrewCarriedSignoffOverrideAuthorization {
+    # W77 (KeyContextAI walk, 2026-08-27): THE SYNC'S PREFLIGHT MOVES THE TREE ITS OWN GATE THEN
+    # REFUSES AS MOVED.
+    #
+    # Measured on a real landing: partial signoff accepted, landing completes, sync runs, its preflight
+    # demands the lint commits and the owed review.md, THOSE COMMITS MOVE THE TREE, and the gate
+    # re-evaluates coverage against the new digest and refuses - **asking the human to authorize the
+    # same gap a second time because the machinery moved it in between.** The override is looked up by
+    # the tree AT GATE TIME, so an acceptance captured for tree T is orphaned the instant the
+    # preflight's own commits produce T'. Landing and sync judged coverage independently, and an
+    # acceptance spent at one did not carry to the other.
+    #
+    # Same family as DRIFT-008 and the digest race: a gate reasoning about a delta that exists BECAUSE
+    # OF the gate. The only escape was chaining commit and sync in one invocation so nothing moved in
+    # the window - a workaround the operator has to discover, which is not a control.
+    #
+    # THE RULE, and it is narrow on purpose: an acceptance carries across a RECORDS-ONLY delta and only
+    # that. The human accepted a COVERAGE GAP; records moving does not change that gap, because no
+    # source moved - which is the same source-aware question DRIFT-007 settled everywhere else, asked
+    # here of the acceptance rather than of the run. If SOURCE moved in between, the gap is genuinely
+    # different and a fresh acceptance is right; this returns nothing and the gate refuses as before.
+    #
+    # Scoped to the campaign, because an acceptance is for the campaign it was typed against.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentTreeId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CampaignId,
+        [AllowEmptyString()][AllowNull()][string]$FeatureId
+    )
+    if ([string]::IsNullOrWhiteSpace($CurrentTreeId) -or [string]::IsNullOrWhiteSpace($CampaignId)) { return $null }
+    $root = Join-Path ([IO.Path]::GetFullPath($ProjectRoot)) '.specrew/review/signoff-gate/override-authorizations'
+    if (-not [IO.Directory]::Exists($root)) { return $null }
+    $best = $null
+    foreach ($file in @(Get-ChildItem -LiteralPath $root -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+        $fact = $null
+        try { $fact = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 8 -ErrorAction Stop } catch { continue }
+        if ($null -eq $fact) { continue }
+        if ([string]$fact.fact_type -cne 'review-signoff-partial-override') { continue }
+        if ([string]$fact.authority_kind -cne 'human') { continue }
+        if ([string]$fact.campaign_id -cne [string]$CampaignId) { continue }
+        $accepted = [string]$fact.target_tree_id
+        if ([string]::IsNullOrWhiteSpace($accepted)) { continue }
+        # The exact-tree case is the caller's own lookup; this answers only the moved-tree question.
+        if ($accepted -ceq [string]$CurrentTreeId) { continue }
+        $changed = @()
+        try {
+            $output = & git -C $ProjectRoot diff --name-only $accepted $CurrentTreeId 2>$null
+            if ($LASTEXITCODE -ne 0) { continue }
+            $changed = @(@($output) | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+        catch { continue }
+        if (@($changed).Count -eq 0) { continue }
+        if (-not (Test-ReviewCampaignDeltaIsRecordsOnly -ChangedPaths $changed -RepoRoot $ProjectRoot -FeatureId $FeatureId)) { continue }
+        # Newest acceptance wins, so a later one supersedes an earlier carry.
+        if ($null -eq $best -or [string]$fact.observed_at -gt [string]$best.observed_at) { $best = $fact }
+    }
+    return $best
+}
+
 function Test-ReviewCampaignDeltaIsRecordsOnly {
     # FR-009. Reviewable content is everything that is NOT the methodology machinery and NOT the
     # lifecycle records tree. The machinery list comes from the ONE FR-012 resolver so this can never
