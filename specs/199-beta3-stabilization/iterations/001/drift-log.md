@@ -591,6 +591,28 @@ dead branch.
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
 
+### DRIFT-199-I001-152 - state.md never advanced at the review-signoff crossing (resolved, records-only)
+
+**Observed**: 2026-08-29, at the opening of the beta3 tag batch, on the maintainer's instruction to
+reconstruct the position before any work starts. The authority store records the
+`before-implement -> review-signoff` crossing (approved 2026-08-27T11:00:01Z at `66403e9b`, the
+crossing recorded in commit `8c709a4d`), while `iterations/001/state.md` still said
+`Current Phase: before-implement` (committed `Updated: 2026-08-18`; the working tree carried only
+Stop-hook timestamp re-stamps on top of that).
+
+**Cause**: no writer owns advancing `state.md`'s `Current Phase` at a boundary crossing. The crossing
+recorder writes the authority store only, and `task-progress.ps1` deliberately preserves any existing
+CANONICAL phase (its healing path rewrites only non-canonical or missing values, a guard added after
+the dogfood iteration was once wrongly regressed from review-signoff to a non-canonical `implement`).
+`before-implement` is canonical, so it was preserved indefinitely. Engine-side sibling of the F-1
+inert-control family: the state exists, the writer exists, nothing connects them at the transition.
+
+**Resolution**: records-corrected by hand under the maintainer's 2026-08-29 instruction:
+`Current Phase` set to `review-signoff`, matching the authority store, which is the authoritative
+side (the crossing carries a human verdict; the phase line is its mirror). No boundary was advanced
+and no authority fact was touched by this correction. The missing transition writer itself is in
+scope for the beta3 tag batch (F-1 family).
+
 ### DRIFT-199-I001-151 - W77: the sync's preflight moved the tree its own gate then refused as moved (resolved)
 
 **KeyContextAI walk finding, 2026-08-27.** Measured on a real landing: partial signoff accepted, the
@@ -3433,7 +3455,8 @@ the campaign path freezes a whole tree rather than diffing from a baseline.
 - **Mixed line endings bit the extraction**: `invoke-module-release.ps1` has 382 CRLF lines and 47 that
   are not, so splitting on `
 ` merged lines and cut the functions at the wrong boundaries. Redone by
-  splitting on LF and keeping each line's own trailing `` as content. Related to the escape-mangling
+  splitting on LF and keeping each line's own trailing `
+` as content. Related to the escape-mangling
   class, and the same remedy: do not assume a uniform text shape you have not measured.
 
 ### DRIFT-199-I001-087 — W35 shipped a control with no producer and a door painted on the wall (resolved)
@@ -3474,7 +3497,8 @@ Two defects in the W35 fix itself, both found by review of the landed code rathe
   class as an inert guard - method rule 1 - with a narrower failure: it is live, it is just measuring
   something that is not the property.
 - **Note on recurrence**: writing these tests mangled generated PowerShell path escapes for the FOURTH
-  time this week (`` and `	` becoming CR and TAB). Working rule adopted: generated PowerShell paths
+  time this week (`
+` and `	` becoming CR and TAB). Working rule adopted: generated PowerShell paths
   use forward slashes or nested `Join-Path`, never embedded backslashes.
 
 ### DRIFT-199-I001-084 — the orientation check read the last message, and the orientation is in the first (resolved)
