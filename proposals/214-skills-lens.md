@@ -129,6 +129,9 @@ High-level capabilities (candidate stage):
   replies, receipts).
 - Record an acquisition against the lens that requested it, with the decisions that preceded it
   in that lens flagged for re-check.
+- Report an approved acquisition inline without a material-work stop; raise a stop only for
+  effects that exceeded the approval, naming them specifically (scope beyond project level,
+  PATH or environment changes, additional packages pulled in).
 - Inventory installed skills per host directory and render the coverage honestly, including
   host-format mismatches.
 - Propose from the curated registry with publisher, description, hosts served, and version
@@ -139,6 +142,24 @@ High-level capabilities (candidate stage):
   timestamp) and extend the integrity check to refuse silent drift against them.
 - Fail open into "proposed, not installed" whenever network, registry, or adapter is
   unavailable — the lens records what it could not do.
+
+### Acquisition does not interrupt the workshop
+
+An acquisition the human approved in the immediately preceding turn **must not trigger a
+material-work stop**. It reports inline — what was installed, from where, at what pinned version,
+and where it landed — and the lens continues. A packet that recites back an action the human
+authorized one turn ago surfaces nothing they do not already know, and interrupting a lens to
+deliver it costs the conversation its thread.
+
+**What does trigger a stop is anything that exceeded the approval.** In the walk that produced
+this requirement, the human approved "install both skills"; the acquisition also installed at
+**user level** rather than project level and **modified the user PATH**. Neither was asked for,
+both reach outside the project, and those are precisely the facts a stop exists to surface.
+
+The rule, stated so it generalises: **a stop is for what the human does not know.** An approved
+action reports; an unapproved effect stops. The skills capability must therefore be able to state
+the difference — which means comparing what it did against what was approved, per skill, rather
+than reporting a single undifferentiated summary.
 
 ### Out of scope
 
