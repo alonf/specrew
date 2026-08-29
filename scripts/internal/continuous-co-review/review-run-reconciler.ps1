@@ -198,6 +198,40 @@ function Invoke-ReviewRunReconciliation {
     # After this executor publishes the terminal envelope, retire any claim still owned by this run
     # in the same reconciliation call; the operation is idempotent when no active claim remains.
     Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition abandoned -ObservedAt $observedAt | Out-Null
+
+    # ANY PATH THAT SPENDS A ROUND OWES THE PAUSE THAT LETS THE HUMAN ANSWER FOR IT.
+    #
+    # This is the SECOND publish path that passes `Invoked: $true`, and until now it was the only one
+    # that never wrote a pause. The orchestrator's terminal path writes one; this one closes an
+    # interrupted invoked run as spent/abandoned and returned without one - so the round was charged to
+    # the allowance and the campaign was left with nothing for the human to answer. The next round then
+    # fails closed on `pause-record-missing-for-completed-round` and tells the human to check a folder
+    # permission. Spending the round and wedging the campaign were one act.
+    #
+    # The guard that reads pause absence reasons carefully about a pause write that FAILS; it does not
+    # consider a publish path that never ATTEMPTS one. Recorded as DRIFT-199-I002-018; fixed here rather
+    # than deferred because an interrupted long round is exactly the exposure the next round carries.
+    #
+    # ProjectName is display-only (it addresses the human in the pause surface) and is derived from the
+    # campaign identity, which encodes it - the same shape as the orchestrator's own fallback. RepoRoot
+    # comes from the recovery fact. Nothing here is invented: every input is read from a durable fact.
+    $pauseProjectName = if ([string]$CampaignId -match '^cmp-(?<name>.+)-i\d+$') { $Matches['name'] }
+    elseif (-not [string]::IsNullOrWhiteSpace([string]$recovery.git_root)) { Split-Path -Leaf ([string]$recovery.git_root) }
+    else { [string]$CampaignId }
+    try {
+        $null = Add-ReviewCampaignRoundPause -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId `
+            -TargetDigest ([string]$recovery.target_digest) -ProjectName $pauseProjectName -Result $ingress.result `
+            -ObservedAt $observedAt -RepoRoot ([string]$recovery.git_root)
+    }
+    catch {
+        # FAIL-SOFT, BUT NEVER SILENT. The same tolerance as the orchestrator's - a pause that cannot be
+        # recorded must not destroy a published result - except that the cause is written down. A
+        # fail-soft that discards its exception guarantees that whatever reads its absence will
+        # misdiagnose it, which is precisely how this defect's sibling sent a human to check a writable
+        # folder. Every fail-soft owes a trace.
+        [Console]::Error.WriteLine(("[specrew-review] WARN REVIEW_PAUSE_WRITE_FAILED_RECONCILER campaign '{0}' run '{1}': {2}" -f $CampaignId, $RunId, $_.Exception.Message))
+    }
+
     $cleanup = $null
     try { $cleanup = & $TargetPort.dispose $snapshot } catch { $cleanup = [pscustomobject]@{ removed = $false; failure_reason = $_.Exception.Message } }
     return [pscustomobject]@{

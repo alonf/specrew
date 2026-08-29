@@ -86,6 +86,22 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         $result.result.started_at | Should -Match '^2026-07-16T'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 1
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 0
+        # THE ROUND SPENT ITS SLOT, SO IT OWES THE HUMAN A PAUSE TO ANSWER.
+        #
+        # DRIFT-199-I002-018: this assertion did not exist, and the pause write beneath it had NEVER
+        # succeeded. `Add-ReviewCampaignRoundPause` was called with `-ProjectName $FeatureId` inside a
+        # function that declared no `$FeatureId` - under StrictMode it threw on argument binding every
+        # time, and a bare `catch { $roundPause = $null }` swallowed it. The result published, the round
+        # was charged, and no pause was recorded; the NEXT round then failed closed on
+        # `pause-record-missing-for-completed-round` and told the human to check a folder permission that
+        # was fine. Nothing was red, because nothing asked.
+        #
+        # $result.pause is the return-value half; pending-pause.json is the durable half the guard that
+        # blocks the next round actually reads. Both are asserted, because the defect was invisible in
+        # the first and only detectable in the second.
+        $result.pause | Should -Not -BeNullOrEmpty -Because 'a terminal round returns the pause it recorded'
+        Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/pending-pause.json') | Should -BeTrue -Because 'the durable pause fact is what the next round reads; without it the campaign wedges'
+        (Get-ReviewCampaignPendingPause -StoreRoot $context.store -CampaignId cmp-demo) | Should -Not -BeNullOrEmpty -Because 'the guard reads it through this accessor, so this is the shape that matters'
         @($events).Count | Should -BeGreaterThan 2
         @($events | Where-Object { $_.authority }).Count | Should -Be 0
         @($events | Where-Object { $null -ne $_.validated_finding_count -and $_.stage -ne 'terminal' }).Count | Should -Be 0
@@ -340,6 +356,13 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         $recovered.result.can_approve_current | Should -BeFalse
         $disposeLog.Count | Should -Be 1
         (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('complete')
+        # ANY PATH THAT SPENDS A ROUND OWES THE PAUSE THAT LETS THE HUMAN ANSWER FOR IT.
+        # This publish passes Invoked:$true and therefore charges the allowance. Until DRIFT-199-I002-018
+        # it wrote no pause, so spending the round and wedging the campaign were one act: the next round
+        # failed closed on pause-record-missing-for-completed-round and blamed a folder permission.
+        Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/pending-pause.json') | Should -BeTrue -Because 'a reconciled run is charged to the allowance, so it owes the human a pause to answer'
+        $reconciledPause = Get-ReviewCampaignPendingPause -StoreRoot $context.store -CampaignId cmp-demo
+        $reconciledPause | Should -Not -BeNullOrEmpty -Because 'the pause the guard reads must be the one this path wrote'
     }
 
     It 'terminates and abandons a historical four-binding code recovery fact without asserting currentness' {

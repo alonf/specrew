@@ -605,6 +605,18 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
   - **Where the general instrument goes**: a contract test exercising writer and reader together
     in one case belongs in beta4's composition harness, alongside the two-gates-disagree
     scenarios - the same family seen from the test side (maintainer instruction, 2026-08-29).
+  - **The line between repairing machinery and impersonating a human** (maintainer ruling, 2026-08-29,
+    on approving the restore of a dropped pause fact): **machinery may restore a fact that RE-ENABLES a
+    human decision; it may never write a fact that CONSTITUTES one.** A pause is the prompt for the
+    human's choice, not the choice. Restoring it gives back a decision the machinery dropped; writing
+    the choice would be taking one. This is what separates an authority-store repair from the
+    fabrication risk that iteration 001's `security-surface` concern exists to prevent, and it is
+    written down so the next agent facing a wedged store knows which side of the line it is on.
+    Conditions that make such a restore safe, all four required: derive every field from the subject's
+    own published record and STOP rather than default anything that will not derive; make the restored
+    fact distinguishable from an organically written one by carrying its provenance; journal the repair,
+    because the defect being repaired is a write that failed and left nothing; and snapshot the store
+    first, so the write is reversible.
   - **A safety feature can guarantee the silence it was meant to prevent** (maintainer,
     2026-08-29, generalising the FR-032 defect): `$blockReasonOwnerScoped` was assigned in one
     branch and declared nowhere, under `Set-StrictMode -Version Latest`. Strict mode protects
@@ -615,6 +627,17 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     migrate to the direction it does not cover.** Ask what the guard does NOT catch, because
     that is where the surviving instances live; a codebase under a strict reader-check will
     accumulate write-only state specifically, and nothing in its test output will say so.
+  - **THE DEEPEST PATTERN OF THE FORTNIGHT, recorded for beta4 (maintainer, 2026-08-29): every silent
+    failure in this batch converted a recoverable problem into an unfalsifiable one.** Four instances,
+    and the fourth found its own root cause the moment the rule was applied to it:
+    1. The instruction layer inventing a gate no code refused.
+    2. The capture ignoring a near-miss phrase.
+    3. Strict mode guaranteeing that set-never-read could only ever be silent.
+    4. A bare `catch` discarding the exception that would have named DRIFT-199-I002-018 - and which,
+       once the trace was added, named it on the very first run.
+    **The rule: a fail-soft that discards its cause guarantees that whatever reads its absence will
+    misdiagnose it** - as that refusal did, sending the maintainer to check a folder permission that was
+    fine. **Every fail-soft owes a trace.** The tolerance is usually right; the silence never is.
 
 ### Traceability & Governance Requirements *(mandatory)*
 

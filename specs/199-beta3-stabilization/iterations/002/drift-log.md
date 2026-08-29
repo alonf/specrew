@@ -715,7 +715,7 @@ point of the entry, so the original claim is quoted rather than deleted.**
   what a session chose to paste. Naming the practice is the whole of the available remedy, which is why it
   is written as a rule ("verbatim, or not at all") rather than as a resolution to be careful.
 
-### DRIFT-199-I002-018 — round 2 could not start: the campaign is wedged, its refusal names the wrong cause, and the recovery it offers is a closed loop (open; BLOCKS round 2)
+### DRIFT-199-I002-018 — the orchestrator pause write had never once succeeded; the campaign wedged and its refusal blamed a writable folder (root cause found and fixed; the restore itself is blocked on a schema decision)
 
 - **Observed**: 2026-08-29. Round 2 was launched on the reworked tree and **did not run**:
   `run-20260829-233216091-188cc8f4`, `Invoked: False`, `status: paused`,
@@ -757,12 +757,49 @@ point of the entry, so the original claim is quoted rather than deleted.**
   by reconciliation therefore wedges the campaign exactly as it is wedged now. Round 1 was not that case -
   its `runtime_outcome` is `completed`, not `abandoned` - so this is a real latent defect, recorded as such
   and not claimed as this incident's cause.
-- **Why the root cause of THIS instance is not stated**: because it cannot be, and saying otherwise would be
-  the mistake DRIFT-199-I002-014 already cost. The exception that fired inside the try was discarded, the
-  replay of the same call succeeds today, and the store state has moved since (round 2's attempt added a
-  grant and a spend record). What is established: the write path works, the store is writable, the pause is
-  genuinely absent, and the failure is unreproducible **because the code chose not to record it**. That is
-  itself the finding.
+- **ROOT CAUSE — found within minutes of adding the trace, and only because of it.** The maintainer's rule
+  (*every fail-soft owes a trace*) was applied to this very catch as part of the reconciler fix. The first
+  test run after that change printed:
+
+  > `[specrew-review] WARN REVIEW_PAUSE_WRITE_FAILED campaign 'cmp-demo' run 'run-one': The variable
+  > '$FeatureId' cannot be retrieved because it has not been set.`
+
+  `Invoke-ReviewCampaignRun` calls `Add-ReviewCampaignRoundPause` with `-ProjectName $FeatureId` and
+  `-RepoRoot $RepoRoot`, and **declares neither**: line 2097 was the only mention of `$FeatureId` anywhere
+  in the function's body. Under `Set-StrictMode -Version Latest` the call therefore threw on argument
+  binding **every time it ran**, so the orchestrator's pause write had *never once succeeded*. The pattern
+  was copied from the caller's own working call site (line 1717), where both variables do exist; the copy
+  landed in a function where they do not.
+- **The sharpest form of the fail-soft lesson, and it is sharper than "the cause was unknown"**: the guard
+  worked. Strict mode detected the undeclared variable, loudly, on every single run - and a bare
+  `catch { $roundPause = $null }` threw the detection away. This is not a case of a defect being
+  undetectable. **It was detected, correctly, thousands of times, and the detection was discarded at the
+  moment it was produced.** The fail-soft did not merely fail to help; it actively destroyed a working
+  control's output. That is why "every fail-soft owes a trace" is a rule and not a preference.
+- **What was previously recorded here, and why it was right at the time**: this entry originally declined to
+  state a root cause - *"the write path works, the store is writable, the pause is genuinely absent, and the
+  failure is unreproducible because the code chose not to record it"* - because asserting an unsupported
+  cause is what DRIFT-199-I002-014 cost. That refusal is preserved rather than deleted: it was correct on
+  the evidence then available, and the cause became available only after the code was changed to record it.
+  The lesson is not "should have guessed harder"; it is that **the diagnosis was purchasable, and the price
+  was one line of stderr.**
+- **Fixes, both mutation-proved**:
+  1. `Invoke-ReviewCampaignRun` now takes `$FeatureId` and `$RepoRoot` as real parameters, passed from
+     `Invoke-ReviewCampaignCommand`, which has both. Passed rather than derived: the caller knows them, and
+     a derivation would be a second guess at something already known. An empty `FeatureId` falls back to the
+     campaign identity so a display-only field can never again be the reason a pause is lost.
+  2. `review-run-reconciler.ps1` writes the pause on its own invoked-publish path. **Any path that spends a
+     round owes the pause that lets the human answer for it** - the rule the guard's own comment gestured at
+     without stating. Fixed before round 2 rather than deferred, on the maintainer's ruling: an interrupted
+     long round is exactly the exposure the next round carries, and round 1 already died once at preflight.
+  3. Both fail-softs keep their tolerance and lose their silence: stderr in both, plus a durable
+     `.specrew/runtime/review-pause-write-failures.jsonl` trace on the orchestrator path.
+- **The guards that did not exist**: no test asserted that a terminal round writes a pause. The orchestrator
+  suite had twenty-one green cases over this exact code path and not one of them asked. Added: the terminal
+  case now asserts both halves - `$result.pause` (the return value) and `pending-pause.json` read back
+  through `Get-ReviewCampaignPendingPause` (the durable fact the blocking guard actually reads), because the
+  defect was invisible in the first and detectable only in the second. The reconciliation case asserts the
+  same. Reverting either fix turns the suite red.
 - **Citation**: FR-013 (structured terminal outcomes per failure class; consumer-shaped failure messages
   that name the missing piece and the exact next step - all three clauses fail here); FR-014 (invoked-only
   spend, which HELD); the refusal standard in FR-033.

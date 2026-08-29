@@ -1752,6 +1752,7 @@ function Invoke-ReviewCampaignCommand {
         -ReservationId $identity.reservation_id -TargetLineage $identity.target_lineage -TargetPort $Ports.target -HarnessPort $Ports.harness `
         -RuntimePort $Ports.runtime -VerificationPort $Ports.verification -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `
         -ReviewScope $ReviewScope -DesignContextEmpty:([bool]$designContext.design_context_empty) `
+        -FeatureId $(if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId } else { Split-Path -Leaf $root }) -RepoRoot $root `
         -ProgressSink $progressCollector.sink -AuthorityConfigPath $AuthorityConfigPath
     # THIS PROJECTION IS WHERE TWO CAPABILITIES DIED, and both were fully built on either side of it.
     # Invoke-ReviewCampaignRun returns `pause` on a terminal round and slot_restored/_note on a
@@ -1883,6 +1884,16 @@ function Invoke-ReviewCampaignRun {
         [Parameter(Mandatory)]$VerificationPort,
         [Parameter(Mandatory)]$ClockPort,
         [Parameter(Mandatory)][string]$PromptPath,
+        # ROOT CAUSE OF DRIFT-199-I002-018. The terminal pause call below referenced `$FeatureId` and
+        # `$RepoRoot`, and this function declared NEITHER - line 2097 was the only mention of `$FeatureId`
+        # in the whole function body. Under `Set-StrictMode -Version Latest` the pause call therefore threw
+        # on argument binding EVERY TIME, the bare catch swallowed it, and the campaign was left with a
+        # published result and no pause. The pattern was copied from the caller's own working call site,
+        # where both variables exist; the copy landed where they do not. The values are passed in now
+        # rather than derived, because the caller has both and a derivation would be a second guess at
+        # something already known.
+        [string]$FeatureId,
+        [string]$RepoRoot = '',
         [string]$ReviewScope = 'Review the complete frozen target and return the versioned candidate JSON contract.',
         [switch]$DesignContextEmpty,
         [ValidateScript({
@@ -2093,11 +2104,31 @@ function Invoke-ReviewCampaignRun {
             # destroy a published review result, so the round still returns its terminal outcome.
             $roundPause = $null
             try {
+                # ProjectName addresses the human in the pause surface and must never be the reason a
+                # pause is lost. An empty FeatureId falls back to the campaign identity, which encodes it.
+                $pauseProjectName = if (-not [string]::IsNullOrWhiteSpace($FeatureId)) { $FeatureId }
+                elseif ([string]$CampaignId -match '^cmp-(?<name>.+)-i\d+$') { $Matches['name'] }
+                else { [string]$CampaignId }
                 $roundPause = Add-ReviewCampaignRoundPause -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId `
-                    -TargetDigest $targetDigest -ProjectName $FeatureId -Result $ingress.result `
+                    -TargetDigest $targetDigest -ProjectName $pauseProjectName -Result $ingress.result `
                     -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) -RepoRoot $RepoRoot
             }
-            catch { $roundPause = $null }
+            catch {
+                # EVERY FAIL-SOFT OWES A TRACE. This catch previously discarded the exception object
+                # entirely - no journal, no stderr - and a wedged campaign was later explained to the
+                # human as a folder-permission problem on a folder that was writable, because the guard
+                # reading this absence had nothing to read. The fail-soft itself is right and stays; what
+                # changes is that the cause survives it. DRIFT-199-I002-018.
+                $roundPause = $null
+                [Console]::Error.WriteLine(("[specrew-review] WARN REVIEW_PAUSE_WRITE_FAILED campaign '{0}' run '{1}': {2}" -f $CampaignId, $RunId, $_.Exception.Message))
+                try {
+                    $pauseTrace = Join-Path $RepoRoot '.specrew/runtime/review-pause-write-failures.jsonl'
+                    $pauseTraceDir = Split-Path -Parent $pauseTrace
+                    if ($pauseTraceDir -and -not (Test-Path -LiteralPath $pauseTraceDir)) { New-Item -ItemType Directory -Path $pauseTraceDir -Force | Out-Null }
+                    (([pscustomobject][ordered]@{ event = 'review-pause-write-failed'; campaign_id = $CampaignId; run_id = $RunId; target_digest = $targetDigest; exception_type = $_.Exception.GetType().FullName; message = $_.Exception.Message }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $pauseTrace -Encoding UTF8
+                }
+                catch { $null = $_ }
+            }
             return [pscustomobject]@{ status = 'terminal'; reason = $ingress.reason; invoked = $true; result = $ingress.result; result_path = $ingress.result_path; report_path = $ingress.report_path; pause = $roundPause }
         }
         # A reviewer tree may still be using the frozen target. Recovery owns disposal after it proves
