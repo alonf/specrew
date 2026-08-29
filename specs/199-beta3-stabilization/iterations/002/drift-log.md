@@ -145,7 +145,8 @@
 - **Citation**: the refusal standard (B-4.1), inverted: naming every instance of something that
   has one.
 - **Resolution**: deferred to beta4 with the refusal standard (maintainer ruling 2026-08-29).
-- **Class closure**: NONE in this iteration - beta4's standing check over refusal surfaces.
+- **Class closure**: NONE - the closure is beta4's standing check over every refusal surface,
+  and nothing in this iteration touches the validator's report shape.
 
 ### DRIFT-199-I002-006 — a stale round allowance in the decision slot of the plan packet (resolved-by T025, honest labelling)
 

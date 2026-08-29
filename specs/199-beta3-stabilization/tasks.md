@@ -242,8 +242,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   and the confirmation fields, refreshes the handover; `confirm-lens` joins the transition table
   (56 pinned cells); the skill's step 7 invokes it; refusals through the refusal contract.
   Mutations: a confirmed lens stays current when the writer's state write is disabled; a
-  JSON-shaped product-domain record closes the lens when the validator call is disabled. (Trace:
-  FR-027, FR-033, SC-013, SC-014; owns: `confirm-workshop-lens.ps1` + mirror,
+  JSON-shaped product-domain record closes the lens when the validator call is disabled. (Trace: FR-027, FR-033, SC-013, SC-014; owns: `confirm-workshop-lens.ps1` + mirror,
   `workshop-authority-store.ps1` + mirror, `specrew-design-workshop/SKILL.md` copies)
 - [ ] T019 [owner: Implementer] [sp: 0.75] **What was received, what is still needed** — the
   acknowledgment line in the skill and lens texts; the repair gate's refusal through the refusal
