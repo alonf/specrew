@@ -13,6 +13,39 @@ Beta2 shipped a review system that worked and was hard to live with. Beta3 does 
 removes the ways the system could take a consumer's time, money, or understanding without giving
 anything back.
 
+## The tag batch (iteration 002)
+
+Ten findings from two live walks against the released build - KeyContextAI and a greenfield
+HelloWinUIReactive - plus two defects this iteration's own boundaries produced while it ran. Every fix
+carries a mutation that turns its own case red by asserting observable state.
+
+**Authority cannot be forged.** A boundary crossing is no longer minted until the stage it enters has its
+owed artifacts on disk, at all three minting mechanisms; the verdict marker carries its crossing identity
+and the capture refuses a marker for a superseded one; and no packet offers verdict options for a stage
+that has produced nothing - one discipline now, in the gate-stop skill, Rule 53, the refocus texts and the
+methodology table, where they previously contradicted each other.
+
+**A pending crossing is owed by the session that recorded it.** The boundary demand fired in every session
+on every stop for as long as any crossing stayed open, so a second session could not hold an ordinary
+conversation. Ownership now resolves to three states; only a different, live session is suppressed, and an
+owner that cannot be confirmed - including one that resumed into a new identity - still gets the demand,
+with a sentence saying so.
+
+**The record agrees with itself.** The crossing writer now writes every enumerated copy of the authority it
+records (state.md Current Phase, plan.md Status), in each file's existing vocabulary; the sync re-mirrors
+forward and the truth gate refuses a copy that runs ahead of the store.
+
+**Greenfield projects are not asked to publish.** `pushed-head` carried two jobs under one name; it is now
+delivery-only at closeouts, reading the enforcement mode a project already recorded, while a separate
+`verdict-commit-durable` check keeps every boundary's commit durable wherever a remote exists.
+
+**Refusals say what happened.** A document that matches none of a constrained reader's constructs is
+reported as unparseable, naming the representation, instead of firing every field backstop; a lens is closed
+by a governed writer that checks the typed reply, the record and the lens's own validator at its own
+checkpoint; a reply that is not the closing phrase is acknowledged rather than silently re-asked; a verdict
+that did not capture says so at prompt entry; the specification is no longer scaffolded before the workshop
+that decides it; and the closeout seal is written last, so the first validation of a closed iteration passes.
+
 ## The review loop stops on its own
 
 - **Every review round now ends in a pause, never another round.** The loop that ran fifteen fix rounds

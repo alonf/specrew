@@ -16,8 +16,8 @@
 
 ## Summary
 
-**Total drift events**: 10 (DRIFT-199-I002-001 through -010)
-**Resolution rate**: carried per event in its heading (6 resolved-by this iteration's requirements,
+**Total drift events**: 11 (DRIFT-199-I002-001 through -011)
+**Resolution rate**: carried per event in its heading (7 resolved-by this iteration's requirements,
 2 spec-updated/human-decision, 2 deferred/open by ruling or scope)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
@@ -171,12 +171,13 @@
   the line verbatim in Why I Stopped.
 - **Citation**: the refusal standard's instance clause (B-4.1), applied to a number rather than a
   refusal: the figure in the decision slot must be the figure that governs the decision.
-- **Resolution**: folded into T025 by the maintainer's conditional ruling at the plan verdict
-  (2026-08-29), the condition tested at source: `Get-SpecrewReviewCoverageState` already returns
-  `campaign_id` (`cmp-<feature>-i<NNN>`) and the active iteration is in `session_state`, so the
-  line can name the campaign and compare its iteration suffix without changing what the function
-  computes - it changes only what the line says. If implementation finds otherwise, T025 stops
-  and the item goes to beta4 with the refusal standard.
+- **Resolution**: folded into T025 and LANDED (2026-08-29). The maintainer's condition held at
+  implementation: `Get-SpecrewReviewCoverageState` already returns `campaign_id`
+  (`cmp-<feature>-i<NNN>`) and the active iteration is already in `session_state`, so the line now
+  names the campaign its figure was read from and, when the active iteration has none, says that it
+  starts with a fresh allowance - changing what the line SAYS and not what it selects. Measured on
+  this repository: `... 1 of 4 rounds remaining in campaign cmp-199-beta3-stabilization-i001
+  (iteration 001); iteration 002 has no campaign yet, so it starts with a fresh allowance.`
 - **Class closure**: candidate - every figure rendered into a packet's decision slot names the
   record it was read from.
 
@@ -290,6 +291,26 @@
   mistake a passing characterization for an unfixed FR-024.
 - **Class closure**: NONE in this iteration - a precedence rule between provider fragments is beta4
   design work, and inventing one inside a tag batch is the shape the maintainer ruled against for F-2.
+
+### DRIFT-199-I002-011 — a patch applied twice left a duplicated block in a shipped script (resolved at T025)
+
+- **Observed**: 2026-08-29, during T025's mutation audit. The audit's mutation setup asserted that its
+  target line appeared exactly once and failed - `create-governed-feature.ps1` carried the FR-029 stub
+  block TWICE. Cause: T020's patch script aborted partway on an unrelated anchor AFTER writing that file,
+  and the re-run applied the same block a second time.
+- **Why it mattered less than it could have, and why it is recorded anyway**: the block is idempotent (the
+  second copy re-reads the file it just wrote and leaves the stub alone), so the shipped behaviour was
+  correct and every T020 assertion passed. That is exactly the shape worth recording: a defect a green
+  suite cannot see. It was found only because the mutation audit asserts a UNIQUE target before mutating -
+  the count assertion, not the test, is what caught it.
+- **Citation**: FR-033 (mutation proving; every fix asserts observable state) and the standing rule that a
+  structural assertion which cannot see a disabled call is not a test.
+- **Resolution**: the duplicate block removed, the script re-parsed clean, the mirror re-synced, T020's
+  suite re-run green, and the T020 mutation then executed properly against the de-duplicated file (the
+  template-only guard removed -> red, restored -> green).
+- **Class closure**: the audit pattern itself - every mutation asserts `count == 1` on its target before
+  editing, so a duplicated or missing target fails loudly instead of mutating the wrong thing. Applied to
+  all eleven mutations in this iteration.
 
 ### Resolution Strategies (Unused)
 

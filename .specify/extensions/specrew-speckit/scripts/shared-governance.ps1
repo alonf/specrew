@@ -2799,7 +2799,7 @@ function Write-SpecrewCrossingMintRefusal {
     $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
     $iterationText = if ([string]::IsNullOrWhiteSpace($Iteration)) { '' } else { (' for iteration {0}' -f $Iteration) }
     $whereText = if ([string]::IsNullOrWhiteSpace($ExpectedUnder)) { '' } else { (' (expected under {0})' -f $ExpectedUnder) }
-    $message = ("The '{0}' -> '{1}' crossing was not opened: '{1}' owes {2}{3}{4} and it does not exist. The approvals already recorded are unchanged; no new verdict is being asked for until the owed work exists." -f $FromBoundary, $ToBoundary, (@($Missing) -join ', '), $iterationText, $whereText)
+    $message = ("The '{0}' -> '{1}' crossing was not opened: '{1}' owes {2}{3}{4} and it does not exist. The approvals already recorded are unchanged, and no new verdict is being asked for. Produce {2} through the '{1}' stage's own step, then run that boundary's sync again." -f $FromBoundary, $ToBoundary, (@($Missing) -join ', '), $iterationText, $whereText)
     try { [Console]::Error.WriteLine('[specrew-governance] WARN CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT ' + $message) } catch { $null = $_ }
     try {
         $journal = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/handover-journal.jsonl'
@@ -7489,8 +7489,38 @@ function Get-SpecrewReviewCoverageLine {
     $state = $null
     try { $state = Get-SpecrewReviewCoverageState -ProjectRoot $ProjectRoot } catch { return '' }
     if ($null -eq $state -or -not [bool]$state.available) { return '' }
+    # DRIFT-199-I002-006 (T025): the figure in a packet's decision slot must be the figure that governs the
+    # decision. The allowance is PER CAMPAIGN, and a campaign belongs to one iteration; when the active
+    # iteration has no campaign of its own, this line was reporting the PREVIOUS campaign's remainder in the
+    # position a reader takes the current constraint from - and it nearly produced a wrong split decision.
+    #
+    # Labelling only, as the maintainer's condition required: campaign_id is already in the state and the
+    # active iteration is already in session_state, so nothing about WHICH campaign is selected changes -
+    # only what the line SAYS about the one it found.
+    $campaignId = [string]$state.campaign_id
+    $campaignIteration = if ($campaignId -match '-i(?<n>\d+)$') { $Matches['n'] } else { '' }
+    $activeIteration = ''
+    try {
+        $ctxPath = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/start-context.json'
+        if (Test-Path -LiteralPath $ctxPath -PathType Leaf) {
+            $ctx = Get-Content -LiteralPath $ctxPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $ss = $ctx.PSObject.Properties['session_state']
+            if ($null -ne $ss -and $null -ne $ss.Value -and $null -ne $ss.Value.PSObject.Properties['iteration_number']) {
+                $activeIteration = [string]$ss.Value.iteration_number
+            }
+        }
+    }
+    catch { $activeIteration = '' }
     $roundsText = if ($null -ne $state.rounds_used -and $null -ne $state.budget_total) {
-        ('{0} of {1} rounds remaining' -f ([Math]::Max(0, [int]$state.budget_total - [int]$state.rounds_used)), [int]$state.budget_total)
+        $remaining = ('{0} of {1} rounds remaining' -f ([Math]::Max(0, [int]$state.budget_total - [int]$state.rounds_used)), [int]$state.budget_total)
+        if (-not [string]::IsNullOrWhiteSpace($campaignIteration) -and -not [string]::IsNullOrWhiteSpace($activeIteration) -and
+            $campaignIteration.TrimStart('0') -ne $activeIteration.TrimStart('0')) {
+            ('{0} in campaign {1} (iteration {2}); iteration {3} has no campaign yet, so it starts with a fresh allowance' -f $remaining, $campaignId, $campaignIteration, $activeIteration)
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($campaignId)) {
+            ('{0} in campaign {1}' -f $remaining, $campaignId)
+        }
+        else { $remaining }
     } else { 'rounds remaining unknown' }
     $shortTree = ([string]$state.covered_tree)
     if ($shortTree.Length -gt 8) { $shortTree = $shortTree.Substring(0, 8) }

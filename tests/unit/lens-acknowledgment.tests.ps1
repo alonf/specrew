@@ -54,7 +54,7 @@ Write-Host 'Case 3: the repair refusal names what was received and the exact phr
 $repairSource = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\repair-workshop-controller-state.ps1') -Raw -Encoding UTF8
 Assert-True ($repairSource -notmatch "throw 'workshop-repair-human-authorization-missing'") 'the bare machine token is gone from the authorization refusal'
 Assert-True ($repairSource -notmatch "throw 'workshop-repair-proposal-stale'") 'and from its sibling, the stale-proposal refusal'
-Assert-True ($repairSource -match 'No typed authorization is on record for this repair' -and $repairSource -match 'type: approved for workshop repair') 'the refusal names what is missing and the exact phrase to type'
+Assert-True ($repairSource -match 'No typed authorization is on record for the repair proposed for' -and $repairSource -match 'type: approved for workshop repair') 'the refusal names what is missing, which feature it is about, and the exact phrase to type'
 Assert-True ($repairSource -match 'New-SpecrewWorkshopRepairRefusal') 'both refusals route through one builder, so they cannot drift apart'
 
 Write-Host 'Case 4: the refusal carries the shared contract shape - reassurance included, no machinery nouns'

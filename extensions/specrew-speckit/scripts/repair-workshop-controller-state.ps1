@@ -256,8 +256,8 @@ if ($null -eq $authorization -or
     # This script never receives the human's reply text - the authorization is looked up by proposal id -
     # so the refusal says exactly what it can know: no authorization is on record for THIS proposal, and
     # the phrase that creates one. Quoting a reply it does not have would be an invented instance.
-    throw (New-SpecrewWorkshopRepairRefusal -Summary 'No typed authorization is on record for this repair, so nothing was changed.' `
-            -Action 'To authorize exactly this repair, type: approved for workshop repair')
+    throw (New-SpecrewWorkshopRepairRefusal -Summary ("No typed authorization is on record for the repair proposed for '{0}', so nothing was changed." -f $FeatureRef) `
+            -Action 'Read the repair proposal above, and if you want exactly that repair, type: approved for workshop repair')
 }
 
 foreach ($record in @($proposal.preserved_records)) {

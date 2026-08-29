@@ -150,7 +150,7 @@ try {
     try { & $repairSource -ProjectRoot $scratch -FeatureRef $featureRef -Apply | Out-Null }
     catch { $noAuthorityMessage = [string]$_.Exception.Message; $noAuthorityRefused = $true }
     Assert-True $noAuthorityRefused 'repair apply refuses before typed human authorization'
-    Assert-True ($noAuthorityMessage -match 'No typed authorization is on record for this repair') 'the refusal says plainly what is missing rather than throwing a machine token'
+    Assert-True ($noAuthorityMessage -match 'No typed authorization is on record for the repair proposed for') 'the refusal says plainly what is missing, and for which feature, rather than throwing a machine token'
     Assert-True ($noAuthorityMessage -match 'type: approved for workshop repair') 'and names the exact phrase to type'
     Assert-True ($noAuthorityMessage -notmatch '(?i)controller|lens-applicability|governed writer') 'in project language, with no machinery vocabulary'
 
@@ -191,7 +191,7 @@ try {
     $oldAuthorityRefused = $false
     $oldAuthorityMessage = ''
     try { & $repairSource -ProjectRoot $scratch -FeatureRef $featureRef -Apply | Out-Null }
-    catch { $oldAuthorityMessage = [string]$_.Exception.Message; $oldAuthorityRefused = ($oldAuthorityMessage -match 'No typed authorization is on record for this repair') }
+    catch { $oldAuthorityMessage = [string]$_.Exception.Message; $oldAuthorityRefused = ($oldAuthorityMessage -match 'No typed authorization is on record for the repair proposed for') }
     Assert-True $oldAuthorityRefused 'a consumed authorization cannot approve a later repair of identical bytes'
     Assert-True ($oldAuthorityMessage -match 'type: approved for workshop repair') 'and the refusal names the phrase that would authorize the NEW proposal'
 }

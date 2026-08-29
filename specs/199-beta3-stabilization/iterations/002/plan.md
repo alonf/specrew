@@ -50,7 +50,7 @@
 | T022 | Seal as the closeout sync's last write; test that it hashes the rendered dashboard | FR-031 | US8 | 0.5 | Implementer | scripts/internal/sync-boundary-state.ps1, tests/integration/** | done | Implementer | 0.5 |  |
 | T023 | Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner-unknown named out loud; capture verifies the marker's crossing identity | FR-032 | US8 | 2.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/integration/conformance-*.tests.ps1 | done | Implementer | 2.5 |  |
 | T024 | Capture disclosure at prompt-entry: one line naming the classification, the leading text that decided it, and that the phrase must be the first characters of the message; every prompt-entry outcome journaled; fixtures: leading quote bar, leading prose | FR-010 | US3 | 1.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/verdict-capture-blocks.tests.ps1 | done | Implementer | 1.0 |  |
-| T025 | Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft; the coverage line names the campaign its figure belongs to and says when the current iteration has no campaign yet (DRIFT-199-I002-006, honest labelling only) | FR-033 | US8 | 0.75 | Spec Steward | docs/release-notes-v0.40.0-beta3.md, specs/199-beta3-stabilization/** | planned | | | |
+| T025 | Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft; the coverage line names the campaign its figure belongs to and says when the current iteration has no campaign yet (DRIFT-199-I002-006, honest labelling only) | FR-033 | US8 | 0.75 | Spec Steward | docs/release-notes-v0.40.0-beta3.md, specs/199-beta3-stabilization/** | done | Spec Steward | 0.75 |  |
 
 ## Effort Model
 
@@ -213,6 +213,13 @@
   from inside this repository. It is the release-validation step for the tag, not an optional
   extra: 002's own boundaries exercise the crossing family but never the greenfield paths (T016's
   no-origin posture, T020's fresh feature creation, T017/T018's first workshop).
+- T025 SWEEP RESULT (2026-08-29): mirrors byte-identical across all ten script/skill/refocus pairs and all
+  fifteen lens-catalog files; eleven mutations run, each turning its own suite red and restoring green
+  (mint gate, mirrors, owner, withhold, capture disclosure, durability, seal order, readers, lens writer,
+  acknowledgment clause, spec-stub guard); the refusal-standard pass over the fifteen messages this batch
+  added or changed found two worth improving (the mint refusal now names the step that produces the owed
+  work; the repair refusal now names the feature it is about) and one duplicated-code defect that a green
+  suite could not see (DRIFT-199-I002-011).
 - Mirror discipline: every task's commit lands every byte-identical copy it touches
   (`extensions/` and `.specify/extensions/`; three skill copies); the deployed-extension-integrity
   suite is the check.

@@ -278,13 +278,13 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
 
 ### Phase 4: the sweep (0.5 SP)
 
-- [ ] T025 [owner: Spec Steward] [sp: 0.75] **Method sweep** — mirror byte-identity across every
+- [x] T025 [owner: Spec Steward] [sp: 0.75] **Method sweep** — mirror byte-identity across every
   touched copy; the mutation audit per fix; the refusal-standard pass over every touched message;
   the release-notes draft; the covering-round request over the delta since `1b50ae60`; and the
   coverage line names the campaign its figure belongs to and, when the current iteration has no
   campaign yet, says so instead of reporting the previous campaign's remainder
-  (DRIFT-199-I002-006, folded in by ruling as honest labelling - what the line SAYS, not what the
-  function computes; if it turns out to need campaign-selection logic, it stops and goes to beta4).
+  (DRIFT-199-I002-006, folded in by ruling as honest labelling - condition held at implementation:
+  campaign_id and the active iteration were both already in state, so only the wording changed).
   (Trace: FR-033, SC-018; owns: `docs/release-notes-v0.40.0-beta3.md`, `specs/**`,
   `shared-governance.ps1` coverage line + mirror)
 

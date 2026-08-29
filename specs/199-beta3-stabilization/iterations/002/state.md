@@ -2,19 +2,19 @@
 
 **Schema**: v2
 **Current Phase**: before-implement
-**Iteration Status**: executing
-**Last Completed Task**: T020
-**Tasks Remaining**: T025
+**Iteration Status**: ready-for-review
+**Last Completed Task**: T025
+**Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: ee402af1682833c7a1a288fc7fd88cacdf779f95
-**Updated**: 2026-08-29T18:27:08.2178016Z
+**Updated**: 2026-08-29T18:37:32.9341421Z
 
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Execution is in progress.
-- Task progress: 11 complete, 0 in-progress, 1 pending, 0 blocked.
-- Latest completed task: T020
+- Implementation tasks are complete; review-signoff is next.
+- Task progress: 12 complete, 0 in-progress, 0 pending, 0 blocked.
+- Latest completed task: T025
 <!-- specrew:task-progress-summary:end -->
 ## Notes
 
