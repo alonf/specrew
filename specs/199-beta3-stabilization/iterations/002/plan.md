@@ -235,14 +235,23 @@
   each read from a source this session does not write):
   - **Implementation calendar**: first task commit 2026-08-29 19:48, last 2026-08-29 21:38 - twelve tasks
     inside one working session, which is the only implementation figure worth stating.
-  - **Review rounds consumed**: **0**. The covering round was requested on 2026-08-29 against campaign
-    `cmp-199-beta3-stabilization-i002` (run `run-20260829-202021847-c98fb407`) and DID NOT RUN: the
-    pre-review verification plan failed, so the reviewer was never invoked. No round was spent and the
-    maintainer's authorization is still available - the invoked-only spend accounting (FR-014) behaving
-    exactly as designed, on its first real exercise since the batch landed.
-    Of the three failing verification commands, one was a real defect in this batch and is fixed
-    (DRIFT-199-I002-013, an internal requirement id in a shipped script); two are pre-existing and blocking,
-    and await a maintainer decision (DRIFT-199-I002-014 and -015).
+  - **Review rounds consumed**: **1 of 4** in campaign `cmp-199-beta3-stabilization-i002`.
+    - *Attempt 1, 2026-08-29, run `run-20260829-202021847-c98fb407` - NOT COUNTED.* The pre-review
+      verification plan failed on three commands, so the reviewer was never invoked, the reservation was
+      RELEASED rather than consumed, and the maintainer's authorization stayed available. This is the
+      invoked-only spend rule (FR-014) behaving exactly as designed on its first unplanned exercise, and it
+      is recorded here because a rule that has never been exercised is a claim, not a control. Of the three
+      failures, one was a real defect in this batch and was fixed (DRIFT-199-I002-013, an internal
+      requirement id in a shipped script); one was a wrong finding of mine that was withdrawn
+      (DRIFT-199-I002-014); one was real and resolved without touching a seal (DRIFT-199-I002-015).
+    - *Attempt 2, 2026-08-29, run `run-20260829-214056323-db3b4944` - DELIVERED, and this is the round
+      that counts.* Reviewer host `codex` (independent of the code writer, `claude`); 909s; containment
+      verified; completion complete; currentness current. **Verdict `findings`: 3 findings, every one of
+      them graded `major` by the reviewer and every one of them demoted to `minor` by the summariser.**
+      `can_approve_current: false`. All three were verified against the code before being reported, and all
+      three are real defects in THIS iteration's own new code (FR-027, FR-032, FR-024). Recorded as
+      DRIFT-199-I002-016.
+    - Tripwire status: threshold is more than 2 rounds; at 1, not tripped.
   - **Rework commits after round delivery**: counted from git history at signoff.
   - **Calendar days from round delivery to signoff**: counted at signoff.
 - T025 SWEEP RESULT (2026-08-29): mirrors byte-identical across all ten script/skill/refocus pairs and all

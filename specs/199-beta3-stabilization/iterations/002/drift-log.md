@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 15 (DRIFT-199-I002-001 through -015)
+**Total drift events**: 16 (DRIFT-199-I002-001 through -016)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -551,6 +551,69 @@ point of the entry, so the original claim is quoted rather than deleted.**
 - **Class closure**: the class is real and now named - **a verification plan that names a specific iteration
   goes stale the moment the next one opens**. Closed here by re-pointing; closed structurally in beta4 by making
   the closeout own the re-point.
+
+### DRIFT-199-I002-016 — the covering round found three real defects in this batch's own fixes, and the summariser demoted every one of them (findings open; the demotion observed, not fixed)
+
+- **The round**: run `run-20260829-214056323-db3b4944`, campaign `cmp-199-beta3-stabilization-i002`,
+  2026-08-29. Reviewer host `codex`, independent of the code writer (`claude`). 909s, containment verified,
+  completion complete, currentness current, verdict `findings`, `can_approve_current: false`.
+- **What it found — three findings, all confirmed against the code by this session before reporting.** Each
+  is in code THIS iteration wrote, and two of them are members of families this feature exists to catalogue:
+  1. `workshop-receipt-contract` (`extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1:217`) - the
+     governed lens checkpoint writes the receipt as `turn_receipt`, but the canonical reader
+     (`scripts/internal/bootstrap/ProjectMetadataAccessor.ps1:641`) reads `human_turn_receipt`. Confirmed:
+     the two names do not match, so the receipt is invisible to the reader and the next workshop-state read
+     returns `workshop-completed-human-turn-receipt-invalid` instead of advancing. The same block maps
+     `human-skipped` to scope `lens-question` (line 199) while the canonical table (lines 581-583) requires
+     `explicit-skip`, and its `ValidateSet` omits `human-delegated` entirely. **This is FR-027 failing at
+     exactly the thing it was written to fix**: a lens answer the human gave that the machinery cannot read.
+  2. `foreign-owner-still-stop-blocked`
+     (`extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1:1651`) - the `owner-differs`
+     branch sets `$blockReasonOwnerScoped = $true`, and **that is the only occurrence of the variable in the
+     file**. It is set and never read; the shared tail still emits `<<<SPECREW-STOP-BLOCK>>>`, so a
+     non-owner session is still force-continued until the cap. **A textbook inert control - inside the fix
+     (FR-032/TB-6) whose entire purpose was to stop interrupting sessions that do not own the crossing.**
+     Twelfth-odd instance of the family, and the second this batch has introduced rather than removed.
+  3. `bare-marker-bypasses-crossing-id` (`scripts/internal/bootstrap/HandoverStore.ps1:781`) - marker
+     parsing makes `@ crossing-...` optional and the capture guard compares identities only when the
+     captured marker supplied one, so a bare `<from> -> <to>` marker still authorizes the current scoped
+     crossing. Confirmed, and the code comment says so out loud: *"A bare marker (no identity) keeps
+     today's capture until T015 makes every renderer emit the identity."* **T015 did not.**
+     `.claude/skills/specrew-gate-stop/SKILL.md:96` - the renderer this host actually follows - still
+     instructs the bare form. So the binding the maintainer folded into T001/T010 is bypassable by the very
+     renderer it was meant to bind.
+- **And the test certifies it.** `tests/unit/crossing-mint-gate.tests.ps1:183` asserts
+  *"a bare marker authorizes plan -> tasks today (T015 flips this deliberately)"* - a green assertion whose
+  own text says a later task was supposed to invert it. **Second catalogued family in one round: a test that
+  certifies the defect.** The suite passes, and it passes *because* the defect is present.
+- **The instrument's own defect, observed and NOT fixed here (B-3 is not in this batch, maintainer ruling)**:
+  the reviewer graded all three `major`. The summariser demoted all three to `minor`
+  (`demoted: true`, `demoted_from: "major"` on every finding in `result.json`) with the stated reason
+  *"no concrete failure scenario, so it cannot gate"*. **That reason is contradicted by the finding text it
+  is attached to** - each of the three descriptions contains a concrete failure scenario, and this session
+  reproduced all three from the code. The demotion is therefore not a judgement call that went the other
+  way; it is a rationale that the record itself refutes. Reported to the maintainer from the RAW findings at
+  their instruction, precisely because the summary would have shown three minors.
+- **Citation**: FR-027, FR-032, FR-024; FR-033 (mutation proving - see below); the inert-control family
+  catalogue; the standing rule that nothing here weakens a gate that caught something real.
+- **What this says about the method, and it is not comfortable**: eleven suites in this iteration were
+  mutation-proved, and all eleven are green. They did not catch any of these three, because each mutation
+  proved the control it was written for and none of them asked whether the control's OUTPUT matched the
+  contract its consumer reads (1), whether a flag it set was ever read (2), or whether a documented residual
+  had actually been closed by the task that promised to close it (3). Mutation proving shows a control is
+  wired to its own test. It does not show the control is wired to the system.
+- **Resolution**: OPEN. The three findings are unfixed and `can_approve_current` is false, so review-signoff
+  is not approvable. Awaiting the maintainer's disposition on scope: all three are defects this batch
+  introduced, which argues for fixing them here; finding 3's full closure additionally requires the
+  gate-stop renderer to emit the identity across its host mirrors, which is larger than a one-line fix and is
+  flagged rather than grown quietly, per the standing rule.
+- **Class closure**: NONE - the guards belong with the fixes, which are not yet authorized. Named in advance
+  so they are not invented afterwards to fit whatever gets built: (1) a contract test asserting the
+  checkpoint writer's output is READ BACK by the canonical reader, not merely written - the round-trip, not
+  the write; (2) a lane-wide assertion that every `$blockReason*` flag the provider sets is consumed on some
+  path, which is the generalisation of "a control that exists but never runs"; (3) deleting the
+  residual-certifying assertion at `crossing-mint-gate.tests.ps1:183` and replacing it with its inverse, so
+  the suite goes red until every renderer emits the identity.
 
 ### Resolution Strategies (Unused)
 
