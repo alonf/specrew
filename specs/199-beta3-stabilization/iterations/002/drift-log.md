@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 16 (DRIFT-199-I002-001 through -016)
+**Total drift events**: 17 (DRIFT-199-I002-001 through -017)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -685,6 +685,35 @@ point of the entry, so the original claim is quoted rather than deleted.**
      the gap, the reason for deferral, and the closure condition, and carries its own inverse disabled beside
      it. A pinned known gap is a different artifact from a green claim of correctness, and the maintainer's
      rule is the distinction - *do not leave a passing assertion whose justification has expired.*
+
+### DRIFT-199-I002-017 — the coverage figure lost its campaign label in the report, one layer above the fix that adds it (resolved same session)
+
+- **Observed**: 2026-08-29. The maintainer read the coverage line quoted in this session's report -
+  *"3 of 4 rounds remaining"*, with no campaign named - and asked whether T025's DRIFT-006 fix was
+  narrower than it had been reported: firing only for a non-current campaign rather than always.
+- **Checked rather than assumed, which is what the instruction asked for**: it is not narrower. In
+  `Get-SpecrewReviewCoverageLine`, the campaign is named in the `elseif` branch whenever `campaign_id` is
+  non-empty - unconditionally. Only the extra *"iteration N has no campaign yet, so it starts with a fresh
+  allowance"* clause is conditional, and correctly so: it fires when the campaign belongs to a different
+  iteration than the active one. The live output ended `...3 of 4 rounds remaining in campaign
+  cmp-199-beta3-stabilization-i002.`
+- **The defect was mine, in the report**: I abbreviated the line when quoting it and dropped the campaign
+  label. **That is the exact failure T025 fixed, reintroduced one layer up.** The fix puts the label on the
+  figure so a figure in a decision slot carries the instance it belongs to; a paraphrase that drops the
+  label restores the original defect at the point where a human actually reads it - which is the only point
+  that ever mattered.
+- **Why it is recorded rather than waved off as a typo**: the same reasoning that made DRIFT-006 worth
+  fixing applies here. The maintainer formed a hypothesis about a shipped control being narrower than
+  claimed, on the strength of a quote, and would have been right to. A control that labels its output is
+  defeated by the first person who re-types the output without the label.
+- **Citation**: DRIFT-199-I002-006 and T025; the human-facing ID-glossing discipline, which is this rule's
+  sibling - carry the referent with the identifier every time it is shown.
+- **Resolution**: resolved. The check is recorded above so the question is not re-opened, and the practice
+  correction is narrow and permanent: **quote a decision-slot figure verbatim, or not at all.** Truncating
+  a governed line for readability is the one place where readability is not the goal.
+- **Class closure**: NONE - the subject is a report written in prose, and no executable guard can assert
+  what a session chose to paste. Naming the practice is the whole of the available remedy, which is why it
+  is written as a rule ("verbatim, or not at all") rather than as a resolution to be careful.
 
 ### Resolution Strategies (Unused)
 

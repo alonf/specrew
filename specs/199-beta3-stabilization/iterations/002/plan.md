@@ -252,6 +252,25 @@
       three are real defects in THIS iteration's own new code (FR-027, FR-032, FR-024). Recorded as
       DRIFT-199-I002-016.
     - Tripwire status: threshold is more than 2 rounds; at 1, not tripped.
+  - **CONVERGENCE RULE, maintainer ruling 2026-08-29 - and it exists because the obvious reading of
+    "one covering round on the tree that ships" regresses to W77.** Every round's fixes move the tree
+    that round covered, so taken literally, coverage is never reachable and rounds recur forever.
+    Therefore:
+    1. **Round 2 is the LAST round** unless it finds something that is not a fix for its own findings.
+    2. **Clean -> covered.** If round 2 comes back clean, the tree is covered and the batch goes to
+       signoff. No third round is spent on the records that round 2's own execution produces.
+    3. **New defects in the two fixes -> STOP, do not iterate.** That is not a cue for a third round;
+       it is a signal to ask whether this batch is converging at all, and it returns to the maintainer
+       before any third round is spent.
+  - **The base rate this rule is priced against, stated by the maintainer rather than inferred**: twelve
+    tasks produced three regressions; fixing those three exposed three more test defects (a suite pinning
+    the writer's invented name, a fixture leaving the far side's check switched off, a case asserting the
+    text but not how it left). The two new fixes are not trivial - a scope-derivation change at a seam, a
+    flag newly consumed in a shared tail, and a loop-guard release touching cap accounting - they were made
+    by the agent whose earlier work produced the defects, and validated against suites that same agent
+    repaired. The repaired suites prove the fixes satisfy their tests, which is precisely what the last
+    round demonstrated is not the same as working. Round 2 is therefore bought as independent evidence,
+    not as reassurance.
   - **Rework commits after round delivery**: counted from git history at signoff.
   - **Calendar days from round delivery to signoff**: counted at signoff.
 - T025 SWEEP RESULT (2026-08-29): mirrors byte-identical across all ten script/skill/refocus pairs and all

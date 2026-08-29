@@ -605,6 +605,16 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
   - **Where the general instrument goes**: a contract test exercising writer and reader together
     in one case belongs in beta4's composition harness, alongside the two-gates-disagree
     scenarios - the same family seen from the test side (maintainer instruction, 2026-08-29).
+  - **A safety feature can guarantee the silence it was meant to prevent** (maintainer,
+    2026-08-29, generalising the FR-032 defect): `$blockReasonOwnerScoped` was assigned in one
+    branch and declared nowhere, under `Set-StrictMode -Version Latest`. Strict mode protects
+    against READING a variable nobody declared and gives nothing against WRITING one nobody
+    reads. The louder failure was therefore unavailable, and the defect took the only shape it
+    could - silent, and inert. The rule that follows is general and not about PowerShell: **when
+    a language or framework guard makes one direction of a mistake loud, the same mistake will
+    migrate to the direction it does not cover.** Ask what the guard does NOT catch, because
+    that is where the surviving instances live; a codebase under a strict reader-check will
+    accumulate write-only state specifically, and nothing in its test output will say so.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
