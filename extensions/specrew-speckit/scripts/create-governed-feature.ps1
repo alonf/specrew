@@ -146,7 +146,7 @@ if (Test-Path -LiteralPath $specFile -PathType Leaf) {
     $existingSpec = Get-Content -LiteralPath $specFile -Raw -Encoding UTF8
     # Only ever replace the UPSTREAM TEMPLATE. An authored spec (a re-run over an existing feature) is never
     # touched: this must not become a way to lose a written specification.
-    if ($existingSpec -match '\[Brief Title\]' -or $existingSpec -match 'FR-001: System MUST' -or $existingSpec -match '\[FEATURE NAME\]') {
+    if ($existingSpec -match '\[Brief Title\]' -or $existingSpec -match 'System MUST \[specific capability\]' -or $existingSpec -match '\[FEATURE NAME\]') {
         [System.IO.File]::WriteAllText($specFile, ($specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
     }
 }

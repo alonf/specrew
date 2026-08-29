@@ -235,8 +235,14 @@
   each read from a source this session does not write):
   - **Implementation calendar**: first task commit 2026-08-29 19:48, last 2026-08-29 21:38 - twelve tasks
     inside one working session, which is the only implementation figure worth stating.
-  - **Review rounds consumed**: recorded from the campaign store when the covering round delivers
-    (iteration 001's campaign had used 3 of 4; iteration 002's campaign starts fresh).
+  - **Review rounds consumed**: **0**. The covering round was requested on 2026-08-29 against campaign
+    `cmp-199-beta3-stabilization-i002` (run `run-20260829-202021847-c98fb407`) and DID NOT RUN: the
+    pre-review verification plan failed, so the reviewer was never invoked. No round was spent and the
+    maintainer's authorization is still available - the invoked-only spend accounting (FR-014) behaving
+    exactly as designed, on its first real exercise since the batch landed.
+    Of the three failing verification commands, one was a real defect in this batch and is fixed
+    (DRIFT-199-I002-013, an internal requirement id in a shipped script); two are pre-existing and blocking,
+    and await a maintainer decision (DRIFT-199-I002-014 and -015).
   - **Rework commits after round delivery**: counted from git history at signoff.
   - **Calendar days from round delivery to signoff**: counted at signoff.
 - T025 SWEEP RESULT (2026-08-29): mirrors byte-identical across all ten script/skill/refocus pairs and all

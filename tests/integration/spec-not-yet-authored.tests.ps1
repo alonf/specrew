@@ -75,7 +75,7 @@ $f1 = New-SpecFixture -Body $templateBody
 Invoke-StubReplacement -SpecFile $f1.Spec
 $stub = Get-Content -LiteralPath $f1.Spec -Raw -Encoding UTF8
 Assert-True ($stub -match '<!--\s*specrew:spec-not-yet-authored\s*-->') 'the stub carries the sentinel the specify gate reads'
-Assert-True ($stub -notmatch '\[Brief Title\]' -and $stub -notmatch 'FR-001: System MUST' -and $stub -notmatch '\[FEATURE NAME\]') 'no requirement placeholders remain to be written into mid-workshop'
+Assert-True ($stub -notmatch '\[Brief Title\]' -and $stub -notmatch 'System MUST \[specific capability\]' -and $stub -notmatch '\[FEATURE NAME\]' -and $stub -notmatch 'FR-\d{3}') 'no requirement placeholders - and no requirement ids at all - remain to be written into mid-workshop'
 Assert-True ($stub -match 'has not been written yet, and that is deliberate') 'it says plainly that this is intended, not a failure'
 Assert-True ($stub -match 'Nothing is missing and nothing has failed') 'and reassures the reader'
 Assert-True ($stub -match 'do not write' -and $stub -match 'do not delete it') 'and names what NOT to do - the two things the walk did'

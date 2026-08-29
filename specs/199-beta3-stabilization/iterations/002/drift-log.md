@@ -16,9 +16,10 @@
 
 ## Summary
 
-**Total drift events**: 12 (DRIFT-199-I002-001 through -012)
-**Resolution rate**: carried per event in its heading (8 resolved-by this iteration's requirements or
-instrumentation, 2 spec-updated/human-decision, 2 deferred/open by ruling or scope)
+**Total drift events**: 15 (DRIFT-199-I002-001 through -015)
+**Resolution rate**: carried per event in its heading (9 resolved-by this iteration's requirements,
+instrumentation or a same-session fix; 2 spec-updated/human-decision; 4 deferred/open, two of them
+blocking the covering round and awaiting a maintainer decision)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
 ## Events
@@ -381,6 +382,74 @@ instrumentation, 2 spec-updated/human-decision, 2 deferred/open by ruling or sco
 - **Class closure**: a plan may not state a threshold whose input is not independently produced. The three
   measures above come from the campaign store, git history and dates - none of them writable by the
   session that would trip the wire.
+
+### DRIFT-199-I002-013 — a class guard caught an internal requirement id in a shipped script (resolved same session)
+
+- **Observed**: 2026-08-29, in the covering round's pre-review verification. The `f199-class-guards`
+  command failed on `no-internal-ids-in-emitted-strings`: `create-governed-feature.ps1:149` contained the
+  literal `FR-001: System MUST`, which T020 had used to recognise the upstream spec template.
+- **Why it is a real defect and not a false positive**: W46's rule is that a shipped script must not carry
+  Specrew's internal requirement ids, because a downstream reader has no referent for them and they collide
+  with the consumer's own FR namespace. A detection pattern is still a string in a shipped file, and a
+  consumer grepping their own spec ids would find Specrew's.
+- **Resolution**: the template is now recognised by its placeholders (`[Brief Title]`,
+  `System MUST [specific capability]`, `[FEATURE NAME]`) - unique to the template and carrying no id. The
+  T020 suite additionally asserts the stub contains no `FR-\d{3}` at all. Guard green.
+- **Class closure**: the guard already exists and already ran; what it proves is that the class-guard lane
+  earns its place - this defect was introduced by a task that had nothing to do with requirement ids, which
+  is exactly the case the permanent lane was created for (DRIFT-199-I001-017).
+
+### DRIFT-199-I002-014 — the deployed-extension integrity check cannot tell a Windows checkout from an edit (open; BLOCKS the covering round)
+
+- **Observed**: 2026-08-29, in the covering round's pre-review verification. The
+  `iteration-001-governance` command failed, in part on: *"The deployed Specrew machinery under
+  .specify/extensions/specrew-speckit does not match what was installed"*.
+- **Measured, because the first reading was wrong**: 163 managed files, 74 on-disk hash mismatches. Of
+  those, **55 are byte-identical once line endings are normalised** - their content has not changed and
+  git records no commit touching them since the manifest was stamped (W72, `26f6e4b7`). The manifest stores
+  the LF-normalised hash; git's autocrlf gives the working tree CRLF; so the check reports drift for files
+  nobody edited, on any Windows checkout. The remaining **19 are genuinely different, and all 19 are
+  exactly this batch's deployed edits** (the ten lens records, `refocus/general.md`, the two skill
+  templates, and six scripts).
+- **Why it matters beyond the noise**: the check cannot distinguish a real local patch from a line-ending
+  difference, so its own message - "a local edit makes this run's result unreliable" - is unactionable: 55
+  of the 74 files it names have no local edit. An integrity control whose false-positive rate is 74% on the
+  platform it runs on is not currently evidence.
+- **Why nothing was done to it here**: two available moves were both refused. Re-stamping the manifest from
+  on-disk bytes would bake this machine's line endings into a shared record and hide the 19 real entries
+  among 55 fake ones (attempted, then reverted before commit). Normalising the comparison is the correct
+  fix and is OUTSIDE the ten-item batch, which the maintainer's standing rule forbids widening.
+- **Citation**: FR-033 (batch scope); the standing rule that nothing here weakens a gate that caught
+  something real - this gate did catch the 19.
+- **Resolution**: OPEN, awaiting the maintainer's decision, because it blocks the covering round that gates
+  the tag. Options as they stand: (a) fix the comparison to normalise line endings, ~one place, and
+  re-stamp the 19 deliberate edits; (b) re-stamp only the 19 and accept that this command keeps failing on
+  the 55; (c) point the verification plan's governance command at the active iteration and treat the
+  integrity check as beta4 work.
+- **Class closure**: candidate - a check that compares bytes must say which representation it compares, or
+  it measures the checkout rather than the content.
+
+### DRIFT-199-I002-015 — a closed iteration's hardening gate blocks its successor's review (open; BLOCKS the covering round)
+
+- **Observed**: 2026-08-29, same command. `iteration-001-governance` also failed on: *"hardening-gate.md
+  still requires runtime evidence or explicit closure follow-through for concern(s): security-surface,
+  error-handling-expectations, retry-idempotency-requirements, test-integrity-targets"*.
+- **What is actually true**: iteration 001's hardening gate records those four concerns as `addressed` with
+  `RuntimeEvidenceStatus: pending-post-implementation` - the planning-time posture, written before
+  implementation, and unchanged since long before this batch. What changed is that iteration 001 now claims
+  `complete`: the closeout this session recorded under the maintainer's verdict. A complete iteration is
+  held to a higher bar than a running one, and 001's gate never received its post-implementation record.
+- **Why nothing was done to it here**: iteration 001 is CLOSED AND SEALED. Editing its hardening gate is
+  editing preserved history, which the validator itself refuses and the maintainer has ruled is the human's
+  act, not a session's. The alternative - pointing the verification plan at the ACTIVE iteration - is a
+  project-config change that would silently narrow what the review's own preflight checks, and is a
+  decision rather than a repair.
+- **The verification plan is pinned to a closed iteration**: `plan_id: f199.i001.slice.v3`, and its
+  governance command names `specs/199-beta3-stabilization/iterations/001`. Iteration 002 is the tree under
+  review. Whichever way the above is decided, that pin is now stale.
+- **Resolution**: OPEN, awaiting the maintainer's decision.
+- **Class closure**: candidate - a verification plan that names a specific iteration goes stale the moment
+  the next one opens; it should name the ACTIVE iteration, or the closeout should re-point it.
 
 ### Resolution Strategies (Unused)
 
