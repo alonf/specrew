@@ -3503,6 +3503,248 @@ function Invoke-SpecrewBoundaryRatchetGate {
     throw ("Cannot continue to '{0}': the earlier '{1}' step is still waiting for your approval. One approval advances one step, so the assistant must not move past an unapproved step. Two ways forward: (1) approve the waiting '{1}' step - the assistant will ask you to approve or decline it; or (2) roll back to the last approved point ({2}) - the assistant will ask for your explicit confirmation first, because rolling back discards the unapproved work. Re-running the same command will not bypass this stop." -f $requestedCanonical, $unreconciled.Boundary, $anchorText)
 }
 
+function Get-SpecrewCrossingMirrorMap {
+    # FR-030 (iteration 002, T021): the enumerated COPIES of last_authorized_boundary and the vocabulary each
+    # file already speaks. state.md Current Phase is the boundary name itself; plan.md Status is the
+    # validator's own enum, mapped. state.md Iteration Status is NOT a copy - it is derived from task
+    # progress by task-progress.ps1 in its own enum - and the crossing writer touches it only at
+    # iteration-closeout (-> complete). No value is migrated; no upgrade breaks (DRIFT-199-I002-007).
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Boundary)
+    $canonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $Boundary
+    $planStatus = switch ($canonical) {
+        'plan' { 'planning' }
+        'tasks' { 'planning' }
+        'before-implement' { 'executing' }
+        'review-signoff' { 'reviewing' }
+        'retro' { 'retro' }
+        'iteration-closeout' { 'complete' }
+        default { $null }
+    }
+    $iterationScoped = $canonical -in @('plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout')
+    return [pscustomobject]@{
+        Boundary        = $canonical
+        IterationScoped = $iterationScoped
+        CurrentPhase    = if ($iterationScoped) { $canonical } else { $null }
+        PlanStatus      = $planStatus
+        IterationStatus = if ($canonical -eq 'iteration-closeout') { 'complete' } else { $null }
+    }
+}
+
+function Get-SpecrewPlanStatusRank {
+    [CmdletBinding()]
+    param([AllowNull()][string]$Status)
+    $order = @('planning', 'executing', 'reviewing', 'retro', 'complete')
+    $value = if ([string]::IsNullOrWhiteSpace($Status)) { '' } else { $Status.Trim().ToLowerInvariant() }
+    return [Array]::IndexOf($order, $value)
+}
+
+function Set-SpecrewMarkdownMetadataLine {
+    # Rewrites one `**Label**: value` metadata line in place. Never invents a line: a file without the label
+    # is left alone and reported, so a mirror write can never fabricate a field the writer does not own.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][string]$Value
+    )
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return [pscustomobject]@{ Path = $Path; Label = $Label; Found = $false; Changed = $false; Previous = $null } }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+    # CRLF-safe: .NET's multiline `$` matches before \n only, so the value must be allowed to end before an optional \r.
+    $pattern = '(?m)^(\*\*' + [regex]::Escape($Label) + '\*\*:[ \t]*)(?<value>[^\r\n]*)\r?$'
+    $match = [regex]::Match($content, $pattern)
+    if (-not $match.Success) { return [pscustomobject]@{ Path = $Path; Label = $Label; Found = $false; Changed = $false; Previous = $null } }
+    $previous = $match.Groups['value'].Value.Trim()
+    if ($previous -ceq $Value) { return [pscustomobject]@{ Path = $Path; Label = $Label; Found = $true; Changed = $false; Previous = $previous } }
+    $updated = $content.Substring(0, $match.Groups['value'].Index) + $Value + $content.Substring($match.Groups['value'].Index + $match.Groups['value'].Length)
+    [IO.File]::WriteAllText($Path, $updated, [Text.UTF8Encoding]::new($false))
+    return [pscustomobject]@{ Path = $Path; Label = $Label; Found = $true; Changed = $true; Previous = $previous }
+}
+
+function Get-SpecrewMirrorMetadataValue {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$Label)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+    $match = [regex]::Match($content, '(?m)^\*\*' + [regex]::Escape($Label) + '\*\*:[ \t]*(?<value>[^\r\n]*)\r?$')
+    if ($match.Success) { return $match.Groups['value'].Value.Trim() }
+    return $null
+}
+
+function Resolve-SpecrewCrossingMirrorPaths {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+    $root = Resolve-ProjectPath -Path $ProjectRoot
+    $feature = $FeatureRef
+    $iteration = $IterationNumber
+    if ([string]::IsNullOrWhiteSpace($feature) -or [string]::IsNullOrWhiteSpace($iteration)) {
+        try {
+            $ctxPath = Join-Path $root '.specrew/start-context.json'
+            if (Test-Path -LiteralPath $ctxPath -PathType Leaf) {
+                $ctx = Get-Content -LiteralPath $ctxPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $ssProp = $ctx.PSObject.Properties['session_state']
+                $ss = if ($null -ne $ssProp) { $ssProp.Value } else { $null }
+                if ($null -ne $ss) {
+                    if ([string]::IsNullOrWhiteSpace($feature) -and $null -ne $ss.PSObject.Properties['feature_ref']) { $feature = [string]$ss.feature_ref }
+                    if ([string]::IsNullOrWhiteSpace($iteration) -and $null -ne $ss.PSObject.Properties['iteration_number']) { $iteration = [string]$ss.iteration_number }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+    if ([string]::IsNullOrWhiteSpace($feature) -or [string]::IsNullOrWhiteSpace($iteration)) { return $null }
+    $iterationDir = Join-Path (Join-Path $root ('specs/' + (Split-Path -Leaf $feature))) ('iterations/' + $iteration)
+    return [pscustomobject]@{
+        Feature      = $feature
+        Iteration    = $iteration
+        IterationDir = $iterationDir
+        StatePath    = Join-Path $iterationDir 'state.md'
+        PlanPath     = Join-Path $iterationDir 'plan.md'
+    }
+}
+
+function Sync-SpecrewCrossingMirrors {
+    # FR-030 (T021): the crossing writer owns every enumerated COPY of the authority it writes. Writes are
+    # FORWARD-ONLY: a copy that is behind the store is brought up to it; a copy that is AHEAD of the store
+    # is never rewritten here - that shape is what a forged advance looks like, and the truth gate refuses
+    # it by name (Get-SpecrewCrossingMirrorIssues). A copy may lead the store by exactly the pending
+    # crossing during the arrival-to-verdict window; that lead is left alone too.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$AuthorizedBoundary,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber,
+        [AllowNull()][string]$Reason,
+        [AllowNull()][string]$NowUtc
+    )
+    $result = [pscustomobject]@{ Attempted = $false; Wrote = @(); Left = @(); Reason = $Reason; StatePath = $null; PlanPath = $null }
+    $map = Get-SpecrewCrossingMirrorMap -Boundary $AuthorizedBoundary
+    if (-not [bool]$map.IterationScoped) { $result.Reason = 'feature-level boundary: no iteration copy to write'; return $result }
+    $paths = Resolve-SpecrewCrossingMirrorPaths -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+    if ($null -eq $paths) { $result.Reason = 'no iteration identity: nothing to mirror'; return $result }
+    $result.StatePath = $paths.StatePath
+    $result.PlanPath = $paths.PlanPath
+    $result.Attempted = $true
+    $wrote = New-Object System.Collections.Generic.List[string]
+    $left = New-Object System.Collections.Generic.List[string]
+    $order = @(Get-SpecrewBoundaryOrder)
+
+    # state.md Current Phase: the boundary name, forward-only.
+    if (Test-Path -LiteralPath $paths.StatePath -PathType Leaf) {
+        $currentPhase = Get-SpecrewMirrorMetadataValue -Path $paths.StatePath -Label 'Current Phase'
+        $currentCanonical = if ([string]::IsNullOrWhiteSpace($currentPhase)) { $null } else { Normalize-SpecrewCanonicalBoundaryType -Boundary $currentPhase }
+        $currentRank = if ([string]::IsNullOrWhiteSpace($currentCanonical)) { -1 } else { [Array]::IndexOf($order, $currentCanonical) }
+        $targetRank = [Array]::IndexOf($order, [string]$map.CurrentPhase)
+        if ($currentRank -gt $targetRank) {
+            $left.Add(('state.md Current Phase is ahead of the store ({0} > {1}); not rewritten' -f $currentPhase, $map.CurrentPhase)) | Out-Null
+        }
+        else {
+            $w = Set-SpecrewMarkdownMetadataLine -Path $paths.StatePath -Label 'Current Phase' -Value ([string]$map.CurrentPhase)
+            if ([bool]$w.Changed) { $wrote.Add(('state.md Current Phase: {0} -> {1}' -f $w.Previous, $map.CurrentPhase)) | Out-Null }
+            elseif (-not [bool]$w.Found) { $left.Add('state.md has no Current Phase line; not invented') | Out-Null }
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$map.IterationStatus)) {
+            $w2 = Set-SpecrewMarkdownMetadataLine -Path $paths.StatePath -Label 'Iteration Status' -Value ([string]$map.IterationStatus)
+            if ([bool]$w2.Changed) { $wrote.Add(('state.md Iteration Status: {0} -> {1}' -f $w2.Previous, $map.IterationStatus)) | Out-Null }
+        }
+    }
+    else { $left.Add('state.md does not exist; nothing to mirror') | Out-Null }
+
+    # plan.md Status: the validator's enum, mapped, forward-only; `abandoned` is terminal and never touched.
+    if ((Test-Path -LiteralPath $paths.PlanPath -PathType Leaf) -and -not [string]::IsNullOrWhiteSpace([string]$map.PlanStatus)) {
+        $planStatus = Get-SpecrewMirrorMetadataValue -Path $paths.PlanPath -Label 'Status'
+        if ($null -ne $planStatus -and $planStatus.Trim().ToLowerInvariant() -eq 'abandoned') {
+            $left.Add('plan.md Status is abandoned (terminal); not rewritten') | Out-Null
+        }
+        elseif ((Get-SpecrewPlanStatusRank -Status $planStatus) -gt (Get-SpecrewPlanStatusRank -Status ([string]$map.PlanStatus))) {
+            $left.Add(('plan.md Status is ahead of the store ({0} > {1}); not rewritten' -f $planStatus, $map.PlanStatus)) | Out-Null
+        }
+        else {
+            $w3 = Set-SpecrewMarkdownMetadataLine -Path $paths.PlanPath -Label 'Status' -Value ([string]$map.PlanStatus)
+            if ([bool]$w3.Changed) { $wrote.Add(('plan.md Status: {0} -> {1}' -f $w3.Previous, $map.PlanStatus)) | Out-Null }
+            elseif (-not [bool]$w3.Found) { $left.Add('plan.md has no Status line; not invented') | Out-Null }
+        }
+    }
+    $result.Wrote = $wrote.ToArray()
+    $result.Left = $left.ToArray()
+    if ($wrote.Count -gt 0) {
+        try {
+            $journal = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/handover-journal.jsonl'
+            $dir = Split-Path -Parent $journal
+            if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
+            (([pscustomobject]@{ event = 'crossing-mirrors-written'; recorded_at = $when; boundary = [string]$map.Boundary; iteration = [string]$paths.Iteration; wrote = @($wrote); left = @($left); reason = $Reason }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
+        }
+        catch { $null = $_ }
+    }
+    return $result
+}
+
+function Get-SpecrewCrossingMirrorIssues {
+    # FR-030 (T021): the truth check over every enumerated mirror. A copy may equal the store or lead it by
+    # exactly the pending crossing; anything else is named, with the one action that repairs it.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+    $issues = New-Object System.Collections.Generic.List[string]
+    $paths = Resolve-SpecrewCrossingMirrorPaths -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+    if ($null -eq $paths) { return @() }
+    $enforcement = $null
+    try { $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot } catch { return @() }
+    if ($null -eq $enforcement -or $null -eq $enforcement.EffectiveState) { return @() }
+    $lastAuthorized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcement.EffectiveState['last_authorized_boundary'])
+    if ([string]::IsNullOrWhiteSpace($lastAuthorized)) { return @() }
+    $pendingTo = $null
+    $lastRecordedAt = $null
+    try {
+        $pc = if ($enforcement.State.Contains('pending_crossing')) { ConvertTo-SpecrewBoundaryMap -Value $enforcement.State['pending_crossing'] } else { $null }
+        if ($null -ne $pc -and $pc.Contains('to_boundary')) { $pendingTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pc['to_boundary']) }
+        $history = @($enforcement.EffectiveState['verdict_history'])
+        if ($history.Count -gt 0) { $last = ConvertTo-SpecrewBoundaryMap -Value $history[$history.Count - 1]; if ($null -ne $last -and $last.Contains('recorded_at')) { $lastRecordedAt = [string]$last['recorded_at'] } }
+    }
+    catch { $null = $_ }
+    # The active iteration is the only one whose copies the store speaks for; a closed iteration keeps its record.
+    $mapLast = Get-SpecrewCrossingMirrorMap -Boundary $lastAuthorized
+    $mapPending = if ([string]::IsNullOrWhiteSpace($pendingTo)) { $null } else { Get-SpecrewCrossingMirrorMap -Boundary $pendingTo }
+    $approvedText = if ([string]::IsNullOrWhiteSpace($lastRecordedAt)) { '' } else { (' (approved {0})' -f $lastRecordedAt) }
+    $action = "Re-run the boundary sync for '{0}' to re-mirror the phase; if state.md is ahead of the record rather than behind it, correct the line by hand and record why in the drift log." -f $lastAuthorized
+
+    if ((Test-Path -LiteralPath $paths.StatePath -PathType Leaf) -and [bool]$mapLast.IterationScoped) {
+        $currentPhase = Get-SpecrewMirrorMetadataValue -Path $paths.StatePath -Label 'Current Phase'
+        if (-not [string]::IsNullOrWhiteSpace($currentPhase)) {
+            $currentCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $currentPhase
+            $allowed = @([string]$mapLast.CurrentPhase)
+            if ($null -ne $mapPending -and -not [string]::IsNullOrWhiteSpace([string]$mapPending.CurrentPhase)) { $allowed += [string]$mapPending.CurrentPhase }
+            if (-not [string]::IsNullOrWhiteSpace($currentCanonical) -and $currentCanonical -notin $allowed) {
+                $issues.Add(("state.md for iteration {0} says Current Phase '{1}', but the last authorized boundary is '{2}'{3}. The page a human opens to learn where the work stands is behind the authority record. {4}" -f $paths.Iteration, $currentPhase, $lastAuthorized, $approvedText, $action)) | Out-Null
+            }
+        }
+        $iterationStatus = Get-SpecrewMirrorMetadataValue -Path $paths.StatePath -Label 'Iteration Status'
+        if (-not [string]::IsNullOrWhiteSpace($iterationStatus) -and $iterationStatus.Trim().ToLowerInvariant() -eq 'complete' -and $lastAuthorized -ne 'iteration-closeout' -and $pendingTo -ne 'iteration-closeout') {
+            $issues.Add(("state.md for iteration {0} says Iteration Status 'complete', but the last authorized boundary is '{1}'{2} and no closeout is pending: an iteration is complete only when its closeout is authorized or being asked for. {3}" -f $paths.Iteration, $lastAuthorized, $approvedText, $action)) | Out-Null
+        }
+    }
+    if ((Test-Path -LiteralPath $paths.PlanPath -PathType Leaf) -and -not [string]::IsNullOrWhiteSpace([string]$mapLast.PlanStatus)) {
+        $planStatus = Get-SpecrewMirrorMetadataValue -Path $paths.PlanPath -Label 'Status'
+        if (-not [string]::IsNullOrWhiteSpace($planStatus) -and $planStatus.Trim().ToLowerInvariant() -ne 'abandoned') {
+            $allowedPlan = @([string]$mapLast.PlanStatus)
+            if ($null -ne $mapPending -and -not [string]::IsNullOrWhiteSpace([string]$mapPending.PlanStatus)) { $allowedPlan += [string]$mapPending.PlanStatus }
+            if ($planStatus.Trim().ToLowerInvariant() -notin $allowedPlan) {
+                $issues.Add(("plan.md for iteration {0} says Status '{1}', but the last authorized boundary is '{2}'{3}, which reads '{4}' in plan.md's own vocabulary. The page a human opens to learn where the work stands is out of step with the authority record. {5}" -f $paths.Iteration, $planStatus, $lastAuthorized, $approvedText, $mapLast.PlanStatus, $action)) | Out-Null
+            }
+        }
+    }
+    return $issues.ToArray()
+}
+
 function Add-SpecrewBoundaryAuthorization {
     param(
         [Parameter(Mandatory = $true)]
@@ -3745,11 +3987,24 @@ function Add-SpecrewBoundaryAuthorization {
     }
     Set-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -BoundaryEnforcement $updatedState -Context $enforcementState.Context | Out-Null
 
+    # FR-030 (T021): the authority is written; now every enumerated copy of it is written by the SAME writer,
+    # in the same act. The mirror write is subordinate to the authority write - a failure here is loud but
+    # never un-records the verdict - and the truth gate at the next sync compares every copy it names.
+    $mirrorResult = $null
+    try {
+        $mirrorResult = Sync-SpecrewCrossingMirrors -ProjectRoot $ProjectRoot -AuthorizedBoundary $authorizedCanonical `
+            -FeatureRef $rebindFeature -IterationNumber $rebindIteration -Reason 'authorization' -NowUtc $effectiveRecordedAt
+    }
+    catch {
+        try { [Console]::Error.WriteLine(('[specrew-governance] WARN CROSSING_MIRRORS_NOT_WRITTEN the verdict for {0} is recorded but its copies in state.md/plan.md could not be written: {1}. Re-run the boundary sync to re-mirror.' -f $authorizedCanonical, $_.Exception.Message)) } catch { $null = $_ }
+    }
+
     return [pscustomobject]@{
         AuthorizedBoundary = $authorizedCanonical
         StoredVerdict      = $VerdictText
         RecordedAt         = $effectiveRecordedAt
         DirectiveSentinel  = 'SPECREW_BOUNDARY_AUTHORIZED'
+        Mirrors            = $mirrorResult
     }
 }
 

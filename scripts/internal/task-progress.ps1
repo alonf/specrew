@@ -723,10 +723,15 @@ function Set-TaskStatus {
         [AllowNull()][string]$FeatureRef,
         [Parameter(Mandatory = $true)][string]$IterationNumber,
         [Parameter(Mandatory = $true)][string]$TaskId,
-        [Parameter(Mandatory = $true)][ValidateSet('pending', 'in-progress', 'complete', 'blocked')][string]$Status,
+        [Parameter(Mandatory = $true)][ValidateSet('pending', 'in-progress', 'complete', 'done', 'blocked')][string]$Status,
         [AllowNull()][string]$Reason,
         [AllowNull()][string]$ResolvedFeaturePath
     )
+
+    # DRIFT-199-I002-009 (T021): this writer used to persist 'complete' while every consumer - the boundary
+    # preflight's task-state check, the validator's task enum, iteration 001's own ledger - speaks 'done'.
+    # The ledger now holds the one word its readers accept; 'complete' stays an accepted input alias.
+    if ($Status -eq 'complete') { $Status = 'done' }
 
     $state = Sync-IterationTaskProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
     if (-not $state.Tasks.Contains($TaskId)) {
@@ -752,7 +757,7 @@ function Set-TaskStatus {
             $entry.completed_at = $null
             $entry.blocked_reason = $null
         }
-        'complete' {
+        'done' {
             if ([string]::IsNullOrWhiteSpace([string]$entry.started_at)) {
                 $entry.started_at = $timestamp
             }

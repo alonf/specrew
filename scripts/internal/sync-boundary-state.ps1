@@ -902,11 +902,28 @@ function Invoke-SpecrewIterationStateTruthGate {
         [string]$IterationNumber
     )
 
-    if ($BoundaryType -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
+    # FR-030 (T021): the truth gate runs at EVERY iteration-scoped boundary, not only the last four - a copy
+    # that drifted at plan is a copy the human reads at plan. First the copies are brought FORWARD from the
+    # store (never backward, never past a lead of exactly the pending crossing), then every enumerated
+    # mirror is compared.
+    if ($BoundaryType -notin @('plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
         return
+    }
+    if ($BoundaryType -ne 'feature-closeout' -and (Get-Command -Name 'Sync-SpecrewCrossingMirrors' -ErrorAction SilentlyContinue)) {
+        try {
+            $mirrorState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+            $mirrorLast = if ($null -ne $mirrorState -and $null -ne $mirrorState.EffectiveState) { [string]$mirrorState.EffectiveState['last_authorized_boundary'] } else { $null }
+            if (-not [string]::IsNullOrWhiteSpace($mirrorLast)) {
+                $null = Sync-SpecrewCrossingMirrors -ProjectRoot $ProjectRoot -AuthorizedBoundary $mirrorLast -FeatureRef $FeatureRef -IterationNumber $IterationNumber -Reason ('sync:' + $BoundaryType)
+            }
+        }
+        catch { Write-Warning ('[crossing-mirrors] the copies could not be re-mirrored from the store before the truth gate: {0}' -f $_.Exception.Message) }
     }
 
     $issues = @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -RequireStateFile:($BoundaryType -eq 'review-signoff'))
+    if ($BoundaryType -ne 'feature-closeout' -and (Get-Command -Name 'Get-SpecrewCrossingMirrorIssues' -ErrorAction SilentlyContinue)) {
+        $issues = @($issues) + @(Get-SpecrewCrossingMirrorIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber)
+    }
     if ($issues.Count -eq 0) {
         return
     }

@@ -185,7 +185,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   made too strict) - PreflightOnly never reaches the mint path, and without this the permit side
   would stay unproven until review-signoff. (Trace: FR-024, FR-033, SC-011; owns: `shared-governance.ps1` + mirror,
   `HandoverStore.ps1`, `ConversationCaptureAccessor.ps1`)
-- [ ] T021 [owner: Implementer] [sp: 2.0] **Crossing mirrors** — the authorization writer writes
+- [x] T021 [owner: Implementer] [sp: 2.0] **Crossing mirrors** — the authorization writer writes
   `state.md` Current Phase and `plan.md` Status in each file's existing vocabulary and sets
   `state.md` Iteration Status to `complete` at closeout; the sync re-mirrors the copies; the truth
   gate compares every enumerated mirror at every iteration-scoped boundary and refuses a copy ahead
