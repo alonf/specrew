@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 17.5/20 story_points
+**Capacity**: 18.5/20 story_points
 **Started**: 2026-08-29
 **Completed**:
 
@@ -39,7 +39,7 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; ladder-replay fixture | FR-024 | US8 | 2.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/unit/**, tests/integration/** | planned | | | |
+| T001 | Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures | FR-024 | US8 | 3.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/unit/**, tests/integration/** | planned | | | |
 | T002 | Withhold discipline: packet re-mint guard; gate-stop skill (3 copies), Rule 53, refocus/general.md (2), lifecycle-discipline.md; owned test flips | FR-024 | US8 | 2.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, .claude/skills/specrew-gate-stop/SKILL.md, extensions/specrew-speckit/squad-templates/skills/gate-stop.md, .specify/extensions/specrew-speckit/squad-templates/skills/gate-stop.md, scripts/internal/launch-contract.ps1, extensions/specrew-speckit/refocus/general.md, .specify/extensions/specrew-speckit/refocus/general.md, docs/methodology/lifecycle-discipline.md, tests/integration/** | planned | | | |
 | T003 | Split `pushed-head`: delivery at closeouts reading enforcement_mode; new `verdict-commit-durable`; messages; the field case and this repository as fixtures | FR-025 | US8 | 1.5 | Implementer | scripts/internal/gate-preflight.ps1, tests/unit/gate-preflight.Tests.ps1 | planned | | | |
 | T004 | Zero-construct detection in both constrained readers; representation-naming parse message; JSON fixtures | FR-026 | US8 | 1.0 | Implementer | scripts/internal/product-domain-lens.ps1, scripts/internal/code-implementation-lens.ps1, tests/unit/product-domain-lens.tests.ps1, tests/unit/code-implementation-lens.tests.ps1 | planned | | | |
@@ -48,7 +48,7 @@
 | T007 | Not-yet-authored `spec.md` stub at feature creation; specify-gate sentinel refusal | FR-029 | US8 | 1.0 | Implementer | extensions/specrew-speckit/scripts/create-governed-feature.ps1, .specify/extensions/specrew-speckit/scripts/create-governed-feature.ps1, scripts/internal/design-analysis-gate.ps1, tests/integration/governed-feature-*.tests.ps1 | planned | | | |
 | T008 | Crossing-mirror writer for every enumerated mirror; sync re-mirror; truth gate over each; DRIFT-199-I001-152 reproduced then green | FR-030 | US8 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, scripts/internal/task-progress.ps1, tests/unit/**, tests/integration/** | planned | | | |
 | T009 | Seal as the closeout sync's last write; test that it hashes the rendered dashboard | FR-031 | US8 | 0.5 | Implementer | scripts/internal/sync-boundary-state.ps1, tests/integration/** | planned | | | |
-| T010 | Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner in the stop artifact | FR-032 | US8 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/integration/conformance-*.tests.ps1 | planned | | | |
+| T010 | Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner-unknown named out loud; capture verifies the marker's crossing identity | FR-032 | US8 | 2.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/integration/conformance-*.tests.ps1 | planned | | | |
 | T011 | Capture disclosure: one line naming what was received and what would capture; leading-quote-bar fixture | FR-010 | US3 | 0.75 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/verdict-capture-blocks.tests.ps1 | planned | | | |
 | T012 | Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft | FR-033 | US8 | 0.5 | Spec Steward | docs/release-notes-v0.40.0-beta3.md, specs/199-beta3-stabilization/** | planned | | | |
 
@@ -86,9 +86,9 @@
 | ----- | ---------------- | ----- |
 | Planning | 1.5 | Spec amendment, design-analysis, this plan (spent 2026-08-29) |
 | Discovery/Spikes | 0.5 | Rebind-versus-re-mint and owner-identity reads, done at source before the design |
-| Implementation | 17.5 | Sum of T001-T012 |
-| Review | 8.75 | Planned at the parity FLOOR (see Notes); direct estimate 3.0 |
-| Rework | 8.75 | Planned at the parity FLOOR (see Notes); direct estimate 2.5 |
+| Implementation | 18.5 | Sum of T001-T012 |
+| Review | 3.0 | Direct estimate (one covering round over ~40 paths); parity-floor CHECK 9.25 beside it; tripwire at 6.0 |
+| Rework | 2.5 | Direct estimate (~2.3 wedges per round at 001's rate); parity-floor CHECK 9.25 beside it; tripwire at 5.0 |
 
 ## Traceability Summary
 
@@ -107,25 +107,29 @@
   (mint gate), T008 (mirrors), T010 (owner), T002 (withhold discipline and its test flips), T011
   (capture disclosure); then T003 and T009 (gate-preflight and the seal, both one-file changes);
   then the workshop family - T004, T005, T006, T007; T012 last, as the sweep over everything.
-- Planned task effort: 17.5 SP of the 20 SP capacity (threshold 20 x 1.0 not exceeded).
-- Review and rework, estimated directly per the maintainer's instruction at the 001 retro: the
-  covering round runs over roughly 40 source paths (the 14-file delta since `1b50ae60` plus this
-  batch's two mirrored script trees, three skill copies and their tests); one round at 001's
-  measured rate of ~2.3 repair wedges per round gives a direct estimate of 3.0 SP review and 2.5 SP
-  rework - 5.5 SP against 17.5 SP of implementation, a ratio of 0.31. Iteration 001's plan carried
-  0.27 and spent roughly eight times its implementation calendar in review and rework. Per the
-  instruction, that is evidence the direct estimate repeats 001's error, not permission to plan
-  less: the phase baseline therefore plans review and rework at the parity FLOOR (17.5 SP,
-  split evenly), the direct estimates are recorded beside it, and the ratio is NOT written into
-  the capacity gate. Actuals for review and rework are recorded per round and per wedge as they
-  happen (drift log and review record), never batch-stamped at landing, so the next retro can say
-  which estimate was right.
-- What that means for one iteration: 17.5 SP of tasks plus 17.5 SP at the floor is 35 SP of
-  effort inside a 20 SP task window. The alternative is a split - the crossing family (T001,
-  T002, T008, T010, T011: 9.25 SP) as iteration 002 and the workshop family with the two one-file
-  fixes (T003-T007, T009, T012: 8.25 SP) as iteration 003, each with its own covering round. The
-  maintainer's 2026-08-27 ruling was one covering round on the tree that ships; a split trades
-  that for two rounds on two trees. Surfaced at the design stop for ruling.
+- Planned task effort: 18.5 SP of the 20 SP capacity (threshold 20 x 1.0 not exceeded); T001 and
+  T010 grew by 0.5 SP each when the marker-identity binding was folded in by ruling.
+- Review and rework, per the maintainer's ruling at the design decision (2026-08-29): the DIRECT
+  estimate is what is planned - 3.0 SP review (one covering round over roughly 40 source paths: the
+  14-file delta since `1b50ae60` plus this batch's two mirrored script trees, three skill copies
+  and their tests) and 2.5 SP rework (one round at 001's measured rate of ~2.3 repair wedges per
+  round). The parity floor - review plus rework equal to implementation, 18.5 SP, or 9.25 each - is
+  named beside it as a CHECK, not planned as a number: planning the floor converts a check into a
+  number and manufactures the overcommit. The direct estimate is 0.30 of implementation; 001's plan
+  carried 0.27 and spent roughly eight times its implementation calendar, which is why the check
+  stands. TRIPWIRE: if review or rework actuals exceed the direct estimate by 2x (review past 6.0
+  SP, rework past 5.0 SP), execution stops and the plan is re-planned rather than ground through.
+  Review and rework actuals are recorded separately, per round and per wedge as they happen
+  (drift log and review record), never batch-stamped at landing, so the next retro can say which
+  figure was right - the thing 001 could not do.
+- One iteration, not a split (maintainer ruling 2026-08-29), conditional on the campaign
+  allowance. Measured 2026-08-29 through `Get-SpecrewReviewCoverageState`: the allowance is per
+  campaign; iteration 001's campaign (`cmp-199-beta3-stabilization-i001`) has used 3 of 4 rounds,
+  which is the "1 of 4 remaining" the packets showed, and 001 is closed. Iteration 002's covering
+  round runs under its own campaign with the per-campaign allowance (4 rounds), so one iteration
+  with one covering round is supported with three rounds of headroom for tripwire-driven rework;
+  a split would have needed two campaigns, also within allowance - the ruling stands on its own
+  merits, not on scarcity.
 - Owned test flips (planned, not discovered): `fr068-verdict-demand-reproduction` HALF 2 inverts
   by its own design; `gate-stop-skill.tests.ps1:65` and `multi-host-launch-path.tests.ps1:326`
   update to the conditional discipline; the workshop transition table grows from 48 to 56 pinned

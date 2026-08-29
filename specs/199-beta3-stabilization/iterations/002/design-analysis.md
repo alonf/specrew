@@ -4,7 +4,7 @@
 **Iteration**: 002
 **Date**: 2026-08-29
 **Spec**: file:///C:/Dev/specrew-beta3-stabilization/specs/199-beta3-stabilization/spec.md
-**Status**: presented for the design-gate verdict
+**Status**: decided - Option B, modified (2026-08-29)
 
 ## Problem Framing
 
@@ -129,7 +129,13 @@ last write, with a test that it hashes the rendered dashboard. *Owing actor*: th
 owner (`host|session` identity, the same the material attribution uses) on `pending_crossing`; the
 provider's boundary demand fires only when the current session is that owner, and every other
 session sees one informational line naming the pending crossing and its owner; the stop artifact
-names its owner too. *Capture*: when the classifier does not accept a verdict-shaped turn while a
+names its owner too; when the host supplies no session identity the crossing records
+`owner: unknown`, the demand keeps today's project-wide behavior (method rule 12: a diagnosis gap
+must not become an outage), and the packet says out loud that this host does not identify sessions
+and that the demand may have reached a session that did not produce the work. *Marker identity*:
+the verdict marker carries the crossing identity (`<from> -> <to> @ <crossing-id>`) and the
+capture verifies it against the pending crossing, so a marker rendered against one crossing cannot
+capture against a successor wearing the same label. *Capture*: when the classifier does not accept a verdict-shaped turn while a
 crossing is pending, the capture emits one visible line naming what was received and the phrase at
 column 0 that would capture, instead of falling back silently; the classifier itself is unchanged.
 **Architectural pattern**: single-writer-per-authority with enumerated mirrors and a truth check
@@ -151,8 +157,9 @@ operation; each is additive and independently revertible.
 - (−) Two new writers in one batch (`confirm-workshop-lens`, the crossing-mirror write) - the
   reason the verdict-ref namespace was deferred to beta4.
 - (−) Owner scoping needs the session identity at mint time on every host; where a host gives no
-  session id the crossing records `owner: unknown` and the demand keeps today's project-wide
-  behavior - honest, not silent.
+  session id the crossing records `owner: unknown`, the demand keeps today's project-wide
+  behavior, and the packet names the gap - fail open on the diagnosis, out loud (maintainer
+  ruling, 2026-08-29).
 - (−) Three test files flip by design (`fr068` HALF 2, `gate-stop-skill:65`,
   `multi-host-launch-path:326`) and the 48-cell table becomes 56; owned in the plan, not
   discovered.
@@ -256,9 +263,9 @@ Per bridge item, what beta4 is expected to replace or extend:
   generated rather than authored.
 - The capture disclosure (FR-010, DRIFT-199-I002-004) becomes the W54 treatment applied to every
   typed authority once beta4 derives the phrase list from one table.
-- The verdict marker carries only `<from> -> <to>`; two crossing identities for the same pair
-  share a marker, so a stale marker can capture against a successor crossing. Beta4: the marker
-  carries the crossing identity.
+- (Withdrawn from beta4 by ruling, 2026-08-29: the marker carries the crossing identity and the
+  capture verifies it - folded into T001/T010, because half 2 stops the empty crossing being
+  minted but not a stale marker landing on a different one wearing the same label.)
 
 ## Co-Design Record
 
@@ -279,6 +286,7 @@ Per bridge item, what beta4 is expected to replace or extend:
 | Seal ordering | Seal is the closeout sync's last write | `scripts/internal/sync-boundary-state.ps1` |
 | Crossing owner | `pending_crossing.owner` recorded at mint; the boundary demand fires only for the owner; other sessions get one informational line | `shared-governance.ps1` (+ mirror), `specrew-conformance-provider.ps1` (+ mirror), `HandoverStore.ps1` |
 | Capture disclosure | A verdict-shaped turn that does not capture produces one line naming what was received and what would capture | `scripts/internal/bootstrap/HandoverStore.ps1`, `ConversationCaptureAccessor.ps1` (read-only use) |
+| Marker identity | The verdict marker carries the crossing identity; capture verifies it against the pending crossing (folded into T001/T010 by ruling) | `HandoverStore.ps1` (marker writer), `ConversationCaptureAccessor.ps1` (marker regex + contiguity), gate-stop skill (3 copies), `launch-contract.ps1` Rule 53 |
 
 ### Agreed flows
 
@@ -312,16 +320,44 @@ A lens close, after the batch: typed reply -> receipt -> `confirm-workshop-lens`
 validator green) -> `moved_on` -> handover refreshed -> the next lens; a validator failure keeps the
 lens open with the record's own error lines and the answers preserved.
 
-- **Human-agreed**: pending - recorded at the design-gate verdict.
+- **Human-agreed**: yes - the maintainer's typed decision of 2026-08-29 (Human Decision below)
+  agreed the component map and flows with the two additions it named (owner-unknown out loud;
+  marker identity).
 
 ## Human Decision
 
-<Populated after the design-analysis verdict - left as the template until the maintainer records
-the decision, so the plan gate blocks until then.>
+**Verdict (verbatim)**: `Chosen Option: B — class scope, and the three findings collapsing to one
+rule is the reason. Ten symptom fixes leave the class intact and I would be back here.`
+**Given**: 2026-08-29, by the maintainer, at the design-gate stop rendered over the committed draft
+`6b270ca1`. The decision was typed as a `Chosen Option` field rather than the "approved for plan
+with Option" phrase because a plan crossing minted over the empty stage was pending
+(DRIFT-199-I002-001) and the fallback capture keys on that phrase; this form authorizes no crossing.
+**Chosen option**: modified-Option B.
+**Reason**: class scope; the three findings (TB-1, TB-6, item eight) collapse to one rule.
+**Modifications** (the maintainer's, verbatim in substance):
 
-- **Decision verdict**: approved for plan with Option <X>
-- **Chosen option**: <Option X | modified-Option X>
-- **Reason**: <human rationale>
-- **Modifications**: <any scope tweaks to the chosen option, or None>
-- **Design-analysis draft commit**: <the commit that first drafted these options>
-- **Decision recorded in commit**: <the commit that contains THIS populated Human Decision - NOT the draft commit>
+1. Effort: plan the direct estimate (3.0 review, 2.5 rework); name the 17.5 SP parity floor beside
+   it as a check, not a number; add a tripwire - if review and rework exceed the direct estimate
+   by 2x, stop and re-plan rather than grind. Do not plan the floor: that converts a check into a
+   number and manufactures the overcommit. Review and rework are tracked separately so the next
+   retro can say which figure was right.
+2. One iteration, not the split - conditional on the campaign allowance supporting the rounds
+   needed (the packets had said "1 of 4 remaining"); recorded in plan.md Notes with the measured
+   allowance.
+3. The capture-silence defect is in scope as a defect against the existing FR-010 (T011) - "that
+   is the weight I meant".
+4. Owner unknown keeps today's behavior, by method rule 12 - withholding when the owner cannot be
+   determined turns a diagnosis gap into an outage on any host without session identity, including
+   for the session that did the work. But the packet must say it cannot tell: name that the host
+   does not identify sessions and that this demand may have reached a session that did not
+   produce the work. Fail open on the diagnosis, out loud.
+5. Fold into T001/T010 rather than beta4: bind the verdict marker to the crossing identity and
+   verify it at capture - half 2 stops the empty crossing being minted; it does not stop a stale
+   marker landing on a different one wearing the same label.
+
+**Design-analysis draft commit**: `6b270ca1`.
+**Decision recorded in commit**: the commit that contains this populated section is the decision
+commit (it cannot name its own hash); it is the `boundary(plan)` commit that follows `6b270ca1`
+and precedes the plan sync, and it is cited in the plan boundary packet.
+**Transcription disclosure**: this decision is agent-transcribed from the maintainer's typed reply
+in the governing session (the established design-verdict transcription path, as in iteration 001).

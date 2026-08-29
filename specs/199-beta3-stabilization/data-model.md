@@ -79,3 +79,34 @@ Catalog row `codex`: `default_timeout_seconds` 600 -> 900. All other rows untouc
 The gloss helper, banned-token check, banner composition, and message shapes are
 pure rendering; capture writes to the existing verdict-history store unchanged in
 schema.
+
+## Iteration 002 additions
+
+## Entity: PendingCrossing (EXISTING - two fields added)
+
+- `owner`: `host|session` identity string or `unknown`; written at mint; read by the conformance
+  provider's boundary demand.
+- `marker`: the exact marker text the packet must emit, `<from> -> <to> @ <crossing-id>`; the
+  capture verifies the identity segment.
+
+## Entity: CrossingMirror (NEW, derived)
+
+- The set of on-disk mirrors of `last_authorized_boundary` for the active iteration: `state.md`
+  Current Phase, `state.md` Iteration Status, `plan.md` Status. Written by the authorization
+  writer; re-mirrored by the sync; compared by the truth gate. Allowed lead: exactly the pending
+  crossing. Never written ahead of the store by anything but the pending crossing's own arrival.
+
+## Entity: LensCheckpoint (NEW, transition)
+
+- Inputs: a phase-`lens` receipt (`workshop-authority.jsonl`), `workshop/<lens>.md`, the lens's
+  validator result. Output: the `lens-applicability.json` entry (`moved_on`, `confirmation`,
+  `confirmation_scope`). Operation `confirm-lens` in the workshop transition table.
+
+## Entity: GatePreflightCheck (EXISTING - one split)
+
+- `pushed-head` (delivery; closeouts) and `verdict-commit-durable` (durability; every boundary) are
+  two named checks with disjoint jobs; neither carries the other's message.
+
+## Entity: IterationSeal (EXISTING - ordering fixed)
+
+- Written last at iteration-closeout, after the dashboard render; hashes the rendered dashboard.

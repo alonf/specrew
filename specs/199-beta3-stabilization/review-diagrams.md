@@ -72,3 +72,69 @@ sequenceDiagram
   S-->>CL: allow
   N-->>H: "review signed off; N minor findings saved as follow-ups"
 ```
+
+## Iteration 002: the crossing family
+
+```mermaid
+flowchart TB
+  subgraph Capture [Capture and mint]
+    CAP[verdict capture
+marker identity verified]
+    GATE{mint gate
+from-stage artifacts on disk?}
+    WR[Add-SpecrewBoundaryAuthorization]
+  end
+  subgraph Mirrors [Mirrors of last_authorized_boundary]
+    M1[state.md Current Phase]
+    M2[state.md Iteration Status]
+    M3[plan.md Status]
+  end
+  subgraph Sync [Boundary sync]
+    RM[re-mirror from store]
+    TG{truth gate
+every mirror == store?}
+    PF[gate-preflight
+pushed-head at closeouts
+verdict-commit-durable everywhere]
+    SEAL[seal LAST at closeout]
+  end
+  subgraph Stop [Stop hook]
+    OWN{owner == this session?}
+    PKT[packet with options + marker@identity]
+    INFO[one informational line]
+    UNK[owner unknown: demand + named gap]
+  end
+  CAP --> GATE
+  GATE -- absent --> WH[withhold: name what is owed]
+  GATE -- present --> WR --> M1 & M2 & M3
+  WR --> STORE[(authority store
+pending_crossing.owner, .marker)]
+  RM --> TG -- agrees --> PF --> SEAL
+  TG -- ahead --> REF[refusal names the mirror]
+  STORE --> OWN
+  OWN -- yes --> PKT
+  OWN -- no --> INFO
+  OWN -- unknown --> UNK
+```
+
+## Sequence: a lens close (FR-027, FR-028)
+
+```mermaid
+sequenceDiagram
+  participant H as human
+  participant A as agent
+  participant R as receipt minter (prompt-submit)
+  participant W as confirm-workshop-lens
+  participant V as lens validator
+  participant L as lens-applicability.json
+  H->>A: "yes" (lens still open)
+  A-->>H: Recorded: "yes". This lens stays open until you type "move on" (or "skip")
+  H->>R: move on
+  R->>R: mint phase-lens receipt
+  A->>W: confirm-workshop-lens -Lens <lens>
+  W->>V: validate the lens record (where a validator exists)
+  V-->>W: errors / none
+  W-->>A: refusal keeps the lens open, names the record's own lines
+  W->>L: moved_on=true, confirmation fields
+  W->>A: handover refreshed; next lens
+```

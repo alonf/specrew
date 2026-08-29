@@ -54,3 +54,22 @@ That pause is expected, and every round needs its own authorization.
 
 - **Broken env_refs**: remove `PATH` from env_refs and run verification; the error
   names `env_refs` and shows the exact line to add.
+
+## Iteration 002: try the tag-batch scenarios
+
+1. Empty stage: authorize `iteration-closeout` on a fixture with no next iteration directory; the
+   store shows no `iteration-closeout -> plan` crossing, the journal names `plan.md` as owed, and no
+   packet offers a verdict.
+2. Second session: with a crossing pending, end a turn in another session on any topic; you see one
+   line naming the pending crossing and its owner, and no packet demand.
+3. Greenfield remote: record `release_model: pr-flow`, `enforcement_mode: manual`, no origin; sync
+   `specify`; `pushed-head` and `verdict-commit-durable` both report not-applicable with their
+   messages, and the sync proceeds.
+4. JSON lens record: write `workshop/product-domain.yml` as JSON and close the lens with
+   `confirm-workshop-lens`; the refusal names JSON in one line and keeps the answers.
+5. Mirrors: after any crossing on a fixture, open `state.md` and `plan.md`; both agree with the
+   store. Hand-edit `plan.md` Status one boundary ahead; the next sync refuses and names it.
+6. Closeout: sync `iteration-closeout` on a fixture, then run the validator; no
+   `closed-iteration-edited` finding.
+7. Leading quote bar: paste `▎ approved for <to>` as a verdict; the capture says what it received
+   and what would capture, instead of recording nothing.

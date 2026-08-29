@@ -87,3 +87,85 @@ OneDrive failure the amendment exists to fix. Refusing every unrecognised tag re
 real, common case (measured `0x80420` on a live install), and could not be implemented as
 written without P/Invoke, because .NET never exposes the reparse tag. See
 DRIFT-199-I001-024, -031.
+
+## Iteration 002 additions (the tag batch, FR-024..FR-033 and FR-010)
+
+### Crossing mint gate (FR-024)
+
+- `Set-SpecrewPendingBoundaryCrossingScope` and the `$nextScope` rebind inside
+  `Add-SpecrewBoundaryAuthorization` refuse to open a crossing whose FROM stage owes artifacts (per
+  `Get-SpecrewBoundaryStageEvidenceContract`) that are absent on the live filesystem; the refusal is
+  journaled with the owed paths. `Sync-SpecrewPendingVerdictArtifactAfterAuthorization` withholds
+  `pending-verdict-stop.md` when the next stage owes artifacts (the sync-side guard, ported).
+- The verdict marker is `<!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> @ <crossing-id> -->`; the
+  capture verifies `<crossing-id>` against `pending_crossing.crossing_id` and refuses a marker for any
+  other identity (journaled `MARKER_IDENTITY_MISMATCH`). The bare `<from> -> <to>` form is accepted
+  only when no identity is pending for that pair - never against a pending identity.
+
+### Delivery and durability checks (FR-025)
+
+- `pushed-head`: boundaries `iteration-closeout`, `feature-closeout` only; reads `release_model` and
+  `repository_governance.enforcement_mode`; statuses: not-applicable (non-delivery boundary;
+  local-only; declared-future posture), fail (active enforcement with no origin; unpushed HEAD with
+  an origin), pass.
+- `verdict-commit-durable`: every boundary; with an origin, `origin/<branch>` at HEAD (fail otherwise,
+  detached HEAD fails); without an origin, not-applicable with the honest note. Message texts are
+  the accepted report's, verbatim.
+
+### Constrained readers (FR-026)
+
+- `ConvertFrom-SpecrewProductDomainYaml` and `ConvertFrom-SpecrewImplementationRulesYaml` return
+  `$null` when a non-empty document matches zero constructs; the validators' parse-failure message
+  names the representation (`{`/`[` first character reads as JSON), states the answers are intact,
+  and names the re-write action. Backstops never run on `$null`.
+
+### Lens checkpoint writer (FR-027, FR-028)
+
+- `confirm-workshop-lens.ps1 -ProjectRoot -FeatureRef -Lens`: consumes the phase-`lens` receipt for
+  that lens from `.specrew/runtime/workshop-authority.jsonl`; requires `workshop/<lens>.md` nonempty;
+  runs `Test-SpecrewProductDomainRecord` (product-domain) or `Test-SpecrewImplementationRulesManifest`
+  (code-implementation) when applicable; writes `moved_on`, `confirmation`, `confirmation_scope`;
+  refreshes the handover with `--source workshop`. Refusals route through
+  `New-SpecrewWorkshopAgendaRefusal` (no machinery nouns). `Resolve-SpecrewWorkshopStateTransition`
+  gains `confirm-lens`; the table test pins 8 states x 7 operations.
+- Instruction contract: after a non-closing lens reply the agent's next message opens with
+  `Recorded: "<reply>". This lens stays open until you type "move on" (or "skip"); anything else is
+  taken as more input to the lens.` The repair gate's refusal names the received reply and the exact
+  phrase `approved for workshop repair`. `-cne` and the response-authority classifier are unchanged.
+
+### Not-yet-authored spec stub (FR-029)
+
+- `create-governed-feature.ps1` overwrites the scaffolded `spec.md` with a stub carrying
+  `<!-- specrew:spec-not-yet-authored -->` and no requirement placeholders;
+  `Invoke-SpecrewSpecifyBoundaryLensGate` refuses while the sentinel is present.
+
+### Crossing mirrors (FR-030)
+
+- `Add-SpecrewBoundaryAuthorization` writes, for the active iteration when its files exist:
+  `state.md` Current Phase = authorized boundary; `state.md` Iteration Status per the canonical map
+  (planning for plan/tasks/before-implement, executing during implement, reviewing at review-signoff,
+  retro at retro, complete at iteration-closeout); `plan.md` Status per the same map. The sync
+  re-mirrors from the store at start. `Get-SpecrewIterationStateTruthIssues` compares every
+  enumerated mirror; a mirror may lead the store by exactly the pending crossing; a mirror ahead by
+  more, or on a different ladder, is refused with the truth-gate message.
+
+### Seal ordering (FR-031)
+
+- In `sync-boundary-state.ps1` at iteration-closeout: index -> dashboard render -> seal (last).
+
+### Crossing owner (FR-032)
+
+- `pending_crossing.owner` = `host|session` identity (`Get-SpecrewFireIdentity` over the same parts
+  the material attribution uses) or `unknown`. The conformance provider's boundary demand fires only
+  when the current session is the owner; other sessions receive one informational line naming the
+  pending crossing and its owner. With `owner: unknown` the demand keeps project-wide behavior and
+  the packet states that the host does not identify sessions and the demand may have reached a
+  session that did not produce the work.
+
+### Capture disclosure (FR-010)
+
+- When a pending crossing exists and the last human turn is verdict-shaped but the classifier does
+  not accept it (any `Action` other than approve), the capture emits one visible line:
+  `Your reply was received but not recorded as a verdict: it reads as "<classification>" because
+  "<first 40 chars>" precedes the phrase. To authorize <from> -> <to>, start the reply with:
+  approved for <to>` - and journals the same. The classifier is unchanged.
