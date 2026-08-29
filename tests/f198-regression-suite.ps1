@@ -83,6 +83,7 @@ function Get-CallerRepositoryContamination {
 $registry = @(
     @{ area = 'boundary ratchet (FR-001..FR-005, cycle-scoped)'; path = 'tests/unit/boundary-ratchet.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T014 crossing mint gate + marker identity (FR-024): refuse the empty stage, permit the evidenced one, refuse a stale marker'; path = 'tests/unit/crossing-mint-gate.tests.ps1'; kind = 'script' }
+    @{ area = 'beta3 T017 constrained readers (FR-026): a non-empty document matching no construct is unparseable; the shared vocabulary in scripts/internal/constrained-yaml.ps1 names the representation instead of the field backstops, in BOTH readers'; path = 'tests/unit/constrained-reader-parse.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T016/T022 one check one job (FR-025) + the seal is written last (FR-031): delivery at closeouts, durability everywhere, and a closeout that validates clean'; path = 'tests/unit/delivery-durability-seal.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T024 capture disclosure (FR-010): a verdict-shaped reply that did not capture says so at prompt entry, naming what was received and the phrase position'; path = 'tests/unit/capture-disclosure.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T015 withhold discipline (FR-024): one statement in every copy - skill x3, Rule 53, refocus x2, lifecycle-discipline - and the post-capture writer withholds the artifact for an empty stage'; path = 'tests/unit/withhold-discipline.tests.ps1'; kind = 'script' }

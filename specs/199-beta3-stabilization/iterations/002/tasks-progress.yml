@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "002"
-updated_at: "2026-08-29T17:49:44.6388023Z"
+updated_at: "2026-08-29T17:54:59.8890267Z"
 tasks:
   T014:
     title: "Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures"
@@ -23,9 +23,9 @@ tasks:
     blocked_reason: ""
   T017:
     title: "Zero-construct detection in both constrained readers; representation-naming parse message; JSON fixtures"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T17:54:59.8852795Z"
+    completed_at: "2026-08-29T17:54:59.8852795Z"
     blocked_reason: ""
   T018:
     title: "`confirm-workshop-lens` writer; `confirm-lens` operation (56 pinned cells); validators wired at the checkpoint; skill step 7 invokes it"

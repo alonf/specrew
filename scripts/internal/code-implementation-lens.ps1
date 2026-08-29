@@ -168,6 +168,14 @@ function ConvertFrom-SpecrewCodeInlineList {
     return ,$items
 }
 
+# FR-026 (T017): the shared constrained-YAML parse vocabulary. Loaded guarded so a consumer that already
+# dot-sourced it (or the other lens) does not redefine it, and so a direct load of this file alone still
+# has the refusal wording available.
+if (-not (Get-Command -Name 'Get-SpecrewConstrainedYamlParseFailureMessage' -ErrorAction SilentlyContinue)) {
+    $script:SpecrewConstrainedYamlPath = Join-Path $PSScriptRoot 'constrained-yaml.ps1'
+    if (Test-Path -LiteralPath $script:SpecrewConstrainedYamlPath -PathType Leaf) { . $script:SpecrewConstrainedYamlPath }
+}
+
 function ConvertFrom-SpecrewImplementationRulesYaml {
     # Matched reader for the constrained manifest YAML. Returns an ordered hashtable, or $null on a
     # structurally unreadable document (graceful -- the caller fails closed).
@@ -176,6 +184,10 @@ function ConvertFrom-SpecrewImplementationRulesYaml {
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
 
     $lines = $Text -split '\r?\n'
+    # FR-026 (T017): the identical hole in the sibling reader. Its validator's parse-failure message -
+    # the RIGHT shape, one file over - fired only when this returned $null, which a JSON document never
+    # did. Same defect class, one line; leaving it would have guaranteed the next walk found it.
+    $recognizedLines = 0
     $rec = [ordered]@{ selections = @(); custom_rules = @(); provenance = [ordered]@{} }
     $selections = [System.Collections.Generic.List[object]]::new()
     $customs = [System.Collections.Generic.List[object]]::new()
@@ -191,43 +203,47 @@ function ConvertFrom-SpecrewImplementationRulesYaml {
         if ($line -match '^(?<k>[a-z_]+):\s*(?<v>.*)$') {
             $k = $Matches['k']; $v = $Matches['v']
             switch ($k) {
-                'selections' { $section = 'selections'; $cur = $null; continue }
-                'custom_rules' { $section = 'customs'; $cur = $null; continue }
-                'dependency_policy' { $section = 'dep'; $dep = [ordered]@{}; $cur = $null; continue }
-                'reviewer_preference' { $section = 'reviewer'; $reviewer = [ordered]@{}; $cur = $null; continue }
-                'provenance' { $section = 'provenance'; $cur = $null; continue }
-                default { $section = 'top'; $rec[$k] = ConvertFrom-SpecrewCodeScalar -Raw $v; continue }
+                'selections' { $recognizedLines++; $section = 'selections'; $cur = $null; continue }
+                'custom_rules' { $recognizedLines++; $section = 'customs'; $cur = $null; continue }
+                'dependency_policy' { $recognizedLines++; $section = 'dep'; $dep = [ordered]@{}; $cur = $null; continue }
+                'reviewer_preference' { $recognizedLines++; $section = 'reviewer'; $reviewer = [ordered]@{}; $cur = $null; continue }
+                'provenance' { $recognizedLines++; $section = 'provenance'; $cur = $null; continue }
+                default { $recognizedLines++; $section = 'top'; $rec[$k] = ConvertFrom-SpecrewCodeScalar -Raw $v; continue }
             }
         }
         if ($section -eq 'selections') {
             if ($line -match '^\s{2}-\s+id:\s*(?<v>.*)$') {
+                $recognizedLines++
                 $cur = [ordered]@{ id = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v'] }
                 $selections.Add($cur) | Out-Null; continue
             }
-            if ($null -ne $cur -and $line -match '^\s{4}enforcement:\s*(?<v>.*)$') { $cur['enforcement'] = ConvertFrom-SpecrewCodeInlineList -Raw $Matches['v']; continue }
-            if ($null -ne $cur -and $line -match '^\s{4}(?<k>[a-z_]+):\s*(?<v>.*)$') { $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
+            if ($null -ne $cur -and $line -match '^\s{4}enforcement:\s*(?<v>.*)$') { $recognizedLines++; $cur['enforcement'] = ConvertFrom-SpecrewCodeInlineList -Raw $Matches['v']; continue }
+            if ($null -ne $cur -and $line -match '^\s{4}(?<k>[a-z_]+):\s*(?<v>.*)$') { $recognizedLines++; $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
         }
         if ($section -eq 'customs') {
             if ($line -match '^\s{2}-\s+id:\s*(?<v>.*)$') {
+                $recognizedLines++
                 $cur = [ordered]@{ id = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v'] }
                 $customs.Add($cur) | Out-Null; continue
             }
-            if ($null -ne $cur -and $line -match '^\s{4}(?<k>[a-z_]+):\s*(?<v>.*)$') { $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
+            if ($null -ne $cur -and $line -match '^\s{4}(?<k>[a-z_]+):\s*(?<v>.*)$') { $recognizedLines++; $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
         }
         if ($section -eq 'dep') {
-            if ($line -match '^\s{2}stance:\s*(?<v>.*)$') { $dep['stance'] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
+            if ($line -match '^\s{2}stance:\s*(?<v>.*)$') { $recognizedLines++; $dep['stance'] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
             if ($line -match '^\s{2}selected:\s*$') { $cur = $null; continue }
             if ($line -match '^\s{4}-\s+(?<k>[a-z_]+):\s*(?<v>.*)$') {
+                $recognizedLines++
                 $cur = [ordered]@{}; $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']
                 $depSelected.Add($cur) | Out-Null; continue
             }
-            if ($null -ne $cur -and $line -match '^\s{6}(?<k>[a-z_]+):\s*(?<v>.*)$') { $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
+            if ($null -ne $cur -and $line -match '^\s{6}(?<k>[a-z_]+):\s*(?<v>.*)$') { $recognizedLines++; $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
         }
         if ($section -eq 'reviewer' -and $line -match '^\s{2}(?<k>[a-z_]+):\s*(?<v>.*)$') {
+            $recognizedLines++
             $reviewer[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue
         }
         if ($section -eq 'provenance' -and $line -match '^\s{2}(?<k>[a-z_]+):\s*(?<v>.*)$') {
-            $rec['provenance'][$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue
+            $recognizedLines++; $rec['provenance'][$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue
         }
     }
 
@@ -235,6 +251,7 @@ function ConvertFrom-SpecrewImplementationRulesYaml {
     $rec['custom_rules'] = $customs.ToArray()
     if ($null -ne $dep) { $dep['selected'] = $depSelected.ToArray(); $rec['dependency_policy'] = $dep }
     if ($null -ne $reviewer) { $rec['reviewer_preference'] = $reviewer }
+    if ($recognizedLines -eq 0) { return $null }
     return $rec
 }
 
@@ -370,7 +387,10 @@ function Test-SpecrewImplementationRulesManifest {
     $text = ''
     try { $text = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 } catch { $errors.Add('implementation-rules.yml is unreadable.') | Out-Null; return $errors.ToArray() }
     $rec = ConvertFrom-SpecrewImplementationRulesYaml -Text $text
-    if ($null -eq $rec) { $errors.Add('implementation-rules.yml could not be parsed.') | Out-Null; return $errors.ToArray() }
+    if ($null -eq $rec) {
+        $errors.Add((Get-SpecrewConstrainedYamlParseFailureMessage -FileName 'implementation-rules.yml' -Text $text -SchemaName 'implementation-rules.schema.json')) | Out-Null
+        return $errors.ToArray()
+    }
 
     # Schema validation via JSON projection (SC-002), when a schema is available.
     if (-not [string]::IsNullOrWhiteSpace($SchemaPath) -and (Test-Path -LiteralPath $SchemaPath -PathType Leaf)) {

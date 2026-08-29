@@ -252,7 +252,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
 
 ### Phase 3: the workshop family (5.75 SP)
 
-- [ ] T017 [owner: Implementer] [sp: 1.0] **Zero-construct detection** — both constrained readers
+- [x] T017 [owner: Implementer] [sp: 1.0] **Zero-construct detection** — both constrained readers
   return unparseable on a non-empty document with no recognized construct; the validators' message
   names the representation (JSON by first character), states the answers are intact, names the
   re-write. Mutation: a JSON-shaped record produces backstop lines when the detection is removed.
