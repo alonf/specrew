@@ -161,3 +161,116 @@ The phase headings below keep their authoring order; this execution order govern
 - SC-001/002 -> T001 · SC-003 -> T003 · SC-004 -> T002 · SC-005 -> T004 · SC-006 ->
   T006 · SC-007 -> T007 · SC-008 -> T008 · SC-009 -> T010 · SC-010 -> T011.
 - Every task maps to at least one FR/SC; every FR and SC has at least one task.
+
+## Iteration 002 — the beta3 tag batch (18.5 SP; plan verdict 2026-08-29)
+
+Ten items from two field walks and their live reproductions, plus one defect against the existing
+FR-010. Every task carries the mutation that turns its own case red, asserting observable state
+(FR-033); every refusal touched meets the refusal standard; every mirrored copy lands
+byte-identical in the same commit. Execution order: the crossing family first (T014, T021, T023,
+T015, T024), then the two one-file fixes (T016, T022), then the workshop family (T017, T018, T019,
+T020), then the sweep (T025). Review (3.0 SP) and rework (2.5 SP) are planned at the direct
+estimate with the parity floor beside them as a check and a visible 2x tripwire (plan.md Notes).
+
+### Phase 1: the crossing family (10.25 SP)
+
+- [ ] T014 [owner: Implementer] [sp: 3.0] **Mint gate and marker identity** — a crossing is not
+  opened until the stage it leaves has its owed artifacts on the live filesystem, at all three
+  minting mechanisms (`Set-SpecrewPendingBoundaryCrossingScope`, the `$nextScope` rebind in
+  `Add-SpecrewBoundaryAuthorization`, `Sync-SpecrewPendingVerdictArtifactAfterAuthorization`); the
+  verdict marker carries the crossing identity. Mutations: the KeyContextAI ladder replays at one
+  commit when the gate is removed; a marker for a superseded identity captures when the identity
+  check is removed. (Trace: FR-024, FR-033, SC-011; owns: `shared-governance.ps1` + mirror,
+  `HandoverStore.ps1`, `ConversationCaptureAccessor.ps1`)
+- [ ] T021 [owner: Implementer] [sp: 2.0] **Crossing mirrors** — the authorization writer writes
+  `state.md` Current Phase and `plan.md` Status in each file's existing vocabulary and sets
+  `state.md` Iteration Status to `complete` at closeout; the sync re-mirrors the copies; the truth
+  gate compares every enumerated mirror at every iteration-scoped boundary and refuses a copy ahead
+  of the store. Mutations: DRIFT-199-I001-152 reproduced on a fixture then green; a hand-advanced
+  `plan.md` Status refused. (Trace: FR-030, FR-033, SC-016; owns: `shared-governance.ps1` + mirror,
+  `sync-boundary-state.ps1`, `task-progress.ps1`)
+- [ ] T023 [owner: Implementer] [sp: 2.5] **The owing actor** — `pending_crossing.owner` recorded
+  at mint (`host|session` or `unknown`); the conformance provider's boundary demand fires only for
+  the owner; other sessions get one informational line; `owner: unknown` keeps today's behavior
+  and the packet names the gap out loud; the capture verifies the marker's crossing identity.
+  Mutations: a second session's Stop demands a packet when the owner check is removed; an
+  unknown-owner packet omits the gap sentence when the disclosure is removed. (Trace: FR-032,
+  FR-024, FR-033, SC-019; owns: `shared-governance.ps1` + mirror,
+  `specrew-conformance-provider.ps1` + mirror, `HandoverStore.ps1`)
+- [ ] T015 [owner: Implementer] [sp: 2.0] **The withhold discipline, stated once** — the
+  post-capture packet re-mint gains the sync-side evidence guard; the gate-stop skill (3 copies),
+  Rule 53, `refocus/general.md` (2) and `lifecycle-discipline.md` carry the conformance provider's
+  counter-discipline as the one wording of record; `gate-stop-skill.tests.ps1:65`,
+  `multi-host-launch-path.tests.ps1:326` and `fr068` HALF 2 flip by design. Mutation: an
+  evidence-less next stage re-mints `pending-verdict-stop.md` with an approval phrase when the guard
+  is removed. (Trace: FR-024, FR-033, SC-011; owns: `HandoverStore.ps1`, the skill copies,
+  `launch-contract.ps1`, `refocus/general.md` + mirror, `docs/methodology/lifecycle-discipline.md`)
+- [ ] T024 [owner: Implementer] [sp: 0.75] **Capture disclosure** — when a pending crossing exists
+  and the last human turn is verdict-shaped but not accepted, the capture emits one visible line
+  naming the classification, the leading text that decided it, and the phrase at column 0 that
+  would capture; journaled. Fixtures: the leading quote bar; leading prose ("Don't confirm ..."
+  before `approved for plan`). Mutation: the line disappears when the disclosure is removed and
+  the turn is silently skipped. (Trace: FR-010, FR-033, SC-020; owns: `HandoverStore.ps1`)
+
+### Phase 2: gate-preflight and the seal (2.0 SP)
+
+- [ ] T016 [owner: Implementer] [sp: 1.5] **Split `pushed-head`** — delivery at closeouts reading
+  `release_model` and `enforcement_mode` (manual or absent with no origin = declared-future,
+  not-applicable with the owed-when message; active mode with no origin = fail naming the
+  contradiction); `verdict-commit-durable` at every boundary (origin: `origin/<branch>` at HEAD;
+  none: not-applicable with the honest note). Fixtures: the HelloWinUIReactive posture at specify;
+  this repository's posture; pushed-but-stale retargeted to `iteration-closeout` and kept at
+  `specify` under the durability name. Mutation: an unpushed HEAD passes specify when the
+  durability check is removed. (Trace: FR-025, FR-033, SC-012; owns: `gate-preflight.ps1`,
+  `tests/unit/gate-preflight.Tests.ps1`)
+- [ ] T022 [owner: Implementer] [sp: 0.5] **Seal last** — the closeout sync writes the seal after
+  the dashboard render; a test asserts the seal hashes the rendered dashboard. Mutation: reorder
+  the writes and the test goes red on the timestamped dashboard. (Trace: FR-031, FR-033, SC-017;
+  owns: `sync-boundary-state.ps1`)
+
+### Phase 3: the workshop family (5.75 SP)
+
+- [ ] T017 [owner: Implementer] [sp: 1.0] **Zero-construct detection** — both constrained readers
+  return unparseable on a non-empty document with no recognized construct; the validators' message
+  names the representation (JSON by first character), states the answers are intact, names the
+  re-write. Mutation: a JSON-shaped record produces backstop lines when the detection is removed.
+  (Trace: FR-026, FR-033, SC-013; owns: `product-domain-lens.ps1`, `code-implementation-lens.ps1`)
+- [ ] T018 [owner: Implementer] [sp: 3.0] **The lens checkpoint writer** — `confirm-workshop-lens`
+  consumes the receipt, requires the record, runs the two existing validators, writes `moved_on`
+  and the confirmation fields, refreshes the handover; `confirm-lens` joins the transition table
+  (56 pinned cells); the skill's step 7 invokes it; refusals through the refusal contract.
+  Mutations: a confirmed lens stays current when the writer's state write is disabled; a
+  JSON-shaped product-domain record closes the lens when the validator call is disabled. (Trace:
+  FR-027, FR-033, SC-013, SC-014; owns: `confirm-workshop-lens.ps1` + mirror,
+  `workshop-authority-store.ps1` + mirror, `specrew-design-workshop/SKILL.md` copies)
+- [ ] T019 [owner: Implementer] [sp: 0.75] **What was received, what is still needed** — the
+  acknowledgment line in the skill and lens texts; the repair gate's refusal through the refusal
+  contract naming the received reply and `approved for workshop repair`; recognizers untouched.
+  Mutations: the text-presence test and the refusal-contract AST guard go red when either is
+  reverted. (Trace: FR-028, FR-033, SC-014; owns: the skill copies, `design-lenses/*.md`,
+  `repair-workshop-controller-state.ps1` + mirror)
+- [ ] T020 [owner: Implementer] [sp: 1.0] **The not-yet-authored stub** — feature creation replaces
+  the template copy with the sentinel stub; the specify gate refuses while it stands, saying the
+  workshop answers are safe. Mutations: `[Brief Title]` reappears when the replacement is
+  reverted; the stub crosses specify when the sentinel check is removed. (Trace: FR-029, FR-033,
+  SC-015; owns: `create-governed-feature.ps1` + mirror, `design-analysis-gate.ps1`)
+
+### Phase 4: the sweep (0.5 SP)
+
+- [ ] T025 [owner: Spec Steward] [sp: 0.5] **Method sweep** — mirror byte-identity across every
+  touched copy; the mutation audit per fix; the refusal-standard pass over every touched message;
+  the release-notes draft; the covering-round request over the delta since `1b50ae60` with the
+  campaign and iteration named in the coverage line (DRIFT-199-I002-006 disposition, if ruled
+  in). (Trace: FR-033, SC-018; owns: `docs/release-notes-v0.40.0-beta3.md`, `specs/**`)
+
+### Traceability summary (both directions)
+
+- Requirements to tasks: FR-024 -> T014, T015 · FR-025 -> T016 · FR-026 -> T017 · FR-027 -> T018 ·
+  FR-028 -> T019 · FR-029 -> T020 · FR-030 -> T021 · FR-031 -> T022 · FR-032 -> T023 · FR-033 ->
+  T025 and every task's mutation clause · FR-010 -> T024. No FR in the iteration's scope is
+  uncovered.
+- Success criteria to tasks: SC-011 -> T014, T015 · SC-012 -> T016 · SC-013 -> T017, T018 ·
+  SC-014 -> T018, T019 · SC-015 -> T020 · SC-016 -> T021 · SC-017 -> T022 · SC-018 -> T025 (and
+  the covering round) · SC-019 -> T023 · SC-020 -> T024. No SC uncovered.
+- Tasks to requirements: every task above names at least one FR and one SC in its Trace clause;
+  no task traces to nothing.

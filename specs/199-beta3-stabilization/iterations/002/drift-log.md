@@ -16,9 +16,10 @@
 
 ## Summary
 
-**Total drift events**: 5 (DRIFT-199-I002-001 through -005)
+**Total drift events**: 6 (DRIFT-199-I002-001 through -006)
 **Resolution rate**: carried per event in its heading (3 resolved-by this iteration's requirements,
-1 spec-updated/human-decision, 1 deferred to beta4 by ruling)
+1 spec-updated/human-decision, 1 deferred to beta4 by ruling, 1 open pending disposition at the
+tasks boundary)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
 ## Events
@@ -130,6 +131,13 @@
   recognizer is not widened.
 - **Class closure**: silent fallback to an older pair is the defect, not the classification; the
   leading-quote-bar turn is the pinned fixture.
+- **Second instance, same day**: the plan verdict of 2026-08-29 was typed as `approved for plan -
+  three instructions.` after four paragraphs that began "Don't confirm prompt 1's map as
+  written"; `Test-SpecrewHumanVerdictToken` returned `Action=send-back, IsApproval=False` - the
+  leading text, not the phrase, decided the classification, and again nothing said so. The
+  maintainer had written "bare phrase first, no quote bar" and put it first among the verdict
+  lines rather than first in the message. Second pinned fixture for T024: leading prose before the
+  phrase; the disclosure names the classification and the leading text.
 
 ### DRIFT-199-I002-005 — one repo-level validator finding printed once per validated iteration (deferred, beta4)
 
@@ -139,6 +147,35 @@
   has one.
 - **Resolution**: deferred to beta4 with the refusal standard (maintainer ruling 2026-08-29).
 - **Class closure**: NONE in this iteration - beta4's standing check over refusal surfaces.
+
+### DRIFT-199-I002-006 — a stale round allowance in the decision slot of the plan packet (open; disposition at the tasks boundary)
+
+**Recorded from the maintainer, 2026-08-29:**
+
+> Your packet contradicts itself on the allowance. You measured that "1 of 4 remaining" belongs to
+> 001's closed campaign and that 002 gets a fresh 4 - then the coverage line three paragraphs later
+> still reports 1 of 4 rounds remaining in the position a reader takes the current constraint from.
+> It nearly cost a wrong decision: I recommended against the split partly on that scarcity. Stale
+> number in the decision slot. [...] Same family as the refusal standard - the number in the
+> decision slot must be the number that governs the decision.
+
+- **Observed**: the plan boundary packet for iteration 002 carried, verbatim as the stop artifact
+  instructs, `Review coverage: ... 1 of 4 rounds remaining` - iteration 001's closed campaign
+  (`cmp-199-beta3-stabilization-i001`, 3 of 4 used) - in the same message whose measurement said
+  002's covering round runs under its own campaign with 4 rounds. The maintainer's allowance
+  premise for the one-iteration ruling was formed on the stale number before the measurement
+  corrected it.
+- **Cause, read at source**: `Get-SpecrewReviewCoverageState` resolves the feature's latest
+  campaign and the coverage line (`shared-governance.ps1:6977`) reports its budget without naming
+  which campaign or iteration it belongs to; the stop artifact then instructs the packet to include
+  the line verbatim in Why I Stopped.
+- **Citation**: the refusal standard's instance clause (B-4.1), applied to a number rather than a
+  refusal: the figure in the decision slot must be the figure that governs the decision.
+- **Resolution**: open. Proposed disposition for the tasks boundary: a small addition to T025 (the
+  coverage line names its campaign and iteration, and when the active iteration has no campaign
+  yet it says so and reports the fresh allowance), or beta4 with the refusal standard.
+- **Class closure**: candidate - every figure rendered into a packet's decision slot names the
+  record it was read from.
 
 ### Resolution Strategies (Unused)
 

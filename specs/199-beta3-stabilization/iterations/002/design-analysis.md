@@ -264,7 +264,7 @@ Per bridge item, what beta4 is expected to replace or extend:
 - The capture disclosure (FR-010, DRIFT-199-I002-004) becomes the W54 treatment applied to every
   typed authority once beta4 derives the phrase list from one table.
 - (Withdrawn from beta4 by ruling, 2026-08-29: the marker carries the crossing identity and the
-  capture verifies it - folded into T001/T010, because half 2 stops the empty crossing being
+  capture verifies it - folded into T014/T023, because half 2 stops the empty crossing being
   minted but not a stale marker landing on a different one wearing the same label.)
 
 ## Co-Design Record
@@ -286,7 +286,7 @@ Per bridge item, what beta4 is expected to replace or extend:
 | Seal ordering | Seal is the closeout sync's last write | `scripts/internal/sync-boundary-state.ps1` |
 | Crossing owner | `pending_crossing.owner` recorded at mint; the boundary demand fires only for the owner; other sessions get one informational line | `shared-governance.ps1` (+ mirror), `specrew-conformance-provider.ps1` (+ mirror), `HandoverStore.ps1` |
 | Capture disclosure | A verdict-shaped turn that does not capture produces one line naming what was received and what would capture | `scripts/internal/bootstrap/HandoverStore.ps1`, `ConversationCaptureAccessor.ps1` (read-only use) |
-| Marker identity | The verdict marker carries the crossing identity; capture verifies it against the pending crossing (folded into T001/T010 by ruling) | `HandoverStore.ps1` (marker writer), `ConversationCaptureAccessor.ps1` (marker regex + contiguity), gate-stop skill (3 copies), `launch-contract.ps1` Rule 53 |
+| Marker identity | The verdict marker carries the crossing identity; capture verifies it against the pending crossing (folded into T014/T023 by ruling) | `HandoverStore.ps1` (marker writer), `ConversationCaptureAccessor.ps1` (marker regex + contiguity), gate-stop skill (3 copies), `launch-contract.ps1` Rule 53 |
 
 ### Agreed flows
 
@@ -344,14 +344,14 @@ with Option" phrase because a plan crossing minted over the empty stage was pend
 2. One iteration, not the split - conditional on the campaign allowance supporting the rounds
    needed (the packets had said "1 of 4 remaining"); recorded in plan.md Notes with the measured
    allowance.
-3. The capture-silence defect is in scope as a defect against the existing FR-010 (T011) - "that
+3. The capture-silence defect is in scope as a defect against the existing FR-010 (T024) - "that
    is the weight I meant".
 4. Owner unknown keeps today's behavior, by method rule 12 - withholding when the owner cannot be
    determined turns a diagnosis gap into an outage on any host without session identity, including
    for the session that did the work. But the packet must say it cannot tell: name that the host
    does not identify sessions and that this demand may have reached a session that did not
    produce the work. Fail open on the diagnosis, out loud.
-5. Fold into T001/T010 rather than beta4: bind the verdict marker to the crossing identity and
+5. Fold into T014/T023 rather than beta4: bind the verdict marker to the crossing identity and
    verify it at capture - half 2 stops the empty crossing being minted; it does not stop a stale
    marker landing on a different one wearing the same label.
 

@@ -141,13 +141,27 @@ DRIFT-199-I001-024, -031.
 
 ### Crossing mirrors (FR-030)
 
-- `Add-SpecrewBoundaryAuthorization` writes, for the active iteration when its files exist:
-  `state.md` Current Phase = authorized boundary; `state.md` Iteration Status per the canonical map
-  (planning for plan/tasks/before-implement, executing during implement, reviewing at review-signoff,
-  retro at retro, complete at iteration-closeout); `plan.md` Status per the same map. The sync
-  re-mirrors from the store at start. `Get-SpecrewIterationStateTruthIssues` compares every
-  enumerated mirror; a mirror may lead the store by exactly the pending crossing; a mirror ahead by
-  more, or on a different ladder, is refused with the truth-gate message.
+- `Add-SpecrewBoundaryAuthorization` writes, for the active iteration when its files exist, using
+  each file's EXISTING vocabulary (maintainer instruction at the plan verdict, 2026-08-29: the first
+  draft of this map proposed `reviewing` for `state.md`, a value the engine's own writer never
+  produces while `tracker-honesty-check` fails closed on non-canonical values - TB-4's
+  producer/consumer defect reintroduced by the mirror fix; withdrawn):
+  - `state.md` Current Phase: the authorized boundary name (canonical set of `task-progress.ps1`:
+    specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout,
+    feature-closeout). A copy.
+  - `plan.md` Status: the validator's own enum (`planning | executing | reviewing | retro |
+    complete | abandoned`), mapped from the boundary: plan/tasks -> planning; before-implement ->
+    executing; review-signoff -> reviewing; retro -> retro; iteration-closeout -> complete. A copy.
+  - `state.md` Iteration Status: NOT a copy. Its vocabulary is `task-progress.ps1`'s
+    (`not-started | executing | blocked | ready-for-review`, plus `complete` at closeout) and its
+    value is derived from task progress; the crossing writer touches it only at iteration-closeout
+    (-> `complete`). The truth gate enforces a CONSISTENCY relation instead: `complete` iff the
+    last authorized boundary is iteration-closeout; `ready-for-review` only when every task is done;
+    `not-started` never past before-implement with tasks done. No existing value is migrated and
+    no upgrade breaks: the enums stay exactly what the writers already produce.
+  The sync re-mirrors the two copies from the store at start. `Get-SpecrewIterationStateTruthIssues`
+  compares every enumerated mirror; a copy may lead the store by exactly the pending crossing; a
+  copy ahead by more, or on a different ladder, is refused with the truth-gate message.
 
 ### Seal ordering (FR-031)
 
