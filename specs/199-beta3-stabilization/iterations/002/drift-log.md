@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 17 (DRIFT-199-I002-001 through -017)
+**Total drift events**: 18 (DRIFT-199-I002-001 through -018)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -714,6 +714,71 @@ point of the entry, so the original claim is quoted rather than deleted.**
 - **Class closure**: NONE - the subject is a report written in prose, and no executable guard can assert
   what a session chose to paste. Naming the practice is the whole of the available remedy, which is why it
   is written as a rule ("verbatim, or not at all") rather than as a resolution to be careful.
+
+### DRIFT-199-I002-018 — round 2 could not start: the campaign is wedged, its refusal names the wrong cause, and the recovery it offers is a closed loop (open; BLOCKS round 2)
+
+- **Observed**: 2026-08-29. Round 2 was launched on the reworked tree and **did not run**:
+  `run-20260829-233216091-188cc8f4`, `Invoked: False`, `status: paused`,
+  `reason: review-round-paused:pause-record-missing-for-completed-round`. No round was consumed - the
+  campaign still reads 1 of 4 used, so FR-014's invoked-only spend held again.
+- **What the refusal told the human**: *"A review round finished, but Specrew could not save the record of
+  what it found... What to do: check that Specrew can write to its own folder under
+  .specrew/review/authority, then run the review again."*
+- **THREE separate defects, each verified rather than inferred:**
+  1. **The stated cause is wrong.** `.specrew/review/authority` is writable (verified by a write probe).
+     More decisively, `Add-ReviewCampaignRoundPause` was replayed against a *copy* of the live store with
+     round 1's own `result.json` and the same arguments, and it **succeeded** - writing exactly the file
+     that is missing, `runs/<run-id>/pending-pause.json`. The write path is not broken. The human is being
+     sent to check a permission that is fine, which is the refusal standard failing at its first clause:
+     name what is actually wrong.
+  2. **The real diagnosis was destroyed at the moment it happened.** The call site
+     (`review-campaign-orchestrator.ps1:2096`) is wrapped in `try { ... } catch { $roundPause = $null }` -
+     a bare catch that discards the exception object entirely. The fail-soft is defensible on its own terms
+     and its comment argues for it well (*"a pause that cannot be recorded must not destroy a review the
+     human already paid for"*). What is not defensible is that it swallows the CAUSE as well as the
+     failure: nothing is journalled, nothing is warned to stderr, and the downstream guard - which reads
+     the absence hours later - has no information at all. So it invents one. **A fail-soft that discards
+     its exception guarantees that whatever reads its absence will misdiagnose it.** This is the same
+     family as the strict-mode entry in FR-033: the louder failure was unavailable, so the defect took the
+     only shape it could.
+  3. **The recovery the message names cannot work, and the two commands point at each other.** The refusal
+     says to answer with `specrew review --live --pause-choice <1|2|3>`. That path calls
+     `Get-ReviewCampaignPendingPause`, which returns **null** here (verified read-only against the live
+     store), so it prints *"No review round is waiting for your answer... Start one with: specrew review
+     --live --approve-round"* and exits 1. `--approve-round` then reaches the very guard that produced this
+     refusal, which says to answer the pause. **A closed loop with no CLI exit.** Each message is locally
+     correct and helpful; composed, they are a trap. Same shape as DRIFT-199-I002-010: two correct
+     surfaces, nothing arbitrating between them.
+- **A latent fourth, found while diagnosing and NOT the cause here**: there are two publish paths that pass
+  `-Invoked $true`, and only one of them writes a pause. `review-campaign-orchestrator.ps1:2086` publishes
+  and then calls the pause writer at 2096; `review-run-reconciler.ps1:191` publishes an invoked result and
+  **never** writes a pause (zero call sites in that file). The guard's comment reasons carefully about a
+  pause write that *fails*, and does not consider a publish path that never *attempts* one. Any round closed
+  by reconciliation therefore wedges the campaign exactly as it is wedged now. Round 1 was not that case -
+  its `runtime_outcome` is `completed`, not `abandoned` - so this is a real latent defect, recorded as such
+  and not claimed as this incident's cause.
+- **Why the root cause of THIS instance is not stated**: because it cannot be, and saying otherwise would be
+  the mistake DRIFT-199-I002-014 already cost. The exception that fired inside the try was discarded, the
+  replay of the same call succeeds today, and the store state has moved since (round 2's attempt added a
+  grant and a spend record). What is established: the write path works, the store is writable, the pause is
+  genuinely absent, and the failure is unreproducible **because the code chose not to record it**. That is
+  itself the finding.
+- **Citation**: FR-013 (structured terminal outcomes per failure class; consumer-shaped failure messages
+  that name the missing piece and the exact next step - all three clauses fail here); FR-014 (invoked-only
+  spend, which HELD); the refusal standard in FR-033.
+- **Resolution**: OPEN, and it blocks round 2. The recovery is to restore the missing pause fact from round
+  1's own published result - deterministic, derived entirely from `result.json`, and carrying no human
+  judgement - after which the maintainer's typed pause choice can be recorded normally. **Not done without
+  approval**: it is a write into the review authority store, and while the pause FACT is machinery catching
+  up rather than continuation authority (the DECISION is the human's), an agent repairing the authority
+  store on its own initiative is the shape iteration 001's security-surface concern exists to prevent.
+- **Class closure**: NONE - the guards belong with the fixes, and the fixes are beta4 review-economics work
+  rather than tag-batch scope. Named now so they are not invented later: (1) the fail-soft must journal the
+  exception it swallows, because an absence with no record is unreadable to every later consumer; (2) every
+  path that publishes with `Invoked: true` must write a pause, asserted by cardinality - the two call sites
+  compared, which is DRIFT-199-I002-011's rule applied to publish paths; (3) a composition test for the
+  pause/approve pair, since each message is right alone and they form a loop together - the same
+  two-gates-disagree harness beta4 already owes.
 
 ### Resolution Strategies (Unused)
 
