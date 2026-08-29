@@ -68,7 +68,7 @@ function Resolve-SpecrewWorkshopStateTransition {
     param(
         [AllowNull()][object]$Controller,
         [Parameter(Mandatory)]
-        [ValidateSet('initialize', 'read', 'render-agenda', 'confirm-agenda', 'request-repair', 'apply-repair')]
+        [ValidateSet('initialize', 'read', 'render-agenda', 'confirm-agenda', 'confirm-lens', 'request-repair', 'apply-repair')]
         [string]$Operation
     )
 
@@ -112,6 +112,10 @@ function Resolve-SpecrewWorkshopStateTransition {
         'read' { $stateClass -in @('pending-empty', 'pending-product-projection', 'confirmed-complete') }
         'render-agenda' { $stateClass -in @('pending-empty', 'pending-product-projection') }
         'confirm-agenda' { $stateClass -in @('pending-empty', 'pending-product-projection') }
+        # FR-027 (iteration 002, T018): a LENS closes only from a confirmed, complete agenda - the workshop
+        # is running and the topic list is settled. Adding the operation to this closed table is what makes
+        # the governed lens writer reachable at all; the table's own test pins every cell.
+        'confirm-lens' { $stateClass -eq 'confirmed-complete' }
         'request-repair' { $stateClass -eq 'pending-inconsistent' }
         'apply-repair' { $stateClass -eq 'pending-inconsistent' }
     }

@@ -257,7 +257,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   names the representation (JSON by first character), states the answers are intact, names the
   re-write. Mutation: a JSON-shaped record produces backstop lines when the detection is removed.
   (Trace: FR-026, FR-033, SC-013; owns: `product-domain-lens.ps1`, `code-implementation-lens.ps1`)
-- [ ] T018 [owner: Implementer] [sp: 3.0] **The lens checkpoint writer** — `confirm-workshop-lens`
+- [x] T018 [owner: Implementer] [sp: 3.0] **The lens checkpoint writer** — `confirm-workshop-lens`
   consumes the receipt, requires the record, runs the two existing validators, writes `moved_on`
   and the confirmation fields, refreshes the handover; `confirm-lens` joins the transition table
   (56 pinned cells); the skill's step 7 invokes it; refusals through the refusal contract.

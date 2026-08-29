@@ -364,7 +364,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      `confirmation_required: true`, `agenda_status: confirmed`, the `selected` lens-id list, and a SINGLE
      top-level `workshop` object
      **keyed by lens id**, each value carrying the EXACT fields the gate checks: `agenda` (array of questions
-     raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
+     raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true` (written for you by the step-7 checkpoint writer, never by hand), and
      **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
      SC-026), plus **`confirmation_scope`** — `lens-question` for `human-confirmed`, `explicit-delegation` for
      `human-delegated`, or `explicit-skip` for `human-skipped`; and **`human_turn_receipt`**, the receipt id from
@@ -413,13 +413,24 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    **(a) persist the Markdown decision record FIRST** at the exact current scope's
    `workshop/<lens-id>.md` — `specs/<feature>/workshop/<lens-id>.md` during specify/intake, or
    `specs/<feature>/iterations/<NNN>/workshop/<lens-id>.md` during design analysis; **(b) ONLY AFTER that
-   nonempty file exists**, write the lens's complete `lens-applicability.json` entry from step 6 with
-   `moved_on: true`; **(c)** refresh the rolling handover through the core save path by running the handover
-   provider with `--source workshop` (one line; the SAME path the hooks use):
-   `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/specrew-handover-provider.ps1 --project-root . --source workshop`
-   — this captures the freshly-written `workshop/` files into the handover so a resuming session inherits the
-   progress. (On the Claude host the `PostToolUse` hook ALSO refreshes the handover automatically the moment you
-   write the lens record; this explicit call is the cross-host fallback where PostToolUse is not wired.) A
+   nonempty file exists**, close the lens by RUNNING THE GOVERNED CHECKPOINT WRITER — do not hand-edit
+   `lens-applicability.json`, and never write `moved_on` yourself:
+
+   ```powershell
+   pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1 `
+     -ProjectRoot . -FeatureRef <feature-ref> -Lens <lens-id> `
+     -Decision '<the single-string decision + agreement from step 6>' -Depth <depth> `
+     -Agenda '<question 1>','<question 2>' [-Diagram '<diagram note>'] [-BindingsJson '{"name":"value"}']
+   ```
+
+   The writer is the ONE thing that closes a lens: it checks that your typed reply is on record, that the
+   decision record exists and is nonempty, and — for `product-domain` and `code-implementation` — that the
+   lens's own artifact passes its checks; only then does it write the entry with `moved_on: true` and refresh
+   the handover. That last part means **(c) is done for you**: the writer runs the handover provider itself.
+   If it refuses, it names what is missing and one action — read it to the human, fix that, and run it again.
+   Nothing is lost by a refusal; the answers stay exactly as they were. (Before iteration 002 this step asked
+   you to write `moved_on` by hand, and when a lens was confirmed but nothing ran the transition, the workshop
+   re-asked a question the human had already answered — which reads as the system losing their answer.) A
    session that resumes then reads the handover + the `workshop/` folder and **continues from the next
    un-persisted lens instead of restarting the workshop**. A lens that lives only in the chat scrollback is lost
    on exit; a persisted lens is not. Then state which lens is next and reload this conduct + that lens's md.

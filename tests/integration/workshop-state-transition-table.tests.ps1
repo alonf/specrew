@@ -72,7 +72,7 @@ $states = [ordered]@{
     'confirmed-incomplete'       = $confirmedIncomplete
     'confirmed-complete'         = $confirmedComplete
 }
-$operations = @('initialize', 'read', 'render-agenda', 'confirm-agenda', 'request-repair', 'apply-repair')
+$operations = @('initialize', 'read', 'render-agenda', 'confirm-agenda', 'confirm-lens', 'request-repair', 'apply-repair')
 $allowedCells = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 foreach ($cell in @(
     'missing|initialize',
@@ -81,7 +81,9 @@ foreach ($cell in @(
     'pending-technical-record|request-repair', 'pending-technical-record|apply-repair',
     'pending-selected|request-repair', 'pending-selected|apply-repair',
     'pending-coverage|request-repair', 'pending-coverage|apply-repair',
-    'confirmed-complete|read'
+    'confirmed-complete|read',
+    # FR-027 (T018): a lens closes only from a confirmed, complete agenda - the one new allowed cell.
+    'confirmed-complete|confirm-lens'
 )) { $null = $allowedCells.Add($cell) }
 
 $evaluatedCells = 0
@@ -94,7 +96,7 @@ foreach ($stateEntry in $states.GetEnumerator()) {
         $evaluatedCells++
     }
 }
-Assert-True ($evaluatedCells -eq 48) 'finite workshop table evaluates all 8 states x 6 operations (48 cells)'
+Assert-True ($evaluatedCells -eq 56) 'finite workshop table evaluates all 8 states x 7 operations (56 cells)'
 
 # The transition contract is not a test-only model. Pin every production consumer whose drift would reopen the
 # illegal-transition class, plus the hook capture that makes repair authority genuinely human-authored.
@@ -102,6 +104,7 @@ $consumerPins = [ordered]@{
     'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1' = "-Operation 'initialize'"
     'scripts\internal\bootstrap\ProjectMetadataAccessor.ps1' = "-Operation 'read'"
     'extensions\specrew-speckit\scripts\confirm-workshop-agenda.ps1' = 'Resolve-SpecrewWorkshopStateTransition'
+    'extensions\specrew-speckit\scripts\confirm-workshop-lens.ps1' = "-Operation 'confirm-lens'"
     'extensions\specrew-speckit\scripts\repair-workshop-controller-state.ps1' = 'Resolve-SpecrewWorkshopStateTransition'
     'scripts\internal\bootstrap\HandoverStore.ps1' = 'Write-SpecrewWorkshopRepairAuthorization'
 }
