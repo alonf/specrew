@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "plan_id": "f199.i001.slice.v3",
+  "plan_id": "f199.i002.slice.v1",
   "commands": [
     {
       "command_id": "f199-class-guards",
@@ -67,7 +67,7 @@
       "label": "SLICE lane: the suites this slice touches, plus the workshop-authority suites added 2026-08-17. The beta3 workshop fixes (W10-W18) shipped with no lane covering them, so a walk regression could only be caught by someone remembering to run them by hand - the same 'a guard only guards code whose author runs it' shape the class-guard lane exists to prevent. The full deterministic registry is the RELEASE GATE lane and runs at the certification round, not on every slice (maintainer ruling 2026-08-10). The W29-W32 review-frame suite joined 2026-08-20: those four defects let a review be recorded as clean and independent while its frame held one planning document, so the guard belongs where a slice touching review machinery runs it. W33's declared-coverage suite joined it 2026-08-20: it is the only guard standing between a review that read nothing and a recorded clean pass, and it spans the candidate contract, the ingest degrade and the store's allowed-field list. W34's authorship and derived-independence suites joined 2026-08-20; they span the hook that observes the write, the store derivation, and the validator that recomputes it. The packaging-identity suite joined 2026-08-21: it pins the two mechanisms that turned out not to exist - a supported local install, and a build stamp derived from what is actually in the package. PARALLELIZED 2026-08-24 (DRIFT-199-I001-116): the lane grew past its own budget - 24 sequential child pwsh spawns measured 370s cold in a faithful frozen-tree materialization against a 480s bound, and two review launches died on exactly that timeout. The suites are isolated processes on GUID-scoped temp fixtures, so they now run 6 at a time; the result count is pinned so a swallowed suite cannot read as a pass. Measured cold+env-scrubbed after: 199s, giving the 480s bound 2.4x headroom, inside the project's own measured-headroom convention."
     },
     {
-      "command_id": "iteration-001-governance",
+      "command_id": "iteration-002-governance",
       "executable": "pwsh",
       "arguments": [
         "-NoProfile",
@@ -76,7 +76,7 @@
         "-ProjectPath",
         ".",
         "-IterationPath",
-        "specs/199-beta3-stabilization/iterations/001",
+        "specs/199-beta3-stabilization/iterations/002",
         "-NoCacheRead",
         "-NoParallel"
       ],
@@ -102,7 +102,7 @@
         "kind": "project-config",
         "source": ".specrew/verification-plan.json"
       },
-      "label": "Iteration 001 explicit governance validation"
+      "label": "Iteration 002 explicit governance validation - the ACTIVE iteration. RE-POINTED 2026-08-29 (DRIFT-199-I002-015): this command named iteration 001, which closed under this session's closeout verdict, and a complete iteration is held to a higher bar than a running one - so 001's planning-time hardening gate, unchanged since before this batch, began refusing the review of the tree that succeeded it. A verification plan that names a specific iteration goes stale the moment the next one opens. The pin is re-pointed rather than the sealed gate edited; iteration 001's four pending-post-implementation concerns are dispositioned in an ERRATUM outside its seal (specs/199-beta3-stabilization/iterations/002/erratum-iteration-001-hardening-gate-disposition.md), preserving the body and recording the pointer, which is how proposal discipline already handles shipped work. MAINTAINER RULING 2026-08-29: do not edit the sealed gate; re-point the plan; and record \"a closed iteration gates its successor's review\" as a beta4 item - the closeout should re-point this, or the command should name the active iteration rather than a number."
     }
   ]
 }

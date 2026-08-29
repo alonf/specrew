@@ -84,7 +84,7 @@
     },
     {
       "path": "knowledge/design-lenses/architecture-core.md",
-      "sha256": "626079980ccc254b0b57dd1b1a4e38b9cee0a9a34081d542c379e725e0d2f788"
+      "sha256": "81a13dc2ff813205eaa2d8c2cd7469e31498eaeabe6bad29e061f4330c5df69a"
     },
     {
       "path": "knowledge/design-lenses/code-implementation.md",
@@ -96,15 +96,15 @@
     },
     {
       "path": "knowledge/design-lenses/component-design.md",
-      "sha256": "a9df19c15b99ece7742dc56b3494370fc2dc9fa2f09f75fa0a2d815ab1b16c6d"
+      "sha256": "5b84adb0ecbb051809e68915082efd93c26042cf8c512814a61810d00b7aabd4"
     },
     {
       "path": "knowledge/design-lenses/data-storage.md",
-      "sha256": "cbe863c812394e9e1a719d4279207514b5b410ab3ed9b80e85f7bf9513d11839"
+      "sha256": "a4f92e883eb1cab61ca71188d4874e791e3369f113e60d1c6c0970c0f8b325f6"
     },
     {
       "path": "knowledge/design-lenses/devops-operations.md",
-      "sha256": "1ff6f0df96c20b1f1eb8d4b52c6fb4dc103b60fbfa1a48c7fbc3eeb013bb7345"
+      "sha256": "fa47b6c4c18b041bc59e12d66f299b0d872332306e0a6f0a59794f4e146648f3"
     },
     {
       "path": "knowledge/design-lenses/diagram-vocabulary.json",
@@ -120,7 +120,7 @@
     },
     {
       "path": "knowledge/design-lenses/integration-api.md",
-      "sha256": "1851f72ef8815f2ba452491d84215a0d58ca3a015559b5a7e1014da140212cdf"
+      "sha256": "01827b756d37a4580e9530b73ba633fbac83d8f5634960ea38f7d6b875834f43"
     },
     {
       "path": "knowledge/design-lenses/lens-schema.md",
@@ -128,11 +128,11 @@
     },
     {
       "path": "knowledge/design-lenses/lens-template.md",
-      "sha256": "0b5adf3d1313dfaa4f081e68df2f15f6cfcdfb43a2f9002d0104226330d32f6f"
+      "sha256": "894a4d58aaada9ea541b00c0f9e512c86c12407c9190b936c8808118aec81011"
     },
     {
       "path": "knowledge/design-lenses/observability-resilience.md",
-      "sha256": "3bdf47721e52c55f370794ba036324972ad4d619a626c91d3005ea61e51bd2b6"
+      "sha256": "d277a1f6af5432e1ae718e6feea29c138ea827ce9fa6b1112eb1664edcf2a470"
     },
     {
       "path": "knowledge/design-lenses/product-domain.md",
@@ -148,11 +148,11 @@
     },
     {
       "path": "knowledge/design-lenses/requirements-nfr.md",
-      "sha256": "6ecf625a33e726707374389721cc692dcb62968672d1fc92468dedc12359bb48"
+      "sha256": "e506429e65f6009993ce3f91e2113ce95c2bc86c94b49397dd8c5166ba81dc13"
     },
     {
       "path": "knowledge/design-lenses/security-compliance.md",
-      "sha256": "21000d73b094163ad5be8916c6d6a1b87f550acefe5dc994947a75a585fd65c2"
+      "sha256": "cb90e8ab27a33c33acb4a87b0fed37798c97dab3264cc567fe7f44e8e3b8c60b"
     },
     {
       "path": "knowledge/design-lenses/sources.md",
@@ -160,7 +160,7 @@
     },
     {
       "path": "knowledge/design-lenses/ui-ux.md",
-      "sha256": "758feb9e1bf1930f211821a65d062e17a31b43d8783028403a6660aa241edd90"
+      "sha256": "08b6e98e5c7891487f3735656a7c0e1f9ea09e706657ef00615b9874483f7dce"
     },
     {
       "path": "knowledge/repository-governance.schema.json",
@@ -204,7 +204,7 @@
     },
     {
       "path": "refocus/general.md",
-      "sha256": "12bc47bcdbafb86c0a4c8d470e810410eab32653c4c72d81b5dc4925becc92d7"
+      "sha256": "1df74b7201dbf6a22d3e88d043facb9eabc39b2508f24fe1ff6319b062b9314e"
     },
     {
       "path": "refocus/implement.md",
@@ -251,12 +251,16 @@
       "sha256": "4ef20e2c9cc90999e2fb727f51bad19e2b84a2e0e9fb9490b424ccceeb724856"
     },
     {
+      "path": "scripts/confirm-workshop-lens.ps1",
+      "sha256": "df083d3e8abeabb440db39e2e9e5f1512c63b9b949a7384376d8949ae46e8532"
+    },
+    {
       "path": "scripts/conformance-turn-delta.ps1",
       "sha256": "4632c140ff0125766a890e7a602fdbb6976d0baae65e803e162b57c0592fe364"
     },
     {
       "path": "scripts/create-governed-feature.ps1",
-      "sha256": "1c923ad6cdfab3fe891a7dbe9bf3b9de5894aace3a3e802fe25c5619a955437f"
+      "sha256": "5863e409f690d0f015ba5ab32d0b83269a336b65241dbd05a5c34346482965cb"
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",
@@ -340,7 +344,7 @@
     },
     {
       "path": "scripts/repair-workshop-controller-state.ps1",
-      "sha256": "18cec514540fc76b166a17de993b37d8e145d715ad8c87ffd6d67a148cef96ab"
+      "sha256": "3c75aef31d9328fedc52b0f8f104443dfe6ca1735a83f07892ced4bb27fc96de"
     },
     {
       "path": "scripts/resolve-quality-profile.ps1",
@@ -388,7 +392,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "7e775c41e85c0f0e17e33c348a8d94c99921e659020a79efb2a9c192ce51a932"
+      "sha256": "91eb0ca2527b11af569ecdf709b5d83e4220602e60c05e1721216ebf9a92091f"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -400,11 +404,11 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "4c296235ea6162c0ca435e89059f580198752a385578560f90776061f545d33a"
+      "sha256": "7223a16f147c04c0af45b121146ef792d9b99c07a5d1afa4a54fa2bd49737c28"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
-      "sha256": "dff09db5a77e85408645b1b5764ba1b0caa223ff5da2f5db63b3da803a93cbd6"
+      "sha256": "92da4bdca86c6648805c1cd01ca6d008b76aa2638852cdbd61ef5b3822f6e95a"
     },
     {
       "path": "scripts/specrew-hook-dispatcher.ps1",
@@ -444,7 +448,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "6377a35efedb5e624594d284089342bc0bbd15a7cb1b8ddbc30acc05ec4a5494"
+      "sha256": "5b16446bae92b8d54ac9c6e610bd06cf88f953b14be13fafb89a67f69056b5b0"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
@@ -520,7 +524,7 @@
     },
     {
       "path": "squad-templates/skills/design-workshop.md",
-      "sha256": "500e920e38d4ef3fb27fd685ab7c56d1d3f198b2d117d02da244ab3ee66ca67d"
+      "sha256": "7b1fe2dbc18ba31564c56c047a18b0d96283ecdbd487945465e2f8ea36b9c41d"
     },
     {
       "path": "squad-templates/skills/drift-check.md",
@@ -528,7 +532,7 @@
     },
     {
       "path": "squad-templates/skills/gate-stop.md",
-      "sha256": "3580e32875203401c84810e9bcd37613276ee0918dc49b7b91ebc5fadc858e93"
+      "sha256": "c5de3ea73208850eab85b2d754df927f7ab35e364d11e017719e161a2a1d5cd7"
     },
     {
       "path": "squad-templates/skills/iteration-resume.md",

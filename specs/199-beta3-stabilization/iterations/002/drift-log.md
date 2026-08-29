@@ -17,9 +17,12 @@
 ## Summary
 
 **Total drift events**: 15 (DRIFT-199-I002-001 through -015)
-**Resolution rate**: carried per event in its heading (9 resolved-by this iteration's requirements,
-instrumentation or a same-session fix; 2 spec-updated/human-decision; 4 deferred/open, two of them
-blocking the covering round and awaiting a maintainer decision)
+**Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
+instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
+spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
+are both cleared: -014 was withdrawn as a mistaken diagnosis and its 19 real entries re-stamped, and -015 was
+resolved by re-pointing the verification plan and dispositioning iteration 001's concerns in an erratum
+outside its seal.
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
 ## Events
@@ -301,8 +304,11 @@ blocking the covering round and awaiting a maintainer decision)
   composition defect and a new finding. Its home is the composition tests, where the design question
   ("when two correct directives are delivered together, which one governs") can be answered once for both
   layers instead of twice.
-- **Class closure**: NONE in this iteration - a precedence rule between provider fragments is beta4
-  design work, and inventing one inside a tag batch is the shape the maintainer ruled against for F-2.
+- **Class closure**: NONE - a precedence rule between provider fragments is beta4 design work, and inventing
+  one inside a tag batch is the shape the maintainer ruled against for F-2. The guard cannot be written before
+  the rule it would enforce exists: a composition test asserting "which directive governs" has no correct
+  answer to assert until beta4 decides one. Recorded against the beta4 composition-test programme so the guard
+  is written with the rule rather than after it.
 
 ### DRIFT-199-I002-011 — a patch applied twice left a duplicated block in a shipped script (resolved at T025)
 
@@ -339,10 +345,33 @@ blocking the covering round and awaiting a maintainer decision)
   existed (DRIFT-199-I001-134, a count nobody compared), and the drift log's own summary claiming 78
   entries against 152 (corrected at the 001 retro). Same shape, three times: the number of things was
   never asserted, so the wrong number of things went unseen.
+
+  **The lesson stated at its actual level, per the maintainer (2026-08-29) - and this is the correction
+  that matters, because the narrower version would have been mis-learned:**
+
+  > The lesson is not "check mirrors", it is **"never enumerate a subject set by hand when something
+  > already computes it"**.
+
+  "Check mirrors" is a checklist item, and a checklist item generalises to nothing: it would have been read
+  as *add a mirror step to the next patch* and left every other hand-enumerated set exactly as exposed.
+  What actually failed was **hand-enumeration where a computation existed**. The mirror map was written out
+  by hand when `Get-SpecrewCrossingMirrorMap` computes it; the verification plan's suite list was written out
+  by hand when the filesystem enumerates it; the drift log's summary count was typed when the headings could
+  be counted. In every case a hand-written set was believed over a computed one, and the divergence was
+  invisible because nothing compared them.
+
+  The operational form is a rule about **where a set comes from**, not about how carefully it is checked:
+  if something already computes the set, call it; if nothing does, write the computation first and let it
+  be the enumeration; and where a set must be stated by hand, assert its cardinality against the computed
+  one so the divergence is loud. This is the same root as DRIFT-199-I002-014, arrived at from the opposite
+  direction - there a control was **hand-reimplemented** instead of invoked, and the reimplementation's
+  answer was reported as the control's defect. Enumerating by hand and reimplementing by hand are one
+  mistake: **restating what the machinery already does, then trusting the restatement.**
 - **Class closure**: every mutation in this iteration asserts `count == 1` on its target before editing, so
-  a duplicated or missing target fails loudly instead of mutating the wrong thing; and the lesson
-  generalises beyond mutations - where a thing must exist exactly once, assert that, because no behaviour
-  test will.
+  a duplicated or missing target fails loudly instead of mutating the wrong thing. The generalised closure is
+  the maintainer's rule above: FR-030's crossing writer owns every enumerated mirror **because it computes
+  the enumeration** (`Get-SpecrewCrossingMirrorMap`), not because a human remembered to check them - which is
+  the difference between the fix that holds and the checklist that decays.
 
 ### DRIFT-199-I002-012 — the tripwire cannot fire: the Actual column is the estimate copied across (resolved by re-instrumentation)
 
@@ -399,35 +428,71 @@ blocking the covering round and awaiting a maintainer decision)
   earns its place - this defect was introduced by a task that had nothing to do with requirement ids, which
   is exactly the case the permanent lane was created for (DRIFT-199-I001-017).
 
-### DRIFT-199-I002-014 — the deployed-extension integrity check cannot tell a Windows checkout from an edit (open; BLOCKS the covering round)
+### DRIFT-199-I002-014 — I reported an engine defect that does not exist, and a ruling was made on it (resolved; the finding is withdrawn)
 
-- **Observed**: 2026-08-29, in the covering round's pre-review verification. The
-  `iteration-001-governance` command failed, in part on: *"The deployed Specrew machinery under
-  .specify/extensions/specrew-speckit does not match what was installed"*.
-- **Measured, because the first reading was wrong**: 163 managed files, 74 on-disk hash mismatches. Of
-  those, **55 are byte-identical once line endings are normalised** - their content has not changed and
-  git records no commit touching them since the manifest was stamped (W72, `26f6e4b7`). The manifest stores
-  the LF-normalised hash; git's autocrlf gives the working tree CRLF; so the check reports drift for files
-  nobody edited, on any Windows checkout. The remaining **19 are genuinely different, and all 19 are
-  exactly this batch's deployed edits** (the ten lens records, `refocus/general.md`, the two skill
-  templates, and six scripts).
-- **Why it matters beyond the noise**: the check cannot distinguish a real local patch from a line-ending
-  difference, so its own message - "a local edit makes this run's result unreliable" - is unactionable: 55
-  of the 74 files it names have no local edit. An integrity control whose false-positive rate is 74% on the
-  platform it runs on is not currently evidence.
-- **Why nothing was done to it here**: two available moves were both refused. Re-stamping the manifest from
-  on-disk bytes would bake this machine's line endings into a shared record and hide the 19 real entries
-  among 55 fake ones (attempted, then reverted before commit). Normalising the comparison is the correct
-  fix and is OUTSIDE the ten-item batch, which the maintainer's standing rule forbids widening.
-- **Citation**: FR-033 (batch scope); the standing rule that nothing here weakens a gate that caught
-  something real - this gate did catch the 19.
-- **Resolution**: OPEN, awaiting the maintainer's decision, because it blocks the covering round that gates
-  the tag. Options as they stand: (a) fix the comparison to normalise line endings, ~one place, and
-  re-stamp the 19 deliberate edits; (b) re-stamp only the 19 and accept that this command keeps failing on
-  the 55; (c) point the verification plan's governance command at the active iteration and treat the
-  integrity check as beta4 work.
-- **Class closure**: candidate - a check that compares bytes must say which representation it compares, or
-  it measures the checkout rather than the content.
+**This entry replaces the finding that stood here. The finding was wrong. The record of it being wrong is the
+point of the entry, so the original claim is quoted rather than deleted.**
+
+- **What I reported, 2026-08-29**: that the deployed-extension integrity check "cannot tell a Windows checkout
+  from an edit" — that of 74 reported hash mismatches, *"55 are byte-identical once line endings are
+  normalised"*, that the check therefore had a *"74% false-positive rate on the platform it runs on"*, and
+  that it *"is not currently evidence."* I offered three options and asked for a decision, because it blocked
+  the covering round.
+- **The maintainer ruled on it** — take option (a), fix the comparison rather than `.gitattributes`, with a
+  reason that was correct and general: *"Specrew ships to projects that own their own .gitattributes and their
+  own autocrlf, and a check that only agrees with its manifest when the consumer's config matches ours is
+  broken by design for the people it is meant to protect."*
+- **What is actually true**: `Get-SpecrewDeployedExtensionManifest`
+  (`extensions/specrew-speckit/scripts/shared-governance.ps1`) **already normalises line endings** before
+  hashing — it reads bytes, skips binaries via a NUL scan, and does `.Replace("\r\n", "\n")` on the text
+  before computing SHA-256. The engine's own check, run directly, reports **19 drifted, 0 missing** — all
+  nineteen this batch's deliberate deployed edits, and **zero line-ending noise**. There was never a 55-file
+  false-positive population.
+- **How I got it wrong**: I measured with my own Python script that hashed **raw on-disk bytes**, compared that
+  against the manifest, and attributed the difference to the engine. I never ran the engine's own comparison
+  before reporting on it. The 74/55/19 split is a property of *my* script, not of the control I was auditing.
+- **Sharper still**: the source I was about to "fix" carries a comment, three lines above the code, recording
+  that this exact normalisation was added after a previous false-refusal — *"a false refusal waiting for the
+  first project that commits .specify/"*. The fix I proposed had already been made, for the reason I restated
+  as new.
+- **Why this is a first-class drift event and not an embarrassment to bury**: a wrong finding reached a
+  boundary and produced a maintainer ruling. Had the ruling been executed as written, I would have edited a
+  correct control to make it do what it already did, and the batch would carry a change whose justification was
+  false. The gate that would have caught this is the one this project already names in another form: **evidence
+  means running the control, not reasoning about it.** Method rule (FR-033) requires runtime evidence for
+  claims about behaviour; I applied that to the code under change and not to the code I was accusing.
+- **Class**: **a diagnosis that reimplements the subject instead of invoking it.** The auditor writes its own
+  version of what the control does, compares against the artifact, and reports the divergence as the control's
+  defect — when the divergence is between two implementations, only one of which ships. It is the mirror image
+  of DRIFT-199-I002-011: there, hand-enumeration missed something a computation would have caught; here,
+  hand-reimplementation invented something the real computation would have denied. Same root:
+  **never restate what something does when you can make it do it.**
+- **Resolution**: the finding is **withdrawn**. No comparison fix is made, because none is needed — the ruling's
+  premise did not hold, and the standing rule that nothing here weakens a gate that caught something real
+  applies to this gate too: it caught exactly the 19 real edits, with no noise. The 19 were **re-stamped**
+  through the engine's own writer (`Write-SpecrewDeployedExtensionMarker`), which is the intended remedy for
+  deliberate deployed edits; the check now reports 0 drifted, 0 missing.
+- **What survives of the ruling, and is recorded rather than acted on**: the maintainer's reason for preferring
+  a comparison fix — that a consumer with different `autocrlf` must not get a false refusal — is *already*
+  satisfied by the normalisation, and that is worth knowing rather than assuming. The related observation
+  that `.gitattributes` line 7 omits `*.ps1` from its LF list remains true as a fact about this repo, but it is
+  now known **not** to affect the integrity check, so the optional-hygiene item is raised on its own merits
+  (consistency of committed line endings) and not as a protection for this control. Recorded as beta4 optional
+  hygiene, explicitly not bundled here, per the maintainer's instruction.
+- **Class closure**: NONE - no automated guard is possible, and the reason is worth stating rather than
+  hiding: the failure was in **how a claim was formed**, not in any code that could be made to fail a test. There is no
+  fixture that catches "the auditor reimplemented the subject instead of invoking it", because the
+  reimplementation lives in the auditor's scratch work, not in the tree. What exists instead, and is
+  executable:
+  1. **The control itself is now in the verification plan's path** - `iteration-002-governance` runs
+     `validate-governance.ps1`, which runs `Test-SpecrewDeployedExtensionIntegrity`. A real regression in the
+     normalisation would surface as a failing verification command, not as an analysis.
+  2. **The method rule already covers it and was simply not applied here**: FR-033 requires runtime evidence
+     for claims about behaviour. The correction is to apply it to the code being *accused*, not only to the
+     code being *changed* - which is a one-line extension of an existing rule rather than a new control, and
+     is recorded as such in FR-033's method-rule text rather than as a new requirement.
+  Closing this with a fabricated guard would be the same mistake in a new costume: asserting a control exists
+  because it would be tidy if it did.
 
 ### DRIFT-199-I002-015 — a closed iteration's hardening gate blocks its successor's review (open; BLOCKS the covering round)
 
@@ -447,9 +512,45 @@ blocking the covering round and awaiting a maintainer decision)
 - **The verification plan is pinned to a closed iteration**: `plan_id: f199.i001.slice.v3`, and its
   governance command names `specs/199-beta3-stabilization/iterations/001`. Iteration 002 is the tree under
   review. Whichever way the above is decided, that pin is now stale.
-- **Resolution**: OPEN, awaiting the maintainer's decision.
-- **Class closure**: candidate - a verification plan that names a specific iteration goes stale the moment
-  the next one opens; it should name the ACTIVE iteration, or the closeout should re-point it.
+- **Resolution — RESOLVED 2026-08-29 under the maintainer's ruling**, in three parts, none of which touches
+  the seal:
+  1. **The sealed gate is not edited.** *"Do not edit the sealed gate"* - it is preserved history, the
+     validator refuses it, and a `pending` that quietly becomes `verified` after the fact is exactly the record
+     a reader cannot trust.
+  2. **The verification plan is re-pointed at the ACTIVE iteration.** `plan_id` is now `f199.i002.slice.v1` and
+     the governance command is `iteration-002-governance`, naming
+     `specs/199-beta3-stabilization/iterations/002`. The re-pointed command's label carries why, so the next
+     reader does not have to reconstruct it.
+  3. **The four concerns get an honest disposition OUTSIDE the seal**, as an erratum -
+     `specs/199-beta3-stabilization/iterations/002/erratum-iteration-001-hardening-gate-disposition.md` -
+     following the discipline `proposals/` already applies to shipped work: *preserve the body, record the
+     pointer*. It states per concern what runtime evidence now exists and names, rather than hides, the two
+     places where evidence is still thin: the OneDrive hydrate-then-hash-verify path (manual, as 001's own gate
+     anticipated) and the conflicting-pause-fact branch. It does not amend the gate, change its verdict, or
+     claim 001's review covered evidence that accrued afterwards.
+- **A gate corrected the fix while it was being made, and this is the good outcome, not a detour**: the erratum
+  was first written into `iterations/001/` - beside the gate it discusses, which felt like the helpful place -
+  and the validator refused it: *"Closed iteration ... was edited after its closeout seal."* The refusal is
+  right, and not on a technicality: **adding** a file to a sealed directory still changes what the human's
+  verdict accepted, and anyone diffing the closed iteration would find something the signoff never saw. The
+  message then named the correct mechanism itself - *"record what needs to change as a drift entry in the
+  ACTIVE iteration's drift-log.md, where new facts belong ... until the governed supersede mechanism ships,
+  their explicit instruction recorded in the active drift log is the path"* - which is precisely this entry,
+  carrying the maintainer's explicit instruction, with the erratum as its long form. Worth recording for two
+  reasons: it is a refusal that met the project's own standard (it named what was wrong, why it matters, and
+  the one action), and it shows the seal discipline holding against a well-intentioned edit, which is the case
+  it actually has to survive.
+- **Recorded as a BETA4 ITEM at the maintainer's instruction**: *"a closed iteration gates its successor's
+  review."* The mechanism has two halves and neither is a defect in the gate or in the closeout - it is a
+  **missing hand-off**. A verification plan that names an iteration by number goes stale the moment the next one
+  opens; and an iteration transitioning to `complete` retroactively raises the bar on a gate written under
+  planning-time rules, so *closing an iteration correctly can block the review of the tree that succeeds it*.
+  The fix belongs where the transition happens: the closeout should re-point the plan, the command should name
+  the active iteration rather than a number, and a `pending-post-implementation` concern should have a defined
+  disposition step at closeout instead of becoming a permanent blocker on everything after it.
+- **Class closure**: the class is real and now named - **a verification plan that names a specific iteration
+  goes stale the moment the next one opens**. Closed here by re-pointing; closed structurally in beta4 by making
+  the closeout own the re-point.
 
 ### Resolution Strategies (Unused)
 
