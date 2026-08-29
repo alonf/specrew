@@ -64,6 +64,18 @@ if ($missing.Count -gt 0) {
 if ($content -notmatch 'approved for <to>' -or $content -notmatch 'changes needed:' -or $content -notmatch 'discuss prompt') {
     Write-Fail "gate-stop skill must render the four responses as literally sendable lines (approved for <to>, approved for <to> - <instructions>, changes needed:, discuss prompt N)."
 }
+# T015 (FR-024): the options are CONDITIONAL. A stop whose stage owes artifacts it has not produced must
+# offer none of them and emit no marker - the composition defect TB-1 half 2 named, where the safety rule
+# (always render options) is what produced the unsafe act (a verdict over an empty stage).
+if ($content -notmatch 'I am not offering a verdict here') {
+    Write-Fail 'gate-stop skill must carry the withhold branch: a stage that owes artifacts gets no verdict options.'
+}
+if ($content -notmatch 'indistinguishable in the ledger from an approval of real work') {
+    Write-Fail 'gate-stop skill must say WHY the verdict is withheld, in the same words the machinery uses on its own surface.'
+}
+if ($content -notmatch '(?s)I am not offering a verdict here.*What would you like to do\? Type one of these') {
+    Write-Fail 'the withhold branch must come BEFORE the options block: deciding whether a verdict may be offered precedes offering it.'
+}
 if ($content -match '(?m)^\s*1\.\s*Approve as-is') {
     Write-Fail "gate-stop skill offers a NUMBERED verdict option; only a typed phrase is captured, so a number is a control that cannot authorize."
 }

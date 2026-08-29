@@ -83,6 +83,7 @@ function Get-CallerRepositoryContamination {
 $registry = @(
     @{ area = 'boundary ratchet (FR-001..FR-005, cycle-scoped)'; path = 'tests/unit/boundary-ratchet.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T014 crossing mint gate + marker identity (FR-024): refuse the empty stage, permit the evidenced one, refuse a stale marker'; path = 'tests/unit/crossing-mint-gate.tests.ps1'; kind = 'script' }
+    @{ area = 'beta3 T015 withhold discipline (FR-024): one statement in every copy - skill x3, Rule 53, refocus x2, lifecycle-discipline - and the post-capture writer withholds the artifact for an empty stage'; path = 'tests/unit/withhold-discipline.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T023 crossing owner (FR-032): the demand fires for the owning session, a different live session gets one line, an unconfirmable owner fails open with disclosure'; path = 'tests/unit/crossing-owner.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T021 crossing mirrors (FR-030): the writer writes every enumerated copy, the sync re-mirrors forward, the truth gate refuses a copy ahead of the store; the ledger speaks done (DRIFT-199-I002-009)'; path = 'tests/unit/crossing-mirrors.tests.ps1'; kind = 'script' }
     @{ area = 'append-only scoped authorization correction ledger (FR-004/SC-014)'; path = 'tests/unit/boundary-correction-ledger.tests.ps1'; kind = 'script' }

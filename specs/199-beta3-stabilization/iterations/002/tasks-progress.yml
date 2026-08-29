@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "002"
-updated_at: "2026-08-29T17:22:06.8614014Z"
+updated_at: "2026-08-29T17:37:25.2440235Z"
 tasks:
   T014:
     title: "Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures"
@@ -11,9 +11,9 @@ tasks:
     blocked_reason: ""
   T015:
     title: "Withhold discipline: packet re-mint guard; gate-stop skill (3 copies), Rule 53, refocus/general.md (2), lifecycle-discipline.md; owned test flips"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T17:37:25.2403196Z"
+    completed_at: "2026-08-29T17:37:25.2403196Z"
     blocked_reason: ""
   T016:
     title: "Split `pushed-head`: delivery at closeouts reading enforcement_mode; new `verdict-commit-durable`; messages; the field case and this repository as fixtures"

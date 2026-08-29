@@ -90,7 +90,8 @@ Not every Stop owes a packet:
 | Stop shape | Required output | Deterministic behavior |
 |---|---|---|
 | Workshop lens question or clarify ambiguity question | Normal question path; no packet | Workshop / question exclusions suppress packet enforcement |
-| Lifecycle gate with pending boundary verdict | Six-section packet, numbered verdict options, and final `SPECREW-VERDICT-BOUNDARY` marker | Boundary lane blocks when the exact pending marker is absent or wrong; verdict capture can still bind a real concise approval through the pending-verdict artifact fallback |
+| Lifecycle gate with pending boundary verdict | Six-section packet, the four typed responses as sendable lines, and the final `SPECREW-VERDICT-BOUNDARY` marker | Boundary lane blocks when the exact pending marker is absent or wrong; verdict capture can still bind a real concise approval through the pending-verdict artifact fallback |
+| Lifecycle gate whose stage owes artifacts it has not produced | Six-section packet naming what is owed and the step that produces it; NO verdict options and NO marker (FR-024) | The provider withholds the demand and the pending-verdict artifact is not written, so no marker exists to capture against an empty stage |
 | Non-boundary material work this turn | Five-part context packet, no marker | Material lane blocks when the packet is absent |
 | Quick discussion with no files, tests, commits, or gate | Normal conversational answer | Length alone does not trigger a packet |
 

@@ -40,7 +40,7 @@
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T014 | Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures | FR-024 | US8 | 3.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/unit/**, tests/integration/** | done | Implementer | 3.0 |  |
-| T015 | Withhold discipline: packet re-mint guard; gate-stop skill (3 copies), Rule 53, refocus/general.md (2), lifecycle-discipline.md; owned test flips | FR-024 | US8 | 2.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, .claude/skills/specrew-gate-stop/SKILL.md, extensions/specrew-speckit/squad-templates/skills/gate-stop.md, .specify/extensions/specrew-speckit/squad-templates/skills/gate-stop.md, scripts/internal/launch-contract.ps1, extensions/specrew-speckit/refocus/general.md, .specify/extensions/specrew-speckit/refocus/general.md, docs/methodology/lifecycle-discipline.md, tests/integration/** | planned | | | |
+| T015 | Withhold discipline: packet re-mint guard; gate-stop skill (3 copies), Rule 53, refocus/general.md (2), lifecycle-discipline.md; owned test flips | FR-024 | US8 | 2.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, .claude/skills/specrew-gate-stop/SKILL.md, extensions/specrew-speckit/squad-templates/skills/gate-stop.md, .specify/extensions/specrew-speckit/squad-templates/skills/gate-stop.md, scripts/internal/launch-contract.ps1, extensions/specrew-speckit/refocus/general.md, .specify/extensions/specrew-speckit/refocus/general.md, docs/methodology/lifecycle-discipline.md, tests/integration/** | done | Implementer | 2.0 |  |
 | T016 | Split `pushed-head`: delivery at closeouts reading enforcement_mode; new `verdict-commit-durable`; messages; the field case and this repository as fixtures | FR-025 | US8 | 1.5 | Implementer | scripts/internal/gate-preflight.ps1, tests/unit/gate-preflight.Tests.ps1 | planned | | | |
 | T017 | Zero-construct detection in both constrained readers; representation-naming parse message; JSON fixtures | FR-026 | US8 | 1.0 | Implementer | scripts/internal/product-domain-lens.ps1, scripts/internal/code-implementation-lens.ps1, tests/unit/product-domain-lens.tests.ps1, tests/unit/code-implementation-lens.tests.ps1 | planned | | | |
 | T018 | `confirm-workshop-lens` writer; `confirm-lens` operation (56 pinned cells); validators wired at the checkpoint; skill step 7 invokes it | FR-027 | US8 | 3.0 | Implementer | extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1, .specify/extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1, extensions/specrew-speckit/scripts/workshop-authority-store.ps1, .specify/extensions/specrew-speckit/scripts/workshop-authority-store.ps1, .claude/skills/specrew-design-workshop/SKILL.md, tests/integration/workshop-*.tests.ps1 | planned | | | |
@@ -145,10 +145,13 @@
   with one covering round is supported with three rounds of headroom for tripwire-driven rework;
   a split would have needed two campaigns, also within allowance - the ruling stands on its own
   merits, not on scarcity.
-- Owned test flips (planned, not discovered): `fr068-verdict-demand-reproduction` HALF 2 inverts
-  by its own design; `gate-stop-skill.tests.ps1:65` and `multi-host-launch-path.tests.ps1:326`
-  update to the conditional discipline; the workshop transition table grows from 48 to 56 pinned
-  cells.
+- Owned test flips (planned, not discovered), CORRECTED at T015 (DRIFT-199-I002-010):
+  `gate-stop-skill.tests.ps1` gains the withhold assertions and passes; `multi-host-launch-path`
+  passes unchanged (the host guidance renders the four responses, which the withhold branch does not
+  remove); the workshop transition table grows from 48 to 56 pinned cells at T018. The predicted
+  `fr068-verdict-demand-reproduction` HALF 2 inversion does NOT belong to this batch: it
+  characterises the dispatcher concatenating two providers' fragments with no precedence, which is a
+  different instance of the composition class and is beta4's with the walk harness.
 - Owned at T014 (landed 2026-08-29): `pending-verdict-stop-artifact` had encoded the TB-1 defect as an
   expectation - its closeout case asserted `iteration-closeout -> plan` pending over a fixture with no
   next iteration; the fixture now carries `iterations/002/plan.md` so the crossing mints legitimately,

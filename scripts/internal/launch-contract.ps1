@@ -554,7 +554,11 @@ sequenceDiagram
 
 These four artifacts together address the empirical complaint from tip-calc-v2 dogfooding (2026-05-24): "I see only some of the md files compared to what we have in Specrew itself ... some should be there to assist the review after plan before implement." After ``/speckit.plan`` runs, verify each file exists and has substantive (not template-placeholder) content; commit them with the plan boundary. They become the foundation the human reviews to approve the ``before-implement`` gate.
 
-53. **NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT — the four responses are lines the human can literally send** (maintainer ruling 2026-08-12). Core Specrew defines the response contract and allowed response shapes. The selected host package renders the interaction behavior below. Immediately AFTER you emit the human re-entry packet at a human-verdict gate, render the four responses as sendable lines, substituting the real boundary name and a real prompt number:
+53. **NO SELECTION AFFORDANCE AT A BOUNDARY VERDICT — the four responses are lines the human can literally send** (maintainer ruling 2026-08-12). Core Specrew defines the response contract and allowed response shapes. The selected host package renders the interaction behavior below.
+
+**A verdict is offered only for a crossing that has something to approve** (FR-024, iteration 002). Before rendering any option: if no pending-verdict artifact exists, or the stage the crossing enters owes artifacts it has not produced, this stop renders NO verdict options and NO marker. It names what is owed and the one step that produces it, and stops — the same thing the machinery says on its own surface when it withholds the artifact, so the two never disagree. A verdict recorded over an empty stage is indistinguishable in the ledger from an approval of real work.
+
+OTHERWISE, immediately AFTER you emit the human re-entry packet at a human-verdict gate, render the four responses as sendable lines, substituting the real boundary name and a real prompt number:
 
 ``````text
 What would you like to do? Type one of these:

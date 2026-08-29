@@ -41,8 +41,25 @@ Every artifact / file / directory reference in every section MUST be a **visible
 (Rule 52) — not a repo-relative path (`specs/...`, `.specrew/...`), and not a markdown link, because
 terminal hosts hide the clickable target otherwise.
 
-Then render the four responses as **lines the human can literally send**, exactly — substituting the real
-boundary name for `<to>` and a real prompt number:
+**FIRST, decide whether a verdict may be offered at all** (FR-024). Read the pending-verdict artifact:
+when it is absent, or when it says the stage owes artifacts it has not produced, this stop offers NO
+verdict options and emits NO marker. Say so plainly instead — name what the stage owes and the one step
+that produces it:
+
+```text
+I am not offering a verdict here: '<from>' owes <artifact> and it does not exist yet, so there is
+nothing this verdict would approve.
+A verdict recorded now would be indistinguishable in the ledger from an approval of real work.
+Your earlier approvals stand. Produce the owed artifact through the '<from>' stage's normal step,
+and the verdict options will be offered then.
+```
+
+That is the whole stop in that case: the six sections, this paragraph, no options, no marker. The
+machinery says the same thing on its own surface when it withholds the artifact, so the two never
+disagree.
+
+**OTHERWISE — the stage has something to approve — render the four responses** as **lines the human can
+literally send**, exactly, substituting the real boundary name for `<to>` and a real prompt number:
 
 ```text
 What would you like to do? Type one of these:

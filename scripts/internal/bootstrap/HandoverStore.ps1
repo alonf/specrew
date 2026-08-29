@@ -525,6 +525,29 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
             return
         }
 
+        # FR-024 (iteration 002, T015): the SAME guard the sync-side writer has carried since FR-068
+        # (sync-boundary-state.ps1, 'the stage owes evidence it has not produced'). This writer runs
+        # immediately after a capture and re-mints the artifact for the NEXT crossing; without the guard it
+        # hands over an approval phrase and a verdict marker for a stage that has produced nothing, which is
+        # exactly what the sync refuses to write. The asymmetry was the defect: suppressing the demand in the
+        # provider while still supplying the marker through this file is a partial correction under a
+        # complete-sounding claim. A POSITIVE evidence-absent reading withholds; unverifiable does not.
+        $stageEvidenceAbsentForArtifact = ($pending.PSObject.Properties.Name -contains 'StageEvidenceAbsent') -and [bool]$pending.StageEvidenceAbsent -and
+            -not (($pending.PSObject.Properties.Name -contains 'StageEvidenceUnverifiable') -and [bool]$pending.StageEvidenceUnverifiable)
+        if ($stageEvidenceAbsentForArtifact) {
+            if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+                Remove-Item -LiteralPath $artifactPath -Force -ErrorAction Stop
+            }
+            try {
+                $whJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                $whDir = Split-Path -Parent $whJournal
+                if ($whDir -and -not (Test-Path -LiteralPath $whDir)) { New-Item -ItemType Directory -Path $whDir -Force | Out-Null }
+                (([pscustomobject]@{ event = 'pending-verdict-artifact-withheld-stage-evidence-absent'; recorded_at = $NowUtc; to = [string]$pending.PendingToMarkerBoundary; missing = @($pending.StageEvidenceMissing) }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $whJournal -Encoding UTF8
+            }
+            catch { $null = $_ }
+            return
+        }
+
         $fromMarkerBoundary = [string]$pending.PendingFromMarkerBoundary
         $toMarkerBoundary = [string]$pending.PendingToMarkerBoundary
         if ([string]::IsNullOrWhiteSpace($fromMarkerBoundary) -or [string]::IsNullOrWhiteSpace($toMarkerBoundary)) {

@@ -211,11 +211,12 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   is removed; a resumed session with a new id is LOCKED OUT of its own crossing when the fail-open
   branch is removed. (Trace: FR-032, FR-024, FR-033, SC-019; owns: `shared-governance.ps1` +
   mirror, `specrew-conformance-provider.ps1` + mirror, `HandoverStore.ps1`)
-- [ ] T015 [owner: Implementer] [sp: 2.0] **The withhold discipline, stated once** — the
+- [x] T015 [owner: Implementer] [sp: 2.0] **The withhold discipline, stated once** — the
   post-capture packet re-mint gains the sync-side evidence guard; the gate-stop skill (3 copies),
   Rule 53, `refocus/general.md` (2) and `lifecycle-discipline.md` carry the conformance provider's
-  counter-discipline as the one wording of record; `gate-stop-skill.tests.ps1:65`,
-  `multi-host-launch-path.tests.ps1:326` and `fr068` HALF 2 flip by design. Mutation: an
+  counter-discipline as the one wording of record; `gate-stop-skill.tests.ps1` gains the
+  withhold assertions; `multi-host-launch-path` and `fr068` HALF 2 pass unchanged, the latter because
+  it characterises a different composition (DRIFT-199-I002-010). Mutation: an
   evidence-less next stage re-mints `pending-verdict-stop.md` with an approval phrase when the guard
   is removed. (Trace: FR-024, FR-033, SC-011; owns: `HandoverStore.ps1`, the skill copies,
   `launch-contract.ps1`, `refocus/general.md` + mirror, `docs/methodology/lifecycle-discipline.md`)

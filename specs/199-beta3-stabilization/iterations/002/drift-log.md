@@ -16,9 +16,9 @@
 
 ## Summary
 
-**Total drift events**: 9 (DRIFT-199-I002-001 through -009)
+**Total drift events**: 10 (DRIFT-199-I002-001 through -010)
 **Resolution rate**: carried per event in its heading (6 resolved-by this iteration's requirements,
-2 spec-updated/human-decision, 1 deferred to beta4 by ruling)
+2 spec-updated/human-decision, 2 deferred/open by ruling or scope)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
 ## Events
@@ -266,6 +266,30 @@
   as the measurement until T021 lands (T021 is the next task in the planned order).
 - **Class closure**: the mutation for T021 - a task completed through `Set-TaskComplete` passes the
   boundary preflight's task-state check; revert the writer and the check goes red.
+
+### DRIFT-199-I002-010 — the plan predicted a test flip that FR-024 does not cause (open; scope note, no fix here)
+
+- **Observed**: 2026-08-29, landing T015. The plan and the design analysis both listed
+  `fr068-verdict-demand-reproduction` HALF 2 among the flips this batch owns - "documented as designed
+  to invert when beta3 fixes the composition". It did not invert, and it should not have: read at
+  source, HALF 2 characterises a DIFFERENT composition from the one FR-024 fixes.
+- **What FR-024 fixed (T014, T015)**: one provider's own surface no longer offers a verdict for a
+  crossing whose stage owes artifacts - the packet, the stop artifact, the skill copies, Rule 53 and
+  the discipline texts now say one thing.
+- **What HALF 2 measures**: the DISPATCHER concatenating two different providers' block fragments -
+  the conformance provider's "emit the verdict marker" and the co-review navigator's "do NOT emit a
+  marker" - joined by `----- AND ALSO -----` (`specrew-hook-dispatcher.ps1:1292`) with no precedence
+  and no conflict detection. Two correct surfaces, hostile when delivered together: the same class,
+  a different instance, and one this batch's ten items never scoped.
+- **Citation**: FR-024 (what was fixed); the crew brief's composition-defect class (B-4.2, beta4's
+  walk harness: "human does an ordinary thing, two gates disagree").
+- **Resolution**: open, no fix in this iteration - the characterization stays green because what it
+  characterises is still true. The plan's owned-flip list is corrected rather than the test. Proposed
+  disposition: beta4, with the composition tests, where dispatcher-level precedence between
+  co-occurring block directives is the actual design question. Named here so the next reader does not
+  mistake a passing characterization for an unfixed FR-024.
+- **Class closure**: NONE in this iteration - a precedence rule between provider fragments is beta4
+  design work, and inventing one inside a tag batch is the shape the maintainer ruled against for F-2.
 
 ### Resolution Strategies (Unused)
 
