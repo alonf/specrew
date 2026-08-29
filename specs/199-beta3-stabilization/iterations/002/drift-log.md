@@ -16,9 +16,9 @@
 
 ## Summary
 
-**Total drift events**: 11 (DRIFT-199-I002-001 through -011)
-**Resolution rate**: carried per event in its heading (7 resolved-by this iteration's requirements,
-2 spec-updated/human-decision, 2 deferred/open by ruling or scope)
+**Total drift events**: 12 (DRIFT-199-I002-001 through -012)
+**Resolution rate**: carried per event in its heading (8 resolved-by this iteration's requirements or
+instrumentation, 2 spec-updated/human-decision, 2 deferred/open by ruling or scope)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
 ## Events
@@ -289,6 +289,17 @@
   disposition: beta4, with the composition tests, where dispatcher-level precedence between
   co-occurring block directives is the actual design question. Named here so the next reader does not
   mistake a passing characterization for an unfixed FR-024.
+- **The shape it shares, noted at the maintainer's instruction (2026-08-29)**: this is the same problem as
+  the instruction corpus - **a rule stated in more than one place with nothing deciding which wins**. T015
+  fixed one instance of it in the TEXT layer (the gate-stop skill, Rule 53, the refocus files and the
+  methodology table each carried a verdict-rendering rule, and they disagreed; they now carry one
+  statement). HALF 2 is the same defect one layer down, in the DELIVERY layer: two providers each emit a
+  correct directive, the dispatcher concatenates them with `----- AND ALSO -----`, and nothing arbitrates.
+  Fixing the text layer does not touch it, which is exactly why the predicted flip did not happen.
+- **Resolution**: open, beta4 - and worth more than a failed prediction, per the maintainer: a real
+  composition defect and a new finding. Its home is the composition tests, where the design question
+  ("when two correct directives are delivered together, which one governs") can be answered once for both
+  layers instead of twice.
 - **Class closure**: NONE in this iteration - a precedence rule between provider fragments is beta4
   design work, and inventing one inside a tag batch is the shape the maintainer ruled against for F-2.
 
@@ -308,9 +319,68 @@
 - **Resolution**: the duplicate block removed, the script re-parsed clean, the mirror re-synced, T020's
   suite re-run green, and the T020 mutation then executed properly against the de-duplicated file (the
   template-only guard removed -> red, restored -> green).
-- **Class closure**: the audit pattern itself - every mutation asserts `count == 1` on its target before
-  editing, so a duplicated or missing target fails loudly instead of mutating the wrong thing. Applied to
-  all eleven mutations in this iteration.
+- **The CLASS, recorded at the maintainer's instruction (2026-08-29)** - this is a new member of the
+  family this feature has been cataloguing, and it is not one of the ones already named:
+
+  > Not a control that does nothing, not a test that certifies the defect, but **a defect a green suite is
+  > structurally incapable of seeing**.
+
+  The stub block was duplicated and every T020 assertion passed over it, because the duplication was
+  IDEMPOTENT: the second copy re-read the file the first had written and correctly left it alone. No
+  behavioural test could have caught it - the behaviour was right. What caught it was the mutation audit's
+  own precondition, `count == 1` on the line it was about to edit.
+
+  **The reusable lesson: asserting the cardinality of the subject set is itself a detector.** A behaviour
+  test asks "does this do the right thing"; a cardinality assertion asks "is there exactly one of it", and
+  that question finds duplication, silent absence, and accidental re-application - failure modes where the
+  observable behaviour is indistinguishable from correct. It costs one line and it is the only thing that
+  saw this. Sibling instances already in the record: the verification plan naming 45 suites while 384
+  existed (DRIFT-199-I001-134, a count nobody compared), and the drift log's own summary claiming 78
+  entries against 152 (corrected at the 001 retro). Same shape, three times: the number of things was
+  never asserted, so the wrong number of things went unseen.
+- **Class closure**: every mutation in this iteration asserts `count == 1` on its target before editing, so
+  a duplicated or missing target fails loudly instead of mutating the wrong thing; and the lesson
+  generalises beyond mutations - where a thing must exist exactly once, assert that, because no behaviour
+  test will.
+
+### DRIFT-199-I002-012 — the tripwire cannot fire: the Actual column is the estimate copied across (resolved by re-instrumentation)
+
+**The maintainer's finding, verified before authorizing the covering round (2026-08-29):**
+
+> Every task's actual equals its estimate exactly - T014 3.0/3.0, T015 2.0/2.0, T016 1.5/1.5, all twelve.
+> That is the second iteration running; 001's actuals summed to precisely its 13.1 capacity line. The
+> actuals column is not measurement, it is the estimate copied across. Which makes the tripwire
+> unfireable: "stop and re-plan if review or rework exceeds the direct estimate by 2x" cannot trigger
+> when the recorded actual is definitionally the estimate. I specified a control that, as instrumented,
+> can never fire - the inert-control family arriving inside the governance instrument built to catch it,
+> which is the thirteenth-odd instance and the first one I authored.
+
+- **Confirmed on the record**: iteration 002's twelve Actual cells were written by this session as copies
+  of the Effort cells at completion time; the sum (19.0) matches the capacity line by construction, not by
+  measurement. Iteration 001's retro said the same thing in prose - "per-task effort was not time-tracked;
+  the timestamps are batch stamps written at landing, not effort" - and then still summed Actuals to
+  exactly 13.1. Two iterations, the same non-measurement, reported both times as if it were data.
+- **Why it is the sharpest instance of the family so far**: the inert control is INSIDE the governance
+  instrument built to catch inert controls. The plan states a safeguard ("stop and re-plan at 2x") whose
+  input can never move; a reader of plan.md would reasonably believe the iteration is protected by it.
+- **Citation**: the 001 retro's lesson 1 (an authority and its mirror belong to one writer with a truth
+  check between) applied to a MEASUREMENT and its claim; FR-033's separate-tracking clause; the
+  maintainer's plan-verdict instruction that review and rework be tracked separately so the next retro can
+  say which figure was right.
+- **Resolution — re-instrumented, not time-tracked** (the maintainer's ruling: "do not fix this with time
+  tracking; inventing hours would be worse"). Three countable measures replace the copied number, all of
+  them already produced by the machinery:
+  1. **Review rounds consumed** - the campaign budget's own counter (`rounds_used` in the review
+     authority store), which no one can copy from an estimate.
+  2. **Rework commits** - commits on this branch after the round is delivered whose subject is a fix
+     rather than a record, countable with `git log`.
+  3. **Calendar days between round delivery and signoff** - the 001 retro already measured calendar
+     ("roughly eight times the implementation calendar"), so the unit was known to work here.
+  The tripwire is restated against those three, and the per-task Actual column is relabelled for what it
+  actually is (landing effort at the estimate, unmeasured) rather than presented as measurement.
+- **Class closure**: a plan may not state a threshold whose input is not independently produced. The three
+  measures above come from the campaign store, git history and dates - none of them writable by the
+  session that would trip the wire.
 
 ### Resolution Strategies (Unused)
 

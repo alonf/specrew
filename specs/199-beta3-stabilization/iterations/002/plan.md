@@ -37,6 +37,14 @@
 
 ## Tasks
 
+<!--
+  The `Actual` column records LANDING EFFORT AT THE ESTIMATE and is not a measurement: effort is not
+  time-tracked in this project, and writing the estimate into it twice does not make it data
+  (DRIFT-199-I002-012, found by the maintainer across two iterations). The iteration's real cost is
+  carried by the three countable measures in the Notes - review rounds consumed, rework commits, and
+  calendar days from round delivery to signoff - which is also what the tripwire is written against.
+  Do not treat a sum of this column as evidence of anything except that the tasks landed.
+-->
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T014 | Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures | FR-024 | US8 | 3.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/unit/**, tests/integration/** | done | Implementer | 3.0 |  |
@@ -122,14 +130,24 @@
   named beside it as a CHECK, not planned as a number: planning the floor converts a check into a
   number and manufactures the overcommit. The direct estimate is 0.30 of implementation; 001's plan
   carried 0.27 and spent roughly eight times its implementation calendar, which is why the check
-  stands. TRIPWIRE: if review or rework actuals exceed the direct estimate by 2x (review past 6.0
-  SP, rework past 5.0 SP), execution stops. The stop is a VISIBLE stop seen by the maintainer -
-  never a silent log line - and its default consequence is an amendment recorded at the review
-  stage; it escalates to a new plan boundary only when the response changes what gets built (a
-  task dropped, a task added, an approved design decision revisited). Maintainer instruction at
-  the plan verdict, 2026-08-29: the estimate being wrong was not 001's failure - nobody stopping
-  to ask whether to continue was; a cost overrun the human cannot act on differently does not
-  deserve a boundary, a change in what will be built does.
+  stands.
+- TRIPWIRE, RE-INSTRUMENTED 2026-08-29 (DRIFT-199-I002-012). The first version read "if review or
+  rework ACTUALS exceed the direct estimate by 2x" - and the maintainer verified before authorizing the
+  covering round that the Actual column is the estimate copied across, in this iteration and in 001, so
+  that wire could never trip. It now reads against three measures the session that would trip it does
+  not write, and each has an explicit threshold:
+    1. **Review rounds consumed** (the campaign store's own `rounds_used`): more than 2 rounds for this
+       iteration's covering review.
+    2. **Rework commits** (`git log` on this branch after the first round is delivered, subjects
+       beginning `fix(beta3):` rather than `docs`/`chore`/`boundary`): more than 6.
+    3. **Calendar days between round delivery and signoff**: more than 3.
+  Any one of them crossing stops execution. The stop is a VISIBLE stop seen by the maintainer - never a
+  silent log line - and its default consequence is an amendment recorded at the review stage; it
+  escalates to a new plan boundary only when the response changes what gets built (a task dropped, a
+  task added, an approved design decision revisited). Maintainer instruction at the plan verdict: the
+  estimate being wrong was not 001's failure - nobody stopping to ask whether to continue was; a cost
+  overrun the human cannot act on differently does not deserve a boundary, a change in what will be
+  built does.
   Review and rework actuals are recorded separately, per round and per wedge as they happen
   (drift log and review record), never batch-stamped at landing, so the next retro can say which
   figure was right - the thing 001 could not do.
@@ -213,6 +231,14 @@
   from inside this repository. It is the release-validation step for the tag, not an optional
   extra: 002's own boundaries exercise the crossing family but never the greenfield paths (T016's
   no-origin posture, T020's fresh feature creation, T017/T018's first workshop).
+- COUNTABLE MEASURES for this iteration (DRIFT-199-I002-012's replacement for the copied Actual column;
+  each read from a source this session does not write):
+  - **Implementation calendar**: first task commit 2026-08-29 19:48, last 2026-08-29 21:38 - twelve tasks
+    inside one working session, which is the only implementation figure worth stating.
+  - **Review rounds consumed**: recorded from the campaign store when the covering round delivers
+    (iteration 001's campaign had used 3 of 4; iteration 002's campaign starts fresh).
+  - **Rework commits after round delivery**: counted from git history at signoff.
+  - **Calendar days from round delivery to signoff**: counted at signoff.
 - T025 SWEEP RESULT (2026-08-29): mirrors byte-identical across all ten script/skill/refocus pairs and all
   fifteen lens-catalog files; eleven mutations run, each turning its own suite red and restoring green
   (mint gate, mirrors, owner, withhold, capture disclosure, durability, seal order, readers, lens writer,
