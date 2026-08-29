@@ -1,8 +1,8 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: ready-for-review
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T008
 **Tasks Remaining**: (none)
 **In Progress**: (none)
@@ -12,7 +12,7 @@
 ## Execution Summary
 
 <!-- specrew:task-progress-summary:begin -->
-- Implementation tasks are complete; review-signoff is next.
+- Implementation tasks are complete; review-signoff was authorized 2026-08-27, the retro was recorded 2026-08-29, and the iteration closes on the signed-off tree.
 - Task progress: 13 complete, 0 in-progress, 0 pending, 0 blocked.
 - Latest completed task: T008
 <!-- specrew:task-progress-summary:end -->

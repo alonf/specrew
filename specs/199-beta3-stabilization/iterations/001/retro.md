@@ -113,9 +113,17 @@ the building - most of what shipped was found by review, not planned into it.
 ## Lessons Learned
 
 1. **An authority write and its mirror write belong in one writer, with a truth check between
+   them - and the writer owns EVERY mirror of the authority it writes, with the design enumerating
    them.** Two of the three inert controls found this fortnight were a mirror nobody wrote
-   (`state.md` phase, workshop `moved_on`). Owner: crew, iteration 002 (F-1 writer; item eight
-   phase mirror in `Add-SpecrewBoundaryAuthorization`, truth gate extended).
+   (`state.md` phase, workshop `moved_on`), and the retro turn itself produced the third
+   hand-correction of a stage mirror in two days: `plan.md` Status drifted and was caught
+   reactively by a cross-artifact validator rule, not advanced by a writer. The mirrors of
+   `last_authorized_boundary` verified on disk at this retro: `state.md` Current Phase, `state.md`
+   Iteration Status, `plan.md` Status. Item eight writes all of them and its truth check covers
+   each one it names; a mirror may lead the store by exactly the pending crossing during the
+   arrival-to-verdict window and never otherwise. A lesson that fixes one mirror fixes an
+   instance; this one fixes the class. Owner: crew, iteration 002 (F-1 writer; item eight in
+   `Add-SpecrewBoundaryAuthorization`, truth gate extended to every enumerated mirror).
 2. **One check, one job, one name.** A check with two jobs gets aimed at the boundaries of one of
    them. Owner: crew, iteration 002 (TB-3 split: release-model delivery at closeouts; verdict-commit
    durability at every boundary, each with its own message).
@@ -128,6 +136,13 @@ the building - most of what shipped was found by review, not planned into it.
    refusals were agent-rendered: no recognizer refused, no journal line, receipts minted. The stop
    counts from both walks are a floor, not a total. Owner: maintainer, beta4 friction measurement
    must read the walk transcript, not the gate log.
+   A third friction cause, distinct from both gate refusals and instruction-layer refusals,
+   surfaced at this retro: nothing refused and nothing instructed - the human is a clock tick,
+   because the verdict write lands only at end-of-turn and the closeout could not be synced in the
+   turn the verdict was typed. The remedies differ: refusal friction is fixed by the refusal
+   standard, instruction-layer friction by editing instructions, write-latency friction by changing
+   when writes land. The beta4 friction-measurement item carries all three so they do not collapse
+   into one fix.
 6. **Composition is where the worst moments came from, and nothing tests it.** Owner: maintainer,
    beta4 (proposal 213's walk harness: "human does an ordinary thing, two gates disagree").
 7. **Authored counts drift; derived counts do not.** Owner: crew, beta4 chore - derive the drift-log
@@ -155,7 +170,9 @@ answers to the crew report, and it is where these lessons become work:
   `refocus/general.md` contradicts Rule 53), TB-3 split as above, TB-4 with its sibling converter,
   F-1 and B-6 as one governed lens-checkpoint writer (no new validators, no pipeline redesign),
   F-3 as message text on both surfaces with recognizers untouched, B-7, and item eight - the
-  phase-mirror writer behind DRIFT-199-I001-152.
+  crossing-mirror writer behind DRIFT-199-I001-152, scoped to every enumerated mirror of
+  `last_authorized_boundary` (`state.md` Current Phase and Iteration Status, `plan.md` Status),
+  not to one.
 - Six items explicitly out and staying out: F-2, TB-5, B-5, B-1/B-1a, B-2, B-3, plus the UX
   programme B-4 as beta4's top priority.
 - Iteration 001 closes on what it actually reviewed: sign-off against `66403e9b` resting on
@@ -212,7 +229,11 @@ answers to the crew report, and it is where these lessons become work:
 - Drift-log identifier defects (005 and 024 doubled, 036 unused): recorded, not renumbered.
   Identifiers are cited across records including signed-off ones; the numbering defect is cosmetic
   and the citation graph is not.
-- The TB-3 split and the item-eight phase-mirror design are accepted as iteration 002 plan input.
+- The TB-3 split and the item-eight design are accepted as iteration 002 plan input, with item
+  eight's scope corrected at the closeout turn: the writer owns every mirror of the authority it
+  writes, the design enumerates them, and the truth check covers each.
+- A third friction cause (write-latency: the human as a clock tick) is recorded beside the two
+  already known, with its own remedy, in the beta4 friction-measurement item.
 
 ## Notes
 

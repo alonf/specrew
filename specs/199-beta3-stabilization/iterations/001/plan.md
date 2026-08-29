@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: retro
+**Status**: complete
 **Capacity**: 13.1/20 story_points
 **Started**: 2026-08-10
-**Completed**:
+**Completed**: 2026-08-29
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -51,19 +51,19 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Pause core (round terminal + pause facts + decision surface + per-campaign budget) | FR-001, FR-002, FR-003, FR-004 | US1 | 3.0 | Implementer | scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1, review-authority-core.ps1, review-authority-store.ps1, continuous-co-review-navigator.ps1, tests/continuous-co-review/** | done | | | |
-| T002 | Composed stop-here landing | FR-005 | US1 | 1.0 | Implementer | scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1, tests/continuous-co-review/** | done | | | |
-| T003 | Single-authority stop surface | FR-007, FR-008, FR-009 | US2 | 1.0 | Implementer | scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1, tests/continuous-co-review/** | done | | | |
-| T004 | Verdict capture contract + wiring reconciliation | FR-010 | US3 | 1.5 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, scripts/internal/deploy-refocus-hooks.ps1, tests/bootstrap/**, tests/integration/** | done | | | |
-| T005 | Verdict-goal reviewer prompt contract | FR-006 | US1 | 0.5 | Implementer | scripts/internal/continuous-co-review/worktree-reviewer.ps1, tests/continuous-co-review/** | done | | | |
-| T006 | Reparse-tag discrimination + refusal messages + docs | FR-011 | US4 | 1.75 | Implementer | scripts/internal/continuous-co-review/review-authority-store.ps1, docs/**, tests/continuous-co-review/** | done | | | |
-| T007 | Init verification-plan bootstrap + named errors | FR-012, FR-013 | US5 | 1.0 | Implementer | scripts/internal/continuous-co-review/verification-plan-*.ps1, scripts/specrew-init.ps1, tests/integration/** | done | | | |
-| T008 | Reviewer-invoked-only spend accounting | FR-014 | US1 | 0.5 | Implementer | scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1, review-authority-core.ps1, tests/continuous-co-review/** | done | | | |
-| T009 | Codex window 900 s + timeout message | FR-018 | US7 | 0.5 | Implementer | scripts/internal/continuous-co-review/reviewer-host-catalog.ps1, tests/continuous-co-review/** | done | | | |
-| T010 | Consumer-language layer (gloss helper + banned nouns + surface pass + one-message stops) | FR-015, FR-016, FR-017 | US6 | 1.75 | Implementer | scripts/internal/continuous-co-review/*navigator*.ps1, templates/**, .claude/skills/**, tests/integration/** | done | | | |
-| T011 | Banner full prerelease version | FR-019 | US6 | 0.25 | Implementer | scripts/internal/specrew-bootstrap-provider.ps1, scripts/internal/coordinator-prompt-surgery.ps1, extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1, tests/bootstrap/** | done | | | |
-| T012 | Records: 009/010 wording + release-notes draft | FR-020, FR-021 | US6 | 0.25 | Spec Steward | specs/**, release notes draft | done | | | |
-| T013 | markdownlint-cli CI install | FR-022 | US6 | 0.1 | Implementer | .github/workflows/** | done | | | |
+| T001 | Pause core (round terminal + pause facts + decision surface + per-campaign budget) | FR-001, FR-002, FR-003, FR-004 | US1 | 3.0 | Implementer | scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1, review-authority-core.ps1, review-authority-store.ps1, continuous-co-review-navigator.ps1, tests/continuous-co-review/** | done | Implementer | 3.0 | pass |
+| T002 | Composed stop-here landing | FR-005 | US1 | 1.0 | Implementer | scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1, tests/continuous-co-review/** | done | Implementer | 1.0 | pass |
+| T003 | Single-authority stop surface | FR-007, FR-008, FR-009 | US2 | 1.0 | Implementer | scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1, tests/continuous-co-review/** | done | Implementer | 1.0 | pass |
+| T004 | Verdict capture contract + wiring reconciliation | FR-010 | US3 | 1.5 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, scripts/internal/deploy-refocus-hooks.ps1, tests/bootstrap/**, tests/integration/** | done | Implementer | 1.5 | pass |
+| T005 | Verdict-goal reviewer prompt contract | FR-006 | US1 | 0.5 | Implementer | scripts/internal/continuous-co-review/worktree-reviewer.ps1, tests/continuous-co-review/** | done | Implementer | 0.5 | pass |
+| T006 | Reparse-tag discrimination + refusal messages + docs | FR-011 | US4 | 1.75 | Implementer | scripts/internal/continuous-co-review/review-authority-store.ps1, docs/**, tests/continuous-co-review/** | done | Implementer | 1.75 | pass |
+| T007 | Init verification-plan bootstrap + named errors | FR-012, FR-013 | US5 | 1.0 | Implementer | scripts/internal/continuous-co-review/verification-plan-*.ps1, scripts/specrew-init.ps1, tests/integration/** | done | Implementer | 1.0 | pass |
+| T008 | Reviewer-invoked-only spend accounting | FR-014 | US1 | 0.5 | Implementer | scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1, review-authority-core.ps1, tests/continuous-co-review/** | done | Implementer | 0.5 | pass |
+| T009 | Codex window 900 s + timeout message | FR-018 | US7 | 0.5 | Implementer | scripts/internal/continuous-co-review/reviewer-host-catalog.ps1, tests/continuous-co-review/** | done | Implementer | 0.5 | pass |
+| T010 | Consumer-language layer (gloss helper + banned nouns + surface pass + one-message stops) | FR-015, FR-016, FR-017 | US6 | 1.75 | Implementer | scripts/internal/continuous-co-review/*navigator*.ps1, templates/**, .claude/skills/**, tests/integration/** | done | Implementer | 1.75 | pass |
+| T011 | Banner full prerelease version | FR-019 | US6 | 0.25 | Implementer | scripts/internal/specrew-bootstrap-provider.ps1, scripts/internal/coordinator-prompt-surgery.ps1, extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1, tests/bootstrap/** | done | Implementer | 0.25 | pass |
+| T012 | Records: 009/010 wording + release-notes draft | FR-020, FR-021 | US6 | 0.25 | Spec Steward | specs/**, release notes draft | done | Spec Steward | 0.25 | pass |
+| T013 | markdownlint-cli CI install | FR-022 | US6 | 0.1 | Implementer | .github/workflows/** | done | Implementer | 0.1 | pass |
 
 ## Effort Model
 
@@ -113,8 +113,13 @@
 - Planned task effort: 13.1 SP of the 20 SP capacity (threshold 20 x 1.0 not
   exceeded; the maintainer's ~10–12 target is overshot by ~1.1 SP, surfaced at the
   tasks boundary for ruling — trim candidates named there).
-- Status is retro: all planned implementation tasks are complete, review-signoff was
-  authorized on 2026-08-27 against 66403e9b, and the retro verdict was given on 2026-08-29
-  (retro.md authored; iteration-closeout is the remaining boundary).
+- Status is complete: all 13 tasks done and verified (review.md, accepted); review-signoff
+  authorized 2026-08-27 against 66403e9b; retro recorded 2026-08-29; the iteration closes on
+  2026-08-29 on the signed-off tree. The post-signoff delta (W76, W77) is not claimed as reviewed
+  here and is carried into iteration 002's covering round.
+- Task Actual column: effort was not time-tracked. Actual records the landing effort, which
+  matched the estimate for every task (retro.md, Estimation Accuracy); the review and rework
+  overrun is recorded at phase level in retro.md, not per task. Sum of Actuals = 13.1 = the
+  Capacity line's consumed value.
 - FR-006 was added to the Scope Summary manually; the scaffold's FR extractor
   skipped it (recorded observation, non-blocking).

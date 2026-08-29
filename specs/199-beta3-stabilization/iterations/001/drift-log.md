@@ -613,6 +613,14 @@ The beta3 fix for F-3 stays message-only on both surfaces (the skill and lens in
 one code-level sibling with the same defect shape, the silent repair-authorization gate), with the
 recognizers untouched.
 
+**Three causes, three remedies (maintainer ruling, 2026-08-29, at the closeout turn).** The friction
+measurement must keep them apart: (1) gate refusals whose message withholds the actionable fact -
+remedy: the refusal standard (B-4.1); (2) instruction-layer refusals the gates never see - remedy:
+edit the instructions; (3) write-latency ticks, where nothing refused and nothing instructed and the
+human is a clock tick because a write lands only at end-of-turn (the retro verdict of 2026-08-29
+could not be acted on in the turn it was typed; the closeout waited for the next message) - remedy:
+change when writes land. One fix aimed at three causes fixes one of them.
+
 ### DRIFT-199-I001-152 - state.md never advanced at the review-signoff crossing (resolved, records-only)
 
 **Observed**: 2026-08-29, at the opening of the beta3 tag batch, on the maintainer's instruction to
