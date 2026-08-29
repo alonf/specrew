@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "002"
-updated_at: "2026-08-29T17:44:36.7624755Z"
+updated_at: "2026-08-29T17:49:44.6388023Z"
 tasks:
   T014:
     title: "Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures"
@@ -17,9 +17,9 @@ tasks:
     blocked_reason: ""
   T016:
     title: "Split `pushed-head`: delivery at closeouts reading enforcement_mode; new `verdict-commit-durable`; messages; the field case and this repository as fixtures"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T17:49:44.5808069Z"
+    completed_at: "2026-08-29T17:49:44.5808069Z"
     blocked_reason: ""
   T017:
     title: "Zero-construct detection in both constrained readers; representation-naming parse message; JSON fixtures"
@@ -53,9 +53,9 @@ tasks:
     blocked_reason: ""
   T022:
     title: "Seal as the closeout sync's last write; test that it hashes the rendered dashboard"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T17:49:44.6381125Z"
+    completed_at: "2026-08-29T17:49:44.6381125Z"
     blocked_reason: ""
   T023:
     title: "Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner-unknown named out loud; capture verifies the marker's crossing identity"

@@ -31,6 +31,11 @@ Describe 'Boundary gate preflight' {
     }
 
     It 'fails when a remote-delivered branch is not pushed at HEAD' {
+        # T016 (FR-025): retargeted, not weakened. The unpushed HEAD is still refused at EVERY boundary -
+        # under the name of the job that actually needs it, `verdict-commit-durable`, because three readers
+        # resolve a boundary's auth_commit_hash back against git. `pushed-head` keeps only the DELIVERY job
+        # its own schema describes, so at `specify` it is not-applicable and at a closeout it is the one that
+        # refuses. Both halves are asserted here so neither can be silently dropped.
         $remote = Join-Path $TestDrive 'origin.git'
         & git init --bare -q $remote
         $root = New-PreflightRepo 'remote' 'push-only'
@@ -39,9 +44,16 @@ Describe 'Boundary gate preflight' {
         Set-Content -LiteralPath (Join-Path $root 'README.md') -Value 'new' -Encoding UTF8
         & git -C $root add README.md
         & git -C $root commit -qm local-only-commit
-        $result = Invoke-SpecrewGatePreflight -ProjectRoot $root -BoundaryType specify -FeatureRef 001-demo
-        $result.ok | Should -BeFalse
-        ($result.checks | Where-Object name -eq pushed-head).message | Should -Match 'not pushed'
+
+        $atSpecify = Invoke-SpecrewGatePreflight -ProjectRoot $root -BoundaryType specify -FeatureRef 001-demo
+        $atSpecify.ok | Should -BeFalse
+        ($atSpecify.checks | Where-Object name -eq 'verdict-commit-durable').status | Should -Be 'fail'
+        ($atSpecify.checks | Where-Object name -eq 'verdict-commit-durable').message | Should -Match 'git push origin'
+        ($atSpecify.checks | Where-Object name -eq 'pushed-head').status | Should -Be 'not-applicable'
+
+        $atCloseout = Invoke-SpecrewGatePreflight -ProjectRoot $root -BoundaryType iteration-closeout -FeatureRef 001-demo
+        $atCloseout.ok | Should -BeFalse
+        ($atCloseout.checks | Where-Object name -eq 'pushed-head').message | Should -Match 'not pushed'
     }
 
     It 'classifies dirty governance records separately from product or methodology paths' {

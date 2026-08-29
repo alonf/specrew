@@ -72,6 +72,21 @@ function ConvertFrom-SpecrewGatePreflightIdList {
     return @($Value -split '\s*,\s*' | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^T\d+$' })
 }
 
+function Get-SpecrewGatePreflightEnforcementMode {
+    # FR-025 (T016): repository_governance.enforcement_mode is a schema enum
+    # (branch-protection | rulesets | ci-only | manual) that carries exactly the
+    # intended-vs-active distinction the delivery check needs. It sat in the same file the check
+    # already reads and was never consulted. Same line-oriented read as release_truth_branch.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    $governancePath = Join-Path $ProjectRoot '.specrew/repository-governance.yml'
+    if (-not (Test-Path -LiteralPath $governancePath -PathType Leaf)) { return '' }
+    foreach ($line in Get-Content -LiteralPath $governancePath -Encoding UTF8) {
+        if ($line -match '^\s*enforcement_mode:\s*["'']?(?<value>[^"''#\s]+)') { return $Matches['value'].Trim().ToLowerInvariant() }
+    }
+    return ''
+}
+
 function Invoke-SpecrewGatePreflight {
     [CmdletBinding()]
     param(
@@ -89,29 +104,70 @@ function Invoke-SpecrewGatePreflight {
         $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status fail -Message 'HEAD could not be resolved; boundary evidence cannot be bound to a commit.' -Evidence $null)) | Out-Null
     }
 
+    # FR-025 (iteration 002, T016): ONE CHECK, ONE JOB. `pushed-head` used to carry two: release-model
+    # DELIVERY (what the schema says it governs - "release_model controls only applicable closeout delivery
+    # steps") and, silently, the DURABILITY of the commit a verdict binds to. Aimed at delivery, it fired at
+    # `specify` and demanded a published repository to clear a SPECIFICATION (the HelloWinUIReactive walk,
+    # blocked there). Split into two named checks, each with its own message and its own job.
     $release = Resolve-SpecrewReleaseModel -ProjectRoot $root
     $branch = [string](@(& git -C $root branch --show-current 2>$null) | Select-Object -First 1)
-    if ([string]$release.Model -eq 'local-only') {
+    $originUrl = @(& git -C $root remote get-url origin 2>$null)
+    $hasOrigin = ($LASTEXITCODE -eq 0 -and $originUrl.Count -gt 0)
+    $remoteHeadForBranch = ''
+    if ($hasOrigin -and -not [string]::IsNullOrWhiteSpace($branch)) {
+        $remoteLine = [string](@(& git -C $root ls-remote --heads origin ("refs/heads/{0}" -f $branch) 2>$null) | Select-Object -First 1)
+        if ($remoteLine -match '^(?<hash>[0-9a-f]{40,64})\s+') { $remoteHeadForBranch = $Matches['hash'] }
+    }
+    $enforcementMode = Get-SpecrewGatePreflightEnforcementMode -ProjectRoot $root
+
+    # --- DELIVERY: pushed-head, at the boundaries that actually deliver -----------------------------------
+    $deliveryBoundaries = @('iteration-closeout', 'feature-closeout')
+    if ($BoundaryType -notin $deliveryBoundaries) {
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status not-applicable -Message ("Release model '{0}' governs closeout delivery only; nothing is owed to origin at the '{1}' boundary." -f $release.Model, $BoundaryType) -Evidence @{ release_model = $release.Model; boundary = $BoundaryType })) | Out-Null
+    }
+    elseif ([string]$release.Model -eq 'local-only') {
         $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status not-applicable -Message 'The recorded release model is local-only; no remote push is owed.' -Evidence @{ release_model = $release.Model })) | Out-Null
+    }
+    elseif (-not $hasOrigin) {
+        # The declared-but-not-yet-created remote: the DevOps lens records the agreed future posture and says
+        # honestly, in the same file, that it is not active yet (enforcement_mode: manual). Reading only
+        # release_model made that honesty the thing that blocked the walk - the inert-fact shape, where the
+        # fact needed to decide is present and unread.
+        if ([string]::IsNullOrWhiteSpace($enforcementMode) -or $enforcementMode -eq 'manual') {
+            $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status not-applicable -Message ("Release model '{0}' is recorded with enforcement_mode '{1}' and no origin exists yet: the remote posture is a declared intention, not an active obligation. Nothing is owed now; delivery to origin becomes owed at the first closeout after the remote exists. To activate it, create the repository and add it as 'origin' - the recorded decision itself needs no change." -f $release.Model, $(if ([string]::IsNullOrWhiteSpace($enforcementMode)) { 'manual (no repository_governance block)' } else { $enforcementMode })) -Evidence @{ release_model = $release.Model; enforcement_mode = $enforcementMode })) | Out-Null
+        }
+        else {
+            $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status fail -Message ("Release model '{0}' with enforcement_mode '{1}' requires origin, but origin is not configured: the record claims active remote enforcement, and that cannot be true without a remote. Add the remote as 'origin', or record enforcement_mode: manual until it exists." -f $release.Model, $enforcementMode) -Evidence @{ release_model = $release.Model; enforcement_mode = $enforcementMode })) | Out-Null
+        }
     }
     elseif ([string]::IsNullOrWhiteSpace($branch)) {
         $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status fail -Message 'A remote-delivered boundary cannot use a detached HEAD.' -Evidence @{ release_model = $release.Model })) | Out-Null
     }
+    elseif ([string]::IsNullOrWhiteSpace($remoteHeadForBranch) -or $remoteHeadForBranch -cne $head) {
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status fail -Message "Branch '$branch' is not pushed to origin at the current HEAD." -Evidence @{ local_head = $head; remote_head = $remoteHeadForBranch; branch = $branch })) | Out-Null
+    }
     else {
-        $remote = @(& git -C $root remote get-url origin 2>$null)
-        if ($LASTEXITCODE -ne 0 -or $remote.Count -eq 0) {
-            $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status fail -Message "Release model '$($release.Model)' requires origin, but origin is not configured." -Evidence $null)) | Out-Null
-        }
-        else {
-            $remoteLine = [string](@(& git -C $root ls-remote --heads origin ("refs/heads/{0}" -f $branch) 2>$null) | Select-Object -First 1)
-            $remoteHash = if ($remoteLine -match '^(?<hash>[0-9a-f]{40,64})\s+') { $Matches['hash'] } else { '' }
-            if ([string]::IsNullOrWhiteSpace($remoteHash) -or $remoteHash -cne $head) {
-                $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status fail -Message "Branch '$branch' is not pushed to origin at the current HEAD." -Evidence @{ local_head = $head; remote_head = $remoteHash; branch = $branch })) | Out-Null
-            }
-            else {
-                $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status pass -Message "origin/$branch matches the current HEAD." -Evidence @{ head = $head; branch = $branch })) | Out-Null
-            }
-        }
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'pushed-head' -Status pass -Message "origin/$branch matches the current HEAD." -Evidence @{ head = $head; branch = $branch })) | Out-Null
+    }
+
+    # --- DURABILITY: verdict-commit-durable, at EVERY boundary --------------------------------------------
+    # The second job, now named. Every boundary records an auth_commit_hash and THREE readers resolve it back
+    # against git: Get-SpecrewGitArtifactStateId derives the crossing's tree from it, Get-SpecrewBoundaryStage-
+    # Evidence reads that tree, and the constraint-change path diffs it against the previous boundary commit.
+    # A verdict bound to a commit that exists only locally is one rebase away from naming nothing. With an
+    # origin this is exactly the requirement pushed-head used to impose everywhere - unchanged in strength,
+    # only renamed to its job; without one it is an honest note, not a demand to publish.
+    if (-not $hasOrigin) {
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'verdict-commit-durable' -Status not-applicable -Message ("Boundary verdicts bind to commit '{0}' and later gates resolve it back. No origin is configured, so this local history is the only copy: do not rewrite or drop this commit. When a remote exists, pushing the branch makes the record durable." -f $(if ($head.Length -ge 8) { $head.Substring(0, 8) } else { $head })) -Evidence @{ head = $head })) | Out-Null
+    }
+    elseif ([string]::IsNullOrWhiteSpace($branch)) {
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'verdict-commit-durable' -Status fail -Message 'Boundary verdicts bind to the current commit and later gates resolve it back, but HEAD is detached: there is no branch whose remote copy could preserve it. Check out the feature branch before recording a boundary.' -Evidence @{ head = $head })) | Out-Null
+    }
+    elseif ([string]::IsNullOrWhiteSpace($remoteHeadForBranch) -or $remoteHeadForBranch -cne $head) {
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'verdict-commit-durable' -Status fail -Message ("Boundary verdicts bind to commit '{0}' and later gates resolve it back (stage evidence, constraint diffs, review coverage). It exists only in this local history: origin/{1} is at '{2}'. Push the branch so the commit the verdict names survives a rebase or a lost checkout: git push origin {1}" -f $(if ($head.Length -ge 8) { $head.Substring(0, 8) } else { $head }), $branch, $(if ([string]::IsNullOrWhiteSpace($remoteHeadForBranch)) { 'no such branch' } elseif ($remoteHeadForBranch.Length -ge 8) { $remoteHeadForBranch.Substring(0, 8) } else { $remoteHeadForBranch })) -Evidence @{ local_head = $head; remote_head = $remoteHeadForBranch; branch = $branch })) | Out-Null
+    }
+    else {
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'verdict-commit-durable' -Status pass -Message ("origin/{0} carries the commit this boundary binds to." -f $branch) -Evidence @{ head = $head; branch = $branch })) | Out-Null
     }
 
     $governancePath = Join-Path $root '.specrew/repository-governance.yml'

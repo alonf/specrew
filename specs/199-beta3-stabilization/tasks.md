@@ -236,7 +236,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
 
 ### Phase 2: gate-preflight and the seal (2.0 SP)
 
-- [ ] T016 [owner: Implementer] [sp: 1.5] **Split `pushed-head`** — delivery at closeouts reading
+- [x] T016 [owner: Implementer] [sp: 1.5] **Split `pushed-head`** — delivery at closeouts reading
   `release_model` and `enforcement_mode` (manual or absent with no origin = declared-future,
   not-applicable with the owed-when message; active mode with no origin = fail naming the
   contradiction); `verdict-commit-durable` at every boundary (origin: `origin/<branch>` at HEAD;
@@ -245,7 +245,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   `specify` under the durability name. Mutation: an unpushed HEAD passes specify when the
   durability check is removed. (Trace: FR-025, FR-033, SC-012; owns: `gate-preflight.ps1`,
   `tests/unit/gate-preflight.Tests.ps1`)
-- [ ] T022 [owner: Implementer] [sp: 0.5] **Seal last** — the closeout sync writes the seal after
+- [x] T022 [owner: Implementer] [sp: 0.5] **Seal last** — the closeout sync writes the seal after
   the dashboard render; a test asserts the seal hashes the rendered dashboard. Mutation: reorder
   the writes and the test goes red on the timestamped dashboard. (Trace: FR-031, FR-033, SC-017;
   owns: `sync-boundary-state.ps1`)

@@ -299,6 +299,7 @@ tests/unit/crossing-mirrors.tests.ps1
 tests/unit/crossing-owner.tests.ps1
 tests/unit/withhold-discipline.tests.ps1
 tests/unit/capture-disclosure.tests.ps1
+tests/unit/delivery-durability-seal.tests.ps1
 tests/unit/budget-resolution.tests.ps1
 tests/unit/capability-provider-resolution.tests.ps1
 tests/unit/code-implementation-lens.tests.ps1
