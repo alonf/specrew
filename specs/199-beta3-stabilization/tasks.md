@@ -193,10 +193,18 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   at mint (`host|session` or `unknown`); the conformance provider's boundary demand fires only for
   the owner; other sessions get one informational line; `owner: unknown` keeps today's behavior
   and the packet names the gap out loud; the capture verifies the marker's crossing identity.
-  Mutations: a second session's Stop demands a packet when the owner check is removed; an
-  unknown-owner packet omits the gap sentence when the disclosure is removed. (Trace: FR-032,
-  FR-024, FR-033, SC-019; owns: `shared-governance.ps1` + mirror,
-  `specrew-conformance-provider.ps1` + mirror, `HandoverStore.ps1`)
+  **Resume/compaction constraint (maintainer, tasks verdict 2026-08-29)**: a session that resumes
+  or compacts can come back with a new session id, and the owner must never become un-matchable in
+  a way that locks a session out of its own crossing - that is rule 12's outage side and a worse
+  defect than the one being fixed. When the current session id does not match the recorded owner
+  and no other live session claims it, the demand FAILS OPEN with disclosure, the same shape as
+  owner-unknown: keep today's behavior and say plainly that ownership could not be confirmed.
+  Only a positive mismatch - this session is demonstrably a different, live session - suppresses
+  the demand to the informational line. Mutations: a second session's Stop demands a packet when
+  the owner check is removed; an unknown-owner packet omits the gap sentence when the disclosure
+  is removed; a resumed session with a new id is LOCKED OUT of its own crossing when the fail-open
+  branch is removed. (Trace: FR-032, FR-024, FR-033, SC-019; owns: `shared-governance.ps1` +
+  mirror, `specrew-conformance-provider.ps1` + mirror, `HandoverStore.ps1`)
 - [ ] T015 [owner: Implementer] [sp: 2.0] **The withhold discipline, stated once** — the
   post-capture packet re-mint gains the sync-side evidence guard; the gate-stop skill (3 copies),
   Rule 53, `refocus/general.md` (2) and `lifecycle-discipline.md` carry the conformance provider's

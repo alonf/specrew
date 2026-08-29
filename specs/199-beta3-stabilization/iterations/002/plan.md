@@ -147,6 +147,50 @@
   by its own design; `gate-stop-skill.tests.ps1:65` and `multi-host-launch-path.tests.ps1:326`
   update to the conditional discipline; the workshop transition table grows from 48 to 56 pinned
   cells.
+- WHICH CODE 002's OWN BOUNDARIES EXECUTE - measured 2026-08-29 at the tasks verdict, before T014,
+  on the maintainer's question. It is the FIRST branch: **this iteration runs on the code it is
+  editing.** Three measurements: (1) `$env:SPECREW_MODULE_PATH` is unset, so the shim's Path 0 does
+  not apply; (2) the shim's Path 1 (walk up from its own location for a directory holding both
+  `.specrew/config.yml` and `scripts/internal/sync-boundary-state.ps1`) resolves to
+  `C:\Dev\specrew-beta3-stabilization` - the repo root - so every boundary sync executes this
+  repo's `scripts/internal/sync-boundary-state.ps1`; (3) the installed module (0.40.0, under the
+  user's PowerShell Modules) exists but is never reached, because Path 1 wins before Path 2.
+  The hooks resolve the same way by a different route: they run the in-repo deployed mirror
+  `.specify/extensions/specrew-speckit/scripts/*`, and the handover provider there finds no
+  `bootstrap/` beside itself, so it dot-sources `<root>/scripts/internal/bootstrap` - the live
+  `HandoverStore.ps1` and `ConversationCaptureAccessor.ps1` that T014, T023 and T024 edit.
+  CONSEQUENCE, and it is the outage side of method rule 12: a wrong fix in T014, T015, T021 or
+  T024 can stop this iteration from recording its own boundaries, mid-flight, with the crossing
+  family landing first by design.
+- RECOVERY PATH, named before T014 starts (each step verified against the mechanisms, not assumed):
+  1. Nothing is resident. Every hook and every sync spawns a fresh `pwsh` that dot-sources from
+     disk, so `git checkout <last-good-sha> -- <file>` restores the previous behavior on the very
+     next turn; there is no daemon, cache or session state to clear.
+  2. Probe before trusting. After each crossing-family edit, run the sync with `-PreflightOnly`,
+     which returns before the ratchet and before every state write - a boundary-path smoke test
+     that cannot record or authorize anything.
+  3. Authority cannot be lost, only delayed. `verdict_history` is append-only and idempotent on
+     (destination, verdict text), and the pending crossing is re-minted from the commit at sync
+     time - so a capture missed while a fix is broken is recovered by reverting, re-syncing, and
+     re-rendering the packet for the same crossing; no verdict is destroyed and no crossing is
+     skipped.
+  4. If capture itself is the broken part, the sync path still records the arrival and the human's
+     phrase is re-typed after the revert - the same recovery the withdrawal path already uses.
+  5. Land the crossing family in the planned order (T014, T021, T023, T015, T024) as separate
+     commits, each with its mutation green, so step 1 always has a last-good SHA one commit back.
+- MIRROR TIMING, a corollary of the above: files under `scripts/internal/` are live for this
+  iteration the moment they are committed; files under `extensions/specrew-speckit/` reach the
+  hooks only through their `.specify/extensions/` deployed copy, which is why this feature's
+  history carries `re-stamp the mirrors after the W## deploy` commits. T015, T018, T019, T023 and
+  T025 all touch mirrored files: each lands both copies in its own commit (the mirror discipline
+  below), or its fix is inert for 002's own boundaries while passing its tests.
+- HOW BETA3 GETS VALIDATED (maintainer ruling at the tasks verdict, 2026-08-29, recorded now
+  because the second branch would have changed it): land 002, update the installed module, then
+  resume the HelloWinUIReactive project from exactly where TB-3 blocked it. That walk verifies the
+  fixes on a real greenfield project and doubles as the fresh-eyes signal, which cannot be measured
+  from inside this repository. It is the release-validation step for the tag, not an optional
+  extra: 002's own boundaries exercise the crossing family but never the greenfield paths (T016's
+  no-origin posture, T020's fresh feature creation, T017/T018's first workshop).
 - Mirror discipline: every task's commit lands every byte-identical copy it touches
   (`extensions/` and `.specify/extensions/`; three skill copies); the deployed-extension-integrity
   suite is the check.

@@ -175,6 +175,14 @@ DRIFT-199-I001-024, -031.
   pending crossing and its owner. With `owner: unknown` the demand keeps project-wide behavior and
   the packet states that the host does not identify sessions and the demand may have reached a
   session that did not produce the work.
+- Ownership resolves to exactly three states, and only one of them suppresses the demand:
+  `owner-matches` (demand renders), `owner-differs` - the current session is a different, live
+  session - (informational line only), and `owner-indeterminate` - no session id on this host, or
+  a recorded owner that matches no live session because the owning session resumed or compacted
+  into a new id - (demand renders, plus one sentence saying ownership could not be confirmed).
+  Indeterminate FAILS OPEN by construction: a session must never be locked out of its own
+  crossing by an identity it cannot prove, which would turn a diagnosis gap into an outage
+  (method rule 12; maintainer ruling 2026-08-29).
 
 ### Capture disclosure (FR-010)
 
