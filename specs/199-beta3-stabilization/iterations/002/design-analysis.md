@@ -361,3 +361,13 @@ commit (it cannot name its own hash); it is the `boundary(plan)` commit that fol
 and precedes the plan sync, and it is cited in the plan boundary packet.
 **Transcription disclosure**: this decision is agent-transcribed from the maintainer's typed reply
 in the governing session (the established design-verdict transcription path, as in iteration 001).
+
+**Plan-verdict addendum (2026-08-29, `approved for plan - three things`)**: (1) the Iteration
+Status settlement is accepted and corrects the maintainer's own enumerated-mirrors framing - it is
+derived, not a mirror; a consistency relation is its truth check; `plan.md` Status is the mapped
+copy; both existing enums stay, no migration (DRIFT-199-I002-007, FR-030 re-worded). (2)
+DRIFT-199-I002-006 folds into T025 conditionally: honest labelling of the coverage figure, and it
+stops and goes to beta4 if it needs campaign-selection logic; the test is whether the fix changes
+what the function computes or only what it says. (3) Both capture failures stay as T024's pinned
+fixtures: the fix's real target is that "bare phrase first" means the first characters of the
+message, not the first verdict line, and nothing says so until a recap.

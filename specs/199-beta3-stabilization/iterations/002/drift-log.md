@@ -16,10 +16,9 @@
 
 ## Summary
 
-**Total drift events**: 6 (DRIFT-199-I002-001 through -006)
-**Resolution rate**: carried per event in its heading (3 resolved-by this iteration's requirements,
-1 spec-updated/human-decision, 1 deferred to beta4 by ruling, 1 open pending disposition at the
-tasks boundary)
+**Total drift events**: 7 (DRIFT-199-I002-001 through -007)
+**Resolution rate**: carried per event in its heading (4 resolved-by this iteration's requirements,
+2 spec-updated/human-decision, 1 deferred to beta4 by ruling)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
 ## Events
@@ -148,7 +147,7 @@ tasks boundary)
 - **Resolution**: deferred to beta4 with the refusal standard (maintainer ruling 2026-08-29).
 - **Class closure**: NONE in this iteration - beta4's standing check over refusal surfaces.
 
-### DRIFT-199-I002-006 — a stale round allowance in the decision slot of the plan packet (open; disposition at the tasks boundary)
+### DRIFT-199-I002-006 — a stale round allowance in the decision slot of the plan packet (resolved-by T025, honest labelling)
 
 **Recorded from the maintainer, 2026-08-29:**
 
@@ -171,11 +170,35 @@ tasks boundary)
   the line verbatim in Why I Stopped.
 - **Citation**: the refusal standard's instance clause (B-4.1), applied to a number rather than a
   refusal: the figure in the decision slot must be the figure that governs the decision.
-- **Resolution**: open. Proposed disposition for the tasks boundary: a small addition to T025 (the
-  coverage line names its campaign and iteration, and when the active iteration has no campaign
-  yet it says so and reports the fresh allowance), or beta4 with the refusal standard.
+- **Resolution**: folded into T025 by the maintainer's conditional ruling at the plan verdict
+  (2026-08-29), the condition tested at source: `Get-SpecrewReviewCoverageState` already returns
+  `campaign_id` (`cmp-<feature>-i<NNN>`) and the active iteration is in `session_state`, so the
+  line can name the campaign and compare its iteration suffix without changing what the function
+  computes - it changes only what the line says. If implementation finds otherwise, T025 stops
+  and the item goes to beta4 with the refusal standard.
 - **Class closure**: candidate - every figure rendered into a packet's decision slot names the
   record it was read from.
+
+### DRIFT-199-I002-007 — FR-030's enumeration named a derived value as a mirror (spec-updated, human-decision)
+
+- **Observed**: 2026-08-29, at the plan verdict. The enumerated-mirrors finding (item eight) listed
+  `state.md` Iteration Status beside Current Phase and `plan.md` Status; the design draft then
+  proposed a map writing `reviewing` into it. Verified against source: Iteration Status is written
+  by `task-progress.ps1` (lines 565, 593, 601, 608) from task progress in its own enum, and
+  `tracker-honesty-check.tests.ps1:139-146` proves the enum check fails closed on non-canonical
+  values. As drafted, the truth gate would have refused a value the engine's own writer produces,
+  and every project holding `ready-for-review` would have broken on upgrade - TB-4's
+  producer/consumer defect and DRIFT-008's non-canonical-value stop, reintroduced by the mirror
+  fix.
+- **Ruling (maintainer, verbatim in substance)**: the framing was the maintainer's own; Iteration
+  Status is derived, not a mirror, and only its closeout value is boundary-driven; a consistency
+  relation is the right truth check for it; `plan.md` Status remains the actual mapped copy;
+  adopt both existing vocabularies with no migration.
+- **Resolution**: spec-updated - FR-030 re-worded (copies versus the derived value; each file's
+  existing enum; consistency relation); contract and plan follow.
+- **Class closure**: the enumeration names, per mirror, whether it is a copy or a derived value
+  and which writer owns its enum; a truth check is written against that, never against the
+  boundary name alone.
 
 ### Resolution Strategies (Unused)
 
