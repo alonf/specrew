@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "feature": "199-beta3-stabilization",
   "iteration": "001",
-  "sealed_at": "2026-08-29T02:10:26.6286829+00:00",
+  "sealed_at": "2026-08-29T10:18:41.6947360+00:00",
   "sealed_files": [
     {
       "path": "code-map.md",
@@ -62,7 +62,7 @@
     },
     {
       "path": "retro.md",
-      "sha256": "83d575ba1cc805d902e7e3f592073a62c38aed1a4fc7fa78159480826754f831"
+      "sha256": "a7b4763236f9b358af043abb094012a93457122114b1d62e8aeb81a2548abc59"
     },
     {
       "path": "review-diagrams.md",
@@ -70,7 +70,7 @@
     },
     {
       "path": "review.md",
-      "sha256": "435c590f3dd876051d7dfc42f2ccf04c033616470d8ece963cb1d4e4e8476065"
+      "sha256": "0a8d9d7bc34428c4e442f6ab195f9856cf949ee3c9f3eb4c71f8ed6fec156850"
     },
     {
       "path": "reviewer-index.md",

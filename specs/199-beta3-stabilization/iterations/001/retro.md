@@ -178,6 +178,9 @@ answers to the crew report, and it is where these lessons become work:
 - Iteration 001 closes on what it actually reviewed: sign-off against `66403e9b` resting on
   covering evidence for tree `1b50ae60`. The post-signoff movement (W76, W77) is not claimed as
   reviewed here; iteration 002's single covering round carries the whole delta since `1b50ae60`.
+  What the sign-off does and does not claim is stated plainly in review.md at closeout: the
+  independence claim stands withdrawn pending a fresh round, and the verdicts' authorship was
+  never hook-observed - the record holds exactly the provenance it names, no more.
 - Known test flips to own in 002, not discover: `fr068-verdict-demand-reproduction` HALF 2
   (documented as designed to invert), `gate-stop-skill.tests.ps1:65`,
   `multi-host-launch-path.tests.ps1:326`, and the workshop transition table growing from 48 to 56
@@ -204,6 +207,21 @@ answers to the crew report, and it is where these lessons become work:
 5. Owner: crew | Phase: beta4 | Type: chore | Expected effect: the drift-log summary counts are
    derived from entries and the identifier sequence is enforced, so the record cannot understate
    itself again.
+
+## Rulings Recorded at the Closeout Verdict
+
+- Ninth item for iteration 002: the closeout sync seals the records and only then re-renders
+  `dashboard.md`, whose `Captured At` timestamp guarantees the seal never matches - an unfixed
+  instance of W77's class, one line plus a test, in a path the batch already touches. Carried into
+  002's first drift entry; fixed in the batch.
+- The seal manifest stays complete (20 files, including quality/ and the coverage and reviewer
+  evidence): those are what the sign-off rests on and the last things that should be unfreezable.
+- The Actuals stand as recorded, with an instruction for 002: track review and rework effort
+  separately, or the 1:1:1 floor is unverifiable and the next retro writes this sentence again.
+- The sealed record states plainly what the sign-off does and does not claim (review.md).
+- One repo-level validator finding printed once per validated iteration (153 lines from one fact)
+  goes to beta4 with the refusal standard: the same defect as a refusal that names no instance,
+  inverted.
 
 ## Calibration Suggestion
 

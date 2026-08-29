@@ -41,6 +41,28 @@ rather than before one.
 **What this record therefore claims**: sign-off was authorized against `66403e9b` on covering evidence
 that was real and checkable for that tree, and the tree has since moved by three advisory corrections
 and one audit rebuild. It does not claim those corrections have been independently reviewed.
+
+## What This Sign-off Claims, and What It Does Not
+
+Written at iteration closeout on the maintainer's explicit instruction (verdict of 2026-08-29), so
+the sealed record cannot later be read as claiming more provenance than it holds.
+
+**It claims**: that the thirteen tasks below were verified against their requirements by the
+evidence each row names; that sign-off was authorized on 2026-08-27 against commit `66403e9b`,
+resting on `run-20260827-023623882-300694ac`, which reviewed tree `1b50ae60` with only records-only
+commits between; and that the five campaign rounds, the class-guard and slice lanes, and the live
+behavioral evidence named in the Notes were real and checkable for that tree.
+
+**It does not claim**: that anything after tree `1b50ae60` was independently reviewed - the
+independence claim stands WITHDRAWN pending a fresh round, and the post-sign-off movement (W76, W77)
+is carried into iteration 002's single covering round; that the task verdicts in this file were
+observed being written by the reviewer - the validator's trust-hardening check records
+`review-authorship-unobserved` for this record, meaning no hook watched these verdicts being
+written and the machinery cannot say who wrote them (the campaign runs the record names are the
+evidence, not observed authorship); or that this review could see defects in how the machinery
+meets a person - thirty-three rounds produced none of the four findings that block the tag, all of
+which came from two humans in a walk (retro.md, lesson 8).
+
 ## Task Verdicts
 
 | Task | Requirement | Verdict | Notes |
