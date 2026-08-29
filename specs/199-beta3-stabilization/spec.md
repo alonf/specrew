@@ -556,13 +556,20 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
   not-yet-authored sentinel and no requirement placeholders; the specify boundary gate refuses
   while the sentinel stands, with a message that says the workshop answers are safe and names
   the specify step; the upstream scaffold is untouched.
-- **FR-030**: The crossing writer writes every enumerated mirror of
-  `last_authorized_boundary` - `state.md` Current Phase, `state.md` Iteration Status, `plan.md`
-  Status - for the active iteration at the moment the crossing is recorded; the boundary sync
-  re-mirrors from the store at its start; the iteration-state truth gate compares every
-  enumerated mirror at every iteration-scoped boundary. A mirror may lead the store by exactly
-  the pending crossing during the arrival-to-verdict window and never otherwise; a mirror ahead
-  of the store is refused, not rewritten.
+- **FR-030**: The crossing writer writes every enumerated COPY of `last_authorized_boundary` -
+  `state.md` Current Phase (the boundary name) and `plan.md` Status (the validator's own enum,
+  mapped) - for the active iteration at the moment the crossing is recorded, in each file's
+  existing vocabulary with no migration; the boundary sync re-mirrors the copies from the store at
+  its start; the iteration-state truth gate compares every enumerated copy at every
+  iteration-scoped boundary. `state.md` Iteration Status is NOT a copy: it is derived from task
+  progress by its own writer in its own enum (`not-started | executing | blocked |
+  ready-for-review`, plus `complete`, which the crossing writer sets only at iteration-closeout),
+  and the truth gate holds it to a consistency relation with the store instead of equality
+  (`complete` iff the last authorized boundary is iteration-closeout; `ready-for-review` only with
+  every task done). A copy may lead the store by exactly the pending crossing during the
+  arrival-to-verdict window and never otherwise; a copy ahead of the store is refused, not
+  rewritten. (Corrected 2026-08-29 at the plan verdict: the first enumeration named Iteration
+  Status as a mirror; it is not one.)
 - **FR-031**: The closeout sync writes the iteration seal after every record it produces,
   including the re-rendered `dashboard.md`, so the first validation of a sealed iteration
   passes; a test asserts the seal hashes the rendered dashboard.

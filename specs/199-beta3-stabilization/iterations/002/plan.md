@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 18.5/20 story_points
+**Capacity**: 18.75/20 story_points
 **Started**: 2026-08-29
 **Completed**:
 
@@ -49,8 +49,8 @@
 | T021 | Crossing-mirror writer for every enumerated mirror; sync re-mirror; truth gate over each; DRIFT-199-I001-152 reproduced then green | FR-030 | US8 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, scripts/internal/task-progress.ps1, tests/unit/**, tests/integration/** | planned | | | |
 | T022 | Seal as the closeout sync's last write; test that it hashes the rendered dashboard | FR-031 | US8 | 0.5 | Implementer | scripts/internal/sync-boundary-state.ps1, tests/integration/** | planned | | | |
 | T023 | Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner-unknown named out loud; capture verifies the marker's crossing identity | FR-032 | US8 | 2.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/integration/conformance-*.tests.ps1 | planned | | | |
-| T024 | Capture disclosure: one line naming what was received and what would capture; leading-quote-bar fixture | FR-010 | US3 | 0.75 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/verdict-capture-blocks.tests.ps1 | planned | | | |
-| T025 | Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft | FR-033 | US8 | 0.5 | Spec Steward | docs/release-notes-v0.40.0-beta3.md, specs/199-beta3-stabilization/** | planned | | | |
+| T024 | Capture disclosure: one line naming the classification, the leading text that decided it, and that the phrase must be the first characters of the message - not the first verdict line; fixtures: leading quote bar, leading prose | FR-010 | US3 | 0.75 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/verdict-capture-blocks.tests.ps1 | planned | | | |
+| T025 | Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft; the coverage line names the campaign its figure belongs to and says when the current iteration has no campaign yet (DRIFT-199-I002-006, honest labelling only) | FR-033 | US8 | 0.75 | Spec Steward | docs/release-notes-v0.40.0-beta3.md, specs/199-beta3-stabilization/** | planned | | | |
 
 ## Effort Model
 
@@ -86,7 +86,7 @@
 | ----- | ---------------- | ----- |
 | Planning | 1.5 | Spec amendment, design-analysis, this plan (spent 2026-08-29) |
 | Discovery/Spikes | 0.5 | Rebind-versus-re-mint and owner-identity reads, done at source before the design |
-| Implementation | 18.5 | Sum of T014-T025 |
+| Implementation | 18.75 | Sum of T014-T025 |
 | Review | 3.0 | Direct estimate (one covering round over ~40 paths); parity-floor CHECK 9.25 beside it; tripwire at 6.0 |
 | Rework | 2.5 | Direct estimate (~2.3 wedges per round at 001's rate); parity-floor CHECK 9.25 beside it; tripwire at 5.0 |
 
@@ -109,8 +109,9 @@
   (mint gate), T021 (mirrors), T023 (owner), T015 (withhold discipline and its test flips), T024
   (capture disclosure); then T016 and T022 (gate-preflight and the seal, both one-file changes);
   then the workshop family - T017, T018, T019, T020; T025 last, as the sweep over everything.
-- Planned task effort: 18.5 SP of the 20 SP capacity (threshold 20 x 1.0 not exceeded); T014 and
-  T023 grew by 0.5 SP each when the marker-identity binding was folded in by ruling.
+- Planned task effort: 18.75 SP of the 20 SP capacity (threshold 20 x 1.0 not exceeded); T014 and
+  T023 grew by 0.5 SP each when the marker-identity binding was folded in by ruling, and T025 by
+  0.25 SP when DRIFT-199-I002-006 was folded in as honest labelling (plan verdict, 2026-08-29).
 - Review and rework, per the maintainer's ruling at the design decision (2026-08-29): the DIRECT
   estimate is what is planned - 3.0 SP review (one covering round over roughly 40 source paths: the
   14-file delta since `1b50ae60` plus this batch's two mirrored script trees, three skill copies
@@ -130,8 +131,10 @@
   Review and rework actuals are recorded separately, per round and per wedge as they happen
   (drift log and review record), never batch-stamped at landing, so the next retro can say which
   figure was right - the thing 001 could not do.
-- The `Iteration Status` mirror vocabulary is settled in the contract (each file keeps its existing
-  enum; no migration) and shown at the tasks boundary per the maintainer's instruction.
+- The `Iteration Status` vocabulary is settled in the contract and accepted at the plan verdict
+  (2026-08-29): it is derived, not a mirror; a consistency relation is its truth check; `plan.md`
+  Status is the mapped copy; both existing enums stay, no migration. Re-presented at tasks as
+  instructed.
 - One iteration, not a split (maintainer ruling 2026-08-29), conditional on the campaign
   allowance. Measured 2026-08-29 through `Get-SpecrewReviewCoverageState`: the allowance is per
   campaign; iteration 001's campaign (`cmp-199-beta3-stabilization-i001`) has used 3 of 4 rounds,

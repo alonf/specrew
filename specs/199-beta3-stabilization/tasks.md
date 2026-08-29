@@ -162,7 +162,7 @@ The phase headings below keep their authoring order; this execution order govern
   T006 · SC-007 -> T007 · SC-008 -> T008 · SC-009 -> T010 · SC-010 -> T011.
 - Every task maps to at least one FR/SC; every FR and SC has at least one task.
 
-## Iteration 002 — the beta3 tag batch (18.5 SP; plan verdict 2026-08-29)
+## Iteration 002 — the beta3 tag batch (18.75 SP; plan verdict 2026-08-29)
 
 Ten items from two field walks and their live reproductions, plus one defect against the existing
 FR-010. Every task carries the mutation that turns its own case red, asserting observable state
@@ -207,9 +207,11 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   `launch-contract.ps1`, `refocus/general.md` + mirror, `docs/methodology/lifecycle-discipline.md`)
 - [ ] T024 [owner: Implementer] [sp: 0.75] **Capture disclosure** — when a pending crossing exists
   and the last human turn is verdict-shaped but not accepted, the capture emits one visible line
-  naming the classification, the leading text that decided it, and the phrase at column 0 that
-  would capture; journaled. Fixtures: the leading quote bar; leading prose ("Don't confirm ..."
-  before `approved for plan`). Mutation: the line disappears when the disclosure is removed and
+  naming the classification, the leading text that decided it, and that the phrase must be the
+  FIRST CHARACTERS OF THE MESSAGE - not the first of the verdict lines, which is how a careful
+  reader takes "bare phrase first" until a recap says otherwise; journaled. Fixtures: the leading
+  quote bar; leading prose ("Don't confirm ..." before `approved for plan`) - both the
+  maintainer's own text, both retried by the maintainer. Mutation: the line disappears when the disclosure is removed and
   the turn is silently skipped. (Trace: FR-010, FR-033, SC-020; owns: `HandoverStore.ps1`)
 
 ### Phase 2: gate-preflight and the seal (2.0 SP)
@@ -257,11 +259,15 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
 
 ### Phase 4: the sweep (0.5 SP)
 
-- [ ] T025 [owner: Spec Steward] [sp: 0.5] **Method sweep** — mirror byte-identity across every
+- [ ] T025 [owner: Spec Steward] [sp: 0.75] **Method sweep** — mirror byte-identity across every
   touched copy; the mutation audit per fix; the refusal-standard pass over every touched message;
-  the release-notes draft; the covering-round request over the delta since `1b50ae60` with the
-  campaign and iteration named in the coverage line (DRIFT-199-I002-006 disposition, if ruled
-  in). (Trace: FR-033, SC-018; owns: `docs/release-notes-v0.40.0-beta3.md`, `specs/**`)
+  the release-notes draft; the covering-round request over the delta since `1b50ae60`; and the
+  coverage line names the campaign its figure belongs to and, when the current iteration has no
+  campaign yet, says so instead of reporting the previous campaign's remainder
+  (DRIFT-199-I002-006, folded in by ruling as honest labelling - what the line SAYS, not what the
+  function computes; if it turns out to need campaign-selection logic, it stops and goes to beta4).
+  (Trace: FR-033, SC-018; owns: `docs/release-notes-v0.40.0-beta3.md`, `specs/**`,
+  `shared-governance.ps1` coverage line + mirror)
 
 ### Traceability summary (both directions)
 
