@@ -22,7 +22,10 @@
 
 ## Summary
 
-**Total drift events**: 78 (DRIFT-199-I001-001 through -078)
+**Total drift events**: 153 headed entries under 151 distinct identifiers (DRIFT-199-I001-001
+through -152; 005 and 024 each carry two entries and 036 was never used - a bookkeeping defect
+recorded here rather than renumbered, since entries are cited by identifier across records).
+This line said 78 until the 2026-08-29 retro measured it; authored counts drift, derived ones do not.
 **Resolution status**: carried per event in each entry's own heading — several are marked open with a
 recorded maintainer ruling, so a single rate here would misstate them.
 **Specification drift**: None detected; the events are defect and process records.
@@ -568,6 +571,7 @@ verification; this one had none until I ran it, and running it took ninety secon
 **The residue, and it is not worth a beta4 item**: the block's text does render the word `current`
 from the stored field, so a reader looking at `review.md` in the window between writing the block and
 validating it sees a word that has expired. The record cannot cross a boundary in that state.
+
 ### BETA4 — the W54 picker diagnosis covers three of the five typed authorities (recorded 2026-08-26, not fixed)
 
 Noticed while consolidating the capture routing for DRIFT-199-I001-138, in the table one level down
@@ -590,6 +594,24 @@ dead branch.
 **The fix when beta4 takes it**: derive the detector's phrase list and the `ValidateSet` from the same
 place the router now derives its writer list, so the diagnosis covers whatever the capture covers.
 Fixing the enumeration in one of the two tables and not the other is how this class keeps recurring.
+
+### BETA4 - instruction-layer friction is invisible to every control that measures gate behaviour (recorded 2026-08-29, not fixed)
+
+Found while verifying F-3 of the beta3 tag batch at source. There is no code recognizer for the
+lens-closing phrase "move on": `Get-SpecrewWorkshopResponseAuthority` classifies any non-skip,
+non-delegated lens reply - including a bare "yes" - as human-confirmed and mints a receipt. The
+refusals the WinUI walk recorded were agent-rendered from the instruction text ("iterate until they
+say move on"). No recognizer refused, no journal line was written, no receipt was withheld.
+
+**Consequence, ruled by the maintainer on 2026-08-29 and carried into the beta4 UX programme**:
+friction produced at the instruction layer leaves nothing that a gate-behaviour measurement would
+count. The stop counts from both walks - eight in one KeyContextAI session, four at the WinUI
+specify boundary - are therefore a floor, not a total. Beta4's friction measurement (B-4.3) must
+read the walk transcript, not the gate log; the gate log cannot see this class at all.
+
+The beta3 fix for F-3 stays message-only on both surfaces (the skill and lens instruction text; the
+one code-level sibling with the same defect shape, the silent repair-authorization gate), with the
+recognizers untouched.
 
 ### DRIFT-199-I001-152 - state.md never advanced at the review-signoff crossing (resolved, records-only)
 
@@ -658,6 +680,7 @@ the three cases above prove the rule itself against real git trees.
 **Coverage: this fix moves the tree again, and no run covers it.** Per the 2026-08-27 ruling, that is
 expected and stated rather than chased - the covering round comes once, at the end, on the tree that
 ships.
+
 ### RULING 2026-08-27 - ONE COVERING ROUND ON THE TREE THAT SHIPS, NOT A SEQUENCE ON TREES NOBODY RELEASES
 
 The hold on the tree was released by the maintainer as wrong-headed, with the reasoning recorded here
@@ -683,6 +706,7 @@ defect found is a tree moved.
 in `review.md` - which run covered which tree, and exactly what moved since - so the gap is always
 visible and checkable rather than implied. The record states its own limit continuously; the covering
 evidence arrives once, at the end, against the artifact that ships.
+
 ### DRIFT-199-I001-150 - W76: the third surface, and the audit that could not see it (resolved)
 
 **Maintainer finding, 2026-08-27, ruled NOT beta4**: the same defect class this fortnight closed twice,
@@ -743,6 +767,7 @@ record.** Their ruling: *"the price should have been named at decision time by w
 priority, and that was me."* Both halves are true and neither cancels the other - the agent saw the
 cost and reported it late; the person setting the priority owned naming its price. Recorded on both
 sides rather than settled onto one.
+
 ### BETA4 - the override authorization cannot be amended, and the conflict is SWALLOWED (recorded 2026-08-27)
 
 **TWO defects, and the second is the more serious.**
@@ -794,6 +819,7 @@ accepted it without complaint. Neither party intended to record a placeholder as
 different gate. 212 asks whether the human READ what they approved; this asks whether the reason they
 recorded says anything. Both are about a control that checks the FORM of a human act while the
 SUBSTANCE walks past it, and neither is solved by asking people to try harder.
+
 ### DRIFT-199-I001-149 - round 33 DELIVERED and covers the signed-off tree; three findings, none blocking
 
 `run-20260827-023623882-300694ac`, codex, terminal / complete / **current** / valid, 973.7s, 22 source
@@ -849,6 +875,7 @@ fixture is rejected by a contract, ask the contract*), with a different oracle.
 invocation spent no round and no capture, and the failure surfaced immediately instead of quietly
 consuming something. A design that makes a wrong belief cheap is worth more than one that makes wrong
 beliefs rare.
+
 ### DRIFT-199-I001-148 - W75: round 31 - the damaged ledger that ended projects, and FR-010 on the boundary path (resolved)
 
 `run-20260826-232508244-a24252d3`, codex, terminal / complete / **current** / valid, 1,338.3s. Four
@@ -891,6 +918,7 @@ tests went red, including the W69 guarantees. The suite caught it immediately, w
 regression net is for; the lesson is narrower and about tooling: **an anchor-replacement patch that
 consumes more than it restores is a silent rewrite**, and the anchors should be the smallest text that
 is unique, not the most convenient block.
+
 ### DRIFT-199-I001-147 - W73/W74: round 30 - two findings the engine itself graded BLOCKING (resolved)
 
 `run-20260826-221906829-6b651c05`, codex, terminal / complete / **current** / valid, 1,013.4s. **The
@@ -945,6 +973,7 @@ drop the containment clause.
 the result contract three times while I guessed at required fields. Asking the validator directly -
 `Test-ReviewAuthorityContractObject` returned `empty-value:failure_reason` - answered in one call what
 three rounds of guessing had not. **When a fixture is rejected by a contract, ask the contract.**
+
 ### DRIFT-199-I001-146 - W72: round 29 - the narrow guarantee holds; one torn-line sibling, and a covering round I spoiled myself
 
 `run-20260826-194901162-77511bab`, codex, terminal / complete / **snapshot-moved**, 702.3s, **two
@@ -994,6 +1023,7 @@ plainly when nothing qualifies" case, whose fixture has no object store: the cas
 over-correction was already in the suite. Both directions mutation-proved.
 
 Cost: one round, to the repair rather than to the record.
+
 ### DRIFT-199-I001-145 - W71: the cross-channel guess is withdrawn; the second channel is OBSERVED (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, on round 28. The ruling also corrected my framing: stopping was not
@@ -1046,6 +1076,7 @@ withdrawal case locked only the journal, so the delete succeeded and it passed w
 state it named. The pause case had no commit, so the branch would not resolve. Then it had no
 `specs/<branch>/`, so the branch was not a FEATURE branch. **A case that names a production call site
 needs a production-shaped project, or it is testing the fixture.**
+
 ### DRIFT-199-I001-144 - round 28: THIRD generation of defects in the preceding fix. STOPPED, not patched.
 
 `run-20260826-174346632-342f915f`, codex, terminal / complete / current / valid, 867.3s, five findings:
@@ -1100,6 +1131,7 @@ defects introduced by the previous two repairs. Fixing two of the four would als
 the other two stand, costing another round for no covering evidence. The decision this needs is
 whether cross-channel identity can be established at all on these hosts, and that is the maintainer's
 to make, not mine to keep guessing at.
+
 ### DRIFT-199-I001-143 - W70: round 27 found W69 did not hold across CHANNELS, and could switch itself off (resolved)
 
 Round 27 (`run-20260826-154358068-adbbbb82`, codex, terminal / complete / current / valid, 1,229.9s)
@@ -1163,6 +1195,7 @@ Both corrected: mutations now run ONE PER PROCESS, and the harness never depends
 **A verification tool that can leave the tree mutated is a tool that can make a green build look red
 and a red build look green** - the same class as everything else in this log, in the machinery used to
 find it.
+
 ### DRIFT-199-I001-142 - W69: typed-turns-v1 COMPLETED - a turn mints at most once, ever (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, on the regeneration measured at ground truth the same day.
@@ -1233,6 +1266,7 @@ green, in the same session as the fifth and sixth.
 **The regenerated approval was retired, not spent.** The capture standing at 11:02:22 was consumed
 with reference `retired-w69-regeneration` so nothing can spend it. The covering round waits for a
 phrase typed after this landed.
+
 ### RULED and RESOLVED (see DRIFT-199-I001-142) - a SPENT approval is regenerated from the same human turn, and I did not spend the one now standing
 
 **Found by dogfooding, not by review.** About to run the authorized covering round, I checked what
@@ -1275,6 +1309,7 @@ typed-turns-v1 considers "the same act", which is doctrine and the maintainer's 
 An approval whose provenance I cannot account for is exactly what this system exists to refuse, and
 spending it to satisfy an instruction would be the agent-convenience reading of a control built to
 resist agent convenience. The round waits for a phrase typed after this is settled.
+
 ### DRIFT-199-I001-141 - W68: a withdrawal that could not delete still revokes, and an answered pause is history (resolved)
 
 Two of round 25's three findings, repaired under the maintainer's 2026-08-26 allowance-reset
@@ -1398,6 +1433,7 @@ stands.` The phrase stands alone on its own line inside a genuine typed human tu
 captured it. The Stop backstop reads the same turn through the same recognizer, so it refuses too.
 
 **The guard doing this is the leading anchor**, and it is not a mistake: it is what stops the agent's
+<!-- markdownlint-disable-next-line MD038 -->
 own rendered menu (`Reply with `approved for review round``) and a quoted hypothetical from minting
 authority. W56 widened the TAIL for the same human writing the same way; this is the mirror case at
 the head, and the head is where the dangerous shapes live.
@@ -1422,6 +1458,7 @@ would fabricate authority from a message that is explicitly ABOUT authority rath
 it. The W54 cost is real and is accepted: the human retypes the phrase bare.
 
 **Closed: no change. The defect was in how the message was written, not in the gate.**
+
 ### DRIFT-199-I001-139 - W67: the independence block asked the currentness question of a field that answered it once (resolved by ruling)
 
 **Maintainer ruling, 2026-08-26**, overturning a retraction I had written an hour earlier in this same
@@ -3498,6 +3535,7 @@ Two defects in the W35 fix itself, both found by review of the landed code rathe
   something that is not the property.
 - **Note on recurrence**: writing these tests mangled generated PowerShell path escapes for the FOURTH
   time this week (`
+<!-- markdownlint-disable-next-line MD010 -->
 ` and `	` becoming CR and TAB). Working rule adopted: generated PowerShell paths
   use forward slashes or nested `Join-Path`, never embedded backslashes.
 
@@ -5162,6 +5200,7 @@ uncertainty converts a damaged record into a dead project.
 **The resolution is the same shape as W71's: OBSERVE.** The torn line is skipped, and the damage is
 recorded as `authority-ledger-damaged`, once per journal. The bounded cost is one possible re-mint of
 whatever the lost record held; the cost of the alternative is unbounded and permanent.
+
 ### CLOSING OBSERVATION ON THIS METHOD SECTION (maintainer ruling, 2026-08-27) — THE RULES ARE HOW THE MECHANISMS WERE FOUND; THEY ARE NOT THE MECHANISMS
 
 Read this before the rules above, because it is what they add up to.
@@ -5280,6 +5319,7 @@ them.
 So the earlier finding resolved itself, and it is recorded beside the two occasions it did not -
 because a rule that misfires twice and then stops is a different thing from a rule that is wrong, and
 the record should be able to tell them apart later.
+
 ### THE MEASUREMENT THAT CARRIES WITH IT — the economics case for the standing-grant proposal
 
 **Recorded here at maintainer direction (2026-08-24) so beta4 planning finds it where it scopes, not
