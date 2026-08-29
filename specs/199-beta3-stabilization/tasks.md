@@ -270,7 +270,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   Mutations: the text-presence test and the refusal-contract AST guard go red when either is
   reverted. (Trace: FR-028, FR-033, SC-014; owns: the skill copies, `design-lenses/*.md`,
   `repair-workshop-controller-state.ps1` + mirror)
-- [ ] T020 [owner: Implementer] [sp: 1.0] **The not-yet-authored stub** — feature creation replaces
+- [x] T020 [owner: Implementer] [sp: 1.0] **The not-yet-authored stub** — feature creation replaces
   the template copy with the sentinel stub; the specify gate refuses while it stands, saying the
   workshop answers are safe. Mutations: `[Brief Title]` reappears when the replacement is
   reverted; the stub crosses specify when the sentinel check is removed. (Trace: FR-029, FR-033,

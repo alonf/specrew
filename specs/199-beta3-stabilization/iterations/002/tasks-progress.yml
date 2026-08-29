@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "002"
-updated_at: "2026-08-29T18:23:49.8118578Z"
+updated_at: "2026-08-29T18:27:08.1972355Z"
 tasks:
   T014:
     title: "Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures"
@@ -41,9 +41,9 @@ tasks:
     blocked_reason: ""
   T020:
     title: "Not-yet-authored `spec.md` stub at feature creation; specify-gate sentinel refusal"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T18:27:08.1933781Z"
+    completed_at: "2026-08-29T18:27:08.1933781Z"
     blocked_reason: ""
   T021:
     title: "Crossing-mirror writer for every enumerated mirror; sync re-mirror; truth gate over each; DRIFT-199-I001-152 reproduced then green; the task ledger writer speaks `done` (DRIFT-199-I002-009)"

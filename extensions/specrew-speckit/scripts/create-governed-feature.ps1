@@ -106,6 +106,100 @@ if (-not (Test-Path -LiteralPath $initializer -PathType Leaf)) {
 if ($LASTEXITCODE -ne 0) { throw "Workshop controller initialization failed for '$featureRef'." }
 
 $specFile = Join-Path (Join-Path (Join-Path $projectRoot 'specs') $featureRef) 'spec.md'
+
+# FR-029 (iteration 002, T020): the upstream scaffold copies the spec TEMPLATE here - a file full of
+# `[Brief Title]` and `FR-001: System MUST [specific capability]` - and this script then prints SPEC_FILE as a
+# headline output, pointing the agent at it BEFORE lens 1 has run. CLAUDE.md states the rule that contradicts:
+# "A spec written before the workshop skips the part that decides what the spec should say."
+#
+# Measured in one walk: the template sat in the tree through the entire workshop; writing into it mid-workshop
+# is the outside work that triggered the lens re-ask; and at the end the agent did not edit it - it DELETED it
+# (151 lines) and wrote a fresh 441-line spec. Delete-and-recreate is the measurement: the scaffolded file
+# carried nothing into what replaced it.
+#
+# So the placeholder is replaced by a STUB that says what it is. The upstream scaffold is untouched (this
+# wrapper owns the replacement), SPEC_FILE keeps its contract, and the file it names now redirects instead of
+# inviting. The sentinel is what the specify gate reads.
+$specStub = @(
+    '<!-- specrew:spec-not-yet-authored -->',
+    ('# Feature Specification: {0}' -f $featureRef),
+    '',
+    '**Status**: not yet authored',
+    '',
+    'This specification has not been written yet, and that is deliberate.',
+    '',
+    'Specrew writes the specification AFTER the design workshop, because the workshop is what decides what',
+    'the specification should say - who this is for, what hurts today, the smallest version worth building,',
+    'the stack, and the constraints. A specification drafted before those answers exist records the',
+    'assumptions nobody has examined yet.',
+    '',
+    '## What happens next',
+    '',
+    '1. The design workshop runs, one topic at a time, and records each agreement.',
+    '2. The specification is authored from those agreements, into this file.',
+    '3. The specify boundary is where you approve what it says.',
+    '',
+    'Nothing is missing and nothing has failed. Until step 2 runs, this file stays as it is - do not write',
+    'requirements into it, and do not delete it.'
+) -join [Environment]::NewLine
+if (Test-Path -LiteralPath $specFile -PathType Leaf) {
+    $existingSpec = Get-Content -LiteralPath $specFile -Raw -Encoding UTF8
+    # Only ever replace the UPSTREAM TEMPLATE. An authored spec (a re-run over an existing feature) is never
+    # touched: this must not become a way to lose a written specification.
+    if ($existingSpec -match '\[Brief Title\]' -or $existingSpec -match 'FR-001: System MUST' -or $existingSpec -match '\[FEATURE NAME\]') {
+        [System.IO.File]::WriteAllText($specFile, ($specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    }
+}
+else {
+    [System.IO.File]::WriteAllText($specFile, ($specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+}
+
+# FR-029 (iteration 002, T020): the upstream scaffold copies the spec TEMPLATE here - a file full of
+# `[Brief Title]` and `FR-001: System MUST [specific capability]` - and this script then prints SPEC_FILE as a
+# headline output, pointing the agent at it BEFORE lens 1 has run. CLAUDE.md states the rule that contradicts:
+# "A spec written before the workshop skips the part that decides what the spec should say."
+#
+# Measured in one walk: the template sat in the tree through the entire workshop; writing into it mid-workshop
+# is the outside work that triggered the lens re-ask; and at the end the agent did not edit it - it DELETED it
+# (151 lines) and wrote a fresh 441-line spec. Delete-and-recreate is the measurement: the scaffolded file
+# carried nothing into what replaced it.
+#
+# So the placeholder is replaced by a STUB that says what it is. The upstream scaffold is untouched (this
+# wrapper owns the replacement), SPEC_FILE keeps its contract, and the file it names now redirects instead of
+# inviting. The sentinel is what the specify gate reads.
+$specStub = @(
+    '<!-- specrew:spec-not-yet-authored -->',
+    ('# Feature Specification: {0}' -f $featureRef),
+    '',
+    '**Status**: not yet authored',
+    '',
+    'This specification has not been written yet, and that is deliberate.',
+    '',
+    'Specrew writes the specification AFTER the design workshop, because the workshop is what decides what',
+    'the specification should say - who this is for, what hurts today, the smallest version worth building,',
+    'the stack, and the constraints. A specification drafted before those answers exist records the',
+    'assumptions nobody has examined yet.',
+    '',
+    '## What happens next',
+    '',
+    '1. The design workshop runs, one topic at a time, and records each agreement.',
+    '2. The specification is authored from those agreements, into this file.',
+    '3. The specify boundary is where you approve what it says.',
+    '',
+    'Nothing is missing and nothing has failed. Until step 2 runs, this file stays as it is - do not write',
+    'requirements into it, and do not delete it.'
+) -join [Environment]::NewLine
+if (Test-Path -LiteralPath $specFile -PathType Leaf) {
+    $existingSpec = Get-Content -LiteralPath $specFile -Raw -Encoding UTF8
+    # Only ever replace the UPSTREAM TEMPLATE. An authored spec (a re-run over an existing feature) is never
+    # touched: this must not become a way to lose a written specification.
+    if ($existingSpec -match '\[Brief Title\]' -or $existingSpec -match 'FR-001: System MUST' -or $existingSpec -match '\[FEATURE NAME\]') {
+        [System.IO.File]::WriteAllText($specFile, ($specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    }
+}
+else {
+    [System.IO.File]::WriteAllText($specFile, ($specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+}
 if ($Json) {
     [pscustomobject]@{
         BRANCH_NAME = $featureRef

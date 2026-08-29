@@ -1125,6 +1125,18 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
     )
     $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
     if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+    # FR-029 (iteration 002, T020): the not-yet-authored stub. While the sentinel stands, the specification
+    # has not been written - and the specify boundary is exactly the boundary that approves what it says. This
+    # runs BEFORE the intake-required short-circuit so a FRESH feature (which that check would let through)
+    # still gets the sentence that fits its actual state.
+    $stubSpecPath = Join-Path (Join-Path (Join-Path $ProjectRoot 'specs') (Split-Path -Leaf $feature)) 'spec.md'
+    if (Test-Path -LiteralPath $stubSpecPath -PathType Leaf) {
+        $stubText = Get-Content -LiteralPath $stubSpecPath -Raw -Encoding UTF8
+        if ($stubText -match '<!--\s*specrew:spec-not-yet-authored\s*-->') {
+            throw ("[specify-gate] spec.md for '{0}' is still the placeholder created with the feature - the specification has not been authored yet. Your workshop answers are safe and are exactly what the specification will be built from. Author the specification from the completed workshop (the specify step), then run the specify boundary again. File: {1}" -f $feature, $stubSpecPath)
+        }
+    }
+
     if (-not (Test-SpecrewSpecifyLensIntakeRequired -ProjectRoot $ProjectRoot -FeatureRef $feature)) { return $null }
 
     $artifact = Get-SpecrewFeatureLensApplicabilityPath -ProjectRoot $ProjectRoot -FeatureRef $feature

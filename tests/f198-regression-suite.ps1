@@ -83,6 +83,7 @@ function Get-CallerRepositoryContamination {
 $registry = @(
     @{ area = 'boundary ratchet (FR-001..FR-005, cycle-scoped)'; path = 'tests/unit/boundary-ratchet.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T014 crossing mint gate + marker identity (FR-024): refuse the empty stage, permit the evidenced one, refuse a stale marker'; path = 'tests/unit/crossing-mint-gate.tests.ps1'; kind = 'script' }
+    @{ area = 'beta3 T020 the not-yet-authored spec stub (FR-029): feature creation writes a stub that says what it is, and the specify gate refuses while the sentinel stands'; path = 'tests/integration/spec-not-yet-authored.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T019 what was received, what is still needed (FR-028): the acknowledgment line in the workshop instructions and the repair refusal through the contract - recognizers untouched'; path = 'tests/unit/lens-acknowledgment.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T018 governed lens checkpoint (FR-027): the writer that closes a lens - receipt, record, the lens own validator at its own checkpoint, moved_on written by the machinery'; path = 'tests/integration/workshop-lens-checkpoint.tests.ps1'; kind = 'script' }
     @{ area = 'beta3 T017 constrained readers (FR-026): a non-empty document matching no construct is unparseable; the shared vocabulary in scripts/internal/constrained-yaml.ps1 names the representation instead of the field backstops, in BOTH readers'; path = 'tests/unit/constrained-reader-parse.tests.ps1'; kind = 'script' }
