@@ -162,7 +162,7 @@ The phase headings below keep their authoring order; this execution order govern
   T006 · SC-007 -> T007 · SC-008 -> T008 · SC-009 -> T010 · SC-010 -> T011.
 - Every task maps to at least one FR/SC; every FR and SC has at least one task.
 
-## Iteration 002 — the beta3 tag batch (18.75 SP; plan verdict 2026-08-29)
+## Iteration 002 — the beta3 tag batch (19.0 SP; plan verdict 2026-08-29)
 
 Ten items from two field walks and their live reproductions, plus one defect against the existing
 FR-010. Every task carries the mutation that turns its own case red, asserting observable state
@@ -172,7 +172,7 @@ T015, T024), then the two one-file fixes (T016, T022), then the workshop family 
 T020), then the sweep (T025). Review (3.0 SP) and rework (2.5 SP) are planned at the direct
 estimate with the parity floor beside them as a check and a visible 2x tripwire (plan.md Notes).
 
-### Phase 1: the crossing family (10.25 SP)
+### Phase 1: the crossing family (10.5 SP)
 
 - [ ] T014 [owner: Implementer] [sp: 3.0] **Mint gate and marker identity** — a crossing is not
   opened until the stage it leaves has its owed artifacts on the live filesystem, at all three
@@ -180,7 +180,10 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   `Add-SpecrewBoundaryAuthorization`, `Sync-SpecrewPendingVerdictArtifactAfterAuthorization`); the
   verdict marker carries the crossing identity. Mutations: the KeyContextAI ladder replays at one
   commit when the gate is removed; a marker for a superseded identity captures when the identity
-  check is removed. (Trace: FR-024, FR-033, SC-011; owns: `shared-governance.ps1` + mirror,
+  check is removed. PERMIT side, in the same commit: a real mint against a throwaway fixture where
+  the from-stage's artifacts are present opens its crossing (the check goes red when the gate is
+  made too strict) - PreflightOnly never reaches the mint path, and without this the permit side
+  would stay unproven until review-signoff. (Trace: FR-024, FR-033, SC-011; owns: `shared-governance.ps1` + mirror,
   `HandoverStore.ps1`, `ConversationCaptureAccessor.ps1`)
 - [ ] T021 [owner: Implementer] [sp: 2.0] **Crossing mirrors** — the authorization writer writes
   `state.md` Current Phase and `plan.md` Status in each file's existing vocabulary and sets
@@ -213,13 +216,18 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   evidence-less next stage re-mints `pending-verdict-stop.md` with an approval phrase when the guard
   is removed. (Trace: FR-024, FR-033, SC-011; owns: `HandoverStore.ps1`, the skill copies,
   `launch-contract.ps1`, `refocus/general.md` + mirror, `docs/methodology/lifecycle-discipline.md`)
-- [ ] T024 [owner: Implementer] [sp: 0.75] **Capture disclosure** — when a pending crossing exists
+- [ ] T024 [owner: Implementer] [sp: 1.0] **Capture disclosure** — when a pending crossing exists
   and the last human turn is verdict-shaped but not accepted, the capture emits one visible line
   naming the classification, the leading text that decided it, and that the phrase must be the
   FIRST CHARACTERS OF THE MESSAGE - not the first of the verdict lines, which is how a careful
   reader takes "bare phrase first" until a recap says otherwise; journaled. Fixtures: the leading
   quote bar; leading prose ("Don't confirm ..." before `approved for plan`) - both the
-  maintainer's own text, both retried by the maintainer. Mutation: the line disappears when the disclosure is removed and
+  maintainer's own text, both retried by the maintainer. Folded in (DRIFT-199-I002-008): the
+  disclosure fires at PROMPT-ENTRY, where the phrase first appears, in that turn's injected
+  context; and every prompt-entry capture outcome is journaled (`captured`, `not-approval:<action>`,
+  `no-pending-state`, `machinery-envelope`) so a verdict that reaches Stop unrecorded is
+  diagnosable. Mutation: with the prompt-entry disclosure removed, a rejected verdict-shaped prompt
+  produces no line until the recap. Mutation: the line disappears when the disclosure is removed and
   the turn is silently skipped. (Trace: FR-010, FR-033, SC-020; owns: `HandoverStore.ps1`)
 
 ### Phase 2: gate-preflight and the seal (2.0 SP)

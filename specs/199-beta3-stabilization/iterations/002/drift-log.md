@@ -16,8 +16,8 @@
 
 ## Summary
 
-**Total drift events**: 7 (DRIFT-199-I002-001 through -007)
-**Resolution rate**: carried per event in its heading (4 resolved-by this iteration's requirements,
+**Total drift events**: 8 (DRIFT-199-I002-001 through -008)
+**Resolution rate**: carried per event in its heading (5 resolved-by this iteration's requirements,
 2 spec-updated/human-decision, 1 deferred to beta4 by ruling)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
@@ -200,6 +200,49 @@
 - **Class closure**: the enumeration names, per mirror, whether it is a copy or a derived value
   and which writer owns its enum; a truth check is written against that, never against the
   boundary name alone.
+
+### DRIFT-199-I002-008 — the phrase exists at prompt-submit; the capture already runs there, and the session did not look (resolved-by T024, and a session rule)
+
+**The maintainer's question, 2026-08-29, at the before-implement verdict:**
+
+> Your typed-phrase capture runs at Stop, but the phrase exists at UserPromptSubmit - the start of
+> the turn, not the end. That is why every boundary costs two human round trips that no gate log
+> records [...]. The fact needed is available before the machinery consults it, which is TB-3's
+> shape for the third time. It is T024's code path; determine whether the capture can move to
+> where the phrase first appears, and if it can, fold it in.
+
+- **Determined from source and measured**: the capture ALREADY runs where the phrase first
+  appears. The Claude host binding registers `UserPromptSubmit` (`hosts/claude/host.psd1`,
+  `TurnStartCapability = exact`), the handover provider is registered for that event
+  (`refocus-scopes.json`), the dispatcher hands the prompt text through `--last-user-message`
+  (`specrew-hook-dispatcher.ps1:1167-1171`), and `HandoverStore.ps1` routes a `UserPromptSubmit`
+  source into `Invoke-SpecrewBoundaryVerdictCapture` with the prompt text - the W45 prompt-entry
+  path. Measured against the ledger: the plan verdict was recorded at 12:15:59Z and the session's
+  first tool call of that turn ran at 12:16:32Z; tasks 14:44:32Z versus 14:44:56Z;
+  before-implement 16:18:06Z versus 16:18:47Z. Three of the day's verdicts were written at
+  prompt-submit, before the session did anything. The retro verdict alone (01:49:03Z) was not in
+  the store when that turn began and landed at Stop; its text classifies as `approve` and is not a
+  machinery envelope, and prompt-entry outcomes are not journaled, so its cause is not
+  determinable from the record - which is itself the gap T024 closes.
+- **So where did the round trips come from?** Mostly from this session. After the memory note
+  that once said "capture writes at Stop only", the session ended three turns "so the write
+  could land" without reading the store first - and for two of them (plan, tasks) the store
+  already held the verdict. The maintainer paid two messages for an assumption the machinery had
+  already falsified. The third cause of friction named at the retro (write latency) therefore
+  splits again: a real Stop backstop (the retro verdict), and an agent assuming Stop-only against
+  the evidence on disk.
+- **Citation**: FR-010 (verdicts always capture); TB-3's shape (the fact needed is present and
+  unread - this time by the session, not the machinery).
+- **Resolution**: folded into T024 - (a) the prompt-entry capture journals every outcome
+  (`captured` / `not-approval:<action>` / `no-pending-state` / `machinery-envelope`) so a missed
+  capture is diagnosable, and (b) the disclosure line fires at prompt-entry, in the same turn's
+  injected context, where the phrase first appears - not at the recap. And a session rule,
+  recorded here and in the session's own memory: read `last_authorized_boundary` at the start of
+  every turn after a verdict; end a turn to let a write land only when the store shows the
+  verdict unrecorded AND the classifier says approve - that is the Stop backstop, and it is the
+  exception.
+- **Class closure**: the disclosure at the point of first appearance, journaled; the session rule
+  closes the agent half.
 
 ### Resolution Strategies (Unused)
 

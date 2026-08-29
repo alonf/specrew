@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 18.75/20 story_points
+**Capacity**: 19.0/20 story_points
 **Started**: 2026-08-29
 **Completed**:
 
@@ -49,7 +49,7 @@
 | T021 | Crossing-mirror writer for every enumerated mirror; sync re-mirror; truth gate over each; DRIFT-199-I001-152 reproduced then green | FR-030 | US8 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, scripts/internal/task-progress.ps1, tests/unit/**, tests/integration/** | planned | | | |
 | T022 | Seal as the closeout sync's last write; test that it hashes the rendered dashboard | FR-031 | US8 | 0.5 | Implementer | scripts/internal/sync-boundary-state.ps1, tests/integration/** | planned | | | |
 | T023 | Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner-unknown named out loud; capture verifies the marker's crossing identity | FR-032 | US8 | 2.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, .specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1, scripts/internal/bootstrap/HandoverStore.ps1, tests/integration/conformance-*.tests.ps1 | planned | | | |
-| T024 | Capture disclosure: one line naming the classification, the leading text that decided it, and that the phrase must be the first characters of the message - not the first verdict line; fixtures: leading quote bar, leading prose | FR-010 | US3 | 0.75 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/verdict-capture-blocks.tests.ps1 | planned | | | |
+| T024 | Capture disclosure at prompt-entry: one line naming the classification, the leading text that decided it, and that the phrase must be the first characters of the message; every prompt-entry outcome journaled; fixtures: leading quote bar, leading prose | FR-010 | US3 | 1.0 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1, scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/verdict-capture-blocks.tests.ps1 | planned | | | |
 | T025 | Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft; the coverage line names the campaign its figure belongs to and says when the current iteration has no campaign yet (DRIFT-199-I002-006, honest labelling only) | FR-033 | US8 | 0.75 | Spec Steward | docs/release-notes-v0.40.0-beta3.md, specs/199-beta3-stabilization/** | planned | | | |
 
 ## Effort Model
@@ -86,7 +86,7 @@
 | ----- | ---------------- | ----- |
 | Planning | 1.5 | Spec amendment, design-analysis, this plan (spent 2026-08-29) |
 | Discovery/Spikes | 0.5 | Rebind-versus-re-mint and owner-identity reads, done at source before the design |
-| Implementation | 18.75 | Sum of T014-T025 |
+| Implementation | 19.0 | Sum of T014-T025 |
 | Review | 3.0 | Direct estimate (one covering round over ~40 paths); parity-floor CHECK 9.25 beside it; tripwire at 6.0 |
 | Rework | 2.5 | Direct estimate (~2.3 wedges per round at 001's rate); parity-floor CHECK 9.25 beside it; tripwire at 5.0 |
 
@@ -109,9 +109,11 @@
   (mint gate), T021 (mirrors), T023 (owner), T015 (withhold discipline and its test flips), T024
   (capture disclosure); then T016 and T022 (gate-preflight and the seal, both one-file changes);
   then the workshop family - T017, T018, T019, T020; T025 last, as the sweep over everything.
-- Planned task effort: 18.75 SP of the 20 SP capacity (threshold 20 x 1.0 not exceeded); T014 and
-  T023 grew by 0.5 SP each when the marker-identity binding was folded in by ruling, and T025 by
-  0.25 SP when DRIFT-199-I002-006 was folded in as honest labelling (plan verdict, 2026-08-29).
+- Planned task effort: 19.0 SP of the 20 SP capacity (threshold 20 x 1.0 not exceeded); T014 and
+  T023 grew by 0.5 SP each when the marker-identity binding was folded in by ruling, T025 by
+  0.25 SP when DRIFT-199-I002-006 was folded in as honest labelling (plan verdict, 2026-08-29),
+  and T024 by 0.25 SP when the prompt-entry disclosure and journaling were folded in
+  (DRIFT-199-I002-008, before-implement verdict).
 - Review and rework, per the maintainer's ruling at the design decision (2026-08-29): the DIRECT
   estimate is what is planned - 3.0 SP review (one covering round over roughly 40 source paths: the
   14-file delta since `1b50ae60` plus this batch's two mirrored script trees, three skill copies
@@ -168,7 +170,12 @@
      next turn; there is no daemon, cache or session state to clear.
   2. Probe before trusting. After each crossing-family edit, run the sync with `-PreflightOnly`,
      which returns before the ratchet and before every state write - a boundary-path smoke test
-     that cannot record or authorize anything.
+     that cannot record or authorize anything. PreflightOnly never exercises the mint path, and
+     T014's mutation proves only the REFUSE side; the PERMIT side would otherwise stay unproven
+     until review-signoff, twelve tasks away (maintainer, before-implement verdict 2026-08-29).
+     So T014's commit also mints for real against a throwaway fixture repository and asserts that
+     a stage whose artifacts are present still opens its crossing - a mechanical check in the
+     commit, not a report, and stronger than either.
   3. Authority cannot be lost, only delayed. `verdict_history` is append-only and idempotent on
      (destination, verdict text), and the pending crossing is re-minted from the commit at sync
      time - so a capture missed while a fix is broken is recovered by reverting, re-syncing, and
@@ -184,9 +191,14 @@
   history carries `re-stamp the mirrors after the W## deploy` commits. T015, T018, T019, T023 and
   T025 all touch mirrored files: each lands both copies in its own commit (the mirror discipline
   below), or its fix is inert for 002's own boundaries while passing its tests.
-- HOW BETA3 GETS VALIDATED (maintainer ruling at the tasks verdict, 2026-08-29, recorded now
-  because the second branch would have changed it): land 002, update the installed module, then
-  resume the HelloWinUIReactive project from exactly where TB-3 blocked it. That walk verifies the
+- HOW BETA3 GETS VALIDATED (maintainer rulings at the tasks and before-implement verdicts,
+  2026-08-29): land 002, update the installed module, then resume the HelloWinUIReactive project
+  from exactly where TB-3 blocked it. The module update is FEATURE-CLOSEOUT's release leg, not
+  002's closeout: delivery is done when the thing that validates it has run, and the walk is that
+  validation. So 002 closes on twelve tasks landed with their mutations and one covering round;
+  then the module updates; then the walk resumes; and feature-closeout carries both the update and
+  the walk as its release evidence. Closing 002 on a delivery whose validation has not happened
+  would put the same claim on the record that 001 had to withdraw. That walk verifies the
   fixes on a real greenfield project and doubles as the fresh-eyes signal, which cannot be measured
   from inside this repository. It is the release-validation step for the tag, not an optional
   extra: 002's own boundaries exercise the crossing family but never the greenfield paths (T016's
