@@ -778,8 +778,19 @@ function Invoke-SpecrewBoundaryVerdictCapture {
             }
             # FR-024 (T014): a marker that names a crossing identity must name THE pending one. Two
             # identities share the label `<from> -> <to>` when a crossing is re-minted against a new
-            # commit; a stale marker must not authorize its successor. A bare marker (no identity) keeps
-            # today's capture until T015 makes every renderer emit the identity.
+            # commit; a stale marker must not authorize its successor.
+            #
+            # A bare marker (no identity) STILL CAPTURES. This comment previously said that held "until
+            # T015 makes every renderer emit the identity"; T015 shipped without doing so, and the claim
+            # went stale while the code stayed the same. Stating it accurately instead: the gap is OPEN
+            # and DEFERRED, not scheduled-and-handled. It is a partial improvement rather than a
+            # regression - a bare marker behaves exactly as it did before this batch, and the
+            # superseded-identity case above is genuinely refused now. It closes when every packet
+            # renderer emits `@ <crossing-id>`; the writer (Get-SpecrewVerdictMarkerText) already does,
+            # but .claude/skills/specrew-gate-stop/SKILL.md and its host mirrors still instruct the bare
+            # form. When they no longer do, refuse a bare marker whenever the pending state carries a
+            # CrossingId. Pinned with its closure condition at tests/unit/crossing-mint-gate.tests.ps1
+            # (case 4c); recorded as DRIFT-199-I002-016.
             $capturedMarkerId = if ($captured.PSObject.Properties.Name -contains 'MarkerCrossingId') { [string]$captured.MarkerCrossingId } else { '' }
             $pendingCrossingId = ''
             if (-not [string]::IsNullOrWhiteSpace($capturedMarkerId) -and (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {

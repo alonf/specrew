@@ -32,7 +32,7 @@ param(
     [Parameter(Mandatory)][string[]] $Agenda,
     [AllowNull()][string] $Diagram,
     [AllowNull()][string] $BindingsJson,
-    [ValidateSet('human-confirmed', 'human-skipped')][string] $Confirmation = 'human-confirmed',
+    [ValidateSet('human-confirmed', 'human-skipped', 'human-delegated')][string] $Confirmation = 'human-confirmed',
     [switch] $PassThru
 )
 
@@ -113,11 +113,21 @@ if ($null -eq $receipt) {
             -Action ('Reply to the open question (or type "skip" to skip the topic), and the checkpoint will run on that reply.'))
 }
 $receiptConfirmation = [string]$receipt.confirmation
+# FR-027 review finding `workshop-receipt-contract`: the scope written here is the scope the RECEIPT
+# carries, never one this script derives. A local table is a second opinion about what the human typed,
+# and Test-SpecrewWorkshopAuthorityReceipt compares the record's scope against the receipt's - so a
+# derived scope that disagrees makes the entry unreadable at the next workshop-state read, which is the
+# precise failure this whole checkpoint exists to prevent.
 $receiptScope = [string]$receipt.confirmation_scope
 if ($receiptConfirmation -cne $Confirmation) {
     throw (New-SpecrewLensCheckpointRefusal `
             -Summary ("Your recorded reply for '{0}' does not match the way this topic is being closed." -f $Lens) `
             -Action 'Close the topic the way you answered it, or reply again to the open question.')
+}
+if ([string]::IsNullOrWhiteSpace($receiptScope)) {
+    throw (New-SpecrewLensCheckpointRefusal `
+            -Summary ("Your recorded reply for '{0}' is missing the detail the checkpoint needs to close the topic safely, so nothing was changed." -f $Lens) `
+            -Action 'Reply to the open question once more, and the checkpoint will run on that reply.')
 }
 
 if (-not (Test-Path -LiteralPath $lensRecordPath -PathType Leaf)) {
@@ -196,14 +206,13 @@ if ($lensValidatorErrors.Count -gt 0) {
             -Action 'Fix the record, then close this topic again.')
 }
 
-$confirmationScopes = @{ 'human-confirmed' = 'lens-question'; 'human-skipped' = 'lens-question' }
 $entry = [ordered]@{
     agenda             = @($Agenda)
     decision           = $Decision
     depth              = $Depth
     moved_on           = $true
     confirmation       = $Confirmation
-    confirmation_scope = $confirmationScopes[$Confirmation]
+    confirmation_scope = $receiptScope
 }
 if (-not [string]::IsNullOrWhiteSpace($Diagram)) { $entry['diagram'] = $Diagram }
 if (-not [string]::IsNullOrWhiteSpace($BindingsJson)) {
@@ -214,7 +223,10 @@ if (-not [string]::IsNullOrWhiteSpace($BindingsJson)) {
                 -Action 'Record them as a simple name-to-value list, then close this topic again.')
     }
 }
-if ($receipt.PSObject.Properties['receipt_id']) { $entry['turn_receipt'] = [string]$receipt.receipt_id }
+# `human_turn_receipt` is the name ProjectMetadataAccessor reads. It was written as `turn_receipt`, so
+# every entry this checkpoint wrote was invisible to the reader and the next state read returned
+# `workshop-completed-human-turn-receipt-invalid`.
+if ($receipt.PSObject.Properties['receipt_id']) { $entry['human_turn_receipt'] = [string]$receipt.receipt_id }
 
 $workshop = if ($controller.PSObject.Properties['workshop'] -and $null -ne $controller.workshop) { $controller.workshop } else { [pscustomobject]@{} }
 $workshopMap = [ordered]@{}
@@ -242,7 +254,7 @@ if ($PassThru) {
         lens               = $Lens
         moved_on           = $true
         confirmation       = $Confirmation
-        confirmation_scope = $confirmationScopes[$Confirmation]
+        confirmation_scope = $receiptScope
         controller_path    = $controllerPath
         validated          = ($Lens -cin @('product-domain', 'code-implementation'))
     }

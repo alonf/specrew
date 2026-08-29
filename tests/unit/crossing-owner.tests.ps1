@@ -136,6 +136,13 @@ Touch-SessionState -Root $f3.Root -Owner 'claude|session-alpha'
 $out3 = Invoke-Provider -Root $f3.Root -SessionId 'session-beta' -Transcript (Write-PlainTranscript -Root $f3.Root)
 Assert-True ($out3 -match "owed by session 'claude\|session-alpha'" -and $out3 -match 'this session owes nothing for it') 'the other session is told which session owes the crossing, and that it owes nothing'
 Assert-True ($out3 -notmatch 'SPECREW-VERDICT-BOUNDARY' -and $out3 -notmatch 'Render the full six-section') 'no verdict marker and no packet demand reach the session that did not produce the work'
+# THE DELIVERY MECHANISM, not just the words. The covering round found (`foreign-owner-still-stop-blocked`)
+# that this branch composed the right informational text and then emitted it as a BLOCK anyway: the
+# sentinel makes the dispatcher force-continue, the session stops again, and the loop repeats to the cap -
+# the interruption FR-032 exists to remove, reinstated by the delivery path while the text looked correct.
+# The assertions above all passed against that defect, because none of them looked at HOW the text left.
+Assert-True ($out3 -notmatch 'SPECREW-STOP-BLOCK') 'and it arrives as an ORDINARY INFORMATIONAL INJECTION, not a stop-block: a foreign session must be able to stop or converse normally, not be force-continued into the same demand until the cap'
+Assert-True ($out3 -match 'owed by session') 'the line is still actually delivered - releasing the block must not silence the explanation'
 
 Write-Host 'Case 4: the OWNING session still gets the demand'
 $f4 = New-OwnerFixture -SessionId 'session-alpha'
@@ -143,6 +150,7 @@ $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $f4.Root -WorkingBo
 $out4 = Invoke-Provider -Root $f4.Root -SessionId 'session-alpha' -Transcript (Write-PlainTranscript -Root $f4.Root)
 Assert-True ($out4 -match 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') 'the owning session is asked for the packet and the marker'
 Assert-True ($out4 -notmatch 'this session owes nothing') 'and is not told it owes nothing'
+Assert-True ($out4 -match 'SPECREW-STOP-BLOCK') 'and the OWNER is still blocked - the fix for case 3 must not release the block for the session that actually owes the crossing'
 
 Write-Host 'Case 5: a resumed/compacted owner (same host, new id, not live) FAILS OPEN with disclosure'
 $f5 = New-OwnerFixture -SessionId 'session-alpha'

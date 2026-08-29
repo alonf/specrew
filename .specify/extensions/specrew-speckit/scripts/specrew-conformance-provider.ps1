@@ -1529,6 +1529,11 @@ try {
 
     $journalPath = Join-Path $projectRoot '.specrew/runtime/conformance-journal.jsonl'
     $blockReason = $null
+    # FR-032 (T023) review finding `foreign-owner-still-stop-blocked`: this flag decides whether the
+    # composed text leaves as a BLOCK (the dispatcher force-continues the session) or as an ordinary
+    # informational injection (the session stops or converses normally). It must exist before the tail
+    # reads it.
+    $blockReasonOwnerScoped = $false
     $corrections = New-Object System.Collections.Generic.List[string]
     $capped = $false
     $cappedKind = $null
@@ -1825,7 +1830,20 @@ try {
                 [void]$sb.AppendLine('Also: this session''s orientation was never shown to the human - include it in this same message, before the rest, so they learn what this project asks of them now rather than at a boundary they did not expect.')
             }            if ($intakeHit) { [void]$sb.AppendLine('Also: an active feature already exists - do NOT ask what to build; continue it.') }
             if ($rawHit) { [void]$sb.AppendLine('Also: do NOT run the raw `specify workflow` SDD engine - route through the governed Specrew flow.') }
-            $blockReason = $sb.ToString().TrimEnd()
+            if ($blockReasonOwnerScoped) {
+                # A DIFFERENT, LIVE SESSION owns this crossing. Blocking here interrupts a session that
+                # cannot discharge the obligation: it has no packet to render and no verdict to collect,
+                # so the force-continue produces another stop, and another, until the cap. That is the
+                # interruption FR-032 exists to remove, and emitting the sentinel anyway reinstated it.
+                # The text is still delivered - once, as an ordinary injection - and the stop is released.
+                $corrections.Add($sb.ToString().TrimEnd()) | Out-Null
+                # The loop-guard increment above was taken for a block that is not being issued. Release
+                # it, so a foreign session passing through cannot spend the owner's cap.
+                Reset-SpecrewBlockCount -Path $blockStatePath
+            }
+            else {
+                $blockReason = $sb.ToString().TrimEnd()
+            }
         }
         else {
             # The counter increment could not be persisted/verified -> the cap cannot be guaranteed on a capless

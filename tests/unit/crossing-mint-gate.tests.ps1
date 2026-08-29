@@ -13,7 +13,8 @@
 #   3 REBIND  - the authorization writer's own rebind: authorizing before-implement with no review.md
 #               mints nothing; with review.md it mints review-signoff.
 #   4 MARKER  - a marker naming a superseded crossing identity is refused at capture; the right identity
-#               captures; a bare marker still captures (documented residual until T015).
+#               captures; a bare marker (no identity at all) STILL CAPTURES - an open, deferred gap,
+#               pinned below with its closure condition rather than described as pending work.
 # Mutations that turn this file red: remove the owed-artifact block in New-SpecrewPendingCrossingScope
 # (cases 1, 3a); check the wrong iteration or the FROM side (case 2, 3b); remove the identity check in
 # Invoke-SpecrewBoundaryVerdictCapture (case 4a).
@@ -175,12 +176,37 @@ Invoke-StopHook -Root $m4b.Fixture.Root -Transcript $tx4b
 $e4b = Read-Enforcement -Root $m4b.Fixture.Root
 Assert-True ([string]$e4b.last_authorized_boundary -eq 'tasks') 'the matching-identity marker authorizes plan -> tasks'
 
-Write-Host 'Case 4c: a bare marker still captures (residual until T015 makes every renderer emit the identity)'
+# Case 4c: A DEFERRED GAP, PINNED - not a property anyone wants.
+#
+# A bare marker - one carrying no `@ crossing-...` identity - still authorizes the scoped crossing.
+# This assertion originally read "T015 flips this deliberately". T015 shipped WITHOUT flipping it, so
+# that justification expired while the assertion stayed green, and a passing test then certified a known
+# defect on the strength of a claim that was no longer true. The maintainer's ruling (2026-08-29) is that
+# this is worse than the defect: complete the renderer work, or state the truth here. This is the truth.
+#
+# WHAT IS TRUE: capture accepts a bare marker and authorizes the current pending crossing.
+# WHY IT IS DEFERRED, and why it is a partial improvement rather than a regression: a bare marker falls
+#   back to PRE-BATCH behaviour - nothing that used to be refused is now accepted - and T014's check
+#   already refuses a marker that names a SUPERSEDED identity (case 4a). The residual risk is narrower
+#   than the original defect: a marker that names nothing, rendered against a crossing that has since
+#   been re-minted. Closing it requires every renderer to emit the identity, and the renderer that
+#   matters most on the Claude host - .claude/skills/specrew-gate-stop/SKILL.md - still instructs the
+#   bare form, as do its sibling host mirrors. That is a multi-host change, flagged rather than grown
+#   quietly inside a tag batch.
+# WHAT WOULD CLOSE IT: every packet renderer emits `<from> -> <to> @ <crossing-id>` (the writer
+#   Get-SpecrewVerdictMarkerText already produces it; the skill files must instruct it). Once they do,
+#   DELETE this case and replace it with its inverse - a bare marker must be REFUSED when the pending
+#   state carries a CrossingId - and the suite will go red until the guard is added at
+#   HandoverStore.ps1's identity check. The inverse assertion is written below, disabled, so closing
+#   this is a deletion and an un-commenting rather than a fresh piece of design.
+Write-Host 'Case 4c: a bare marker still captures - DEFERRED GAP, pinned with its closure condition'
 $m4c = New-MarkerFixture
 $tx4c = Write-Transcript -Root $m4c.Fixture.Root -Marker '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->' -Reply 'approved for tasks'
 Invoke-StopHook -Root $m4c.Fixture.Root -Transcript $tx4c
 $e4c = Read-Enforcement -Root $m4c.Fixture.Root
-Assert-True ([string]$e4c.last_authorized_boundary -eq 'tasks') 'a bare marker authorizes plan -> tasks today (T015 flips this deliberately)'
+Assert-True ([string]$e4c.last_authorized_boundary -eq 'tasks') 'TODAY a bare marker authorizes plan -> tasks; this pins a KNOWN GAP, it does not endorse it (see the block above for what closes it)'
+# THE CLOSING ASSERTION, held here so it is not redesigned later:
+#   Assert-True ([string]$e4c.last_authorized_boundary -ne 'tasks') 'a bare marker is refused once the pending crossing carries an identity'
 
 Write-Host 'Case 5: the stop artifact re-minted after a capture carries the crossing identity in its marker line'
 $art5 = Join-Path $m4b.Fixture.Root '.specrew\runtime\pending-verdict-stop.md'

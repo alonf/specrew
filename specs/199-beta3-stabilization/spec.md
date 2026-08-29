@@ -588,6 +588,23 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
   rework effort are tracked separately from implementation; one covering round runs on the
   shipping tree over the whole delta since tree `1b50ae60` (W76, W77 and this batch) before the
   tag decision.
+  - **The limit of mutation proving, stated as a rule rather than an observation** (maintainer
+    ruling, 2026-08-29, after the covering round): *mutation proving shows a control is wired to
+    its own test; it never shows the control is wired to the system.* All three findings the
+    round returned were invisible to it **by construction** - a name mismatch across a seam
+    (writer wrote `turn_receipt`, reader read `human_turn_receipt`), an effect nothing asserted
+    (a flag set and never consumed), and a test pinning current behaviour (a bare marker
+    certified as correct on a justification that had expired). Every one of those suites was
+    mutation-proved and green.
+  - **The consequence, binding from here**: a fix that crosses a SEAM owes one case that
+    exercises **writer and reader together**, and a fix whose control is a FLAG owes one case
+    that asserts the flag's **effect**, not its value. Neither is satisfied by a mutation of the
+    control alone. Where the seam's far side has a switch that disables its own check - as the
+    canonical workshop reader does, skipping receipt validation unless `human_turn_contract` is
+    declared - the fixture must turn that switch ON, or the case proves nothing while passing.
+  - **Where the general instrument goes**: a contract test exercising writer and reader together
+    in one case belongs in beta4's composition harness, alongside the two-gates-disagree
+    scenarios - the same family seen from the test side (maintainer instruction, 2026-08-29).
 
 ### Traceability & Governance Requirements *(mandatory)*
 

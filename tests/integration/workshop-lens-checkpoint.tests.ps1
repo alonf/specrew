@@ -11,6 +11,11 @@
 # with the human still in the room, instead of at the specify boundary in reverse order of creation. No new
 # validators; the boundary gate keeps its calls as defense in depth.
 #
+# Mutations that turn this file red (added 2026-08-29, from the covering round's `workshop-receipt-contract`
+# finding): write the receipt as `turn_receipt` again (cases 2, 2b, 2c - the canonical reader rejects it and
+# the workshop stops advancing); derive confirmation_scope from a table in the writer instead of persisting
+# the receipt's own (case 2c); drop `human_turn_contract` from the fixture (the reader's receipt check
+# switches off and cases 2b/2c go green against a defect, which is exactly how the original bug survived).
 # Mutations that turn this file red: remove the controller write (case 2 - the lens never advances, F-1
 # returns); remove the receipt check (3); remove the record check (4); remove the validator call (5 - a
 # JSON-shaped product-domain record closes the lens and the boundary finds it lenses later).
@@ -48,6 +53,7 @@ function New-WorkshopFixture {
         agenda                = $agenda
         skipped               = [ordered]@{}
         agenda_confirmation   = 'human-confirmed'
+        human_turn_contract   = 'typed-turns-v1'
         workshop              = [ordered]@{}
     }
     [System.IO.File]::WriteAllText((Join-Path $feature 'lens-applicability.json'), ($controller | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
@@ -55,13 +61,13 @@ function New-WorkshopFixture {
 }
 function Write-LensReceipt {
     # The typed-turn receipt the prompt-submit hook mints when the human answers a lens question.
-    param([string]$Root, [string]$Lens, [string]$Confirmation = 'human-confirmed')
+    param([string]$Root, [string]$Lens, [string]$Confirmation = 'human-confirmed', [string]$Scope = 'lens-question')
     $path = Join-Path $Root '.specrew/runtime/workshop-authority.jsonl'
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
     $record = [ordered]@{
         schema_version = '1'; receipt_id = ('receipt-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
         feature_ref = '001-feat'; iteration_number = ''; phase = 'lens'; lens = $Lens
-        question_hash = 'q'; response_hash = 'r'; confirmation = $Confirmation; confirmation_scope = 'lens-question'
+        question_hash = 'q'; response_hash = 'r'; confirmation = $Confirmation; confirmation_scope = $Scope
         source_event = 'UserPromptSubmit'; host_kind = 'claude'; recorded_at = '2026-08-29T00:00:00Z'
     }
     ($record | ConvertTo-Json -Compress) | Add-Content -LiteralPath $path -Encoding UTF8
@@ -97,12 +103,35 @@ $entry = $after.workshop.'architecture-core'
 Assert-True ($null -ne $entry -and [bool]$entry.moved_on) 'moved_on is true - the transition ran, and not by hand'
 Assert-True ([string]$entry.confirmation -eq 'human-confirmed' -and [string]$entry.confirmation_scope -eq 'lens-question') 'the confirmation fields are written together with it, so they cannot disagree'
 Assert-True ([string]$entry.decision -match 'existing layering' -and [string]$entry.depth -eq 'medium' -and @($entry.agenda).Count -ge 1) 'the lens content is recorded in the same atomic write'
-Assert-True ($null -ne $entry.turn_receipt -and [string]$entry.turn_receipt -match '^receipt-') 'the entry carries the receipt id, binding the close to the human''s own typed reply'
+# Property-EXISTENCE, not property-access: under StrictMode a missing property throws and aborts the
+# file, so the round-trip cases below would never report. A mutation must produce a readable FAIL.
+$receiptProp = $entry.PSObject.Properties['human_turn_receipt']
+Assert-True ($null -ne $receiptProp -and [string]$receiptProp.Value -match '^receipt-') 'the entry carries the receipt id under the name the CANONICAL READER reads - this assertion previously named `turn_receipt`, the writer''s own invention, and so certified the defect it was meant to catch'
+Assert-True ($null -eq $entry.PSObject.Properties['turn_receipt']) 'and the writer-only name is gone entirely, so no reader can be split between two spellings'
 
-Write-Host 'Case 2b: the controller now reports the NEXT lens as current - the re-ask cause is gone'
+# Case 2b is the WRITER-TO-READER CONTRACT, and it is the case that should have caught the
+# `turn_receipt` defect and did not. It ran against a fixture with no `human_turn_contract`, so the
+# canonical reader skipped its receipt validation and the mismatched field name was invisible. The
+# lesson the maintainer drew from it (2026-08-29) is a rule, not an observation: mutation proving shows
+# a control is wired to its OWN TEST, never that it is wired to the system. A seam needs one case that
+# runs the writer and the reader together - which is what this now is.
+Write-Host 'Case 2b: THE ROUND TRIP - what the writer wrote, the canonical reader accepts and advances on'
 $state = Get-SpecrewWorkshopLifecycleState -ProjectRoot $f1.Root -FeatureRef '001-feat'
+Assert-True ([string]$state.status -ne 'invalid') ('the reader accepts the entry the writer produced (status: ' + [string]$state.status + '/' + [string]$state.reason + ')')
+Assert-True ([string]$state.reason -ne 'workshop-completed-human-turn-receipt-invalid') 'and specifically does NOT reject the receipt - the exact rejection the field-name mismatch produced'
 Assert-True ([string]$state.current_lens -eq 'ui-ux') 'the current lens advanced to the next selected topic'
 Assert-True (@($state.completed) -contains 'architecture-core') 'and the closed lens is reported complete'
+
+Write-Host 'Case 2c: a SKIPPED lens round-trips too - the scope comes from the receipt, not from a table in the writer'
+$f2c = New-WorkshopFixture
+$null = Write-LensReceipt -Root $f2c.Root -Lens 'architecture-core' -Confirmation 'human-skipped' -Scope 'explicit-skip'
+$r2c = Invoke-Writer -Root $f2c.Root -Lens 'architecture-core' -Confirmation 'human-skipped'
+Assert-True $r2c.Ok ('the writer closes a skipped topic: ' + $r2c.Text)
+$entry2c = (Read-Controller -Path $f2c.Controller).workshop.'architecture-core'
+Assert-True ([string]$entry2c.confirmation_scope -eq 'explicit-skip') 'the scope written is the receipt''s own `explicit-skip`, not the `lens-question` a local table produced for every answer alike'
+$state2c = Get-SpecrewWorkshopLifecycleState -ProjectRoot $f2c.Root -FeatureRef '001-feat'
+Assert-True ([string]$state2c.reason -ne 'workshop-completed-human-turn-receipt-invalid') 'and the reader accepts it - a derived scope that disagreed with the receipt made the entry unreadable'
+Assert-True (@($state2c.completed) -contains 'architecture-core') 'the skipped topic is complete, so the workshop moves on rather than re-asking'
 
 Write-Host 'Case 3: no typed reply on record - the topic stays open, and the refusal says what is needed'
 $f3 = New-WorkshopFixture
@@ -146,6 +175,6 @@ $r6 = Invoke-Writer -Root $f6.Root -Lens 'security-compliance'
 Assert-True (-not $r6.Ok -and $r6.Text -match 'not one of the topics this workshop agreed to cover') 'the writer refuses a lens the agenda never selected'
 Assert-True ($r6.Text -match 'architecture-core') 'and names the topics that ARE open'
 
-foreach ($f in @($f1, $f3, $f4, $f5, $f6)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+foreach ($f in @($f1, $f2c, $f3, $f4, $f5, $f6)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("workshop-lens-checkpoint: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'workshop-lens-checkpoint: all assertions passed' -ForegroundColor Green

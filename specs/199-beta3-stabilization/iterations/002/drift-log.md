@@ -479,6 +479,18 @@ point of the entry, so the original claim is quoted rather than deleted.**
   now known **not** to affect the integrity check, so the optional-hygiene item is raised on its own merits
   (consistency of committed line endings) and not as a protection for this control. Recorded as beta4 optional
   hygiene, explicitly not bundled here, per the maintainer's instruction.
+- **The same mistake was made twice, one level apart, and the second time by the reviewer**
+  (recorded at the maintainer's instruction, 2026-08-29, in their words):
+
+  > I got DRIFT-014 wrong in the same way you did, one level up: I checked that line endings differ and
+  > never checked whether the thing I was ruling on already handled them. The file name was in your report.
+
+  This belongs in the record because the failure mode is not "an agent reasoned badly" - it is that **a
+  wrong finding survived a review boundary and became a ruling**. The crew's job at that point is to
+  implement the ruling; had the tree not been checked first, a correct control would have been edited to
+  make it do what it already did, and the batch would carry a change whose justification was false. The
+  guard that actually held was running the control before changing it - which is the same rule the class
+  below names, applied by whoever touches the code, not by whoever authored the finding.
 - **Class closure**: NONE - no automated guard is possible, and the reason is worth stating rather than
   hiding: the failure was in **how a claim was formed**, not in any code that could be made to fail a test. There is no
   fixture that catches "the auditor reimplemented the subject instead of invoking it", because the
@@ -552,7 +564,7 @@ point of the entry, so the original claim is quoted rather than deleted.**
   goes stale the moment the next one opens**. Closed here by re-pointing; closed structurally in beta4 by making
   the closeout own the re-point.
 
-### DRIFT-199-I002-016 — the covering round found three real defects in this batch's own fixes, and the summariser demoted every one of them (findings open; the demotion observed, not fixed)
+### DRIFT-199-I002-016 — the covering round found three real defects in this batch's own fixes, and the summariser demoted every one of them (two fixed, one pinned; the demotion observed, not fixed)
 
 - **The round**: run `run-20260829-214056323-db3b4944`, campaign `cmp-199-beta3-stabilization-i002`,
   2026-08-29. Reviewer host `codex`, independent of the code writer (`claude`). 909s, containment verified,
@@ -602,18 +614,77 @@ point of the entry, so the original claim is quoted rather than deleted.**
   contract its consumer reads (1), whether a flag it set was ever read (2), or whether a documented residual
   had actually been closed by the task that promised to close it (3). Mutation proving shows a control is
   wired to its own test. It does not show the control is wired to the system.
-- **Resolution**: OPEN. The three findings are unfixed and `can_approve_current` is false, so review-signoff
-  is not approvable. Awaiting the maintainer's disposition on scope: all three are defects this batch
-  introduced, which argues for fixing them here; finding 3's full closure additionally requires the
-  gate-stop renderer to emit the identity across its host mirrors, which is larger than a one-line fix and is
-  flagged rather than grown quietly, per the standing rule.
-- **Class closure**: NONE - the guards belong with the fixes, which are not yet authorized. Named in advance
-  so they are not invented afterwards to fit whatever gets built: (1) a contract test asserting the
-  checkpoint writer's output is READ BACK by the canonical reader, not merely written - the round-trip, not
-  the write; (2) a lane-wide assertion that every `$blockReason*` flag the provider sets is consumed on some
-  path, which is the generalisation of "a control that exists but never runs"; (3) deleting the
-  residual-certifying assertion at `crossing-mint-gate.tests.ps1:183` and replacing it with its inverse, so
-  the suite goes red until every renderer emits the identity.
+- **Resolution — the maintainer's disposition, 2026-08-29, and what was done under it.**
+  *"Findings 1 and 2 are not scope growth and I am not treating them as such: they are this batch's own work
+  being incomplete. A fix that does not work is not a fix."* Both fixed here. Finding 3 handled differently,
+  on the maintainer's reading that it is *"a partial improvement rather than a regression"* - a bare marker
+  falls back to pre-batch behaviour and T014 already refuses a superseded identity - so carrying the renderer
+  work is defensible, but *"what is not defensible is the test."*
+  1. **Finding 1 (FR-027) - FIXED.** The entry is written as `human_turn_receipt`, the name the canonical
+     reader reads. `confirmation_scope` is now **the scope the receipt itself carries**, not one derived from
+     a table in the writer - which removes the wrong `human-skipped -> lens-question` mapping at its cause
+     rather than by correcting one row, and makes `human-delegated` work by construction (it is now in the
+     `ValidateSet` too). A receipt with no scope is refused rather than written into an entry the reader
+     would reject. `$receiptScope` had been read at line 116 and never used: the same set-never-read shape as
+     finding 2, feeding the same defect.
+  2. **Finding 2 (FR-032) - FIXED.** `$blockReasonOwnerScoped` is now declared beside `$blockReason` and
+     **consumed** in the shared tail: when a different live session owns the crossing, the composed text
+     leaves as an ordinary informational injection and the stop is released, instead of leaving as
+     `<<<SPECREW-STOP-BLOCK>>>`. The loop-guard increment taken for a block that is no longer issued is
+     released, so a foreign session cannot spend the owner's cap. Note on how invisible it was: the flag was
+     assigned in one branch and **declared nowhere**, so under `Set-StrictMode -Version Latest` the tail
+     could not have read it without throwing - "set and never read" was the only shape it could have had.
+  3. **Finding 3 (FR-024) - the expired justification removed, the gap pinned.** The renderer work is
+     carried. `tests/unit/crossing-mint-gate.tests.ps1` case 4c no longer says "T015 flips this
+     deliberately"; it states what is true (a bare marker captures), why it is deferred (pre-batch fallback;
+     the superseded-identity case is genuinely refused; closing it is a multi-host skill change), and what
+     would close it - with the closing assertion written out, disabled, beside it so the closure is a
+     deletion rather than a fresh piece of design. The same expired claim was in the source comment at
+     `HandoverStore.ps1` and in the suite's header; both now say the same true thing.
+- **Mutation proof (FR-033, mandatory), and the suites had to be repaired before they could prove anything**:
+  - Finding 1: reverting the field name turns cases 2, 2b and 2c red, and case 2b now reports the real
+    production failure verbatim - `status: invalid/workshop-completed-human-turn-receipt-invalid`. Reverting
+    the scope to a local table turns case 2c red. **Two repairs were needed first.** The suite's own case 2
+    asserted `$entry.turn_receipt` - it pinned the writer's invented name, a THIRD instance of a test
+    certifying the defect, and one this session wrote. And the fixture never set `human_turn_contract`, so
+    the canonical reader **skipped its receipt check entirely**: case 2b called itself the round trip while
+    the far side's validation was switched off. The fixture now declares the contract, so the seam is
+    actually exercised.
+  - Finding 2: disabling the consumer turns crossing-owner case 3 red. That case previously asserted the
+    informational TEXT and the absence of the marker, and passed against the defect, because nothing looked
+    at **how the text left**. It now asserts the delivery mechanism on both sides - no `SPECREW-STOP-BLOCK`
+    for the foreign session (case 3), and one still present for the owner (case 4), so releasing the block
+    cannot silently release it for everyone.
+  - Both mirrors verified byte-identical in the same commit.
+- **The rule this produced**: FR-033 now carries the maintainer's ruling as a binding method rule -
+  *mutation proving shows a control is wired to its own test, never that it is wired to the system* - with
+  its two consequences: a fix crossing a seam owes a writer-and-reader case, a fix whose control is a flag
+  owes a case asserting the flag's effect, and where the far side has a switch that disables its own check
+  the fixture must turn it on. The general instrument (a contract test exercising writer and reader in one
+  case) is recorded for beta4's composition harness, beside the two-gates-disagree scenarios.
+- **Three things the maintainer put on the record as having gone right** (recorded because a drift log that
+  only holds failures teaches the wrong lesson about which behaviours to repeat):
+  1. A finding was **withdrawn when the evidence turned against it**, after it had already been argued
+     convincingly and ruled on (DRIFT-199-I002-014).
+  2. The validator was **allowed to refuse** the erratum written into the sealed directory, and the erratum
+     was moved rather than forced - the seal discipline holding against its own author.
+  3. **Invoked-only spend released attempt 1 rather than consuming it** - FR-014 working on its first real
+     exercise, which is why this round was still round 1 of 4.
+- **Class closure**: the guards were named before the fixes were authorized, so they could not be invented
+  afterwards to fit whatever got built. Two of the three are now in place, and the third is deliberately not:
+  1. **DONE** - the round-trip guard: `workshop-lens-checkpoint` case 2b runs writer and canonical reader in
+     one case, against a fixture that declares `human_turn_contract` so the reader's own validation is on.
+     Case 2c does the same for a skipped lens, where the scope differs.
+  2. **DONE for the instance, OPEN as a lane** - `crossing-owner` cases 3 and 4 assert the flag's EFFECT on
+     both sides. The generalisation - a lane-wide assertion that every `$blockReason*` the provider sets is
+     consumed on some path - is beta4 work: it is a static property of the provider, and writing it as a
+     class guard is the same shape as the existing membership guard. Recorded there rather than improvised
+     here.
+  3. **DELIBERATELY NOT CLOSED** - the residual-certifying assertion at case 4c is retained, because the
+     renderer work it depends on is carried. What changed is that it no longer certifies anything: it states
+     the gap, the reason for deferral, and the closure condition, and carries its own inverse disabled beside
+     it. A pinned known gap is a different artifact from a green claim of correctness, and the maintainer's
+     rule is the distinction - *do not leave a passing assertion whose justification has expired.*
 
 ### Resolution Strategies (Unused)
 

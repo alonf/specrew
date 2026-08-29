@@ -252,7 +252,7 @@
     },
     {
       "path": "scripts/confirm-workshop-lens.ps1",
-      "sha256": "df083d3e8abeabb440db39e2e9e5f1512c63b9b949a7384376d8949ae46e8532"
+      "sha256": "99d4a8d10a7d62c66f088f822bab5ffdde33da0676a09fc26217c7b031bfbfb4"
     },
     {
       "path": "scripts/conformance-turn-delta.ps1",
@@ -404,7 +404,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "7223a16f147c04c0af45b121146ef792d9b99c07a5d1afa4a54fa2bd49737c28"
+      "sha256": "c9cf0504ef4368d75f6b8240084a2c22cba3a4d31235c50389ee963c59b00337"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
