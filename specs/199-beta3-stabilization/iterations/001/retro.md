@@ -132,6 +132,12 @@ the building - most of what shipped was found by review, not planned into it.
    beta4 (proposal 213's walk harness: "human does an ordinary thing, two gates disagree").
 7. **Authored counts drift; derived counts do not.** Owner: crew, beta4 chore - derive the drift-log
    summary from its entries.
+8. **The review process, as constituted, cannot see defects that live in how the machinery meets a
+   person - only in the code it inspects.** Thirty-three review rounds on this feature produced none
+   of the four findings now blocking the tag; all four came from two humans doing ordinary things
+   in a walk. That is the argument for the walk harness and for friction measurement as a release
+   criterion. Owner: maintainer (recorded at the retro verdict, 2026-08-29); next action: both
+   land in the beta4 UX programme as release criteria, not as advice.
 
 Reviewer-instruction candidates, triaged: PROMOTE "verify the mechanism at source before designing
 the fix" to durable methodology (the F-3 correction and the TB-3 second job both came from it).
@@ -184,13 +190,29 @@ answers to the crew report, and it is where these lessons become work:
 
 ## Calibration Suggestion
 
-- Suggested capacity adjustment: current baseline 20 SP -> keep 20 SP, but for a stabilization
-  iteration on the engine itself plan implementation, review and rework at parity (roughly 1:1:1),
-  not 13.1 : 2 : 1.5.
+- Suggested capacity adjustment: current baseline 20 SP -> keep 20 SP. The observed
+  implementation:review:rework parity (roughly 1:1:1) is recorded as a FLOOR for stabilization
+  iterations on the engine itself, not as iteration 002's capacity model, and it is not baked into
+  the capacity gate: a ratio there produces overcommit signals that are artifacts of the ratio
+  (maintainer ruling at the retro verdict, 2026-08-29).
+- How 002 uses it: estimate 002's review work directly - it is enumerable (eight items, times the
+  mirrored copies each touches, times the mutations each carries, plus one covering round over the
+  13-file delta since tree `1b50ae60`) - then check that estimate against parity. If it lands
+  materially under the floor, that is evidence the estimate is repeating 001's error, not permission
+  to plan less.
 - Rationale: at landing every task was on estimate; the iteration then spent roughly eight times
   the implementation calendar in review and rework, and that is where the shipped value came from.
-  Iteration 002 is the same kind of iteration - eight fixes with mutations, one covering round -
-  so its plan should price the round and the mirrors, not only the fixes.
+
+## Rulings Recorded at the Retro Verdict
+
+- Verdict-commit durability for projects with no remote (a `refs/specrew/verdicts/<id>` namespace):
+  beta4. The TB-3 split unblocks the no-origin case and its message states the risk rather than
+  hiding it, which is what makes deferring legitimate; a ref namespace brings its own lifecycle
+  questions and the 002 batch already adds two writers.
+- Drift-log identifier defects (005 and 024 doubled, 036 unused): recorded, not renumbered.
+  Identifiers are cited across records including signed-off ones; the numbering defect is cosmetic
+  and the citation graph is not.
+- The TB-3 split and the item-eight phase-mirror design are accepted as iteration 002 plan input.
 
 ## Notes
 
