@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 13.1/20 story_points
 **Started**: 2026-08-10
 **Completed**:
@@ -113,7 +113,8 @@
 - Planned task effort: 13.1 SP of the 20 SP capacity (threshold 20 x 1.0 not
   exceeded; the maintainer's ~10–12 target is overshot by ~1.1 SP, surfaced at the
   tasks boundary for ruling — trim candidates named there).
-- Status is reviewing: all planned implementation tasks are complete and the
-  review-signoff boundary remains pending.
+- Status is retro: all planned implementation tasks are complete, review-signoff was
+  authorized on 2026-08-27 against 66403e9b, and the retro verdict was given on 2026-08-29
+  (retro.md authored; iteration-closeout is the remaining boundary).
 - FR-006 was added to the Scope Summary manually; the scaffold's FR extractor
   skipped it (recorded observation, non-blocking).
