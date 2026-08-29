@@ -1430,6 +1430,111 @@ function Get-SpecrewBoundaryAuthorizationEntryId {
     return ('auth-{0}' -f (Get-SpecrewBoundarySha256 -Text ($parts -join "`u{001f}")))
 }
 
+function Get-SpecrewCrossingOwnerIdentity {
+    # FR-032 (iteration 002, T023): the identity a pending crossing is OWNED by - the same `host|session`
+    # shape the conformance provider already scopes material-turn attribution to, so one project has one
+    # notion of "which actor is this". Resolution order: an explicit -SessionId (the hook path, where the
+    # host supplies it), then $env:SPECREW_SESSION_ID, then the SessionStart marker on disk (the sync path,
+    # which runs as a child process of the session that started it). No source -> 'unknown', which is a
+    # first-class value here, never an error: a host that does not identify sessions must keep working.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$SessionId,
+        [AllowNull()][string]$HostKind
+    )
+    $session = $SessionId
+    $hostName = $HostKind
+    if ([string]::IsNullOrWhiteSpace($session) -and -not [string]::IsNullOrWhiteSpace($env:SPECREW_SESSION_ID)) { $session = [string]$env:SPECREW_SESSION_ID }
+    if ([string]::IsNullOrWhiteSpace($session)) {
+        try {
+            $markerPath = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/session-marker.json'
+            if (Test-Path -LiteralPath $markerPath -PathType Leaf) {
+                $raw = Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8
+                if (-not [string]::IsNullOrWhiteSpace($raw)) {
+                    $marker = $raw | ConvertFrom-Json
+                    if ($marker -isnot [System.Array]) {
+                        if ($null -ne $marker.PSObject.Properties['session_id']) { $session = [string]$marker.session_id }
+                        if ([string]::IsNullOrWhiteSpace($hostName) -and $null -ne $marker.PSObject.Properties['host']) { $hostName = [string]$marker.host }
+                    }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+    if ([string]::IsNullOrWhiteSpace($session)) { return 'unknown' }
+    $safeHost = if ([string]::IsNullOrWhiteSpace($hostName)) { 'unknown' } else { (($hostName -replace '[^a-zA-Z0-9-]+', '-').Trim('-').ToLowerInvariant()) }
+    $safeSession = (($session -replace '[^a-zA-Z0-9-]+', '-').Trim('-'))
+    if ([string]::IsNullOrWhiteSpace($safeSession)) { return 'unknown' }
+    return ('{0}|{1}' -f $safeHost, $safeSession)
+}
+
+function Resolve-SpecrewCrossingOwnership {
+    # FR-032 (T023): ownership resolves to exactly THREE states, and only one of them suppresses the demand.
+    #
+    #   owner-matches       -> this session recorded the arrival; it owes the packet.
+    #   owner-differs       -> a DIFFERENT, identified session owns it; this one gets one informational line.
+    #   owner-indeterminate -> no session id on this host, or a recorded owner this session cannot be
+    #                          compared against (the owner resumed or compacted into a new id). The demand
+    #                          RENDERS, plus one sentence saying ownership could not be confirmed.
+    #
+    # Indeterminate fails OPEN by construction (method rule 12, maintainer ruling 2026-08-29): a session must
+    # never be locked out of its own crossing by an identity it cannot prove - that turns a diagnosis gap into
+    # an outage, which is worse than the defect being fixed.
+    [CmdletBinding()]
+    param(
+        [AllowNull()][string]$RecordedOwner,
+        [AllowNull()][string]$CurrentOwner
+    )
+    $recorded = if ([string]::IsNullOrWhiteSpace($RecordedOwner)) { '' } else { $RecordedOwner.Trim() }
+    $current = if ([string]::IsNullOrWhiteSpace($CurrentOwner)) { '' } else { $CurrentOwner.Trim() }
+    $result = [pscustomobject]@{ State = 'owner-indeterminate'; RecordedOwner = $recorded; CurrentOwner = $current; DemandRenders = $true; Note = $null }
+    if ([string]::IsNullOrWhiteSpace($recorded) -or $recorded -eq 'unknown') {
+        $result.Note = 'This crossing was recorded without a session identity, so this demand may have reached a session that did not produce the work.'
+        return $result
+    }
+    if ([string]::IsNullOrWhiteSpace($current) -or $current -eq 'unknown') {
+        $result.Note = 'This host does not identify sessions here, so ownership could not be confirmed and this demand may have reached a session that did not produce the work.'
+        return $result
+    }
+    if ($recorded -ceq $current) {
+        $result.State = 'owner-matches'
+        return $result
+    }
+    # Same host, different session id: a resumed or compacted session comes back with a new id, and it must
+    # not be locked out of its own crossing. Only a DIFFERENT HOST, or a live sibling on the same host, is a
+    # confident mismatch. The host prefix is the part that survives a resume.
+    $recordedHost = ($recorded -split '\|', 2)[0]
+    $currentHost = ($current -split '\|', 2)[0]
+    if ($recordedHost -ceq $currentHost -and (Test-SpecrewCrossingOwnerSessionLive -Owner $recorded) -eq $false) {
+        $result.Note = ("The session that recorded this crossing ({0}) is not answering here - it may have resumed or compacted into a new identity - so ownership could not be confirmed." -f $recorded)
+        return $result
+    }
+    $result.State = 'owner-differs'
+    $result.DemandRenders = $false
+    $result.Note = ("A crossing is pending, owed by session '{0}'; this session owes nothing for it." -f $recorded)
+    return $result
+}
+
+function Test-SpecrewCrossingOwnerSessionLive {
+    # A recorded owner is "live" when its own conformance session state exists and has been touched inside the
+    # liveness window. A resumed/compacted session leaves a stale directory behind, so its crossing reads
+    # indeterminate (fail open) rather than differs (suppressed) - the difference the maintainer named.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$Owner, [int]$MaxAgeMinutes = 180, [AllowNull()][string]$ProjectRoot)
+    if ([string]::IsNullOrWhiteSpace($Owner) -or $Owner -eq 'unknown') { return $false }
+    try {
+        $root = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { (Get-Location).Path } else { Resolve-ProjectPath -Path $ProjectRoot }
+        $hash = Get-SpecrewBoundarySha256 -Text $Owner
+        $dir = Join-Path (Join-Path $root '.specrew/runtime/conformance-sessions') $hash
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return $false }
+        $newest = @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1)
+        if ($newest.Count -eq 0) { return $false }
+        return ((Get-Date).ToUniversalTime() - $newest[0].LastWriteTimeUtc).TotalMinutes -le $MaxAgeMinutes
+    }
+    catch { return $false }
+}
+
 function New-SpecrewBoundaryCrossingIdentity {
     param(
         [Parameter(Mandatory = $true)][string]$FromBoundary,
@@ -1437,7 +1542,8 @@ function New-SpecrewBoundaryCrossingIdentity {
         [Parameter(Mandatory = $true)][string]$BoundaryCommitHash,
         [Parameter(Mandatory = $true)][string]$ArtifactStateId,
         [AllowNull()][string]$WorkingBoundary,
-        [AllowNull()][string]$RecordedAt
+        [AllowNull()][string]$RecordedAt,
+        [AllowNull()][string]$Owner
     )
     $normalizedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary $FromBoundary
     $from = if ($normalizedFrom -eq 'intake') { 'intake' } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $FromBoundary -ParameterName 'FromBoundary' }
@@ -1456,6 +1562,11 @@ function New-SpecrewBoundaryCrossingIdentity {
         artifact_state_kind  = 'git-tree'
         artifact_state_id    = $artifact
         recorded_at          = if ([string]::IsNullOrWhiteSpace($RecordedAt)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { $RecordedAt.Trim() }
+        # FR-032 (T023): the OWNER of the pending crossing - the session that recorded the arrival. It is
+        # deliberately OUTSIDE the hashed crossing_id: an idempotent re-sync from a different session must
+        # produce the same identity (the whole re-mint contract rests on that), so ownership travels beside
+        # the identity rather than inside it.
+        owner                = if ([string]::IsNullOrWhiteSpace($Owner)) { 'unknown' } else { $Owner.Trim() }
     }
 }
 
@@ -2379,6 +2490,7 @@ function Get-SpecrewPendingVerdictState {
         IsFirstBoundary        = $false
         IsMultiBoundaryGap     = $false
         CrossingId             = $null
+        CrossingOwner          = $null
         BoundaryCommitHash     = $null
         ArtifactStateKind      = $null
         ArtifactStateId        = $null
@@ -2443,6 +2555,7 @@ function Get-SpecrewPendingVerdictState {
             }
 
             $result.CrossingId = [string]$scope['crossing_id']
+            $result.CrossingOwner = if ($scope.Contains('owner')) { [string]$scope['owner'] } else { 'unknown' }
             $result.BoundaryCommitHash = [string]$scope['boundary_commit_hash']
             $result.ArtifactStateKind = [string]$scope['artifact_state_kind']
             $result.ArtifactStateId = [string]$scope['artifact_state_id']
@@ -2722,7 +2835,8 @@ function New-SpecrewPendingCrossingScope {
         [switch]$OpenNextCrossingWhenBoundaryAuthorized,
         [AllowNull()][string]$ProjectRoot,
         [AllowNull()][string]$FeatureRef,
-        [AllowNull()][string]$IterationNumber
+        [AllowNull()][string]$IterationNumber,
+        [AllowNull()][string]$Owner
     )
     $effectiveWorkingBoundary = $WorkingBoundary
     if ($OpenNextCrossingWhenBoundaryAuthorized) {
@@ -2758,16 +2872,23 @@ function New-SpecrewPendingCrossingScope {
             return $null
         }
     }
+    $effectiveOwner = $Owner
+    if ([string]::IsNullOrWhiteSpace($effectiveOwner) -and -not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $effectiveOwner = Get-SpecrewCrossingOwnerIdentity -ProjectRoot $ProjectRoot
+    }
     $scope = New-SpecrewBoundaryCrossingIdentity `
         -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) `
         -ToBoundary ([string]$crossing.PendingToMarkerBoundary) `
         -WorkingBoundary ([string]$crossing.WorkingBoundary) `
         -BoundaryCommitHash $BoundaryCommitHash `
         -ArtifactStateId $ArtifactStateId `
-        -RecordedAt $RecordedAt
+        -RecordedAt $RecordedAt `
+        -Owner $effectiveOwner
     $existing = ConvertTo-SpecrewBoundaryMap -Value $ExistingScope
     if ($null -ne $existing -and [string]$existing['crossing_id'] -eq [string]$scope['crossing_id'] -and -not [string]::IsNullOrWhiteSpace([string]$existing['recorded_at'])) {
         $scope['recorded_at'] = [string]$existing['recorded_at']
+        # The same crossing re-synced keeps its ORIGINAL owner: the arrival was recorded once, by one session.
+        if ($existing.Contains('owner') -and -not [string]::IsNullOrWhiteSpace([string]$existing['owner'])) { $scope['owner'] = [string]$existing['owner'] }
     }
     return $scope
 }

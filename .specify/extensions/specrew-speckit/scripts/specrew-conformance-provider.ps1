@@ -1631,6 +1631,26 @@ try {
             # Build the packet directive. At a boundary, include the CONTIGUOUS last_authorized -> successor marker.
             $sb = New-Object System.Text.StringBuilder
             if ($blockKind -eq 'boundary') {
+                # FR-032 (T023): a pending crossing is owed by the SESSION THAT RECORDED IT. Three states, one
+                # of which suppresses this demand: owner-differs (a different, live session owns it) gets one
+                # informational line instead. owner-indeterminate FAILS OPEN - the demand renders with a
+                # sentence saying ownership could not be confirmed - because locking a resumed session out of
+                # its own crossing would turn a diagnosis gap into an outage (method rule 12).
+                $ownership = $null
+                try {
+                    if (Get-Command -Name 'Resolve-SpecrewCrossingOwnership' -ErrorAction SilentlyContinue) {
+                        $recordedOwner = if ($null -ne $pending -and ($pending.PSObject.Properties.Name -contains 'CrossingOwner')) { [string]$pending.CrossingOwner } else { '' }
+                        $currentOwner = if (-not [string]::IsNullOrWhiteSpace([string]$materialRuntime.Owner)) { [string]$materialRuntime.Owner } else { (Get-SpecrewCrossingOwnerIdentity -ProjectRoot $projectRoot -SessionId $sessionIdArg -HostKind $hostKindArg) }
+                        $ownership = Resolve-SpecrewCrossingOwnership -RecordedOwner $recordedOwner -CurrentOwner $currentOwner
+                    }
+                }
+                catch { $ownership = $null }
+                if ($null -ne $ownership -and -not [bool]$ownership.DemandRenders) {
+                    [void]$sb.AppendLine([string]$ownership.Note)
+                    [void]$sb.AppendLine('No packet and no verdict marker are owed here; continue with what this session was doing.')
+                    $blockReasonOwnerScoped = $true
+                }
+                else {
                 [void]$sb.AppendLine('Specrew: boundary state is pending, but your last message did not expose the verdict marker for the pending boundary crossing. Render the full six-section re-entry packet NOW as your message, then stop again:')
                 [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## Discussion Prompts / ## What I Need From You')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
@@ -1651,6 +1671,10 @@ try {
                     [void]$sb.AppendLine(("This is a BOUNDARY stop into '{0}' (the first unauthorized boundary); emit the contiguous verdict marker as the LAST line." -f $toBoundary))
                 }
                 [void]$sb.AppendLine('Do NOT record the authorization yourself; the verdict is captured from your rendered packet + the human''s reply.')
+                if ($null -ne $ownership -and [string]$ownership.State -eq 'owner-indeterminate' -and -not [string]::IsNullOrWhiteSpace([string]$ownership.Note)) {
+                    [void]$sb.AppendLine([string]$ownership.Note)
+                }
+                }
             }
             elseif ($blockKind -eq 'boundary-evidence-absent') {
                 # FR-068: names what the stage owes, offers no approval options, emits no marker.

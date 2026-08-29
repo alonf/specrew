@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "002"
-updated_at: "2026-08-29T16:57:58.5881406Z"
+updated_at: "2026-08-29T17:22:06.8614014Z"
 tasks:
   T014:
     title: "Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures"
@@ -59,9 +59,9 @@ tasks:
     blocked_reason: ""
   T023:
     title: "Crossing owner recorded at mint; owner-scoped Stop-hook demand; informational line for other sessions; owner-unknown named out loud; capture verifies the marker's crossing identity"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T17:22:06.8577252Z"
+    completed_at: "2026-08-29T17:22:06.8577252Z"
     blocked_reason: ""
   T024:
     title: "Capture disclosure at prompt-entry: one line naming the classification, the leading text that decided it, and that the phrase must be the first characters of the message; every prompt-entry outcome journaled; fixtures: leading quote bar, leading prose"

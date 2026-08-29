@@ -296,6 +296,7 @@ tests/unit/boundary-correction-ledger.tests.ps1
 tests/unit/boundary-ratchet.tests.ps1
 tests/unit/crossing-mint-gate.tests.ps1
 tests/unit/crossing-mirrors.tests.ps1
+tests/unit/crossing-owner.tests.ps1
 tests/unit/budget-resolution.tests.ps1
 tests/unit/capability-provider-resolution.tests.ps1
 tests/unit/code-implementation-lens.tests.ps1

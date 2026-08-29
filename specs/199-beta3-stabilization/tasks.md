@@ -195,7 +195,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   reads; mutation: a task completed through `Set-TaskComplete` passes the boundary preflight's
   task-state check, red when the writer is reverted. (Trace: FR-030, FR-033, SC-016; owns:
   `shared-governance.ps1` + mirror, `sync-boundary-state.ps1`, `task-progress.ps1`)
-- [ ] T023 [owner: Implementer] [sp: 2.5] **The owing actor** — `pending_crossing.owner` recorded
+- [x] T023 [owner: Implementer] [sp: 2.5] **The owing actor** — `pending_crossing.owner` recorded
   at mint (`host|session` or `unknown`); the conformance provider's boundary demand fires only for
   the owner; other sessions get one informational line; `owner: unknown` keeps today's behavior
   and the packet names the gap out loud; the capture verifies the marker's crossing identity.
