@@ -636,7 +636,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         [Parameter()][AllowNull()][string]$LastUserMessage,
         [int]$MaxTailLines = 500
     )
-    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript' }
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript'; MarkerCrossingId = $null }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     # F-197 iter-004 (T070, #2885): one shared memoized parse (path,mtime,MaxLines); finalize with -Raw here.
     # The shared extract holds only user/assistant message turns; a tail with no message turns falls through to
@@ -662,7 +662,9 @@ function Get-SpecrewCapturedBoundaryVerdict {
     if ($turns.Count -eq 0) { $result.Reason = 'no-turns'; return $result }
 
     # The packet marker: case-insensitive, tolerate '->' / unicode arrow / 'to' and flexible spacing.
-    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    # FR-024 (T014): the marker may carry the crossing identity (`<from> -> <to> @ crossing-<hex>`); the
+    # capture reads it so a marker rendered against one crossing cannot capture against a successor.
+    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)(?:\s*@\s*(crossing-[0-9a-f]{8,}))?', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
     # Newest marker/response pair with a CLEAR approval wins. A newer marker with no response yet is just awaiting
     # the next user turn and must not mask an earlier approved marker that the hook has not had a chance to record.
@@ -750,6 +752,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $result.Found = $true
         $result.FromBoundary = $mFrom
         $result.ToBoundary = $mTo
+        $result.MarkerCrossingId = if ($mm.Groups[3].Success) { $mm.Groups[3].Value.ToLowerInvariant() } else { $null }
         $result.VerdictText = Get-SpecrewCapturedVerdictText -HumanText $humanText -ToBoundary $mTo
         $result.HumanText = $humanText
         $result.Reason = 'captured'
@@ -792,7 +795,9 @@ function Get-SpecrewCapturedBoundaryPacket {
     try { $shared = @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
 
     # Same marker grammar as the verdict reader: case-insensitive, '->' / unicode arrow / 'to', flexible spacing.
-    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    # FR-024 (T014): the marker may carry the crossing identity (`<from> -> <to> @ crossing-<hex>`); the
+    # capture reads it so a marker rendered against one crossing cannot capture against a successor.
+    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)(?:\s*@\s*(crossing-[0-9a-f]{8,}))?', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
     # The LAST assistant turn carrying a marker (the most recently rendered packet), read VERBATIM (-Raw).
     $found = $null

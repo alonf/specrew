@@ -174,7 +174,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
 
 ### Phase 1: the crossing family (10.5 SP)
 
-- [ ] T014 [owner: Implementer] [sp: 3.0] **Mint gate and marker identity** — a crossing is not
+- [x] T014 [owner: Implementer] [sp: 3.0] **Mint gate and marker identity** — a crossing is not
   opened until the stage it leaves has its owed artifacts on the live filesystem, at all three
   minting mechanisms (`Set-SpecrewPendingBoundaryCrossingScope`, the `$nextScope` rebind in
   `Add-SpecrewBoundaryAuthorization`, `Sync-SpecrewPendingVerdictArtifactAfterAuthorization`); the
@@ -190,8 +190,11 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   `state.md` Iteration Status to `complete` at closeout; the sync re-mirrors the copies; the truth
   gate compares every enumerated mirror at every iteration-scoped boundary and refuses a copy ahead
   of the store. Mutations: DRIFT-199-I001-152 reproduced on a fixture then green; a hand-advanced
-  `plan.md` Status refused. (Trace: FR-030, FR-033, SC-016; owns: `shared-governance.ps1` + mirror,
-  `sync-boundary-state.ps1`, `task-progress.ps1`)
+  `plan.md` Status refused. Folded in (DRIFT-199-I002-009): `Set-TaskStatus` writes `done` for
+  completion (accepting `complete` as an input alias) so the ledger speaks the word every consumer
+  reads; mutation: a task completed through `Set-TaskComplete` passes the boundary preflight's
+  task-state check, red when the writer is reverted. (Trace: FR-030, FR-033, SC-016; owns:
+  `shared-governance.ps1` + mirror, `sync-boundary-state.ps1`, `task-progress.ps1`)
 - [ ] T023 [owner: Implementer] [sp: 2.5] **The owing actor** — `pending_crossing.owner` recorded
   at mint (`host|session` or `unknown`); the conformance provider's boundary demand fires only for
   the owner; other sessions get one informational line; `owner: unknown` keeps today's behavior

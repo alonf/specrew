@@ -16,8 +16,8 @@
 
 ## Summary
 
-**Total drift events**: 8 (DRIFT-199-I002-001 through -008)
-**Resolution rate**: carried per event in its heading (5 resolved-by this iteration's requirements,
+**Total drift events**: 9 (DRIFT-199-I002-001 through -009)
+**Resolution rate**: carried per event in its heading (6 resolved-by this iteration's requirements,
 2 spec-updated/human-decision, 1 deferred to beta4 by ruling)
 **Specification drift**: one spec amendment, recorded as DRIFT-199-I002-002
 
@@ -243,6 +243,29 @@
   exception.
 - **Class closure**: the disclosure at the point of first appearance, journaled; the session rule
   closes the agent half.
+
+### DRIFT-199-I002-009 — the task ledger's own writer produces a status its own boundary preflight refuses (resolved-by T021)
+
+- **Observed**: 2026-08-29, marking T014 done through the governed path. `Set-TaskComplete` (the only
+  ledger writer for an iteration past the first, since tasks.md checkboxes are read for iteration
+  001 only) writes `status: "complete"` into `tasks-progress.yml` - its `ValidateSet` is
+  `pending | in-progress | complete | blocked`. Every consumer speaks `done`: the boundary
+  preflight's task-state check allows `pending | in-progress | done | blocked | needs-rework |
+  deferred` and FAILED live (`task-state fail: tasks-progress.yml contains an invalid status or
+  disagrees with state.md Tasks Remaining`), the validator's task enum is `planned | in-progress |
+  done | needs-rework | deferred | blocked`, and iteration 001's ledger reads `done` throughout
+  (written by the checkbox derivation, never by this writer). Left as is, iteration 002's own
+  review-signoff preflight would refuse on a value the engine wrote.
+- **Citation**: FR-030's class (a producer writing a value its consumer refuses - TB-4's family;
+  DRIFT-199-I002-007's shape, third instance this iteration); FR-023 (every fix through the shipped
+  path - which is how this surfaced).
+- **Resolution**: folded into T021, the mirror/vocabulary task: `Set-TaskStatus` writes `done` for
+  completion and accepts `complete` as an input alias, so the ledger holds the one word every
+  consumer reads; T014's ledger entry is re-synced then. The ledger is NOT hand-edited in the
+  meantime - the record shows exactly what the writer produced, and the preflight's refusal stands
+  as the measurement until T021 lands (T021 is the next task in the planned order).
+- **Class closure**: the mutation for T021 - a task completed through `Set-TaskComplete` passes the
+  boundary preflight's task-state check; revert the writer and the check goes red.
 
 ### Resolution Strategies (Unused)
 

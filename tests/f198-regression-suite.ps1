@@ -82,6 +82,7 @@ function Get-CallerRepositoryContamination {
 
 $registry = @(
     @{ area = 'boundary ratchet (FR-001..FR-005, cycle-scoped)'; path = 'tests/unit/boundary-ratchet.tests.ps1'; kind = 'script' }
+    @{ area = 'beta3 T014 crossing mint gate + marker identity (FR-024): refuse the empty stage, permit the evidenced one, refuse a stale marker'; path = 'tests/unit/crossing-mint-gate.tests.ps1'; kind = 'script' }
     @{ area = 'append-only scoped authorization correction ledger (FR-004/SC-014)'; path = 'tests/unit/boundary-correction-ledger.tests.ps1'; kind = 'script' }
     @{ area = 'current commit/tree pending-crossing binding (FR-041/FR-042/FR-044/FR-045)'; path = 'tests/integration/pending-verdict-stop-artifact.tests.ps1'; kind = 'script' }
     @{ area = 'DRIFT-198-I008-056–058 caller isolation, Pester container honesty, and closed automation stdin'; path = 'tests/unit/regression-harness-isolation.tests.ps1'; kind = 'script' }

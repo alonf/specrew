@@ -1639,7 +1639,13 @@ try {
                 [void]$sb.AppendLine('')
                 [void]$sb.AppendLine([string]$pending.Message)
                 if (-not [string]::IsNullOrWhiteSpace($fromBoundary)) {
-                    [void]$sb.AppendLine(("This is a BOUNDARY stop ({0} -> {1}); emit the verdict marker as the LAST line: <!-- SPECREW-VERDICT-BOUNDARY: {0} -> {1} -->" -f $fromBoundary, $toBoundary))
+                    # FR-024 (T014): the demanded marker carries the crossing identity when the pending state has one.
+                    $markerIdSuffix = ''
+                    try {
+                        if ($null -ne $pending -and ($pending.PSObject.Properties.Name -contains 'CrossingId') -and -not [string]::IsNullOrWhiteSpace([string]$pending.CrossingId)) { $markerIdSuffix = (' @ {0}' -f [string]$pending.CrossingId) }
+                    }
+                    catch { $markerIdSuffix = '' }
+                    [void]$sb.AppendLine(("This is a BOUNDARY stop ({0} -> {1}); emit the verdict marker as the LAST line: <!-- SPECREW-VERDICT-BOUNDARY: {0} -> {1}{2} -->" -f $fromBoundary, $toBoundary, $markerIdSuffix))
                 }
                 else {
                     [void]$sb.AppendLine(("This is a BOUNDARY stop into '{0}' (the first unauthorized boundary); emit the contiguous verdict marker as the LAST line." -f $toBoundary))

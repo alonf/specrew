@@ -2599,6 +2599,118 @@ function Set-SpecrewBoundaryEnforcementState {
     return $contextState.Path
 }
 
+function Test-SpecrewBoundaryOwedArtifactsOnDisk {
+    # FR-024 (iteration 002, T014): the LIVE-FILESYSTEM owed-artifact check consulted at MINT time.
+    #
+    # The bound-tree evidence readers (Get-SpecrewBoundaryStageEvidence) answer "did the tree the
+    # verdict binds to carry the artifact"; at mint time there is no tree to bind yet, and the field
+    # case (KeyContextAI iteration 003; reproduced live at 199/001's closeout, DRIFT-199-I002-001) read
+    # as UNVERIFIABLE on that path because the iteration directory did not exist - which is exactly
+    # the state a mint must call ABSENT. So this check asks the disk: does the boundary being ENTERED
+    # have the artifacts its contract owes, under the directory the crossing would open? Missing
+    # directory = missing artifact. Unverifiable is reserved for "no feature identity at all".
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Boundary,
+        [AllowNull()][string]$FromBoundary,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+    $result = [pscustomobject]@{ Boundary = $Boundary; Kind = $null; Absent = $false; Unverifiable = $false; Missing = @(); ExpectedUnder = $null; Iteration = $null; Reason = 'present' }
+    $canonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $Boundary
+    $contract = @(Get-SpecrewBoundaryStageEvidenceContract | Where-Object { [string]$_.Boundary -ceq [string]$canonical })
+    if ($contract.Count -ne 1) { $result.Unverifiable = $true; $result.Reason = 'no-contract'; return $result }
+    $result.Kind = [string]$contract[0].Kind
+    if ($result.Kind -eq 'none') { $result.Reason = 'ungated'; return $result }
+    $root = Resolve-ProjectPath -Path $ProjectRoot
+    $feature = $FeatureRef
+    $iteration = $IterationNumber
+    if ([string]::IsNullOrWhiteSpace($feature) -or [string]::IsNullOrWhiteSpace($iteration)) {
+        try {
+            $ctxPath = Join-Path $root '.specrew/start-context.json'
+            if (Test-Path -LiteralPath $ctxPath -PathType Leaf) {
+                $ctx = Get-Content -LiteralPath $ctxPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $ssProp = $ctx.PSObject.Properties['session_state']
+                $ss = if ($null -ne $ssProp) { $ssProp.Value } else { $null }
+                if ($null -ne $ss) {
+                    if ([string]::IsNullOrWhiteSpace($feature) -and $null -ne $ss.PSObject.Properties['feature_ref']) { $feature = [string]$ss.feature_ref }
+                    if ([string]::IsNullOrWhiteSpace($iteration) -and $null -ne $ss.PSObject.Properties['iteration_number']) { $iteration = [string]$ss.iteration_number }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+    if ([string]::IsNullOrWhiteSpace($feature)) { $result.Unverifiable = $true; $result.Reason = 'no-feature-identity'; return $result }
+    $featurePath = Join-Path $root ('specs/' + (Split-Path -Leaf $feature))
+    $base = $featurePath
+    if ($result.Kind -eq 'iteration-file') {
+        # iteration-closeout -> plan opens the NEXT iteration: its directory is what the plan stage owes.
+        $fromCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $FromBoundary
+        if ($canonical -eq 'plan' -and $fromCanonical -eq 'iteration-closeout' -and $iteration -match '^\d+$') {
+            $iteration = ('{0:000}' -f ([int]$iteration + 1))
+        }
+        if ([string]::IsNullOrWhiteSpace($iteration)) { $result.Unverifiable = $true; $result.Reason = 'no-iteration-identity'; return $result }
+        $result.Iteration = $iteration
+        $base = Join-Path $featurePath ('iterations/' + $iteration)
+    }
+    $result.ExpectedUnder = $base
+    $missing = New-Object System.Collections.Generic.List[string]
+    foreach ($relative in @($contract[0].Paths)) {
+        $candidate = Join-Path $base ([string]$relative)
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) { $missing.Add([string]$relative) | Out-Null }
+    }
+    if ($result.Kind -eq 'content' -and $missing.Count -eq 0) {
+        $content = Get-Content -LiteralPath (Join-Path $base ([string]$contract[0].Paths[0])) -Raw -Encoding UTF8
+        $markerMatches = @($contract[0].Markers | Where-Object { $content -match [string]$_ })
+        if ($markerMatches.Count -eq 0) { $missing.Add(([string]$contract[0].Paths[0] + ' required content')) | Out-Null }
+    }
+    $result.Missing = $missing.ToArray()
+    if ($missing.Count -gt 0) { $result.Absent = $true; $result.Reason = 'absent' }
+    return $result
+}
+
+function Write-SpecrewCrossingMintRefusal {
+    # FR-024 (T014): the refusal names what failed, the instance, and the one thing that resumes the
+    # work - and it is loud (stderr + journal), never a silent $null.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FromBoundary,
+        [Parameter(Mandatory = $true)][string]$ToBoundary,
+        [AllowNull()][string[]]$Missing,
+        [AllowNull()][string]$ExpectedUnder,
+        [AllowNull()][string]$Iteration,
+        [AllowNull()][string]$NowUtc
+    )
+    $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
+    $iterationText = if ([string]::IsNullOrWhiteSpace($Iteration)) { '' } else { (' for iteration {0}' -f $Iteration) }
+    $whereText = if ([string]::IsNullOrWhiteSpace($ExpectedUnder)) { '' } else { (' (expected under {0})' -f $ExpectedUnder) }
+    $message = ("The '{0}' -> '{1}' crossing was not opened: '{1}' owes {2}{3}{4} and it does not exist. The approvals already recorded are unchanged; no new verdict is being asked for until the owed work exists." -f $FromBoundary, $ToBoundary, (@($Missing) -join ', '), $iterationText, $whereText)
+    try { [Console]::Error.WriteLine('[specrew-governance] WARN CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT ' + $message) } catch { $null = $_ }
+    try {
+        $journal = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/handover-journal.jsonl'
+        $dir = Split-Path -Parent $journal
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        (([pscustomobject]@{ event = 'crossing-not-minted-owed-artifacts-absent'; recorded_at = $when; from = $FromBoundary; to = $ToBoundary; missing = @($Missing); expected_under = $ExpectedUnder; iteration = $Iteration; message = $message }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
+    }
+    catch { $null = $_ }
+    return $message
+}
+
+function Get-SpecrewVerdictMarkerText {
+    # FR-024 (T014): the verdict marker carries the crossing identity, so a marker rendered against one
+    # crossing cannot capture against a successor wearing the same <from> -> <to> label.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$FromBoundary,
+        [Parameter(Mandatory = $true)][string]$ToBoundary,
+        [AllowNull()][string]$CrossingId
+    )
+    if ([string]::IsNullOrWhiteSpace($CrossingId)) { return ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -> {1} -->' -f $FromBoundary, $ToBoundary) }
+    return ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -> {1} @ {2} -->' -f $FromBoundary, $ToBoundary, $CrossingId)
+}
+
 function New-SpecrewPendingCrossingScope {
     param(
         [AllowNull()][string]$LastAuthorizedBoundary,
@@ -2607,7 +2719,10 @@ function New-SpecrewPendingCrossingScope {
         [Parameter(Mandatory = $true)][string]$ArtifactStateId,
         [AllowNull()][string]$RecordedAt,
         [AllowNull()]$ExistingScope,
-        [switch]$OpenNextCrossingWhenBoundaryAuthorized
+        [switch]$OpenNextCrossingWhenBoundaryAuthorized,
+        [AllowNull()][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
     )
     $effectiveWorkingBoundary = $WorkingBoundary
     if ($OpenNextCrossingWhenBoundaryAuthorized) {
@@ -2627,6 +2742,22 @@ function New-SpecrewPendingCrossingScope {
     }
     $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $effectiveWorkingBoundary
     if (-not [bool]$crossing.HasPendingVerdict) { return $null }
+    # FR-024 (T014): a crossing is not minted until the stage it enters has its owed artifacts ON DISK.
+    # This is the ONE constructor every minting mechanism goes through - the sync's successor auto-open
+    # and the authorization writer's rebind both arrive here - so the gate lives here and nowhere else.
+    # A positive ABSENT reading refuses (loudly, journaled); UNVERIFIABLE (no feature identity) keeps
+    # today's behavior, the fail-open-on-diagnosis direction of method rule 12.
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $owed = Test-SpecrewBoundaryOwedArtifactsOnDisk -ProjectRoot $ProjectRoot `
+            -Boundary ([string]$crossing.PendingToMarkerBoundary) -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) `
+            -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+        if ([bool]$owed.Absent) {
+            $null = Write-SpecrewCrossingMintRefusal -ProjectRoot $ProjectRoot `
+                -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) -ToBoundary ([string]$crossing.PendingToMarkerBoundary) `
+                -Missing @($owed.Missing) -ExpectedUnder ([string]$owed.ExpectedUnder) -Iteration ([string]$owed.Iteration) -NowUtc $RecordedAt
+            return $null
+        }
+    }
     $scope = New-SpecrewBoundaryCrossingIdentity `
         -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) `
         -ToBoundary ([string]$crossing.PendingToMarkerBoundary) `
@@ -2658,6 +2789,9 @@ function Set-SpecrewPendingBoundaryCrossingScope {
     $artifactStateId = Get-SpecrewGitArtifactStateId -ProjectRoot $ProjectRoot -BoundaryCommitHash $BoundaryCommitHash
     $effective = $state.EffectiveState
     $existingScope = if ($state.State.Contains('pending_crossing')) { $state.State['pending_crossing'] } else { $null }
+    $mintSession = if ($state.Context.Contains('session_state') -and $null -ne $state.Context['session_state']) { ConvertTo-SpecrewBoundaryMap -Value $state.Context['session_state'] } else { $null }
+    $mintFeature = if ($null -ne $mintSession -and $mintSession.Contains('feature_ref')) { [string]$mintSession['feature_ref'] } else { $null }
+    $mintIteration = if ($null -ne $mintSession -and $mintSession.Contains('iteration_number')) { [string]$mintSession['iteration_number'] } else { $null }
     $scope = New-SpecrewPendingCrossingScope `
         -LastAuthorizedBoundary ([string]$effective['last_authorized_boundary']) `
         -WorkingBoundary $WorkingBoundary `
@@ -2665,7 +2799,8 @@ function Set-SpecrewPendingBoundaryCrossingScope {
         -ArtifactStateId $artifactStateId `
         -RecordedAt $RecordedAt `
         -ExistingScope $existingScope `
-        -OpenNextCrossingWhenBoundaryAuthorized:$OpenNextCrossingWhenBoundaryAuthorized
+        -OpenNextCrossingWhenBoundaryAuthorized:$OpenNextCrossingWhenBoundaryAuthorized `
+        -ProjectRoot $ProjectRoot -FeatureRef $mintFeature -IterationNumber $mintIteration
     $updated = [ordered]@{
         enabled                  = [bool]$state.State['enabled']
         last_authorized_boundary = $state.State['last_authorized_boundary']
@@ -3567,14 +3702,19 @@ function Add-SpecrewBoundaryAuthorization {
 
     $nextScope = $null
     $scope = if ($enforcementState.State.Contains('pending_crossing')) { ConvertTo-SpecrewBoundaryMap -Value $enforcementState.State['pending_crossing'] } else { $null }
+    $rebindSession = if ($enforcementState.Context.Contains('session_state') -and $null -ne $enforcementState.Context['session_state']) { ConvertTo-SpecrewBoundaryMap -Value $enforcementState.Context['session_state'] } else { $null }
+    $rebindFeature = if ($null -ne $rebindSession -and $rebindSession.Contains('feature_ref')) { [string]$rebindSession['feature_ref'] } else { $null }
+    $rebindIteration = if ($null -ne $rebindSession -and $rebindSession.Contains('iteration_number')) { [string]$rebindSession['iteration_number'] } else { $null }
     if ($null -ne $scope) {
+        # FR-024 (T014): the rebind mints the NEXT crossing through the same gated constructor.
         $nextScope = New-SpecrewPendingCrossingScope `
             -LastAuthorizedBoundary $authorizedCanonical `
             -WorkingBoundary ([string]$scope['working_boundary']) `
             -BoundaryCommitHash ([string]$scope['boundary_commit_hash']) `
             -ArtifactStateId ([string]$scope['artifact_state_id']) `
             -RecordedAt $effectiveRecordedAt `
-            -ExistingScope $null
+            -ExistingScope $null `
+            -ProjectRoot $ProjectRoot -FeatureRef $rebindFeature -IterationNumber $rebindIteration
     }
     elseif (-not [string]::IsNullOrWhiteSpace($effectiveAuthCommitHash)) {
         $legacyWorking = $null
@@ -3585,7 +3725,7 @@ function Add-SpecrewBoundaryAuthorization {
         if (-not [string]::IsNullOrWhiteSpace($legacyWorking)) {
             try {
                 $authTree = Get-SpecrewGitArtifactStateId -ProjectRoot $ProjectRoot -BoundaryCommitHash $effectiveAuthCommitHash
-                $nextScope = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary $authorizedCanonical -WorkingBoundary $legacyWorking -BoundaryCommitHash $effectiveAuthCommitHash -ArtifactStateId $authTree -RecordedAt $effectiveRecordedAt -ExistingScope $null
+                $nextScope = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary $authorizedCanonical -WorkingBoundary $legacyWorking -BoundaryCommitHash $effectiveAuthCommitHash -ArtifactStateId $authTree -RecordedAt $effectiveRecordedAt -ExistingScope $null -ProjectRoot $ProjectRoot -FeatureRef $rebindFeature -IterationNumber $rebindIteration
             }
             catch { $nextScope = $null }
         }

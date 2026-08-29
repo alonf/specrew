@@ -73,6 +73,16 @@ try {
 `$ErrorActionPreference = 'Stop'
 . '$($repoRoot -replace "'", "''")\extensions\specrew-speckit\scripts\shared-governance.ps1'
 `$scope = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot '$proj' -WorkingBoundary 'review-signoff' -BoundaryCommitHash '$head'
+if (`$null -eq `$scope) {
+    # T014 (FR-024, iteration 002): the engine now REFUSES to mint a crossing whose stage owes artifacts, so the
+    # evidence-less state this suite measures can no longer come from the writer. Write the record directly - the
+    # shape of a pre-gate or hand-edited record - so the CAPTURE-side refusal stays tested as defense in depth.
+    `$st = Get-SpecrewBoundaryEnforcementState -ProjectRoot '$proj'
+    `$tree = Get-SpecrewGitArtifactStateId -ProjectRoot '$proj' -BoundaryCommitHash '$head'
+    `$scope = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'before-implement' -WorkingBoundary 'review-signoff' -BoundaryCommitHash '$head' -ArtifactStateId `$tree -RecordedAt '2026-08-29T00:00:00Z' -ExistingScope `$null
+    `$upd = [ordered]@{ enabled = [bool]`$st.State['enabled']; last_authorized_boundary = `$st.State['last_authorized_boundary']; pending_next_boundary = [string]`$scope['to_boundary']; pending_crossing = `$scope; verdict_history = @(`$st.State['verdict_history']); correction_history = @(); bypass_history = @(`$st.State['bypass_history']) }
+    Set-SpecrewBoundaryEnforcementState -ProjectRoot '$proj' -BoundaryEnforcement `$upd -Context `$st.Context | Out-Null
+}
 'MINT ' + `$(if (`$null -eq `$scope) { 'none' } else { [string]`$scope['from_boundary'] + '->' + [string]`$scope['to_boundary'] })
 `$pv = Get-SpecrewPendingVerdictState -ProjectRoot '$proj'
 'PRESTATE pending=' + [bool]`$pv.HasPendingVerdict + ' evidence_absent=' + [bool]`$pv.StageEvidenceAbsent

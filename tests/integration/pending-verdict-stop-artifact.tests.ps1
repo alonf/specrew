@@ -177,7 +177,9 @@ function Assert-ArtifactContains {
         "Human approval phrase: $ExpectedApproval",
         "Approval choice: $ExpectedApproval",
         'Numeric labels are non-authoritative; reply with the full human approval phrase.',
-        $ExpectedMarker
+        # T014 (FR-024): the marker now carries the crossing identity (`<from> -> <to> @ crossing-...`), so the
+        # expectation is the marker's crossing label as a prefix; the identity suffix is the writer's, not the test's.
+        ($ExpectedMarker -replace ' -->$', '')
     )) {
         if ($content -notmatch [regex]::Escape($expected)) {
             Fail ("Pending-verdict artifact did not contain expected text '{0}'. Content:`n{1}" -f $expected, $content)
@@ -280,7 +282,14 @@ try {
     $closeoutProject = New-TestProject -Name 'closeout-current-not-stale-parent' -LastAuthorizedBoundary 'iteration-closeout'
     $staleParent = (& git -C $closeoutProject rev-parse HEAD).Trim()
     [System.IO.File]::AppendAllText((Join-Path $closeoutProject 'README.md'), "`nActual closeout artifact.`n", [System.Text.UTF8Encoding]::new($false))
-    $null = Invoke-FixtureGit -ProjectRoot $closeoutProject -Arguments @('add', 'README.md')
+    # T014 (FR-024, iteration 002): a closeout no longer mints `iteration-closeout -> plan` over an empty next
+    # iteration - that was the KeyContextAI ladder, reproduced live (DRIFT-199-I002-001). This case is about
+    # binding the ACTUAL closeout commit, so give the next iteration its owed plan.md and let the crossing mint
+    # legitimately; the refuse side is pinned in tests/unit/crossing-mint-gate.tests.ps1.
+    $nextIterationDir = Join-Path $closeoutProject 'specs/001-test-feature/iterations/002'
+    New-Item -ItemType Directory -Force -Path $nextIterationDir | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $nextIterationDir 'plan.md'), "# Iteration Plan: 002`n`n**Status**: planning`n", [System.Text.UTF8Encoding]::new($false))
+    $null = Invoke-FixtureGit -ProjectRoot $closeoutProject -Arguments @('add', 'README.md', 'specs/001-test-feature/iterations/002/plan.md')
     $null = Invoke-FixtureGit -ProjectRoot $closeoutProject -Arguments @(
         '-c', 'user.email=test@specrew.local',
         '-c', 'user.name=Test User',

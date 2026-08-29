@@ -655,7 +655,8 @@ function Sync-SpecrewPendingVerdictStopArtifact {
 
     $boundary = ('{0} -> {1}' -f $fromMarkerBoundary, $toMarkerBoundary)
     $approvalPhrase = ('approved for {0}' -f $toMarkerBoundary)
-    $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
+    # FR-024 (T014): the marker carries the crossing identity when the pending state has one.
+    $marker = if ([string]::IsNullOrWhiteSpace([string]$pendingState.CrossingId)) { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary) } else { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} @ {1} -->' -f $boundary, [string]$pendingState.CrossingId) }
     $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pendingState.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pendingState.LastAuthorizedBoundary }
     $featureRef = if ([string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) { '(none)' } else { [string]$SessionState.feature_ref }
     $boundaryCommit = if ([string]::IsNullOrWhiteSpace([string]$pendingState.BoundaryCommitHash)) { '(none)' } else { [string]$pendingState.BoundaryCommitHash }

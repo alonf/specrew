@@ -562,7 +562,8 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
 
         $boundary = ('{0} -> {1}' -f $fromMarkerBoundary, $toMarkerBoundary)
         $approvalPhrase = ('approved for {0}' -f $toMarkerBoundary)
-        $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
+        # FR-024 (T014): the marker carries the crossing identity when the pending state has one.
+        $marker = if ([string]::IsNullOrWhiteSpace([string]$pending.CrossingId)) { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary) } else { ('<!-- SPECREW-VERDICT-BOUNDARY: {0} @ {1} -->' -f $boundary, [string]$pending.CrossingId) }
         $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pending.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pending.LastAuthorizedBoundary }
 
         $lines = @(
@@ -694,6 +695,31 @@ function Invoke-SpecrewBoundaryVerdictCapture {
                 }
                 catch { $null = $_ }
                 $result.reason = 'stage-evidence-absent-refused'
+                return $result
+            }
+            # FR-024 (T014): a marker that names a crossing identity must name THE pending one. Two
+            # identities share the label `<from> -> <to>` when a crossing is re-minted against a new
+            # commit; a stale marker must not authorize its successor. A bare marker (no identity) keeps
+            # today's capture until T015 makes every renderer emit the identity.
+            $capturedMarkerId = if ($captured.PSObject.Properties.Name -contains 'MarkerCrossingId') { [string]$captured.MarkerCrossingId } else { '' }
+            $pendingCrossingId = ''
+            if (-not [string]::IsNullOrWhiteSpace($capturedMarkerId) -and (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {
+                try {
+                    $pvId = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+                    if ($null -ne $pvId -and ($pvId.PSObject.Properties.Name -contains 'CrossingId')) { $pendingCrossingId = [string]$pvId.CrossingId }
+                }
+                catch { $pendingCrossingId = '' }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($capturedMarkerId) -and -not [string]::IsNullOrWhiteSpace($pendingCrossingId) -and ($capturedMarkerId -ne $pendingCrossingId.ToLowerInvariant())) {
+                [Console]::Error.WriteLine(("[specrew-handover] WARN VERDICT_REFUSED_MARKER_IDENTITY_MISMATCH captured '{0}' for '{1}->{2}' against marker identity '{3}', but the pending crossing is '{4}'; NOT authorizing. The packet was rendered for a crossing that has since been re-minted - re-render the packet from the current pending-verdict artifact and ask the human again." -f [string]$captured.VerdictText, $actualFrom, $actualTo, $capturedMarkerId, $pendingCrossingId))
+                try {
+                    $idJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                    $idDir = Split-Path -Parent $idJournal
+                    if ($idDir -and -not (Test-Path -LiteralPath $idDir)) { New-Item -ItemType Directory -Path $idDir -Force | Out-Null }
+                    (([pscustomobject]@{ event = 'verdict-refused-marker-identity-mismatch'; recorded_at = $NowUtc; verdict_text = [string]$captured.VerdictText; from = $actualFrom; to = $actualTo; marker_crossing_id = $capturedMarkerId; pending_crossing_id = $pendingCrossingId; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $idJournal -Encoding UTF8
+                }
+                catch { $null = $_ }
+                $result.reason = 'marker-identity-mismatch'
                 return $result
             }
             $evidenceSource = switch ([string]$captured.Reason) {
