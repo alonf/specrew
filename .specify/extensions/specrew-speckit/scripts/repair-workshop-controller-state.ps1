@@ -11,6 +11,19 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function New-SpecrewWorkshopRepairRefusal {
+    # The workshop refusal contract: what happened, one action, and the standing reassurance that the
+    # human's answers are safe - never machinery vocabulary, never blaming Specrew.
+    param([Parameter(Mandatory)][string] $Summary, [Parameter(Mandatory)][string] $Action)
+    $contract = if (Get-Command -Name 'Get-SpecrewWorkshopRefusalContractText' -ErrorAction SilentlyContinue) {
+        Get-SpecrewWorkshopRefusalContractText -AnswerState 'preserved'
+    }
+    else {
+        'Your saved answers remain unchanged.'
+    }
+    return ('{0} {1} {2}' -f $Summary, $Action, $contract)
+}
+
 function Write-AtomicUtf8NoBom {
     param(
         [Parameter(Mandatory)][string] $Path,
@@ -228,14 +241,23 @@ if ($proposalId -cne $expectedProposalId -or $proposalId -cnotmatch '^[a-f0-9]{6
     [string]$proposal.proposal_nonce -cnotmatch '^[a-f0-9]{32}$' -or
     [string]$proposal.controller_sha256 -cne $controllerSha256 -or
     [string]$proposal.feature_ref -cne $FeatureRef) {
-    throw 'workshop-repair-proposal-stale'
+    # FR-028 (T019): the sibling bare token, given the same treatment.
+    throw (New-SpecrewWorkshopRepairRefusal -Summary 'The workshop records changed after this repair was proposed, so the proposal no longer matches what is on disk and was not applied.' `
+            -Action 'Ask for the repair to be proposed again, read the fresh proposal, and authorize that one.')
 }
 # SPECREW-AUTHORITY-CONSUMER: workshop-repair-human-authorization
 $authorization = Get-SpecrewWorkshopRepairAuthorization -ProjectRoot $resolvedProjectRoot -ProposalId $proposalId
 if ($null -eq $authorization -or
     [string]$authorization.controller_sha256 -cne $controllerSha256 -or
     [string]$authorization.feature_ref -cne $FeatureRef) {
-    throw 'workshop-repair-human-authorization-missing'
+    # FR-028 (iteration 002, T019): this used to throw the bare token
+    # 'workshop-repair-human-authorization-missing' - a machine label with no reader. The recognizer is
+    # unchanged (still the exact typed phrase, still case-sensitive); only the SILENCE around it is fixed.
+    # This script never receives the human's reply text - the authorization is looked up by proposal id -
+    # so the refusal says exactly what it can know: no authorization is on record for THIS proposal, and
+    # the phrase that creates one. Quoting a reply it does not have would be an invented instance.
+    throw (New-SpecrewWorkshopRepairRefusal -Summary 'No typed authorization is on record for this repair, so nothing was changed.' `
+            -Action 'To authorize exactly this repair, type: approved for workshop repair')
 }
 
 foreach ($record in @($proposal.preserved_records)) {

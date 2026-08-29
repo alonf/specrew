@@ -264,7 +264,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   Mutations: a confirmed lens stays current when the writer's state write is disabled; a
   JSON-shaped product-domain record closes the lens when the validator call is disabled. (Trace: FR-027, FR-033, SC-013, SC-014; owns: `confirm-workshop-lens.ps1` + mirror,
   `workshop-authority-store.ps1` + mirror, `specrew-design-workshop/SKILL.md` copies)
-- [ ] T019 [owner: Implementer] [sp: 0.75] **What was received, what is still needed** — the
+- [x] T019 [owner: Implementer] [sp: 0.75] **What was received, what is still needed** — the
   acknowledgment line in the skill and lens texts; the repair gate's refusal through the refusal
   contract naming the received reply and `approved for workshop repair`; recognizers untouched.
   Mutations: the text-presence test and the refusal-contract AST guard go red when either is

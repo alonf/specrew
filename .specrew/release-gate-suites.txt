@@ -302,6 +302,7 @@ tests/unit/capture-disclosure.tests.ps1
 tests/unit/delivery-durability-seal.tests.ps1
 tests/unit/constrained-reader-parse.tests.ps1
 tests/integration/workshop-lens-checkpoint.tests.ps1
+tests/unit/lens-acknowledgment.tests.ps1
 tests/unit/budget-resolution.tests.ps1
 tests/unit/capability-provider-resolution.tests.ps1
 tests/unit/code-implementation-lens.tests.ps1

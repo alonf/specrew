@@ -141,10 +141,18 @@ try {
     Assert-True ([string]$proposal.message -notmatch '(?i)controller|plumbing|lens-applicability') 'human repair proposal uses calm project language without internal machinery or fault attribution'
     Assert-True ([Convert]::ToBase64String($beforeStateBytes) -eq [Convert]::ToBase64String([IO.File]::ReadAllBytes($statePath))) 'repair request preserves workshop state byte-for-byte'
 
+    # T019 (FR-028): this used to match the bare machine token 'workshop-repair-human-authorization-missing'.
+    # The REFUSAL is unchanged in strength - the repair is still refused without the typed phrase - but it now
+    # has a reader: what was received, the exact phrase, and the standing reassurance. Asserting the contract
+    # rather than the token is what keeps the message from silently regressing to a label.
     $noAuthorityRefused = $false
+    $noAuthorityMessage = ''
     try { & $repairSource -ProjectRoot $scratch -FeatureRef $featureRef -Apply | Out-Null }
-    catch { $noAuthorityRefused = ($_.Exception.Message -match 'human-authorization-missing') }
+    catch { $noAuthorityMessage = [string]$_.Exception.Message; $noAuthorityRefused = $true }
     Assert-True $noAuthorityRefused 'repair apply refuses before typed human authorization'
+    Assert-True ($noAuthorityMessage -match 'No typed authorization is on record for this repair') 'the refusal says plainly what is missing rather than throwing a machine token'
+    Assert-True ($noAuthorityMessage -match 'type: approved for workshop repair') 'and names the exact phrase to type'
+    Assert-True ($noAuthorityMessage -notmatch '(?i)controller|lens-applicability|governed writer') 'in project language, with no machinery vocabulary'
 
     . $projectAuthority
     $wrongReply = Write-SpecrewWorkshopRepairAuthorization -ProjectRoot $scratch -Response 'yes, repair it' -HostKind 'test' -SourceEvent 'UserPromptSubmit'
@@ -153,10 +161,16 @@ try {
     Assert-True ($null -ne $authorization -and [string]$authorization.proposal_id -eq [string]$proposal.proposal_id) 'exact typed human reply authorizes only the bound repair proposal'
 
     [IO.File]::AppendAllText($statePath, ' ', [Text.UTF8Encoding]::new($false))
+    # T019 (FR-028): the sibling bare token 'workshop-repair-proposal-stale' gained a reader too. The refusal
+    # is unchanged in strength - a proposal whose records moved underneath it is still refused - and now says
+    # what happened and what to do next.
     $staleRefused = $false
+    $staleMessage = ''
     try { & $repairSource -ProjectRoot $scratch -FeatureRef $featureRef -Apply | Out-Null }
-    catch { $staleRefused = ($_.Exception.Message -match 'proposal-stale') }
+    catch { $staleMessage = [string]$_.Exception.Message; $staleRefused = $true }
     Assert-True $staleRefused 'repair refuses when workshop state changes after human authorization'
+    Assert-True ($staleMessage -match 'changed after this repair was proposed') 'the stale refusal says what changed rather than throwing a machine token'
+    Assert-True ($staleMessage -match 'proposed again') 'and names the one action that resolves it'
     [IO.File]::WriteAllBytes($statePath, $beforeStateBytes)
 
     $applied = & $repairSource -ProjectRoot $scratch -FeatureRef $featureRef -Apply -PassThru
@@ -172,10 +186,14 @@ try {
     [IO.File]::WriteAllBytes($statePath, $beforeStateBytes)
     $secondProposal = & $repairSource -ProjectRoot $scratch -FeatureRef $featureRef -Request -PassThru
     Assert-True ([string]$secondProposal.proposal_id -cne [string]$proposal.proposal_id) 'the same later inconsistency receives a fresh proposal id rather than replaying old human authority'
+    # T019 (FR-028): same refusal, now with a reader. The one-time property is what is under test here, and
+    # it is unchanged: a consumed authorization does not carry to a fresh proposal, whatever the bytes say.
     $oldAuthorityRefused = $false
+    $oldAuthorityMessage = ''
     try { & $repairSource -ProjectRoot $scratch -FeatureRef $featureRef -Apply | Out-Null }
-    catch { $oldAuthorityRefused = ($_.Exception.Message -match 'human-authorization-missing') }
+    catch { $oldAuthorityMessage = [string]$_.Exception.Message; $oldAuthorityRefused = ($oldAuthorityMessage -match 'No typed authorization is on record for this repair') }
     Assert-True $oldAuthorityRefused 'a consumed authorization cannot approve a later repair of identical bytes'
+    Assert-True ($oldAuthorityMessage -match 'type: approved for workshop repair') 'and the refusal names the phrase that would authorize the NEW proposal'
 }
 finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue

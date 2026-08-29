@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "002"
-updated_at: "2026-08-29T18:06:03.9043621Z"
+updated_at: "2026-08-29T18:23:49.8118578Z"
 tasks:
   T014:
     title: "Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures"
@@ -35,9 +35,9 @@ tasks:
     blocked_reason: ""
   T019:
     title: "Acknowledgment line in the skill and lens texts; repair refusal through the refusal contract; text-presence and AST tests"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T18:23:49.8081845Z"
+    completed_at: "2026-08-29T18:23:49.8081845Z"
     blocked_reason: ""
   T020:
     title: "Not-yet-authored `spec.md` stub at feature creation; specify-gate sentinel refusal"

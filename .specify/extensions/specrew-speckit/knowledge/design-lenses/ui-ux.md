@@ -34,7 +34,7 @@ accessibility before planning implementation tasks.
 ## Workshop Conduct
 
 - **Diagram for this lens**: UI layout / wireframe, screen-navigation flow, state — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
-- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, show a console-ASCII screen layout and capture the AGREED layout in the design record, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, show a console-ASCII screen layout and capture the AGREED layout in the design record, capture the human's decisions and explicit agreement, iterate until they say "move on" (and when a reply is NOT that phrase, open your next message with one line naming what you recorded and that the lens stays open until they type "move on" or "skip" - never leave the human to infer it from a repeated question), and record the agreement (never leave it only in the chat scrollback).
 - **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
 
 ## Question Bank

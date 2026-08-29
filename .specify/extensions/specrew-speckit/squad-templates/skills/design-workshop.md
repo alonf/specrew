@@ -289,7 +289,22 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    through it. A light single-decision lens skips the offer — just ask the one open question. Then, for
    the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
-   until the human says "move on"** before the next lens. Adapt depth to the user-profile expertise dials
+   until the human says "move on"** before the next lens.
+
+   **When their reply is not the closing phrase, SAY WHAT YOU RECORDED AND WHAT IS STILL NEEDED — in one
+   line, before anything else** (FR-028). A human who answers a lens with "yes" has answered; the lens still
+   needs the closing phrase, and nothing in the exchange says so, so the next message reads as the question
+   being asked again. Open that message with:
+
+   ```text
+   Recorded: "<their reply, abbreviated>". This lens stays open until you type "move on" (or "skip");
+   anything else is taken as more input to the lens.
+   ```
+
+   Do NOT widen what counts as closing the lens — the typed phrase is load-bearing and stays exactly as it
+   is. This is the missing sentence, not a looser rule. (Measured on the WinUI walk: "yes" answered
+   repeatedly where "move on" was required, and no message ever said what was received or what was still
+   needed — the single most repeated friction of that walk.) Adapt depth to the user-profile expertise dials
    (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon.
    **Match the question FORM to the question**: for a discrete, enumerable choice (e.g. decomposition
    vocabulary — IDesign / Clean Architecture / modular; one service vs split; fixed vs open taxonomy), spell
