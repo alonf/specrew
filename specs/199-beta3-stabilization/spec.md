@@ -234,6 +234,43 @@ timeout-message fixture asserts the message names `co_review_timeout_seconds`.
 
 ---
 
+### User Story 8 - The two field walks: what review could not see (Priority: P1)
+
+Added 2026-08-29 under TG-004's own exception (the findings block the acceptance bar) by
+maintainer ruling, from two live walks against the released build: KeyContextAI (iterations
+002 sealed, 003 parked; source of the eight-stop friction measurement) and HelloWinUIReactive
+(a greenfield project taken through the six-lens workshop into the specify boundary, where it
+is blocked). Thirty-three review rounds on this feature produced none of these findings.
+
+As a beta tester on a fresh project, I reach the specify boundary without being asked to publish
+a repository; the first artifact my workshop writes cannot be refused with the wrong cause; a lens
+I confirm advances; a "yes" where a phrase is required tells me what was received and what is
+still needed; the specification does not exist before the workshop that decides it. As a
+maintainer, a stray or misdirected phrase cannot become a recorded authorization over work that
+does not exist, the file I open to learn where the work stands agrees with the authority record
+after every crossing, and the first sealed closeout validates clean.
+
+**Why this priority**: these are the four findings that block the tag - forged authority, a
+greenfield project blocked outright, a wrong-cause refusal that costs a source-reading expedition,
+and an engine-side standing violation of the honest-state rule - plus the friction a first-time
+user meets before they have any reason to trust the tool.
+
+**Independent Test**: the two walks' blocking moments replayed as fixtures: the crossing ladder at
+one commit with no iteration directory; `pr-flow` + `enforcement_mode: manual` + no origin at
+specify; a JSON-shaped `product-domain.yml`; a confirmed lens followed by outside work; a
+scaffolded feature's `spec.md` at the specify gate; a crossing followed by a read of `state.md`
+and `plan.md`; a closeout sync followed by the validator.
+
+**Acceptance Scenarios**:
+
+1. **Given** a crossing whose stage owes artifacts that do not exist, **When** any capture or
+   packet path runs, **Then** no crossing is minted and no verdict options or marker are rendered,
+   and the message names what is owed.
+2. **Given** a greenfield project recording `pr-flow` with `enforcement_mode: manual` and no
+   origin, **When** the specify boundary syncs, **Then** it is not asked to publish.
+3. **Given** a crossing recorded in the authority store, **When** a human opens `state.md` or
+   `plan.md`, **Then** every enumerated mirror agrees with the store.
+
 ### Edge Cases
 
 - Budget exhausted while the human chose fix-and-continue: the engine refuses the next
@@ -477,6 +514,74 @@ Method (binding on every fix):
   trusted. Bridge design records name, per bridge item, what beta4 is expected to
   replace.
 
+The beta3 tag batch (iteration 002; added 2026-08-29 by maintainer ruling under TG-004's
+exception; design and rulings in the crew report of 2026-08-29 and the iteration 001 retro):
+
+- **FR-024**: A boundary crossing is not minted until the stage it leaves has its owed
+  artifacts per the boundary evidence contract, checked on the live filesystem at mint time in
+  every minting mechanism (the sync's successor auto-open, the authorization writer's rebind,
+  and the post-capture packet re-mint); and no packet renders verdict options or the verdict
+  marker for a crossing whose owed artifacts do not exist - it states what is owed and the one
+  step that produces it. The gate-stop skill (every copy), Rule 53, `refocus/general.md` and
+  `lifecycle-discipline.md` carry that one discipline; the conformance provider's existing
+  counter-discipline is the wording of record. Recognized capture of a stray phrase against an
+  empty stage is the mutation this requirement must turn red.
+- **FR-025**: `pushed-head` is a delivery check scoped to iteration-closeout and
+  feature-closeout, reading `release_model` and `repository_governance.enforcement_mode`:
+  `manual` (or no governance block) with no origin is declared-future posture and returns
+  not-applicable naming when delivery becomes owed; an active enforcement mode with no origin
+  fails naming the contradiction; origin present keeps today's pushed-at-HEAD requirement. A
+  separate named check, `verdict-commit-durable`, runs at every boundary: with an origin
+  configured, `origin/<branch>` must be at HEAD (today's strength, unchanged); with no origin it
+  is not-applicable with a message that states the record binds to a local commit that only local
+  history protects. Every message meets the refusal standard (what failed, the instance, one
+  reachable action).
+- **FR-026**: The constrained YAML readers for `product-domain.yml` and
+  `implementation-rules.yml` report a non-empty document that matches none of their constructs
+  as unparseable, and the validators' parse-failure message names the representation found
+  (JSON detected by its first character), states that the recorded answers are intact and that
+  no re-confirmation is owed, and names the re-write action. The field backstops never fire on
+  an unparsed record.
+- **FR-027**: A governed lens-checkpoint writer closes a lens: it consumes the typed-turn
+  receipt for that lens, requires the lens record, runs the lens's already-existing validator
+  where one exists (product-domain, code-implementation), writes `moved_on` and the confirmation
+  fields, and refreshes the handover. The transition table gains the `confirm-lens` operation
+  with every cell pinned; the workshop skill's checkpoint step invokes the writer instead of a
+  hand edit; no new validators are built and the boundary validators remain.
+- **FR-028**: When a lens reply is received without closing the lens, the next message opens
+  with one line that acknowledges what was recorded and names what is still needed; the
+  workshop-repair authorization gate's refusal routes through the workshop refusal contract,
+  naming the received reply and the exact phrase. No recognizer changes.
+- **FR-029**: Feature creation replaces the scaffolded `spec.md` with a stub that carries a
+  not-yet-authored sentinel and no requirement placeholders; the specify boundary gate refuses
+  while the sentinel stands, with a message that says the workshop answers are safe and names
+  the specify step; the upstream scaffold is untouched.
+- **FR-030**: The crossing writer writes every enumerated mirror of
+  `last_authorized_boundary` - `state.md` Current Phase, `state.md` Iteration Status, `plan.md`
+  Status - for the active iteration at the moment the crossing is recorded; the boundary sync
+  re-mirrors from the store at its start; the iteration-state truth gate compares every
+  enumerated mirror at every iteration-scoped boundary. A mirror may lead the store by exactly
+  the pending crossing during the arrival-to-verdict window and never otherwise; a mirror ahead
+  of the store is refused, not rewritten.
+- **FR-031**: The closeout sync writes the iteration seal after every record it produces,
+  including the re-rendered `dashboard.md`, so the first validation of a sealed iteration
+  passes; a test asserts the seal hashes the rendered dashboard.
+- **FR-032**: A pending crossing is owed by the actor that recorded its arrival. The Stop-hook
+  boundary demand ("render the packet, emit the marker") fires only in the session that recorded
+  the pending crossing; every other session in the governed project sees one informational line
+  naming that a crossing is pending, which session owes it, and that this session does not - and
+  is then free to hold an ordinary conversation. The crossing record carries its owning session;
+  the demand names its owner; TB-1's mint gate, item eight's mirror ownership and this share one
+  rule: the actor that produced an arrival owes its packet, its mirrors and its evidence.
+  (Observed 2026-08-29: the demand for `iteration-closeout -> plan` rendered into the reviewer
+  session, which had produced none of it, on every Stop.)
+- **FR-033**: Method, binding on every fix in the batch: a mutation that turns its own case
+  red by asserting observable state, never call existence; every refusal touched meets the
+  refusal standard; every mirrored copy lands byte-identical in the same commit; review and
+  rework effort are tracked separately from implementation; one covering round runs on the
+  shipping tree over the whole delta since tree `1b50ae60` (W76, W77 and this batch) before the
+  tag decision.
+
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: US1 -> FR-001..FR-006; US2 -> FR-007..FR-009; US3 -> FR-010; US4 ->
@@ -485,12 +590,16 @@ Method (binding on every fix):
 - **TG-002**: Owner roles: implementer (engine/scripts/tests), spec-steward
   (records/claim alignment), reviewer (codex campaign + certification), maintainer
   (all boundary verdicts, release rulings, manual OneDrive measurement).
-- **TG-003**: Single iteration (001) for all FRs; the release leg (FR-021) executes at
-  feature-closeout per the resolved beta-stable model.
+- **TG-003**: Iteration 001 (FR-001..FR-023; closed 2026-08-29 on the signed-off tree) and
+  iteration 002 (FR-024..FR-033, the beta3 tag batch); the release leg (FR-021) executes at
+  feature-closeout per the resolved beta-stable model, after iteration 002's covering round.
 - **TG-004**: Scope is CLOSED: anything discovered during this feature goes to the
   ledger's beta4 list unless it blocks the acceptance bar itself; the reconciliation
   path for any spec/implementation conflict is a drift-log entry citing the governing
   FR plus a maintainer ruling.
+  Exercised once, 2026-08-29: the two field walks' findings entered as FR-024..FR-033 by
+  maintainer ruling because they block the acceptance bar; the six items ruled out (F-2, TB-5,
+  B-5, B-1/B-1a, B-2, B-3) and the UX programme (B-4) go to beta4 as decisions, not omissions.
 
 ### Key Entities
 
@@ -545,6 +654,32 @@ Each criterion is proven by a RED-first fixture through the shipped entry point
 - **SC-009**: Zero machinery nouns and zero unglossed IDs in rendered consumer
   surfaces.
 - **SC-010**: The banner renders the full prerelease version (0.40.0-beta3).
+- **SC-011**: The KeyContextAI crossing ladder, replayed as a fixture, mints nothing past the
+  first stage that owes an artifact, and the packet for an empty stage carries no verdict options
+  and no marker.
+- **SC-012**: The HelloWinUIReactive posture (`pr-flow`, `enforcement_mode: manual`, no origin)
+  clears the specify boundary's preflight; this repository still requires a pushed HEAD at every
+  boundary.
+- **SC-013**: A JSON-shaped `product-domain.yml` is refused in one line that names JSON and no
+  backstop line; at the lens checkpoint, not at the boundary.
+- **SC-014**: After a confirmed lens, outside work produces no re-ask naming that lens; a "yes"
+  at an open lens is answered with the one-line acknowledgment.
+- **SC-015**: A freshly created feature's `spec.md` carries no requirement placeholders and
+  cannot cross specify.
+- **SC-016**: After every crossing on a fixture, `state.md` Current Phase, `state.md` Iteration
+  Status and `plan.md` Status agree with the store; a mirror ahead of the store is refused.
+- **SC-017**: A closeout sync followed immediately by the validator reports no closed-iteration
+  edit.
+- **SC-018**: One covering round is delivered against the shipping tree, covering the delta
+  since `1b50ae60`, before the tag decision; the plan's review and rework actuals are recorded
+  separately from implementation.
+- **SC-019**: With a crossing pending, a second session in the governed project can end a
+  turn on an unrelated topic without being told to render a packet or emit a marker; the
+  owning session still is.
+- **SC-020** (FR-010, existing): a verdict-shaped turn that the capture does not record
+  produces a visible line naming what was received and what would capture; a leading quote
+  bar before the phrase is the pinned fixture (it cost the maintainer two retries on
+  2026-08-29).
 
 ## Assumptions
 
