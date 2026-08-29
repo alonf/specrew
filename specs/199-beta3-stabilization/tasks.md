@@ -220,7 +220,7 @@ estimate with the parity floor beside them as a check and a visible 2x tripwire 
   evidence-less next stage re-mints `pending-verdict-stop.md` with an approval phrase when the guard
   is removed. (Trace: FR-024, FR-033, SC-011; owns: `HandoverStore.ps1`, the skill copies,
   `launch-contract.ps1`, `refocus/general.md` + mirror, `docs/methodology/lifecycle-discipline.md`)
-- [ ] T024 [owner: Implementer] [sp: 1.0] **Capture disclosure** — when a pending crossing exists
+- [x] T024 [owner: Implementer] [sp: 1.0] **Capture disclosure** — when a pending crossing exists
   and the last human turn is verdict-shaped but not accepted, the capture emits one visible line
   naming the classification, the leading text that decided it, and that the phrase must be the
   FIRST CHARACTERS OF THE MESSAGE - not the first of the verdict lines, which is how a careful

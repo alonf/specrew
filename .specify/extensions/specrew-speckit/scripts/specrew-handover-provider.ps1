@@ -153,8 +153,15 @@ try {
     # SINGLE save path (F-174 iter-9.1): every trigger - this Stop/PostToolUse hook AND the workshop skill -
     # funnels through the one core orchestrator. Its material-change gate makes the PostToolUse (every
     # tool call) path cheap, and the hollow-journal lives there too.
-    Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
-        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser | Out-Null
+    $handoverResult = Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
+        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser
+    # FR-010 (T024): this provider is registered as an INJECT provider, so its stdout reaches the turn.
+    # The one thing it has to say is when a verdict-shaped reply was NOT captured - said at prompt entry,
+    # in the same turn the human typed it, instead of in a recap after two retries.
+    if ($null -ne $handoverResult -and ($handoverResult.PSObject.Properties.Name -contains 'disclosure') -and
+        -not [string]::IsNullOrWhiteSpace([string]$handoverResult.disclosure)) {
+        Write-Output ([string]$handoverResult.disclosure)
+    }
     exit 0
 }
 catch {

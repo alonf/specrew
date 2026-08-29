@@ -624,6 +624,62 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
     }
 }
 
+function Get-SpecrewVerdictCaptureDisclosure {
+    # FR-010 (iteration 002, T024; DRIFT-199-I002-004, -008): when a crossing is pending and the human's
+    # turn CARRIES the approval phrase but the classifier did not accept it, say so - at PROMPT-ENTRY,
+    # where the phrase first appears, not in a recap two retries later.
+    #
+    # Measured twice on 2026-08-29, both the maintainer's own text, both costing a retry: a leading
+    # terminal quote bar, and four paragraphs of prose before the phrase. In both the leading text, not the
+    # phrase, decided the classification, and nothing said so until the agent happened to check.
+    #
+    # DELIBERATELY NARROW: it fires only when the exact phrase for the PENDING crossing is present in the
+    # text and the classifier still refused. Ordinary conversation - including a turn that merely mentions a
+    # boundary - produces nothing. The recognizer is untouched; this only makes its silence audible.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$HumanText,
+        [AllowNull()][string]$NowUtc,
+        [AllowNull()][string]$Source
+    )
+    if ([string]::IsNullOrWhiteSpace($HumanText)) { return $null }
+    if (-not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return $null }
+    if (-not (Get-Command Test-SpecrewHumanVerdictToken -ErrorAction SilentlyContinue)) { return $null }
+    $pending = $null
+    try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { return $null }
+    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { return $null }
+    $to = [string]$pending.PendingToMarkerBoundary
+    $from = [string]$pending.PendingFromMarkerBoundary
+    if ([string]::IsNullOrWhiteSpace($to)) { return $null }
+    $phrase = ('approved for {0}' -f $to)
+    $text = [string]$HumanText
+    $idx = $text.IndexOf($phrase, [StringComparison]::OrdinalIgnoreCase)
+    if ($idx -lt 0) { return $null }
+    $verdict = $null
+    try { $verdict = Test-SpecrewHumanVerdictToken -Text $text } catch { return $null }
+    if ($null -eq $verdict -or [bool]$verdict.IsApproval) { return $null }
+    $lead = $text.Substring(0, [Math]::Min($idx, $text.Length))
+    $leadTrimmed = ($lead -replace '\s+', ' ').Trim()
+    $leadShown = if ($leadTrimmed.Length -le 48) { $leadTrimmed } else { ($leadTrimmed.Substring(0, 45) + '...') }
+    $because = if ([string]::IsNullOrWhiteSpace($leadShown)) {
+        'the phrase is not the first thing in the message'
+    }
+    else {
+        ("'{0}' comes before the phrase" -f $leadShown)
+    }
+    $message = ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. It reads as '{2}' because {3}, and the classification is decided by what comes FIRST in the message - not by the first of the verdict lines. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send a message whose FIRST characters are: {4}" -f $from, $to, [string]$verdict.Action, $because, $phrase)
+    try {
+        $journal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+        $dir = Split-Path -Parent $journal
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
+        (([pscustomobject]@{ event = 'verdict-not-captured-disclosed'; recorded_at = $when; from = $from; to = $to; action = [string]$verdict.Action; leading_text = $leadShown; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
+    }
+    catch { $null = $_ }
+    return $message
+}
+
 function Invoke-SpecrewBoundaryVerdictCapture {
     # THE verdict-authority write path, shared by Stop and prompt-entry hooks. Stop is still the backstop, but
     # UserPromptSubmit/PreInvocation captures immediately after the human types the verdict so a weak host cannot
@@ -1036,10 +1092,17 @@ function Update-SpecrewRollingHandover {
             Write-SpecrewWorkshopAuthorityReceipt -ProjectRoot $ProjectRoot -Response $LastUserMessage `
                 -HostKind $fromHost -SourceEvent $Source | Out-Null
         }
-        Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
+        $captureOutcome = Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
             -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
-            -Source $Source -NowUtc $NowUtc | Out-Null
-        return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary }
+            -Source $Source -NowUtc $NowUtc
+        # FR-010 (T024): a verdict-shaped turn that did NOT authorize must say so HERE - the prompt entry is
+        # where the phrase first appears, and the alternative is the human learning it from a recap two
+        # retries later (DRIFT-199-I002-004, both instances the maintainer's own text).
+        $disclosure = $null
+        if ($null -eq $captureOutcome -or -not [bool]$captureOutcome.authorized) {
+            $disclosure = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $ProjectRoot -HumanText $LastUserMessage -NowUtc $NowUtc -Source $Source
+        }
+        return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary; disclosure = $disclosure }
     }
 
     # T003: the workshop phase, surfaced ONLY while in-flight (the pre-specify intake window); quiet otherwise.

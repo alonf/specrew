@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "199-beta3-stabilization"
 iteration: "002"
-updated_at: "2026-08-29T17:37:25.2440235Z"
+updated_at: "2026-08-29T17:44:36.7624755Z"
 tasks:
   T014:
     title: "Mint gate: from-stage owed artifacts on disk at all three minting mechanisms; the verdict marker carries the crossing identity; ladder-replay and stale-marker fixtures"
@@ -65,9 +65,9 @@ tasks:
     blocked_reason: ""
   T024:
     title: "Capture disclosure at prompt-entry: one line naming the classification, the leading text that decided it, and that the phrase must be the first characters of the message; every prompt-entry outcome journaled; fixtures: leading quote bar, leading prose"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-08-29T17:44:36.7588627Z"
+    completed_at: "2026-08-29T17:44:36.7588627Z"
     blocked_reason: ""
   T025:
     title: "Method sweep: mirror byte-identity, mutation audit per fix, refusal-standard pass over every touched message, release-notes draft; the coverage line names the campaign its figure belongs to and says when the current iteration has no campaign yet (DRIFT-199-I002-006, honest labelling only)"
