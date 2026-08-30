@@ -688,6 +688,20 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     half, and nothing states which half. So the beta4 work is not "add more guards" - it is **make every
     guard declare its scope, and test the half it does not cover.** A guard whose name overstates it is
     worse than no guard, because it retires the question.
+  - **THE GREENFIELD SMOKE PATH ALREADY EXISTS AS A PROTOTYPE, AND IT COST TEN MINUTES** (maintainer,
+    2026-08-30). The scratch replay written to answer one question is most of the instrument this batch
+    argued should gate the tag: **a closed iteration plus a fresh one, driven through the real top-level
+    sync entry (`Invoke-SpecrewBoundaryStateSync`) on real machinery.** It found a defect on its first run
+    that eleven mutation-proved suites and a purpose-written fixture had all missed.
+    - What it already proves: the whole sync path across a CYCLE boundary - the transition no fixture in
+      this repository crossed, because every one of them starts mid-iteration.
+    - What it does not yet do, and what beta4 owes it: drive the boundaries through captured human verdicts
+      rather than seeding `last_authorized_boundary`, and cover specify -> plan -> tasks rather than one
+      crossing.
+    - **The beta4 case is now concrete rather than aspirational**: this is minutes of work per run, not a
+      programme, and the argument for it is no longer "a smoke path would be good" but "the prototype found
+      a shipping defect the day it was written." Prototype preserved in-tree at
+      `tools/smoke/greenfield-cycle-replay.ps1`; the durable form belongs in the release-gate lane.
   - **WHERE TWO ERROR DIRECTIONS HAVE ASYMMETRIC RECOVERABILITY, THE GUARD BELONGS ON THE IRREVERSIBLE
     SIDE** (maintainer, 2026-08-30, generalising the cycle-wedge fix). Recorded as a rule rather than as
     one fix's rationale, because it is the shape of every fail-open/fail-closed argument this fortnight:

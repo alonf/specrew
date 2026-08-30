@@ -1575,6 +1575,23 @@ before being touched.
     place with better manners.
   - Fixed with the same ceiling (`-BoundaryCeiling`, passed from the gate). Re-run end to end: both issues
     gone, 003 stays `planning`, closed 002 untouched. Case 2b pins it; mutation-proved.
+  - **RECORDED AS TWO FAMILIES AT ONCE, at the maintainer's instruction, because the pairing is why it
+    would have been expensive in the field:**
+    1. **One side of a comparison fixed while the reader kept trusting the value the writer had stopped
+       trusting.** A comparison has two ends and they share an assumption; repairing the writer's end left
+       the checker asserting against a premise nothing else still held. This is the general form of
+       DRIFT-199-I002-020 (*a fact that fails two contracts reports one*) applied to a FIX rather than to a
+       fact: **fixing one side of a shared assumption relocates the defect rather than removing it.**
+    2. **A refusal whose own remedy re-creates the defect it is refusing.** *"Re-run the boundary sync for
+       'iteration-closeout'"* is precisely the action that forward-writes the new iteration's copies - the
+       wedge the writer's cap had just prevented. Same shape as the `specrew update` advice
+       (DRIFT-199-I002-021), which would have reverted the fixes it was offered to protect, and the sixth
+       instance of the refusal family.
+    **Why the pairing is the expensive part**: alone, either is survivable - a half-fix eventually surfaces,
+    and a wrong remedy is usually ignored once. Together they are a trap that PAYS to be followed: the
+    refusal is loud, specific, and actionable, and following it restores the original defect while the
+    reader believes they have just repaired it. In the field this is the difference between a bug and a
+    bug that costs a session.
 - **The honest limit that remains**: the replay still SEEDS `last_authorized_boundary`, because a fully real
   cycle needs captured human verdicts across a whole iteration. It is a large step from fixture toward field
   - the full sync path on real machinery - and it is not the field. **The field proof arrives when 003
