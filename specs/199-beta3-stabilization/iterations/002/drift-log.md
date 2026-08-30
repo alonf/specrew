@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 22 (DRIFT-199-I002-001 through -022)
+**Total drift events**: 23 (DRIFT-199-I002-001 through -023)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1086,6 +1086,66 @@ which behaviours to repeat.**
   invoking session identity, or use a per-session marker instead of the last session started anywhere in the
   project; (3) remove the numeric-approval path from the guide, or scope it to a surface that still renders
   approval as option 1.
+
+### DRIFT-199-I002-023 — the walk: two greenfield fixes proved in a real project, and one new defect that only a real project could show (fixed same session)
+
+**The validation walk the maintainer moved AHEAD of review-signoff, exactly so this would be found before
+signoff rather than after it.** Project: `C:\Dev\HelloWinUIReactive`, updated to the build from `cb497fe2`.
+
+- **T016 PROVED IN THE FIELD.** HelloWinUIReactive has **no git remote** - the no-origin condition T016
+  addresses, and one this repository cannot reproduce from inside itself. The specify preflight now reports:
+  - `pushed-head` -> **not-applicable**: *"Release model 'pr-flow' governs closeout delivery only; nothing is
+    owed to origin."*
+  - `verdict-commit-durable` -> **not-applicable**: verdicts bind to commit `11705e27` and later gates
+    resolve it back.
+  Both origin-dependent checks stand down in a project with no origin. This is the TB-3/FR-025 split doing
+  in a real consumer what its mutation could only assert.
+- **T020 PROVED IN THE FIELD.** A second feature was created in that project
+  (`002-settings-page-where`). The scaffolded spec is the stub, verbatim: the `specrew:spec-not-yet-authored`
+  sentinel, **zero** placeholders and **zero** `FR-\d{3}` ids, the sentence *"This specification has not been
+  written yet, and that is deliberate"*, and the two prohibitions the original walk violated - *"do not write
+  requirements into it, and do not delete it."*
+- **NEW DEFECT, FOUND ONLY BECAUSE THE WALK RAN — and it is the sharpest kind of refusal defect: specific,
+  confident and false.** The specify preflight reported:
+
+  > `owed-artifact  fail  Boundary 'specify' is missing owed evidence: spec.md.`
+
+  **`spec.md` exists on disk.** Naming the same project with `-Feature 001-reactive-ui-tutorial` makes the
+  identical check **pass**. The cause: with no resolvable feature - the ordinary state of a project whose
+  `start-context.json` carries no `feature_ref`, which is exactly what an interrupted walk leaves behind -
+  `$base` is `$null`, and every owed path was added to `$missing` unconditionally. **Nothing was checked, and
+  a definite absence was reported anyway.**
+  - **Two readers of one contract, disagreeing, and the wrong one is the one a human meets.** FR-024's
+    `Test-SpecrewBoundaryOwedArtifactsOnDisk` - written in THIS iteration - already draws the distinction and
+    returns `Absent=$false` with no feature identity, because *a positive ABSENT reading refuses loudly while
+    UNVERIFIABLE keeps today's behaviour* (method rule 12). Verified directly against the same project: the
+    mint-side reader says `Absent=False`, the preflight said missing. Same family as DRIFT-199-I002-010 and
+    -020: two surfaces, nothing arbitrating.
+  - **Resolution — FIXED same session.** The preflight now separates the two answers: unresolvable feature ->
+    `not-applicable`, with a message that names the actual limit and the one action (*"could not resolve which
+    feature it belongs to, so nothing was checked... pass -Feature <feature-ref>, or record the active feature
+    in .specrew/start-context.json"*). A resolvable feature still checks for real, so the fix does not blind
+    the control. Verified against the live walk project: the failing case now reads `not-applicable`.
+  - **Mutation-proved**: restoring the unconditional-missing behaviour turns two assertions in
+    `tests/unit/gate-preflight.Tests.ps1` red - one that no file is called absent when none was looked for,
+    one that a named feature still passes.
+- **What the walk could NOT do, stated rather than glossed**: T017 and T018 need a workshop with **typed human
+  answers**. The new feature's controller exists before the first question (as CLAUDE.md requires) and carries
+  `human_turn_contract: typed-turns-v1`, `agenda_status: pending-confirmation`, empty agenda - so the fresh
+  workshop is staged and waiting. Simulating those answers would fabricate exactly the evidence this walk was
+  moved earlier to obtain. **Handed back to the maintainer**: two or three lenses is the stated bar - whether
+  the controller advances on confirmation, and whether a lens record is validated where it can still be fixed.
+- **An observation, deliberately NOT filed as a defect**: `create-governed-feature.ps1` printed
+  `BRANCH_NAME: 002-settings-page-where` while `git branch --list` shows only `master`. The governed script
+  RELAYS that value from the upstream scaffold rather than creating the branch itself, so whether a branch was
+  owed here is a question about upstream behaviour in a no-remote repository, not an established defect.
+  Recorded as a thing to check, not a thing to claim - DRIFT-199-I002-014's rule.
+- **Citation**: FR-025 (T016), FR-029 (T020), FR-024 (the absent/unverifiable distinction the preflight was
+  missing), method rule 12, FR-033's refusal standard.
+- **Class closure**: the guard is the new `gate-preflight` case above, and the generalisable form is already
+  named in FR-024's own comment: **a check that cannot look must say it did not look.** Reporting a specific
+  absence is a claim about a file; reporting unverifiable is a claim about the check. They are different
+  sentences and only one of them can be false about the world.
 
 ### Resolution Strategies (Unused)
 

@@ -93,6 +93,32 @@ Describe 'Boundary gate preflight' {
         ($result.checks | Where-Object name -eq owed-artifact).message | Should -Match 'review.md'
     }
 
+    It 'reports owed evidence as UNVERIFIABLE, never as absent, when the feature cannot be resolved' {
+        # HelloWinUIReactive walk, 2026-08-30. With no resolvable feature - the ordinary state of a project
+        # whose start-context carries no feature_ref - this check named `spec.md` as missing owed evidence
+        # for a spec.md that existed on disk. Naming the same project with -FeatureRef made the identical
+        # check pass. A refusal that is specific, confident and false is worse than one that admits a limit.
+        #
+        # FR-024's sibling reader already draws the distinction (Test-SpecrewBoundaryOwedArtifactsOnDisk
+        # returns Absent=$false with no feature identity, method rule 12). Two readers of one contract
+        # disagreed, and the one a human meets at a boundary was the wrong one.
+        $root = New-PreflightRepo 'owed-unverifiable'
+        $feature = Join-Path $root 'specs/001-demo'
+        $null = New-Item -ItemType Directory -Path $feature -Force
+        Set-Content -LiteralPath (Join-Path $feature 'spec.md') -Value '# Feature Specification: Demo' -Encoding UTF8
+        & git -C $root add .
+        $unresolved = Invoke-SpecrewGatePreflight -ProjectRoot $root -BoundaryType specify
+        $owed = $unresolved.checks | Where-Object name -eq owed-artifact
+        $owed.status | Should -Be 'not-applicable' -Because 'nothing was checked, so nothing may be reported as missing'
+        $owed.message | Should -Not -Match 'is missing owed evidence' -Because 'a file that was never looked for must not be called absent'
+        $owed.message | Should -Match 'could not resolve which feature' -Because 'the refusal names the actual limit'
+        $owed.message | Should -Match '-Feature' -Because 'and the one action that resolves it'
+
+        # And the same tree, with the feature named, still checks for real - the fix must not blind the check.
+        $resolved = Invoke-SpecrewGatePreflight -ProjectRoot $root -BoundaryType specify -FeatureRef 001-demo
+        ($resolved.checks | Where-Object name -eq owed-artifact).status | Should -Be 'pass'
+    }
+
     It 'is wired before the boundary ratchet and every state mutation for initialized beta3 projects' {
         $source = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/sync-boundary-state.ps1') -Raw -Encoding UTF8
         $preflightIndex = $source.IndexOf('Invoke-SpecrewGatePreflight', [StringComparison]::Ordinal)

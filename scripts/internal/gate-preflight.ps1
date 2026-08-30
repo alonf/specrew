@@ -242,11 +242,31 @@ function Invoke-SpecrewGatePreflight {
 
     $contract = @(Get-SpecrewBoundaryStageEvidenceContract | Where-Object { $_.Boundary -ceq $BoundaryType })
     $missing = New-Object System.Collections.Generic.List[string]
+    $owedUnverifiable = $false
     if ($contract.Count -eq 1 -and [string]$contract[0].Kind -ne 'none') {
         $base = if ([string]$contract[0].Kind -eq 'iteration-file') { $iterationPath } else { $featurePath }
-        foreach ($relative in @($contract[0].Paths)) {
-            $path = if ($null -eq $base) { $null } else { Join-Path $base ([string]$relative) }
-            if ($null -eq $path -or -not (Test-Path -LiteralPath $path -PathType Leaf)) { $missing.Add([string]$relative) | Out-Null }
+        # ABSENT AND UNVERIFIABLE ARE DIFFERENT ANSWERS, and this check used to give the first for both.
+        #
+        # Found in the HelloWinUIReactive walk, 2026-08-30: with no resolvable feature - the ordinary state
+        # of a project whose start-context carries no feature_ref - $base is null, every owed path was added
+        # to $missing, and the gate reported `Boundary 'specify' is missing owed evidence: spec.md` for a
+        # spec.md THAT EXISTS ON DISK. Naming the same project with -Feature makes the identical check pass.
+        # A consumer is told a file they are looking at is missing, which is the worst kind of refusal: it
+        # is specific, confident and false.
+        #
+        # The sibling implementation of this exact question already draws the distinction. FR-024's
+        # Test-SpecrewBoundaryOwedArtifactsOnDisk returns Absent=$false with no feature identity, because a
+        # positive ABSENT reading refuses loudly while UNVERIFIABLE keeps today's behaviour - method rule 12,
+        # fail open on the diagnosis and say so. Two readers of one contract disagreed, and the one a human
+        # meets at a boundary was the wrong one.
+        if ($null -eq $base) {
+            $owedUnverifiable = $true
+        }
+        else {
+            foreach ($relative in @($contract[0].Paths)) {
+                $path = Join-Path $base ([string]$relative)
+                if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $missing.Add([string]$relative) | Out-Null }
+            }
         }
         if ([string]$contract[0].Kind -eq 'content' -and $missing.Count -eq 0) {
             $content = Get-Content -LiteralPath (Join-Path $featurePath ([string]$contract[0].Paths[0])) -Raw -Encoding UTF8
@@ -254,7 +274,10 @@ function Invoke-SpecrewGatePreflight {
             if ($markerMatches.Count -eq 0) { $missing.Add(([string]$contract[0].Paths[0] + ' required content')) | Out-Null }
         }
     }
-    if ($missing.Count -gt 0) {
+    if ($owedUnverifiable) {
+        $checks.Add((New-SpecrewGatePreflightCheck -Name 'owed-artifact' -Status not-applicable -Message ("Boundary '$BoundaryType' owes evidence, but this run could not resolve which feature it belongs to, so nothing was checked. Name the feature to check it: pass -Feature <feature-ref>, or record the active feature in .specrew/start-context.json.") -Evidence $null)) | Out-Null
+    }
+    elseif ($missing.Count -gt 0) {
         $checks.Add((New-SpecrewGatePreflightCheck -Name 'owed-artifact' -Status fail -Message ("Boundary '$BoundaryType' is missing owed evidence: {0}." -f ($missing -join ', ')) -Evidence $missing.ToArray())) | Out-Null
     }
     else {
