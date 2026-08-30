@@ -363,3 +363,4 @@ tests/unit/work-kind-validator.tests.ps1
 tests/unit/wrapper-docs-parity.tests.ps1
 tests/unit/wrapper-filelist-parity.tests.ps1
 tests/unit/wrapper-registry-parity.tests.ps1
+tests/unit/package-filelist-completeness.tests.ps1
