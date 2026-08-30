@@ -55,7 +55,7 @@ COOPERATIVE (agent, best-effort)
           |
           v
 HUMAN (sole gate authority)
-  - types "approved for <boundary>", "1", or "option 1" when that option is approval
+  - types the full phrase "approved for <boundary>" - the only form that is captured
           ^
           |
 DETERMINISTIC (scripts, hooks, artifacts)
@@ -105,7 +105,7 @@ One boundary, end to end:
 2. The agent runs `sync-boundary-state.ps1`. This is deterministic: it advances the mechanical cursor in `.specrew/start-context.json` and writes `.specrew/runtime/pending-verdict-stop.md` with the first unpaid crossing, the approval phrase, and the exact verdict marker from `Get-SpecrewPendingVerdictState`.
 3. The agent renders the six-section packet and copies the marker from the pending-verdict artifact. This is cooperative, but backed by a deterministic value.
 4. The agent stops. The Stop conformance provider checks whether the marker for the pending crossing is present. If not, it blocks and forces a re-render. If yes, the turn can end.
-5. The human reads the packet and types `approved for <boundary>`, or a concise `1` / `option 1` when option 1 is visibly the approval option. This is the sole authorization signal.
+5. The human reads the packet and types `approved for <boundary>`. **The typed phrase is the sole authorization signal, and a number is not one of its forms.** Boundary stops render four sendable lines and offer no selection affordance - no numbered list, no picker, no menu - because only a typed phrase is captured, and an interface that offers a selection is offering a control that cannot do the thing it names. Measured on two hosts: a Copilot picker selection was not captured and its agent then invoked the authorization writer directly; a Claude numbered option was not captured and its agent edited and committed the spec on the strength of it. Same cause, opposite failure modes. If a human types `1` anyway, answer them helpfully and ask for the phrase - do not treat it as approval, and do not pre-emptively warn about numbering, which plants the idea.
 6. The `UserPromptSubmit` verdict-capture path reads the marker plus the just-submitted human approval, then calls `Add-SpecrewBoundaryAuthorization` to update `verdict_history` before the agent continues. Stop runs the same capture as a backstop. If the transcript-capable host dropped or mis-targeted the invisible marker, verdict capture may instead bind the approval to the single pending crossing from `.specrew/runtime/pending-verdict-stop.md` / `Get-SpecrewPendingVerdictState`.
 
 The marker is still preferred and remains the best audit tie. The fallback exists for weak renderers: no pending state, vague replies (`yes`, `ok`, `continue`), rejection/discussion choices, `option 2`, or a named boundary that contradicts the pending crossing do not authorize. This preserves "one approval advances one boundary" without making the user repeat a clear approval because a model omitted an invisible comment.
@@ -119,7 +119,7 @@ The marker is still preferred and remains the best audit tie. The fallback exist
 | Catch missing, wrong, or absent packet at Stop | Deterministic | Conformance provider |
 | Suppress packets during workshop and clarify questions | Deterministic | Conformance provider exclusions |
 | Grade packet quality and reference form | Deterministic, reactive | Handoff governance validator |
-| Supply the verdict | Human | The user typing `approved for <boundary>`, `1`, or `option 1` when option 1 is approval |
+| Supply the verdict | Human | The user typing `approved for <boundary>` - the full phrase, as a normal chat message; a number is not captured, and a reply inside a question UI or picker is not captured either |
 | Capture verdict into state | Deterministic | `UserPromptSubmit` immediate capture, Stop backstop, marker-preferred verdict capture, pending-artifact fallback, then `Add-SpecrewBoundaryAuthorization` |
 | Advance the gate | Deterministic | Captured human verdict only; never agent-invented |
 

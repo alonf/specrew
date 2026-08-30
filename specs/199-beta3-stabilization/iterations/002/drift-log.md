@@ -1038,8 +1038,47 @@ which behaviours to repeat.**
   the rule exists to force is whether that is convergence or a floor.
 - **Citation**: FR-033 (the fail-soft trace rule, applied incompletely here); FR-032/SC-019 (finding 2); the
   convergence rule recorded in `plan.md`; the beta4 refusal/instruction-corpus programme (finding 3).
-- **Resolution**: OPEN, awaiting the maintainer. Nothing fixed, nothing re-run, no round spent. The campaign
-  sits at a recorded pause (`run-20260830-003634780-04d58169`) with the human's 1/2/3 answer outstanding.
+- **Resolution — the maintainer's ruling, 2026-08-30, and what was done under it.**
+  - **On convergence, the CLASS is the signal and the count is the weaker one** (maintainer): round 1 found
+    three distinct modes - a name mismatch across a seam, a set-never-read, a test certifying a defect. The
+    rework found those same three modes again, in the tests. Round 2 found ONE instance of a rule established
+    during the previous cycle. *"Fewer instances of already-named modes is convergence; novel modes would not
+    be. We are no longer in the second case."* And the decisive framing: *"convergence is not the real answer,
+    because you never reach zero on a codebase this well instrumented - you reach a decision."*
+  - **Finding 1 - DEFERRED to beta4, because it is what triggered the rule.** *"That is the rule working, not
+    a dodge."* The root cause is fixed and proved at runtime; what remains is diagnosis quality for future
+    unknown write failures - important, not a tag blocker. The admission stands unedited on the maintainer's
+    instruction, as being *"worth more than the fix would be"*: **the suite survives this by one assertion,
+    which is luck rather than design.**
+  - **Finding 2 - FIXED, and it was undersold in this entry's first draft.** T023 was one of the ten
+    tag-blocking items. Under parallel sessions in a shared worktree it does not merely fail, it **inverts**:
+    the packet is suppressed in the session that did the work and demanded from the one that did not. That is
+    *worse than the TB-6 it fixed* - the original produced noise, this produces a governance stop landing in
+    the wrong window - and the exposed configuration is the one this project runs in. *"A tag-blocking fix
+    that is wrong in the maintainer's own setup is not shippable."*
+    The fix: `Get-SpecrewCrossingOwnerIdentity` trusts the shared, last-writer-wins marker for attribution
+    ONLY when it cannot be ambiguous - exactly one live session, counted from the per-session
+    `conformance-sessions` directories the provider already maintains. With more than one, ownership reads
+    `unknown`, which resolves to indeterminate and renders the demand project-wide: noisy, the pre-FR-032
+    behaviour, and never wrong about who owes what. **A wrong owner is worse than no owner** (method rule 12,
+    fail open on the diagnosis and out loud - the refusal is written to stderr, not swallowed).
+    `Set-SpecrewPendingBoundaryCrossingScope` also gained `-SessionId`/`-HostKind`, so a caller that KNOWS its
+    identity binds exactly and never reaches the fallback. **Flagged rather than grown**: threading a session
+    id from each host's hook into the sync chain - which today carries none at all, no parameter and no env
+    seam - is the complete binding and is beta4.
+    Mutation-proved: disabling the ambiguity gate turns `crossing-owner` case 8 red. Cases 8b and 8c pin the
+    two halves the fix must not break - a single live session still resolves to its identity (FR-032 is not
+    made inert), and an explicit session id wins over the marker even under concurrency.
+  - **Finding 3 - FIXED, by deletion.** *"It is a deletion and it is actively teaching a measured defect."*
+    All three passages in `docs/methodology/lifecycle-discipline.md` (lines 58, 108, 122) now say the typed
+    phrase is the sole authorization signal and that a number is not one of its forms, with the two-host
+    measurement recorded inline. Instruction-layer causation, F-3's family: the file is loaded into agent
+    context by the refocus hook, so the guidance was the mechanism.
+- **SEQUENCE, fixed by the maintainer with a hard edge**: fixes 2 and 3 -> the walk, both parts -> fix what
+  the walk finds -> **round 3, which is the LAST round**. Two remain in the allowance and one is spent.
+  Whatever round 3 finds is recorded and triaged to beta4 unless it would block a tester's first hour.
+  *"There is no round 4, and I am committing to that now rather than deciding it under the pressure of a
+  fresh finding."*
 - **Class closure**: NONE - the fixes are the maintainer's call under the convergence rule, and inventing
   guards for changes that may not be authorized is the shape this batch has repeatedly ruled against. Named
   in advance: (1) treat `recorded = false` as the fail-soft diagnostic path in both callers, or propagate the

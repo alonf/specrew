@@ -1446,21 +1446,43 @@ function Get-SpecrewCrossingOwnerIdentity {
     $session = $SessionId
     $hostName = $HostKind
     if ([string]::IsNullOrWhiteSpace($session) -and -not [string]::IsNullOrWhiteSpace($env:SPECREW_SESSION_ID)) { $session = [string]$env:SPECREW_SESSION_ID }
+    # ROUND-2 FINDING `global-marker-misassigns-owner`. session-marker.json is PROJECT-WIDE and
+    # last-writer-wins: SessionBootstrapManager rewrites it on every SessionStart. With two sessions in one
+    # worktree, session A running boundary sync reads B as the owner; the provider then SUPPRESSES the packet
+    # in A - the session that did the work - and DEMANDS it from B. FR-032/SC-019 is not defeated by that, it
+    # is INVERTED, and a governance stop lands in the wrong window. The exposed configuration is the one this
+    # project runs in.
+    #
+    # So the marker is trusted for attribution only when it cannot be ambiguous: exactly one live session in
+    # this project. With more than one, ownership reads `unknown`, which resolves to indeterminate and renders
+    # the demand project-wide - noisy, and the pre-FR-032 behaviour, but never wrong about who owes what.
+    # Method rule 12, fail open on the diagnosis and out loud: A WRONG OWNER IS WORSE THAN NO OWNER.
+    #
+    # This is the sound fallback, not the complete fix. Exact binding means threading a session id from each
+    # host's hook into the sync chain, which today carries none at all - no parameter and no env seam.
+    # `Set-SpecrewPendingBoundaryCrossingScope` now accepts -SessionId, so a caller that KNOWS its identity
+    # binds exactly and never reaches this fallback; wiring the hosts to pass it is beta4.
     if ([string]::IsNullOrWhiteSpace($session)) {
-        try {
-            $markerPath = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/session-marker.json'
-            if (Test-Path -LiteralPath $markerPath -PathType Leaf) {
-                $raw = Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8
-                if (-not [string]::IsNullOrWhiteSpace($raw)) {
-                    $marker = $raw | ConvertFrom-Json
-                    if ($marker -isnot [System.Array]) {
-                        if ($null -ne $marker.PSObject.Properties['session_id']) { $session = [string]$marker.session_id }
-                        if ([string]::IsNullOrWhiteSpace($hostName) -and $null -ne $marker.PSObject.Properties['host']) { $hostName = [string]$marker.host }
+        $liveSessionCount = Get-SpecrewLiveConformanceSessionCount -ProjectRoot $ProjectRoot
+        if ($liveSessionCount -gt 1) {
+            [Console]::Error.WriteLine(("[specrew-governance] NOTE CROSSING_OWNER_UNKNOWN_CONCURRENT {0} live sessions in this project, so the shared session marker cannot say which one is asking; recording the crossing owner as unknown rather than guessing. The packet renders for every session until one of them is identified." -f $liveSessionCount))
+        }
+        else {
+            try {
+                $markerPath = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/session-marker.json'
+                if (Test-Path -LiteralPath $markerPath -PathType Leaf) {
+                    $raw = Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8
+                    if (-not [string]::IsNullOrWhiteSpace($raw)) {
+                        $marker = $raw | ConvertFrom-Json
+                        if ($marker -isnot [System.Array]) {
+                            if ($null -ne $marker.PSObject.Properties['session_id']) { $session = [string]$marker.session_id }
+                            if ([string]::IsNullOrWhiteSpace($hostName) -and $null -ne $marker.PSObject.Properties['host']) { $hostName = [string]$marker.host }
+                        }
                     }
                 }
             }
+            catch { $null = $_ }
         }
-        catch { $null = $_ }
     }
     if ([string]::IsNullOrWhiteSpace($session)) { return 'unknown' }
     $safeHost = if ([string]::IsNullOrWhiteSpace($hostName)) { 'unknown' } else { (($hostName -replace '[^a-zA-Z0-9-]+', '-').Trim('-').ToLowerInvariant()) }
@@ -1514,6 +1536,31 @@ function Resolve-SpecrewCrossingOwnership {
     $result.DemandRenders = $false
     $result.Note = ("A crossing is pending, owed by session '{0}'; this session owes nothing for it." -f $recorded)
     return $result
+}
+
+function Get-SpecrewLiveConformanceSessionCount {
+    # How many DISTINCT sessions have been active in this project inside the liveness window.
+    #
+    # The conformance provider touches `.specrew/runtime/conformance-sessions/<sha256(owner)>` for the
+    # session it runs in, so this directory count is the only per-session signal the project keeps. It
+    # answers ONE question - whether the shared, last-writer-wins session marker can be trusted to name the
+    # session that is asking. Never WHICH session; only how many.
+    [CmdletBinding()]
+    param([AllowNull()][string]$ProjectRoot, [int]$MaxAgeMinutes = 180)
+    try {
+        $root = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { (Get-Location).Path } else { Resolve-ProjectPath -Path $ProjectRoot }
+        $dir = Join-Path $root '.specrew/runtime/conformance-sessions'
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return 0 }
+        $cutoff = (Get-Date).ToUniversalTime().AddMinutes(-1 * [Math]::Abs($MaxAgeMinutes))
+        $live = 0
+        foreach ($sessionDir in @(Get-ChildItem -LiteralPath $dir -Directory -ErrorAction SilentlyContinue)) {
+            $newest = @(Get-ChildItem -LiteralPath $sessionDir.FullName -File -ErrorAction SilentlyContinue |
+                    Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1)
+            if ($newest.Count -gt 0 -and $newest[0].LastWriteTimeUtc -ge $cutoff) { $live++ }
+        }
+        return $live
+    }
+    catch { return 0 }
 }
 
 function Test-SpecrewCrossingOwnerSessionLive {
@@ -2901,6 +2948,11 @@ function Set-SpecrewPendingBoundaryCrossingScope {
         [Parameter(Mandatory = $true)][string]$WorkingBoundary,
         [Parameter(Mandatory = $true)][string]$BoundaryCommitHash,
         [AllowNull()][string]$RecordedAt,
+        # The invoking session's identity, when the caller knows it. Supplied, ownership is BOUND rather
+        # than inferred and Get-SpecrewCrossingOwnerIdentity never consults the shared project-wide marker.
+        # Omitted, the sound fallback applies (one live session -> marker; more than one -> unknown).
+        [AllowNull()][string]$SessionId,
+        [AllowNull()][string]$HostKind,
         [switch]$OpenNextCrossingWhenBoundaryAuthorized
     )
     $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
@@ -2921,6 +2973,7 @@ function Set-SpecrewPendingBoundaryCrossingScope {
         -RecordedAt $RecordedAt `
         -ExistingScope $existingScope `
         -OpenNextCrossingWhenBoundaryAuthorized:$OpenNextCrossingWhenBoundaryAuthorized `
+        -Owner $(if (-not [string]::IsNullOrWhiteSpace($SessionId)) { Get-SpecrewCrossingOwnerIdentity -ProjectRoot $ProjectRoot -SessionId $SessionId -HostKind $HostKind } else { '' }) `
         -ProjectRoot $ProjectRoot -FeatureRef $mintFeature -IterationNumber $mintIteration
     $updated = [ordered]@{
         enabled                  = [bool]$state.State['enabled']

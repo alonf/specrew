@@ -169,6 +169,33 @@ $out6 = Invoke-Provider -Root $f6.Root -SessionId '' -Transcript (Write-PlainTra
 Assert-True ($out6 -match 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') 'the demand renders project-wide, exactly as before the fix'
 Assert-True ($out6 -match 'may have reached a session that did not produce the work') 'the gap is named out loud in the packet directive'
 
+Write-Host 'Case 8 (round-2 finding `global-marker-misassigns-owner`): two live sessions -> the shared marker is NOT trusted'
+# session-marker.json is PROJECT-WIDE and last-writer-wins. Session A starts, B starts in the same worktree,
+# A runs boundary sync - and A recorded B as owner, so the provider suppressed A's packet and demanded it
+# from B. FR-032/SC-019 INVERTED: the governance stop lands in the session that did not do the work, which
+# is worse than the TB-6 noise it replaced. A WRONG OWNER IS WORSE THAN NO OWNER, so with more than one live
+# session ownership must read `unknown` - which resolves to indeterminate and renders the demand for
+# everyone - rather than naming whichever session started last anywhere in the project.
+$f8 = New-OwnerFixture -SessionId 'session-beta'   # the marker names BETA: the last session to start
+Touch-SessionState -Root $f8.Root -Owner 'claude|session-alpha'
+Touch-SessionState -Root $f8.Root -Owner 'claude|session-beta'
+Assert-True ((Get-SpecrewLiveConformanceSessionCount -ProjectRoot $f8.Root) -eq 2) 'the fixture has two live sessions - the condition that makes the shared marker ambiguous'
+$owner8 = Get-SpecrewCrossingOwnerIdentity -ProjectRoot $f8.Root
+Assert-True ($owner8 -eq 'unknown') 'ownership is `unknown`, NOT the last session to start - the inversion is refused at its cause'
+$resolved8 = Resolve-SpecrewCrossingOwnership -RecordedOwner $owner8 -CurrentOwner 'claude|session-alpha'
+Assert-True ([bool]$resolved8.DemandRenders) 'and the demand still renders, so the session that did the work is never silently excused'
+
+Write-Host 'Case 8b: ONE live session -> the marker is still trusted, so the fix does not make FR-032 inert'
+$f8b = New-OwnerFixture -SessionId 'session-alpha'
+Touch-SessionState -Root $f8b.Root -Owner 'claude|session-alpha'
+Assert-True ((Get-SpecrewCrossingOwnerIdentity -ProjectRoot $f8b.Root) -eq 'claude|session-alpha') 'a single live session still resolves to its identity - the common case keeps the behaviour FR-032 was built for'
+
+Write-Host 'Case 8c: an EXPLICIT session id binds ownership and never consults the shared marker'
+$f8c = New-OwnerFixture -SessionId 'session-beta'   # marker says beta; the caller says alpha and wins
+Touch-SessionState -Root $f8c.Root -Owner 'claude|session-alpha'
+Touch-SessionState -Root $f8c.Root -Owner 'claude|session-beta'
+Assert-True ((Get-SpecrewCrossingOwnerIdentity -ProjectRoot $f8c.Root -SessionId 'session-alpha' -HostKind 'claude') -eq 'claude|session-alpha') 'a caller that knows its identity binds it, even with two live sessions - the fallback is only for callers that do not'
+
 Write-Host 'Case 7: the three-state resolver, directly'
 $r7a = Resolve-SpecrewCrossingOwnership -RecordedOwner 'claude|a' -CurrentOwner 'claude|a'
 $r7b = Resolve-SpecrewCrossingOwnership -RecordedOwner 'unknown' -CurrentOwner 'claude|a'
@@ -179,6 +206,6 @@ Assert-True ([string]$r7b.State -eq 'owner-indeterminate' -and [bool]$r7b.Demand
 Assert-True ([string]$r7c.State -eq 'owner-indeterminate' -and [bool]$r7c.DemandRenders) 'a session with no identity -> indeterminate, demand renders'
 Assert-True ([string]$r7d.State -eq 'owner-differs' -and -not [bool]$r7d.DemandRenders) 'a different host -> owner-differs, demand suppressed'
 
-foreach ($f in @($f1, $f2, $f3, $f4, $f5, $f6)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+foreach ($f in @($f1, $f2, $f3, $f4, $f5, $f6, $f8, $f8b, $f8c)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("crossing-owner: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'crossing-owner: all assertions passed' -ForegroundColor Green
