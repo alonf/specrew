@@ -627,6 +627,13 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     migrate to the direction it does not cover.** Ask what the guard does NOT catch, because
     that is where the surviving instances live; a codebase under a strict reader-check will
     accumulate write-only state specifically, and nothing in its test output will say so.
+  - **BETA4 ITEM — the authority store owes a provenance slot to any repaired fact, not to this one**
+    (maintainer, 2026-08-30). `PendingPauseFact` and its siblings have closed field contracts with no
+    way to say "this fact was reconstructed, from what, when and why", so a legitimately repaired fact
+    is indistinguishable from an organically written one. The right fix is an optional provenance slot
+    on repairable fact kinds. It was NOT taken here, and the reason is the item's own framing: *"a
+    schema change to the trust anchor made under an operational blockage is the wrong way to land a
+    right idea."* The blockage passes; the schema stays.
   - **THE DEEPEST PATTERN OF THE FORTNIGHT, recorded for beta4 (maintainer, 2026-08-29): every silent
     failure in this batch converted a recoverable problem into an unfalsifiable one.** Four instances,
     and the fourth found its own root cause the moment the rule was applied to it:

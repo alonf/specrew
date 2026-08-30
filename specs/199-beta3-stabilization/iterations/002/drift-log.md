@@ -809,6 +809,48 @@ point of the entry, so the original claim is quoted rather than deleted.**
   approval**: it is a write into the review authority store, and while the pause FACT is machinery catching
   up rather than continuation authority (the DECISION is the human's), an agent repairing the authority
   store on its own initiative is the shape iteration 001's security-surface concern exists to prevent.
+- **THE RESTORE — done 2026-08-30 under maintainer approval, option 2 (journal-only provenance).**
+  Searchable identifiers, so this record is reachable from any entry point: campaign
+  **`cmp-199-beta3-stabilization-i002`**, run **`run-20260829-214056323-db3b4944`**, journal
+  **`.specrew/runtime/authority-repairs.jsonl`**, fact
+  **`.specrew/review/authority/campaigns/cmp-199-beta3-stabilization-i002/runs/run-20260829-214056323-db3b4944/pending-pause.json`**
+  (sha256 `d2445d7c9148ebe27e02edd695462f1a5cedcb9c21d808b2bd642cda3f0a2288`).
+  - **The line it sits on**: machinery may restore a fact that RE-ENABLES a human decision; it may never
+    write one that CONSTITUTES one. `pause_decision` facts on record: **0**, asserted by the restore
+    script itself. The prompt is back; the choice is not written.
+  - **Provenance is journal-only, and the fact is byte-for-byte what the engine writes.** Condition 2 as
+    originally set - that the restored fact be self-identifying - could not be met:
+    `PendingPauseFact` has a CLOSED allowed-field contract (`review-authority-core.ps1:728`) and the store
+    refused the added block with `review-store-corruption:invalid-contract:PendingPauseFact:unknown-field:restoration`.
+    The maintainer's ruling (2026-08-30) substituted **discoverability by search** for co-location, on the
+    stated ground that the repaired fact is no longer the only durable trace: it is one of five, alongside
+    the root cause, the fix, the mutation-proved case, this entry, and the repair journal. *"A change of
+    evidence and not a change of resolve - if I could not name what changed, we would take option 3 and
+    leave the campaign wedged."*
+  - **PROVENANCE, CARRIED HERE RATHER THAN CITED**, because both the fact and the journal are gitignored
+    (`.gitignore:76` and `:30`) and a future auditor working from the committed tree would otherwise reach
+    a pointer to a file they do not have:
+    - Reconstructed from that run's own `result.json`
+      (sha256 `58f54d74febbcb36ea8638c5c62e5602e9d3cb276d62a464a74c1b986af2bad9`); nothing was defaulted, and
+      the script stops rather than defaulting any field it cannot derive.
+    - `observed_at` = `2026-08-29T21:56:05.3776575+00:00`, taken from `result.ended_at` - **the moment the
+      pause should have been written**, not the time of the repair.
+    - `project_name` derived from the campaign identity, which encodes it. Display-only.
+    - Restored values: `rounds_used` 1, `budget_total` 4, `blocking_count` 0, `major_count` 0,
+      `minor_count` 3, `demoted_count` 3, `evidence_state` produced.
+  - **A guard caught the repair itself, and this is worth more than the repair.** The first two attempts
+    both wrote `observed_at` as `08/30/2026 00:56:05` - a LOCAL-CULTURE datetime - because
+    `ConvertFrom-Json` coerces an ISO timestamp into a `[datetime]` and a bare `[string]` cast then renders
+    it in the current culture. The store refused it: `review-authority-timestamp-invalid`. Its validator's
+    own comment says exactly why it exists - *"Validate the shape before parsing so culture-permissive
+    inputs such as local dates can never become authority."* **A defect introduced by the repair of a
+    defect, caught by a guard written for precisely that case.** It was masked on the first attempt by the
+    unknown-field refusal firing first, which is a small lesson of its own: a fact that fails two contracts
+    reports one, and fixing the reported failure does not mean the fact is sound.
+  - **Rolled back twice before it landed**, from the pre-repair snapshot at
+    `.specrew/runtime/authority-snapshot-pre-pause-restore-08302026005605` (568 files), with the store
+    verified byte-identical by `diff -r` after each rollback. The attempt, the rollback and the successful
+    restore are all three journalled, so the journal does not read as a single clean act.
 - **Class closure**: NONE - the guards belong with the fixes, and the fixes are beta4 review-economics work
   rather than tag-batch scope. Named now so they are not invented later: (1) the fail-soft must journal the
   exception it swallows, because an absence with no record is unreadable to every later consumer; (2) every
