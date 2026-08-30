@@ -636,7 +636,22 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     right idea."* The blockage passes; the schema stays.
   - **EVERY GUARD HERE PROTECTS LESS THAN ITS NAME CLAIMS, AND THE GAP IS ALWAYS THE HALF NOBODY
     TESTED** (maintainer, 2026-08-30, on the third instance in one day). Stated as a beta4 principle in
-    exactly those terms, with its three measured instances:
+    exactly those terms.
+
+    **THE SENTENCE THAT SUBSUMES THE REST, and the maintainer's instruction is that it heads the
+    principle rather than sitting under it:**
+
+    > **The fixture wrote the precondition the product denies.**
+
+    Every instance below is a special case of it. A mutation proves the control against the state its
+    fixture built. Mirror parity compares two copies the test put there. A fail-soft is exercised on the
+    failure the test could stage. Hook health is asked about the receipts the fixture wrote. In each, the
+    guard is measured against a world the test authored, and the half nobody tested is the half the test
+    could not imagine - which is why the gap is never random and never found by more of the same testing.
+    **It is found by running the thing against a state it did not choose**: a real project, a real host, a
+    real package. Four of the five instances below were found that way; none was found by a suite.
+
+    The measured instances:
     1. **Mutation proving** covers control-to-TEST wiring, not control-to-SYSTEM. It proved eleven suites
        and caught none of round 1's three findings.
     2. **Mirror parity** covers DIVERGENCE between mirrors, not OMISSION from the package. Both copies of

@@ -1348,10 +1348,42 @@ every workshop, and every greenfield feature stopped there.
   been caught by any amount of mutation of the old fixture.
 - **Citation**: FR-027 (T018/T027); FR-033's method rules; DRIFT-199-I002-020 (two contracts, one report);
   the beta4 guard-scope principle.
-- **Class closure**: cases 7 and 7b in `tests/integration/workshop-lens-checkpoint.tests.ps1`, and the
+- **THE FIX WAS INSUFFICIENT, AND ONLY THE RESUMED PROJECT COULD SHOW IT** (2026-08-30). The maintainer
+  directed the walk to `C:\Temp\ConsoleFractal` - already deadlocked at this gate - rather than a fresh
+  one, on the ground that *"case 7 is a better fixture than the ones before it, and it is still a fixture."*
+  That was decisive within minutes. Its real state:
+
+  > `agenda_status: confirmed`, `agenda_confirmation: human-confirmed`, six technical lenses in `selected`
+  > (product-domain not among them, as expected), and **`workshop` EMPTY** - the intake lens never recorded.
+
+  Resolved read-only against the shipped table, that state is `confirmed-complete`, where **both operations
+  refused**: `confirm-intake-lens` because the state was no longer pending, `confirm-lens` because
+  product-domain is not in `selected` and structurally never will be. **The pending-only fix unblocked new
+  workshops and left every already-advanced project exactly as stuck.**
+- **How that state is reachable, which I had not seen**: `confirm-workshop-agenda.ps1` requires the
+  product-domain **records on disk** (`product-domain.md`/`.yml`) and not the controller **entry**, so a
+  workshop can pass the agenda with the intake lens still unclosed. Every project that did so is stranded.
+- **Resolution — `confirmed-complete` added to the intake transition**, as the recovery path rather than for
+  symmetry, and verified read-only against the live ConsoleFractal controller (`allowed=True`). Case 7c pins
+  it, including that recovery does **not** smuggle product-domain into `selected`: the agenda the human
+  confirmed is left exactly as they confirmed it. Mutation-proved: dropping `confirmed-complete` turns two
+  assertions red.
+- **What this says about the evidence hierarchy, and it is the reason the maintainer sent me to a real
+  project**: my case 7 fixture could not have invented this state, because I did not know it was reachable.
+  A fixture encodes what its author believes the product can do; the states it cannot imagine are exactly
+  the ones that strand real users. **A resumed failing project is not a slower version of a test - it is a
+  different kind of evidence**, and it caught a shipping defect that a green suite, a mutation proof and a
+  field-shaped fixture all missed in the same hour.
+- **One measurement I could not confirm, stated rather than smoothed over**: the brief described *"twelve
+  real intake receipts"* in that project; its `workshop-authority.jsonl` holds **2** (one `product-domain`
+  phase, one `agenda` phase, both `source_event: UserPromptSubmit`). The twelve-receipt figure matches
+  HelloWinUIReactive's store, not this one. It changes nothing about the finding - one intake receipt is all
+  the gate needs - and it is recorded because the last time a count was carried between projects without
+  checking, it became a wrong diagnosis (DRIFT-199-I002-025).
+- **Class closure**: cases 7, 7b and 7c in `tests/integration/workshop-lens-checkpoint.tests.ps1`, and the
   fixture's new `-PreAgenda` mode, which builds the state a brand-new feature is ACTUALLY in. The
-  generalisable rule is the one the maintainer drew: **a fixture that writes a state the product cannot
-  produce is not a test of the product.**
+  generalisable rule is the one the maintainer drew, and it now heads the beta4 guard-scope principle:
+  **the fixture wrote the precondition the product denies.**
 
 ### DRIFT-199-I002-028 — method rule 12 was applied to checks and never to writers, and the repair path is gated on the wrong step (open; beta4)
 

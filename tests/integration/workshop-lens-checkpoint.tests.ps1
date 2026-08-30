@@ -214,6 +214,29 @@ Assert-True (-not $r7b.Ok) 'a technical lens still cannot be closed from the pre
 Assert-True ($r7b.Text -match 'not in a state where') 'and the refusal names the state, not the topic list'
 Assert-True ($r7b.Text -notmatch 'there is no agenda to confirm first') 'the intake wording does not leak into the technical refusal'
 
+Write-Host 'Case 7c (STRANDED): a project that confirmed its agenda without ever closing the intake lens can still recover'
+# THE CASE THE PENDING-ONLY FIX WOULD HAVE STRANDED, found by resuming a real deadlocked project rather
+# than building a fixture. C:\Temp\ConsoleFractal, 2026-08-30: agenda confirmed, six technical lenses
+# selected, `workshop` EMPTY. That state is reachable because confirm-workshop-agenda requires the
+# product-domain RECORDS on disk, not the controller entry - so the agenda can pass with the intake lens
+# still unclosed. From there BOTH operations refused: confirm-intake-lens because the state was no longer
+# pending, confirm-lens because product-domain is not in `selected` and structurally never will be.
+#
+# A fix that only unblocked NEW workshops would have shipped while leaving every already-advanced project
+# exactly as stuck. This is why the resumed project is better evidence than a fresh walk: the fixture I
+# wrote for case 7 could not have invented this state, because I did not know it was reachable.
+$f7c = New-WorkshopFixture -Selected @('architecture-core', 'ui-ux')   # agenda CONFIRMED, workshop empty
+$null = Write-LensReceipt -Root $f7c.Root -Lens 'product-domain' -Phase 'product-domain'
+Set-Content -LiteralPath (Join-Path $f7c.Feature (Join-Path 'workshop' 'product-domain.md')) -Value "# product-domain`n`nWhat we agreed." -Encoding UTF8
+$validRecord7c = "depth: standard`ndepth_reason: a first feature on a new stack`ncontext_scope: feature_standalone`nconfirmation: human-confirmed`nconfirmation_scope: lens-question`nstatements:`n  - text: One person tracks their own reading.`n    evidence: known`n"
+[System.IO.File]::WriteAllText((Join-Path $f7c.Feature (Join-Path 'workshop' 'product-domain.yml')), $validRecord7c, [System.Text.UTF8Encoding]::new($false))
+$r7c = Invoke-Writer -Root $f7c.Root -Lens 'product-domain' -Depth 'standard'
+Assert-True $r7c.Ok ('the intake lens closes from a CONFIRMED agenda, recovering a stranded project: ' + $r7c.Text)
+$entry7c = (Read-Controller -Path $f7c.Controller).workshop.PSObject.Properties['product-domain']
+Assert-True ($null -ne $entry7c -and [bool]$entry7c.Value.moved_on) 'and the intake entry is written, so the workshop is no longer deadlocked'
+$after7c = Read-Controller -Path $f7c.Controller
+Assert-True (@($after7c.selected) -ccontains 'architecture-core' -and -not (@($after7c.selected) -ccontains 'product-domain')) 'recovery does not smuggle the intake lens into `selected` - the agenda it produced is left exactly as the human confirmed it'
+
 Write-Host 'Case 6: a lens outside the agreed agenda cannot be closed'
 $f6 = New-WorkshopFixture
 $null = Write-LensReceipt -Root $f6.Root -Lens 'security-compliance'
@@ -221,6 +244,6 @@ $r6 = Invoke-Writer -Root $f6.Root -Lens 'security-compliance'
 Assert-True (-not $r6.Ok -and $r6.Text -match 'not one of the topics this workshop agreed to cover') 'the writer refuses a lens the agenda never selected'
 Assert-True ($r6.Text -match 'architecture-core') 'and names the topics that ARE open'
 
-foreach ($f in @($f1, $f2c, $f3, $f4, $f5, $f6, $f7, $f7b)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+foreach ($f in @($f1, $f2c, $f3, $f4, $f5, $f6, $f7, $f7b, $f7c)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("workshop-lens-checkpoint: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'workshop-lens-checkpoint: all assertions passed' -ForegroundColor Green

@@ -278,6 +278,30 @@
       than opening an iteration 003.
     - This is the same reasoning as FR-033's rule that mutation proving shows a control is wired to its own
       test and never that it is wired to the system - applied to a whole class of fixes rather than to one.
+  - **CARRY INTO THE 002 RETRO — the joint failure mode** (maintainer instruction, 2026-08-30: *"the
+    direction observation belongs in the retro rather than the drift log... it is the most transferable
+    thing this iteration learned"*). Recorded here rather than in a retro artifact because the retro
+    boundary has not been reached and scaffolding one early would pre-empt it.
+
+    **Both roles produced a wrong cause, in opposite directions, and both were caught the same way.**
+    - DRIFT-199-I002-014: the crew produced a wrong finding, argued it convincingly, and the maintainer
+      ruled on it. Had the ruling been executed as written, a correct control would have been edited to do
+      what it already did.
+    - DRIFT-199-I002-025: the maintainer produced a wrong cause from a real symptom, and the crew began
+      building a guard on it — and reported reading the symptom back as *"independent reproduction"*, which
+      confirmed the observation and not the diagnosis.
+
+    **Neither was caught by review, by a suite, or by seniority. Both were caught by RUNNING THE SUBJECT
+    rather than reasoning about it** — the engine's own integrity check in the first case, a fresh project
+    on the accused host in the second. That is the transferable lesson, and it is a lesson about the
+    authority structure rather than about either party: **a finding that reaches a boundary becomes an
+    instruction, so the cost of a wrong cause is paid by whoever implements it, not whoever formed it.**
+    The countermeasure is cheap and was available both times: before acting on a diagnosis about a
+    component, invoke the component.
+
+    The retro should also record the asymmetry that makes this worth institutionalising: a wrong finding
+    from either direction is caught by the same one-command check, but only one direction currently has a
+    convention for it (the crew verifies before reporting). Nothing asks the same of a ruling.
   - **CONVERGENCE RULE, maintainer ruling 2026-08-29 - and it exists because the obvious reading of
     "one covering round on the tree that ships" regresses to W77.** Every round's fixes move the tree
     that round covered, so taken literally, coverage is never reachable and rounds recur forever.

@@ -147,7 +147,16 @@ function Resolve-SpecrewWorkshopStateTransition {
         # workshop deadlocks at its first lens on EVERY greenfield feature: `confirm-lens` demanded a
         # confirmed agenda, and confirming the agenda demanded the product-domain records that only this
         # step persists. Two locally correct refusals, jointly a trap.
-        'confirm-intake-lens' { $stateClass -in @('pending-empty', 'pending-product-projection') }
+        # `confirmed-complete` IS IN THIS SET BECAUSE OF A STRANDED PROJECT, not for symmetry.
+        # Measured on C:\Temp\ConsoleFractal, 2026-08-30: agenda confirmed, six technical lenses selected,
+        # and `workshop` EMPTY - the intake lens never recorded. That state is reachable because
+        # confirm-workshop-agenda requires the product-domain RECORDS on disk and not the controller entry,
+        # so a workshop can pass the agenda with the intake lens still unclosed. From there both operations
+        # refused: `confirm-intake-lens` because the state was no longer pending, `confirm-lens` because
+        # product-domain is not in `selected` and never can be. The pending-only fix unblocked NEW
+        # workshops and left every already-advanced project exactly as stuck - shipping it would have
+        # stranded the projects it was written to save.
+        'confirm-intake-lens' { $stateClass -in @('pending-empty', 'pending-product-projection', 'confirmed-complete') }
         'request-repair' { $stateClass -eq 'pending-inconsistent' }
         'apply-repair' { $stateClass -eq 'pending-inconsistent' }
     }
