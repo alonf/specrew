@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 36 (DRIFT-199-I002-001 through -036)
+**Total drift events**: 37 (DRIFT-199-I002-001 through -037)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1836,6 +1836,48 @@ evidence in this ledger.** Recorded 2026-08-31.
   one bare token in human-facing text.
 - **Class closure**: NONE - a naming contract across two subsystems is beta4 design, and pinning one
   message's wording here would fix this sentence while leaving every other place the token appears.
+
+### DRIFT-199-I002-037 — T016's split fired on a real boundary, on its own author, and caught the largest durability exposure of the fortnight (POSITIVE CONTROL EVIDENCE)
+
+**Filed on the positive side of the ledger at the maintainer's instruction.** 2026-08-31.
+
+- **The firing.** The review-signoff gate preflight returned, on this repository's own boundary:
+  - `pushed-head` -> **not-applicable**: *"Release model 'beta-stable' governs closeout delivery only;
+    nothing is owed to origin"* at a non-closeout boundary.
+  - `verdict-commit-durable` -> **fail**: *"Boundary verdicts bind to commit '46e1f640' and later gates
+    resolve it back (stage evidence, constraint diffs, review coverage). It exists only in this local
+    history."*
+- **This is exactly the distinction the split was built to make**, and it is the first time it has been
+  exercised on a real boundary rather than a fixture or a field walk. TB-3/FR-025 split one over-broad
+  `pushed-head` check into a delivery obligation (closeouts only) and a durability obligation (every
+  boundary), after establishing that `auth_commit_hash` IS resolved back by three readers and therefore
+  could not simply be narrowed away. Here both halves answered correctly and differently in the same run:
+  nothing is owed to origin for delivery, and the verdict's commit must nonetheless survive.
+- **What it caught, measured**: **34 commits** unpushed - `git rev-list --count
+  origin/199-beta3-stabilization..HEAD` = 34 before the push, 0 after. Every verdict and record since the
+  previous day existed on one disk: the review record, thirty-six drift entries, the round-3 fixes, the
+  capture-diagnostic fix, the guards. A rebase or a lost checkout would have taken the evidence that every
+  later gate resolves back, and the boundary about to be authorized would have named a commit nobody else
+  had.
+- **On its own author, again.** T016 was written in this iteration by this session, and it refused this
+  session's boundary. Second instance today of a control this feature built declining its builder
+  (DRIFT-199-I002-035 was the first), which is the property that makes a control worth having: it does not
+  know who is asking.
+- **A count I stated without checking, corrected here because unchecked counts are this week's named
+  failure mode.** I reported the exposure as **380 commits**. That figure came from the preflight's
+  ADJACENT `ahead-count` row - *"HEAD is 380 commit(s) ahead of origin/main"* - a different ref for a
+  different purpose. The maintainer measured the real figure and instructed that the command be cited:
+  `git rev-list --count origin/199-beta3-stabilization..HEAD` = **34**. The remedy and the refusal were
+  right regardless; the number I put the severity on was read off a neighbouring line. Same shape as
+  DRIFT-199-I002-011's lesson (*never enumerate a subject set by hand when something already computes it*),
+  applied to a single figure: **cite the command, not the nearest number.**
+- **Citation**: FR-025 (T016); the standing rule that nothing here weakens a gate that caught something
+  real - this gate caught 34 commits of it.
+- **Resolution**: no action on the control; it behaved. Branch pushed (`fc762e99..46e1f640`), exposure now
+  0, and the preflight's durability check is expected to pass on the next run.
+- **Class closure**: the control IS the closure and already ships. What is added is the record that its two
+  halves answered differently and correctly in one run, so the next reader weighing whether the split was
+  worth its cost has the instance rather than the argument.
 
 ### Resolution Strategies (Unused)
 
