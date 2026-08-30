@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-08-30T19:07:37Z",
+  "recorded_at": "2026-08-30T18:40:26Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "block",
     "reason": "latest-result-not-current",
     "message": "The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree. That result belongs to this review (cmp-199-beta3-stabilization-i002) - whatever its run name suggests - so it is about your own earlier snapshot, not another project. If you are not the person running reviews for this project, this is advisory: there is nothing here for you to run, and it does not block your work. If you intentionally accept partial coverage for this exact tree, type: approved for partial review signoff - <why accepting it is safe>. Specrew captures that typed reply before the next attempt; command-line identity fields are not authority.",
-    "current_tree_id": "71fe4cde332303823b382297156d38311ae2d1e7",
+    "current_tree_id": "36776df8e4159c4e3d5edbaf64956131d96720a8",
     "matched_run_id": "run-20260830-160011946-a3d8338c",
     "anchor_ref": "",
     "override": null,
@@ -25,12 +25,12 @@
     "finalization_commit": "",
     "override_request": {
       "schema_version": "1.0",
-      "request_id": "override-adf53c58ce9f28c3698c19fa",
-      "target_tree_id": "71fe4cde332303823b382297156d38311ae2d1e7",
+      "request_id": "override-9f72e6aa55a707634ee233cd",
+      "target_tree_id": "36776df8e4159c4e3d5edbaf64956131d96720a8",
       "campaign_id": "cmp-199-beta3-stabilization-i002",
       "run_id": "run-20260830-160011946-a3d8338c",
       "required_phrase": "approved for partial review signoff - <why accepting partial coverage is safe>",
-      "created_at": "2026-08-30T19:07:37.3698076+00:00"
+      "created_at": "2026-08-30T18:40:26.1737621+00:00"
     }
   }
 }
