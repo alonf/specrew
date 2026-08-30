@@ -320,6 +320,15 @@
       clause I had not seen, and then failed anyway for a fourth reason nobody had seen
       (DRIFT-199-I002-034).
 
+    **The companion sentence the week earned** (maintainer, 2026-08-31): **writing a rule down does not
+    make you apply it — the only detector that has worked is running the subject.** Every rule this
+    iteration produced was violated after it was written, by the person who wrote it: the guard-scope
+    principle, then a guard that reimplemented its subject; the fail-soft trace rule, then a trace applied
+    to one swallow of two; the instance-not-class pattern, then a workaround scoped to the instance. In
+    each case what caught it was not the rule and not a review - it was running the thing: the engine's own
+    integrity check, a fresh project on the accused host, a mutation that produced zero failures, a real
+    cycle replay.
+
     **The shape**: a fix is written against the instance that produced the evidence, and the evidence is
     always one instance. Every one of these was correct about what it repaired. Every one left the
     mechanism intact, so the next instance arrived wearing different clothes and was not recognised until it

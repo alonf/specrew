@@ -1737,15 +1737,30 @@ before being touched.
   that writing records between those steps moves the state the approval was bound to and is not a rejection
   of the human's reasoning. Guard: `tests/unit/partial-signoff-refusal-names-the-sequence.tests.ps1`,
   mutation-proved.
-- **What is NOT fixed, and is put to the maintainer rather than taken**: the two source-side halves.
-  1. **Bound the rationale to its own paragraph** rather than to end-of-message. This is the actual semantic
-     defect - a rationale is the reason attached to the phrase, not the remainder of the conversation.
-  2. **Never drop a matched phrase in silence.** If the phrase matches and the rationale is rejected, say
-     so. This is the rule this batch established, and this is its most severe instance, because the thing
-     dropped was a human authorization.
-  Recommendation on the record: **do (2) unconditionally** - it is the difference between a recoverable and
-  an unrecoverable stop, and it is small. (1) is the better fix and is a contract change to what counts as a
-  rationale, so it belongs with beta4's refusal work.
+- **PART (2) IS NOW FIXED AT SOURCE, on the maintainer's ruling 2026-08-31** - landed immediately rather
+  than queued, because no approval was in flight after signoff completed and boundary crossings re-mint on
+  tree movement rather than dying, so this was the safe window to touch that file.
+  - A phrase that MATCHED and was then rejected now says so, on stderr, and **says what to do**: it names
+    the actual cause (rationale too long or too short, with the measured length), names the part nobody
+    would guess (*"everything after the dash counts, including anything you wrote further down the same
+    message"*), gives the retype instruction (*whole message, nothing after it*), and states that nothing
+    is wrong with the human's decision. The maintainer's requirement, met by its own standard: the
+    replacement for a silent drop must tell the human what to do, not only what happened.
+  - The drop is also **journalled** to `.specrew/runtime/authority-capture-drops.jsonl` with its reason and
+    measurement - every fail-soft owes a trace, and this one is the reason that rule exists.
+  - **A phrase that never matched stays silent**, and the guard pins that too: making every message a
+    diagnostic would be the opposite error, and it is the one an over-eager fix would make.
+  - Guard: `tests/unit/authority-capture-never-drops-silently.tests.ps1`, in the class-guard lane, driving
+    the real capture function in a child process so it asserts on what a human would actually see.
+    Mutation-proved on both branches (restoring the bare `return $null` turns 7 assertions red; silencing
+    the no-request branch turns 2 red).
+- **What is NOT fixed, and is beta4 by the batch's own precedent**: the remaining source-side half.
+  **Bound the rationale to its own paragraph** rather than to end-of-message. This is the better fix and the
+  actual semantic defect - a rationale is the reason attached to the phrase, not the remainder of the
+  conversation. It goes to beta4 with the refusal work, **by this batch's own precedent**: changing what
+  counts as a rationale is a contract change, and the identical shape was declined mid-batch on the
+  binding name/value asymmetry (DRIFT-199-I002-029). The maintainer had ruled all three parts before the
+  tag and accepted the split instead: *"your split is correct by the rule I endorsed there, and it stands."*
 - **Citation**: FR-033's refusal standard, sharpened to *name the thing that actually failed*; method rule
   12; DRIFT-199-I002-018, -026, -029, -033.
 - **Class closure**: the message guard above closes the operator-facing half only, and says so. The source

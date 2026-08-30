@@ -105,10 +105,49 @@ function Write-SpecrewReviewSignoffOverrideAuthorization {
     if ($trimmed -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b|environment_context\b)') { return $null }
     $match = [regex]::Match($trimmed, '(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*(?<rationale>.+?)\s*$')
     if (-not $match.Success) { return $null }
+    # ONCE THE PHRASE HAS MATCHED, A REJECTION MUST SPEAK. (DRIFT-199-I002-034.)
+    #
+    # This is where a maintainer's valid approval was discarded in silence: the rationale group is read
+    # with `(?is)` and no `m`, so it is EVERYTHING from the dash to the end of the message rather than the
+    # sentence attached to the phrase. An approval followed by two further instruction paragraphs measured
+    # 2193 characters, exceeded the cap, and `return $null` said nothing. The gate then refused with
+    # `latest-result-not-current` - true, and about something else entirely - so the human retyped a phrase
+    # that had never been wrong, twice.
+    #
+    # A phrase that did NOT match stays silent: that is ordinary conversation and announcing it would make
+    # every message a diagnostic. A phrase that DID match and was then rejected is a human trying to
+    # authorize something, and their attempt must never vanish. The message says what to do, not only what
+    # happened - the standard that found this defect applies to its replacement.
+    #
+    # Bounding the rationale to its own paragraph is the better fix and is a change to what COUNTS as a
+    # rationale, i.e. a contract change; it is beta4's, by the same rule that declined to widen the
+    # binding-name pattern mid-batch (DRIFT-199-I002-029).
     $rationale = $match.Groups['rationale'].Value.Trim()
-    if ($rationale.Length -lt 10 -or $rationale.Length -gt 2000) { return $null }
+    if ($rationale.Length -lt 10 -or $rationale.Length -gt 2000) {
+        $why = if ($rationale.Length -gt 2000) {
+            ("the reason attached to it is too long ({0} characters; the limit is 2000). Note that everything after the dash counts, including anything you wrote further down the same message" -f $rationale.Length)
+        }
+        else {
+            ("the reason attached to it is too short ({0} characters; at least 10 are needed)" -f $rationale.Length)
+        }
+        $line = ("[specrew-authority] YOUR APPROVAL WAS NOT RECORDED. The phrase matched, but {0}. Nothing is wrong with your decision and nothing else has changed. Send the approval again as the WHOLE message, with a short reason and nothing after it: 'approved for partial review signoff - <why accepting it is safe>'." -f $why)
+        [Console]::Error.WriteLine($line)
+        try {
+            $dropJournal = Join-Path $ProjectRoot '.specrew/runtime/authority-capture-drops.jsonl'
+            $dropDir = Split-Path -Parent $dropJournal
+            if ($dropDir -and -not (Test-Path -LiteralPath $dropDir)) { New-Item -ItemType Directory -Path $dropDir -Force | Out-Null }
+            (([pscustomobject][ordered]@{ event = 'authority-phrase-matched-but-rejected'; phrase = 'review-signoff-partial-override'; reason = $(if ($rationale.Length -gt 2000) { 'rationale-too-long' } else { 'rationale-too-short' }); rationale_length = $rationale.Length; recorded_at = $NowUtc }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $dropJournal -Encoding UTF8
+        }
+        catch { $null = $_ }
+        return $null
+    }
     $request = Read-SpecrewReviewSignoffOverrideRequest -ProjectRoot $ProjectRoot
-    if ($null -eq $request) { return $null }
+    if ($null -eq $request) {
+        # The phrase matched and there is nothing outstanding to authorize. Silence here would read to the
+        # human exactly like the over-length drop did: an approval that vanished.
+        [Console]::Error.WriteLine("[specrew-authority] YOUR APPROVAL WAS NOT RECORDED. The phrase matched, but no partial-coverage approval is currently outstanding for this project, so there was nothing for it to authorize. Nothing is wrong with your decision. Run the review command once to see whether it still refuses - if it does, it will name the approval it wants, and sending the phrase again straight afterwards will be recorded against it.")
+        return $null
+    }
 
     $fact = [pscustomobject][ordered]@{
         schema_version = '1.0'

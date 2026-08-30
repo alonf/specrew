@@ -368,3 +368,4 @@ tests/unit/hook-event-coverage.tests.ps1
 tests/unit/refusal-names-what-failed.tests.ps1
 tests/integration/cycle-reset-mirror.tests.ps1
 tests/unit/partial-signoff-refusal-names-the-sequence.tests.ps1
+tests/unit/authority-capture-never-drops-silently.tests.ps1
