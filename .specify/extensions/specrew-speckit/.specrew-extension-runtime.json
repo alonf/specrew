@@ -248,11 +248,11 @@
     },
     {
       "path": "scripts/confirm-workshop-agenda.ps1",
-      "sha256": "4ef20e2c9cc90999e2fb727f51bad19e2b84a2e0e9fb9490b424ccceeb724856"
+      "sha256": "650af80b214020cd37ab81db57e87744d2f44039a5e5fae372162ae6db5b03cf"
     },
     {
       "path": "scripts/confirm-workshop-lens.ps1",
-      "sha256": "99d4a8d10a7d62c66f088f822bab5ffdde33da0676a09fc26217c7b031bfbfb4"
+      "sha256": "df6030aa8331f5b80992e0f8551a53c31e571e3372cebbb8511e78a328f2bef7"
     },
     {
       "path": "scripts/conformance-turn-delta.ps1",
@@ -448,7 +448,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "5b16446bae92b8d54ac9c6e610bd06cf88f953b14be13fafb89a67f69056b5b0"
+      "sha256": "c4f375625dad67ad4a8bb1f0f6fed07100cace17ccb649ffbb7f40bd02db5bab"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",

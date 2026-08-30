@@ -423,30 +423,30 @@ function Get-SpecrewHookHealthStorePath {
 }
 
 # ---------------------------------------------------------------------------------------------------
-# PER-EVENT COVERAGE. Aggregate liveness is not governance.
+# PER-EVENT COVERAGE. Aggregate liveness is not per-event arrival.
 #
-# Measured on Codex CLI 0.151.0, 2026-08-30 (maintainer, HelloWinUIReactive): SessionStart and Stop
-# receipts were written, `UserPromptSubmit` receipts were NEVER written, and hook health reported
-# HEALTHY throughout. 99 receipts from the first walk prove capture had worked on that host, and the
-# store had not changed since 2026-08-28. Two typed replies produced nothing, so no lens could close.
+# WHAT THIS STANDS ON, AND WHAT IT DOES NOT. This was first written on a diagnosis that a host had
+# stopped firing `UserPromptSubmit`. THAT DIAGNOSIS WAS RETRACTED by the maintainer the same day: a
+# fresh project on the same Codex CLI 0.151.0 minted a receipt with `source_event: UserPromptSubmit`,
+# so there is no host-level event regression, and the cause of the one project's behaviour is unknown.
+# Nothing here should be read as evidence about any host. See DRIFT-199-I002-025.
 #
-# Specrew was, in that state, rendering orientation, rendering packets, firing Stop hooks - and
-# recording no typed authorization whatsoever. It looked governed and was not.
+# The function is kept because the GAP it closes is real and independent of that story:
 #
-# The evidence was ALREADY ON DISK and nothing compared it: receipts are keyed per
-# (host, surface, event) as `<host>-<surface>-<event>.json`, so the store held
-# `codex-cli-sessionstart.json` and `codex-cli-stop.json` and no `codex-cli-userpromptsubmit.json`.
-# The declared event set is equally available, from the host manifest's RefocusHookBindings
-# Registrations. Two computable sets, never compared - the same shape as the FileList omission, where
-# the package was the manifest and nothing checked what sat beside it unlisted.
+#   - `hook_status` classifies AGGREGATE liveness - is there a fresh, well-formed lifecycle receipt.
+#   - Per-event checking exists for REGISTRATION (Get-SpecrewHookMissingEventRegistrations asks whether
+#     each declared event has a Specrew entry in the config) and for ARRIVAL of SessionStart only.
+#   - REGISTERED IS NOT FIRED, and no reader compares the declared set against the arrived set - even
+#     though both are already on disk: receipts are keyed per (host, surface, event) as
+#     `<host>-<surface>-<event>.json`, and the declared set is in the host manifest's
+#     RefocusHookBindings Registrations.
 #
-# Hook health reported healthy because it classifies AGGREGATE liveness - is there a fresh, well-formed
-# receipt - rather than asking whether every declared event has one. Another guard covering less than
-# its name claims, which is why this needed a diagnostic session instead of surfacing at the first
-# missed receipt.
+# Two computable sets, never compared - the same shape as the FileList omission, where the package was
+# the manifest and nothing checked what sat beside it unlisted.
 #
-# THIS FUNCTION ONLY COMPUTES AND COMPARES. Making a host fire an event it is not firing is not
-# Specrew's to fix; refusing to claim governance while a capture-critical event is silent is.
+# THIS FUNCTION ONLY COMPUTES AND COMPARES, and that boundary is deliberate. Whether a host fires an
+# event is the host's behaviour. Reporting that a declared event has produced no receipt is a fact
+# about this project's own evidence, and is all this claims.
 function Get-SpecrewHookEventCoverage {
     [CmdletBinding()]
     param(
@@ -535,12 +535,15 @@ function Get-SpecrewHookEventCoverageRefusal {
     # is wrong, says the human's work is safe, gives ONE action, and does not assert Specrew is broken -
     # the host may simply not be firing the event, which is not a defect this project can repair.
     #
-    # STATE-AWARE (round-3 finding, 2026-08-30): the action must be reachable FROM THE READER'S STATE. The
-    # third instance in one day of advice that was locally sensible and unreachable - a session running ON
-    # Codex CLI was told to "open this project through the verified Codex CLI"; a project AHEAD of its
-    # module was told to run an update that would have reverted it; a wedged pause was sent to a command
-    # that redirected back. So this names the CURRENT host and offers a different one, rather than naming
-    # the host the reader is already using.
+    # STATE-AWARE (DRIFT-199-I002-026): the action must be reachable FROM THE READER'S STATE. Three
+    # measured instances in one day of advice that was locally sensible and unreachable from where the
+    # reader stood - a project AHEAD of its module told to run an update that would have reverted it; a
+    # wedged pause sent to a command that redirected back; a session told to open the project on the host
+    # it was already running on. So this names the CURRENT host and offers a different one, rather than
+    # naming the host the reader is already using.
+    #
+    # It says a declared event has produced no receipt. It does not diagnose WHY, and must not: the one
+    # time this session inferred a host-level cause from that evidence, the inference was wrong.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]$Coverage,

@@ -60,6 +60,31 @@ function Get-SpecrewWorkshopFileSha256 {
     return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($Path)))).ToLowerInvariant()
 }
 
+function Get-SpecrewWorkshopIntakeLenses {
+    # THE INTAKE LENSES: the ones that run BEFORE the agenda exists, and therefore can never appear in
+    # `selected` - `selected` is the agenda's output, and these are its input.
+    #
+    # This set was previously implied in three places that could not disagree out loud: the agenda catalog
+    # filtered `product-domain` out of the selectable lenses; the transition table had a
+    # `pending-product-projection` state class for exactly one workshop key named `product-domain`; and the
+    # receipt store's phase ValidateSet carried `product-domain` as a first-class phase beside `lens`. The
+    # lens WRITER knew none of it, and refused the first lens of every workshop as "not one of the topics
+    # this workshop agreed to cover" - which was true, and was never going to stop being true.
+    # DRIFT-199-I002-011's rule, one layer up: never enumerate a set by hand in several places when one
+    # definition can be read by all of them.
+    [OutputType([string[]])]
+    param()
+    # NOT `return , @(...)`: the comma operator wraps the array in another array, so a `-ccontains` on the
+    # result compares against a nested array and is always false. Callers wrap with @() themselves.
+    return @('product-domain')
+}
+
+function Test-SpecrewWorkshopIntakeLens {
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Lens)
+    return (@(Get-SpecrewWorkshopIntakeLenses) -ccontains $Lens)
+}
+
 function Resolve-SpecrewWorkshopStateTransition {
     # This is the finite pre-agenda transition contract shared by the writer, reader, and governed repair path.
     # Keep the state population closed and test every state x operation cell; a new state or operation must extend
@@ -68,7 +93,7 @@ function Resolve-SpecrewWorkshopStateTransition {
     param(
         [AllowNull()][object]$Controller,
         [Parameter(Mandatory)]
-        [ValidateSet('initialize', 'read', 'render-agenda', 'confirm-agenda', 'confirm-lens', 'request-repair', 'apply-repair')]
+        [ValidateSet('initialize', 'read', 'render-agenda', 'confirm-agenda', 'confirm-lens', 'confirm-intake-lens', 'request-repair', 'apply-repair')]
         [string]$Operation
     )
 
@@ -116,6 +141,13 @@ function Resolve-SpecrewWorkshopStateTransition {
         # is running and the topic list is settled. Adding the operation to this closed table is what makes
         # the governed lens writer reachable at all; the table's own test pins every cell.
         'confirm-lens' { $stateClass -eq 'confirmed-complete' }
+        # THE INTAKE LENS CLOSES BEFORE THE AGENDA EXISTS, because it is what produces the agenda. Closing
+        # it from `pending-empty` is precisely how the controller reaches `pending-product-projection`, a
+        # state class this table already had and nothing could legally produce. Without this cell the
+        # workshop deadlocks at its first lens on EVERY greenfield feature: `confirm-lens` demanded a
+        # confirmed agenda, and confirming the agenda demanded the product-domain records that only this
+        # step persists. Two locally correct refusals, jointly a trap.
+        'confirm-intake-lens' { $stateClass -in @('pending-empty', 'pending-product-projection') }
         'request-repair' { $stateClass -eq 'pending-inconsistent' }
         'apply-repair' { $stateClass -eq 'pending-inconsistent' }
     }

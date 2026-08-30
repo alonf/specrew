@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 26 (DRIFT-199-I002-001 through -026)
+**Total drift events**: 28 (DRIFT-199-I002-001 through -028)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1191,23 +1191,47 @@ writer, which is why."*
   **a fix is not shipped until something a consumer runs can reach it**, and mirrors, parity and green
   suites are all upstream of that question.
 
-### DRIFT-199-I002-025 — on a supported host, Specrew rendered packets and recorded no authorization at all, and health called it healthy (guard added; the host behaviour is not ours)
+### DRIFT-199-I002-025 — a host-regression diagnosis, RETRACTED by the maintainer; the per-event guard it motivated is kept on its own merits
 
-**Maintainer measurement, 2026-08-30, Codex CLI 0.151.0 launched from PowerShell in
-`C:\Dev\HelloWinUIReactive`.** SessionStart and Stop receipts are written; **`UserPromptSubmit` receipts are
-never written at all.** Two typed replies produced nothing, so no lens can close and T018 is untestable on
-that host. The feature pointer is correct and the controller is valid, so this is not the
-unresolvable-feature precondition.
+**RETRACTED, 2026-08-30, by the maintainer who made it, within hours of making it:**
 
-- **Independently reproduced here before anything was built on it.** The workshop-authority store holds
-  **99 receipts, every one `source_event: UserPromptSubmit`, every one `host_kind: codex`**, first
-  `2026-08-27T21:21`, last **`2026-08-28T20:48`** - nothing since. Capture demonstrably worked on that host
-  and stopped.
-- **THE TAG-BLOCKING FORM, in the maintainer's framing**: codex is a supported host, ranked equal to claude
-  in the reviewer catalog. On it Specrew currently **renders orientation, renders packets, fires Stop hooks,
-  and records no typed authorization whatsoever.** It looks governed and is not. *"Making Codex fire the
-  event may not be yours to fix. Detecting that a required event is not firing, and refusing to claim
-  governance when it is not, is."*
+> *"Retract the Codex host finding before you act on it — I was wrong. UserPromptSubmit fires on Codex CLI
+> 0.151.0: a fresh project at C:\Temp\ConsoleFractal minted a product-domain receipt with
+> `source_event: UserPromptSubmit`, `host_kind: codex` today. Whatever blocked HelloWinUIReactive, it is not
+> a host-level event regression, and I do not have its cause. Do not build per-event hook health on my
+> say-so; the per-event idea stands on its own merits but the motivating diagnosis was mine and it was
+> wrong."*
+
+**The original report, preserved because a retraction that deletes its own subject teaches nothing**:
+Codex CLI 0.151.0 in `C:\Dev\HelloWinUIReactive` was observed writing SessionStart and Stop receipts and no
+`UserPromptSubmit` receipts, with two typed replies producing nothing. **The observation about that one
+project stands; the inference to a host-level regression does not.** Its cause is unknown and is not
+diagnosed here.
+
+**What I did with the retraction.** The guard is KEPT - the maintainer's ruling - and its justification was
+**rewritten in code**, not just here: the header of `hook-health-receipt.ps1` and every comment and assertion
+message in `tests/unit/hook-event-coverage.tests.ps1` now state that the motivating diagnosis was retracted
+and that no assertion claims anything about any host's behaviour. Leaving a true guard standing on a false
+story would have made the story load-bearing.
+
+**This is the second wrong finding to survive into a ruling this batch, and the direction reversed.** In
+DRIFT-199-I002-014 I produced a wrong finding and the maintainer ruled on it; here the maintainer produced
+one and I began building on it. The structural point is the same and worth stating once: **a finding that
+reaches a boundary becomes an instruction, and neither role has a monopoly on being wrong.** What caught it
+both times was the same thing - running the subject rather than reasoning about it.
+
+- **What I verified, and what verification did NOT establish.** I confirmed the store's contents -
+  99 receipts, all `source_event: UserPromptSubmit`, all `host_kind: codex`, last `2026-08-28T20:48` - and
+  reported that as independent reproduction. **It was not.** It reproduced the OBSERVATION (that project's
+  store has no recent receipts) and I let it stand as support for the DIAGNOSIS (the host stopped firing the
+  event), which the same evidence cannot distinguish from a dozen project-local causes. Confirming a symptom
+  is not confirming a cause, and the write-up did not keep them apart.
+- **THE GAP THE GUARD CLOSES, which is independent of the retracted story**: `hook_status` classifies
+  AGGREGATE liveness (*is there a fresh, well-formed receipt*); per-event checking exists for
+  **registration** and for **arrival of SessionStart only**. **Registered is not fired**, and nothing
+  compared the declared set against the arrived set. The maintainer's framing of what is ours survives the
+  retraction intact: *"Making Codex fire the event may not be yours to fix. Detecting that a required event
+  is not firing, and refusing to claim governance when it is not, is."*
 - **Both sets were already computable, and nothing compared them.** Receipts are keyed per
   `(host, surface, event)` as `<host>-<surface>-<event>.json`; that project's store held
   `codex-cli-sessionstart.json` and `codex-cli-stop.json` and **no `codex-cli-userpromptsubmit.json`.** The
@@ -1239,9 +1263,10 @@ unresolvable-feature precondition.
   DRIFT-199-I002-024 (same computable-sets-never-compared shape).
 - **Class closure**: the computed guard above. **Registered is not fired, and aggregate liveness is not
   per-event arrival** - wherever a control declares a set and observes a set, the comparison is the control.
-- **Still open, and NOT ours**: why Codex CLI 0.151.0 stopped firing `UserPromptSubmit`. Recorded as a
-  host-behaviour question for beta4's host-support work, explicitly not diagnosed here. The walk moves to
-  Claude Code; round 3 waits on it.
+- **Still open, and correctly framed this time**: why `C:\Dev\HelloWinUIReactive` specifically stopped
+  producing `UserPromptSubmit` receipts, when the same host on a fresh project produces them. A
+  PROJECT-LOCAL question with no established cause, recorded for beta4's host-support work. The walk moved
+  to Claude Code.
 
 ### DRIFT-199-I002-026 — "name one reachable action" is insufficient: the action has to be reachable from the state the reader is in (open; beta4 refusal standard)
 
@@ -1272,6 +1297,98 @@ unresolvable-feature precondition.
 - **Class closure**: NONE - the guard belongs with the beta4 refusal contract, and a bespoke check for each
   refusal would be the hand-enumeration this batch keeps ruling against. The one guard written today covers
   the one refusal written today, and is not claimed as covering the class.
+
+### DRIFT-199-I002-027 — T018 deadlocked the first lens of every greenfield workshop, and the suite was green because its fixture wrote a state the real flow cannot produce (fixed)
+
+**The maintainer's finding, 2026-08-30, from starting an ordinary new project** - not from any test.
+`confirm-workshop-lens.ps1` refused any lens absent from the controller's `selected` list. `selected` holds
+the technical lenses the agenda chose. **`product-domain` is never in it and structurally cannot be** - it
+is the intake lens that PRODUCES the agenda. So the governed writer had no path to close the first lens of
+every workshop, and every greenfield feature stopped there.
+
+- **Verified structurally rather than taken on report** (three independent sources, all in the shipped code):
+  1. `confirm-workshop-agenda.ps1:148` builds the selectable catalog as
+     `... | Where-Object { $_ -cne 'product-domain' }` - the intake lens is **excluded from `selected` by
+     construction**, and line 98 requires *"at least one technical lens"*.
+  2. The design-workshop skill's step 7 names the writer as *"the ONE thing that closes a lens"* and
+     explicitly lists **`product-domain`** among the lenses whose own artifact it validates. So the agent is
+     instructed to close the intake lens with a writer that structurally refuses it.
+  3. The transition table already carried a `pending-product-projection` state class - *pending agenda,
+     exactly one workshop key, and it is `product-domain`* - **a legal state nothing could legally produce.**
+     The design anticipated this; only the writer did not.
+- **The two refusals compose into a closed loop**, the pause-recovery shape again: line 94 says *"confirm the
+  workshop agenda first"*; the agent goes to confirm the agenda; `confirm-workshop-agenda.ps1:138` says the
+  product-domain records must be persisted first; closing product-domain is what persists them. Each message
+  correct alone, jointly a trap.
+- **A SECOND blocker, found only because the first was not fixed in isolation.** Intake turns are minted
+  under `phase: 'product-domain'` - measured in the field, HelloWinUIReactive's store holds 12 of them -
+  while the writer looked the receipt up under `phase: 'lens'`. Fixing only the membership check would have
+  moved the deadlock one line down and told the human *"no typed reply from you is on record"* about a reply
+  that was. **A fact that fails two contracts reports one** (DRIFT-199-I002-020), now measured a second time.
+- **Why the suite was green, and this is the fourth time this week mutation-green failed to predict field
+  behaviour**: every fixture in `workshop-lens-checkpoint.tests.ps1` passed `product-domain` to `-Selected`
+  inside a **confirmed** agenda - a state the real flow cannot produce. The fixture wrote the precondition
+  the product denies. Mutation proving showed the control wired to its own test; the test was wired to a
+  fiction.
+- **Resolution — fixed at all three gates, scoped so the technical path is untouched**:
+  1. **One definition of the intake set.** `Get-SpecrewWorkshopIntakeLenses` / `Test-SpecrewWorkshopIntakeLens`
+     in the authority store, now read by the agenda catalog too. The set was previously implied in three
+     places that could not disagree out loud (the catalog filter, the `pending-product-projection` class, the
+     receipt phase ValidateSet) and the writer knew none of them.
+  2. **A transition cell that exists**: `confirm-intake-lens`, allowed from `pending-empty` and
+     `pending-product-projection` - which is exactly how the controller REACHES
+     `pending-product-projection`. `confirm-lens` still requires `confirmed-complete`.
+  3. **The receipt phase matches the turn**: intake lenses are looked up under their own phase.
+  Mutation-proved independently: reverting any one of the three turns four assertions red.
+- **Two fixture defects of my own, found by writing the field-shaped case and recorded rather than quietly
+  fixed**: `return , @('product-domain')` double-wrapped the array so `-ccontains` was always false; and
+  `selected = $(if ($PreAgenda) { @() } ...)` collapsed to `$null`, because an empty array emits nothing to
+  the pipeline - and `@($null).Count` is **1**, so the fixture read as one selected lens and classified
+  `pending-inconsistent`. Both were caught in minutes by a test shaped like the field; neither would have
+  been caught by any amount of mutation of the old fixture.
+- **Citation**: FR-027 (T018/T027); FR-033's method rules; DRIFT-199-I002-020 (two contracts, one report);
+  the beta4 guard-scope principle.
+- **Class closure**: cases 7 and 7b in `tests/integration/workshop-lens-checkpoint.tests.ps1`, and the
+  fixture's new `-PreAgenda` mode, which builds the state a brand-new feature is ACTUALLY in. The
+  generalisable rule is the one the maintainer drew: **a fixture that writes a state the product cannot
+  produce is not a test of the product.**
+
+### DRIFT-199-I002-028 — method rule 12 was applied to checks and never to writers, and the repair path is gated on the wrong step (open; beta4)
+
+Both recorded at the maintainer's instruction, as *"the reason this is a deadlock rather than an error"*.
+
+- **1. A GOVERNED WRITER THAT REFUSES MUST STILL LEAVE A LEGAL NEXT MOVE.** Method rule 12 - fail open on the
+  diagnosis, out loud - has been applied consistently to CHECKS: the owed-artifact preflight now reports
+  unverifiable rather than absent (DRIFT-199-I002-023); crossing ownership reports unknown rather than
+  guessing (DRIFT-199-I002-022); the coverage guard reports undeterminable rather than manufacturing a
+  refusal. **It was never applied to WRITERS.** The T018 refusals were each individually correct and left
+  the reader with no legal move at all - *"close one of the agreed topics instead: "* naming nothing, and
+  *"confirm the workshop agenda first"* pointing at a step that required the very thing being refused. **A
+  refusal with no reachable next move is a deadlock wearing the costume of a diagnosis.**
+  - Applied immediately where this session touched it: the intake and technical transition refusals now
+    carry different actions, because they fail for opposite reasons and one shared sentence cannot name a
+    move available from both; and the membership refusal names `(none yet - the agenda has not been
+    confirmed)` rather than an empty list. One writer is not the class.
+  - **The general form for beta4**: every governed writer's refusal paths owe the same audit a check's do -
+    what is the reader's next legal action from HERE, and does the message name it. This is the writer-side
+    half of DRIFT-199-I002-026's state-awareness: an action must be reachable, and a refusal that leaves
+    none is the extreme case.
+- **2. THE REPAIR PATH IS GATED ON THE WRONG STEP.** To get out of the deadlock the agent had to ask the
+  human to authorize **preparing a read-only proposal that changes nothing**. *"Preparing should be free;
+  only applying should need a human. That single change would have made this incident and the campaign wedge
+  cheap instead of expensive."*
+  - The cost is measurable across this batch: the review-campaign wedge (DRIFT-199-I002-018) took a
+    diagnostic session, a rollback, and two maintainer decisions before anything could be proposed; this
+    deadlock took another. In both, the expensive part was not the repair but the round trip to be allowed
+    to draft one.
+  - **The principle**: human authorization is for CONSEQUENCE, not for effort. A read-only proposal has no
+    consequence - it changes no artifact, spends no allowance, and authorizes nothing - so gating it buys no
+    safety and costs a boundary. The gate belongs on APPLY.
+- **Resolution**: OPEN, beta4, with the refusal-standard and repair-path work. Neither is a tag blocker; both
+  are why the tag batch has been expensive.
+- **Class closure**: NONE - both are contract-level changes (a refusal-path audit across every governed
+  writer; a prepare/apply split in the repair authority), and writing either as a bespoke guard here would
+  be the hand-enumeration this batch keeps ruling against.
 
 ### Resolution Strategies (Unused)
 

@@ -88,25 +88,57 @@ catch {
             -Action 'Ask for the workshop plan to be repaired, then close this lens again.')
 }
 
-# SPECREW-AUTHORITY-CONSUMER: the finite transition contract. A lens closes only from a confirmed agenda.
-$transition = Resolve-SpecrewWorkshopStateTransition -Controller $controller -Operation 'confirm-lens'
+# THE INTAKE LENS IS NOT AN AGENDA TOPIC, and treating it as one deadlocked every greenfield workshop.
+#
+# `product-domain` runs BEFORE the agenda and is what produces it, so it is never in `selected` - the
+# agenda catalog excludes it by construction. This writer required membership in `selected` and a
+# CONFIRMED agenda, so the first lens of every new feature could not be closed: closing it demanded a
+# confirmed agenda, and confirming the agenda demanded the product-domain records this step persists.
+# Two refusals that are each correct in isolation and jointly a trap - the pause-recovery shape again.
+$isIntakeLens = Test-SpecrewWorkshopIntakeLens -Lens $Lens
+
+# SPECREW-AUTHORITY-CONSUMER: the finite transition contract. A TECHNICAL lens closes only from a
+# confirmed agenda; the INTAKE lens closes from the pre-agenda state, which is how the controller reaches
+# `pending-product-projection`.
+$transitionOperation = if ($isIntakeLens) { 'confirm-intake-lens' } else { 'confirm-lens' }
+$transition = Resolve-SpecrewWorkshopStateTransition -Controller $controller -Operation $transitionOperation
 if (-not [bool]$transition.allowed) {
+    # A REFUSAL MUST LEAVE A LEGAL NEXT MOVE (method rule 12, applied to writers rather than checks). The
+    # intake and technical cases fail for opposite reasons, so one shared sentence cannot name a move that
+    # is actually available from where the reader is.
+    $transitionAction = if ($isIntakeLens) {
+        "This topic runs before the agenda, so there is no agenda to confirm first. Ask for the workshop plan to be repaired, then close this topic again."
+    }
+    else {
+        "Confirm the workshop agenda first (or ask for the plan to be repaired), then close this topic again."
+    }
     throw (New-SpecrewLensCheckpointRefusal `
             -Summary ("The workshop plan is not in a state where the '{0}' discussion can be closed." -f $Lens) `
-            -Action 'Confirm the workshop agenda first (or ask for the plan to be repaired), then close this lens again.')
+            -Action $transitionAction)
 }
 
-$selected = @()
-if ($controller.PSObject.Properties['selected'] -and $null -ne $controller.selected) { $selected = @($controller.selected | ForEach-Object { [string]$_ }) }
-if ($selected -notcontains $Lens) {
-    throw (New-SpecrewLensCheckpointRefusal `
-            -Summary ("'{0}' is not one of the topics this workshop agreed to cover." -f $Lens) `
-            -Action ("Close one of the agreed topics instead: {0}." -f ($selected -join ', ')))
+if (-not $isIntakeLens) {
+    $selected = @()
+    if ($controller.PSObject.Properties['selected'] -and $null -ne $controller.selected) { $selected = @($controller.selected | ForEach-Object { [string]$_ }) }
+    if ($selected -notcontains $Lens) {
+        # Naming the agreed topics is what keeps this refusal actionable; with an empty agenda it would
+        # otherwise say "close one of: " and name nothing, which is a refusal with no legal move in it.
+        $agreedList = if ($selected.Count -gt 0) { ($selected -join ', ') } else { '(none yet - the agenda has not been confirmed)' }
+        throw (New-SpecrewLensCheckpointRefusal `
+                -Summary ("'{0}' is not one of the topics this workshop agreed to cover." -f $Lens) `
+                -Action ("Close one of the agreed topics instead: {0}." -f $agreedList))
+    }
 }
 
 # The typed-turn receipt: the human's own reply, minted by the prompt-submit hook. No receipt, no close -
 # a lens cannot be closed on the agent's say-so.
-$receipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase 'lens' -Lens $Lens
+# THE PHASE MUST MATCH THE ONE THE TURN WAS MINTED UNDER. Intake answers are recorded with
+# `phase: 'product-domain'` - measured in the field: HelloWinUIReactive's store holds 12 of them - while
+# this lookup asked for `phase: 'lens'`. Fixing only the membership check above would have moved the
+# deadlock one line down and reported "no typed reply from you is on record" for a reply that was.
+# A fact that fails two contracts reports one (DRIFT-199-I002-020).
+$receiptPhase = if ($isIntakeLens) { $Lens } else { 'lens' }
+$receipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase $receiptPhase -Lens $Lens
 if ($null -eq $receipt) {
     throw (New-SpecrewLensCheckpointRefusal `
             -Summary ("No typed reply from you is on record for the '{0}' question, so the topic was not closed." -f $Lens) `

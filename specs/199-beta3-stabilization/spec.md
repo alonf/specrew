@@ -643,9 +643,13 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
        `confirm-workshop-lens.ps1` were byte-identical and neither shipped.
     3. **The pause fail-soft** covered ARGUMENT BINDING, not WRITE FAILURE. It named the root cause on its
        first run and is still blind to the failure mode it was written for.
-    4. **Hook health** covers AGGREGATE liveness and per-event REGISTRATION, not per-event ARRIVAL. It
-       reported healthy on a host that had never once fired `UserPromptSubmit`, while Specrew rendered
-       packets asking for approvals that could not be recorded. Registered is not fired.
+    4. **Hook health** covers AGGREGATE liveness and per-event REGISTRATION, not per-event ARRIVAL.
+       Registered is not fired, and nothing compared the declared event set against the arrived one -
+       though both were already on disk.
+    5. **A green suite** covers the states its FIXTURES can build, not the states the product can reach.
+       `workshop-lens-checkpoint` was green through a deadlock that stopped every greenfield workshop at
+       its first lens, because its fixture wrote `product-domain` into `selected` - a state the real flow
+       structurally denies (DRIFT-199-I002-027).
     The shape is constant: each guard's NAME describes the whole hazard, its IMPLEMENTATION covers one
     half, and nothing states which half. So the beta4 work is not "add more guards" - it is **make every
     guard declare its scope, and test the half it does not cover.** A guard whose name overstates it is

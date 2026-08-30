@@ -145,7 +145,7 @@ if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
 $yamlReader = Join-Path $PSScriptRoot 'intake/helpers/Read-IntakeYaml.ps1'
 if (-not (Test-Path -LiteralPath $yamlReader -PathType Leaf)) { throw "Design-lens catalog parser is missing: '$yamlReader'." }
 . $yamlReader
-$catalog = @(Read-IntakeYamlDocument -Path $catalogPath -Kind lenses | ForEach-Object { [string]$_.id } | Where-Object { $_ -and $_ -cne 'product-domain' })
+$catalog = @(Read-IntakeYamlDocument -Path $catalogPath -Kind lenses | ForEach-Object { [string]$_.id } | Where-Object { $_ -and -not (Test-SpecrewWorkshopIntakeLens -Lens $_) })
 if ($catalog.Count -eq 0) { throw 'The design-lens catalog contains no technical lenses.' }
 
 $selectedSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)

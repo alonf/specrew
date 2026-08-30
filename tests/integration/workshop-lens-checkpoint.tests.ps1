@@ -31,7 +31,10 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
 function New-WorkshopFixture {
-    param([string[]]$Selected = @('architecture-core', 'ui-ux'), [switch]$SkipRecord)
+    # -PreAgenda builds the state a BRAND NEW feature is actually in: agenda pending, selected empty,
+    # workshop empty. Every other case in this file hands `selected` a populated list, which is why the
+    # intake-lens deadlock was invisible here - the fixture wrote the precondition the real flow denies.
+    param([string[]]$Selected = @('architecture-core', 'ui-ux'), [switch]$SkipRecord, [switch]$PreAgenda)
     $root = [System.IO.Path]::GetFullPath((Join-Path ([System.IO.Path]::GetTempPath()) ("lenscp-{0}" -f [guid]::NewGuid().ToString('N').Substring(0, 10))))
     $feature = [System.IO.Path]::GetFullPath((Join-Path $root (Join-Path 'specs' '001-feat')))
     New-Item -ItemType Directory -Force -Path (Join-Path $root '.specrew/runtime') | Out-Null
@@ -43,16 +46,24 @@ function New-WorkshopFixture {
         }
     }
     $agenda = [ordered]@{}
-    foreach ($lens in $Selected) { $agenda[$lens] = @(('An open question for {0}?' -f $lens)) }
+    if (-not $PreAgenda) { foreach ($lens in $Selected) { $agenda[$lens] = @(('An open question for {0}?' -f $lens)) } }
+    # AN EMPTY ARRAY DOES NOT SURVIVE AN `if` EXPRESSION. `@()` emits nothing to the pipeline, so both
+    # `selected = $(if (...) { @() } ...)` and `$x = if (...) { @() } ...` leave $null - and `@($null).Count`
+    # is 1, so the fixture read as ONE selected lens and the controller classified pending-INCONSISTENT
+    # rather than pending-empty. Assigned directly, an empty array stays an empty array.
+    $selectedValue = @()
+    if (-not $PreAgenda) { $selectedValue = @($Selected) }
     $controller = [ordered]@{
         schema_version        = '1.1'
         workshop_intake       = $true
         confirmation_required = $true
-        agenda_status         = 'confirmed'
-        selected              = @($Selected)
+        agenda_status         = $(if ($PreAgenda) { 'pending-confirmation' } else { 'confirmed' })
+        selected              = $selectedValue
         agenda                = $agenda
         skipped               = [ordered]@{}
-        agenda_confirmation   = 'human-confirmed'
+        agenda_confirmation   = $(if ($PreAgenda) { 'pending' } else { 'human-confirmed' })
+        agenda_confirmation_scope = $(if ($PreAgenda) { 'lens-selection' } else { 'lens-question' })
+        agenda_turn_receipt   = $(if ($PreAgenda) { 'pending' } else { 'receipt-fixture' })
         human_turn_contract   = 'typed-turns-v1'
         workshop              = [ordered]@{}
     }
@@ -61,12 +72,12 @@ function New-WorkshopFixture {
 }
 function Write-LensReceipt {
     # The typed-turn receipt the prompt-submit hook mints when the human answers a lens question.
-    param([string]$Root, [string]$Lens, [string]$Confirmation = 'human-confirmed', [string]$Scope = 'lens-question')
+    param([string]$Root, [string]$Lens, [string]$Confirmation = 'human-confirmed', [string]$Scope = 'lens-question', [string]$Phase = 'lens')
     $path = Join-Path $Root '.specrew/runtime/workshop-authority.jsonl'
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $path) | Out-Null
     $record = [ordered]@{
         schema_version = '1'; receipt_id = ('receipt-' + [guid]::NewGuid().ToString('N').Substring(0, 12))
-        feature_ref = '001-feat'; iteration_number = ''; phase = 'lens'; lens = $Lens
+        feature_ref = '001-feat'; iteration_number = ''; phase = $Phase; lens = $Lens
         question_hash = 'q'; response_hash = 'r'; confirmation = $Confirmation; confirmation_scope = $Scope
         source_event = 'UserPromptSubmit'; host_kind = 'claude'; recorded_at = '2026-08-29T00:00:00Z'
     }
@@ -149,8 +160,12 @@ Assert-True (-not $r4.Ok -and $r4.Text -match 'has no written record yet') 'the 
 Assert-True ($r4.Text -match 'workshop/architecture-core\.md') 'and names the exact file to write'
 
 Write-Host 'Case 5 (B-6): the lens''s OWN validator runs at ITS checkpoint - the JSON product-domain record, caught here'
-$f5 = New-WorkshopFixture -Selected @('product-domain', 'architecture-core')
-$null = Write-LensReceipt -Root $f5.Root -Lens 'product-domain'
+# PRE-AGENDA and a product-domain-phase receipt: the state a real feature is in when this lens closes.
+# This case previously handed `product-domain` to -Selected inside a CONFIRMED agenda - a shape the real
+# flow cannot produce, which is how the T018 deadlock stayed invisible under a green suite.
+$f5 = New-WorkshopFixture -Selected @('architecture-core') -PreAgenda
+$null = Write-LensReceipt -Root $f5.Root -Lens 'product-domain' -Phase 'product-domain'
+Set-Content -LiteralPath (Join-Path $f5.Feature (Join-Path 'workshop' 'product-domain.md')) -Value "# product-domain`n`nWhat we agreed." -Encoding UTF8
 $jsonRecord = '{ "depth": "standard", "confirmation": "human-confirmed" }'
 [System.IO.File]::WriteAllText((Join-Path $f5.Feature (Join-Path 'workshop' 'product-domain.yml')), $jsonRecord, [System.Text.UTF8Encoding]::new($false))
 $r5 = Invoke-Writer -Root $f5.Root -Lens 'product-domain' -Depth 'standard'
@@ -166,7 +181,38 @@ $validRecord = "depth: standard`ndepth_reason: a first feature on a new stack`nc
 [System.IO.File]::WriteAllText((Join-Path $f5.Feature (Join-Path 'workshop' 'product-domain.yml')), $validRecord, [System.Text.UTF8Encoding]::new($false))
 $r5b = Invoke-Writer -Root $f5.Root -Lens 'product-domain' -Depth 'standard'
 Assert-True $r5b.Ok ('the writer closes the lens once the record validates: ' + $r5b.Text)
-Assert-True ([bool](Read-Controller -Path $f5.Controller).workshop.'product-domain'.moved_on) 'and moved_on is written'
+$entry5b = (Read-Controller -Path $f5.Controller).workshop.PSObject.Properties['product-domain']
+Assert-True ($null -ne $entry5b -and [bool]$entry5b.Value.moved_on) 'and moved_on is written'
+
+Write-Host 'Case 7 (T018 deadlock): the INTAKE lens closes on a genuinely fresh feature - the case this suite never ran'
+# THE DEADLOCK THIS SUITE WAS GREEN THROUGH. `product-domain` runs BEFORE the agenda and is what produces
+# it, so it is never in `selected` - confirm-workshop-agenda excludes it from the selectable catalog by
+# construction. The writer required membership in `selected` AND a confirmed agenda, so the first lens of
+# every greenfield feature could not be closed: closing it demanded a confirmed agenda, and confirming the
+# agenda demanded the product-domain records this step persists. Every new feature stopped there.
+#
+# This suite passed because every fixture handed `product-domain` to -Selected, a state the real flow
+# cannot produce. The fixture manufactured the precondition, so the case that matters was never run.
+# Found by starting an ordinary new project, not by any test - the fourth time this week mutation-green
+# failed to predict field behaviour.
+$f7 = New-WorkshopFixture -Selected @('architecture-core', 'ui-ux') -PreAgenda
+$null = Write-LensReceipt -Root $f7.Root -Lens 'product-domain' -Phase 'product-domain'
+Set-Content -LiteralPath (Join-Path $f7.Feature (Join-Path 'workshop' 'product-domain.md')) -Value "# product-domain`n`nWhat we agreed." -Encoding UTF8
+$validRecord7 = "depth: standard`ndepth_reason: a first feature on a new stack`ncontext_scope: feature_standalone`nconfirmation: human-confirmed`nconfirmation_scope: lens-question`nstatements:`n  - text: One person tracks their own reading.`n    evidence: known`n"
+[System.IO.File]::WriteAllText((Join-Path $f7.Feature (Join-Path 'workshop' 'product-domain.yml')), $validRecord7, [System.Text.UTF8Encoding]::new($false))
+$r7 = Invoke-Writer -Root $f7.Root -Lens 'product-domain' -Depth 'standard'
+Assert-True $r7.Ok ('the intake lens closes BEFORE the agenda exists: ' + $r7.Text)
+$entry7 = (Read-Controller -Path $f7.Controller).workshop.'product-domain'
+Assert-True ($null -ne $entry7 -and [bool]$entry7.moved_on) 'moved_on is written for the intake lens, so the workshop can advance to the agenda'
+Assert-True ($r7.Text -notmatch 'not one of the topics this workshop agreed to cover') 'and it is NOT refused as an unagreed topic - it was never going to be one'
+
+Write-Host 'Case 7b: a technical lens is still refused before the agenda is confirmed - the fix is scoped'
+$f7b = New-WorkshopFixture -Selected @('architecture-core', 'ui-ux') -PreAgenda
+$null = Write-LensReceipt -Root $f7b.Root -Lens 'architecture-core'
+$r7b = Invoke-Writer -Root $f7b.Root -Lens 'architecture-core'
+Assert-True (-not $r7b.Ok) 'a technical lens still cannot be closed from the pre-agenda state'
+Assert-True ($r7b.Text -match 'not in a state where') 'and the refusal names the state, not the topic list'
+Assert-True ($r7b.Text -notmatch 'there is no agenda to confirm first') 'the intake wording does not leak into the technical refusal'
 
 Write-Host 'Case 6: a lens outside the agreed agenda cannot be closed'
 $f6 = New-WorkshopFixture
@@ -175,6 +221,6 @@ $r6 = Invoke-Writer -Root $f6.Root -Lens 'security-compliance'
 Assert-True (-not $r6.Ok -and $r6.Text -match 'not one of the topics this workshop agreed to cover') 'the writer refuses a lens the agenda never selected'
 Assert-True ($r6.Text -match 'architecture-core') 'and names the topics that ARE open'
 
-foreach ($f in @($f1, $f2c, $f3, $f4, $f5, $f6)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+foreach ($f in @($f1, $f2c, $f3, $f4, $f5, $f6, $f7, $f7b)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("workshop-lens-checkpoint: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'workshop-lens-checkpoint: all assertions passed' -ForegroundColor Green

@@ -1,19 +1,20 @@
-# Iteration 002, round-3 follow-up (DRIFT-199-I002-025): aggregate liveness is not governance.
+# Iteration 002, round-3 follow-up (DRIFT-199-I002-025): aggregate liveness is not per-event arrival.
 #
-# FIELD CASE, Codex CLI 0.151.0, 2026-08-30, HelloWinUIReactive. SessionStart and Stop receipts were
-# written; `UserPromptSubmit` receipts were NEVER written; hook health reported HEALTHY throughout. The
-# workshop-authority store held 99 receipts from the first walk - proving capture HAD worked on that host -
-# and had not gained one since 2026-08-28. Two typed replies produced nothing, so no lens could close.
+# THE MOTIVATING DIAGNOSIS WAS RETRACTED; THE GAP IS NOT. This suite was first written on a report that a
+# host had stopped firing `UserPromptSubmit`. The maintainer retracted that the same day - a fresh project
+# on the same Codex CLI 0.151.0 minted a `source_event: UserPromptSubmit` receipt, so there is no
+# host-level event regression and the one project's cause is unknown (DRIFT-199-I002-025). No assertion
+# here claims anything about any host's behaviour.
 #
-# Specrew in that state rendered orientation, rendered packets, fired Stop hooks, and recorded no typed
-# authorization at all. It looked governed and was not.
+# What the suite pins is the gap itself, which is independent of that story: hook health classifies
+# AGGREGATE liveness, checks REGISTRATION per event, and checks ARRIVAL for SessionStart only - so a
+# declared event that never produced a receipt is invisible to it. Registered is not fired.
 #
-# BOTH SETS WERE ALREADY COMPUTABLE AND NOTHING COMPARED THEM - the same shape as the FileList omission:
+# BOTH SETS ARE ALREADY COMPUTABLE AND NOTHING COMPARED THEM - the same shape as the FileList omission:
 #   declared: the host manifest's RefocusHookBindings Registrations
 #   observed: the receipt store, keyed per (host, surface, event) as <host>-<surface>-<event>.json
-# Health reported healthy because it classified AGGREGATE liveness ("is there a fresh well-formed
-# receipt") instead of asking whether every declared event had one. Another guard covering less than its
-# name claims, which is why this needed a diagnostic session rather than surfacing at the first miss.
+# A guard covering less than its name claims: `hook_status` answers "is there a fresh, well-formed
+# receipt", which is a different question from "has every declared event produced one".
 #
 # Mutations that turn this file red: make Get-SpecrewHookEventCoverage ignore the declared set; make it
 # report complete without comparing; drop prompt_capture_silent; weaken the refusal so it stops naming the
@@ -39,13 +40,13 @@ function New-CoverageFixture {
     return $root
 }
 
-Write-Host 'Case 1: the field case - SessionStart and Stop fired, UserPromptSubmit never did'
+Write-Host 'Case 1: a declared event with no receipt is named, not averaged away'
 $f1 = New-CoverageFixture -Receipts @('codex-cli-sessionstart', 'codex-cli-stop')
 $c1 = Get-SpecrewHookEventCoverage -ProjectRoot $f1 -HostKind 'codex'
 Assert-True ($c1.determinable) 'the declared event set resolved, so the comparison means something'
 Assert-True (@($c1.declared_events) -contains 'UserPromptSubmit') 'UserPromptSubmit is DECLARED for this host'
-Assert-True (@($c1.missing_events) -contains 'UserPromptSubmit') 'and it is reported MISSING - the evidence was on disk the whole time, unread'
-Assert-True (-not $c1.complete) 'coverage is not complete, which is the fact hook health reported as healthy'
+Assert-True (@($c1.missing_events) -contains 'UserPromptSubmit') 'and with no receipt for it, it is reported MISSING - the comparison nothing was making'
+Assert-True (-not $c1.complete) 'coverage is not complete - the fact an aggregate liveness verdict cannot express'
 Assert-True ($c1.prompt_capture_silent) 'the typed-capture path is flagged silent even though Stop is alive - Stop firing is not evidence that a typed reply can be recorded'
 
 Write-Host 'Case 2: a fully wired host reports complete, so the guard cannot just always complain'
@@ -70,11 +71,11 @@ Assert-True (-not $c4.complete) 'and completeness is not claimed either - unknow
 
 Write-Host 'Case 5: the refusal is state-aware - it does not send the reader to the host they are already on'
 $refusal = Get-SpecrewHookEventCoverageRefusal -Coverage $c1
-Assert-True ($refusal -match 'UserPromptSubmit') 'it names the event that never fired'
+Assert-True ($refusal -match 'UserPromptSubmit') 'it names the declared event that has no receipt'
 Assert-True ($refusal -match "on 'codex'") 'it names the host the reader is actually on'
-Assert-True ($refusal -notmatch 'through the verified Codex CLI' -and $refusal -notmatch 'open this project through') 'it does NOT advise opening the project on the host it is already running on - the third instance of unreachable-from-current-state advice this batch measured'
+Assert-True ($refusal -notmatch 'through the verified Codex CLI' -and $refusal -notmatch 'open this project through') 'it does NOT advise opening the project on the host it is already running on - unreachable-from-current-state advice, DRIFT-199-I002-026'
 Assert-True ($refusal -match 'answers are safe') 'it says the human''s work is safe'
-Assert-True ($refusal -match "host's behaviour, not something this project can repair") 'and it does not assert that Specrew is broken, because the host may simply not be firing the event'
+Assert-True ($refusal -match "host's behaviour, not something this project can repair") 'and it does not assert that Specrew is broken - it reports its own missing evidence and does not diagnose a cause it cannot establish'
 Assert-True ($refusal -match 'continue this feature on a host whose capture path is live') 'it gives ONE action, reachable from where the reader actually is'
 
 foreach ($f in @($f1, $f2, $f3)) { try { Remove-Item -LiteralPath $f -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
