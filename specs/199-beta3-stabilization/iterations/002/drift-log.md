@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 31 (DRIFT-199-I002-001 through -031)
+**Total drift events**: 33 (DRIFT-199-I002-001 through -033)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1631,6 +1631,79 @@ before being touched.
   nearest executable guard is the FileList completeness suite that would now catch the shipping gap itself
   (`tests/unit/package-filelist-completeness.tests.ps1`); nothing can assert that prose chose the longer
   form, and claiming otherwise would be the inert-guard shape this batch keeps recording.
+
+### DRIFT-199-I002-032 — a human pressed stop, the write had already completed, and the agent did not know (open; beta4)
+
+- **What happened, 2026-08-30.** The maintainer interrupted a tool call specifically to prevent a commit.
+  The compound command was `git add -A && git commit && git log` followed by a review run; **the commit half
+  completed before the interrupt took effect** and `5bf6ca25` entered history. Only the review run was
+  stopped. I did not notice, and reported afterwards as though nothing had landed.
+- **How it was caught, and this is the uncomfortable part**: not by any control. I found it because a
+  timeline I printed for an unrelated reason contained a commit my own account said did not exist - **I
+  caught myself contradicting myself.** The maintainer's assessment is exact: *"You found it by noticing you
+  were contradicting yourself, which is the only detector we have and is not one."*
+- **The general statement**: **an interrupt is not a guarantee, and an agent that cannot tell what completed
+  before an interrupt cannot report accurately afterwards.** Every claim made after an interrupted call rests
+  on an assumption about where the interrupt landed, and nothing verifies that assumption. The failure is
+  silent by construction: the agent's own narrative is internally consistent, because it is built from what
+  the agent *intended* to run.
+- **Why it is more serious than the commit it produced**: the commit was harmless (three gate-written files,
+  invisible to the reviewed-state digest - established below). The reporting error was not. For roughly an
+  hour I attributed an invalidated approval to that commit, and built a severity assessment on the
+  attribution. **A wrong belief about what completed propagates into every subsequent claim**, and this
+  session has already recorded what a wrong finding costs once it reaches a boundary (DRIFT-199-I002-014 and
+  -025).
+- **Resolution**: OPEN, beta4. The concrete ask is small and mechanical: after an interrupted tool call, an
+  agent must be able to establish what actually completed - a durable record of side effects per call, or at
+  minimum a convention of re-reading state rather than narrating intent. Recorded as its own entry at the
+  maintainer's instruction because it is a property of the harness contract, not of this batch.
+- **What was done here**: `5bf6ca25` was reverted (`7f7876ec`), on the maintainer's instruction that *"a
+  commit I moved to prevent should not stand silently"* - and only after establishing the revert was free:
+  it touches `.specrew/**` only, which the reviewed-state digest excludes, so the revert commit does not
+  itself invalidate anything. Digest before and after: `71fe4cde` both.
+- **Class closure**: NONE - the guard belongs to the harness (knowing what completed), not to Specrew, and
+  writing a Specrew-side check for it would be a control over something Specrew does not observe.
+
+### DRIFT-199-I002-033 — the partial-signoff approval is invalidated by a records-only commit: W77's carry, scoped to one acceptance kind (open; beta4)
+
+- **The chicken-and-egg, with the mechanism established rather than assumed.** A partial-signoff approval
+  binds to the reviewed-state digest. Writing the records that a signoff requires moves that digest, which
+  invalidates the approval that was captured to permit the signoff.
+- **THREE MEASUREMENTS, because two of my claims about this contradicted each other and the maintainer
+  caught it:**
+  1. **The binding already uses the reviewed-state digest.** Measured: the digest's `tree_id` and the
+     pending override's `target_tree_id` are the same value, `71fe4cde3323...`. So the principled fix
+     "bind to the digest rather than the raw git tree" was **already in place** - `reviewed-state-digest.ps1`
+     excludes `.specrew/**`, `.git/**`, `.squad/**` and `.specify/**`, and the binding honours it.
+  2. **The gate's own writes do NOT move the target.** Two consecutive attempts with no commit between
+     produced the identical target. `signoff-gate/latest.json` is rewritten with a fresh timestamp on every
+     attempt and is invisible to the digest, exactly as designed. **My "it never terminates" call was wrong**
+     - I inferred non-termination from the timestamp churn without testing whether the churn moved the
+     target. Symptom taken for cause, and the third time this week that running the subject beat reasoning
+     about it.
+  3. **The mover was a records-only commit.** `5bf6ca25` (three files, all `.specrew/**`) left the digest
+     unchanged - proved by computing the digest in a worktree at the preceding commit: `71fe4cde` both
+     sides. The actual mover was `20c4f33c`, a drift-log and plan commit under `specs/**`, made between the
+     first refusal and the approval.
+- **`specs/**` inclusion is CORRECT and is not the defect** (maintainer ruling): it holds the spec, plan,
+  tasks and drift log - content a reviewer must see. Excluding it to solve this would blind the digest to
+  the artifacts the review exists to examine.
+- **The right fix, which uses machinery that already exists**: `Get-SpecrewCarriedSignoffOverrideAuthorization`
+  already carries an acceptance across a records-only delta - W77 built exactly this. **It was scoped to one
+  acceptance kind, and the partial-signoff override is another.** Extend the carry to the class. Nothing
+  about what the digest measures changes.
+- **W77's family recurring after its own fix, and this is the sixth instance-not-class finding of the batch**:
+  W77 solved the problem for the acceptance kind in front of it. The carry was written as an instance rather
+  than as a rule about authorizations-versus-records-deltas, so the next authorization kind reproduced it.
+- **Resolution**: OPEN, **beta4, not now** (maintainer ruling): pre-existing rather than a batch regression,
+  and it does not block a tester's first hour - it blocks review-signoff, which is deep in the lifecycle.
+- **The operational rule used to close 002, recorded because a workaround is not a control**:
+  **approve, retry immediately, and commit records only afterwards.** W77's own entry said that "the operator
+  discovers a workaround" is not a control - **and that is now true of W77's fix as well as of the original
+  defect.** An entry whose remedy is an operator habit has documented the defect, not closed it.
+- **Class closure**: NONE here - the carry extension is beta4 work on existing machinery. Named so it is
+  fixed as a class: any authorization that binds to the reviewed-state digest owes the same records-delta
+  carry, and the guard is the one W77 already has, applied to every acceptance kind rather than to one.
 
 ### Resolution Strategies (Unused)
 

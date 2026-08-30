@@ -307,6 +307,18 @@
     thing this iteration learned"*). Recorded here rather than in a retro artifact because the retro
     boundary has not been reached and scaffolding one early would pre-empt it.
 
+    **A THIRD INSTANCE, and the second where the wrong reasoning was the maintainer's** (their instruction,
+    2026-08-30, that it be recorded rather than only the crew's retraction):
+
+    > *"I wrote 'if those files carry a timestamp or run id, it never terminates' one paragraph after
+    > establishing that `.specrew/**` is excluded from the digest — my own conditional contradicted my own
+    > finding, in the same message."*
+
+    The crew adopted the conditional, measured it, and found it false: the gate's timestamped writes are
+    invisible to the digest, so the loop terminates. **The pattern is now three for three** - a wrong cause
+    from either direction, caught by running the subject rather than reasoning about it, never by review and
+    never by seniority.
+
     **Both roles produced a wrong cause, in opposite directions, and both were caught the same way.**
     - DRIFT-199-I002-014: the crew produced a wrong finding, argued it convincingly, and the maintainer
       ruled on it. Had the ruling been executed as written, a correct control would have been edited to do
