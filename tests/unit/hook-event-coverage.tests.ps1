@@ -1,0 +1,82 @@
+# Iteration 002, round-3 follow-up (DRIFT-199-I002-025): aggregate liveness is not governance.
+#
+# FIELD CASE, Codex CLI 0.151.0, 2026-08-30, HelloWinUIReactive. SessionStart and Stop receipts were
+# written; `UserPromptSubmit` receipts were NEVER written; hook health reported HEALTHY throughout. The
+# workshop-authority store held 99 receipts from the first walk - proving capture HAD worked on that host -
+# and had not gained one since 2026-08-28. Two typed replies produced nothing, so no lens could close.
+#
+# Specrew in that state rendered orientation, rendered packets, fired Stop hooks, and recorded no typed
+# authorization at all. It looked governed and was not.
+#
+# BOTH SETS WERE ALREADY COMPUTABLE AND NOTHING COMPARED THEM - the same shape as the FileList omission:
+#   declared: the host manifest's RefocusHookBindings Registrations
+#   observed: the receipt store, keyed per (host, surface, event) as <host>-<surface>-<event>.json
+# Health reported healthy because it classified AGGREGATE liveness ("is there a fresh well-formed
+# receipt") instead of asking whether every declared event had one. Another guard covering less than its
+# name claims, which is why this needed a diagnostic session rather than surfacing at the first miss.
+#
+# Mutations that turn this file red: make Get-SpecrewHookEventCoverage ignore the declared set; make it
+# report complete without comparing; drop prompt_capture_silent; weaken the refusal so it stops naming the
+# missing event or stops offering a host other than the one the reader is on.
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+. (Join-Path $repoRoot 'scripts\internal\specrew-hook-health.ps1')
+. (Join-Path $repoRoot 'scripts\internal\continuous-co-review\hook-health-receipt.ps1')
+$script:failCount = 0
+function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
+function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:failCount++ }
+function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
+
+function New-CoverageFixture {
+    param([string[]]$Receipts)
+    $root = [System.IO.Path]::GetFullPath((Join-Path ([System.IO.Path]::GetTempPath()) ("hookcov-{0}" -f [guid]::NewGuid().ToString('N').Substring(0, 10))))
+    $store = Join-Path $root '.specrew/runtime/hook-health'
+    New-Item -ItemType Directory -Force -Path $store | Out-Null
+    foreach ($name in @($Receipts)) {
+        Set-Content -LiteralPath (Join-Path $store ($name + '.json')) -Value '{"schema_version":"3"}' -Encoding UTF8
+    }
+    return $root
+}
+
+Write-Host 'Case 1: the field case - SessionStart and Stop fired, UserPromptSubmit never did'
+$f1 = New-CoverageFixture -Receipts @('codex-cli-sessionstart', 'codex-cli-stop')
+$c1 = Get-SpecrewHookEventCoverage -ProjectRoot $f1 -HostKind 'codex'
+Assert-True ($c1.determinable) 'the declared event set resolved, so the comparison means something'
+Assert-True (@($c1.declared_events) -contains 'UserPromptSubmit') 'UserPromptSubmit is DECLARED for this host'
+Assert-True (@($c1.missing_events) -contains 'UserPromptSubmit') 'and it is reported MISSING - the evidence was on disk the whole time, unread'
+Assert-True (-not $c1.complete) 'coverage is not complete, which is the fact hook health reported as healthy'
+Assert-True ($c1.prompt_capture_silent) 'the typed-capture path is flagged silent even though Stop is alive - Stop firing is not evidence that a typed reply can be recorded'
+
+Write-Host 'Case 2: a fully wired host reports complete, so the guard cannot just always complain'
+$f2 = New-CoverageFixture -Receipts @('codex-cli-sessionstart', 'codex-cli-userpromptsubmit', 'codex-cli-stop')
+$c2 = Get-SpecrewHookEventCoverage -ProjectRoot $f2 -HostKind 'codex'
+Assert-True ($c2.complete) 'every declared event has a receipt'
+Assert-True (@($c2.missing_events).Count -eq 0) 'nothing is reported missing'
+Assert-True (-not $c2.prompt_capture_silent) 'and the typed-capture path is not flagged'
+
+Write-Host 'Case 3: no receipts at all is UNDETERMINED for capture, not a false all-clear'
+$f3 = New-CoverageFixture -Receipts @()
+$c3 = Get-SpecrewHookEventCoverage -ProjectRoot $f3 -HostKind 'codex'
+Assert-True (-not $c3.complete) 'a project with no receipts is not complete'
+Assert-True (@($c3.missing_events) -contains 'UserPromptSubmit') 'and every declared event is named as missing rather than assumed fine'
+
+Write-Host 'Case 4: an unresolvable host declares nothing, and must NOT manufacture a refusal from that'
+# Absence of a declaration is not evidence of absence of firing - the same absent-versus-unverifiable
+# distinction the preflight owed-artifact check was missing (DRIFT-199-I002-023).
+$c4 = Get-SpecrewHookEventCoverage -ProjectRoot $f1 -HostKind 'not-a-real-host'
+Assert-True (-not $c4.determinable) 'nothing was declared, so nothing is determinable'
+Assert-True (-not $c4.complete) 'and completeness is not claimed either - unknown is reported as unknown'
+
+Write-Host 'Case 5: the refusal is state-aware - it does not send the reader to the host they are already on'
+$refusal = Get-SpecrewHookEventCoverageRefusal -Coverage $c1
+Assert-True ($refusal -match 'UserPromptSubmit') 'it names the event that never fired'
+Assert-True ($refusal -match "on 'codex'") 'it names the host the reader is actually on'
+Assert-True ($refusal -notmatch 'through the verified Codex CLI' -and $refusal -notmatch 'open this project through') 'it does NOT advise opening the project on the host it is already running on - the third instance of unreachable-from-current-state advice this batch measured'
+Assert-True ($refusal -match 'answers are safe') 'it says the human''s work is safe'
+Assert-True ($refusal -match "host's behaviour, not something this project can repair") 'and it does not assert that Specrew is broken, because the host may simply not be firing the event'
+Assert-True ($refusal -match 'continue this feature on a host whose capture path is live') 'it gives ONE action, reachable from where the reader actually is'
+
+foreach ($f in @($f1, $f2, $f3)) { try { Remove-Item -LiteralPath $f -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+if ($script:failCount -gt 0) { throw ("hook-event-coverage: {0} assertion(s) failed" -f $script:failCount) }
+Write-Host 'hook-event-coverage: all assertions passed' -ForegroundColor Green

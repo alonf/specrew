@@ -643,6 +643,9 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
        `confirm-workshop-lens.ps1` were byte-identical and neither shipped.
     3. **The pause fail-soft** covered ARGUMENT BINDING, not WRITE FAILURE. It named the root cause on its
        first run and is still blind to the failure mode it was written for.
+    4. **Hook health** covers AGGREGATE liveness and per-event REGISTRATION, not per-event ARRIVAL. It
+       reported healthy on a host that had never once fired `UserPromptSubmit`, while Specrew rendered
+       packets asking for approvals that could not be recorded. Registered is not fired.
     The shape is constant: each guard's NAME describes the whole hazard, its IMPLEMENTATION covers one
     half, and nothing states which half. So the beta4 work is not "add more guards" - it is **make every
     guard declare its scope, and test the half it does not cover.** A guard whose name overstates it is

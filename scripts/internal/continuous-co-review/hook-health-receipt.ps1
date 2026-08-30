@@ -422,6 +422,143 @@ function Get-SpecrewHookHealthStorePath {
     return (Join-Path $ProjectRoot '.specrew/runtime/hook-health')
 }
 
+# ---------------------------------------------------------------------------------------------------
+# PER-EVENT COVERAGE. Aggregate liveness is not governance.
+#
+# Measured on Codex CLI 0.151.0, 2026-08-30 (maintainer, HelloWinUIReactive): SessionStart and Stop
+# receipts were written, `UserPromptSubmit` receipts were NEVER written, and hook health reported
+# HEALTHY throughout. 99 receipts from the first walk prove capture had worked on that host, and the
+# store had not changed since 2026-08-28. Two typed replies produced nothing, so no lens could close.
+#
+# Specrew was, in that state, rendering orientation, rendering packets, firing Stop hooks - and
+# recording no typed authorization whatsoever. It looked governed and was not.
+#
+# The evidence was ALREADY ON DISK and nothing compared it: receipts are keyed per
+# (host, surface, event) as `<host>-<surface>-<event>.json`, so the store held
+# `codex-cli-sessionstart.json` and `codex-cli-stop.json` and no `codex-cli-userpromptsubmit.json`.
+# The declared event set is equally available, from the host manifest's RefocusHookBindings
+# Registrations. Two computable sets, never compared - the same shape as the FileList omission, where
+# the package was the manifest and nothing checked what sat beside it unlisted.
+#
+# Hook health reported healthy because it classifies AGGREGATE liveness - is there a fresh, well-formed
+# receipt - rather than asking whether every declared event has one. Another guard covering less than
+# its name claims, which is why this needed a diagnostic session instead of surfacing at the first
+# missed receipt.
+#
+# THIS FUNCTION ONLY COMPUTES AND COMPARES. Making a host fire an event it is not firing is not
+# Specrew's to fix; refusing to claim governance while a capture-critical event is silent is.
+function Get-SpecrewHookEventCoverage {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$HostKind,
+        [int]$MaxAgeMinutes = 0
+    )
+
+    $declared = New-Object System.Collections.Generic.List[string]
+    try {
+        if (Get-Command -Name 'Get-SpecrewHookHealthBindings' -ErrorAction SilentlyContinue) {
+            $bindings = Get-SpecrewHookHealthBindings -HostKind $HostKind
+            if ($null -ne $bindings -and (Get-Command -Name 'Get-ManifestValue' -ErrorAction SilentlyContinue)) {
+                foreach ($registration in @(Get-ManifestValue -Map $bindings -Key 'Registrations')) {
+                    $eventName = [string](Get-ManifestValue -Map $registration -Key 'Event')
+                    if (-not [string]::IsNullOrWhiteSpace($eventName) -and -not $declared.Contains($eventName)) {
+                        $declared.Add($eventName) | Out-Null
+                    }
+                }
+            }
+        }
+    }
+    catch { $null = $_ }
+
+    $observed = New-Object System.Collections.Generic.List[string]
+    $storeRoot = Join-Path $ProjectRoot '.specrew/runtime/hook-health'
+    $hostToken = ConvertTo-SpecrewHookHealthToken -Value $HostKind
+    try {
+        if (Test-Path -LiteralPath $storeRoot -PathType Container) {
+            foreach ($file in @(Get-ChildItem -LiteralPath $storeRoot -File -Filter '*.json' -ErrorAction SilentlyContinue)) {
+                $stem = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+                if (-not $stem.StartsWith(($hostToken + '-'), [StringComparison]::OrdinalIgnoreCase)) { continue }
+                if ($MaxAgeMinutes -gt 0 -and ((Get-Date).ToUniversalTime() - $file.LastWriteTimeUtc).TotalMinutes -gt $MaxAgeMinutes) { continue }
+                $eventToken = $stem.Substring($stem.LastIndexOf('-') + 1)
+                if (-not [string]::IsNullOrWhiteSpace($eventToken) -and -not $observed.Contains($eventToken)) {
+                    $observed.Add($eventToken) | Out-Null
+                }
+            }
+        }
+    }
+    catch { $null = $_ }
+
+    $missing = New-Object System.Collections.Generic.List[string]
+    foreach ($eventName in @($declared)) {
+        $token = ConvertTo-SpecrewHookHealthToken -Value $eventName
+        if (-not ($observed -contains $token)) { $missing.Add($eventName) | Out-Null }
+    }
+
+    # CAPTURE-CRITICAL: the events a typed human verdict is captured from. With none of them firing there
+    # is no path by which an approval can reach the ledger, so nothing downstream may describe the project
+    # as governed - the packets still render, and every one of them is asking for something that cannot
+    # be recorded.
+    #
+    # PRECISION MATTERS HERE, and the first draft of this got it wrong. `Stop` firing does NOT mean typed
+    # capture works: on the measured Codex host the Stop RECEIPT existed while the workshop-authority store
+    # had not gained an entry since 2026-08-28, because a typed reply is minted at UserPromptSubmit. A flag
+    # that only fired when EVERY capture event was silent would have read false on the exact case it was
+    # written for. So the prompt-capture path is reported on its own terms.
+    $captureEvents = @('UserPromptSubmit', 'Stop')
+    $captureObserved = @($captureEvents | Where-Object { $observed -contains (ConvertTo-SpecrewHookHealthToken -Value $_) })
+    $captureDeclared = @($captureEvents | Where-Object { $declared -contains $_ })
+    $promptDeclared = ($declared -contains 'UserPromptSubmit')
+    $promptObserved = ($observed -contains (ConvertTo-SpecrewHookHealthToken -Value 'UserPromptSubmit'))
+
+    return [pscustomobject][ordered]@{
+        host                     = $HostKind
+        declared_events          = @($declared)
+        observed_events          = @($observed)
+        missing_events           = @($missing)
+        complete                 = ($declared.Count -gt 0 -and $missing.Count -eq 0)
+        # `unknown` when nothing is declared (no manifest resolved): absence of a declaration is not
+        # evidence of absence of firing, and this must never manufacture a refusal from a missing manifest.
+        determinable             = ($declared.Count -gt 0)
+        capture_events_declared  = @($captureDeclared)
+        capture_events_observed  = @($captureObserved)
+        capture_path_silent      = ($captureDeclared.Count -gt 0 -and $captureObserved.Count -eq 0)
+        # The signal that fires on the measured case: the event a TYPED reply is minted from is declared
+        # and has never produced a receipt. This is the one that means "no approval you type can be
+        # recorded", regardless of what else on the host is alive.
+        prompt_capture_silent    = ($promptDeclared -and -not $promptObserved)
+    }
+}
+
+function Get-SpecrewHookEventCoverageRefusal {
+    # The refusal text for a project whose capture path is silent. Written to the standard: it names what
+    # is wrong, says the human's work is safe, gives ONE action, and does not assert Specrew is broken -
+    # the host may simply not be firing the event, which is not a defect this project can repair.
+    #
+    # STATE-AWARE (round-3 finding, 2026-08-30): the action must be reachable FROM THE READER'S STATE. The
+    # third instance in one day of advice that was locally sensible and unreachable - a session running ON
+    # Codex CLI was told to "open this project through the verified Codex CLI"; a project AHEAD of its
+    # module was told to run an update that would have reverted it; a wedged pause was sent to a command
+    # that redirected back. So this names the CURRENT host and offers a different one, rather than naming
+    # the host the reader is already using.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Coverage,
+        [AllowNull()][string]$AlternateHosts = 'claude, copilot, cursor'
+    )
+    $hostName = [string]$Coverage.host
+    $missing = @($Coverage.missing_events) -join ', '
+    $lines = New-Object System.Collections.Generic.List[string]
+    [void]$lines.Add(("Specrew cannot record your approvals on this host right now, so it is not governing this project."))
+    [void]$lines.Add('')
+    [void]$lines.Add(("Your work and your answers are safe - nothing has been lost, and nothing you typed was misread. What is missing is the hook event Specrew captures a typed approval FROM: on '{0}', these declared events have never produced a receipt: {1}." -f $hostName, $missing))
+    [void]$lines.Add(("Boundary packets will still render, and every one of them would be asking you for a verdict that cannot reach the ledger. That is why this says so now rather than at the boundary."))
+    [void]$lines.Add('')
+    [void]$lines.Add(("What to do: continue this feature on a host whose capture path is live ({0}). Specrew's state travels with the project, so the work continues where it left off." -f $AlternateHosts))
+    [void]$lines.Add(("Whether '{0}' fires that event is the host's behaviour, not something this project can repair from here." -f $hostName))
+    return ($lines -join [Environment]::NewLine)
+}
+
 function Get-SpecrewHookHealthReceiptPath {
     # One receipt file per (host, surface, event): <host>-<surface>-<event>.json under the store.
     param(

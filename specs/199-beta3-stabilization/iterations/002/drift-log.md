@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 24 (DRIFT-199-I002-001 through -024)
+**Total drift events**: 26 (DRIFT-199-I002-001 through -026)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1190,6 +1190,88 @@ writer, which is why."*
 - **Class closure**: the computed guard above. The generalisable statement is the one that made it findable:
   **a fix is not shipped until something a consumer runs can reach it**, and mirrors, parity and green
   suites are all upstream of that question.
+
+### DRIFT-199-I002-025 — on a supported host, Specrew rendered packets and recorded no authorization at all, and health called it healthy (guard added; the host behaviour is not ours)
+
+**Maintainer measurement, 2026-08-30, Codex CLI 0.151.0 launched from PowerShell in
+`C:\Dev\HelloWinUIReactive`.** SessionStart and Stop receipts are written; **`UserPromptSubmit` receipts are
+never written at all.** Two typed replies produced nothing, so no lens can close and T018 is untestable on
+that host. The feature pointer is correct and the controller is valid, so this is not the
+unresolvable-feature precondition.
+
+- **Independently reproduced here before anything was built on it.** The workshop-authority store holds
+  **99 receipts, every one `source_event: UserPromptSubmit`, every one `host_kind: codex`**, first
+  `2026-08-27T21:21`, last **`2026-08-28T20:48`** - nothing since. Capture demonstrably worked on that host
+  and stopped.
+- **THE TAG-BLOCKING FORM, in the maintainer's framing**: codex is a supported host, ranked equal to claude
+  in the reviewer catalog. On it Specrew currently **renders orientation, renders packets, fires Stop hooks,
+  and records no typed authorization whatsoever.** It looks governed and is not. *"Making Codex fire the
+  event may not be yours to fix. Detecting that a required event is not firing, and refusing to claim
+  governance when it is not, is."*
+- **Both sets were already computable, and nothing compared them.** Receipts are keyed per
+  `(host, surface, event)` as `<host>-<surface>-<event>.json`; that project's store held
+  `codex-cli-sessionstart.json` and `codex-cli-stop.json` and **no `codex-cli-userpromptsubmit.json`.** The
+  declared set is equally available from the host manifest's `RefocusHookBindings` Registrations. **The
+  identical shape as DRIFT-199-I002-024**: the package was the manifest and nothing checked what sat beside
+  it unlisted; here the health verdict is the receipt store and nothing checked what was declared and absent.
+- **Why health said healthy - the FOURTH guard-scope instance in one day**: `hook_status` classifies
+  AGGREGATE liveness (*is there a fresh, well-formed lifecycle receipt*) rather than per-event arrival. Its
+  per-event checking covers **registration** - `Get-SpecrewHookMissingEventRegistrations` asks whether each
+  declared event has a Specrew entry in the config - and its per-event **arrival** check covers SessionStart
+  only. Registered is not fired. That gap is why this needed a diagnostic session instead of surfacing at
+  the first missed receipt.
+- **Resolution — the detection is fixed here; the host behaviour is not ours.**
+  `Get-SpecrewHookEventCoverage` (in the non-protected receipt module, the designated extension point)
+  computes declared vs observed and names the difference. Run against the live project it reproduces the
+  maintainer's diagnosis exactly: *declared* `SessionStart, UserPromptSubmit, Stop`; *observed*
+  `sessionstart, stop`; **missing `UserPromptSubmit`**; `complete=False`.
+  - **A precision error caught in my own first draft, recorded because it is the same family**: the initial
+    flag fired only when EVERY capture event was silent - and `Stop` IS alive here, so it read false on the
+    exact case it was written for. A typed reply is minted at `UserPromptSubmit`, so `Stop` firing is not
+    evidence that an approval can be recorded. Replaced with `prompt_capture_silent`, which reports the
+    typed-capture path on its own terms and reads **true** here.
+  - **`determinable`**: a host whose manifest does not resolve declares nothing, and the function reports
+    unknown rather than manufacturing a refusal from a missing manifest - the absent-versus-unverifiable
+    distinction from DRIFT-199-I002-023, applied before it could be got wrong again.
+  - Guard `tests/unit/hook-event-coverage.tests.ps1`, registered in the CLASS-GUARD lane. Mutation-proved:
+    removing the declared-vs-observed comparison turns four assertions red.
+- **Citation**: FR-033's refusal standard; the beta4 guard-scope principle (this is its fourth instance);
+  DRIFT-199-I002-024 (same computable-sets-never-compared shape).
+- **Class closure**: the computed guard above. **Registered is not fired, and aggregate liveness is not
+  per-event arrival** - wherever a control declares a set and observes a set, the comparison is the control.
+- **Still open, and NOT ours**: why Codex CLI 0.151.0 stopped firing `UserPromptSubmit`. Recorded as a
+  host-behaviour question for beta4's host-support work, explicitly not diagnosed here. The walk moves to
+  Claude Code; round 3 waits on it.
+
+### DRIFT-199-I002-026 — "name one reachable action" is insufficient: the action has to be reachable from the state the reader is in (open; beta4 refusal standard)
+
+- **The maintainer's finding, 2026-08-30**: the Codex session's own advice was *"open this project through
+  the verified Codex CLI"* **while it was already running on the Codex CLI.**
+- **Third instance in a single day of remedy text that is locally sensible and unreachable from the
+  reader's actual state**, and the three failure directions are all different:
+  1. **DRIFT-199-I002-021**: `run specrew update --project-path` told to a project AHEAD of its installed
+     module - following it would have **reverted** the fixes. *Damage.*
+  2. **DRIFT-199-I002-018**: the wedged pause sent the reader to `--pause-choice`, which found no pending
+     pause and redirected to `--approve-round`, which returned to the pause guard. *A closed loop.*
+  3. **This one**: a host telling the reader to switch to the host they are on. *A no-op.*
+- **What it establishes about the standard we have been writing to**: FR-033's refusal clause requires a
+  refusal to name what is wrong, say the human's work is safe, and give **one concrete action**. All three
+  refusals above satisfy that clause completely. **The clause is necessary and not sufficient** - an action
+  is only concrete relative to a state, and none of these knew the reader's. The missing requirement:
+  **a refusal must be reachable from the state the reader is in, and that means the refusal has to know
+  that state.**
+- **Applied immediately, in the one refusal written today**: `Get-SpecrewHookEventCoverageRefusal` names the
+  host the reader is actually on and offers a **different** one, and its guard asserts that it does not
+  reproduce the "open it on the host you are already using" shape. One instance is not the fix; the standard
+  is beta4's.
+- **Citation**: FR-033's refusal standard; the beta4 UX programme (maintainer ruling 2026-08-28, UX raised
+  to top beta4 priority on diagnosability and composition grounds - this is the diagnosability half, with
+  three measurements behind it).
+- **Resolution**: OPEN, beta4, with the refusal-standard contract. The concrete form: a refusal that
+  proposes a host, a command, or a mode must first establish that the reader is not already in it.
+- **Class closure**: NONE - the guard belongs with the beta4 refusal contract, and a bespoke check for each
+  refusal would be the hand-enumeration this batch keeps ruling against. The one guard written today covers
+  the one refusal written today, and is not claimed as covering the class.
 
 ### Resolution Strategies (Unused)
 
