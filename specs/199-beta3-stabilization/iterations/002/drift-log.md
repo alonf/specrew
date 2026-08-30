@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 20 (DRIFT-199-I002-001 through -020)
+**Total drift events**: 21 (DRIFT-199-I002-001 through -021)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -937,6 +937,48 @@ which behaviours to repeat.**
 - **Class closure**: NONE - the guard is a property of how gates report, and writing it before beta4 decides
   the reporting contract would pin behaviour the design has not chosen yet. Named here so it is fixed as a
   family rather than twice.
+
+### DRIFT-199-I002-021 — one refusal message, two opposite situations, and following it in the wrong one destroys work (open; beta4 refusal standard)
+
+- **Observed**: 2026-08-30, relaying the pause choice for round 2. Two refusals in
+  `scripts/internal/review-engine-resolution.ps1` fired in sequence:
+  - `:254` `review-engine-project-runtime-drifted: marker=768a08fc...; actual=e6852005...`
+  - `:258` `review-engine-version-mismatch: installed=...; project=...`
+
+  **Both end with the same remedy: `run 'specrew update --project-path "<project>"'`.**
+- **The remedy is directional, and the message is not.** `specrew update` deploys the INSTALLED module's
+  files into the project. That is:
+  - **Correct** when the project has drifted BEHIND the installed module - the ordinary consumer case, where
+    the project is stale and the module is the source of truth.
+  - **DESTRUCTIVE** when the project is AHEAD of the installed module - which is this case, and which is the
+    NORMAL case for anyone developing Specrew itself. Here the project carried today's pause fixes
+    (`$FeatureId`/`$RepoRoot` as real parameters; the reconciler's invoked-publish pause) and the installed
+    module was 0.40.0, which predates them. Following the message literally would have deployed 0.40.0 over
+    the fixes and **reverted them** - silently, since a deploy reports success.
+- **Two different states produce one message with one remedy.** Nothing in either refusal asks which
+  direction the difference runs, and `:258` even prints both hashes - it HAS the information needed to tell
+  the cases apart and does not use it to change the advice.
+- **Why this one is worth more than the sibling findings**: the supported path exists and is documented -
+  `scripts/internal/install-local-build.ps1` states it in its own header (*"Installing the module is only
+  one side... refuses every review when the two disagree"*), and the correct sequence is build-from-HEAD
+  first, THEN update. That knowledge is what made the difference here. **A beta tester working on the engine
+  would not have it**, would follow the refusal as written, and would lose their work to a command that
+  reported success.
+- **The family, and why it sharpens the case for the beta4 item**: same shape as DRIFT-199-I002-014 (a
+  refusal stating a cause that was not the cause) and DRIFT-199-I002-015/-018 (locally correct messages that
+  compose into a closed loop). **This is the first instance where following the advice causes DAMAGE rather
+  than wasting time.** The refusal-standard work has been argued on diagnosability and friction; this is the
+  argument from data loss.
+- **Citation**: FR-033's refusal standard; the beta4 UX programme (maintainer ruling 2026-08-28 raising UX
+  to top beta4 priority on diagnosability and composition grounds).
+- **Resolution**: OPEN, beta4, with the refusal-standard work. The fix is small and the information is
+  already present: compare the direction, and say either *"your project is behind the installed module - run
+  specrew update"* or *"your project is AHEAD of the installed module - install the current build first
+  (scripts/internal/install-local-build.ps1), then update; running update now would replace your project's
+  newer engine."*
+- **Class closure**: NONE - the guard belongs with the beta4 refusal contract, and inventing a message
+  format here would pin wording the refusal standard has not settled. Named so it is fixed as part of that
+  contract rather than as a one-off string edit.
 
 ### Resolution Strategies (Unused)
 
