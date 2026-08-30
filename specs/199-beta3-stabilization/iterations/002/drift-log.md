@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 18 (DRIFT-199-I002-001 through -018)
+**Total drift events**: 20 (DRIFT-199-I002-001 through -020)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -606,6 +606,20 @@ point of the entry, so the original claim is quoted rather than deleted.**
   reproduced all three from the code. The demotion is therefore not a judgement call that went the other
   way; it is a rationale that the record itself refutes. Reported to the maintainer from the RAW findings at
   their instruction, precisely because the summary would have shown three minors.
+- **RECLASSIFIED 2026-08-30, maintainer ruling: B-3 is a RECORD defect, not a summariser defect, and that
+  raises its beta4 priority.** The distinction is not academic and the evidence is in this campaign's own
+  durable state. The restored pending-pause fact reads:
+
+  > `major_count: 0`, `minor_count: 3`, `demoted_count: 3`
+
+  **Those are the stored counts, not a rendering.** A presentation-layer demotion would leave the record
+  intact and mis-display it; this writes the demoted grade into the campaign's persistent state. The raw
+  findings do preserve `demoted_from: "major"`, so nothing is destroyed - but **any future reader doing
+  arithmetic over this campaign sees zero majors on a round that graded three.** Every consumer that counts
+  rather than reads inherits the wrong number: budget reasoning, gating decisions, retro figures, and any
+  later claim about what this batch's review found. B-3 has been filed as "the summariser demotes
+  severities"; it is "the demotion is written into the record", which is a different defect with a
+  different blast radius.
 - **Citation**: FR-027, FR-032, FR-024; FR-033 (mutation proving - see below); the inert-control family
   catalogue; the standing rule that nothing here weakens a gate that caught something real.
 - **What this says about the method, and it is not comfortable**: eleven suites in this iteration were
@@ -858,6 +872,71 @@ point of the entry, so the original claim is quoted rather than deleted.**
   compared, which is DRIFT-199-I002-011's rule applied to publish paths; (3) a composition test for the
   pause/approve pair, since each message is right alone and they form a loop together - the same
   two-gates-disagree harness beta4 already owes.
+
+### DRIFT-199-I002-019 — a control paid for itself: the timestamp guard caught a defect the REPAIR introduced (positive control evidence, recorded deliberately)
+
+**This entry records a control WORKING. It is filed as a first-class event, at the maintainer's instruction
+(2026-08-30), because the ledger has been one-sided about which controls justify themselves — and this
+session established the principle itself: a drift log holding only failures teaches the wrong lesson about
+which behaviours to repeat.**
+
+- **What happened**: while repairing the dropped pause fact (DRIFT-199-I002-018), the restore script derived
+  `observed_at` from round 1's published `result.ended_at` - the correct source, and the one the maintainer's
+  own condition required. `ConvertFrom-Json` coerces that ISO string into a `[datetime]`, and the script's
+  `[string]` cast then rendered it **in the current culture**: `08/30/2026 00:56:05`.
+- **What caught it**: `Test-ReviewAuthorityTimestamp` (`review-authority-core.ps1:96-110`) refused the write
+  with `review-authority-timestamp-invalid:pending-pause[run-...].observed_at`. It validates the SHAPE with
+  an explicit ISO-8601 regex before parsing, and its comment states exactly why it exists:
+
+  > *"Validate the shape before parsing so culture-permissive inputs such as local dates can never become
+  > authority."*
+
+  It also documents why it uses `TryParse` rather than the by-ref `TryParseExact` overload - PowerShell 7.5
+  binds that inconsistently on Windows. Someone wrote that guard for a hypothetical, explained the
+  hypothetical, and the hypothetical arrived.
+- **Why it is the clearest case of a control paying for itself in the fortnight**: a repair of a defect
+  introduced a defect, into the **authority store** - the artifact whose entire worth is that its facts are
+  true - and the guard stopped it at the boundary. Had it not, the campaign would have carried a pause fact
+  timestamped in a local culture, which is precisely the "authority that cannot be compared across machines"
+  failure the guard names. And the writer was not careless in an obvious way: it derived from the right
+  source, refused to default anything, and still produced a wrong value through a language coercion.
+- **The contrast that makes the point**: this batch has catalogued eleven-plus inert controls, a test
+  certifying a defect, a tripwire that could not fire, and a fail-soft that destroyed its own diagnosis.
+  Against that, here is a control that is cheap, specific, documented, and correct - and it earned its place
+  on an input nobody predicted, written by the repair rather than by the feature.
+- **Citation**: FR-033's method rules; the maintainer's standing rule that nothing here weakens a gate that
+  caught something real - this gate caught something real, in this session, against this session's own work.
+- **Resolution**: no action. The repair was corrected to round-trip timestamps explicitly
+  (`([datetimeoffset]$Value).ToUniversalTime().ToString('o')`) and the fact then wrote and read back clean.
+- **Class closure**: the control IS the closure, and it already exists. What is added is the record that it
+  fired, so the next person weighing whether shape-validation-before-parse is worth its lines has one
+  measured instance instead of an argument.
+
+### DRIFT-199-I002-020 — the machinery reports one problem at a time, at two different scales (cross-reference; open, beta4)
+
+- **The single-artifact form, measured this session**: the first pause-restore attempt produced a fact that
+  violated **two** contracts at once - an unknown `restoration` field and a culture-formatted `observed_at`.
+  The store reported the unknown field. Fixing that revealed the timestamp. **A fact that fails two
+  contracts reports one, and fixing the reported failure does not mean the fact is sound.**
+- **The walk-scale form, the maintainer's finding from the HelloWinUIReactive walk**: serial halting gates -
+  **N latent defects cost N round trips**, because each gate halts on the first problem it finds and the next
+  is invisible until the previous is fixed.
+- **The cross-reference, at the maintainer's instruction (2026-08-30): these are the same family at
+  different scales.** In both, the machinery reports one problem at a time while **the reader infers there
+  was only one**. That inference is the defect, and it is not the reader's mistake: a refusal that names one
+  cause reads as a complete diagnosis, because that is what a refusal normally is. The cost is paid in round
+  trips at walk scale and in false confidence at artifact scale - "I fixed what it told me" produces a fact
+  that is still wrong.
+- **Why it is worth naming as one thing**: the two look unrelated in a backlog - one is a CLI ergonomics
+  complaint, the other a validator ordering detail - so they would be fixed separately, or one would be
+  fixed and the other left. Named as a family, the remedy is one idea: **a gate that can see more than one
+  problem should report all of them, and a gate that cannot should say that it stopped at the first.** The
+  second half is nearly free and is the part that repairs the reader's inference.
+- **Resolution**: OPEN, beta4. Belongs with the composition-test programme, which is already where the
+  "two correct surfaces, nothing arbitrating" findings (DRIFT-199-I002-010, -018's closed loop) are pooled.
+- **Class closure**: NONE - the guard is a property of how gates report, and writing it before beta4 decides
+  the reporting contract would pin behaviour the design has not chosen yet. Named here so it is fixed as a
+  family rather than twice.
 
 ### Resolution Strategies (Unused)
 

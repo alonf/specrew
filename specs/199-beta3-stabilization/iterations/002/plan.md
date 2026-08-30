@@ -252,6 +252,22 @@
       three are real defects in THIS iteration's own new code (FR-027, FR-032, FR-024). Recorded as
       DRIFT-199-I002-016.
     - Tripwire status: threshold is more than 2 rounds; at 1, not tripped.
+  - **SEQUENCE CHANGE, maintainer ruling 2026-08-30: the module update and the WinUI walk move from
+    feature-closeout's release leg to BEFORE review-signoff.** When round 2 delivers clean, the module is
+    updated from the current tree and the HelloWinUIReactive walk is resumed - and only then is
+    review-signoff presented.
+    - **Why**: four fixes have *only* mutation evidence, and iteration 002's own boundaries never exercise
+      them, because 002 is neither greenfield nor origin-less. T016's no-origin posture, T017 and T018's
+      first workshop, and T020's fresh feature creation are all greenfield paths that this iteration cannot
+      reach from inside itself.
+    - **Review-signoff is where evidence is judged.** Signing off on four fixes whose sole evidence is that
+      their own tests pass, and then discovering at feature-closeout that they fail in a real project, is
+      the wrong order - *and it is the exact failure this batch was convened to fix.*
+    - **It costs nothing structural**: the module update does not require 002 to be closed, it just installs
+      the current tree. If the walk shows the greenfield fixes do not hold, the repair folds into 002 rather
+      than opening an iteration 003.
+    - This is the same reasoning as FR-033's rule that mutation proving shows a control is wired to its own
+      test and never that it is wired to the system - applied to a whole class of fixes rather than to one.
   - **CONVERGENCE RULE, maintainer ruling 2026-08-29 - and it exists because the obvious reading of
     "one covering round on the tree that ships" regresses to W77.** Every round's fixes move the tree
     that round covered, so taken literally, coverage is never reachable and rounds recur forever.
