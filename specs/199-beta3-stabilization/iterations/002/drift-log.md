@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 33 (DRIFT-199-I002-001 through -033)
+**Total drift events**: 34 (DRIFT-199-I002-001 through -034)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1704,6 +1704,53 @@ before being touched.
 - **Class closure**: NONE - the carry extension is beta4 work on existing machinery, and writing a guard here would pin behaviour the extension has not yet chosen. Named so it is
   fixed as a class: any authorization that binds to the reviewed-state digest owes the same records-delta
   carry, and the guard is the one W77 already has, applied to every acceptance kind rather than to one.
+
+### DRIFT-199-I002-034 — a valid human authorization was discarded in silence for being followed by more text (open; the message half fixed, the source half awaits a ruling)
+
+- **Measured, 2026-08-30, on the fourth attempt.** The maintainer typed a valid partial-signoff approval
+  three times; signoff refused three times; **the phrase was never wrong.** The third attempt failed for a
+  reason none of the machinery reported: the approval was **captured, evaluated, and thrown away in
+  silence.**
+- **The mechanism, at source.** `HumanAuthorityStore.ps1:106` matches
+  `(?is)^approved\s+for\s+partial\s+review\s+signoff\s*[-:]\s*(?<rationale>.+?)\s*$`. With the `s`
+  flag and no `m` flag, **`rationale` is everything from the dash to the END OF THE ENTIRE MESSAGE** - not
+  the sentence attached to the phrase. Line 109 then rejects `-gt 2000` characters and `return $null`s.
+  - The third approval carried the same rationale plus two further instruction paragraphs: **2193
+    characters** by the regex's reading, over the cap, dropped.
+  - The second and fourth approvals were the rationale alone (~760 characters) and both captured.
+    Identical phrase, identical rationale; the only variable was what followed it in the message.
+- **Why this is the sharpest refusal defect of the batch.** The human did everything right. The gate then
+  reported `latest-result-not-current` - **true, and about something else entirely.** There was no message
+  anywhere naming the cause, because the discard happens in a function that returns `$null` and says
+  nothing. Three families at once, all previously catalogued here:
+  1. **A fail-soft with no trace** (DRIFT-199-I002-018): the discard is silent by construction.
+  2. **A refusal that names what it checked, not what went wrong** (DRIFT-199-I002-029, the sixth
+     instance): the gate faithfully reports staleness while the actual event was a dropped authorization.
+  3. **An unreachable remedy** (DRIFT-199-I002-026): the message's action was to re-type the phrase, which
+     is exactly what had just been done and just been discarded.
+- **And the direction is the one that matters least and still hurts**: it DISCARDS an authorization rather
+  than inventing one, so the failure is safe. It is also a hard block - the human cannot proceed and cannot
+  learn why - which is the definition the maintainer set for tag relevance: *"stuck, not inconvenienced."*
+- **What was fixed here (the message half, on the maintainer's instruction to fix the refusal text before
+  the tag)**: the partial-coverage refusal now names the ORDERED sequence - refresh the pending request by
+  running the gate, then approve **as the whole message with nothing after it**, then retry - and states
+  that writing records between those steps moves the state the approval was bound to and is not a rejection
+  of the human's reasoning. Guard: `tests/unit/partial-signoff-refusal-names-the-sequence.tests.ps1`,
+  mutation-proved.
+- **What is NOT fixed, and is put to the maintainer rather than taken**: the two source-side halves.
+  1. **Bound the rationale to its own paragraph** rather than to end-of-message. This is the actual semantic
+     defect - a rationale is the reason attached to the phrase, not the remainder of the conversation.
+  2. **Never drop a matched phrase in silence.** If the phrase matches and the rationale is rejected, say
+     so. This is the rule this batch established, and this is its most severe instance, because the thing
+     dropped was a human authorization.
+  Recommendation on the record: **do (2) unconditionally** - it is the difference between a recoverable and
+  an unrecoverable stop, and it is small. (1) is the better fix and is a contract change to what counts as a
+  rationale, so it belongs with beta4's refusal work.
+- **Citation**: FR-033's refusal standard, sharpened to *name the thing that actually failed*; method rule
+  12; DRIFT-199-I002-018, -026, -029, -033.
+- **Class closure**: the message guard above closes the operator-facing half only, and says so. The source
+  half has no guard because no fix is authorized yet; naming a guard for an unbuilt fix is the shape this
+  batch has repeatedly ruled against.
 
 ### Resolution Strategies (Unused)
 

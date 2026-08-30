@@ -168,8 +168,27 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
             $request = Write-SpecrewReviewSignoffOverrideRequest -ProjectRoot $ProjectRoot -TargetTreeId $treeId `
                 -CampaignId $campaignId -RunId ([string]$decision.matched_run_id)
             $decision | Add-Member -NotePropertyName override_request -NotePropertyValue $request -Force
+            # THE MESSAGE MUST NAME THE SEQUENCE, NOT ONLY THE PHRASE.
+            #
+            # Measured, 2026-08-30 (DRIFT-199-I002-033/-034): a maintainer typed a valid approval three
+            # times and signoff refused three times. Not once was the phrase wrong. The approval binds to
+            # the reviewed-state digest, and ANY commit under `specs/**` between the request being written
+            # and the retry moves that digest - so writing the very records a signoff needs invalidates the
+            # approval that permits it. The corrected operator sequence needs three clauses, one of which
+            # ("re-run the gate first, to refresh the pending request") no user would guess and this message
+            # did not teach. `latest-result-not-current` named the symptom and left no reachable action.
+            #
+            # The fourth clause is newer and cost a fourth attempt: the capture reads the rationale as
+            # EVERYTHING from the dash to the end of the message and rejects it over 2000 characters, so an
+            # approval followed by any further discussion in the same message is discarded in silence.
+            # Until that is fixed at its source, the message has to say it.
             $decision.message = [string]$decision.message +
-                ' If you intentionally accept partial coverage for this exact tree, type: approved for partial review signoff - <why accepting it is safe>. Specrew captures that typed reply before the next attempt; command-line identity fields are not authority.'
+                ' If you intentionally accept partial coverage for this exact tree, do these three things in order, with NO commits anywhere between them:' +
+                ' (1) run this same command once, which refreshes the pending request against your files as they are right now - an approval binds to a specific state, and a request from before your last commit is already stale;' +
+                ' (2) type, as a normal chat message and as the WHOLE message with nothing after it: approved for partial review signoff - <why accepting it is safe>;' +
+                ' (3) run this same command again immediately.' +
+                ' Writing records - a drift entry, a plan note - between (1) and (3) moves the state your approval was bound to and it will refuse again, which is not a rejection of your reasoning.' +
+                ' Specrew captures that typed reply before the next attempt; command-line identity fields are not authority.'
         }
     }
     Write-ContinuousCoReviewSignoffGateDecisionEvidence -ProjectRoot $ProjectRoot -BoundaryType $BoundaryType -Decision $decision

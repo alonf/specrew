@@ -12,7 +12,7 @@
   "campaign_id": "cmp-199-beta3-stabilization-i002",
   "run_id": "run-20260830-160011946-a3d8338c",
   "target_digest": "df2edd1f72251a43f915cc00924d1e04f4f50816",
-  "observed_at": "2026-08-30T18:32:37.7459520Z",
-  "spent_at": null,
-  "authorization_ref": null
+  "observed_at": "2026-08-30T18:32:37.745952Z",
+  "spent_at": "2026-08-30T21:38:21.2951687+00:00",
+  "authorization_ref": "standing-human-grant-t029-progress-20260722-slot-9"
 }

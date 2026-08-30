@@ -302,6 +302,32 @@
     the only reason it did not ship is that a human instructed the crew to read raw findings instead of the
     summary. That instruction was a workaround, and it worked, and it does not scale past a maintainer who
     knows to give it.
+  - **CARRY INTO THE 002 RETRO — THE PATTERN THIS ITERATION SHOULD BE REMEMBERED FOR** (maintainer
+    instruction, 2026-08-30, recorded in the crew's own words):
+
+    > **An operator habit that needs three clauses and still fails is evidence for the carry extension, not
+    > against it. The workaround was scoped to the instance I had seen rather than to the mechanism.**
+
+    That is the fourth instance of one pattern, and the maintainer named the other three:
+    - **W77's carry** solved the records-delta problem for the acceptance kind in front of it, and the
+      partial-signoff override reproduced it (DRIFT-199-I002-033).
+    - **T018's first fix** unblocked new workshops from `pending-empty` and stranded every project that had
+      already confirmed its agenda (DRIFT-199-I002-027).
+    - **The line-ending ruling** was scoped to this checkout, when the general statement was about any
+      consumer whose config differs (DRIFT-199-I002-014).
+    - **The operator workaround** was scoped to the failure I had watched - "commit records afterwards" -
+      when the mechanism was "any state change between the request and the retry", which needed a third
+      clause I had not seen, and then failed anyway for a fourth reason nobody had seen
+      (DRIFT-199-I002-034).
+
+    **The shape**: a fix is written against the instance that produced the evidence, and the evidence is
+    always one instance. Every one of these was correct about what it repaired. Every one left the
+    mechanism intact, so the next instance arrived wearing different clothes and was not recognised until it
+    had cost something. **The countermeasure is not more care; it is asking, before writing the fix, what
+    else has the shape of the thing being fixed** - which is the same question the guard-scope principle
+    asks about tests and the asymmetry rule asks about error directions. This iteration produced all three
+    of those rules and still committed the error four times, which is the honest note the retro should end
+    on.
   - **CARRY INTO THE 002 RETRO — the joint failure mode** (maintainer instruction, 2026-08-30: *"the
     direction observation belongs in the retro rather than the drift log... it is the most transferable
     thing this iteration learned"*). Recorded here rather than in a retro artifact because the retro
