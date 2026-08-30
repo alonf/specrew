@@ -634,6 +634,19 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     on repairable fact kinds. It was NOT taken here, and the reason is the item's own framing: *"a
     schema change to the trust anchor made under an operational blockage is the wrong way to land a
     right idea."* The blockage passes; the schema stays.
+  - **EVERY GUARD HERE PROTECTS LESS THAN ITS NAME CLAIMS, AND THE GAP IS ALWAYS THE HALF NOBODY
+    TESTED** (maintainer, 2026-08-30, on the third instance in one day). Stated as a beta4 principle in
+    exactly those terms, with its three measured instances:
+    1. **Mutation proving** covers control-to-TEST wiring, not control-to-SYSTEM. It proved eleven suites
+       and caught none of round 1's three findings.
+    2. **Mirror parity** covers DIVERGENCE between mirrors, not OMISSION from the package. Both copies of
+       `confirm-workshop-lens.ps1` were byte-identical and neither shipped.
+    3. **The pause fail-soft** covered ARGUMENT BINDING, not WRITE FAILURE. It named the root cause on its
+       first run and is still blind to the failure mode it was written for.
+    The shape is constant: each guard's NAME describes the whole hazard, its IMPLEMENTATION covers one
+    half, and nothing states which half. So the beta4 work is not "add more guards" - it is **make every
+    guard declare its scope, and test the half it does not cover.** A guard whose name overstates it is
+    worse than no guard, because it retires the question.
   - **THE DEEPEST PATTERN OF THE FORTNIGHT, recorded for beta4 (maintainer, 2026-08-29): every silent
     failure in this batch converted a recoverable problem into an unfalsifiable one.** Four instances,
     and the fourth found its own root cause the moment the rule was applied to it:

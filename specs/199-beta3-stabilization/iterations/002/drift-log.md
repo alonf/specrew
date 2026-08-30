@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 23 (DRIFT-199-I002-001 through -023)
+**Total drift events**: 24 (DRIFT-199-I002-001 through -024)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1146,6 +1146,50 @@ signoff rather than after it.** Project: `C:\Dev\HelloWinUIReactive`, updated to
   named in FR-024's own comment: **a check that cannot look must say it did not look.** Reporting a specific
   absence is a claim about a file; reporting unverifiable is a claim about the check. They are different
   sentences and only one of them can be false about the world.
+
+### DRIFT-199-I002-024 — two of the ten tag-blocking items shipped nothing, and every guard they passed was true (fixed same session)
+
+**The maintainer's finding, 2026-08-30, before the workshop ran:** `confirm-workshop-lens.ps1` is absent
+from `Specrew.psd1`'s `FileList` - the only one of the 45 extension scripts missing, with its sibling
+`confirm-workshop-agenda.ps1` listed at line 113. *"It exists in both mirrors, passes parity, passes its
+mutation tests, and reaches no downstream project. HelloWinUIReactive has T020's stub and not the lens
+writer, which is why."*
+
+- **THE PACKAGE IS THE FileList.** `New-ReleaseStageRoot` (`scripts/internal/module-packaging.ps1:245`)
+  stages exactly the manifest's entries and nothing else. Absence from it is absence from the installed
+  module, and therefore from every project - independent of mirrors, parity, and suites.
+- **The class was COMPUTED, not eyeballed, and it found a second.** Every file added since tree `1b50ae60`
+  was diffed against the FileList: **917 files added, 2 of them machinery, and BOTH absent.**
+  1. `extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1` — T027/FR-027, the governed lens
+     checkpoint writer. **T018 did not ship.**
+  2. `scripts/internal/constrained-yaml.ps1` — FR-026 (TB-4), the shared constrained-YAML reader. **TB-4 did
+     not ship.** The maintainer checked extension scripts and found the first; the second is in a different
+     file type, which is precisely why the instruction was to check the class.
+- **The second is worse than merely missing.** `code-implementation-lens.ps1:175` and
+  `product-domain-lens.ps1:153` both load it as `if (Test-Path -LiteralPath $path) { . $path }` - so
+  downstream the file is silently skipped, `Get-SpecrewConstrainedYamlParseFailureMessage` is simply
+  undefined, and FR-026's whole purpose (a constrained reader that NAMES the representation it could not
+  parse) is unavailable. **A silent degrade guarding a file that was never packaged.** Both dependents are
+  in the FileList; only the thing they depend on was not.
+- **Verified end to end rather than assumed**: before, both absent from the installed module and from
+  `C:\Dev\HelloWinUIReactive`. After adding the entries, rebuilding (412 -> **414 files**), reinstalling and
+  updating the project: both present in the module, and `confirm-workshop-lens.ps1` present in the project
+  **carrying the FR-027 fixes** (`human_turn_receipt`, receipt-carried scope).
+- **THE MIRROR-PARITY RULING WAS WRONG, and the maintainer recorded it as theirs**: *"I told you the parity
+  test guarded the inert-fix hazard and to rely on it instead of building a second guard. It covers
+  divergence between mirrors, not omission from the package. Your original instinct — that a fix can pass
+  its tests and stay inert — was right in a way neither of us located."* Both mirrors were byte-identical
+  the whole time. Parity was true and irrelevant: two identical copies of a file that ships to nobody.
+- **Resolution**: both entries added in sorted position (`psd1-sort.ps1` clean), and a new guard registered
+  in the CLASS-GUARD lane, `tests/unit/package-filelist-completeness.tests.ps1`. It **computes** the omission
+  set - for every directory the FileList already covers, every same-kind file on disk must be listed -
+  because a hand-enumerated guard over a hand-enumerated manifest repeats the defect one layer up
+  (DRIFT-199-I002-011's rule, applied to the guard itself). `docs/` is excluded by name and with a reason:
+  it is selectively packaged by design, 11 of 28. Mutation-proved: removing either entry turns both the
+  instance case and the computed class case red.
+- **Class closure**: the computed guard above. The generalisable statement is the one that made it findable:
+  **a fix is not shipped until something a consumer runs can reach it**, and mirrors, parity and green
+  suites are all upstream of that question.
 
 ### Resolution Strategies (Unused)
 
