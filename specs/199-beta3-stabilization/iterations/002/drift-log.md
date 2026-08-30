@@ -1472,7 +1472,7 @@ before being touched.
   attribution in both directions, the asymmetry in both directions, that the name branch carries no casing
   advice, and that a positional call fails as a positional problem. Mutation-proved on both fixes.
 
-### DRIFT-199-I002-030 — round 3: a BLOCKING-graded finding, demoted to minor, and it wedges every next iteration (open; the triage is the maintainer's)
+### DRIFT-199-I002-030 — round 3: a BLOCKING-graded finding, demoted to minor, and it wedged every next iteration (fixed; 2 and 4 to beta4)
 
 - **The round**: `run-20260830-160011946-a3d8338c`, 2026-08-30, reviewer `codex`, 856s; containment verified;
   completion complete; currentness current; verdict `findings`; `can_approve_current: false`. **Rounds used
@@ -1521,9 +1521,46 @@ before being touched.
   demoted to `minor`.
 - **Citation**: FR-030/T021 (findings 1 and 4); the acceptance bar in the feature spec; DRIFT-199-I002-016
   (B-3 as a record defect - now demonstrated on a `blocking` grade); the inert-control family (finding 2).
-- **Resolution**: OPEN. Nothing fixed, no round spent beyond the three. The triage of finding 1 is the
-  maintainer's call and is the last open question before the tag.
-- **Class closure**: NONE yet - the guards belong with whatever is authorized. Named in advance so they are
+- **Resolution — the maintainer's ruling, 2026-08-30, and what was done under it.**
+  *"Your triage rule does not cover it: that rule was for newly discovered pre-existing defects, and this is
+  a regression T021 introduced. Same ruling as round 1's findings 1 and 2 - the batch's own work being
+  incomplete is not scope growth, and a fix that wedges every second iteration is not a fix."* And on the
+  commitment: *"No round 4. The commitment was about rounds and not about fixes, and it carried its
+  exception clause for this exact case."*
+  - **FINDING 1 - FIXED.** The replay is now capped at the boundary being synced: a stored authorization
+    LATER than the boundary in hand is not written into this iteration's copies. **The direction of the
+    error is why the cap is the right shape** - under-mirroring is recoverable (the next sync at that
+    boundary advances it), over-mirroring is not, because the mirrors are forward-only. Where the two risks
+    are asymmetric, the guard belongs on the irreversible side.
+  - **FINDING 2 - WIRED, not shipped inert.** *"An absent guard is honest; a dead one is a false negative
+    waiting for someone to trust it."* `Get-SpecrewHookEventCoverage` is now computed inside
+    `Resolve-SpecrewHookHealth` - which already had the project root and host - and carried on every health
+    result as `missing_events` / `prompt_capture_silent`; `Format-SpecrewHookHealthReport` renders a
+    PER-EVENT COVERAGE block naming the missing event and stating *"Registered is not fired."* A computed
+    field nobody renders would have been the same defect one layer up, so the report assertion is part of
+    the guard. Mutation-proved: unwiring the resolver turns five assertions red.
+  - **FINDING 4 - CHECKED RATHER THAN ASSUMED, and it is genuinely separate.** The maintainer asked whether
+    scoping the replay also closes the scaffold-omission path. Measured: with the cap applied, a fresh
+    `state.md` carrying no `Current Phase` line still produces **0 mirror issues** after a `plan` crossing,
+    and the line is still absent. The cap governs WHICH boundary is replayed; finding 4 is about a mirror
+    the writer will not invent and a checker that only validates a line already present. Two different
+    defects in one subsystem. Filed to beta4 on its own.
+  - **FINDING 3** - unchanged, to beta4 as the pinned residual.
+- **A DEFECT I INTRODUCED IN THE GUARD FOR THIS FIX, caught by my own mutation run and recorded rather than
+  quietly repaired.** The first version of `cycle-reset-mirror.tests.ps1` **reimplemented the cap inside a
+  test helper** instead of invoking the truth gate. Both mutations of the production code therefore produced
+  **ZERO failures** - the suite passed against a reverted fix. That is exactly the class this batch
+  catalogued twice (DRIFT-199-I002-014: *a diagnosis that reimplements the subject instead of invoking it*),
+  reproduced by me inside the guard written to prove the fix for a defect of the same family, hours after
+  writing the rule down. Rewritten to call `Invoke-SpecrewIterationStateTruthGate` in a child process; the
+  mutation now fails with the production symptom verbatim (`is: complete`). A second mutation - capping
+  unconditionally - initially passed too, because no case discriminated the direction; case 3 now pins that
+  a `plan` authorization stays `planning` at a `review-signoff` sync rather than being inflated to
+  `reviewing`.
+- **Guard**: `tests/integration/cycle-reset-mirror.tests.ps1`, registered in the slice lane (whose pinned
+  result count moved 24 -> 25, which is that pin working as designed). It builds the cycle boundary no
+  existing mirror fixture crossed, because every one of them starts mid-iteration.
+- **Class closure**: NONE - the guards belong with whatever is authorized, and are named in advance so they are
   not invented afterwards: (1) a cycle test that runs closeout -> next-iteration plan -> tasks and asserts
   the plan mirror still reads `planning`, which no existing suite does because every fixture starts
   mid-iteration; (2) a production caller for the coverage guard, or its removal - an inert guard is worse

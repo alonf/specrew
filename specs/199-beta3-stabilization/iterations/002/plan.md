@@ -278,6 +278,28 @@
       than opening an iteration 003.
     - This is the same reasoning as FR-033's rule that mutation proving shows a control is wired to its own
       test and never that it is wired to the system - applied to a whole class of fixes rather than to one.
+  - **LEAD THE 002 RETRO WITH THIS** (maintainer instruction, 2026-08-30: *"the strongest single measurement
+    of the fortnight, and it is about the instrument that gates the tag"*).
+
+    **Round 3's reviewer graded a finding BLOCKING. The record stored it as `minor`. The campaign's durable
+    counts read `blocking_count: 0`.** The finding was a deterministic wedge of every second iteration -
+    against an acceptance bar whose own words are *"without hitting an endless review loop, A WEDGED GATE,
+    or a sentence they cannot understand."*
+
+    > **Reading the summary alone, that round was clean and the wedge shipped.**
+
+    This is the measurement that settles B-3's reclassification (DRIFT-199-I002-016) from a summariser
+    defect to a RECORD defect. A presentation-layer demotion mis-displays; this one wrote the demoted grade
+    into the campaign's persistent state, where every consumer that counts rather than reads inherits it -
+    budget reasoning, gating decisions, retro figures, and any later claim about what this batch's review
+    found. Three rounds produced one blocking and seven major gradings; the durable record shows zero of
+    each.
+
+    The retro should draw the consequence rather than only the count: **the instrument that gates the tag
+    was, for this whole campaign, incapable of surfacing the one severity that would have stopped it** - and
+    the only reason it did not ship is that a human instructed the crew to read raw findings instead of the
+    summary. That instruction was a workaround, and it worked, and it does not scale past a maintainer who
+    knows to give it.
   - **CARRY INTO THE 002 RETRO — the joint failure mode** (maintainer instruction, 2026-08-30: *"the
     direction observation belongs in the retro rather than the drift log... it is the most transferable
     thing this iteration learned"*). Recorded here rather than in a retro artifact because the retro

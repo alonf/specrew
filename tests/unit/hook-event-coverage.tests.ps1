@@ -78,6 +78,19 @@ Assert-True ($refusal -match 'answers are safe') 'it says the human''s work is s
 Assert-True ($refusal -match "host's behaviour, not something this project can repair") 'and it does not assert that Specrew is broken - it reports its own missing evidence and does not diagnose a cause it cannot establish'
 Assert-True ($refusal -match 'continue this feature on a host whose capture path is live') 'it gives ONE action, reachable from where the reader actually is'
 
+Write-Host 'Case 6: the guard is WIRED - a production health result carries the comparison and the report shows it'
+# Round 3 found this helper with ZERO production callers. An absent guard is honest; a dead one is a false
+# negative waiting for someone to trust it, which is the "a guard whose name overstates it retires the
+# question" problem in its purest form. These assertions fail if it is ever unwired again.
+$live = Resolve-SpecrewHookHealth -ProjectRoot $f1 -HostName 'codex' -Surface 'cli'
+Assert-True ($null -ne $live.PSObject.Properties['missing_events']) 'the health result carries per-event coverage, so the comparison reaches production'
+Assert-True (@($live.missing_events) -contains 'UserPromptSubmit') 'and names the declared event that produced no receipt'
+Assert-True ([bool]$live.prompt_capture_silent) 'and flags that a typed approval cannot be recorded in this state'
+$report = Format-SpecrewHookHealthReport -Rows @($live)
+Assert-True ($report -match 'PER-EVENT COVERAGE') 'the human-facing report SHOWS it - a computed field nobody renders is the same defect one layer up'
+Assert-True ($report -match 'UserPromptSubmit') 'naming the missing event'
+Assert-True ($report -match 'Registered is not fired') 'and stating the distinction that made it invisible'
+
 foreach ($f in @($f1, $f2, $f3)) { try { Remove-Item -LiteralPath $f -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("hook-event-coverage: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'hook-event-coverage: all assertions passed' -ForegroundColor Green

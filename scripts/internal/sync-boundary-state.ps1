@@ -913,6 +913,29 @@ function Invoke-SpecrewIterationStateTruthGate {
         try {
             $mirrorState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
             $mirrorLast = if ($null -ne $mirrorState -and $null -ne $mirrorState.EffectiveState) { [string]$mirrorState.EffectiveState['last_authorized_boundary'] } else { $null }
+            # NEVER REPLAY A BOUNDARY LATER THAN THE ONE BEING SYNCED. (Round-3 blocking finding
+            # `cycle-reset-mirror-wedge`, DRIFT-199-I002-030.)
+            #
+            # `last_authorized_boundary` is GLOBAL - the store keeps no iteration alongside it, and
+            # verdict_history entries carry none either. So on the first `plan` sync of a NEW iteration the
+            # last authorization is the PREVIOUS iteration's `iteration-closeout`, and replaying it wrote the
+            # new plan scaffold forward from `planning` to `complete`. Measured:
+            #     BEFORE planning -> first plan sync -> complete -> later plan authorization -> STILL complete
+            # The mirrors are forward-only by design, so nothing moves it back, and the next `tasks` sync
+            # rejects a plan mirror reading `complete` where `planning` is required. Every next-iteration
+            # cycle wedged, deterministically - against an acceptance bar that names a wedged gate.
+            #
+            # The cap is the fix, and the DIRECTION of the error is why it is safe. Under-mirroring is
+            # recoverable: the mirror simply has not advanced yet, and the next sync at that boundary
+            # advances it. Over-mirroring is NOT, because forward-only means the copy can never come back.
+            # Where the two risks are asymmetric, the guard belongs on the irreversible side.
+            $mirrorOrder = @(Get-SpecrewCanonicalBoundaryTypes)
+            $mirrorLastIndex = [Array]::IndexOf($mirrorOrder, $mirrorLast)
+            $mirrorHereIndex = [Array]::IndexOf($mirrorOrder, [string]$BoundaryType)
+            if ($mirrorLastIndex -ge 0 -and $mirrorHereIndex -ge 0 -and $mirrorLastIndex -gt $mirrorHereIndex) {
+                Write-Verbose ("[crossing-mirrors] the store's last authorization ({0}) is later than the boundary being synced ({1}); capping the replay at '{1}' rather than writing this iteration's copies forward past their own state." -f $mirrorLast, $BoundaryType)
+                $mirrorLast = [string]$BoundaryType
+            }
             if (-not [string]::IsNullOrWhiteSpace($mirrorLast)) {
                 $null = Sync-SpecrewCrossingMirrors -ProjectRoot $ProjectRoot -AuthorizedBoundary $mirrorLast -FeatureRef $FeatureRef -IterationNumber $IterationNumber -Reason ('sync:' + $BoundaryType)
             }
