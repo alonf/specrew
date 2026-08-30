@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "specrew_version": "0.40.0",
-  "runtime_bundle_sha256": "e685200531c13eb79c5fe89f26d6032bfebe16778c9bb34aa9c946bdb18b2651",
+  "runtime_bundle_sha256": "382952710492eff9d27b7f8926bafea85c43ea7c8022791294804355e53b5db8",
   "managed_files": [
     {
       "path": "_load.ps1",
@@ -33,7 +33,7 @@
     },
     {
       "path": "hook-health-receipt.ps1",
-      "sha256": "8c416b02bfcfe37d6c23ce6c682224f5c38ad5178cad4544810f438907dda646"
+      "sha256": "530c7a3956ddb4124ae6b6ff2744ee2017355fa1499da9c76bdef4d32b16ce82"
     },
     {
       "path": "host-support-doctor.ps1",
