@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 29 (DRIFT-199-I002-001 through -029)
+**Total drift events**: 30 (DRIFT-199-I002-001 through -030)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1471,6 +1471,64 @@ before being touched.
 - **Class closure**: `tests/unit/refusal-names-what-failed.tests.ps1`, in the class-guard lane. It pins the
   attribution in both directions, the asymmetry in both directions, that the name branch carries no casing
   advice, and that a positional call fails as a positional problem. Mutation-proved on both fixes.
+
+### DRIFT-199-I002-030 — round 3: a BLOCKING-graded finding, demoted to minor, and it wedges every next iteration (open; the triage is the maintainer's)
+
+- **The round**: `run-20260830-160011946-a3d8338c`, 2026-08-30, reviewer `codex`, 856s; containment verified;
+  completion complete; currentness current; verdict `findings`; `can_approve_current: false`. **Rounds used
+  3 of 4.** Target `df2edd1f`. The last round under the convergence rule.
+- **Four findings. The reviewer graded ONE BLOCKING and three MAJOR. All four were shown as `minor`.** This
+  is the first `demoted_from: "blocking"` in the campaign, and it is the strongest evidence yet for
+  DRIFT-199-I002-016's reclassification of B-3 as a RECORD defect: the campaign's durable counts now read
+  `blocking_count: 0` for a round whose reviewer reported one.
+- **FINDING 1 - `cycle-reset-mirror-wedge` - reviewer BLOCKING - REPRODUCED EMPIRICALLY, not read.**
+  `sync-boundary-state.ps1:917` passes the **global** `last_authorized_boundary` into
+  `Sync-SpecrewCrossingMirrors` with the **current** iteration number. On the first `plan` sync of a NEW
+  iteration the global last authorization is the PREVIOUS iteration's `iteration-closeout`, so the new
+  iteration's plan scaffold is forward-written past its own state. Measured on a fixture:
+
+  > `BEFORE: **Status**: planning` -> first plan sync -> `AFTER: **Status**: complete`
+  > -> later `plan` authorization -> `AFTER plan auth: **Status**: complete`
+
+  The mirror is forward-only by design, so nothing moves it back, and the following `tasks` sync rejects a
+  plan mirror reading `complete` where `planning` is required. **Every next-iteration cycle wedges,
+  deterministically.** This directly contradicts the batch's own acceptance bar - *"a consumer completes
+  their first feature without hitting an endless review loop, A WEDGED GATE, or a sentence they cannot
+  understand"* - and the mechanism is this iteration's own FR-030/T021 work.
+- **FINDING 2 - `hook-event-guard-unwired` - reviewer MAJOR - CONFIRMED, and it is mine from today.**
+  `Get-SpecrewHookEventCoverage` has **zero production callers**: the only references are its own definition
+  and its own test file. **I built an inert control**, hours after naming the inert-control family
+  repeatedly in this same log, and its suite is green because it exercises the helper directly. The guard
+  detects that prompt capture is silent and nothing asks it, so boundary flows still present approvals that
+  cannot be recorded. *A control that exists but never runs* - the twelfth-odd instance, and the second this
+  batch has introduced rather than removed.
+- **FINDING 3 - `bare-marker-bypasses-identity` - reviewer MAJOR - the KNOWN, PINNED residual.** This is
+  case 4c, deliberately retained with its closure condition after the maintainer's ruling that carrying the
+  renderer work was defensible. The reviewer is right on the merits and is describing a gap the record
+  already declares - including that *"the regression test explicitly preserves this as a known gap"*, which
+  is what a pinned gap looks like from outside. Not new; the closure condition is unchanged.
+- **FINDING 4 - `fresh-state-mirror-fields-missing` - reviewer MAJOR - CONFIRMED at source.** The fresh
+  `state.md` scaffold omits `Current Phase` and `Iteration Status`; the mirror writer deliberately refuses to
+  invent them (`'state.md has no Current Phase line; not invented'`, `shared-governance.ps1:3823`); and the
+  truth checker validates `Current Phase` only when already nonempty. Three individually correct rules that
+  jointly permit early `plan`, `tasks` and `before-implement` crossings to complete with no state mirror and
+  **no mismatch reported** - FR-030's "every enumerated mirror agrees immediately after each crossing" is not
+  met on a fresh iteration. Same composition shape as DRIFT-199-I002-010 and -018.
+- **Convergence status**: round 3 was the last round and there is no round 4. Findings 2, 3 and 4 are
+  recorded for beta4 under the standing triage. **Finding 1 is the exception that triage names**: it is a
+  deterministic wedge, and a wedged gate is the acceptance bar this batch exists to clear. Recorded with its
+  reproduction so the decision is made on evidence rather than on a severity label the record had already
+  demoted to `minor`.
+- **Citation**: FR-030/T021 (findings 1 and 4); the acceptance bar in the feature spec; DRIFT-199-I002-016
+  (B-3 as a record defect - now demonstrated on a `blocking` grade); the inert-control family (finding 2).
+- **Resolution**: OPEN. Nothing fixed, no round spent beyond the three. The triage of finding 1 is the
+  maintainer's call and is the last open question before the tag.
+- **Class closure**: NONE yet - the guards belong with whatever is authorized. Named in advance so they are
+  not invented afterwards: (1) a cycle test that runs closeout -> next-iteration plan -> tasks and asserts
+  the plan mirror still reads `planning`, which no existing suite does because every fixture starts
+  mid-iteration; (2) a production caller for the coverage guard, or its removal - an inert guard is worse
+  than none because it retires the question; (3) the fresh scaffold writes the mirror lines it will later be
+  judged on.
 
 ### Resolution Strategies (Unused)
 
