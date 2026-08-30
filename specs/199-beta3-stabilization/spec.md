@@ -669,6 +669,21 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     half, and nothing states which half. So the beta4 work is not "add more guards" - it is **make every
     guard declare its scope, and test the half it does not cover.** A guard whose name overstates it is
     worse than no guard, because it retires the question.
+  - **THE REFUSAL STANDARD'S CLAUSE, SHARPENED BY FIVE MEASUREMENTS** (maintainer, 2026-08-30). FR-033
+    requires a refusal to name what is wrong, say the human's work is safe, and give one concrete action.
+    Five refusals in this batch satisfied that clause completely and still sent the reader wrong, because
+    **each accurately described WHAT IT CHECKED and misdescribed WHAT WENT WRONG**: the update advice that
+    would have reverted the tree (-021); the pause recovery that redirected in a loop (-018); the
+    host advice unreachable from the host it was given on (-026); a fact failing two contracts reporting
+    one (-020); and a binding rejected for its NAME being told about its VALUE, with a valid value printed
+    and casing advice attached (-029).
+
+    > The clause cannot just be **"name one reachable action"**. It has to be **"name the thing that
+    > actually failed."**
+
+    The two are independent and both are required: an action reachable from the reader's state, about the
+    thing that actually failed. Four of the five had a perfectly reachable action attached to the wrong
+    subject, which is worse than vagueness - it is a confident instruction to look somewhere else.
   - **THE DEEPEST PATTERN OF THE FORTNIGHT, recorded for beta4 (maintainer, 2026-08-29): every silent
     failure in this batch converted a recoverable problem into an unfalsifiable one.** Four instances,
     and the fourth found its own root cause the moment the rule was applied to it:

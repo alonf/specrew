@@ -242,10 +242,40 @@ function Test-SpecrewWorkshopDecisionBindings {
         foreach ($bindingProperty in $bindings.PSObject.Properties) {
             $name = [string]$bindingProperty.Name
             $value = if ($bindingProperty.Value -is [string]) { ([string]$bindingProperty.Value).Trim() } else { '' }
-            if ($name -cnotmatch '^[a-z][a-z0-9.-]{0,63}$' -or $value -cnotmatch '^[a-z0-9][a-z0-9._-]{0,127}$') {
+            # THE TWO PATTERNS DIFFER IN EXACTLY ONE CHARACTER, AND IT IS THE ONE PEOPLE USE.
+            #
+            #   name  ^[a-z][a-z0-9.-]{0,63}$        - dot and hyphen, NO UNDERSCORE
+            #   value ^[a-z0-9][a-z0-9._-]{0,127}$   - dot, hyphen AND UNDERSCORE
+            #
+            # Measured in the field (ConsoleFractal, 2026-08-30): a workshop was rejected for the binding
+            # NAME `decomposition_style`, and the refusal printed the VALUE - which was perfectly valid -
+            # alongside a casing example that has nothing to do with underscores. The agent recovered by
+            # trial rather than by reading the message. A single `-or` cannot say which side failed, so the
+            # refusal downstream had nothing to name and named the wrong thing confidently.
+            #
+            # The asymmetry itself is recorded as a beta4 schema question (DRIFT-199-I002-029): either the
+            # name pattern gains `_` or the difference is documented where an author will meet it. Widening
+            # what the validator ACCEPTS is a contract change and is not made mid-batch; what is fixed here
+            # is that a refusal must name the field that failed and the rule that failed it.
+            $namePattern = '^[a-z][a-z0-9.-]{0,63}$'
+            $valuePattern = '^[a-z0-9][a-z0-9._-]{0,127}$'
+            $nameOk = ($name -cmatch $namePattern)
+            $valueOk = ($value -cmatch $valuePattern)
+            if (-not $nameOk -or -not $valueOk) {
+                $failedField = if (-not $nameOk) { 'name' } else { 'value' }
+                $failedText = if (-not $nameOk) { $name } else { $value }
+                $failedRule = if (-not $nameOk) {
+                    'lowercase letters, digits, dots and hyphens only, starting with a letter - underscores are NOT allowed in a decision name'
+                }
+                else {
+                    'lowercase letters, digits, dots, hyphens and underscores only, starting with a letter or digit'
+                }
                 return [pscustomobject]@{
                     valid = $false; reason = 'workshop-decision-bindings-invalid'
-                    conflict = [pscustomobject]@{ binding = $name; prior_lens = $null; prior_value = $null; lens = $lens; value = $value }
+                    conflict = [pscustomobject]@{
+                        binding = $name; prior_lens = $null; prior_value = $null; lens = $lens; value = $value
+                        failed_field = $failedField; failed_text = $failedText; failed_rule = $failedRule
+                    }
                 }
             }
             if ($seen.Contains($name)) {

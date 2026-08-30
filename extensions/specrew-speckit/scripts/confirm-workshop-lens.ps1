@@ -22,7 +22,15 @@
   Refusals route through the workshop refusal contract: they name what is missing, keep the human's answers,
   and give one action - never machinery vocabulary, never blaming Specrew.
 #>
-[CmdletBinding()]
+# PositionalBinding = $false: EVERY parameter must be named.
+#
+# Measured in the field (ConsoleFractal, 2026-08-30): a six-element `-Agenda` array was absorbed across the
+# positional parameters and one of its strings landed in `-Confirmation`. The ValidateSet caught it loudly,
+# which is correct - but the message named `Confirmation`, and the cause was `Agenda`. Accurate about what
+# it checked, wrong about what went wrong; the same family as the binding refusal above. With positional
+# binding refused, a mis-shaped call fails as "a positional parameter cannot be found" instead of
+# reappearing as a different parameter's validation error.
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [Parameter(Mandatory)][string] $ProjectRoot,
     [Parameter(Mandatory)][string] $FeatureRef,

@@ -365,3 +365,4 @@ tests/unit/wrapper-filelist-parity.tests.ps1
 tests/unit/wrapper-registry-parity.tests.ps1
 tests/unit/package-filelist-completeness.tests.ps1
 tests/unit/hook-event-coverage.tests.ps1
+tests/unit/refusal-names-what-failed.tests.ps1

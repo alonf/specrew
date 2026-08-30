@@ -1767,7 +1767,25 @@ try {
                 }
                 elseif ([string]$workshopQuestion.reason -eq 'workshop-decision-bindings-invalid') {
                     $badBinding = $workshopQuestion.binding_conflict
-                    [void]$sb.AppendLine(("This workshop answer could not be recorded cleanly: decision '{0}' has value '{1}' in '{2}'. Use lowercase stable values (for example `ihttpclientfactory`, not `IHttpClientFactory`), record the corrected answer through the workshop flow, then show the current question again. Do not continue to another topic first." -f $badBinding.binding, $badBinding.value, $badBinding.lens))
+                    # NAME THE THING THAT ACTUALLY FAILED. This message used to say "decision '<name>' has
+                    # value '<value>'" for BOTH failure modes and always offered a CASING example - so a
+                    # workshop rejected for the underscore in the NAME `decomposition_style` was shown a
+                    # valid value and advice about capital letters. Accurate about what it checked, wrong
+                    # about what went wrong (DRIFT-199-I002-029).
+                    $failedField = if ($badBinding.PSObject.Properties['failed_field']) { [string]$badBinding.failed_field } else { '' }
+                    $failedText = if ($badBinding.PSObject.Properties['failed_text']) { [string]$badBinding.failed_text } else { '' }
+                    $failedRule = if ($badBinding.PSObject.Properties['failed_rule']) { [string]$badBinding.failed_rule } else { '' }
+                    if ($failedField -eq 'name') {
+                        [void]$sb.AppendLine(("This workshop answer could not be recorded cleanly: in '{0}', the decision NAME '{1}' is not usable. {2}. Rename that decision (for example '{3}'), record the corrected answer through the workshop flow, then show the current question again. The value you recorded is fine and does not need changing. Do not continue to another topic first." -f $badBinding.lens, $failedText, $failedRule, ($failedText -replace '_', '-')))
+                    }
+                    elseif ($failedField -eq 'value') {
+                        [void]$sb.AppendLine(("This workshop answer could not be recorded cleanly: in '{0}', the VALUE '{1}' recorded for decision '{2}' is not usable. {3} (for example `ihttpclientfactory`, not `IHttpClientFactory`). Record the corrected answer through the workshop flow, then show the current question again. The decision name is fine. Do not continue to another topic first." -f $badBinding.lens, $failedText, $badBinding.binding, $failedRule))
+                    }
+                    else {
+                        # An older record with no failed_field: say that the pair was rejected without
+                        # asserting which half, rather than guessing and being confidently wrong again.
+                        [void]$sb.AppendLine(("This workshop answer could not be recorded cleanly: decision '{0}' with value '{1}' in '{2}' was rejected, and this record does not say which of the two is at fault. Names allow lowercase letters, digits, dots and hyphens; values additionally allow underscores. Correct whichever does not match, record the answer through the workshop flow, then show the current question again. Do not continue to another topic first." -f $badBinding.binding, $badBinding.value, $badBinding.lens))
+                    }
                 }
                 elseif ([string]$workshopQuestion.reason -eq 'workshop-applicability-absent') {
                     [void]$sb.AppendLine(("This project's workshop setup is not ready for feature '{0}'. Initialize the workshop records with the project-provided setup action, then show the current question again. Do not continue to another topic first." -f [string]$workshopQuestion.feature_ref))

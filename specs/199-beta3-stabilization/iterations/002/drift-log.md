@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 28 (DRIFT-199-I002-001 through -028)
+**Total drift events**: 29 (DRIFT-199-I002-001 through -029)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1421,6 +1421,56 @@ Both recorded at the maintainer's instruction, as *"the reason this is a deadloc
 - **Class closure**: NONE - both are contract-level changes (a refusal-path audit across every governed
   writer; a prepare/apply split in the repair authority), and writing either as a bespoke guard here would
   be the hand-enumeration this batch keeps ruling against.
+
+### DRIFT-199-I002-029 — two refusals that describe what they checked and misdescribe what went wrong (both fixed; T018 proved in the field)
+
+**T018 IS PROVED, on the state that broke it.** The maintainer closed `product-domain` in
+`C:\Temp\ConsoleFractal` through the **recovery** path and `architecture-core` through **`confirm-lens`** -
+both transitions exercised on a real, previously-deadlocked project rather than a fixture. That is the
+evidence this iteration was missing, and it is the first time a greenfield-path fix in this batch has been
+confirmed by anything other than its own suite.
+
+Two defects surfaced during that run. Both are the same family, and both were verified at source here
+before being touched.
+
+- **1. The binding refusal named the wrong field, confidently.** `ProjectMetadataAccessor.ps1:245` validated
+  name and value in a single `-or`:
+
+  > name `^[a-z][a-z0-9.-]{0,63}$` - dot and hyphen, **no underscore**
+  > value `^[a-z0-9][a-z0-9._-]{0,127}$` - dot, hyphen **and underscore**
+
+  The workshop was rejected for the NAME `decomposition_style`; the refusal
+  (`specrew-conformance-provider.ps1:1770`) said *"decision '<name>' has value '<value>'"*, **printed a value
+  that was perfectly valid**, and offered a **casing** example (`ihttpclientfactory`, not
+  `IHttpClientFactory`) with nothing to do with underscores. *"The agent recovered by trial rather than by
+  reading the message."*
+  - **The wording was downstream of the cause**: a single `-or` cannot say which side failed, so the conflict
+    record carried nothing to name and the message named the wrong thing. Fixed at the source - the conflict
+    now carries `failed_field`, `failed_text` and `failed_rule`, and the refusal has separate branches that
+    name the field that failed and the rule that failed it. The name branch says the value needs no change;
+    the casing example lives only where casing is the problem.
+  - **The asymmetry**: *"two patterns differing in exactly the character that trips people is a trap."*
+    Documented here and at the validator, and **pinned by tests in both directions** so it cannot drift while
+    the schema question is open: an underscore IS legal in a value, and a dot IS legal in a name. Widening
+    what the validator ACCEPTS is a contract change and was not made mid-batch; **beta4 decides whether the
+    name pattern gains `_` or the difference is surfaced where an author meets it.** Recommendation on the
+    record: gain the underscore - the rule's purpose is stable lowercase tokens, and `_` is one.
+- **2. A six-element `-Agenda` array was absorbed across positional parameters** in
+  `confirm-workshop-lens.ps1`, landing an agenda string in `-Confirmation`. The `ValidateSet` caught it
+  **loudly, which is correct** - but the message named `Confirmation` while the cause was `Agenda`. Fixed
+  with `[CmdletBinding(PositionalBinding = $false)]`: every parameter must be named, so the failure now
+  reports as *"A positional parameter cannot be found that accepts argument..."* - at the place it happened.
+  Verified by invoking the writer positionally in the guard, not by reading the source.
+- **THE FIFTH INSTANCE, and the reason the beta4 standard needs a stronger clause** (maintainer, 2026-08-30):
+  with the `specrew update` advice (-021), the closed-loop pause recovery (-018), the Codex-CLI advice
+  (-026) and DRIFT-199-I002-020, this is five. *"The refusal accurately describes what it checked and
+  misdescribes what went wrong... the standard's clause cannot just be 'name one reachable action', it has
+  to be 'name the thing that actually failed.'"*
+- **Citation**: FR-033's refusal standard; DRIFT-199-I002-026 (reachable-from-here) and -020 (two contracts,
+  one report), which this completes into one clause.
+- **Class closure**: `tests/unit/refusal-names-what-failed.tests.ps1`, in the class-guard lane. It pins the
+  attribution in both directions, the asymmetry in both directions, that the name branch carries no casing
+  advice, and that a positional call fails as a positional problem. Mutation-proved on both fixes.
 
 ### Resolution Strategies (Unused)
 
