@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 30 (DRIFT-199-I002-001 through -030)
+**Total drift events**: 31 (DRIFT-199-I002-001 through -031)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1603,6 +1603,34 @@ before being touched.
   mid-iteration; (2) a production caller for the coverage guard, or its removal - an inert guard is worse
   than none because it retires the question; (3) the fresh scaffold writes the mirror lines it will later be
   judged on.
+
+### DRIFT-199-I002-031 — T017's evidence is weaker than its label, and the signoff must say so in the longer form (recorded for review-signoff)
+
+- **The label would carry it dishonestly.** "Mutation-proved only" is the accurate category and it
+  understates the situation. The precise statement, which the maintainer instructed be kept in exactly this
+  form:
+
+  > T017 (FR-026, the constrained readers) is **not merely mutation-proved**. Its shared reader,
+  > `scripts/internal/constrained-yaml.ps1`, was **absent from `Specrew.psd1`'s FileList and began shipping
+  > today** (DRIFT-199-I002-024). **No downstream project has ever executed it.**
+
+- **Why the distinction matters at a signoff**: "mutation-proved only" describes a normal, common evidence
+  tier - a control whose tests pass and which has not yet been seen in the field. It implies the code has at
+  least been *present* in the field and merely unobserved. That is not this case. Until today the file was
+  not in the package at all, so its two dependents (`code-implementation-lens.ps1`,
+  `product-domain-lens.ps1`) silently skipped loading it - `if (Test-Path) { . $path }` - and the FR-026
+  refusal wording was simply undefined in every consumer project. The tier is not "untested in the field";
+  it is **"has never run outside this repository."**
+- **The general rule this is an instance of**: an evidence LABEL is a summary, and a summary that rounds a
+  distinct situation into a familiar category is the same defect as the review record rounding `blocking` to
+  `minor` (DRIFT-199-I002-030). At a signoff, where the label is the thing a human reads, the longer form
+  wins.
+- **Resolution**: carried verbatim into the review-signoff evidence statement, at the maintainer's
+  instruction, rather than compressed to its tier name.
+- **Class closure**: NONE - this is a rule about how an evidence statement is written, not a control. The
+  nearest executable guard is the FileList completeness suite that would now catch the shipping gap itself
+  (`tests/unit/package-filelist-completeness.tests.ps1`); nothing can assert that prose chose the longer
+  form, and claiming otherwise would be the inert-guard shape this batch keeps recording.
 
 ### Resolution Strategies (Unused)
 

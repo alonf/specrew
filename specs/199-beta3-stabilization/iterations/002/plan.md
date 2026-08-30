@@ -326,6 +326,23 @@
     The retro should also record the asymmetry that makes this worth institutionalising: a wrong finding
     from either direction is caught by the same one-command check, but only one direction currently has a
     convention for it (the crew verifies before reporting). Nothing asks the same of a ruling.
+  - **PRE-TAG ORDER, FIXED BY THE MAINTAINER 2026-08-30 — the last step is not optional and is not
+    ceremony.** Recorded here rather than left between the boundary work and the tag, which is exactly
+    where it would have been lost:
+
+    > close the review -> **review-signoff** -> **retro** -> **iteration-closeout** -> **scaffold a
+    > throwaway 003 and run its plan sync** -> **the tag call**
+
+    - **Why the 003 step exists.** Finding 1's field proof arrives when 003 opens. *"If the tag happens
+      straight after 002 closes, 003 never opens, and beta3 ships a fix for a deterministic
+      second-iteration wedge that has never been observed working in a genuine cycle - the precise defect
+      it was written to prevent."*
+    - **What it is**: scaffold a throwaway iteration 003 and run its plan sync. **No work needs to happen
+      in it.** Open it and observe one thing - whether the plan mirror stays `planning` or jumps to
+      `complete`.
+    - **What it costs and what it buys**: ten minutes, and it moves finding 1 from replay-proved to
+      field-proved *before* the tag rather than after it. *"Everything before that last step is decided;
+      that step is the difference between shipping the fix and shipping evidence for it."*
   - **CONVERGENCE RULE, maintainer ruling 2026-08-29 - and it exists because the obvious reading of
     "one covering round on the tree that ships" regresses to W77.** Every round's fixes move the tree
     that round covered, so taken literally, coverage is never reachable and rounds recur forever.
