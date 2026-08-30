@@ -1,5 +1,55 @@
 ## 2026-08-03 — F-198 iteration-011 phase 2: APPROVE WITH INSTRUCTIONS — tag basis re-cut to authorization-integrity
 
+### 2026-08-31 — Verdict: FR-026 deferred - the constrained readers have never run outside this repository
+
+- **Decision ID**: f199-i002-defer-fr026-no-field-execution
+- **Type**: defer
+- **Affected Requirement**: FR-026
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-31T00:00:00Z
+- **Disposition**: T017's shared reader `scripts/internal/constrained-yaml.ps1` was ABSENT from Specrew.psd1's FileList
+  and began shipping 2026-08-30 (DRIFT-199-I002-024). Its two dependents loaded it with
+  `if (Test-Path) { . $path }`, so downstream the FR-026 refusal wording was simply undefined and no
+  consumer project has ever executed it. Mutation-proved only, and that label understates it - the
+  code was not merely unobserved in the field, it was not present there. Field evidence arrives with
+  consumer use; deferred rather than closed.
+
+### 2026-08-31 — Verdict: FR-030 deferred to the pre-tag step - the cycle fix is replay-proved, not field-proved
+
+- **Decision ID**: f199-i002-defer-fr030-replay-not-field-proved
+- **Type**: defer
+- **Affected Requirement**: FR-030
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-31T00:00:00Z
+- **Disposition**: Round 3 graded `cycle-reset-mirror-wedge` BLOCKING: replaying a global authorization into a new
+  iteration wedged every second cycle. Fixed by capping the replay at the boundary being synced, and a
+  second defect in the checker was found by an end-to-end replay through the real top-level sync path.
+  Mutation-proved at the gate and proved end to end with a seeded store, but NOT yet observed in a
+  genuine cycle. Deferred to the PRE-TAG step rather than to beta4: iteration 003's plan sync is a
+  gating step before the tag, so the field proof arrives before shipping rather than after.
+
+### 2026-08-31 — Verdict: iteration 002 review-signoff gap ledger - the remaining three deferrals
+
+- **Decision ID**: f199-i002-review-signoff-gap-ledger-deferrals
+- **Type**: defer
+- **Affected Requirement**: FR-033
+- **Affected Iteration**: specs\199-beta3-stabilization\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-08-31T00:00:00Z
+- **Disposition**: The gaps in iteration 002's review.md that are not requirement-scoped.
+  (1) The shipping tree carries 9 source files beyond round 3's target `df2edd1f`, all of them round
+  3's own output; accepted by typed `approved for partial review signoff` with the maintainer's own
+  rationale captured under `.specrew/review/signoff-gate/override-authorizations/`. The no-round-4
+  commitment was made in advance of the finding that would have tested it.
+  (2) Three of six items have no field exercise - T016, T018 and T020 are field-proved; T017 and the
+  two round-3 fixes are not.
+  (3) The review record's severity counts cannot be trusted: the reviewer graded one blocking and
+  seven major across three rounds and the durable record shows zero of each. Beta4's B-3, reclassified
+  from a summariser defect to a RECORD defect (DRIFT-199-I002-016), and the retro's lead item.
+  Full accounts with measurements are in iteration 002's drift-log.md (37 events).
+
 ### 2026-08-06 — Verdict: WAIVE the accepted-verdict finding on iteration 011 for the beta2 release gate
 
 - **Decision ID**: f198-i011-waive-accepted-verdict-finding-release-gate
