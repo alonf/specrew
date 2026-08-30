@@ -251,7 +251,17 @@
       `can_approve_current: false`. All three were verified against the code before being reported, and all
       three are real defects in THIS iteration's own new code (FR-027, FR-032, FR-024). Recorded as
       DRIFT-199-I002-016.
-    - Tripwire status: threshold is more than 2 rounds; at 1, not tripped.
+    - *Round 2, 2026-08-30, run `run-20260830-003634780-04d58169` - DELIVERED.* Reviewer `codex`; 981s;
+      containment verified; completion complete; currentness current; verdict `findings`;
+      `can_approve_current: false`. **3 findings: 2 graded `major` by the reviewer and demoted to `minor`,
+      1 graded `minor`.** All three confirmed against the code. One is a defect in this session's own fix
+      (the fail-soft trace covers the outer swallow, not the inner one), which **fires the convergence
+      tripwire**: returned to the maintainer unfixed, no third round spent. Recorded as DRIFT-199-I002-022.
+      Positive evidence in the same round: it wrote its own `pending-pause.json` organically, which is the
+      first non-mutation proof that the `$FeatureId` fix works.
+    - Tripwire status: **rounds threshold (more than 2) is now AT its limit at 2 of 4 used**; the
+      convergence rule - not the round count - is what stops here. Rework commits since round 1 delivered:
+      counted at signoff. Calendar days round-1 delivery to signoff: counted at signoff.
   - **SEQUENCE CHANGE, maintainer ruling 2026-08-30: the module update and the WinUI walk move from
     feature-closeout's release leg to BEFORE review-signoff.** When round 2 delivers clean, the module is
     updated from the current tree and the HelloWinUIReactive walk is resumed - and only then is

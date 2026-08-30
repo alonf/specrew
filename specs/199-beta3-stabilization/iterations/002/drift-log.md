@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 21 (DRIFT-199-I002-001 through -021)
+**Total drift events**: 22 (DRIFT-199-I002-001 through -022)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -979,6 +979,74 @@ which behaviours to repeat.**
 - **Class closure**: NONE - the guard belongs with the beta4 refusal contract, and inventing a message
   format here would pin wording the refusal standard has not settled. Named so it is fixed as part of that
   contract rather than as a one-off string edit.
+
+### DRIFT-199-I002-022 — round 2: the fail-soft rule was applied to one swallow of two, and the convergence tripwire fires (open; RETURNED TO THE MAINTAINER, no third round spent)
+
+- **The round**: `run-20260830-003634780-04d58169`, campaign `cmp-199-beta3-stabilization-i002`, 2026-08-30.
+  Reviewer `codex`, independent of the code writer. 981s; containment verified; completion complete;
+  currentness current; verdict `findings`; `can_approve_current: false`. Rounds used **2 of 4**.
+  Target `2f9b3bac`.
+- **THE FIX PROVED ITSELF AT RUNTIME, and this is the first non-mutation evidence for it**: round 2's own
+  run directory contains a `pending-pause.json` **written organically** by the engine
+  (`rounds_used: 2`, `budget_total: 4`). The `$FeatureId`/`$RepoRoot` parameter fix is therefore confirmed
+  by the machinery doing the thing it had never once done, not merely by a suite going red when reverted.
+- **Three findings. Two graded `major` by the reviewer and demoted to `minor`; one graded `minor`.** All
+  three verified against the code by this session before reporting.
+  1. **`pause-write-error-still-swallowed`** (`review-campaign-orchestrator.ps1:809`) - reviewer **major**,
+     shown minor. **CONFIRMED, and it is a defect in this session's own fix.** `Add-ReviewCampaignRoundPause`
+     wraps its store write in `try { ... } catch { $recorded = $false }` and then **returns normally** with
+     `recorded = false`. Both caller-side catches this session added therefore never fire on a genuine
+     authority-store write failure - the callers see a successful return, and the orchestrator hands back a
+     non-null pause object. So `REVIEW_PAUSE_WRITE_FAILED` and the durable trace are emitted for an argument
+     -binding failure (which is what the root cause turned out to be, and why the trace worked) but **not**
+     for the failure mode the trace was written to diagnose. *"Every fail-soft owes a trace"* was applied to
+     the outer swallow and not the inner one; there were two in the chain.
+     - **The guard is also half-blind, and that is worth saying plainly**: the new assertion
+       `$result.pause | Should -Not -BeNullOrEmpty` would PASS with `recorded = false`, because the object is
+       returned either way. The sibling assertions - `pending-pause.json` on disk, read back through
+       `Get-ReviewCampaignPendingPause` - would catch it. The suite survives this by one assertion, which is
+       luck rather than design, and the design lesson is the same one FR-033 already carries: assert the
+       durable effect, not the return value.
+  2. **`global-marker-misassigns-owner`** (`shared-governance.ps1:1451`) - reviewer **major**, shown minor.
+     **CONFIRMED.** With no explicit `SessionId` and no `SPECREW_SESSION_ID`,
+     `Get-SpecrewCrossingOwnerIdentity` falls back to the **project-wide** `.specrew/runtime/session-marker.json`,
+     which SessionBootstrapManager overwrites on every SessionStart. Session A starts, session B starts in the
+     same worktree, A runs boundary sync - and A's child process records **B** as `pending_crossing.owner`.
+     Because B is live, the conformance provider then suppresses the packet in A (the session that did the
+     work) and demands it from B. **FR-032/SC-019 is not merely defeated, it is inverted.** This is not a
+     defect in this session's round-1 fixes; it is a pre-existing defect in the feature those fixes belong
+     to, which round 1 did not reach. The maintainer's own working style is the exposure: parallel sessions
+     in shared worktrees.
+  3. **`numeric-approval-docs-stale`** (`docs/methodology/lifecycle-discipline.md:108`) - reviewer **minor**,
+     not demoted. **CONFIRMED at three places: lines 58, 108 and 122.** The guide still calls `1` / `option 1`
+     *"the sole authorization signal"* while the gate-stop contract forbids numbered options and holds that
+     numeric labels are non-authoritative. **This is not a docs nit**: the file is a DEEP SOURCE loaded into
+     agent context by the refocus hook, so it actively teaches the behaviour that caused a measured incident -
+     a numbered option was offered, the human's `1` was not captured, and the agent edited and committed on
+     the strength of it. Same family as DRIFT-199-I002-010: a rule stated in more than one place with nothing
+     deciding which wins, here between the instruction corpus and the contract.
+- **THE CONVERGENCE TRIPWIRE FIRES, and no third round was spent.** The maintainer's rule (2026-08-29):
+  *"round 2 is the last round unless it finds something that is not a fix for its own findings... If it finds
+  new defects in these two fixes, that is not a cue to iterate; it is a signal to stop and ask whether this
+  batch is converging at all, and it comes back to me before a third round is spent."* Finding 1 is exactly
+  that - a new defect in this session's own fix. **Returned to the maintainer unfixed.** Findings 2 and 3 are
+  the other half of the rule: neither is a fix for round 2's own findings, so they are new ground rather than
+  the regress the rule was written to prevent.
+- **The base rate, stated because the maintainer priced the rule against it**: twelve tasks produced three
+  regressions; fixing those exposed three test defects; fixing those produced one more defect in the fix
+  itself. Each cycle is smaller than the last - three, then one - but the rate is not zero, and the question
+  the rule exists to force is whether that is convergence or a floor.
+- **Citation**: FR-033 (the fail-soft trace rule, applied incompletely here); FR-032/SC-019 (finding 2); the
+  convergence rule recorded in `plan.md`; the beta4 refusal/instruction-corpus programme (finding 3).
+- **Resolution**: OPEN, awaiting the maintainer. Nothing fixed, nothing re-run, no round spent. The campaign
+  sits at a recorded pause (`run-20260830-003634780-04d58169`) with the human's 1/2/3 answer outstanding.
+- **Class closure**: NONE - the fixes are the maintainer's call under the convergence rule, and inventing
+  guards for changes that may not be authorized is the shape this batch has repeatedly ruled against. Named
+  in advance: (1) treat `recorded = false` as the fail-soft diagnostic path in both callers, or propagate the
+  cause, and assert the DURABLE effect rather than the returned object; (2) bind boundary sync to the
+  invoking session identity, or use a per-session marker instead of the last session started anywhere in the
+  project; (3) remove the numeric-approval path from the guide, or scope it to a surface that still renders
+  approval as option 1.
 
 ### Resolution Strategies (Unused)
 
