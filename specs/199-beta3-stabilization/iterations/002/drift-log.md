@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 34 (DRIFT-199-I002-001 through -034)
+**Total drift events**: 36 (DRIFT-199-I002-001 through -036)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1766,6 +1766,76 @@ before being touched.
 - **Class closure**: the message guard above closes the operator-facing half only, and says so. The source
   half has no guard because no fix is authorized yet; naming a guard for an unbuilt fix is the shape this
   batch has repeatedly ruled against.
+
+### DRIFT-199-I002-035 — three controls refused a fabricated crossing in composition, on their own authors (POSITIVE CONTROL EVIDENCE)
+
+**Filed as a first-class event, at the maintainer's instruction, because it is the strongest positive
+evidence in this ledger.** Recorded 2026-08-31.
+
+- **The moment.** After review-signoff's GATE completed, the maintainer typed *"approve the retro"*. Three
+  separate things were wrong with treating that as authorization, and **none of them was visible from the
+  conversation** - only from state:
+  1. `last_authorized_boundary` was still **`before-implement`**. The review-signoff gate had cleared; the
+     review-signoff BOUNDARY had never been crossed. Retro was not the next boundary - review-signoff was.
+  2. `pending_crossing` was **null** and no pending-verdict artifact existed. **There was no recorded
+     crossing for a verdict to authorize** - precisely FR-024/T014's condition, and the one DRIFT-199-I002-001
+     caught live.
+  3. **`retro.md` did not exist.** The crew had NARRATED opening the retro ("Opening the retro now") and
+     then not written it. The stage owed its artifact.
+  Additionally the phrase was not in the recognized `approved for <boundary>` form, so the capture would
+  have bound it to nothing - and, after DRIFT-199-I002-034, would now say so rather than drop it silently.
+- **What refused it, and the point is that it was a COMPOSITION**: the honest-state rule (state.md and the
+  authority store reflect disk truth, so `before-implement` was readable as the real position), the mint
+  gate (FR-024/T014: no crossing is minted until the owed artifacts exist), and the withhold discipline (a
+  stage owing artifacts offers no verdict options and no marker). **No single one of the three would have
+  been sufficient**: the phrase looked like approval, the stage name matched what the crew had just
+  announced, and the gate genuinely had completed.
+- **On their own authors.** Every one of those three controls is this feature's own work, and the session
+  they refused was the session that wrote them. The crew had just told the maintainer it was opening the
+  retro; the maintainer, reasonably, approved the retro. **Both parties were moving in the same wrong
+  direction, and the state file was the only thing in the room that was not.**
+- **The maintainer's assessment, recorded because it is the measurement**: *"Three days ago this exact
+  moment would have recorded a fabricated crossing."* That is the counterfactual this batch exists to
+  change, and it is the only instance in the ledger where the machinery prevented a FABRICATED
+  authorization rather than catching one after the fact. Every other positive entry
+  (DRIFT-199-I002-019's timestamp guard, FR-014's invoked-only spend, the seal refusing an erratum) caught
+  a defect; **this one caught an act.**
+- **Why it belongs beside the failures rather than in a summary line**: this log has recorded eleven-plus
+  inert controls, five refusals that misdescribed their own cause, and four instance-not-class fixes. A
+  reader could reasonably conclude the machinery does not work. The honest counterweight is that at the one
+  moment where a false authorization was one keystroke away, three controls composed correctly and the
+  agent read them rather than the conversation.
+- **Citation**: FR-024 (T014, the mint gate), FR-033 (honest state), the withhold discipline in the
+  gate-stop contract; DRIFT-199-I002-001 as the field case that produced them.
+- **Resolution**: no action - the controls behaved. Recorded as evidence.
+- **Class closure**: the three controls ARE the closure and already exist. What is added is the record that
+  they fired together, so the next reader weighing whether composed governance earns its cost has one
+  measured instance rather than an argument.
+
+### DRIFT-199-I002-036 — "review-signoff" names both a review-gate outcome and a lifecycle boundary, and the collision produced a false report (open; beta4)
+
+- **Observed 2026-08-31**, immediately before DRIFT-199-I002-035. The review command printed *"review
+  sign-off is complete"* - true of the review GATE. Both the reviewer session and this crew then reported
+  the lifecycle **review-signoff boundary** as crossed. It had not been: `last_authorized_boundary` was
+  still `before-implement`, and no crossing had been minted.
+- **The mechanism is naming, not logic.** Two different objects share one name:
+  - the **review gate's** `review-signoff` outcome - the campaign has stopped and its findings are
+    dispositioned;
+  - the **lifecycle's** `review-signoff` boundary - a human verdict recorded in the authority store.
+  Clearing the first is a precondition of asking for the second. Nothing in either message distinguishes
+  them, so a true statement about one reads as a true statement about the other.
+- **Same family as the refusal standard, from the other direction** (maintainer): the batch has recorded
+  five refusals that were true about what they checked and misleading about what went wrong. **This is a
+  SUCCESS message with the same property** - accurate about the gate, misleading about the lifecycle. The
+  standard's clause ("name the thing that actually failed") has a mirror image: name the thing that
+  actually completed.
+- **What caught it**: the state file, not the names. *"The state file caught it; the names invited it."*
+- **Resolution**: OPEN, beta4, with the refusal/UX work. The fix is naming rather than behaviour - the gate
+  outcome should say what it completed (*the review campaign is closed and its findings are dispositioned;
+  the review-signoff BOUNDARY still needs your verdict*), and the two objects should not be referred to by
+  one bare token in human-facing text.
+- **Class closure**: NONE - a naming contract across two subsystems is beta4 design, and pinning one
+  message's wording here would fix this sentence while leaving every other place the token appears.
 
 ### Resolution Strategies (Unused)
 
