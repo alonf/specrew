@@ -651,6 +651,21 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     **It is found by running the thing against a state it did not choose**: a real project, a real host, a
     real package. Four of the five instances below were found that way; none was found by a suite.
 
+    **THE TWO BLIND SPOTS ARE DIFFERENT, AND NEITHER CATCHES THE OTHER** (maintainer, 2026-08-30,
+    correcting an under-statement in the crew's self-report). This is the concrete content of "every guard
+    declares its scope", and this batch was bitten by both:
+
+    | instrument | catches | is blind to |
+    |---|---|---|
+    | **Mutation proving** | a test that REIMPLEMENTS its subject - such a test cannot fail when production changes, so the mutation exposes it structurally | a fixture-invented state: every mutation passes against a world the fixture authored |
+    | **Running against a state you did not author** | fixture blindness - the states the author did not know were reachable | a test that reimplements its subject, which will happily agree with itself on real data too |
+
+    Measured, both directions, in one week: the product-domain deadlock survived eleven mutation-proved
+    suites because every fixture wrote `product-domain` into `selected`, a state the product denies
+    (DRIFT-199-I002-027); and the cycle-wedge guard passed BOTH its mutations because the test reimplemented
+    the cap instead of invoking the gate (DRIFT-199-I002-030). **A guard needs both instruments, and saying
+    which one it has is the declaration the principle asks for.**
+
     The measured instances:
     1. **Mutation proving** covers control-to-TEST wiring, not control-to-SYSTEM. It proved eleven suites
        and caught none of round 1's three findings.
@@ -661,7 +676,11 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     4. **Hook health** covers AGGREGATE liveness and per-event REGISTRATION, not per-event ARRIVAL.
        Registered is not fired, and nothing compared the declared event set against the arrived one -
        though both were already on disk.
-    5. **A green suite** covers the states its FIXTURES can build, not the states the product can reach.
+    5. **A COMPUTED FIELD NOBODY RENDERS is the inert-control defect one layer up** - the same lesson
+       applied recursively. Wiring `Get-SpecrewHookEventCoverage` into the health result would have left
+       it computed and invisible; the guard therefore asserts the REPORT shows it, not only that the field
+       exists. (Maintainer, 2026-08-30: the first time in the batch this was applied before being told.)
+    6. **A green suite** covers the states its FIXTURES can build, not the states the product can reach.
        `workshop-lens-checkpoint` was green through a deadlock that stopped every greenfield workshop at
        its first lens, because its fixture wrote `product-domain` into `selected` - a state the real flow
        structurally denies (DRIFT-199-I002-027).
@@ -669,6 +688,19 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     half, and nothing states which half. So the beta4 work is not "add more guards" - it is **make every
     guard declare its scope, and test the half it does not cover.** A guard whose name overstates it is
     worse than no guard, because it retires the question.
+  - **WHERE TWO ERROR DIRECTIONS HAVE ASYMMETRIC RECOVERABILITY, THE GUARD BELONGS ON THE IRREVERSIBLE
+    SIDE** (maintainer, 2026-08-30, generalising the cycle-wedge fix). Recorded as a rule rather than as
+    one fix's rationale, because it is the shape of every fail-open/fail-closed argument this fortnight:
+    - Under-mirroring self-corrects at the next sync; over-mirroring is permanent, because the mirrors are
+      forward-only. So the cap goes on the forward side and the cost of being wrong is a delay.
+    - A wrong crossing owner inverts a governance stop; an unknown one only widens the demand. So
+      ownership reads `unknown` under ambiguity (DRIFT-199-I002-022).
+    - A definite ABSENT reading refuses work that exists; UNVERIFIABLE only declines to answer. So a check
+      that cannot look says it did not look (DRIFT-199-I002-023).
+    **This states the principle more usefully than method rule 12 does.** Rule 12 says fail open on the
+    diagnosis, which answers "which way" only when the open direction happens to be the safe one. The
+    asymmetry rule says WHY, and therefore also covers the cases where failing open is the WRONG choice -
+    where the permissive direction is the irreversible one, the guard goes on permissiveness instead.
   - **THE REFUSAL STANDARD'S CLAUSE, SHARPENED BY FIVE MEASUREMENTS** (maintainer, 2026-08-30). FR-033
     requires a refusal to name what is wrong, say the human's work is safe, and give one concrete action.
     Five refusals in this batch satisfied that clause completely and still sent the reader wrong, because

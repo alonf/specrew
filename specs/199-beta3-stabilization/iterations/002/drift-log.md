@@ -1560,6 +1560,26 @@ before being touched.
 - **Guard**: `tests/integration/cycle-reset-mirror.tests.ps1`, registered in the slice lane (whose pinned
   result count moved 24 -> 25, which is that pin working as designed). It builds the cycle boundary no
   existing mirror fixture crossed, because every one of them starts mid-iteration.
+- **THE SCRATCH REPLAY WAS RUN, AND IT WAS NOT REDUNDANT.** The maintainer asked, before signoff, whether a
+  scratch replay against real machinery was cheap enough to be worth doing now, or whether finding 1 should
+  ship on fixture evidence. It cost about ten minutes, and it **found a second defect the fixture could not
+  reach**:
+  - Replaying a closed iteration 002 plus a fresh 003 through `Invoke-SpecrewBoundaryStateSync` - the real
+    top-level entry, the whole sync path rather than the truth gate alone - showed the mirror correctly NOT
+    wedged (`003 plan AFTER: planning`), and then **two truth-gate issues** saying 003's plan and state were
+    *"behind the authority record"*, advising the human to *"re-run the boundary sync for
+    'iteration-closeout'"*.
+  - **That advice re-creates the wedge the writer's cap had just prevented.** `Get-SpecrewCrossingMirrorIssues`
+    read the same GLOBAL `last_authorized_boundary` the writer had stopped trusting: the silent forward-write
+    had become a loud, wrong refusal. Fixing one side of a comparison and not the other left the defect in
+    place with better manners.
+  - Fixed with the same ceiling (`-BoundaryCeiling`, passed from the gate). Re-run end to end: both issues
+    gone, 003 stays `planning`, closed 002 untouched. Case 2b pins it; mutation-proved.
+- **The honest limit that remains**: the replay still SEEDS `last_authorized_boundary`, because a fully real
+  cycle needs captured human verdicts across a whole iteration. It is a large step from fixture toward field
+  - the full sync path on real machinery - and it is not the field. **The field proof arrives when 003
+  actually opens**, and until then finding 1's evidence is: mutation-proved at the gate, end-to-end on the
+  real sync path with a seeded store, and not yet observed in a genuine cycle.
 - **Class closure**: NONE - the guards belong with whatever is authorized, and are named in advance so they are
   not invented afterwards: (1) a cycle test that runs closeout -> next-iteration plan -> tasks and asserts
   the plan mirror still reads `planning`, which no existing suite does because every fixture starts

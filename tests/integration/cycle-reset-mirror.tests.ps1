@@ -88,6 +88,17 @@ $null = Invoke-Gate -Root $f1.Root -BoundaryType 'tasks'
 $after2 = Get-PlanStatus -Path $f1.Plan
 Assert-True ($after2 -ne 'complete') ('after the tasks sync the plan mirror is still not complete (is: ' + $after2 + ')')
 
+Write-Host 'Case 2b: the CHECKER is capped too - a fresh iteration is not reported as behind the record'
+# FOUND BY REPLAYING A REAL CYCLE END TO END, not by a fixture. With the writer capped, the copies were
+# correctly left alone - and the checker then compared them against the GLOBAL `iteration-closeout` and
+# reported them "behind the authority record", telling the human to re-run the sync for
+# 'iteration-closeout'. That advice re-creates the wedge the writer's cap had just prevented: the silent
+# forward-write had become a loud, wrong refusal. Both sides of the comparison need the same ceiling.
+$f2b = New-CycleFixture
+$out2b = Invoke-Gate -Root $f2b.Root -BoundaryType 'plan'
+Assert-True ($out2b -notmatch 'behind the authority record') 'the fresh iteration is NOT reported as behind the record'
+Assert-True ($out2b -notmatch "Re-run the boundary sync for 'iteration-closeout'") 'and the human is not told to re-mirror the previous iteration''s closeout into this one'
+
 Write-Host 'Case 3: an EARLIER authorization is replayed as itself, never inflated to the boundary'
 # The cap must be strictly greater-than. Capping unconditionally would set the replay to the boundary being
 # synced, which mirrors FORWARD past the actual authorization - the same over-mirroring, arrived at from
@@ -104,6 +115,6 @@ $f4 = New-CycleFixture -Status 'complete' -LastAuthorized 'iteration-closeout'
 $null = Invoke-Gate -Root $f4.Root -BoundaryType 'iteration-closeout'
 Assert-True ((Get-PlanStatus -Path $f4.Plan) -eq 'complete') 'closing THIS iteration is not capped - only a boundary LATER than the one being synced is'
 
-foreach ($f in @($f1, $f3, $f4)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+foreach ($f in @($f1, $f2b, $f3, $f4)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("cycle-reset-mirror: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'cycle-reset-mirror: all assertions passed' -ForegroundColor Green

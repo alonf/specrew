@@ -295,7 +295,9 @@
     found. Three rounds produced one blocking and seven major gradings; the durable record shows zero of
     each.
 
-    The retro should draw the consequence rather than only the count: **the instrument that gates the tag
+    **Put this at the FRONT of the retro, not in its findings list** (maintainer instruction, 2026-08-30:
+    *"that is the whole beta4 UX argument in one sentence"*). The retro should draw the consequence rather
+    than only the count: **the instrument that gates the tag
     was, for this whole campaign, incapable of surfacing the one severity that would have stopped it** - and
     the only reason it did not ship is that a human instructed the crew to read raw findings instead of the
     summary. That instruction was a workaround, and it worked, and it does not scale past a maintainer who

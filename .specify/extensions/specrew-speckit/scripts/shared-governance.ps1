@@ -3866,7 +3866,14 @@ function Get-SpecrewCrossingMirrorIssues {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
         [AllowNull()][string]$FeatureRef,
-        [AllowNull()][string]$IterationNumber
+        [AllowNull()][string]$IterationNumber,
+        # THE SAME CAP THE WRITER TAKES, because the CHECKER had the same confusion one layer over.
+        # Found by replaying a real cycle end to end rather than by a fixture: with the writer capped, a
+        # fresh iteration's copies were correctly left alone - and this checker then compared them against
+        # the GLOBAL `iteration-closeout` and reported them "behind the authority record", advising the
+        # human to "re-run the boundary sync for 'iteration-closeout'". That advice re-creates the wedge the
+        # writer's cap had just prevented. The silent forward-write had become a loud, wrong refusal.
+        [AllowNull()][string]$BoundaryCeiling
     )
     $issues = New-Object System.Collections.Generic.List[string]
     $paths = Resolve-SpecrewCrossingMirrorPaths -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber
@@ -3875,6 +3882,14 @@ function Get-SpecrewCrossingMirrorIssues {
     try { $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot } catch { return @() }
     if ($null -eq $enforcement -or $null -eq $enforcement.EffectiveState) { return @() }
     $lastAuthorized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcement.EffectiveState['last_authorized_boundary'])
+    if (-not [string]::IsNullOrWhiteSpace($BoundaryCeiling)) {
+        $ceilingOrder = @(Get-SpecrewCanonicalBoundaryTypes)
+        $lastIdx = [Array]::IndexOf($ceilingOrder, $lastAuthorized)
+        $ceilIdx = [Array]::IndexOf($ceilingOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $BoundaryCeiling))
+        if ($lastIdx -ge 0 -and $ceilIdx -ge 0 -and $lastIdx -gt $ceilIdx) {
+            $lastAuthorized = Normalize-SpecrewCanonicalBoundaryType -Boundary $BoundaryCeiling
+        }
+    }
     if ([string]::IsNullOrWhiteSpace($lastAuthorized)) { return @() }
     $pendingTo = $null
     $lastRecordedAt = $null

@@ -945,7 +945,7 @@ function Invoke-SpecrewIterationStateTruthGate {
 
     $issues = @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -RequireStateFile:($BoundaryType -eq 'review-signoff'))
     if ($BoundaryType -ne 'feature-closeout' -and (Get-Command -Name 'Get-SpecrewCrossingMirrorIssues' -ErrorAction SilentlyContinue)) {
-        $issues = @($issues) + @(Get-SpecrewCrossingMirrorIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber)
+        $issues = @($issues) + @(Get-SpecrewCrossingMirrorIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -BoundaryCeiling $BoundaryType)
     }
     if ($issues.Count -eq 0) {
         return
