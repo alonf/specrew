@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 37 (DRIFT-199-I002-001 through -037)
+**Total drift events**: 38 (DRIFT-199-I002-001 through -038)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1878,6 +1878,38 @@ evidence in this ledger.** Recorded 2026-08-31.
 - **Class closure**: the control IS the closure and already ships. What is added is the record that its two
   halves answered differently and correctly in one run, so the next reader weighing whether the split was
   worth its cost has the instance rather than the argument.
+
+### DRIFT-199-I002-038 — with review.md present and review-signoff unauthorized, no plan.md Status satisfies both controls (open; beta4)
+
+- **Measured both directions, 2026-08-31**, at iteration 002's review-signoff boundary:
+  - `**Status**: executing` -> **validate-governance FAILS**: *"plan.md status 'executing' is stale:
+    review.md exists, so the iteration must be in reviewing, retro, or complete."*
+  - `**Status**: reviewing` -> **the boundary sync's truth gate REFUSES**: *"plan.md for iteration 002 says
+    Status 'reviewing', but the last authorized boundary is 'before-implement'... which reads 'executing'
+    in plan.md's own vocabulary."*
+- **Neither rule is wrong on its own.** The validator keys off ARTIFACT EXISTENCE (review.md is here, so
+  the work has reached review). The truth gate keys off the AUTHORITY RECORD (nothing has authorized
+  review-signoff, so the phase is still executing). **They disagree about what `Status` means** - one reads
+  it as a description of the work, the other as a mirror of the ledger.
+- **The window is not exotic; it is mandatory.** `review.md` is the artifact the review-signoff crossing
+  OWES - the owed-artifact preflight refuses to mint without it. So every iteration must pass through a
+  state where review.md exists and review-signoff is unauthorized, and in that state there is no legal
+  value for the line. **This is on the ordinary path of every iteration that ever reaches review.**
+- **Same family as DRIFT-199-I002-010, -018 and -036**: two surfaces, each locally correct, with nothing
+  arbitrating between them. What is new is that here the two are not merely inconsistent in their messages
+  - they are jointly unsatisfiable in their requirements.
+- **What was done here, and why**: `executing` is committed, because it is the value the AUTHORITY RECORD
+  supports and the truth gate is the control that blocks the sync (the validator reports and does not
+  block). After the review-signoff verdict is recorded, the mirror advances and both controls agree again.
+  The window is therefore transient in practice and unsatisfiable in principle.
+- **Citation**: FR-030 (the mirrors mean the ledger), FR-033 (honest state); the composition-test programme
+  where the two-surfaces family is pooled.
+- **Resolution**: OPEN, beta4. The fix is arbitration, not either rule: the validator's staleness check
+  should read the authority record too, so that `executing` with review.md present and review-signoff
+  unauthorized is recognised as the correct transient state rather than as staleness.
+- **Class closure**: NONE - a precedence rule between two governance readers is beta4 design, and inventing
+  one inside a tag batch is the shape this batch has repeatedly ruled against. Named so it is fixed as
+  arbitration rather than by loosening whichever rule is in front of the next person.
 
 ### Resolution Strategies (Unused)
 
