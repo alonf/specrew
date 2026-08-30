@@ -1701,7 +1701,7 @@ before being touched.
   **approve, retry immediately, and commit records only afterwards.** W77's own entry said that "the operator
   discovers a workaround" is not a control - **and that is now true of W77's fix as well as of the original
   defect.** An entry whose remedy is an operator habit has documented the defect, not closed it.
-- **Class closure**: NONE here - the carry extension is beta4 work on existing machinery. Named so it is
+- **Class closure**: NONE - the carry extension is beta4 work on existing machinery, and writing a guard here would pin behaviour the extension has not yet chosen. Named so it is
   fixed as a class: any authorization that binds to the reviewed-state digest owes the same records-delta
   carry, and the guard is the one W77 already has, applied to every acceptance kind rather than to one.
 
