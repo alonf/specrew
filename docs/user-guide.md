@@ -42,6 +42,52 @@ If you want a repeatable mission-completion smoke check of the real handoff boun
 
 Starting in v0.25.0, Specrew enforces lifecycle boundary discipline **mechanically** at the tool-call layer, not just by prose convention. Proposal 065 (Feature 039) ships skill-level authorization gates inside every boundary-advancing skill. The Crew cannot chain past a boundary without an explicit, recognized verdict from you.
 
+### How a verdict is read — two rules that cost real retries
+
+Only a **typed phrase** is captured. Nothing else authorizes a boundary: not a picker selection, not a
+number, not a click. Two properties of how that phrase is read are invisible from the outside and are the
+two that actually cost time.
+
+**1. The phrase must be the first characters of your message.**
+
+The match is anchored to the start of what you type (after surrounding whitespace is trimmed). So:
+
+```text
+approved for plan                     -> captured
+approved for plan - the schema is right  -> captured, with a rationale
+ok, approved for plan                 -> NOT captured; nothing is recorded
+Sounds good. approved for plan        -> NOT captured
+```
+
+There is no fuzzy matching, and that is deliberate: a phrase that authorizes real work should never be
+inferred from a sentence that merely contains it.
+
+**2. A rationale is everything from the dash to the end of the message — with a 2,000-character cap.**
+
+When you write `approved for <boundary> - <reason>`, the reason is read from the dash to the **end of the
+whole message**, across blank lines and paragraphs — not to the end of that sentence. It must be at least
+10 characters and at most 2,000.
+
+This has one practical consequence, and it is the one worth remembering:
+
+> **Do not put instructions below an approval.** A message like
+>
+> ```text
+> approved for review-signoff - coverage is acceptable for this tree
+>
+> Also, while you are in there, please refactor the ...
+> ...three more paragraphs...
+> ```
+>
+> makes *all* of that trailing text the rationale. Past 2,000 characters it is rejected — and a rejection
+> here means **your approval was not recorded**. Send the approval as its own message, and the
+> instructions as the next one.
+
+A phrase that matched and was then rejected always tells you so, and says why. A phrase that never matched
+stays silent — that is ordinary conversation, and announcing it would turn every message into a
+diagnostic. So: **if you approved something and saw no acknowledgement at all, suspect rule 1**; if you saw
+a rejection, read it, because it names the reason.
+
 ### Recognized verdict shapes
 
 When the Crew surfaces a boundary handoff and asks for your verdict, the parser accepts exact shapes only. Ambiguous prose (`looks good`, `yep`, `continue`, `fine`, `okay`) is rejected and re-prompted. The canonical forms:
