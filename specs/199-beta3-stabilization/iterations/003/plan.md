@@ -102,6 +102,12 @@
 
 ## Notes
 
+- **PRE-PLAN WORK EXISTS IN THIS ITERATION, disclosed here because the task table cannot carry it.** The
+  clarify-refusal fix (`AcceptedForms` on the clarify content contract, plus
+  `tests/unit/clarify-refusal-names-the-form.tests.ps1`) was implemented on 2026-08-31 under a
+  mis-sequenced reviewer instruction, BEFORE this plan boundary. It has no task row and must not be given
+  one retroactively; it is to be ratified or unwound when beta4 planning opens. Full record:
+  DRIFT-199-I003-014, with the instruction collision at DRIFT-199-I003-011.
 - This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
 - Add task rows only for work that is traceable to the scoped requirements above.
 - Keep Status: planning until the plan is fully decomposed and approved.

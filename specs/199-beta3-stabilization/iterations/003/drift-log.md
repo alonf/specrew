@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 13 (DRIFT-199-I003-001 through -013)
+**Total drift events**: 14 (DRIFT-199-I003-001 through -014)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -363,6 +363,26 @@ were verified at source on the maintainer's instruction rather than accepted fro
 - **Class closure**: the pinned fact is guarded (case 3 of the suite above asserts the validator's silence
   on clarify, so a future reader cannot mistake this for a disagreement) but the gap itself is not closed.
 
+**Why this fix exists inside a publish hold - an instruction collision, owned by the maintainer.**
+
+- **The two instructions.** The clarify relay said *"fix the refusal to name the expected form"*. The
+  message that followed it said *"hold all fixes"*. The first was followed, and the maintainer's ruling is
+  that following it was correct: **the collision is theirs, recorded here as theirs.**
+- **Recorded because a later reader would otherwise reconstruct it wrongly.** A product change landing
+  during a hold, with no note, reads as an agent that ignored a hold - the most damaging possible
+  misreading of this record, and one the artifacts alone cannot refute. It was not that. It was two
+  instructions in sequence that could not both be satisfied, and the earlier one was acted on before the
+  later one existed.
+- **What this batch already knows about it.** Sequencing is the batch's recurring human-side failure mode -
+  four typed approvals were spent on one signoff because *my* sequencing put commits between the request
+  and the approval (DRIFT-199-I002-036's neighbourhood). This is the same shape from the other side, and it
+  is worth the symmetry: **the instruction stream is a shared artifact, and either party can order it into
+  a contradiction.** Neither instance was carelessness; both were ordinary work moving faster than the
+  record of it.
+- **No control proposed, deliberately.** Nothing can machine-detect that two natural-language instructions
+  conflict. What is available is what happened here: the conflict is named, attributed, and the work is not
+  quietly re-classified to fit whichever instruction won.
+
 ### DRIFT-199-I003-012 - the clarify boundary requires an iteration that a LATER boundary creates: an accidental owed-artifact, confirmed accidental from the refusal's own remedy text (OPEN; fix identified, held for a ruling)
 
 **The maintainer asked whether this owed-artifact is intended for clarify or accidental. It is accidental,
@@ -430,10 +450,70 @@ source rather than accepted.**
   bullet does not - a human copying a bulleted line copies the dash with it, and the captured phrase must
   be exact. A bullet is not a selection affordance, so the 2026-08-12 no-numbering ruling is untouched:
   that ruling bars numbers and pickers, not list structure.
-- **Scope when it lands**: the two emitters above, plus `.claude/skills/specrew-gate-stop/SKILL.md` and
-  the three host-package variants in `scripts/internal/coordinator-prompt-surgery.ps1` (lines 206, 222,
-  228), where the options appear inline in a prose sentence rather than as lines at all - a fourth
-  rendering of the same menu, and the one the Copilot package actually ships.
+- **Scope when it lands - the complete emitter set, from a finished repository-wide search rather than
+  from the two files that happened to be in front of me.** Four authored sources:
+  - `extensions/specrew-speckit/squad-templates/skills/gate-stop.md` **and its `.specify/` mirror** - the
+    skill template deployed to every host;
+  - `.claude/skills/specrew-gate-stop/SKILL.md` - the deployed Claude skill, a separate copy of the text;
+  - `scripts/internal/launch-contract.ps1` - which RENDERS the menu into every project's
+    `.specrew/last-start-prompt.md`;
+  - `scripts/internal/coordinator-prompt-surgery.ps1` - three host-package variants (lines 206, 222, 228)
+    where the options appear **inline in a prose sentence, not as lines at all**. That is a fourth
+    rendering of the same menu with a different failure mode, and per the surgery's own host branching it
+    is the shape a non-Claude package ships.
+  - **Two GENERATED surfaces carry it into each project** and must be re-rendered, not hand-edited:
+    `.specrew/last-start-prompt.md` and `.specrew/handover/session-handover.md`.
+  - The search also returned **~105 further hits, all under `.scratch/`** - fixture projects and two
+    archived module versions (0.17.9, 0.18.0). Named so the next reader does not mistake the count for the
+    blast radius: **7 real surfaces, not 112.**
+- **The search finished; nothing was edited.** This item is beta4-triaged and stays so (maintainer ruling,
+  2026-08-31). The located set is the deliverable.
 - **Class closure**: NONE yet. The guard that would close it is a renderer-shape assertion over every
   emitter - no placeholder outside a code span, no option list that depends on a fence surviving - which
   is a beta4 item alongside the fix.
+
+### DRIFT-199-I003-014 - the clarify refusal fix is iteration 003's first PRE-PLAN work item: implemented before the plan that would authorize it, disclosed as exactly that (open until beta4 planning ratifies it)
+
+**Maintainer ruling, 2026-08-31: the fix stands and is not reverted.** It is reproduced, guarded and
+mutation-proved. What is irregular is not the work but its position in the lifecycle, and the position is
+what this entry records.
+
+- **The irregularity, stated plainly.** `specs/199-beta3-stabilization/iterations/003/plan.md` is a STUB:
+  an empty task table, `Status: planning`, and its own note saying *"Add task rows only for work that is
+  traceable to the scoped requirements above."* The clarify fix is implemented product code in an
+  iteration whose plan boundary has not been crossed. **There is no task row for it, and I did not write
+  one** - authoring a task row is the plan boundary's work, and inventing one to make finished code look
+  planned is the failure this project exists to prevent.
+- **It was implemented under a mis-sequenced reviewer instruction** (the collision recorded in
+  DRIFT-199-I003-011), not on my own initiative and not on an inference that a gate was obviously wrong.
+- **This is the W76/W77 shape, and naming the shape is the point**: post-authorization work recorded as
+  exactly what it is, rather than back-fitted into the record as though the authorization had come first.
+  W77's own lesson applies to itself here - *a workaround the operator discovers is not a control* - so the
+  disclosure is the artifact, not a plan row that would make the irregularity disappear.
+- **Ratification is deferred to beta4 planning**, where it is either adopted as planned work with a
+  requirement citation or unwound. Until then this entry, and the disclosure line in 003's plan Notes, are
+  the only records that assert it exists. **The default if beta4 planning never looks is NOT silent
+  adoption** - an unratified pre-plan change is an open item, and this entry stays open to say so.
+- **What it does NOT affect: the tag.** The tag is `4f4dce52` and does not contain this commit. beta3 ships
+  the bare `spec.md required content` refusal, and neither owed walk can field-exercise the fix, because
+  the walks run the installed 4f4dce52 bits under a standing no-rebuild rule. The fix's evidence tier is
+  therefore **guard- and mutation-proved, zero field executions** - the same tier the batch has insisted on
+  stating precisely everywhere else.
+- **MECHANICAL SHADOW, measured after the fact and NOT resolved**: because the fix edits deployed
+  machinery on a tree whose installed module is the 4f4dce52 build, `validate-governance.ps1` now reports
+  on **17 iterations** - every one it validates - *"The deployed Specrew machinery under
+  .specify/extensions/specrew-speckit does not match what was installed (modified:
+  scripts/shared-governance.ps1) ... a local edit to them makes this run's result unreliable rather than
+  merely different."* Confirmed to be exactly that one file and nothing else.
+  - **The remedy the message names is FORBIDDEN**: it says run `specrew update --project-path ...`, which
+    would overwrite the fix with the 4f4dce52 bits. The standing no-rebuild/no-reinstall rule holds until
+    both walks finish, and it holds here too. **Not run.**
+  - **This is the drift-detection control working, not failing** - it caught a local patch to deployed
+    machinery within minutes of the patch landing, named the exact file, and refused to let its own PASS
+    verdicts be read as unqualified. Positive-control evidence.
+  - **But it is a real cost of the pre-plan position, and it is disclosed rather than absorbed**: for as
+    long as this state persists, every validator run in this repository self-reports as unreliable, so
+    "the validator passed" cannot be cited as clean evidence for anything until the fix is either shipped
+    in a build or unwound. Iteration 003 itself still PASSES on its own checks.
+- **Class closure**: NONE, and none is possible - no check can distinguish authorized pre-plan work from
+  unauthorized. The control is disclosure at the moment it happens, which is what this is.

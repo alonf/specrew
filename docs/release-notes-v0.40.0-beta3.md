@@ -143,15 +143,28 @@ mechanism they describe — a restored slot that nothing surfaced — was verifi
 
 ## What this tag names
 
-**The tag sits on commit `4f4dce52`, one commit behind the branch tip.** That is deliberate. `4f4dce52` is
+**The tag sits on commit `4f4dce52`, now three commits behind the branch tip.** That is deliberate, and
+the gap is disclosed in full below rather than rounded off. `4f4dce52` is
 the commit that was built, installed, and walked, so the tag, the build stamp, and every walk's evidence
 name the same bytes by construction — no rebuild, no restart, no gap between what was verified and what
 ships.
 
-The one commit outside the tag is `aef84004`, and its delta is **a single unpackaged spec artifact: 0 of 1
-changed files appear in `Specrew.psd1`'s FileList**. It is the drift record about holding this publish for a
-final walk. Process history about the release act continues past the tag; a release tag names the bytes that
-ship, not the diary of its own creation.
+**Three commits now sit outside the tag** (updated 2026-08-31 as the hold continued), and the third is not
+like the other two:
+
+- `aef84004` - the drift record about holding this publish for a final walk. Unpackaged spec artifact only.
+- `4a652621` - the Copilot walk's field results, the third-reader finding, and the tag-identity ruling.
+  Records only.
+- `e3ccc53f` - **product code**: the clarify boundary's refusal now names the two forms it accepts instead
+  of saying only `spec.md required content`, with a guard and a mutation proof. **This tag does not contain
+  it.** beta3 ships the bare refusal, and the fix rides the next build; it is recorded as pre-plan work at
+  DRIFT-199-I003-014 pending ratification at beta4 planning.
+
+The first two are the diary; the third is a real change deliberately left outside, because the tag names
+the bytes that were **built, installed and walked**. Moving the tag to pick up the fix would mean rebuilding
+and re-walking everything, and unverified bytes under a verified tag is the worse trade. Process history
+about the release act continues past the tag; a release tag names the bytes that ship, not the diary of its
+own creation.
 
 ## Known issues
 
