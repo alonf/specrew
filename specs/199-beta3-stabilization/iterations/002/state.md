@@ -1,7 +1,7 @@
 # Iteration State: 002
 
 **Schema**: v2
-**Current Phase**: review-signoff
+**Current Phase**: retro
 **Iteration Status**: ready-for-review
 **Last Completed Task**: T025
 **Tasks Remaining**: (none)

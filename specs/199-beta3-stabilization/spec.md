@@ -730,6 +730,23 @@ exception; design and rulings in the crew report of 2026-08-29 and the iteration
     The two are independent and both are required: an action reachable from the reader's state, about the
     thing that actually failed. Four of the five had a perfectly reachable action attached to the wrong
     subject, which is worse than vagueness - it is a confident instruction to look somewhere else.
+  - **FOR GOVERNANCE MACHINERY INDEPENDENTLY REVIEWED, IMPLEMENTATION IS THE SMALL PART**
+    (maintainer instruction at the 002 retro verdict: record it where the beta4 workshop will find it
+    first). **This is the finding that should reshape how the capacity skill treats review.** Measured,
+    twice, on this codebase: iteration 001 spent roughly **8×** its implementation calendar on review and
+    rework; iteration 002 spent **14×** (1.8 hours of implementation against 26.1 hours from round-1
+    delivery to signoff). The planned direct ratio was 0.29, and the 1:1:1 parity floor named beside it as
+    the pessimistic check was still an order of magnitude optimistic.
+    - **The consequence for planning**: estimate implementation in story points; govern review by the round
+      allowance, which is a real budget with real enforcement; forecast review calendar from the measured
+      multiplier, stated as a forecast rather than a gate. Do not price review in story points - two
+      iterations of measurement say that number is fiction.
+    - **The caveat that travels with it**: the multiplier is THIS PROJECT'S measured range and must be
+      re-measured per project, never inherited as a constant. A downstream application project may sit
+      nowhere near it, and *a multiplier applied unmeasured is an authored count wearing a derived count's
+      clothes*. **What transfers is the instrumentation, not the number.**
+    - **What it cost to learn**: one plan note and three `git log` invocations. Iteration 001 could not
+      answer the same question at all, because its Actual column was the estimate copied across.
   - **THE DEEPEST PATTERN OF THE FORTNIGHT, recorded for beta4 (maintainer, 2026-08-29): every silent
     failure in this batch converted a recoverable problem into an unfalsifiable one.** Four instances,
     and the fourth found its own root cause the moment the rule was applied to it:

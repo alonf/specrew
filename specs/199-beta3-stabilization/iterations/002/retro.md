@@ -59,6 +59,16 @@ first. **The floor is not a floor.** For work of this kind — governance machin
 host with findings that must be verified before disposition — implementation is the small part, and any
 plan that treats review as a fraction of it will be wrong by a multiple rather than a margin.
 
+> **CAVEAT, and it travels with the number** (maintainer, at the retro verdict): 8× and 14× were measured
+> **on this codebase** — governance machinery, reviewed by an independent host, under adversarial
+> discipline. **Carry the multiplier as THIS PROJECT'S measured range, re-measured per project, never
+> inherited as a constant.** A downstream application project may sit nowhere near it.
+>
+> *"A multiplier applied unmeasured is an authored count wearing a derived count's clothes."* That is the
+> DRIFT-199-I002-012 defect — the Actual column that was the estimate copied across — arriving one level
+> up, in a ratio rather than a cell. The instrumentation that produced these numbers is the thing worth
+> copying to another project; the numbers themselves are not.
+
 **What the instruction bought**: the ability to say that sentence with numbers behind it. That is what 001
 could not do, and it cost one plan note and three `git log` invocations. The instruction paid for itself.
 
@@ -203,6 +213,30 @@ permissive direction is the irreversible one.
   mutation proof in this iteration was later found wanting by a real project.
 
 ## Improvement Actions
+
+**Rulings at the retro verdict, 2026-08-31:**
+
+- **Estimation — stop pricing review in story points.** Two iterations of measurement say the number is
+  fiction: 0.29 estimated against 14 actual. The replacement separates three kinds of number so each can be
+  honest about what it is:
+  - **Implementation → estimated in SP.** It is bounded work with a known shape, and 002's estimate held.
+  - **Review → governed by the ROUND ALLOWANCE**, which is a real budget with real enforcement, rather
+    than by an effort figure nothing can enforce.
+  - **Review calendar → forecast from the measured multiplier range, stated as a forecast and not a gate.**
+  *"Estimates for implementation, budgets for review, measurements for calendar — each number of the kind
+  that can actually be honest."* This supersedes the 1:1:1 floor as a planning device; the floor survives
+  only as the check that revealed it was wrong.
+- **The tripwire — kept, recorded as unproven, redesign filed for beta4**, with the diagnosis that makes it
+  a class rather than a miss: **the tripwire was an instruction in a plan note, not machinery**, which is
+  precisely why its firing cannot be verified. *The instruction-layer family again, inside the governance
+  instrument built to catch it.* And its real trigger was never magnitude - it was
+  **grind-without-decision**. Every threshold excess this iteration was covered by an explicit ruling, so
+  the correct redesign fires on an excess **no ruling has addressed**, which requires it to be machinery
+  that can see rulings. Beta4, alongside the friction measurement.
+- **DRIFT-199-I002-038 — priority rises to the TOP of beta4's arbitration list, and does not enter beta3.**
+  The resolution is known, mechanical, and has now been performed three times without drama:
+  **the ledger wins until the crossing is authorized.** That sentence IS the arbitration rule; beta4's work
+  is encoding it so nobody has to know it.
 
 1. **Beta4: B-3 as a record defect** — severity demotion is written into campaign state, not merely
    displayed. Beta3 ships the limitation documented.
