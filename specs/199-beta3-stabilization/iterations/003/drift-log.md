@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 14 (DRIFT-199-I003-001 through -014)
+**Total drift events**: 18 (DRIFT-199-I003-001 through -018)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -241,10 +241,12 @@ So the authorization that completes the closeout necessarily changes two files t
   twice, as *mutation proving shows a control is wired to its own test, not to the system*, and as *a
   fixture writes the precondition the product denies*. **Here it is one level up again: incremental proofs
   show the parts worked at the moment each was proved, not that the shipped whole works now.**
-- **Resolution**: OPEN until the tag-candidate walk runs. The build is prepared and verified (commit
-  `4f4dce52`, content `21c05ad9...`, 414 files byte-verified, stamp verified against installed contents);
-  the walk directory `C:\Tempeta3-tagwalk` is confirmed not to exist and is visually distinct from every
-  neighbour, which matters after DRIFT-199-I003-004.
+- **Resolution**: **RESOLVED 2026-09-01.** The tag-candidate walk ran and passed - see
+  DRIFT-199-I003-015. The build was prepared and verified (commit `4f4dce52`, content `21c05ad9...`, 414
+  files byte-verified, stamp verified against installed contents); the walk directory
+  `C:\Temp\beta3-tagwalk` was confirmed not to exist beforehand and is visually distinct from every
+  neighbour, which mattered after DRIFT-199-I003-004. **The question this entry records - has anything been
+  walked on the final bits - now has the answer it did not have: yes.**
 - **Class closure**: NONE yet — the durable fix is a release-gate step requiring a walk on the tag-candidate
   build before publish, which is beta4's greenfield smoke path (already prototyped at
   `tools/smoke/greenfield-cycle-replay.ps1`) promoted into the release lane and extended to cover intake.
@@ -515,5 +517,137 @@ what this entry records.
     long as this state persists, every validator run in this repository self-reports as unreliable, so
     "the validator passed" cannot be cited as clean evidence for anything until the fix is either shipped
     in a build or unwound. Iteration 003 itself still PASSES on its own checks.
+- **ACCEPTED by the maintainer, 2026-09-01, as stated**: the cost is bounded and disclosed, because *the
+  tag's evidence predates the fix and the walks run on installed bits*. Recorded as an acceptance rather
+  than a resolution - the condition still exists, and the sentence that bounds it is the reason it is
+  tolerable, not a reason it is absent.
 - **Class closure**: NONE, and none is possible - no check can distinguish authorized pre-plan work from
   unauthorized. The control is disclosure at the moment it happens, which is what this is.
+
+### DRIFT-199-I003-015 - the tag-candidate walk: a brand-new project reached clarify on the final 4f4dce52 bits with ZERO governance stops not about the work (POSITIVE CONTROL EVIDENCE; DRIFT-008's open question answered)
+
+**The walk this batch was held for.** `C:\Temp\beta3-tagwalk`, claude host, feature
+`001-ai-usage-monitor`, init through the clarify boundary, on the installed 4f4dce52 build with no rebuild,
+no reinstall and no `specrew update` at any point. Maintainer's field report, 2026-09-01.
+
+- **THE HEADLINE MEASUREMENT: zero governance stops that were not about the work.** Set beside the datum
+  that opened the UX programme - the first HelloWinUIReactive walk, **nine stops by the specify boundary**
+  (maintainer's figure, from that walk's field report) - this is the before and after of the stabilization,
+  **the same activity measured at both ends**. Neither number is a benchmark and neither was produced by an
+  instrument: both are counts a human made while walking a new project. That is exactly what makes the pair
+  worth keeping - it is the only measurement of this fortnight's work taken in the units the work was
+  actually for.
+  - **The comparison is honest about what changed and what did not.** Nothing in the batch loosened a gate.
+    The stops that disappeared were the ones that were never about the work: messages that withheld the
+    fact that made them actionable, controls correct alone and hostile together, remedies unreachable from
+    the reader's state. The gates that caught something real all still fire - that was the standing rule
+    for the whole batch, and this measurement is what it bought.
+- **THE ROW THAT WAS THE REASON FOR THE HOLD: `confirm-intake-lens` closed `product-domain` on a fresh
+  project.** **First field execution of the intake path on any build**, receipt and records verified in the
+  walk transcript. This is the path whose absence deadlocked every greenfield workshop at its first lens,
+  the first path every new user executes, and the one that stood at zero field executions through three
+  hosts and a fortnight of work. **DRIFT-199-I003-008's sharper half is closed.**
+- **Evidence table, updated - the two rows that moved:**
+
+| Row | Before this walk | After | What moved it |
+| --- | --- | --- | --- |
+| **T017 / FR-026** - the constrained readers | repository-only; never executed outside this repo | **field-proved (happy path)** | Its reader executed **downstream, via the product-domain validator, on a successful close** - on a fresh project, on the final bits. The gap named in 002's review record (`confirm-workshop-lens.ps1:299` validates only `product-domain` and `code-implementation`, and the backup walk closed `architecture-core`, so the reader was never invoked) is closed by a walk that closed `product-domain`. |
+| **T018 / FR-027** - intake path | `confirm-lens` field-proved; **intake close unproven on every build** | **intake path field-proved** | `confirm-intake-lens` closed `product-domain` on a brand-new project, receipt and records verified. |
+
+  **Scope of the T017 row, stated rather than implied**: *happy path*. The reader ran on a successful
+  close. Its refusal behaviour on a malformed lens artifact is still repository-only.
+- **Also field-proved in the same pass**: T020's stub rendered **and was correctly explained to the human
+  unprompted** - the stub-then-spec ordering doing the thing it was written for rather than merely
+  occurring; specify's verdict captured **with its crossing identity** (FR-024); and clarify ran a real
+  three-question pass.
+- **CAVEAT, recorded with the same weight as the passes: the walk ran on claude, not codex.** Two
+  consequences, neither of them closed by this result:
+  1. **The Codex fresh-project capture datum was not collected.** It was the reason a codex walk was
+     specified in the first place.
+  2. **The HelloWinUIReactive capture mystery remains an open beta4 diagnostic** - why that project
+     specifically stopped producing captures has no established cause, and nothing here bears on it.
+  A green walk on one host is evidence about that host. The batch has been strict about this in every
+  other row and the strictness does not lapse because the result is good.
+- **Class closure**: the durable control is still the one DRIFT-199-I003-008 named - a release-gate step
+  requiring a walk on the tag-candidate build before publish, `tools/smoke/greenfield-cycle-replay.ps1`
+  promoted into the release lane and extended to cover intake. **This walk satisfied that step by hand.**
+  Beta4 owes the automation, or the next tag depends on someone remembering again.
+
+### DRIFT-199-I003-016 - a validator whose named remedy would have DESTROYED the thing it detected: the fourth remedy-wrong-for-state instance, and the first caught by a standing rule rather than by luck
+
+**Extends the catalogue in DRIFT-199-I002-026** (sealed iteration 002; recorded here because that record
+cannot be amended, and the family is the point).
+
+- **The instance.** `validate-governance.ps1` correctly detected that deployed machinery differed from the
+  installed module - the clarify fix - and named its remedy: *"Restore them with: `specrew update
+  --project-path ...`"*. **Following it would have overwritten the fix the validator had just detected**,
+  silently, with the older bits.
+- **The four, and the four different failure directions:**
+  1. **DRIFT-199-I002-021** - `specrew update` told to a project AHEAD of its installed module. *Damage.*
+  2. **DRIFT-199-I002-018** - the wedged pause sending the reader around a closed loop. *No exit.*
+  3. **DRIFT-199-I002-026** - a host telling the reader to switch to the host they were already on. *No-op.*
+  4. **This one** - a detector naming the remedy that destroys its own finding. *Self-defeating.*
+  Note that 1 and 4 are **the same command** in two different states, which is the family's whole thesis:
+  `specrew update` is directional and the message is not.
+- **WHAT IS NEW, and it is the reason this instance is worth its own entry: it was caught by a standing
+  rule, not by luck.** The three prior instances were each noticed after someone had already followed the
+  advice, or been trapped by it. This one was disarmed before it could act, by the maintainer's standing
+  no-rebuild/no-reinstall rule for the duration of the walks. **A rule written to protect the tag's
+  identity happened to be the only thing standing between a correct detector and the destruction of the
+  code it detected.**
+- **And that is luck of a different kind, which the entry should say plainly.** The rule was not written
+  for this. Had the hold not been in force, the message was locally sensible, authoritative, and repeated
+  on 17 iterations - the conditions under which advice gets followed. **A control that only works because
+  an unrelated rule happened to be active is not a control.**
+- **Resolution**: OPEN, beta4, with the family. The fix is the one DRIFT-199-I002-026 already named and
+  this instance sharpens: **a refusal must know the reader's state before naming an action**, and for this
+  message specifically that means comparing direction - a project AHEAD of its module must never be told
+  to run `specrew update` as though it were BEHIND.
+- **Class closure**: NONE. Recorded as the fourth instance so the family's count is honest and so the
+  "caught by a standing rule" fact does not get remembered as "the control worked".
+
+### DRIFT-199-I003-017 - natural-language authority conflicts have no detector: one beta4 item, from two instances pointing in opposite directions
+
+**Maintainer ruling, 2026-09-01: this goes to beta4 beside the instruction-corpus work, as one item.**
+
+- **The two instances, and they are symmetric:**
+  1. **The maintainer's instruction collision** (DRIFT-199-I003-011): *"fix the refusal to name the
+     expected form"* followed by *"hold all fixes"*. The first was acted on before the second existed.
+  2. **My sequencing** (DRIFT-199-I002-036's neighbourhood): commits placed between a verdict request and
+     its approval, spending **four typed human approvals** on one signoff.
+- **What they have in common is the load-bearing part**: both spent human authority, both were ordinary
+  work moving faster than the record of it, and **nothing in the system detected either.** Every
+  authority control this project has operates on a *single* instruction - is this phrase a verdict, does
+  this crossing exist, did a human type it. **None of them looks at two instructions together**, and a
+  contradiction only exists between two.
+- **Why it belongs beside the instruction-corpus work rather than as a gate**: the corpus is the only place
+  where the instruction stream is treated as an artifact with a history rather than as a series of
+  independent events. A conflict detector, if one is possible at all, is a property of that history.
+- **Stated honestly: it may not be buildable.** Two natural-language instructions can conflict in ways no
+  parser will see, and a detector with false positives at an authority boundary would be worse than none -
+  it would train people to dismiss it. The item beta4 receives is the **question**, with two measured
+  instances attached, not a specification.
+- **What is available today, and it is what both instances actually got**: name the conflict, attribute it,
+  and do not re-classify the work to fit whichever instruction won.
+- **Class closure**: NONE. This is the beta4 item.
+
+### DRIFT-199-I003-018 - a literal backspace byte sat inside a cited path in this log for a day, and only reading the record found it (self-inflicted; guard owed, not written)
+
+- **What was there.** DRIFT-199-I003-008 recorded the walk directory as `C:\Temp` + **0x08** +
+  `eta3-tagwalk`. Written by me, via a Python string where `` was an escape rather than a path
+  separator. A terminal renders it as `C:\Tempeta3-tagwalk`; a reader following it finds nothing.
+- **Second instance of the same cause**, and that makes it a class: octal escapes previously wrote a 0x01
+  into `.squad/decisions.md` (`specs99` becoming chr(1) + "99"). **Python escape sequences and Windows
+  paths, in a script that writes governance records.**
+- **What it corrupted is the aggravating part.** DRIFT-199-I002-040 established this batch's rule after a
+  near-retraction: *an evidence claim must name its directory, because in prose two paths differing by a
+  suffix read as one place.* The very next thing to break was a named directory - **the rule was followed
+  and the citation was still unusable.** Precision requires the byte, not just the intent.
+- **How it was found**: by reading the record, in the same pass that read it for content. No check looks
+  for control characters in lifecycle artifacts. A sweep run afterwards found this one and confirmed every
+  other record clean.
+- **Guard OWED, deliberately NOT WRITTEN**: a control-character assertion over `specs/**/*.md` and the
+  release record is a five-line test, and it is exactly the kind of five lines that turns into a second
+  unratified pre-plan item (DRIFT-199-I003-014). **Named here as owed; it lands with beta4 planning or
+  with the beta4 fix batch.** The sweep exists as a one-liner in this entry's history until then.
+- **Class closure**: NONE. Corrected in place; the guard is owed.

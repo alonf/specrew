@@ -143,8 +143,15 @@ mechanism they describe — a restored slot that nothing surfaced — was verifi
 
 ## What this tag names
 
-**The tag sits on commit `4f4dce52`, now three commits behind the branch tip.** That is deliberate, and
-the gap is disclosed in full below rather than rounded off. `4f4dce52` is
+**The tag sits on commit `4f4dce52`, now several commits behind the branch tip.** That is deliberate, and
+the gap is disclosed in full below rather than rounded off.
+
+**These bits were walked, not just built.** On 2026-09-01 a brand-new project took the installed 4f4dce52
+build from init through the clarify boundary with **zero governance stops that were not about the work** -
+including the first field execution of `confirm-intake-lens` on any build, the path whose absence used to
+deadlock every new project at its first workshop lens. The comparison that matters is the first walk of
+this fortnight, which took nine stops to reach specify. Same activity, both ends. The walk ran on the
+claude host; a codex fresh-project datum was not collected. `4f4dce52` is
 the commit that was built, installed, and walked, so the tag, the build stamp, and every walk's evidence
 name the same bytes by construction — no rebuild, no restart, no gap between what was verified and what
 ships.
@@ -201,6 +208,13 @@ own creation.
   claim is limited to the beta3 tree and evidence named here.
 
 ## Named for beta4
+
+**Natural-language authority conflicts have no detector.** Two measured instances this batch - a
+maintainer instruction pair that could not both be satisfied, and an agent's sequencing that spent four
+typed approvals on one signoff - both spent human authority, and nothing in the system saw either. Every
+authority control here reads a single instruction; a contradiction exists only between two. Filed beside
+the instruction-corpus work as a question with evidence attached, not a specification: a false positive at
+an authority boundary would be worse than no detector at all.
 
 The broader **evidence-pipeline consolidation** named in the beta2 release claim still belongs to beta4.
 The continuous-co-review path-identity seam no longer does: beta3 hard-loads the shared volume-aware
