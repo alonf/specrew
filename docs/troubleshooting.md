@@ -356,6 +356,71 @@ uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0
 
 Then re-run `specrew init`. (`uv` is required — see [getting-started](getting-started.md#1-check-dependencies).) The `@v…` tag tracks Specrew's supported floor; if the command `specrew init` prints names a different version, prefer the printed one — it is generated from the runtime baseline, not from this doc.
 
+## Three named recoveries
+
+These three came out of real sessions in the 0.40.0-beta3 line. Each one is a case where the machinery is
+working correctly and the way out is non-obvious.
+
+### `latest-result-not-current` — the review result is real, but not for *this* tree
+
+**Symptom.** Review-signoff refuses with `latest-result-not-current`, or with a partial-coverage message,
+even though a review clearly ran and you can see its findings.
+
+**What is actually true.** An approval binds to a **specific state of your files**. A result produced
+before your last commit is evidence about a tree that no longer exists, so it is not stale in the sense of
+"old" — it is evidence about something else. Nothing is wrong and nothing is lost.
+
+**The recovery is a three-step sequence, and the ordering is the whole point — no commits anywhere between
+the steps:**
+
+1. **Run the signoff command once.** This refreshes the pending request against your files as they are
+   right now.
+2. **Type the approval as a normal chat message, as the WHOLE message with nothing after it:**
+   `approved for partial review signoff - <why accepting it is safe>`
+3. **Run the same command again immediately.**
+
+If you commit between steps 2 and 3 — including a records-only commit — the approval you just typed is
+bound to the previous tree and step 3 will ask again. That is the single most common way this loop repeats.
+See also the two verdict rules in [user-guide.md](user-guide.md#how-a-verdict-is-read--two-rules-that-cost-real-retries).
+
+### After a closeout verdict, the iteration seal reports 2 drifted mirror files
+
+**Symptom.** You approve `iteration-closeout`, and the seal immediately reports two drifted files —
+typically `plan.md` and `state.md`.
+
+**What is actually true, and it matters before you touch anything.** The seal is written *inside* the
+closeout sync. Your closeout verdict lands *after* that sync, by definition — and the verdict is what
+advances `plan.md` Status and `state.md` Current Phase to their closed values. So the seal hashed those two
+files before the authorization that changes them. **The records are correct; only the seal's snapshot is
+stale.**
+
+**The recovery: re-seal through the engine's own writer** (`Write-SpecrewIterationSeal`) once the verdict
+has landed — ask your agent to re-seal the iteration.
+
+**Do not edit `plan.md` or `state.md` to match the checksum.** That makes a true record false in order to
+satisfy a hash, which is the opposite of what the seal is for. Reordering the seal is beta4 work.
+
+### A workshop that is stranded — lens confirmations refuse from `confirmed-complete`
+
+**Symptom.** A project's design workshop will not accept a lens closure. Typically the intake lens
+(product & problem domain) is the one that will not close, and the workshop cannot move forward, on a
+project that had already advanced.
+
+**What is actually true.** Earlier builds could reach a state where the agenda was confirmed but the intake
+lens was never closed through the writer — leaving a project that looks complete and cannot proceed. Both
+the greenfield deadlock and this stranded state are fixed in 0.40.0-beta3, and the fresh-project path is
+field-proved on the tagged bits.
+
+**The recovery: re-run the lens confirmation for the intake lens** (`product-domain`). The authority store
+now permits that transition from `confirmed-complete`, which is exactly the state that used to refuse it.
+This runs through `confirm-workshop-lens.ps1`, which takes the feature, lens, decision, depth and agenda —
+**ask your agent to re-confirm the product-domain lens** rather than assembling the call by hand; every
+parameter must be named, and a mis-shaped call is refused at the door rather than silently binding to the
+wrong parameter.
+
+If a project was stranded on an older build, upgrade first — the transition it needs does not exist in the
+build that stranded it.
+
 ## Continuous co-review problems
 
 Continuous co-review (Feature 197, 0.40.0-beta) fails LOUD by design — every failure below is a
