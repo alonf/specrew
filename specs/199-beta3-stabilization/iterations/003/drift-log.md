@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 7 (DRIFT-199-I003-001 through -007)
+**Total drift events**: 8 (DRIFT-199-I003-001 through -008)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -214,3 +214,38 @@ So the authorization that completes the closeout necessarily changes two files t
   be judged on BEFORE it seals, because after the seal the iteration cannot answer any new question asked
   of it.** That is the same root as DRIFT-199-I003-002's seal-ordering defect, one level up: the seal is
   taken before the state it must certify is final.
+
+### DRIFT-199-I003-008 — the reviewer accepted accumulated incremental proofs in place of a final walk on the shipping artifact, and one question caught it (open until the tag-candidate walk runs)
+
+- **The correction, and its attribution.** Every row in the tag's evidence table was earned on an
+  **intermediate build**. No proof in it was taken against the artifact that would actually ship. The crew
+  assembled five field-proved rows across three days and presented them as the tag's evidence; **the
+  maintainer asked one question — has anything been walked on the final bits — and the answer was no.**
+- **The second half of the same question, and it is the sharper one.** `confirm-intake-lens` — the recovery
+  path, and **the first path every greenfield user executes** — has never succeeded in the field **on any
+  build**. The backup walk's controller carries no `product-domain` entry, so what it proved was
+  `confirm-lens` only. That is the path whose absence deadlocked every new project before the fix, and it is
+  the one with no field evidence at all.
+- **T018's row is corrected accordingly**: `confirm-lens` and both FR-027 contract fixes are field-proved
+  (`C:\Temp\ConsoleFractal-stranded-backup`); **the intake close is unproven in the field on every build to
+  date**, not merely unproven on the tag candidate.
+- **Fourth instance this fortnight of the cheapest instrument outperforming every layer above it**, and the
+  first where it fired BEFORE the mistake rather than after:
+  1. the engine's own integrity check, against a wrong finding the crew had argued convincingly;
+  2. a fresh project on the accused host, against a wrong host-regression diagnosis;
+  3. a mutation that produced zero failures, against a guard that reimplemented its subject;
+  4. **one question about the shipping artifact, against an evidence table nobody had disputed.**
+  Three of those were corrections after the fact. This one prevented the publish.
+- **What accumulated proofs actually establish**: that each fix worked when it was written. What they cannot
+  establish is that the assembled artifact works — which is the same distinction this batch already recorded
+  twice, as *mutation proving shows a control is wired to its own test, not to the system*, and as *a
+  fixture writes the precondition the product denies*. **Here it is one level up again: incremental proofs
+  show the parts worked at the moment each was proved, not that the shipped whole works now.**
+- **Resolution**: OPEN until the tag-candidate walk runs. The build is prepared and verified (commit
+  `4f4dce52`, content `21c05ad9...`, 414 files byte-verified, stamp verified against installed contents);
+  the walk directory `C:\Tempeta3-tagwalk` is confirmed not to exist and is visually distinct from every
+  neighbour, which matters after DRIFT-199-I003-004.
+- **Class closure**: NONE yet — the durable fix is a release-gate step requiring a walk on the tag-candidate
+  build before publish, which is beta4's greenfield smoke path (already prototyped at
+  `tools/smoke/greenfield-cycle-replay.ps1`) promoted into the release lane and extended to cover intake.
+  Naming it here so the next tag does not depend on someone asking the question again.
