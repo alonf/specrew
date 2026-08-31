@@ -2159,7 +2159,19 @@ function Get-SpecrewBoundaryStageEvidenceContract {
             # The Provenance field is maintainer-facing rule-table data (who ruled what, when);
             # no consumer surface renders it.
             # specrew-internal-id-ok: maintainer-facing rule-table provenance data
-            ); MarkerMatch = 'any'; Provenance = 'MAINTAINER-RULED 2026-08-06 - session block OR recorded skip-with-rationale; STRICT forms ruled 2026-08-06 after DRIFT-198-I011-006' }
+            ); MarkerMatch = 'any'
+            # AcceptedForms is CONSUMER-FACING and exists because the refusal used to say only
+            # "spec.md required content". Measured on the Copilot walk: a hand-authored,
+            # semantically-correct zero-question Clarifications record was refused, the message named
+            # neither the expected form nor the mismatch, and the agent recovered by running the
+            # validator and re-running the flow rather than by reading the refusal. The markers above are
+            # regexes; a human cannot be asked to read them. This is the same standard the batch settled
+            # at DRIFT-199-I002-029 - name the thing that actually failed - applied to a content contract.
+            AcceptedForms = @(
+                'a "## Clarifications" section containing a dated "### Session YYYY-MM-DD" subheading (what the governed clarify flow writes)',
+                'or a line reading "- **Clarify Disposition**: skip <reason>", where the reason is at least 20 characters'
+            )
+            Provenance = 'MAINTAINER-RULED 2026-08-06 - session block OR recorded skip-with-rationale; STRICT forms ruled 2026-08-06 after DRIFT-198-I011-006' }
 
         # plan / tasks: the iteration plan. `tasks` records its breakdown in the SAME plan.md table in
         # this methodology, so both rows point at it rather than inventing a per-iteration tasks file.
@@ -2823,7 +2835,22 @@ function Test-SpecrewBoundaryOwedArtifactsOnDisk {
     if ($result.Kind -eq 'content' -and $missing.Count -eq 0) {
         $content = Get-Content -LiteralPath (Join-Path $base ([string]$contract[0].Paths[0])) -Raw -Encoding UTF8
         $markerMatches = @($contract[0].Markers | Where-Object { $content -match [string]$_ })
-        if ($markerMatches.Count -eq 0) { $missing.Add(([string]$contract[0].Paths[0] + ' required content')) | Out-Null }
+        if ($markerMatches.Count -eq 0) {
+            # NAME THE EXPECTED FORM, not merely that content is missing. "spec.md required content" tells
+            # a human that something is wrong with a file they are looking at and nothing about what would
+            # satisfy it - so the only available move is trial and error, which is what the field walk did.
+            $formText = ''
+            if ($contract[0].PSObject.Properties.Name -contains 'AcceptedForms') {
+                $formText = (@($contract[0].AcceptedForms) -join ' ')
+            }
+            $entry = if ([string]::IsNullOrWhiteSpace($formText)) {
+                ([string]$contract[0].Paths[0] + ' required content')
+            }
+            else {
+                ('{0} does not yet carry the record this boundary needs. It accepts {1}. The file itself is fine and nothing you wrote is lost - what is missing is one of those two forms.' -f [string]$contract[0].Paths[0], $formText)
+            }
+            $missing.Add($entry) | Out-Null
+        }
     }
     $result.Missing = $missing.ToArray()
     if ($missing.Count -gt 0) { $result.Absent = $true; $result.Reason = 'absent' }

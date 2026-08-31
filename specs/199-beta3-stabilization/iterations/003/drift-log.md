@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 10 (DRIFT-199-I003-001 through -010)
+**Total drift events**: 13 (DRIFT-199-I003-001 through -013)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -270,8 +270,12 @@ the standing gaps below are recorded with equal weight, because this walk substi
   5. **The stub-then-spec ordering held** — FR-029 (T020) proved on a third host.
   6. **The specify packet's marker carries its crossing identity** — FR-024's binding (T014/T015) visible in
      a real packet on a third host, not only in this repository's own boundaries.
-- **Pending, and it upgrades one more row when it lands**: the specify verdict, when captured, adds
-  **typed-turn verdict capture on copilot** to the evidence.
+- **LANDED 2026-08-31**: the specify verdict was captured from the typed turn, so **typed-turn verdict
+  capture is now field-proved on all three hosts** - claude, codex and copilot. That is the mechanism the
+  whole boundary model rests on: an approval is authorization only because a hook read the human's own
+  typed words out of the transcript. It had two hosts' evidence this morning. **Both packets rendered on
+  this host also carried their crossing identity in the marker** (FR-024), so the capture attached to the
+  crossing the controller had recorded rather than to an inferred one.
 - **What this walk does NOT do**, stated with the same emphasis as the passes: **it does not touch
   `confirm-intake-lens`.** Five `confirm-lens` closures are five exercises of the path that already had
   field evidence. The intake close remains at zero field executions on every host and every build.
@@ -311,3 +315,125 @@ preflight could pass while a controller carries no `product-domain` entry. It ca
   consult the same one.
 - **Class closure**: NONE — picking the authoritative side is a contract decision, and this batch has
   repeatedly ruled against making those inside a tag batch.
+
+### DRIFT-199-I003-011 - the clarify gate refused a correct record and named nothing; and the validator that "passed" never looks at clarify at all (FIXED at the refusal; the validator gap is one beta4 line)
+
+**Two findings from one field observation on the Copilot walk, and they are not the same finding.** Both
+were verified at source on the maintainer's instruction rather than accepted from the report.
+
+**Finding A - the refusal named neither the expected form nor the mismatch (FIXED, guarded).**
+
+- **What the gate actually requires**, read from the contract rather than inferred:
+  - `Boundary clarify`, `Kind content`, `Paths {spec.md}`, `MarkerMatch any`, two markers:
+    - `(?ms)^##[ \t]+Clarifications ... ^###[ \t]+Session[ \t]+\d{4}-\d{2}-\d{2}` - the dated session block
+      the governed clarify flow writes;
+    - `(?im)^[ \t]*[-*][ \t]+\*\*Clarify Disposition\*\*[ \t]*:[ \t]*skip\b[^\r\n]{20,}` - a recorded skip
+      whose reason is at least 20 characters.
+- **What the human saw**: `spec.md required content`. A hand-authored, semantically-correct zero-question
+  `## Clarifications` record was refused, and the message named neither what was expected nor what did not
+  match. The only move left is trial and error, and that is what the walk did: it ran the validator, got a
+  pass, and re-ran the governed flow until the canonical evidence appeared. **The requirement is a pair of
+  regexes; a human cannot be asked to read them, and nothing else told them.**
+- **This is DRIFT-199-I002-029's standard - name the thing that actually failed - applied to a content
+  contract**, which is where the batch had not applied it. Fixed at cause: the contract now carries a
+  consumer-facing `AcceptedForms` describing both accepted shapes in prose (including the 20-character
+  minimum, which is invisible in the regex), and the refusal renders them plus the sentence that the
+  human's file is fine and nothing they wrote is lost.
+- **The contract is NOT weakened.** The same unrecognised record is still refused; only the message
+  changed. Guard: `tests/unit/clarify-refusal-names-the-form.tests.ps1`, which asserts the refusal still
+  fires, that it names both forms, and that each named form actually satisfies the contract - so the
+  message can never describe a shape that would fail. **Mutation-proved**: disabling the `AcceptedForms`
+  lookup turns 5 assertions red.
+
+**Finding B - the validator passed because it never looks at clarify (OPEN, one beta4 line).**
+
+- **NOT the DRIFT-199-I002-038 family.** That family is two readers with jointly unsatisfiable
+  requirements. This is simpler and, for a reader, worse: **`validate-governance.ps1` contains ZERO
+  mentions of `clarify`, `Clarifications`, or `Clarify Disposition`.** It did not disagree with the sync
+  gate; it never examined the boundary.
+- **Why that is worse than a disagreement**: a disagreement is visible - two messages contradict and
+  someone investigates. Silence reads as assurance. "The validator passed" is the sentence that ended the
+  walk's investigation and sent it to trial and error, and it was true and irrelevant at the same time.
+- **Class**: this is the coverage-versus-verdict shape - a checker's green means "nothing I check is
+  broken", and the human reads "nothing is broken". The hook-event-coverage work (T024) fixed exactly this
+  for hook health by making the report state its own coverage. **The validator has no such statement.**
+- **Resolution**: OPEN, one beta4 line - either extend the validator to the boundary content contracts, or
+  have it state which boundaries it does not examine. Not in this batch: extending validator coverage
+  before a tag would change what a green validator means on the tree that ships.
+- **Class closure**: the pinned fact is guarded (case 3 of the suite above asserts the validator's silence
+  on clarify, so a future reader cannot mistake this for a disagreement) but the gap itself is not closed.
+
+### DRIFT-199-I003-012 - the clarify boundary requires an iteration that a LATER boundary creates: an accidental owed-artifact, confirmed accidental from the refusal's own remedy text (OPEN; fix identified, held for a ruling)
+
+**The maintainer asked whether this owed-artifact is intended for clarify or accidental. It is accidental,
+and the proof is inside the refusal itself.**
+
+- **What happened in the field**: the clarify boundary sync refused to render its packet until
+  `iterations/001/` existed, on a feature that had only just been specified.
+- **The mechanism**, at `scripts/internal/sync-boundary-state.ps1`: every boundary must resolve an
+  iteration number unless it is in the exclusion list `@('before-specify', 'specify', 'feature-closeout')`.
+  **`clarify` is absent from that list.**
+- **It is accidental, on three independent readings:**
+  1. **The refusal contradicts itself.** Its own remedy sentence says *"Create the iteration first (the
+     plan boundary scaffolds `iterations/001/`)"* - and **plan comes AFTER clarify**. A boundary is
+     demanding an artifact that only a later boundary produces. No intended requirement can be satisfied
+     only by running past the gate that demands it.
+  2. **Clarify is feature-level everywhere else.** Its content contract is `feature-file` scoped to
+     `spec.md`; it writes nothing under `iterations/`; and it is absent from the truth gate's
+     iteration-scoped boundary list. Only this one exclusion list disagrees.
+  3. **The neighbours it belongs with are already excluded.** `before-specify` and `specify` are the two
+     boundaries that precede iteration scaffolding, and clarify sits between `specify` and `plan` - in the
+     same pre-iteration window, and by the same reasoning.
+- **The fix is one list entry** (`clarify` added to the exclusion list) and it is written, not applied.
+  **HELD FOR A RULING, deliberately**, because of this batch's own rule: adding a boundary to an exclusion
+  list is *relaxing an owed-artifact requirement on the tree that ships*, and even a requirement that is
+  demonstrably accidental should not be relaxed inside a tag batch on my own judgment. Flagging it rather
+  than growing the batch quietly.
+- **Consequence if left**: a greenfield project reaching clarify before plan is blocked until someone
+  scaffolds `iterations/001/` by hand or skips clarify. The walk got past it by running the governed flow,
+  which happened to create what was missing - so the defect is survivable and invisible, which is why it
+  survived to a third host.
+- **Class**: the guard-scope family - a requirement written for the iteration-scoped boundaries applied to
+  a feature-scoped one because the list, not the boundary's own contract, decides.
+
+### DRIFT-199-I003-013 - the verdict menu is mangled at the reader on Copilot, at EVERY boundary: placeholders eaten as HTML, option lines collapsed into one (OPEN; high in the beta4 UX list, confirmed at source, not tag-blocking)
+
+**Reported from the field on every boundary packet of the Copilot walk; both mechanisms confirmed at
+source rather than accepted.**
+
+- **What the human saw**: `approved for plan approved for plan -  changes needed:  discuss prompt 1` -
+  one run-together line, every placeholder gone.
+- **Mechanism 1 - the placeholders are parsed as HTML.** `<to>`, `<your instructions>`, `<what to change>`
+  are angle-bracketed, and a markdown renderer that permits inline HTML treats them as unknown tags and
+  drops them. The line that survives intact is the one line with no placeholder, which is why
+  `approved for plan` reads twice and the other two read as bare labels with nothing after them.
+- **Mechanism 2 - the option lines collapse.** Both source emitters
+  (`extensions/specrew-speckit/squad-templates/skills/gate-stop.md:64` and
+  `scripts/internal/launch-contract.ps1:565`) present the four options as **two-space-indented lines
+  inside a fenced block**. Two spaces is not a code indent - four is - so once the fence is not carried
+  through into the rendered message, the four lines are one paragraph joined by single newlines, and every
+  markdown renderer collapses those to spaces.
+- **The source text is correct and the reader is wrong**, which is the family this belongs to: the same
+  shape as the `specs//` empty-segment rendering - correct at the source, wrong at the reader, varying by
+  host. A host-independent surface cannot rely on a fence surviving the trip.
+- **Severity: high in the beta4 UX list, and NOT tag-blocking** - the maintainer's call, and the walk is
+  the evidence for it: the first option remained readable and typed capture worked on this host at every
+  boundary. **But it is the primary human-decision surface, mangled on a supported host, at every
+  boundary** - and this batch's own ruling is that an interface must not offer a control it cannot honour.
+  A menu whose three instruction-bearing options render as empty labels is that failure one step earlier:
+  the human cannot see that approve-with-instructions and send-back exist at all.
+- **Fix shape (the maintainer's, cheap and renderer-proof)**: backtick-quote every placeholder and emit
+  the options as a true markdown list - one dash per option - in the gate-stop skill and the
+  pending-verdict template across all host mirrors. **One refinement worth carrying into the fix**: make
+  each option a list item whose text is an inline code span rather than a bare bullet. Backticks make the
+  angle brackets literal in every renderer AND the code span keeps the phrase copy-exact, which a bare
+  bullet does not - a human copying a bulleted line copies the dash with it, and the captured phrase must
+  be exact. A bullet is not a selection affordance, so the 2026-08-12 no-numbering ruling is untouched:
+  that ruling bars numbers and pickers, not list structure.
+- **Scope when it lands**: the two emitters above, plus `.claude/skills/specrew-gate-stop/SKILL.md` and
+  the three host-package variants in `scripts/internal/coordinator-prompt-surgery.ps1` (lines 206, 222,
+  228), where the options appear inline in a prose sentence rather than as lines at all - a fourth
+  rendering of the same menu, and the one the Copilot package actually ships.
+- **Class closure**: NONE yet. The guard that would close it is a renderer-shape assertion over every
+  emitter - no placeholder outside a code span, no option list that depends on a fence surviving - which
+  is a beta4 item alongside the fix.
