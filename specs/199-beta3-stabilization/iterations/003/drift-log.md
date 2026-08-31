@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 18 (DRIFT-199-I003-001 through -018)
+**Total drift events**: 19 (DRIFT-199-I003-001 through -019)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -663,3 +663,50 @@ cannot be amended, and the family is the point).
   boundary has not been crossed. **The call is the maintainer's; the sweep has been run and the tree is
   clean as of this commit either way.**
 - **Class closure**: NONE - corrected in place, guard owed and now argued for rather than merely named.
+
+### DRIFT-199-I003-019 - the escape-corruption class is repository-wide and one instance SHIPS: a swept 2,371 files, five carriers, one of them in the module's FileList (pre-existing, inside the tag, REPORT-ONLY)
+
+**Found by generalising the sweep that caught DRIFT-199-I003-018 from one file to the whole repository.**
+The two instances I had were mine and recent. They are not the class.
+
+- **Sweep**: 2,371 markdown files across `specs/**`, `docs/`, `.squad/`, `templates/**`, `.specify/**`,
+  `extensions/**`, `.specrew/**`. **Five files carry control bytes**, none of them mine, all pre-existing:
+
+| File | Bytes | What the corruption ate |
+| --- | --- | --- |
+| `templates/squad/agents/picard/history.md` | `0x1b` | *"transition to `<ESC>xecuting` phase"* - `\e` consumed the `e` of **executing** |
+| `specs/050-cursor-host-support/iterations/001/review.md` | `0x07 0x08` (x3) | *"valid values: pass \| `<LF>`eeds-work \| `<BS>`locked"* and *"set Overall Verdict to `<BEL>`ccepted"* - `\n`, `\b`, `\a` each ate the first letter of **needs-work**, **blocked**, **accepted** |
+| `specs/050-cursor-host-support/iterations/003/review.md` | `0x07 0x08` (x3) | the same three, same file shape |
+| `.squad/decisions.md` | `0x07 0x08 0x1b` | (the `0x01` instance already recorded) |
+| `.squad/decisions-archive.md` | `0x00 0x07 0x1b` | includes a **NUL** |
+
+- **One mechanism, six escape characters.** Every instance is a backslash immediately before a word, in a
+  non-raw string: `\e`, `\n`, `\b`, `\a`, `\1`, `\0`. **The same cause as my two**, which means the class
+  predates this batch and my instances are its fifth and sixth, not its first.
+- **WHAT MAKES ONE OF THEM DIFFERENT: `templates/squad/agents/picard/history.md` SHIPS.** Measured, not
+  assumed - it is named in `Specrew.psd1`'s FileList, and the deployed copy in this project's
+  `.squad/agents/picard/history.md` **carries the same 0x1b**, while the other twelve agent histories are
+  clean. So the corruption reaches every project that installs the module.
+  - **Severity, honestly bounded**: an ESC before `x` is not a valid ANSI sequence, so nothing executes; the
+    cost is that one word of shipped agent guidance is destroyed, and a control byte sits in text that is
+    fed to a model as context.
+- **The two `050` review records are the more interesting corruption even though they do not ship**, because
+  of *what* was eaten: the **canonical verdict enum values** in the text that tells a reviewer what the
+  valid values are. A reviewer reading that file is told the values are `pass | eeds-work | locked` and to
+  set the verdict to `ccepted`. **The instruction defining the enum is the thing that lost its letters** -
+  and every one of those three words is a string the validator matches exactly.
+- **RETRACTION, made before reporting rather than after.** My first pass flagged four agent charters
+  (`implementer`, `planner`, `retro-facilitator`, `spec-steward`) as corrupted. **They are clean.** The
+  check was a heuristic - "mentions needs-work but not blocked" - and those charters simply never use the
+  word *blocked*. Re-measured for actual control bytes: `ctrl=NONE` on all four. Recorded because this
+  batch's rule is that a wrong finding is recorded with the same weight as a right one
+  (DRIFT-199-I002-014, -025), and because the near-miss has a lesson: **the sweep must test for the bytes,
+  never for a proxy that correlates with them.**
+- **NOT FIXED, and the reasoning is the tag's**: all five files are pre-existing and **already inside
+  `4f4dce52`** - the tagged, built, installed and walked bits. Repairing them would be new work outside a
+  tag that is deliberately frozen, on the instruction that nothing else enters it. **Report-only.** The
+  repairs and the owed control-character guard belong to the same beta4 item, and the guard is now
+  justified by five independent instances rather than by my two.
+- **Class closure**: NONE. The class is now measured rather than suspected, which is the whole change from
+  DRIFT-199-I003-018: that entry argued for a guard from three self-inflicted instances; this one shows
+  the guard would have caught a shipping defect that predates the batch.
