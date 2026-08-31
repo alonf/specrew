@@ -151,7 +151,14 @@ build from init through the clarify boundary with **zero governance stops that w
 including the first field execution of `confirm-intake-lens` on any build, the path whose absence used to
 deadlock every new project at its first workshop lens. The comparison that matters is the first walk of
 this fortnight, which took nine stops to reach specify. Same activity, both ends. The walk ran on the
-claude host; a codex fresh-project datum was not collected. `4f4dce52` is
+claude host; a codex fresh-project datum was not collected.
+
+**And the recovery branch was proved on the specimen that motivated it.** The project that had genuinely
+been stranded by the pre-fix defect was preserved rather than repaired when it was found. On 2026-09-01 the
+recovery close ran against it untouched, on codex, on these same bits: it consumed the human's preserved
+receipt rather than minting authority for itself, left the confirmed agenda alone, and produced a record
+that validated at the checkpoint. Both publish gates - a fresh project through clarify, and the recovery on
+a real stranded one - are complete, and no tag-relevant evidence row is unproven. `4f4dce52` is
 the commit that was built, installed, and walked, so the tag, the build stamp, and every walk's evidence
 name the same bytes by construction — no rebuild, no restart, no gap between what was verified and what
 ships.

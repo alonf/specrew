@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 19 (DRIFT-199-I003-001 through -019)
+**Total drift events**: 21 (DRIFT-199-I003-001 through -021)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -710,3 +710,70 @@ The two instances I had were mine and recent. They are not the class.
 - **Class closure**: NONE. The class is now measured rather than suspected, which is the whole change from
   DRIFT-199-I003-018: that entry argued for a guard from three self-inflicted instances; this one shows
   the guard would have caught a shipping defect that predates the batch.
+
+### DRIFT-199-I003-020 - the recovery close executed in the field on the stranded specimen: the last unproven tag-relevant row, and BOTH publish gates are now complete (POSITIVE CONTROL EVIDENCE)
+
+**The second of the two gates the publish was held for.** Maintainer's field report, 2026-09-01.
+
+- **Where, exactly** - and the precision matters here more than anywhere else in this batch, because two
+  directories differing by a suffix are what nearly retracted a true finding (DRIFT-199-I002-040/-041):
+  **`C:\Temp\ConsoleFractal`** - the ORIGINAL stranded specimen, **not** the `-stranded-backup` copy that
+  carried the earlier `confirm-lens` evidence. Host: **codex**. Bits: **4f4dce52**, installed, no rebuild.
+- **What executed**: `confirm-intake-lens`'s **recovery branch** - the transition from `confirmed-complete`,
+  which is the state that used to refuse it - closing `product-domain` on a project that had genuinely been
+  stranded in the field rather than on a fixture posed into that state.
+- **The four things checked, and each answers a specific way this could have been wrong:**
+  1. **It consumed the preserved receipt** - so the human's typed turn was the authority, not a marker the
+     machinery minted for itself. This is the batch's own line: *machinery may restore a fact that
+     re-enables a human decision; it may never write a fact that constitutes one.*
+  2. **The confirmed agenda was left untouched** - the recovery re-opened exactly the lens that was stuck
+     and nothing adjacent. A recovery that resets the agenda would have been a data-loss path wearing a
+     fix's clothes.
+  3. **The record validated at the checkpoint** - the artifact the next gate reads is well-formed, not
+     merely written.
+  4. **It ran on the ORIGINAL specimen.** The whole point of holding for this gate was that the earlier
+     evidence came from a copy, and the copy had been touched. The state under test here is the one the
+     defect actually produced.
+- **This is the guard-scope principle's positive case, and it is worth naming as such.** The batch's most
+  quoted finding is *the fixture wrote the precondition the product denies* - a control proved against a
+  state only the test could create. **This proof is the exact opposite**: the precondition was written by
+  the defect, in the field, before anyone knew it would be needed, and the fix was run against it
+  untouched. That is the strongest evidence tier this project has, and it is available for exactly one
+  reason - the stranded project was preserved instead of being repaired at the time.
+- **EVIDENCE TABLE - the last unproven tag-relevant row closes:**
+
+| Row | Status | Location |
+| --- | --- | --- |
+| T018 / FR-027 - `confirm-lens` + both contract fixes | field-proved | `C:\Temp\ConsoleFractal-stranded-backup` |
+| T018 / FR-027 - intake path, fresh project | field-proved (2026-09-01) | `C:\Temp\beta3-tagwalk`, claude, 4f4dce52 |
+| **T018 / FR-027 - recovery path from `confirmed-complete`** | **field-proved (2026-09-01)** | **`C:\Temp\ConsoleFractal`, codex, 4f4dce52** |
+| T017 / FR-026 - constrained readers | field-proved, happy path | `C:\Temp\beta3-tagwalk` |
+
+  **No tag-relevant row is unproven.** The rows that remain non-field-proved are the ones scoped out and
+  said so: T017's refusal behaviour on a malformed artifact, and the clarify-refusal fix - which is
+  deliberately outside the tag (DRIFT-199-I003-014) and therefore not tag-relevant by construction.
+- **BOTH PUBLISH GATES COMPLETE.** DRIFT-199-I003-008 asked whether anything had been walked on the bits
+  that ship. Both halves of its answer now exist: a fresh project through clarify with zero stops, and the
+  recovery branch on the specimen that motivated it.
+- **Class closure**: none owed - this is evidence. The durable control remains the one -008 named and -015
+  repeated: a release-gate walk on the tag-candidate build, automated, so the next tag does not depend on
+  someone asking the question.
+
+### DRIFT-199-I003-021 - two post-gate observations for the beta4 register: a compaction-triggered receipt re-ask, and a positive-ledger line (REGISTER ONLY - not action items, and the fix freeze holds)
+
+**Recorded at the maintainer's direction as register entries for the beta4 batch. Neither is acted on now;
+the freeze on fixes holds until the publish is done.**
+
+- **Observation 1 - a compaction-triggered receipt re-ask on a lens close.** Known family (**F-2**). One
+  retype; **the human's answers were safe throughout**, which is the property that makes it a register
+  entry rather than a gate. Worth noting for beta4 that it landed on a *lens close* - the workshop path
+  this batch spent its largest single effort on - so the receipt machinery is the surface where context
+  compaction and typed-turn authority meet, and that intersection is where the family should be attacked
+  rather than at any one call site.
+- **Observation 2 - a positive-ledger line: the recovery conduct in this session's tail was exemplary,
+  per the maintainer.** Recorded because this log is overwhelmingly a record of what went wrong, and a
+  register that only counts failures gives a false picture of the same work. The specific thing worth
+  keeping: the stranded project was **preserved rather than repaired** when it was first found - which is
+  what made DRIFT-199-I003-020's field proof possible at all, weeks later. **The instinct to fix a broken
+  thing immediately would have destroyed the only specimen that could prove the fix.**
+- **Status**: REGISTER ONLY. No fix, no guard, no scope change in this batch.
