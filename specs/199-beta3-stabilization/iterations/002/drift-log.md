@@ -1895,6 +1895,20 @@ evidence in this ledger.** Recorded 2026-08-31.
   OWES - the owed-artifact preflight refuses to mint without it. So every iteration must pass through a
   state where review.md exists and review-signoff is unauthorized, and in that state there is no legal
   value for the line. **This is on the ordinary path of every iteration that ever reaches review.**
+- **CONFIRMED AT THE NEXT BOUNDARY, hours later, which upgrades this from a window to a pattern.** With
+  review-signoff authorized the mirror advanced to `reviewing` and the validator went quiet - until
+  `retro.md` was written, at which point it said: *"plan.md status 'reviewing' is stale: retro.md exists, so
+  the iteration must be in retro or complete."* The authority record still reads `review-signoff`, which
+  maps to `reviewing`. **The identical conflict, one boundary later, for the identical reason.**
+  So the general statement is not "there is an unsatisfiable window before review-signoff" but:
+  **every boundary whose owed artifact must exist BEFORE its authorization produces a state where the two
+  readers disagree** - and by construction that is every boundary, because the owed-artifact preflight
+  refuses to mint a crossing whose artifacts are absent. The artifact necessarily precedes the verdict; the
+  validator reads the artifact and the truth gate reads the verdict; they are guaranteed to disagree in
+  between.
+- **This is a stronger finding than the first instance suggested**, and it was found the same way the rest
+  of this iteration's real findings were found: by running the thing again at the next step rather than
+  assuming the first diagnosis had bounded it.
 - **Same family as DRIFT-199-I002-010, -018 and -036**: two surfaces, each locally correct, with nothing
   arbitrating between them. What is new is that here the two are not merely inconsistent in their messages
   - they are jointly unsatisfiable in their requirements.
