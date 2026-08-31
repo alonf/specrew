@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 21 (DRIFT-199-I003-001 through -021)
+**Total drift events**: 24 (DRIFT-199-I003-001 through -024)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -777,3 +777,126 @@ the freeze on fixes holds until the publish is done.**
   what made DRIFT-199-I003-020's field proof possible at all, weeks later. **The instinct to fix a broken
   thing immediately would have destroyed the only specimen that could prove the fix.**
 - **Status**: REGISTER ONLY. No fix, no guard, no scope change in this batch.
+
+### DRIFT-199-I003-022 - the batch never once ran the gate the release actually hangs on, and the publish sat blocked for two days without anyone noticing (OPEN; the beta4 item is one line)
+
+**Measured 2026-09-02.** The `v0.40.0-beta3` tag push triggered `publish-module.yml` on 2026-08-31.
+`prepublish-validation` passed, **`full-test-census` failed with 23 of 404 test files**, and
+`publish-module` was skipped. **The gallery has nothing.** Nobody looked for two days.
+
+- **The gate's own banner is the guard-scope principle, written by this project, in the file that then
+  went unrun**: *"the per-round lanes named 45 suite files while 384 existed, so 'lanes green' was
+  reported as 'no failing tests' for days while twelve suites were red."* The comment continues: *"the
+  lanes stay fast and curated on purpose; this is the cadence where slow is affordable, and the rule is
+  that a tag cannot be cut on lane-green alone."*
+- **And that is exactly what this batch did.** Two review rounds, two field walks, a covering round on the
+  tree that ships, and a tag ceremony - all on curated lanes. **The census was never run once.** The
+  batch's most-quoted finding is *a fixture wrote the precondition the product denies*; this is its
+  sibling: **the guard against lane-green-is-not-tree-green was itself only ever checked against lanes.**
+- **Two failures, not one, and the second is the worse one:**
+  1. **The gate was never dry-run before the tag.** A release-gate dry run belongs in the pre-tag
+     checklist, beside the walk requirement DRIFT-199-I003-008 already named.
+  2. **The failure was silent for two days.** The tag ceremony ended with a report that the release was
+     staged and ready to publish. Nothing in that report was false, and the publish was already dead at
+     the time it was written. **A gate that fails after the ceremony declares success needs to say so to
+     someone**, and nothing did.
+- **A third gap found while triaging, and it makes any future failure equally opaque**: the census prints
+  `Full diagnostics: C:\Users\runneradmin\AppData\Local\Temp\specrew-full-sweep-failures-<guid>.json` -
+  **written to ephemeral runner storage and never uploaded as an artifact.** The run keeps a list of 23
+  filenames and no reason for any of them. Reproducing the failures locally was the only route to a cause,
+  which is precisely the diagnosability class beta4 already owns.
+- **Resolution**: OPEN. Three beta4 lines, and they are cheap: (a) a release-gate dry run in the pre-tag
+  checklist; (b) upload the census diagnostics JSON as a run artifact; (c) surface a failed publish
+  somewhere a human sees it without going to look.
+- **Class closure**: NONE in this batch - the fix freeze holds, and every one of these touches release
+  machinery, which is the last thing to change while a publish is blocked.
+
+### DRIFT-199-I003-023 - three false measurements in one triage, each caught by its own control: the cost of a tooling boundary, recorded while it is fresh
+
+**Recorded because the triage that found DRIFT-199-I003-022 produced three wrong answers first**, and each
+would have been reported as fact had it not been checked. The batch's rule is that a wrong finding is
+recorded with the same weight as a right one.
+
+1. **Empty git dates read as "new".** `git log --diff-filter=A` returned nothing for every path, and the
+   shell comparison `[[ "?" < "2026-08-09" ]]` sorted all 23 into *new since beta2*. **The evidence was
+   absent and the code reported a conclusion anyway.**
+2. **CRLF in a path list broke every lookup.** The list was written from Python without `newline=''`, so
+   each path carried a trailing `\r`; `git cat-file -e` failed on all 23 and they read as *new in beta3*
+   a second time, by a different mechanism. **Two independent bugs produced the same wrong answer, which
+   is what made it briefly convincing.**
+3. **A "docs-only confirmed" printed after its own `cd` had failed.** A worktree checkout died on a
+   Windows long-path limit; the `cd` that followed failed; the verification command then ran in the wrong
+   directory, found nothing staged, and printed a pass.
+- **What caught all three: a control that had to move.** The third answer only broke when a known-old file
+  (`version-checks.tests.ps1`) was asserted to be *pre-existing at beta2* and the check said otherwise. **A
+  verification with no negative control cannot distinguish "nothing is wrong" from "nothing was measured"**
+  - which is the same shape as DRIFT-199-I003-011's silent validator, one layer down, in my own tooling.
+- **Class closure**: NONE, and the practice is the control, not a guard: **every sweep asserts a known
+  positive and a known negative before its result is believed.** Recorded here because this triage is the
+  third place in one batch where an empty result was nearly reported as a clean one.
+
+### DRIFT-199-I003-024 - the census triage: TWO failures are real on the tagged tree, proven against a beta2 control, so this is a respin decision and not ours (STOPPED AND REPORTED)
+
+**Triage of the 23 census failures from run 33443223172.** Method: run every failing file against a clean
+checkout of the tagged tree (`C:\Temp\b3census` = 4f4dce52), then, for any file **byte-identical to
+v0.40.0-beta2**, run it again against a beta2 checkout (`C:\Temp\b2base2`) **on the same machine with the
+same harness**. That second run is the control: with the environment held constant, a pass-then-fail
+isolates the change to the product tree.
+
+**THE PRIOR WAS WRONG, and the numbers say so plainly.** The hypothesis was that the failures are
+overwhelmingly this batch's own new test files. They are not:
+
+| Provenance vs v0.40.0-beta2 | Count |
+| --- | --- |
+| **Byte-identical** to beta2 (passed its census unchanged) | **11** |
+| Modified in beta3 | 6 |
+| New in beta3 | 6 |
+
+Seventeen of twenty-three pre-existed; eleven are unchanged. No hypothesis about new tests can explain
+eleven files that passed the beta2 census in the exact bytes they still have.
+
+**Local reproduction against the tagged tree: 12 pass, 11 fail.**
+
+**THE TWO CONFIRMED REAL-TREE FAILURES** - unchanged test, passes at beta2, fails at the tag, same machine:
+
+1. **`tests/unit/pretag-slice3-certify-findings.tests.ps1`** - its fixture can no longer be minted:
+   *"scoped fixture mint failed: [specrew-governance] WARN CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT The
+   'before-implement' -> 'review-signoff' crossing was not opened: 'review-signoff' owes review.md for
+   iteration 001."* **This is the batch's own owed-artifact gate refusing a crossing the fixture used to be
+   allowed to open.** And it is this batch's most-quoted finding turned exactly around: *the fixture wrote
+   the precondition the product denies* - except here the product learned to deny it, on purpose, and the
+   fixture was never updated. Whether the new refusal is CORRECT is not in question; it is deliberate work.
+   What is in question is that an unchanged test encoding the old contract is red **inside the tag**.
+2. **`tests/integration/code-rules-skill-multihost.tests.ps1`** - *"FAIL: T052: checkpoint procedure cannot
+   contradict the record-before-structured-entry order."* Unchanged test, passing at beta2, failing at the
+   tag: skill content changed in beta3 in a way this assertion rejects.
+
+**One confirmed environmental**: `tests/integration/refocus-digests.tests.ps1` **fails at beta2 too**, in
+the same local environment. It is not attributable to the beta3 tree.
+
+**The remaining twenty are NOT isolated, and the record says so rather than rounding them into a verdict:**
+- **12 pass locally on the tagged tree.** They failed only on the runner, which makes them
+  census-environment *candidates* - fresh runner, no installed module, working-directory and path-length
+  assumptions. **Candidates, not proof**: my machine is not the runner either, and a pass here is evidence
+  about here.
+- **8 fail locally and are new or modified in beta3**, so no unchanged-file control exists for them. They
+  are consistent with real-tree and consistent with tests authored against a developer environment, and
+  this triage cannot separate those two without more work.
+
+**STOPPED, per the standing instruction.** The rule was: if any failure is real on the tagged tree, stop
+and report - it is a respin decision with re-walk implications and it belongs to the maintainer. **Two are
+real, with controls.** Nothing was fixed, no workflow was touched, the tag was not moved.
+
+**And the recovery path that was hoped for does not exist**, read from `publish-module.yml` rather than
+assumed: no `ref:` on any of the three checkouts and no `git checkout <tag>` anywhere, so `workflow_dispatch`
+takes **both the workflow definition and the tree from the same dispatched ref**; `release_tag` only supplies
+a label (`$effectiveRefName`), while the package is built from the checked-out tree (`$src = Join-Path '.'
+$file`). A dispatch on `main` would in any case be **refused** by the workflow's own guard - *"Dispatch tag
+'<tag>' already exists at <sha>, but this workflow run expects <sha>. Refusing to publish divergent
+content."* That guard is the tag-names-the-bytes invariant enforced in code, and it is working. **Census
+harness fixes on `main` cannot reach a publish of 4f4dce52 without moving the tag.**
+
+- **Diagnostic scaffolding left in place** for whoever takes the decision: `C:\Temp\b3census` (4f4dce52) and
+  `C:\Temp\b2base2` (v0.40.0-beta2), plus per-file results at the session scratchpad's
+  `triage23-results.json`.
+- **Class closure**: NONE. The decision is the maintainer's; the beta4 items are in DRIFT-199-I003-022.
