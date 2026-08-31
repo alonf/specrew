@@ -153,6 +153,16 @@ mechanism they describe — a restored slot that nothing surfaced — was verifi
   `.specrew/review/authority/campaigns/<campaign>/runs/<run>/` and read those rather than the summary
   before deciding a round is clean. Fixing the record is beta4 work; this workaround is what saved this
   release's own review and it is written here because you deserve it in writing rather than by discovery.
+- **After a closeout verdict, the iteration seal reports 2 drifted mirror files.** The seal is written
+  inside the closeout sync; the closeout verdict lands after that sync by definition; and the verdict then
+  advances `plan.md` Status and `state.md` Current Phase / Iteration Status to their closed values. So the
+  seal has already hashed those two files before the authorization that completes the closeout changes
+  them. **The records are correct and only the seal's snapshot is stale.** Re-seal through the engine's own
+  writer once the verdict has landed — `Write-SpecrewIterationSeal` — rather than editing either file to
+  match the checksum, which would make a true record false to satisfy a hash. Reordering the seal is beta4
+  work: the choice is between excluding the derived mirror lines from the manifest and re-stamping the seal
+  at crossing write, and the seal writer is the side where an unreviewed change costs more than the noise
+  it removes.
 - **A stale review block still re-fires at every stop** once its message has been read and correctly
   declined. The message now explains itself and says when it is advisory; suppressing the repeat is a
   behaviour change held for a later release.

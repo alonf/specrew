@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "feature": "199-beta3-stabilization",
   "iteration": "002",
-  "sealed_at": "2026-08-31T14:19:56.7512643+00:00",
+  "sealed_at": "2026-08-31T17:34:07.3915894+00:00",
   "sealed_files": [
     {
       "path": "dashboard.md",
@@ -26,7 +26,7 @@
     },
     {
       "path": "plan.md",
-      "sha256": "8d4e59c710275f6a27d94eac5f0bd87e2a53a907a03b8f8511779239e4f3b167"
+      "sha256": "31459722a2ee28f34eaba55ab724a3d76f38d89c10fcb1932de91b56cf417992"
     },
     {
       "path": "quality/hardening-gate.md",
@@ -50,7 +50,7 @@
     },
     {
       "path": "state.md",
-      "sha256": "c890c4191d20f01ec3b5256cb303ea8d413c7566b381ae62982f165986309220"
+      "sha256": "025301a69b3258c32a50977ed1cfc66fa0f27560cdfce3b12585ab26f16469d8"
     },
     {
       "path": "tasks-progress.yml",
