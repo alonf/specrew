@@ -143,6 +143,16 @@ mechanism they describe — a restored slot that nothing surfaced — was verifi
 
 ## Known issues
 
+- **Review severity summaries understate what the review found — read the raw findings.** A round's
+  summary and its stored counts can show `0 blocking` and `0 major` for a round whose reviewer graded
+  findings at those levels: severities are demoted when a finding states no concrete failure scenario, and
+  the demotion is written into the campaign record rather than only displayed. In this release's own
+  campaign a **blocking** finding — a defect that wedged every second iteration — was stored as `minor`,
+  and reading the summary alone would have shipped it. The raw findings preserve the reviewer's grade in
+  `demoted_from`, so open the run's `result.json` under
+  `.specrew/review/authority/campaigns/<campaign>/runs/<run>/` and read those rather than the summary
+  before deciding a round is clean. Fixing the record is beta4 work; this workaround is what saved this
+  release's own review and it is written here because you deserve it in writing rather than by discovery.
 - **A stale review block still re-fires at every stop** once its message has been read and correctly
   declined. The message now explains itself and says when it is advisory; suppressing the repeat is a
   behaviour change held for a later release.

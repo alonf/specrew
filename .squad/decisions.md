@@ -29093,3 +29093,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 909b8b6ea18d592027ad1f0d3254725aec291d77
 - **Recorded At**: 2026-08-29T15:50:31Z
+
+## 2026-08-31T10:06:13Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: c8daf12cbebbdd4ca3b20ca953cebaac60be7049
+- **Recorded At**: 2026-08-31T10:06:00Z

@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-08-30T21:38:21Z",
+  "recorded_at": "2026-08-31T10:06:00Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-f3724f62f98bcdd8ecaa6e61",
-      "target_tree_id": "68d9b4d2216c849a5655e906283707e57ac790b3",
+      "request_id": "override-511affde4a36cf95105e3874",
+      "target_tree_id": "631c84902e3904ef923ee72b540ef81ade16714d",
       "campaign_id": "cmp-199-beta3-stabilization-i002",
       "run_id": "run-20260830-160011946-a3d8338c",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - the uncovered delta is round 3's own output, not new scope: finding 1's cap, the checker cap the replay found inside that cap, and finding 2's wiring. All three exist because round 3 ran, so a fourth round would review the response to the third and produce work needing a fifth. I committed to no round 4 before this finding existed, precisely so this moment would not be the one deciding it. The changes carry mutation proof, and the cap additionally carries end-to-end proof through the real top-level sync path, which is where it caught the checker defect the fixtures missed. The residual is named rather than absorbed: finding 1 is replay-proved and not field-proved, and 003's plan sync is a gating step before the tag.",
-      "rationale": "the uncovered delta is round 3's own output, not new scope: finding 1's cap, the checker cap the replay found inside that cap, and finding 2's wiring. All three exist because round 3 ran, so a fourth round would review the response to the third and produce work needing a fifth. I committed to no round 4 before this finding existed, precisely so this moment would not be the one deciding it. The changes carry mutation proof, and the cap additionally carries end-to-end proof through the real top-level sync path, which is where it caught the checker defect the fixtures missed. The residual is named rather than absorbed: finding 1 is replay-proved and not field-proved, and 003's plan sync is a gating step before the tag.",
-      "response_hash": "36957e62c614df76aa0985e46be89c16622e2b7668a4c37e9c14c3293a3f384d",
+      "verdict_text": "approved for partial review signoff - the uncovered delta is round 3's own output plus the records documenting it, not new scope: finding 1's cap, the checker cap the replay found inside that cap, finding 2's wiring, and the drift entries recording them. A fourth round would review the response to the third and produce work needing a fifth. I committed to no round 4 before this finding existed, precisely so this moment would not be the one deciding it. The changes carry mutation proof, and the cap additionally carries end-to-end proof through the real top-level sync path, which is where it caught the checker defect the fixtures missed. The residual is named rather than absorbed: finding 1 is replay-proved and not field-proved, and 003's plan sync is a gating step before the tag.",
+      "rationale": "the uncovered delta is round 3's own output plus the records documenting it, not new scope: finding 1's cap, the checker cap the replay found inside that cap, finding 2's wiring, and the drift entries recording them. A fourth round would review the response to the third and produce work needing a fifth. I committed to no round 4 before this finding existed, precisely so this moment would not be the one deciding it. The changes carry mutation proof, and the cap additionally carries end-to-end proof through the real top-level sync path, which is where it caught the checker defect the fixtures missed. The residual is named rather than absorbed: finding 1 is replay-proved and not field-proved, and 003's plan sync is a gating step before the tag.",
+      "response_hash": "53e7f737a770c73abf98f0605d63e6e1f28edec1de56b401d3174d2c8e9b33e1",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-08-30T21:30:42.138116Z"
+      "observed_at": "2026-08-31T10:04:48.8055141Z"
     },
     "evidence_labels": null,
     "acknowledgement": null

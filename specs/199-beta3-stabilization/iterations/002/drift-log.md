@@ -16,7 +16,7 @@
 
 ## Summary
 
-**Total drift events**: 38 (DRIFT-199-I002-001 through -038)
+**Total drift events**: 39 (DRIFT-199-I002-001 through -039)
 **Resolution rate**: carried per event in its heading (11 resolved by this iteration's requirements,
 instrumentation, a same-session fix, or - for -014 - the withdrawal of a wrong finding; 2
 spec-updated/human-decision; 2 deferred to beta4 by ruling or scope). The two that blocked the covering round
@@ -1904,12 +1904,47 @@ evidence in this ledger.** Recorded 2026-08-31.
   The window is therefore transient in practice and unsatisfiable in principle.
 - **Citation**: FR-030 (the mirrors mean the ledger), FR-033 (honest state); the composition-test programme
   where the two-surfaces family is pooled.
-- **Resolution**: OPEN, beta4. The fix is arbitration, not either rule: the validator's staleness check
-  should read the authority record too, so that `executing` with review.md present and review-signoff
-  unauthorized is recognised as the correct transient state rather than as staleness.
+- **Resolution — BETA4, as ARBITRATION** (maintainer ruling at the review-signoff verdict, 2026-08-31):
+  *"beta4, as arbitration between the two Status readers rather than loosening either; the window has a
+  working resolution meanwhile."* The fix is not to relax whichever rule is in front of the next person:
+  the validator's staleness check should read the authority record too, so that `executing` with review.md
+  present and review-signoff unauthorized is recognised as the correct transient state rather than as
+  staleness. The working resolution in the meantime is the one used here - follow the authority record,
+  because the truth gate is the control that blocks and the validator reports.
 - **Class closure**: NONE - a precedence rule between two governance readers is beta4 design, and inventing
   one inside a tag batch is the shape this batch has repeatedly ruled against. Named so it is fixed as
   arbitration rather than by loosening whichever rule is in front of the next person.
+
+### DRIFT-199-I002-039 — T024 fired in the field on its first real exercise, and closed the silent-drop family with its own fix (POSITIVE CONTROL EVIDENCE)
+
+**Filed on the positive ledger at the maintainer's instruction, 2026-08-31.**
+
+- **The firing.** In the reviewer session, a PASTED packet was evaluated by the verdict-capture path,
+  **correctly NOT captured** as an authorization, and **disclosed** - with the exact recovery action - by
+  T024's prompt-entry capture disclosure (FR-010).
+- **Why it matters more than an ordinary pass.** T024 exists because capture silence bit the maintainer
+  directly (DRIFT-199-I002-004): the machinery evaluated a turn, declined to record it, and said nothing,
+  so the human could not tell a considered refusal from a dropped message. **This is the first time the
+  disclosure has fired on a real turn rather than a fixture**, and it did the whole job at once: refused
+  correctly, said so, and named the action.
+- **It closes the family with its own fix.** The silent-drop family has four recorded members this batch -
+  capture silence (-004), the pause write that discarded its exception (-018), the strict-mode
+  set-never-read whose louder failure was unavailable (-030's sibling), and a human authorization dropped
+  for length with no message (-034). **T024 is the member that was fixed first and is now the member
+  demonstrated working**, on the exact failure mode the family is named for: a decision made and not
+  disclosed.
+- **The pairing with DRIFT-199-I002-034 is the point.** Within a single day the same family produced its
+  worst instance (a valid human authorization discarded in silence) and its best (a pasted packet refused
+  and disclosed). The difference between them is not luck and not care: **one path had the disclosure
+  written and the other did not.** That is the strongest available argument for the standing rule this
+  batch produced - every fail-soft owes a trace - because both halves of the comparison are in the same
+  system on the same day.
+- **Citation**: FR-010 (T024); DRIFT-199-I002-004 as the field case that produced it; -034 as its
+  counter-example.
+- **Resolution**: no action; the control behaved. Recorded as evidence.
+- **Class closure**: T024 IS the closure for its own path and already ships. What is added is that it has
+  now been observed working outside a fixture, which is the evidence tier this iteration has repeatedly
+  found to be the only one that predicts field behaviour.
 
 ### Resolution Strategies (Unused)
 

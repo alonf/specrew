@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 19.0/20 story_points
 **Started**: 2026-08-29
 **Completed**:
@@ -302,6 +302,23 @@
     the only reason it did not ship is that a human instructed the crew to read raw findings instead of the
     summary. That instruction was a workaround, and it worked, and it does not scale past a maintainer who
     knows to give it.
+  - **REVIEW-SIGNOFF VERDICT RULINGS, 2026-08-31**, recorded where the retro and the tag decision will
+    both find them:
+    - **Prompt 1 — B-3 stays beta4, and beta3's release notes carry the limitation in one sentence.**
+      *"Severity summaries understate; read raw findings. That documented workaround is what saved this
+      campaign and testers deserve it in writing."* Landed in
+      `docs/release-notes-v0.40.0-beta3.md` under Known issues, naming the stored counts, the
+      `demoted_from` field that preserves the reviewer's grade, and the path to the raw result. **A
+      workaround written down is not a control** (this batch's own rule) - but an undocumented one is
+      worse, and the honest position is that the record defect ships with its mitigation stated.
+    - **Prompt 2 — DRIFT-199-I002-038 is beta4, as ARBITRATION** between the two Status readers rather
+      than loosening either. The window has a working resolution meanwhile: follow the authority record.
+    - **Prompt 3 — `verdict-commit-durable` stays a REFUSAL and does not become an automatic push.**
+      *"Pushing is outward-facing and machinery does not take outward-facing acts on its own initiative;
+      the refusal named its remedy and it worked first try."* A config dial for projects with an
+      established push practice is a beta4 question. This is the refusal standard reaching its natural
+      limit: a refusal that names a reachable action has done its whole job, and doing the action for the
+      human would exceed it.
   - **CARRY INTO THE 002 RETRO — THE PATTERN THIS ITERATION SHOULD BE REMEMBERED FOR** (maintainer
     instruction, 2026-08-30, recorded in the crew's own words):
 
