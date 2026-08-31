@@ -631,23 +631,35 @@ cannot be amended, and the family is the point).
   and do not re-classify the work to fit whichever instruction won.
 - **Class closure**: NONE. This is the beta4 item.
 
-### DRIFT-199-I003-018 - a literal backspace byte sat inside a cited path in this log for a day, and only reading the record found it (self-inflicted; guard owed, not written)
+### DRIFT-199-I003-018 - a literal backspace byte sat inside a cited path for a day; then the entry written to record it reproduced the same bug twice (self-inflicted, three instances, guard now clearly owed)
 
-- **What was there.** DRIFT-199-I003-008 recorded the walk directory as `C:\Temp` + **0x08** +
-  `eta3-tagwalk`. Written by me, via a Python string where `` was an escape rather than a path
-  separator. A terminal renders it as `C:\Tempeta3-tagwalk`; a reader following it finds nothing.
-- **Second instance of the same cause**, and that makes it a class: octal escapes previously wrote a 0x01
-  into `.squad/decisions.md` (`specs99` becoming chr(1) + "99"). **Python escape sequences and Windows
-  paths, in a script that writes governance records.**
-- **What it corrupted is the aggravating part.** DRIFT-199-I002-040 established this batch's rule after a
-  near-retraction: *an evidence claim must name its directory, because in prose two paths differing by a
-  suffix read as one place.* The very next thing to break was a named directory - **the rule was followed
-  and the citation was still unusable.** Precision requires the byte, not just the intent.
-- **How it was found**: by reading the record, in the same pass that read it for content. No check looks
-  for control characters in lifecycle artifacts. A sweep run afterwards found this one and confirmed every
-  other record clean.
-- **Guard OWED, deliberately NOT WRITTEN**: a control-character assertion over `specs/**/*.md` and the
-  release record is a five-line test, and it is exactly the kind of five lines that turns into a second
-  unratified pre-plan item (DRIFT-199-I003-014). **Named here as owed; it lands with beta4 planning or
-  with the beta4 fix batch.** The sweep exists as a one-liner in this entry's history until then.
-- **Class closure**: NONE. Corrected in place; the guard is owed.
+- **Instance 1, found by reading.** DRIFT-199-I003-008 recorded the walk directory as `C:\Temp` + a raw
+  **0x08** byte + `eta3-tagwalk`. Written by me, from a Python string in which the path separator followed
+  by `b` was consumed as a backspace escape. A terminal renders the result as `C:\Tempeta3-tagwalk`; a
+  reader following it finds nothing. Repaired.
+- **Instance 2, found earlier this batch.** The same cause put a raw **0x01** into `.squad/decisions.md`,
+  where a path segment beginning `199` was consumed as an octal escape.
+- **Instance 3, and it is the one that settles the argument: THE ENTRY WRITTEN TO RECORD INSTANCES 1 AND 2
+  REPRODUCED BOTH OF THEM.** Quoting the offending escape sequences in prose re-triggered them - the
+  backspace vanished from the sentence describing the backspace, and the octal escape put a fresh 0x01
+  into the sentence describing the octal escape. Caught by re-running the sweep on the committed file,
+  **after** the commit that claimed the record was clean.
+- **The lesson, now concrete rather than general.** "Be careful with escapes" did not survive contact with
+  the very next paragraph. The mechanical fix is mechanical: **every string in a script that writes a
+  governance record is a raw string**, without exception, because the strings most likely to contain a
+  path or an escape are the ones documenting paths and escapes. This file was rewritten that way and that
+  is why it is correct.
+- **What it corrupted is still the aggravating part.** DRIFT-199-I002-040 ruled, after a near-retraction,
+  that *an evidence claim must name its directory, because in prose two paths differing by a suffix read
+  as one place.* The rule was followed and the citation was still unusable. **Precision requires the byte,
+  not the intent** - and a record that silently drops bytes cannot be audited by reading it, which is the
+  only way these were found.
+- **On the guard I named as owed and did not write**: I recorded that decision as deliberate, to avoid a
+  second unratified pre-plan item (DRIFT-199-I003-014). **Instance 3 weakens that reasoning and I am not
+  reversing my own ruling silently.** Stated for the maintainer instead: a control-character assertion
+  over `specs/**/*.md` and the release record is roughly five lines, the failure has now occurred three
+  times including once inside its own correction, and every instance was found by a human reading rather
+  than by any check. The counter-argument is unchanged - it is pre-plan work in an iteration whose plan
+  boundary has not been crossed. **The call is the maintainer's; the sweep has been run and the tree is
+  clean as of this commit either way.**
+- **Class closure**: NONE - corrected in place, guard owed and now argued for rather than merely named.
