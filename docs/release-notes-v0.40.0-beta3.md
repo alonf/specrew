@@ -1,11 +1,14 @@
-# Specrew v0.40.0-beta3 Release Notes (DRAFT)
+# Specrew v0.40.0-beta3 Release Notes
 
 `v0.40.0-beta3` is a narrow stabilization prerelease for the `0.40.0` line. It has one goal, which is
 also its acceptance bar: **a consumer completes their first feature without hitting an endless review
 loop, a wedged gate, or a sentence they cannot understand.** It is a prerelease, not a stable promotion.
 
-This draft is written at implementation time and is not a release claim. The certification round and its
-transcribed measurements land at feature closeout.
+**Published 2026-09-01**, on the tag `v0.40.0-beta3` (commit `4f4dce52`). The two publish gates this
+release was held for are both closed and described below: a brand-new project walked from init through the
+clarify boundary on these exact bits, and the recovery path was proved against the original stranded
+specimen. What remains ahead of the batch is the beta3 branch's own pull-request review, which happens once
+at `feature-closeout`.
 
 ## What this release is about
 
@@ -194,6 +197,23 @@ page describes the release a visitor can actually install.
 Whether **Copilot PR review** joins that closeout gate is a decision to be made deliberately at that gate,
 not inherited from how this batch happened to run. Recorded here so it is a choice someone makes rather
 than a default nobody noticed.
+
+**And there is now a data point for that decision, from this release.** The documentation pull request
+carrying these notes, the README banner and the CHANGELOG entry received its only external review from the
+**Copilot PR reviewer**, and it found **three real defects** in the release's public voice that every human
+and agent in the loop had read past:
+
+1. the README's "latest stable baseline" still said **0.37.0**, contradicting, on the same page, the new
+   banner that points readers at `releases/latest` (which resolves to **v0.38.0**);
+2. this file was still titled **(DRAFT)** while serving as the body of a published GitHub Release;
+3. it still carried a **future-dated disclaimer** ("this draft is written at implementation time and is not
+   a release claim") on the document that *was* the release claim.
+
+None is subtle, and that is the uncomfortable part. **These are the most-read documents of the release** -
+the front page a beta tester lands on and the notes attached to the download - and they were reviewed by
+the fewest eyes. Every gate this batch built points inward at the code and the lifecycle records; nothing
+pointed at the prose that represents them. The bot was the only reader positioned to see the page as a
+stranger sees it.
 
 ## Known issues
 
