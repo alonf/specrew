@@ -180,6 +180,21 @@ and re-walking everything, and unverified bytes under a verified tag is the wors
 about the release act continues past the tag; a release tag names the bytes that ship, not the diary of its
 own creation.
 
+## How this release was reviewed
+
+**The tag has no pull request, by design.** `v0.40.0-beta3` is a ref on a pushed commit; the independent
+review that stands behind it is the **campaign record** — reviewer evidence produced on a different harness
+than the one that wrote the code — together with the **two field walks** described above, both run on these
+exact bits.
+
+**The full PR review of the beta3 branch happens once, at `feature-closeout`, in beta4.** The feature branch
+stays unmerged until then; only documentation crosses to `main` ahead of it, so that the repository's front
+page describes the release a visitor can actually install.
+
+Whether **Copilot PR review** joins that closeout gate is a decision to be made deliberately at that gate,
+not inherited from how this batch happened to run. Recorded here so it is a choice someone makes rather
+than a default nobody noticed.
+
 ## Known issues
 
 - **Review severity summaries understate what the review found — read the raw findings.** A round's

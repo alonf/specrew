@@ -176,9 +176,10 @@ decision, not a beta3 one. It is the same **current-view-versus-history** shape 
 treats elsewhere: a reader needs *today's* view by default and a *pinned* view on demand. Docs are the
 cheap end of that shape, because pinning a document is just publishing it at a tag.
 
-> **Unresolved cross-reference**: this note was directed to be filed beside **proposal 216**, which does
-> not exist in `proposals/` — the highest-numbered proposal on this tree is **210**. Recorded here with the
-> shape named so the correct proposal number can be attached rather than guessed.
+This is the same shape as **[proposal 216](../proposals/216-temporal-spec-model.md)** (temporal spec model:
+derived current intent with authorized keyframes), which treats it for specifications. Docs are the cheap
+end: a specification needs machinery to reconstruct what was true at a point in time, whereas a document
+only needs to have been published at a tag.
 
 ### Step 14: Stop before new feature work
 
