@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "feature": "199-beta3-stabilization",
+  "iteration": "002",
+  "sealed_at": "2026-08-31T14:16:57.8312437+00:00",
+  "sealed_files": [
+    {
+      "path": "dashboard.md",
+      "sha256": "33dc99d568c20425b9316b9f1cc4f3e99203bdcf43c080f76cf7e6dc6f7a8aa4"
+    },
+    {
+      "path": "design-analysis.md",
+      "sha256": "25d3a90d77680899bbadd64d045db12b78a7d57de9eeeb57c099af8715505e0d"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "a789924a93df396ee619ee286df6f4a2f60bccb3797aac0a8dade12c6e107883"
+    },
+    {
+      "path": "erratum-iteration-001-hardening-gate-disposition.md",
+      "sha256": "7126bbe71d9c11708c8c672d103026033b3f696aef3c4345510929410119ad02"
+    },
+    {
+      "path": "lens-applicability.json",
+      "sha256": "a8ca99db1b03147870302c817521c5ee948483af78a8c053e81ef08d1d86ef0c"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "8d4e59c710275f6a27d94eac5f0bd87e2a53a907a03b8f8511779239e4f3b167"
+    },
+    {
+      "path": "quality/hardening-gate.md",
+      "sha256": "68f14406b391db86ca568ddd08c79f78e0708c4093a92d143b3316d2829b1334"
+    },
+    {
+      "path": "quality/mechanical-findings.json",
+      "sha256": "377a4c0aa5af11950d3a01b5a5c20f7495c734a33daa587a27408f278ce269f2"
+    },
+    {
+      "path": "quality/quality-evidence.md",
+      "sha256": "7018d09da2eeffc1b5644cd550d15c45a83aae52865ef089044ccbe6a6cb24cc"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "1dac8d8ddeb6092de8598fc103f5302d48c514b142d68f92d8ed6e95c41cde6d"
+    },
+    {
+      "path": "review.md",
+      "sha256": "9b59dd18a09e42f14c21b62bd3909abf0a7d0167ac4eaceec7bef6b0472fe7b2"
+    },
+    {
+      "path": "state.md",
+      "sha256": "c890c4191d20f01ec3b5256cb303ea8d413c7566b381ae62982f165986309220"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "60d4f692380469f58637c0a3ccc84e06db291bcc50ac725faf8c7cc7d7a312ff"
+    }
+  ],
+  "source": "iteration-closeout"
+}
