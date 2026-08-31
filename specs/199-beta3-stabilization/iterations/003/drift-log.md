@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 8 (DRIFT-199-I003-001 through -008)
+**Total drift events**: 10 (DRIFT-199-I003-001 through -010)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -249,3 +249,65 @@ So the authorization that completes the closeout necessarily changes two files t
   build before publish, which is beta4's greenfield smoke path (already prototyped at
   `tools/smoke/greenfield-cycle-replay.ps1`) promoted into the release lane and extended to cover intake.
   Naming it here so the next tag does not depend on someone asking the question again.
+
+### DRIFT-199-I003-009 — the Copilot walk: six behaviours field-proved on a third host, and none of them closes the publish gate (POSITIVE CONTROL EVIDENCE)
+
+**Third host, and the first field evidence on Copilot for any of this batch's work.** Recorded as evidence;
+the standing gaps below are recorded with equal weight, because this walk substitutes for neither.
+
+- **What ran clean**, per the maintainer's field report:
+  1. **The positional-binding refusal fired correctly** — an agenda array was refused *at the door* rather
+     than landing in `-Confirmation`. That is DRIFT-199-I002-029's second half proved in the field: the
+     `ValidateSet` used to catch this loudly while naming the wrong parameter, and `PositionalBinding =
+     $false` now reports the failure where it happens. The deployed writer carries the marker twice.
+  2. **A mangled binding value was restored to its readable hyphenated form** in the re-record — the
+     name/value asymmetry refusal doing its job with a human acting on it correctly, which is the outcome
+     the reworded message was written for.
+  3. **Five `confirm-lens` closures ran clean**, with the acknowledgment line on every reply — FR-028 (T019)
+     field-proved, five times, on a host that had never exercised it.
+  4. **Reviewer selection followed INT-006 end to end**, with the authorization written by the command
+     rather than by hand.
+  5. **The stub-then-spec ordering held** — FR-029 (T020) proved on a third host.
+  6. **The specify packet's marker carries its crossing identity** — FR-024's binding (T014/T015) visible in
+     a real packet on a third host, not only in this repository's own boundaries.
+- **Pending, and it upgrades one more row when it lands**: the specify verdict, when captured, adds
+  **typed-turn verdict capture on copilot** to the evidence.
+- **What this walk does NOT do**, stated with the same emphasis as the passes: **it does not touch
+  `confirm-intake-lens`.** Five `confirm-lens` closures are five exercises of the path that already had
+  field evidence. The intake close remains at zero field executions on every host and every build.
+- **Class closure**: none needed — this is evidence, and the controls it exercises already ship with their
+  guards. Its value is host diversity: three of these six behaviours had field evidence on exactly one host
+  before today.
+
+### DRIFT-199-I003-010 — the specify gate reads product-domain from its records and receipt, never from the controller entry: the records-versus-controller split in a third reader (open; one beta4 line)
+
+**Verified at source rather than assumed**, on the maintainer's instruction to check whether the specify
+preflight could pass while a controller carries no `product-domain` entry. It can, and here is why:
+
+- `design-analysis-gate.ps1:460` iterates **`$selected`** and demands a `workshop` record for each id.
+  **`product-domain` is never in `selected`** — the agenda catalog excludes it by construction
+  (`confirm-workshop-agenda.ps1:148`), which is the whole of DRIFT-199-I002-027. So the loop that would
+  demand a controller entry never asks about the intake lens.
+- The gate checks product-domain by two other routes instead:
+  - **its typed-turn RECEIPT** — `Get-SpecrewWorkshopAuthorityReceipt ... -Phase 'product-domain'`
+    (line 447), refusing with *"product-domain has no typed human reply receipt; Ctrl+O/dismissal is not
+    delegation"*;
+  - **its ON-DISK record** — `specs\<feature>\workshop\product-domain.yml` (line 1061) for the
+    load-bearing research-needed block.
+- **So a project can pass the specify preflight with the records present, the receipt present, and no
+  controller entry at all** — which is precisely the state the stranded ConsoleFractal was in.
+- **The class, and why it is one line rather than a batch item**: this is the **records-versus-controller
+  split** already recorded twice — the agenda confirms from on-disk records
+  (`confirm-workshop-agenda.ps1:131-139`) while the controller entry stays absent, which is how a project
+  reaches `confirmed-complete` with an unclosed intake lens (DRIFT-199-I002-027's stranded case). **This is
+  a third reader on the records side of the same split.** Each reader is individually correct; together they
+  mean the controller entry is optional for every gate that matters, which is what let the stranded state
+  exist unnoticed.
+- **Not a defect in this gate.** Reading the receipt and the record is arguably the *better* check — it
+  verifies the human's typed turn and the artifact, rather than a derived marker. The beta4 question is
+  whether the controller entry is authoritative for anything, and if not, why the writer maintains it.
+- **Resolution**: OPEN, **one beta4 line**, filed with the arbitration work beside DRIFT-199-I002-038: decide
+  which of the controller entry and the on-disk records is authoritative for intake, and make every reader
+  consult the same one.
+- **Class closure**: NONE — picking the authoritative side is a contract decision, and this batch has
+  repeatedly ruled against making those inside a tag batch.

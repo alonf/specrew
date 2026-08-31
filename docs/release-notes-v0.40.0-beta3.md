@@ -141,6 +141,18 @@ authorization.
 which is not present on the machine where this release was built, so they were not re-measured here. The
 mechanism they describe — a restored slot that nothing surfaced — was verified directly in code.
 
+## What this tag names
+
+**The tag sits on commit `4f4dce52`, one commit behind the branch tip.** That is deliberate. `4f4dce52` is
+the commit that was built, installed, and walked, so the tag, the build stamp, and every walk's evidence
+name the same bytes by construction — no rebuild, no restart, no gap between what was verified and what
+ships.
+
+The one commit outside the tag is `aef84004`, and its delta is **a single unpackaged spec artifact: 0 of 1
+changed files appear in `Specrew.psd1`'s FileList**. It is the drift record about holding this publish for a
+final walk. Process history about the release act continues past the tag; a release tag names the bytes that
+ship, not the diary of its own creation.
+
 ## Known issues
 
 - **Review severity summaries understate what the review found — read the raw findings.** A round's
