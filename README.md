@@ -256,8 +256,8 @@ loosened to get there.
   stale**. Both, with the full list and the reasoning, are in
   [docs/release-notes-v0.40.0-beta3.md](docs/release-notes-v0.40.0-beta3.md), which is the authority for
   known issues; CHANGELOG.md summarizes and points here.
-- **Latest stable baseline**: 0.37.0 — Feature 174 (hook-driven session bootstrap), promoted after beta-before-stable validation; builds on 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: `0.40.0` (Features 197 + 198 — Continuous Co-Review and Beta2 hardening); prepared as the `v0.40.0-beta2` PSGallery prerelease. Stable promotion remains blocked until T067 validates the actually published Beta2 package in a fresh consumer.
+- **Latest stable baseline**: 0.38.0 — Feature 184 (Full Antigravity Refocus); builds on 0.37.0 (Feature 174, hook-driven session bootstrap), 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line. This is what [the latest release](../../releases/latest) resolves to; see [CHANGELOG.md](CHANGELOG.md) for details
+- **Active development line**: `0.40.0` — Features 197, 198 and 199 (Continuous Co-Review, Beta2 hardening, and Beta3 stabilization). Currently published as the `v0.40.0-beta3` prerelease; stable promotion is a separate, later decision.
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
