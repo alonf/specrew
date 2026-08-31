@@ -4,6 +4,59 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.40.0-beta3] - 2026-09-01
+
+Feature 199 stabilizes the Beta2 line. **BETA** — this prerelease is not a stable promotion.
+
+**Beta3 did not add governance. It made the governance that was already there legible at the moment it
+stops you.** A refusal now names what failed and what would satisfy it, not merely that something is
+wrong; the action it offers has to be reachable from the state you are actually in, which is why "re-run
+the thing you just ran" and "switch to the host you are already on" are treated as defects rather than as
+advice; an approval is authorization only because a hook captured your own typed words, bound to the one
+boundary crossing that was actually recorded; and every fix carries a mutation proof, so a control that has
+quietly stopped working fails its own test instead of passing in silence. The measurement: the first
+greenfield walk of this line took **nine governance stops to reach the spec boundary**, none about the
+code. The last one, on the tagged bits, took **zero**. No gate was loosened to get there.
+
+### Added
+
+- **Refusals that name the form they accept.** Content gates state the shapes that would satisfy them in
+  prose — including constraints invisible in the underlying pattern — and say that your file is intact and
+  nothing you wrote is lost.
+- **Hook-health coverage reporting.** A health report states which events it actually observed, so a green
+  result can no longer be read as coverage it does not have.
+- **An authorization capture that never fails silently.** A verdict phrase that matched and was then
+  rejected always says so, on stderr and in a durable journal; only a phrase that never matched stays quiet.
+- **Three named recoveries documented** — `latest-result-not-current`, the post-closeout re-seal, and the
+  stranded-workshop recovery — in [docs/troubleshooting.md](docs/troubleshooting.md).
+
+### Fixed
+
+- **The greenfield workshop deadlock**, which stopped every new project at its first design lens, and the
+  stranded state that blocked projects which had already advanced past it. The fresh-project intake path is
+  field-proved on the tagged bits.
+- **A boundary-sync cycle** that replayed a global boundary into the current iteration and wedged the
+  lifecycle.
+- **A silently dropped approval**: a valid verdict whose rationale ran past the 2,000-character cap was
+  discarded without a word, and the gate then refused for an unrelated reason.
+- **Positional binding on the governed workshop writer**, so a mis-shaped call fails at the door instead of
+  reappearing as a different parameter's validation error.
+- **Package FileList omissions** that left required scripts unreachable in the installed module.
+
+### Known issues
+
+**[docs/release-notes-v0.40.0-beta3.md](docs/release-notes-v0.40.0-beta3.md) is the authority for known
+issues**; this section summarizes and points there. Six are recorded. The two most likely to affect you:
+
+- **Review severity summaries understate what a round found — read the raw findings.**
+- **After a closeout verdict the iteration seal reports 2 drifted mirror files.** The records are correct
+  and only the seal's snapshot is stale; re-seal through the engine's own writer rather than editing either
+  file to match the checksum.
+
+The remaining four — a stale review block that re-fires after being declined, cloud-placeholder support
+verified for reading and hashing but not every path, instructional-only reviewer filesystem confinement,
+and incomplete historical lifecycle records — are described in full in the release notes.
+
 ## [0.40.0-beta2] - 2026-07-21
 
 Features 197 and 198 harden Continuous Co-Review and complete the Beta2 supplier, injection,

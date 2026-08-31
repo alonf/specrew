@@ -65,6 +65,24 @@ The agent tags the merge commit (or the PASS-candidate fix commit if looping aft
 For F-048, the target version is `0.27.6`, so the first beta tag is
 `v0.27.6-beta1`.
 
+**Every tag gets a GitHub Release, and a beta tag is marked pre-release.**
+
+That checkbox is load-bearing, not cosmetic. `../../releases/latest` — the link the README banner points
+users at — **ignores pre-releases**. So marking beta tags correctly is what keeps that link resolving to
+the newest *stable* release, and what makes it flip to the new version automatically on the day a stable
+release is published. No link maintenance, ever, in any document.
+
+**Verify it rather than assuming it.** After creating a beta release, confirm that `releases/latest` still
+resolves to the previous stable:
+
+```powershell
+gh release create v<version>-beta<N> --prerelease --title "v<version>-beta<N>" --notes-file docs/release-notes-v<version>-beta<N>.md
+gh release view --json tagName --jq .tagName      # must still be the previous STABLE tag
+```
+
+If `releases/latest` moves to the beta, the pre-release flag did not take — fix it before announcing,
+because every "latest stable" pointer in the documentation is that one link.
+
 ### Step 10: Verify prerelease publication
 
 The publish workflow publishes the prerelease to PSGallery. The agent verifies
@@ -120,6 +138,48 @@ Find-Module Specrew -RequiredVersion 0.27.6
 ```
 
 Stable publication is complete only when the stable package is verified.
+
+**Then create the GitHub Release for the stable tag WITHOUT the pre-release flag.** This is the step that
+moves `releases/latest`, and therefore the step that updates every "latest stable" pointer in the docs at
+once. Verify the move rather than assuming it:
+
+```powershell
+gh release create v<version> --title "v<version>" --notes-file docs/release-notes-v<version>.md
+gh release view --json tagName --jq .tagName      # must now be v<version>
+```
+
+### Documentation versioning: why there is no `stable` branch
+
+Docs on `main` describe the development tip; users install a released version. That gap is real, and it is
+solved here with **a pointer, not a branch**.
+
+**No stable documentation branch, deliberately.** This project's DevOps posture is trunk-based, with `main`
+as the only long-lived release-truth branch. A second doc-bearing branch would have to be kept in step with
+`main` by hand — which is precisely the **mirror-drift** class that cost this project a two-week
+stabilization batch to close. Adding a new instance of a class you have just finished eliminating is a bad
+trade, however convenient the branch looks.
+
+Three mechanics carry it instead, and each one is self-maintaining:
+
+1. **The README banner on `main`** states which version the branch documents and links
+   `../../releases/latest` for stable. The link is relative and version-free, so it never needs editing.
+2. **The pre-release checkbox** (above) keeps that link pointed at the newest stable automatically.
+3. **The docs travel inside the artifact.** `docs/getting-started.md`, `docs/user-guide.md` and
+   `docs/troubleshooting.md` are in `Specrew.psd1`'s `FileList`, so an installed user already has
+   version-exact documentation in the module folder — the copy that matches the code they are running.
+   (`README.md` and `CHANGELOG.md` are **not** in the FileList, which is why doc-only edits to those two
+   can land against a frozen tag without changing the packaged artifact.)
+
+**The escalation path, recorded and not built.** If doc-versioning pain outgrows the banner, the answer is
+a **versioned documentation site** — GitHub Pages with a version switcher — which is a beta4-or-later
+decision, not a beta3 one. It is the same **current-view-versus-history** shape the proposal line already
+treats elsewhere: a reader needs *today's* view by default and a *pinned* view on demand. Docs are the
+cheap end of that shape, because pinning a document is just publishing it at a tag.
+
+This is the same shape as **[proposal 216](../proposals/216-temporal-spec-model.md)** (temporal spec model:
+derived current intent with authorized keyframes), which treats it for specifications. Docs are the cheap
+end: a specification needs machinery to reconstruct what was true at a point in time, whereas a document
+only needs to have been published at a tag.
 
 ### Step 14: Stop before new feature work
 

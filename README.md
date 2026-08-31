@@ -1,3 +1,10 @@
+> **You are reading the development branch.** `main` tracks development and currently documents
+> **0.40.0-beta3**, which is a prerelease.
+> **For the latest stable release** — and docs browsable at its own tag — see
+> [the latest release](../../releases/latest).
+> **Already installed?** Your version-exact docs ship inside the module: look under the installed module
+> folder's `docs/` directory, which is the copy that matches the code you are actually running.
+
 <p align="center">
   <img src="docs/assets/specrew-icon.png" alt="Specrew" height="130" align="middle" />
   &nbsp;&nbsp;
@@ -225,10 +232,32 @@ Specrew composes Spec Kit + your host's native code-agent teams into a **methodo
 
 Vanilla Spec Kit ships the slash-command surface but has no orchestration or boundary enforcement. Vanilla code-agent-team runners (Squad CLI, host-native subagent systems) run multi-agent teams but don't drive a spec-driven lifecycle. Autopilot tools and multi-agent libraries optimize for throughput by letting the agent decide. Specrew goes the other direction: **the spec is authoritative, drift is a first-class event, every boundary requires explicit human authorization, and the audit trail is durable.** Different design point. Same agents.
 
+## Governance you can act on
+
+Beta3 did not add governance. It made the governance that was already there legible at the moment it
+stops you. A refusal now names **what failed and what would satisfy it**, not merely that something is
+wrong; the action it offers has to be reachable from **the state you are actually in**, which is why
+"re-run the thing you just ran" and "switch to the host you are already on" are treated as defects rather
+than advice; an approval is authorization only because a hook captured **your own typed words**, bound to
+the one boundary crossing that was actually recorded; and every fix in the batch carries a mutation proof,
+so a control that has quietly stopped working fails its own test instead of passing in silence. The
+measurement that matters: the first greenfield walk of this line took **nine governance stops to reach the
+spec boundary**, none of them about the code. The last one, on the tagged bits, took **zero**. No gate was
+loosened to get there.
+
 ## Status
 
-- **Latest stable baseline**: 0.37.0 — Feature 174 (hook-driven session bootstrap), promoted after beta-before-stable validation; builds on 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: `0.40.0` (Features 197 + 198 — Continuous Co-Review and Beta2 hardening); prepared as the `v0.40.0-beta2` PSGallery prerelease. Stable promotion remains blocked until T067 validates the actually published Beta2 package in a fresh consumer.
+- **Current prerelease line**: `0.40.0-beta3` — feature 199 (beta3 stabilization). The tag names bits that
+  were **built, installed and walked**: a brand-new project ran init through the clarify boundary on
+  exactly these bytes. **Two known issues worth reading before you rely on the review loop**: review
+  severity summaries understate what a round found — [read the raw
+  findings](docs/release-notes-v0.40.0-beta3.md#known-issues) — and after a closeout verdict the iteration
+  seal reports two drifted mirror files, where **the records are correct and only the seal's snapshot is
+  stale**. Both, with the full list and the reasoning, are in
+  [docs/release-notes-v0.40.0-beta3.md](docs/release-notes-v0.40.0-beta3.md), which is the authority for
+  known issues; CHANGELOG.md summarizes and points here.
+- **Latest stable baseline**: 0.38.0 — Feature 184 (Full Antigravity Refocus); builds on 0.37.0 (Feature 174, hook-driven session bootstrap), 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line. This is what [the latest release](../../releases/latest) resolves to; see [CHANGELOG.md](CHANGELOG.md) for details
+- **Active development line**: `0.40.0` — Features 197, 198 and 199 (Continuous Co-Review, Beta2 hardening, and Beta3 stabilization). Currently published as the `v0.40.0-beta3` prerelease; stable promotion is a separate, later decision.
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
