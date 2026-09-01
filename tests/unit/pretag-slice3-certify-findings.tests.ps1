@@ -41,6 +41,38 @@ function New-ScopedEvidencelessFixture {
     # the review-signoff stage's evidence CHECKED against that tree and genuinely absent.
     $proj = New-EvidencelessBoundaryFixture
     $head = (@(& git -C $proj rev-parse HEAD) | Select-Object -First 1).Trim()
+    # UPDATED 2026-09-02 to the CURRENT contract (DRIFT-199-I003-024, the inverse family).
+    #
+    # This fixture used to mint the crossing with review.md simply absent. Beta3 added the
+    # owed-artifact mint guard, which now refuses that outright:
+    #   CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT - 'review-signoff' owes review.md for iteration 001
+    # That refusal is a DELIBERATE product change and a STRONGER guarantee: the evidenceless crossing
+    # this fixture wants can no longer be opened at all. The test was left red certifying the
+    # superseded contract - a test asserting yesterday's rule, not a product defect.
+    #
+    # THE TWO GATES READ DIFFERENT SOURCES - checked at source 2026-09-02, at the maintainer's demand,
+    # because if capture consulted a flag written at mint this fixture would be a fixture-only
+    # half-state:
+    #   MINT gate (FR-024/T014) reads the LIVE DISK - Test-SpecrewBoundaryOwedArtifactsOnDisk.
+    #   CAPTURE gate (FR-068/T090) reads the crossing's OWN BOUND GIT TREE, via ArtifactStateId, and
+    #   deliberately NOT the live filesystem: "The first version checked Test-Path against the MUTABLE
+    #   LIVE filesystem while the marker it authorizes ..." - reading live was a defect they fixed, so
+    #   that producing an artifact after the fact cannot retro-satisfy an older crossing.
+    # There is NO cached evidence flag written at mint; StageEvidenceAbsent is computed at stop time.
+    #
+    # So the constructed state is PRODUCT-REACHABLE, and by an ordinary path: review.md present on disk
+    # but UNCOMMITTED satisfies the mint gate, while the bound tree never contains it, so capture reads
+    # it absent. That is a real project whose author wrote the review and had not committed it. The
+    # Remove-Item below makes the disk agree with the bound tree; it is NOT what makes capture see
+    # absence, and the fixture would reach the same capture verdict without it.
+    #
+    # The scenario f2/f3 pin is preserved exactly, by reaching it the way the product now permits:
+    # the owed artifact EXISTS at mint time, so the guard is satisfied on its own terms, and is then
+    # removed so the stage's evidence is genuinely absent when the stop is evaluated. The guard checks
+    # artifacts ON DISK, so this is the honest reproduction of "minted, then evidence went missing"
+    # rather than a way around the guard. The new refusal itself is asserted separately, below.
+    $owed = Join-Path $proj 'specs/050-host-neutral-gate/iterations/001/review.md'
+    Set-Content -LiteralPath $owed -Value "# Review: 001`n`n**Overall Verdict**: accepted`n" -Encoding UTF8
     $mint = Join-Path $scratch ('mint-' + [guid]::NewGuid().ToString('N') + '.ps1')
     [System.IO.File]::WriteAllText($mint, @"
 `$ErrorActionPreference = 'Stop'
@@ -52,6 +84,8 @@ function New-ScopedEvidencelessFixture {
     if ($mintOut -notmatch 'MINT before-implement->review-signoff') {
         throw ("scoped fixture mint failed: {0}" -f $mintOut.Substring(0, [Math]::Min(200, $mintOut.Length)))
     }
+    # Evidence goes absent AFTER the crossing exists - the state f2 and f3 are about.
+    Remove-Item -LiteralPath $owed -Force
     return $proj
 }
 
