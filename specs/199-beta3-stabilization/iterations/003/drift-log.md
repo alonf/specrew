@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 39 (DRIFT-199-I003-001 through -039)
+**Total drift events**: 41 (DRIFT-199-I003-001 through -041)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1472,3 +1472,60 @@ about a check whose setup, not whose logic, decides the answer.
 - **Class closure**: NONE as an executable guard - no linter can tell whether a control's setup achieved
   what it claims. The available control is the practice above, and its enforcement is that a result with
   no printed precondition is not accepted as evidence.
+
+### DRIFT-199-I003-040 - the tag carries a STALE drift log, and the disclosure must live on a surface the tag reaches (BINDING on the release act)
+
+**Decided deliberately rather than left as an artefact of which directory each edit happened in.**
+
+- **THE ARRANGEMENT**: the tag is cut on `respin/beta3-census`, which carries the fixes. The drift log and
+  release notes live on `199-beta3-stabilization` and merge back afterwards. This follows the standing
+  ruling - *a release tag names the bytes that ship, not the diary of its own creation* - and neither
+  record is packaged (verified: `docs/release-notes-v0.40.0-beta3.md` and the 003 drift log are both
+  absent from `Specrew.psd1`'s FileList), so carrying them would change the tagged tree's digest without
+  changing one shipped byte.
+- **THE HOLE IN THE FIRST PLAN, and it is the kind this batch keeps finding**: the sentence explaining the
+  arrangement was going to be written into the release notes - **which are themselves behind on the other
+  branch.** A disclosure that is not in the tree it describes is not a disclosure. **It goes in the GitHub
+  Release body**, which is attached to the tag, readable without a checkout, and the first surface anyone
+  looking at `v0.40.0-beta3` sees.
+- **AND THE TAGGED TREE IS NOT SILENT - IT IS STALE, WHICH IS WORSE.** It carries `specs/199-.../003/
+  drift-log.md` **as it stood at 4f4dce52**, before every finding of this respin. A stale record that reads
+  as authoritative is a worse failure than an absent one, and it is **the same shape as the mirror drift
+  that bit this respin**: two copies of a record disagreeing with nothing to say which is current.
+- **REQUIRED IN THE RELEASE BODY, both sentences, naming the BRANCH AND THE EXACT COMMIT** so the pointer
+  resolves after the branch is deleted:
+  1. the records for this release live at `<branch>@<full-sha>`, not in the tagged tree;
+  2. the drift log inside the tagged tree is the **pre-respin** state and is superseded by that commit.
+- **Class closure**: NONE mechanically. The durable form is a release-gate check that a tag whose records
+  live elsewhere carries that pointer in its release body - beta4, beside the pre-tag dry run.
+
+### DRIFT-199-I003-041 - four rules from this respin are candidates for MECHANICAL enforcement, because two independent instances now show that recollection does not work (the beta4 item, scoped)
+
+**The evidence for this is not an argument, it is two demonstrations three days apart.**
+
+- **DRIFT-199-I003-031** recorded the workflow-duplication hazard, and **the very change that recorded it
+  shipped the defect** - a bash `${VAR}` copied into a pwsh job.
+- **DRIFT-199-I003-023** recorded the negative-control practice **earlier in this same session**, and
+  **three violations followed anyway** (DRIFT-199-I003-039).
+- Together they say one thing: **a rule that depends on someone remembering to apply it will not be
+  applied, and the countermeasure is not better prose.** Another entry restating the rule is the failure
+  mode, not the fix.
+
+**FOUR RULES, SCOPED BY HOW THEY WOULD BE ENFORCED:**
+
+| Rule | Enforcement | Where |
+| --- | --- | --- |
+| Prove BOTH directions before trusting a control | harness | a control that cannot fail reports INCONCLUSIVE by construction |
+| Assert and PRINT your precondition | harness | a control that cannot reach its subject reports INCONCLUSIVE by construction |
+| Read and write BYTES when the claim is byte-level | lint | flag text-mode IO in scripts that make byte-level claims |
+| Build the needle from the HAYSTACK's own convention | lint | flag literal `` `n `` / `\n` separators in markers searched against files |
+
+- **The first two belong in the test harness rather than in a checklist**: the point is that a control
+  which cannot fail, or cannot reach its subject, should be **structurally incapable of reporting a pass** -
+  not merely discouraged from it. INCONCLUSIVE by construction is the shape, and this session produced the
+  literal pattern for it (`specrew_modules_visible=N` printed by the subject and asserted by the control).
+- **The last two are lintable** because both have a syntactic signature: text-mode file IO in a script that
+  compares or hashes, and an LF-built literal used as a search needle.
+- **This is a real, scoped piece of beta4 work with two sessions of evidence behind it**, and it is worth
+  more than a fifth entry restating any of the four rules.
+- **Class closure**: NONE here by design - the entry IS the scoping, and the work is beta4's.
