@@ -1771,7 +1771,7 @@ try {
                     # value '<value>'" for BOTH failure modes and always offered a CASING example - so a
                     # workshop rejected for the underscore in the NAME `decomposition_style` was shown a
                     # valid value and advice about capital letters. Accurate about what it checked, wrong
-                    # about what went wrong (DRIFT-199-I002-029).
+                    # about what went wrong.
                     $failedField = if ($badBinding.PSObject.Properties['failed_field']) { [string]$badBinding.failed_field } else { '' }
                     $failedText = if ($badBinding.PSObject.Properties['failed_text']) { [string]$badBinding.failed_text } else { '' }
                     $failedRule = if ($badBinding.PSObject.Properties['failed_rule']) { [string]$badBinding.failed_rule } else { '' }

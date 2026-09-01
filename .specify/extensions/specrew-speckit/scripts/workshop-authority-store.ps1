@@ -70,7 +70,7 @@ function Get-SpecrewWorkshopIntakeLenses {
     # receipt store's phase ValidateSet carried `product-domain` as a first-class phase beside `lens`. The
     # lens WRITER knew none of it, and refused the first lens of every workshop as "not one of the topics
     # this workshop agreed to cover" - which was true, and was never going to stop being true.
-    # DRIFT-199-I002-011's rule, one layer up: never enumerate a set by hand in several places when one
+    # The rule, one layer up: never enumerate a set by hand in several places when one
     # definition can be read by all of them.
     [OutputType([string[]])]
     param()
