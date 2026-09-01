@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 37 (DRIFT-199-I003-001 through -037)
+**Total drift events**: 38 (DRIFT-199-I003-001 through -038)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1334,3 +1334,49 @@ mechanism** - a single-mechanism bug is an instance; three routes to the same co
 - **Class closure**: NONE. The beta4 shape is that the census must never report a failure it cannot
   explain: if both streams are empty, say so as its own condition rather than presenting emptiness as the
   test's output.
+
+### DRIFT-199-I003-038 - the release gate could not explain a failure anywhere in the tree: two opposite causes, one diagnosability hole, 36.7% of files silent and the rest reporting a helper's line number (SUPERSEDES the separate reads in -037 and the line-9 note)
+
+**One entry, because the two halves are one gap seen from opposite sides.** Every file in the census
+subject set is either a Pester file or a hand-rolled assertion script, and **neither kind could tell you
+why it failed.**
+
+- **HALF ONE - the Pester files report NOTHING, because structured failure data exists and was thrown
+  away.** The sweep ran them with `Output.Verbosity='None'`, so a failing Pester file produced **zero
+  bytes on both streams**. Reproduced exactly: `authority-control-consumer-guard.Tests.ps1` at
+  `Verbosity='None'` gives **exit 1, stdout 0 bytes, stderr 0 bytes**; the same file at `Detailed` names
+  the failure - *"DERIVED: every declared authority control has a production consumer - Expected $null or
+  empty ... but got 'the'"*, Passed 6 / Failed 1. **The reason existed the whole time and the harness
+  discarded it by configuration.**
+- **HALF TWO - the script files report a line number that is always the same line, because no structured
+  failure data exists at all.** They use hand-rolled asserts, so every failure surfaces as an exception at
+  the line where the helper throws - `throw "FAIL: $Message"` inside `Assert-True`, or
+  `function Fail(...) { throw ... }`. `workshop-state-transition-table` and `boundary-correction-ledger`
+  both report **line 9** regardless of which assertion failed. **The line number carries zero diagnostic
+  information; the `$Message` text is the entire signal.**
+- **THE SHARE IS THE FINDING** (measured 2026-09-02): **147 of 401** census files are Pester -
+  **36.7%**. So for more than a third of the tree the gate could report THAT a file failed and never WHY,
+  and for the remaining 63% it reported a location that is the same for every failure in the file. **This
+  is not a two-test annoyance. It is the diagnosability hole at the centre of the gate**, and it compounds
+  the diagnosability priority already ruled top of beta4.
+- **THE FIX IS STRUCTURAL, NOT A VERBOSITY FLIP** - measured before committing, because raising verbosity
+  fixes silence by substituting flood, which is the same failure wearing the other mask:
+
+| | failing file | passing file |
+| --- | --- | --- |
+| `Verbosity='Detailed'` | 1866 bytes, mostly Pester banner | **1579 bytes on a PASS** |
+| `Verbosity='None'` + **`-PassThru`** | **557 bytes naming the test and its ErrorRecord** | **0 bytes** |
+
+  Across 401 files a green run under `Detailed` would emit roughly **600KB of noise**. `-PassThru` returns
+  a result object whose `Failed` entries carry their own `ErrorRecord`; the sweep now prints only those,
+  keeps the console silent, and propagates the exit code by hand (`Run.Exit` would terminate before the
+  reporting runs). **Real reason on failure, nothing on success, no firehose.**
+- **The script half is NOT fixed here.** Giving hand-rolled asserts a structured failure location means
+  either adopting Pester in 254 files or teaching the helpers to report their caller - both are beta4
+  work, and neither belongs in a tag batch. **Recorded as owed, with the Pester half done.**
+- **Sequencing note**: `module-packaging-identity` fails only in CI and **passes locally at both
+  verbosity levels** (exit 0, Passed 9). Its cause is deliberately NOT being guessed at - the reporting
+  fix above is the instrument that will make it state its own reason on the next dispatch. Chasing a
+  CI-only failure blind, with the tool that removes the guesswork already in hand, is the expensive path.
+- **Class closure**: PARTIAL. The Pester half is closed in the harness. The script half and the
+  empty-output condition are owed to beta4.
