@@ -107,6 +107,19 @@ jobs:
           }
           Write-Host 'Release gate PASSED: every named test file on disk is green.' -ForegroundColor Green
 
+      # WHY always(): the artifact is only interesting when the gate FAILED, and a failing step would
+      # otherwise skip it - which is exactly how the 2026-08-31 census failure ended up with 23
+      # filenames and no reasons, costing a full local reproduction to triage. if-no-files-found:
+      # ignore keeps a green run from failing on a file the passing path never writes.
+      - name: Upload census failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-test-census-failures
+          path: ${{ runner.temp }}/specrew-full-sweep-failures.json
+          if-no-files-found: ignore
+          retention-days: 30
+
   publish-module:
     needs: [prepublish-validation, full-test-census]
     runs-on: windows-latest

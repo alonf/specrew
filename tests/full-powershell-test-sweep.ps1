@@ -185,7 +185,18 @@ if ($contaminated) {
     exit 1
 }
 if ($failed.Count -gt 0) {
-    $reportPath = Join-Path ([IO.Path]::GetTempPath()) ("specrew-full-sweep-failures-{0}.json" -f ([guid]::NewGuid().ToString('N')))
+    # DIAGNOSTICS MUST OUTLIVE THE RUNNER (DRIFT-199-I003-022). This file used to be written to the
+    # process temp directory and nothing uploaded it, so a failed release gate preserved a list of
+    # filenames and not one reason - the 2026-08-31 census failure cost a full local reproduction to
+    # learn WHY 23 files failed. Under Actions, write it to RUNNER_TEMP under a deterministic name so
+    # the workflow can upload it as an artifact. Outside CI, keep the unique temp name so concurrent
+    # local sweeps cannot overwrite each other.
+    $reportPath = if (-not [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+        Join-Path $env:RUNNER_TEMP 'specrew-full-sweep-failures.json'
+    }
+    else {
+        Join-Path ([IO.Path]::GetTempPath()) ("specrew-full-sweep-failures-{0}.json" -f ([guid]::NewGuid().ToString('N')))
+    }
     [IO.File]::WriteAllText($reportPath, ($failed | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
     Write-Host 'Failed paths:' -ForegroundColor Red
     @($failed | Sort-Object path) | ForEach-Object { Write-Host ("  - {0}" -f $_.path) -ForegroundColor Red }
