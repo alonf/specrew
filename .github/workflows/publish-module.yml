@@ -125,10 +125,10 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Install specify CLI
-        run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${SPEC_KIT_VERSION}"
+        run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${{ env.SPEC_KIT_VERSION }}"
 
       - name: Install squad CLI
-        run: npm install -g "@bradygaster/squad-cli@${SQUAD_VERSION}"
+        run: npm install -g "@bradygaster/squad-cli@${{ env.SQUAD_VERSION }}"
 
       - name: Execute every named test file on disk
         shell: pwsh
