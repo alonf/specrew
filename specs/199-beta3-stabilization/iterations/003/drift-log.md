@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 38 (DRIFT-199-I003-001 through -038)
+**Total drift events**: 39 (DRIFT-199-I003-001 through -039)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1425,3 +1425,50 @@ why it failed.**
 - **Class closure**: PARTIAL, and deliberately labelled so. The Pester half is closed in the harness, with
   its exit-code direction controlled. The script half (254 files) and the empty-output condition are owed
   to beta4.
+
+### DRIFT-199-I003-039 - a verification that does not verify: three controls in one session that produced confident answers about nothing, and the rule that closes them (belongs beside the FIXTURE PRINCIPLE, not beside the diagnosability entry)
+
+**This is NOT a subtype of DRIFT-199-I003-038.** That entry is about a gate that cannot say WHY something
+failed - a **reporting** defect. This is about **a control that cannot reach its subject and reports a
+result anyway** - a **verification** defect. Different subject, different countermeasure, and it belongs
+with the fixture principle (*the fixture wrote the precondition the product denies*) because both are
+about a check whose setup, not whose logic, decides the answer.
+
+**THREE INSTANCES IN ONE SESSION, ALL SELF-INFLICTED, AND THEY WORE THREE DIFFERENT FACES:**
+
+1. **SILENCE read as a pass.** The sweep exit-code control invoked the harness as
+   `pwsh -File sweep.ps1 -ExcludeRelativePath $array`. **`-File` cannot bind an array**, so the sweep died
+   on argument binding and **both** directions exited 1 - rendering as one `OK` and one `WRONG`. The
+   subject never ran.
+2. **VACUITY read as a pass.** The installer three-direction proof emptied `PSModulePath` in the PARENT
+   and relied on inheritance. **PowerShell 7 re-adds its default module paths at startup**, so all three
+   directions ran with Specrew still visible. Direction 1 - *"-WhatIfOnly with NO module installed"* -
+   **passed while a module was installed.** It asserted nothing.
+3. **A FALSE FINDING read as a CATCH, and this is the dangerous one.** In that same run, direction 3
+   reported **`*** WRONG - GUARD WEAKENED ***`** - a confident, specific, actionable claim that my own fix
+   had broken the install guard. **The guard had simply never been reached.** Silence and vacuity waste
+   time; **a false finding produces ACTION** - it would have sent someone to repair something that was
+   never broken, and the repair would have been to re-add a throw that was already there.
+
+- **WHY ALL THREE LOOK IDENTICAL TO A REAL RESULT**: a control that cannot fail is indistinguishable from
+  a control that passed, and a control that cannot reach its subject is indistinguishable from a control
+  that caught something. **The output shape is the same; only the setup differs**, and the setup is the
+  part nobody prints.
+- **THE RULE, and it generalises beyond this session:**
+  > **Every control asserts and PRINTS its own precondition before reporting a result.**
+  The shape is literal: `specrew_modules_visible=0` in the child's own output, checked by the assertion
+  rather than assumed by the author. A control whose precondition is absent reports **INCONCLUSIVE**, never
+  pass and never fail.
+- **Applied, and it is what turned each broken control into a working one**: the sweep control gained a
+  **subject-ran assertion** (require the sweep's own summary line before believing any exit code); the
+  installer proof gained a **precondition assertion** (require `specrew_modules_visible=0` before believing
+  direction 1 or 3). Both then reported correctly - and the false-green control they enabled found a real
+  hole in my own exit-code propagation.
+- **The companion sentence, because this batch has proved it twice more today**: *writing a rule down does
+  not make you apply it.* The negative-control practice was already recorded earlier in this session
+  (DRIFT-199-I003-023, three false measurements in one triage). **Three more followed anyway.** The
+  difference between a recorded rule and an applied one is whether the check prints something a reader can
+  disbelieve.
+- **Class closure**: NONE as an executable guard - no linter can tell whether a control's setup achieved
+  what it claims. The available control is the practice above, and its enforcement is that a result with
+  no printed precondition is not accepted as evidence.
