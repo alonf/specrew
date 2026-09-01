@@ -1496,8 +1496,19 @@ about a check whose setup, not whose logic, decides the answer.
   resolves after the branch is deleted:
   1. the records for this release live at `<branch>@<full-sha>`, not in the tagged tree;
   2. the drift log inside the tagged tree is the **pre-respin** state and is superseded by that commit.
+- **REACHABILITY, because a SHA outlives its branch only if something still reaches it.** If
+  `199-beta3-stabilization` were SQUASH-merged and then deleted, the named commit becomes unreferenced,
+  git eventually collects it, and **the pointer in a published release body dangles** - discovered years
+  later by exactly the person who needed it.
+  - **Resolved by existing policy, not a new decision**: `docs/release-discipline.md` Step 8 requires
+    merging *"with merge-commit history so the feature branch remains visible in git history."* Practice
+    confirms it - this batch's own docs PR landed as `7debb9fd Merge pull request #3514`, and the
+    preceding merges on `main` are merge commits too.
+  - **So the records commit stays reachable from `main` after the merge-back, and the pointer holds.**
+    **This is now a precondition of the release act, not an assumption**: if that branch is ever squashed
+    or force-deleted before merging, the release body must instead name a commit reachable from `main`.
 - **Class closure**: NONE mechanically. The durable form is a release-gate check that a tag whose records
-  live elsewhere carries that pointer in its release body - beta4, beside the pre-tag dry run.
+  live elsewhere carries a pointer that is REACHABLE - not merely present - beside the pre-tag dry run.
 
 ### DRIFT-199-I003-041 - four rules from this respin are candidates for MECHANICAL enforcement, because two independent instances now show that recollection does not work (the beta4 item, scoped)
 
