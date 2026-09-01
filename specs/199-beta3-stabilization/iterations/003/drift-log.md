@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 26 (DRIFT-199-I003-001 through -026)
+**Total drift events**: 27 (DRIFT-199-I003-001 through -027)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -957,3 +957,40 @@ checked is whether everything in `tests/` is a test.**
 - **Class closure**: NONE. The dry-run is now this release's practice (maintainer ruling); automating it
   into the pre-tag checklist, and surfacing a failed publish, remain the beta4 lines in
   DRIFT-199-I003-022.
+
+### DRIFT-199-I003-027 - a computed guard caught a hand-maintained list drifting DURING the operation meant to correct a hand-maintained list (POSITIVE CONTROL EVIDENCE; and the standing rule for classification)
+
+**The best positive-ledger entry of the respin, and the maintainer's own assessment.**
+
+- **What happened, 2026-09-02.** Relocating the misfiled probe out of `tests/`, I first *repointed* the two
+  registries that named it - `tests/f198-regression-suite.ps1` and `.specrew/release-gate-suites.txt` -
+  from the old path to the new one. `every-suite-is-named-by-a-lane` went red immediately: *"the disk
+  census found at least as many suites as the plan names."*
+- **It was right, and the reason is the point.** A probe that has left `tests/` must not still be **named
+  as a suite**, or the registries start lying in the other direction: they would claim suite coverage for a
+  file that is no longer a suite. Removed from both instead; the guard went green.
+- **Why this is the entry worth keeping**: a computed guard caught a hand-maintained list drifting **during
+  the very operation whose purpose was to correct a hand-maintained list**. The batch's recurring finding is
+  the hand-enumerated set going stale (the lanes naming 45 of 384; the FileList omissions; the exclusion
+  list this ruling refused). Here the countermeasure fired against its own author, mid-correction, on a
+  mistake that would have been invisible in review - the diff read as a tidy path update.
+- **THE STANDING RULE, recorded in the words the distinction was drawn in:**
+  > **An exclusion says *this test may fail*. A relocation says *this was never a test*.**
+  The first hides a red. The second fixes a lie about what the directory holds. Per-file census exclusion
+  stays refused (DRIFT-199-I003-025); relocation is available, and it carries the burden of proof below.
+- **THE BAR FOR A CATEGORY-2 CALL, because this is the classification that could quietly become the
+  exclusion mechanism** (maintainer, 2026-09-02): a file is a developer probe only if it
+  **CANNOT PASS IN A FRESH CLONE BY CONSTRUCTION** - it depends on gitignored runtime state, ambient
+  campaigns, a live `.specrew/`, or another artifact no clean checkout has.
+  - `coverage-line-names-its-campaign` qualified on exactly that evidence: in a fresh clone
+    `Get-SpecrewReviewCoverageState` answers `available=$false`, the line comes back empty, and the file
+    fails its FIRST assertion. It could never have passed in CI at all.
+  - **"Needs a fixture I would rather not build" is NOT category 2.** A test that merely needs a laborious
+    fixture is **category 1 with a cost, and cost is not a category.** The campaign-budget fixture that
+    `coverage-line`'s successor will need is expensive; that expense is not what moved the file - its
+    inability to pass by construction is.
+  - **Every category-2 call states its evidence in that form**, naming the specific ambient artifact and
+    the assertion that fails without it, so a reader can check the claim rather than take it.
+- **Class closure**: the guard already exists and already fired - that is the whole entry. What is owed is
+  the beta4 classification check: nothing under the census's discovered pattern may depend on gitignored
+  runtime state.
