@@ -41,6 +41,22 @@ function New-ScopedEvidencelessFixture {
     # the review-signoff stage's evidence CHECKED against that tree and genuinely absent.
     $proj = New-EvidencelessBoundaryFixture
     $head = (@(& git -C $proj rev-parse HEAD) | Select-Object -First 1).Trim()
+    # UPDATED 2026-09-02 to the CURRENT contract (DRIFT-199-I003-024, the inverse family).
+    #
+    # This fixture used to mint the crossing with review.md simply absent. Beta3 added the
+    # owed-artifact mint guard, which now refuses that outright:
+    #   CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT - 'review-signoff' owes review.md for iteration 001
+    # That refusal is a DELIBERATE product change and a STRONGER guarantee: the evidenceless crossing
+    # this fixture wants can no longer be opened at all. The test was left red certifying the
+    # superseded contract - a test asserting yesterday's rule, not a product defect.
+    #
+    # The scenario f2/f3 pin is preserved exactly, by reaching it the way the product now permits:
+    # the owed artifact EXISTS at mint time, so the guard is satisfied on its own terms, and is then
+    # removed so the stage's evidence is genuinely absent when the stop is evaluated. The guard checks
+    # artifacts ON DISK, so this is the honest reproduction of "minted, then evidence went missing"
+    # rather than a way around the guard. The new refusal itself is asserted separately, below.
+    $owed = Join-Path $proj 'specs/050-host-neutral-gate/iterations/001/review.md'
+    Set-Content -LiteralPath $owed -Value "# Review: 001`n`n**Overall Verdict**: accepted`n" -Encoding UTF8
     $mint = Join-Path $scratch ('mint-' + [guid]::NewGuid().ToString('N') + '.ps1')
     [System.IO.File]::WriteAllText($mint, @"
 `$ErrorActionPreference = 'Stop'
@@ -52,6 +68,8 @@ function New-ScopedEvidencelessFixture {
     if ($mintOut -notmatch 'MINT before-implement->review-signoff') {
         throw ("scoped fixture mint failed: {0}" -f $mintOut.Substring(0, [Math]::Min(200, $mintOut.Length)))
     }
+    # Evidence goes absent AFTER the crossing exists - the state f2 and f3 are about.
+    Remove-Item -LiteralPath $owed -Force
     return $proj
 }
 
