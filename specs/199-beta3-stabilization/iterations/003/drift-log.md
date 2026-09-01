@@ -1378,5 +1378,50 @@ why it failed.**
   verbosity levels** (exit 0, Passed 9). Its cause is deliberately NOT being guessed at - the reporting
   fix above is the instrument that will make it state its own reason on the next dispatch. Chasing a
   CI-only failure blind, with the tool that removes the guesswork already in hand, is the expensive path.
-- **Class closure**: PARTIAL. The Pester half is closed in the harness. The script half and the
-  empty-output condition are owed to beta4.
+- **THE EXIT-CODE CONTROL, run before the change was trusted and recorded because the failure direction is
+  catastrophic.** Removing `Run.Exit=$true` means the child's exit code is now propagated BY HAND -
+  `exit ([int]($r.FailedCount -gt 0))`. That is the same shape as the warning already in this file: wrapping
+  the child invocation once converted a real failure into a FALSE GREEN. If the manual propagation drops a
+  case, **147 files go permanently green and the gate reports success on a broken tree** - strictly worse
+  than the silence it replaced, because **silence stops a publish and a false green does not.**
+  **Two-direction control, run through the REAL sweep** (not a reimplementation of its command
+  construction, which would prove only that the copy works):
+
+| direction | exit | sweep ran | evidence |
+| --- | --- | --- | --- |
+| known-FAILING Pester (`authority-control-consumer-guard`) | **1** | yes | `FAILED: ...authority-control-consumer-guard.Tests.ps1 (pester, 9.61s)`, summary `failed=1` |
+| known-PASSING Pester (`module-packaging-identity`) | **0** | yes | summary `failed=0`, `all named test files green` |
+
+  **Both directions preserved. No false green.**
+- **IT TOOK TWO FALSE RESULTS TO GET THERE, and both are recorded because the first looked like a
+  finding.** (1) The control first invoked the sweep as `pwsh -File sweep.ps1 -ExcludeRelativePath $array`;
+  **`-File` cannot bind an array**, so every element after the first became a positional argument, the
+  sweep died on argument binding, and **both** cases exited 1 - rendering as one `OK` and one `WRONG`,
+  which reads exactly like a defect in the exit code. (2) The second inlined 400 quoted paths into an
+  encoded command and hit the Windows command-line length limit. **Neither ran the subject.**
+  - **What made the third attempt trustworthy was a SUBJECT-RAN ASSERTION**: require the sweep's own
+    summary line in the output before believing any exit code. Same lesson as the earlier control that
+    read a proxy instead of the bytes - **a verification with no proof-of-execution cannot distinguish
+    "nothing is wrong" from "nothing was measured".**
+- **AND IT PRODUCED A REAL FINDING**: `module-packaging-identity` **passes through the sweep locally**
+  (`failed=0`). Its census failure is genuinely **CI-only**, now confirmed through the real harness rather
+  than by direct invocation - which is why the next step is to read run 5 rather than guess at a cause.
+- **THE CONSEQUENCE, and it explains the gate's HISTORY rather than just its defect.** A gate that cannot
+  say why is expensive to ever get green, and this project has paid that cost in the open: **the beta3 tag
+  run failed on 2026-08-31 and the failure sat unread for two days** (DRIFT-199-I003-022). **Opacity does
+  not merely slow diagnosis - it trains people to stop reading the signal.** A gate whose failures cannot
+  be acted on becomes a gate nobody looks at, and then its red is indistinguishable from its silence.
+  **That is the argument for why the owed script half is not cosmetic**: 254 files still report a location
+  that is the same for every failure they contain, and every one of those is a future failure someone has
+  to reverse-engineer before they can act on it.
+- **THE TWO HALVES ARE NOT EQUIVALENT, and the record must not flatten them.**
+  - **Pester: TOTAL.** Zero bytes on both streams. Nothing to read, nothing to act on, no way to tell a
+    real failure from a harness fault.
+  - **Script: DEGRADED BUT WORKABLE.** The real reason IS present - the `$Message` text names it - and only
+    the *location* is wasted, because the hand-rolled helper is where the throw happens.
+  - **After this fix the census can explain 147 files properly and still reports a useless line number for
+    254.** This entry is **NOT CLOSED**, and a reader who sees the Pester half fixed should not infer
+    otherwise.
+- **Class closure**: PARTIAL, and deliberately labelled so. The Pester half is closed in the harness, with
+  its exit-code direction controlled. The script half (254 files) and the empty-output condition are owed
+  to beta4.
