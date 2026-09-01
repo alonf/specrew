@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 27 (DRIFT-199-I003-001 through -027)
+**Total drift events**: 29 (DRIFT-199-I003-001 through -029)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -994,3 +994,75 @@ checked is whether everything in `tests/` is a test.**
 - **Class closure**: the guard already exists and already fired - that is the whole entry. What is owed is
   the beta4 classification check: nothing under the census's discovered pattern may depend on gitignored
   runtime state.
+
+### DRIFT-199-I003-028 - the self-leak firewall has a self-service exemption with no granting policy: the guard-scope pattern inside a guard's own escape hatch (OPEN; beta4 is a POLICY decision, not a rewrite backlog)
+
+**The six leaked drift IDs were the symptom. This is the finding.**
+
+- **What was fixed today**: six unannotated self-provenance citations in the deploy surface -
+  `confirm-workshop-lens.ps1`, `shared-governance.ps1` (x3), `specrew-conformance-provider.ps1`,
+  `workshop-authority-store.ps1` - rewritten to state the abstract rule with no identifier. Lint green.
+- **THE REFRAME, and it is the sharper statement (maintainer, 2026-09-02).** The defect is **not 153
+  citations**. It is that **anyone may add `specrew-self-ok: <reason>` and nobody adjudicates the reason.**
+  The marker grants itself. So the firewall is **advisory wherever the marker appears** and binding only
+  where it does not - which means **the six that were red were red only because nobody bothered to mark
+  them.** Marking them would have been a one-line change that passed the gate and shipped the same defect.
+- **This is the guard-scope pattern inside a guard's own escape hatch**, and that is the sharpest form the
+  batch has recorded. The pattern elsewhere: a control whose scope is decided by hand drifts from what it
+  claims to cover (the lanes naming 45 of 384; the FileList omissions). Here the *escape* from a control is
+  decided by hand, by the same person the control is meant to constrain, at the moment they are constrained.
+- **THE MEASURED INVENTORY, recorded as a count and an open question - NOT as a violation tally:**
+
+| Identifier kind | Sanctioned hits |
+| --- | --- |
+| `F-NNN` feature ids | 91 |
+| `DRIFT-...` ids | 40 |
+| `R-...` | 14 |
+| `D-...` | 8 |
+| **Total self-provenance-id** | **153** |
+
+  (Plus 18 non-provenance sanctioned hits - registry, delivery-assumption, stack-assumption,
+  maintainer-id - for 171 annotated overall.)
+- **THE BETA4 ITEM IS THE POLICY, NOT THE REWRITE.** "Rewrite 153 comments" is the wrong shape: it treats
+  an unadjudicated hatch as a backlog and would leave the hatch open afterwards. The work is **decide the
+  granting policy, then classify against it.**
+  - **Starting draft, the maintainer's, to be argued rather than adopted**: *a self-citation is legitimate
+    when Specrew itself is the subject the reader must understand, and illegitimate when it is a pointer
+    to a record the reader cannot open.*
+  - On that line, **most of the 40 fall on the wrong side, and probably the 91 too** - a downstream reader
+    has no referent for `F-174` any more than for `DRIFT-199-I002-020`. **Classification is the work**, and
+    it belongs to the beta4 workshop, not to a tag batch.
+- **What today's fix does and does not settle**: it removes six citations that had no marker. It does not
+  touch the 153 that do, and it does not close the hatch. Both facts are stated so no reader mistakes a
+  green lint for a resolved question.
+- **Class closure**: NONE. The executable guard would be an adjudication step - a marker requires an
+  approver, or the reason is checked against a stated policy - and there is no policy to check against yet.
+  That ordering is the whole point of the entry.
+
+### DRIFT-199-I003-029 - read and write BYTES when the claim is byte-level: one rule from two near-misses, and the second time this respin a verification caught its verifier (TOOLING NOTE + POSITIVE CONTROL EVIDENCE)
+
+**Two mechanisms, one rule, both measured today.**
+
+1. **The CRLF near-miss.** The six comment rewrites were applied with Python's default text mode, whose
+   universal-newline translation silently converted **CRLF to LF across four entire files** (all four are
+   pure CRLF: 8,204 / 1,977 / 578 / 301 CRLF, zero bare LF). The change was about to be described as
+   "comments only". **It was every line in four packaged files.**
+   - **The inertness proof caught it.** Tokenizing before and after and comparing non-comment tokens
+     surfaced `LineContinuation` differences whose text looked identical to the eye - a backtick plus a
+     newline whose newline had changed. Restored from snapshot, re-applied with `newline=''` on BOTH read
+     and write, re-proved: 1,544 / 43,784 / 13,639 / 4,162 code tokens identical, position for position.
+2. **The heredoc collapse**, already recorded as the mechanism behind earlier corruptions: this shell
+   collapses doubled backslashes inside heredocs, so `chr(92)`, `chr(10)` and forward slashes are used
+   instead of escapes in any script that writes governed content.
+- **THE RULE, one line covering both**: **read and write BYTES, not text, whenever the claim being made is
+  byte-level.** Text mode is a convenience that silently normalises exactly the things a byte-level claim
+  is about - line endings, encodings, escapes. A "comments only" claim, a hash-equality claim, and a
+  mirror-parity claim are all byte-level claims.
+- **POSITIVE LEDGER: this is the SECOND time this respin that a verification caught its own verifier.**
+  The first was the lane guard catching the registry repoint mid-relocation (DRIFT-199-I003-027); this is
+  the inertness proof catching the whole-file rewrite hiding under the comments-only claim. Both were
+  mistakes of mine that would have read as tidy in review. **The pattern worth keeping: a proof is only
+  worth running if it can fail, which is why the inertness proof carries a negative control demonstrating
+  it detects a real code change hidden under a comment change.**
+- **Class closure**: the practice is the control - byte mode, negative controls, and no byte-level claim
+  accepted without a proof that could have failed.
