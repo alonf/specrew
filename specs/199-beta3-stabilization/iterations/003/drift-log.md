@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 33 (DRIFT-199-I003-001 through -033)
+**Total drift events**: 35 (DRIFT-199-I003-001 through -035)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1190,3 +1190,62 @@ the moment it was written, and no amount of byte-checking could ever have caught
 - **Class closure**: NONE. The fix applied today (`${{ env.VAR }}`, evaluated by GitHub before any shell
   sees it) removes the instance by making the reference context-free, which is the right local answer and
   not the guard.
+
+### DRIFT-199-I003-034 - self-leak-lint and mirror-parity have DIFFERENT SCOPES over the SAME content, and they compose only by accident (OPEN; beta4, same catalog as -033)
+
+**The maintainer's question, answered at source**: during the mirror-drift window my `extensions/` copies
+were clean of the six leaked ids and the `.specify/` copies still carried them - **and self-leak-lint was
+green.** Did its scope ever include the mirrors?
+
+- **NO.** `scripts/internal/lint-self-leak.ps1:32` defines the scanned surface as
+  `$ConsumerDeployedPrefixes = @('templates/', 'squad-templates/', 'extensions/specrew-speckit/')`.
+  **`.specify/extensions/specrew-speckit/` is not in it.** The linter never looked at the mirrors, so its
+  green was accurate about what it checks and silent about half the content that ships to a project.
+- **Two guards, different scopes, same content:**
+  - **self-leak-lint** reads `extensions/...` and not `.specify/...`;
+  - **mirror-parity** asserts `.specify/...` is byte-identical to `extensions/...` and says nothing about
+    content.
+  A file can therefore **pass one while the other would fail it**, and in the drift window exactly that
+  happened - lint green on a clean primary, parity red on a mirror carrying the forbidden ids. **Only the
+  census, running both, could see the disagreement.**
+- **THEY COMPOSE, BUT BY ACCIDENT AND NOT BY DESIGN.** Together they are sound: parity forces the copies
+  identical, and the lint checks one of them, so the pair is covered. **Nobody wrote that down, nobody
+  designed it, and nothing states the dependency.** The moment parity is relaxed for any file - a
+  legitimate move for a cross-context mirror, which DRIFT-199-I003-033 argues will be needed - **the lint's
+  blindness becomes live and no guard covers the mirror's content at all.**
+- **Not shipping-relevant today**: `.specify/**` has **zero** FileList entries, so the mirrors are not
+  packaged. This is about the guard graph, not this tag.
+- **Same catalog as -033**, and the two findings are one question: **which guard covers which surface, and
+  do the answers overlap or merely appear to.** Beta4 gets both together.
+- **Class closure**: NONE. The fix is a stated scope map - each guard naming the surface it covers, and a
+  check that the union covers the deployed surface - which is beta4 work.
+
+### DRIFT-199-I003-035 - the count went UP because the gate got STRONGER, and the arithmetic in the first report did not close (READING NOTE; the number goes in the release record)
+
+- **Run 1: 22 failures. Run 3: 25.** A reader who sees `22 -> 25` will conclude the respin made things
+  worse. **The opposite is true**, and the release record says so in those words.
+- **Resolved FROM THE ARTIFACT, not from a summary** (the first report said "ten mirror failures", which
+  did not reconcile):
+
+| Bucket | Count |
+| --- | --- |
+| Survived from run 1 | 12 |
+| Cleared | 10 |
+| **New** | **13** |
+| ... of which mirror-parity | **9** |
+| ... of which non-mirror | **4** |
+
+  12 survived + 13 new = 25. The four non-mirror entries are `conformance-material-turn-gate`,
+  `release-model`, `session-orientation-rendered`, `workshop-material-packet-language`.
+- **Why the total rose**: provisioning the runner to the product's own declared floor made the census
+  **measure more of the tree**. `boundary-sync-markdownlint-gate` needs markdownlint and could not run
+  before; now it does. **More measurement found more findings.** The gate did not weaken - it began
+  working. Nine of the thirteen were a single defect of mine (mirrors not synced after the comment
+  rewrite), caught immediately by byte-parity.
+- **The provisioning is legitimate precisely because the floor is the product's own**: Node 24 is
+  unchanged since beta2, so provisioning to it makes the census measure the tree. It would only be
+  cheating if it provisioned **past** what a real consumer needs.
+- **And the arithmetic error is the hand-enumerated-set pattern once more - this time in the report about
+  it.** A count stated from memory rather than recomputed from the source. The rule this project already
+  has applies to its own prose: **name the scope of a count, and recompute it from the artifact.**
+- **Class closure**: NONE - this is a reading note and a correction.

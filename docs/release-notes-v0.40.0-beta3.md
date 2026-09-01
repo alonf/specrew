@@ -198,6 +198,14 @@ code and everything to do with what happens next: on a tag push that is a red jo
 empty gallery, and no one watching. It would have blocked this release silently for the **second
 consecutive time**, on a cause unrelated to the first. The rehearsal turned it into a re-run.
 
+**Scope of the inertness proof, stated so it is not read as more than it is.** The six comment rewrites in
+the deployed scripts were proved inert by tokenizing the four affected files before and after, discarding
+comment and whitespace tokens, and showing the remaining token streams identical - with a negative control
+demonstrating the comparison detects a real code change hidden under a comment change. **That proves those
+four files' behaviour is unchanged. It proves nothing about the tree.** At the moment it was run the tree's
+`.specify/` mirrors still disagreed with those four files, and the census caught that separately. The proof
+is valid for exactly what it claims and is not a tree-level guarantee.
+
 **The full PR review of the beta3 branch happens once, at `feature-closeout`, in beta4.** The feature branch
 stays unmerged until then; only documentation crosses to `main` ahead of it, so that the repository's front
 page describes the release a visitor can actually install.
@@ -222,6 +230,27 @@ the front page a beta tester lands on and the notes attached to the download - a
 the fewest eyes. Every gate this batch built points inward at the code and the lifecycle records; nothing
 pointed at the prose that represents them. The bot was the only reader positioned to see the page as a
 stranger sees it.
+
+## What the release gate measured, and why its failure count went up
+
+The full-tree census is the gate this release hangs on. Reading its numbers needs one fact stated plainly,
+because the raw figures invite the opposite conclusion.
+
+**The census went from 22 failures to 25 - and that is the gate getting stronger, not weaker.** A bare
+Windows runner has no `uv` and ships Node 22, while Specrew's own declared floor is Node 24 - unchanged
+since beta2. So `specrew init` failed its own dependency check and the gate recorded the product correctly
+refusing an unsupported machine as failing tests. Provisioning the runner to the product's own stated
+requirements made the census **measure the tree** rather than the runner; tests that could not previously
+run - one of them needs markdownlint - now genuinely execute. More measurement, more findings. Provisioning
+would only be cheating if it went **past** what a real consumer needs; it does not.
+
+Of the 13 new entries, 9 were a single mirror-parity defect introduced and fixed inside this work, and 4
+are distinct. 12 entries survived from the first run and are the real remainder.
+
+**A related limit, stated rather than implied**: this project has no census baseline. The gate has been
+green exactly once, and that run passed because the runner happened to satisfy Node 24 that day. Nothing in
+a census result should be read as "this broke recently" - only a local control, holding the machine and the
+harness fixed while varying the tree, can answer that.
 
 ## Known issues
 
