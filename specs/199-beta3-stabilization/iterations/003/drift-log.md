@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 35 (DRIFT-199-I003-001 through -035)
+**Total drift events**: 37 (DRIFT-199-I003-001 through -037)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1274,3 +1274,63 @@ green.** Did its scope ever include the mirrors?
   it.** A count stated from memory rather than recomputed from the source. The rule this project already
   has applies to its own prose: **name the scope of a count, and recompute it from the artifact.**
 - **Class closure**: NONE - this is a reading note and a correction.
+
+### DRIFT-199-I003-036 - the line-ending class: three instances, three DIFFERENT mechanisms, and -029's rule only covered two (extends DRIFT-199-I003-029)
+
+**Three line-ending defects this fortnight. They are a class precisely BECAUSE they do not share a
+mechanism** - a single-mechanism bug is an instance; three routes to the same corruption is a class.
+
+1. **Normalisation on READ, in a comparison** (DRIFT-014's neighbourhood): a deployed-manifest comparison
+   normalised line endings, so a Windows checkout and an edited file compared equal.
+2. **Rewriting on WRITE** (DRIFT-199-I003-029): text-mode IO converted CRLF to LF across four packaged
+   files while claiming to change only comments. Caught by the inertness proof.
+3. **A needle built in the wrong convention** (2026-09-02, `spec-not-yet-authored`): the test extracts a
+   source block from `create-governed-feature.ps1` by `IndexOf` on a multi-line end marker built with
+   `` `n `` separators. The file is **pure CRLF - 170 CRLF, 0 bare LF** - so the LF-form marker is absent
+   and the CRLF form present. `IndexOf` returned -1 and the test threw *"the stub block could not be
+   located"*, reporting its own defect as the script's.
+- **-029's rule covered 1 and 2 and NOT 3.** *"Read and write bytes when the claim is byte-level"* was
+  **satisfied** here: the match was byte-level, deliberately. The needle was built in the wrong convention.
+- **THE RULE NEEDS ITS SECOND HALF**:
+  > **When you byte-match, the needle must come from the haystack's own convention** - on Windows,
+  > constructed from the file's own bytes, never typed as a source literal.
+- **AND THIS ONE WAS WRONG AT BIRTH**, in DRIFT-199-I003-033's exact sense: that marker was never going to
+  match, from the moment it was typed. It is the second wrong-at-birth defect of the respin, after the
+  bash-in-pwsh copy, and it strengthens that entry's argument - **byte-comparison and byte-matching both
+  fail silently when the two sides come from different conventions**, and neither drift-detection nor
+  parity-checking can see it.
+- **Where the false conclusion nearly landed**: the natural reading was that the test encoded a pre-fix
+  shape of a script this batch changed - a plausible story that would have made T020's shipped fix look
+  suspect. **The product was never at fault**; T020's stub behaviour is field-proved on a fresh feature.
+  Fixed by normalising the haystack before the match, so the test no longer passes only where git happens
+  to deliver LF.
+- **Class closure**: NONE as an executable guard. The available control is the extended rule above.
+
+### DRIFT-199-I003-037 - a census failure can arrive with NO readable reason at all, and the harness has nothing to say when it does (OPEN; beta4 diagnosability, harness-side)
+
+**Established from the artifact, and it refines a hypothesis rather than confirming it.**
+
+- **The two symptoms**:
+  - `module-packaging-identity.tests.ps1` - exit 1, stdout **empty**, stderr **1,906 bytes beginning
+    literally `#< CLIXML`**, carrying a serialized `S="progress"` record. PowerShell serializes a child's
+    non-output streams to stderr as CLIXML, so progress records arrive as XML.
+  - `authority-control-consumer-guard.Tests.ps1` - exit 1, **both streams empty**, captured output is a
+    single newline (1 byte).
+- **THE HYPOTHESIS WAS THAT THE HARNESS READS THE WRONG STREAM. It does not.**
+  `tests/full-powershell-test-sweep.ps1:122` composes the report as **stdout + stderr concatenated**. Both
+  streams are read. **Neither carried the test's assertion text.**
+- **So the CLIXML is noise filling a gap, not the cause of it.** The corrected finding is narrower and
+  more useful: **a test can fail in the census with no readable reason on any stream, and the harness
+  reports that as either XML or silence** - and both look identical to a defect in the test. Two files, one
+  harness-side diagnosability gap.
+- **Both pass locally**, so whatever they emit locally does not survive the census's capture. The cause is
+  not yet established and is NOT assumed - establishing it needs a local reproduction of the capture path,
+  which is the next step and is deliberately not being guessed at here.
+- **WHAT WAS DELIBERATELY NOT DONE**: setting `$ProgressPreference` in the census step would not reach the
+  tests - the sweep spawns each file in its own `pwsh -File` child - and the one place it would reach
+  carries an explicit warning that wrapping the child invocation **once converted a real failure into a
+  false green**. That contract is not being touched to improve a diagnostic. The warning is worth more
+  than the fix would have been.
+- **Class closure**: NONE. The beta4 shape is that the census must never report a failure it cannot
+  explain: if both streams are empty, say so as its own condition rather than presenting emptiness as the
+  test's output.
