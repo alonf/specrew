@@ -113,7 +113,7 @@ jobs:
       # ignore keeps a green run from failing on a file the passing path never writes.
       - name: Upload census failure diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: full-test-census-failures
           path: ${{ runner.temp }}/specrew-full-sweep-failures.json
