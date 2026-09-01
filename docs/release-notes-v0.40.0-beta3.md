@@ -247,10 +247,12 @@ would only be cheating if it went **past** what a real consumer needs; it does n
 Of the 13 new entries, 9 were a single mirror-parity defect introduced and fixed inside this work, and 4
 are distinct. 12 entries survived from the first run and are the real remainder.
 
-**A related limit, stated rather than implied**: this project has no census baseline. The gate has been
-green exactly once, and that run passed because the runner happened to satisfy Node 24 that day. Nothing in
-a census result should be read as "this broke recently" - only a local control, holding the machine and the
-harness fixed while varying the tree, can answer that.
+**A related limit, stated rather than implied**: this project has no census baseline, because **the census
+has never passed**. The job was added on 2026-08-26 - after the beta2 release, which therefore never ran it
+- and every run containing it since has failed. These results are a **first measurement, not a regression
+list**. Nothing in a census result should be read as "this broke recently"; only a local control, holding
+the machine and the harness fixed while varying the tree, can date a failure. The tests are years older
+than the gate, so an individual failure may still be long-standing - one of them is confirmed so.
 
 ## Known issues
 

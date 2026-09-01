@@ -1095,11 +1095,36 @@ checked is whether everything in `tests/` is a test.**
 - **AND THE DEPENDENCY FLOOR DID NOT MOVE**, measured rather than presumed: `Required = '24.0+'` is
   **identical at `v0.40.0-beta2` and at `4f4dce52`**. So this is **not** a beta3 release-notes line about a
   raised floor. Nothing about the product's requirements changed.
-- **WHICH IS EXACTLY WHY THE BETA2 GREEN IS SUSPECT.** The census passed once, on 2026-08-09. The floor was
-  already Node 24 then. So that run was green because the **runner** satisfied the requirement at the time -
-  and the runner has since drifted to Node 22. **The single green census in this project's history may
-  have been green for reasons that have since changed, rather than because the tree was healthier.** It is
-  not evidence the tree was clean; it is evidence that one runner image, on one day, could bootstrap.
+- **CORRECTED 2026-09-02 - THE PREMISE BELOW WAS FALSE, AND THE CORRECTION MATTERS MORE THAN THE ENTRY.**
+  This entry originally read: *"the census passed once, on 2026-08-09 ... that run was green because the
+  runner satisfied the requirement at the time ... it is evidence that one runner image, on one day, could
+  bootstrap."* **There was no green run to explain.**
+  - **Read from the run list and git history, not remembered:** the census entered
+    `publish-module.yml` in **commit `31107fef`, 2026-08-26** - **eighteen days AFTER** the
+    `v0.40.0-beta2` tag of 2026-08-08. `git merge-base --is-ancestor 31107fef v0.40.0-beta2` reports it is
+    **not** an ancestor, and the workflow at that tag contains the string `full-test-census` **zero**
+    times. The successful beta2 publish run of 2026-08-09 **did not include a census job at all.**
+  - **Every run that has ever contained the job has failed**: the beta3 tag run of 2026-08-31 and all four
+    respin dry-runs. **The census has never passed. There is no green census run in this project's
+    history.**
+- **THE CORRECTED FINDING IS SIMPLER AND WORSE**: a whole-tree gate was written, **wired into the publish
+  path**, and **never once completed a sweep** - because its runner could not bootstrap the product. It
+  was not a gate that used to work and drifted. It has never worked, and it was load-bearing from the day
+  it was added.
+- **HOW THE FALSE PREMISE GOT HERE, recorded because the mechanism is the point.** It rested on a
+  **remembered characterization that nobody checked** - *"beta2's census succeeded on 2026-08-09"* - stated
+  in passing and then built upon. **This is the third instance this fortnight of that mechanism**, after
+  the crew's wrong integrity finding and the retracted host-regression diagnosis, and **the first that
+  originated with the maintainer**. It is also the second time in this batch that I propagated a claim
+  about a component without invoking the component, which is the batch's own standing rule
+  (*before acting on a claim about a component, invoke the component*) applied to a claim about a CI job:
+  **the run list was one command away and neither of us ran it.**
+- **What survives**: DRIFT-199-I003-032's reading rule, now trivially true - no baseline exists because the
+  gate is days old and has never been green. The eleven remaining failures are a **FIRST MEASUREMENT, not
+  a set of regressions**, and the release record must not call any of them a regression on the artifact's
+  authority. Per-file local controls remain the only instrument that can date a failure, and the tests are
+  much older than the gate, so an individual one may still be long-broken - `refocus-digests` already is,
+  confirmed at beta2.
 - **This belongs beside DRIFT-199-I003-022 as its CAUSE.** That entry recorded that the batch never ran the
   gate the release hangs on. This one records why running it would have been necessary but not sufficient:
   **the gate itself was not measuring what its banner claims** until the runner was provisioned to run the
