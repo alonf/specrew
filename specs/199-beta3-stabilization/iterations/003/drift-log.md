@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 29 (DRIFT-199-I003-001 through -029)
+**Total drift events**: 31 (DRIFT-199-I003-001 through -031)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1066,3 +1066,65 @@ checked is whether everything in `tests/` is a test.**
   it detects a real code change hidden under a comment change.**
 - **Class closure**: the practice is the control - byte mode, negative controls, and no byte-level claim
   accepted without a proof that could have failed.
+
+### DRIFT-199-I003-030 - the census had never been a meaningful measurement of the tree: it ran where the product cannot bootstrap, and reported the product's own dependency refusal as a tree defect (OPEN; this is DRIFT-199-I003-022's CAUSE)
+
+**The reframe this respin earns, and it is larger than the four tests it explains.**
+
+- **What the gate was actually measuring.** A bare `windows-latest` runner has no `uv` and ships
+  **Node 22.23.2**. `specrew init` therefore fails its OWN dependency check, and every test that
+  bootstraps a project dies with `Bootstrap failed: Missing required dependencies`. The census recorded
+  those as failing test files. **They were the product correctly refusing to run on an unsupported
+  machine.** A whole-tree gate that runs where the product cannot bootstrap is not measuring the tree.
+- **THE CONSUMER QUESTION, answered at source rather than assumed** (maintainer, 2026-09-02): a real user
+  on Node 22 running `specrew init` gets:
+  ```
+  Outdated dependencies:
+
+    [Windows] Node.js v22.23.2 (required: 24.0+)
+        Update from https://nodejs.org/
+
+  Install all required dependencies before running specrew init.
+  ```
+  and **exit code 4**. It names the tool, the version found, the version required, one concrete reachable
+  action, and it fails closed with a distinct code. **By this batch's own refusal standard that message is
+  correct** - `scripts/init/preflight.ps1:85` carries the hint and `scripts/specrew-init.ps1:366` renders
+  it. **This is NOT a beta4 refusal-standard item.** The consumer path and the runner path are the SAME
+  path, and the message was clear on both. Nobody read it, because it was buried inside a failing test in
+  a gate nobody had run.
+- **AND THE DEPENDENCY FLOOR DID NOT MOVE**, measured rather than presumed: `Required = '24.0+'` is
+  **identical at `v0.40.0-beta2` and at `4f4dce52`**. So this is **not** a beta3 release-notes line about a
+  raised floor. Nothing about the product's requirements changed.
+- **WHICH IS EXACTLY WHY THE BETA2 GREEN IS SUSPECT.** The census passed once, on 2026-08-09. The floor was
+  already Node 24 then. So that run was green because the **runner** satisfied the requirement at the time -
+  and the runner has since drifted to Node 22. **The single green census in this project's history may
+  have been green for reasons that have since changed, rather than because the tree was healthier.** It is
+  not evidence the tree was clean; it is evidence that one runner image, on one day, could bootstrap.
+- **This belongs beside DRIFT-199-I003-022 as its CAUSE.** That entry recorded that the batch never ran the
+  gate the release hangs on. This one records why running it would have been necessary but not sufficient:
+  **the gate itself was not measuring what its banner claims** until the runner was provisioned to run the
+  product. Fixed today in the workflow; recorded because the fix is younger than the belief it corrects.
+- **Class closure**: NONE. The durable guard is a runner-provisioning assertion - the census refuses to
+  report a tree verdict from a machine that cannot bootstrap the product - which is beta4 work beside the
+  pre-tag dry run.
+
+### DRIFT-199-I003-031 - the census and CI provisioning steps are now duplicated with nothing checking they agree: the hand-enumerated-set pattern, in the workflow file (RECORD ONLY, not fixed; beta4)
+
+- **What was done today**: the census job was given Node 24, markdownlint-cli, `uv`, the specify CLI and
+  the squad CLI, mirroring `specrew-ci.yml` **step for step**, with `SPEC_KIT_VERSION` and `SQUAD_VERSION`
+  pinned at workflow scope to the same values that lane uses.
+- **What that fixes and what it does not.** Pinning the two versions stops those VALUES drifting apart.
+  **It does nothing about the STEPS.** There are now two hand-maintained provisioning sequences, and
+  **nothing checks that a dependency added to one reaches the other.** Add a tool to the CI lane tomorrow
+  and the census keeps passing while measuring a runner that no longer matches - which is precisely the
+  failure this entry's neighbour describes, re-armed.
+- **This is the hand-enumerated-set pattern, in the workflow file** - the batch's most-recorded shape,
+  after the lanes naming 45 of 384, the FileList omissions, the exclusion list that was refused, and the
+  suite registries the lane guard caught mid-relocation. **Fourth surface, same defect.**
+- **The computed form**: a shared composite action both jobs reference, so the provisioning has ONE
+  definition and adding a dependency reaches every consumer by construction.
+- **RECORD ONLY, deliberately.** Authoring a composite action is workflow refactoring during a blocked
+  publish, and the standing rule is that release machinery is the last thing to change while a publish is
+  blocked. **Beta4.**
+- **Class closure**: NONE. Named, not closed, and named specifically so the duplication is not mistaken
+  for the fix.
