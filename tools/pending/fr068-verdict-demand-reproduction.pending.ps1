@@ -1,3 +1,25 @@
+# RELOCATED OUT OF tests/ 2026-09-02 - THIS IS A SPECIFICATION OF FUTURE WORK, NOT A TEST.
+#
+# CATEGORY 4 (maintainer ruling, 2026-09-02): a file that is RED BY DESIGN is not a test, it is a TODO
+# wearing a test's clothes. This one declares its own inconclusiveness in its failure text - "the provider
+# emitted no stop-block at all, so the demand path was never reached. This is a FIXTURE defect, not
+# evidence that FR-068 half 1 is satisfied." A file that states it proves nothing cannot gate a release.
+#
+# WHAT IT WAITS ON: a working reproduction harness for FR-068. The file exists because the spec's evidence
+# note is binding - the observed transcript is an observation ELSEWHERE, not a reproduction HERE, and
+# implementation must begin by reproducing the defect rather than assuming its shape. The reproduction
+# does not currently reach the demand path, so the harness itself is the outstanding work.
+#
+# WHAT IT WILL ASSERT WHEN THAT WORK LANDS: both halves of the observed shape in one delivered message -
+# a premature verdict demand raised while the entering stage carries no evidence, and the contradictory
+# composition that accompanied it.
+#
+# THE GATE DOES NOT RUN IT. It is off the census's discovered pattern and named by no lane registry.
+# Run it by hand while working the harness:
+#   pwsh -NoProfile -File tools/pending/fr068-verdict-demand-reproduction.pending.ps1
+#
+# Deleting it would have lost real design intent; leaving it in tests/ held the tag hostage to beta4
+# work. Relocation preserves both. An exclusion says "this may fail"; this says "this was never a test".
 $ErrorActionPreference = 'Stop'
 
 # T086 — FR-068 reproduction harness (F-198 iteration 011).

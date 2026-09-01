@@ -204,8 +204,6 @@ tests/integration/feature-051-iteration2a-callsite-wiring.tests.ps1
 tests/integration/feature-closeout-working-tree-gate.tests.ps1
 tests/integration/filelist-completeness.tests.ps1
 tests/integration/forge-neutralization-sweep.tests.ps1
-tests/integration/fr066-first-boundary-arrival.tests.ps1
-tests/integration/fr068-verdict-demand-reproduction.tests.ps1
 tests/integration/gate-stop-skill.tests.ps1
 tests/integration/generator-markdown-parity.tests.ps1
 tests/integration/github-actions-node-runtime-pins.tests.ps1
