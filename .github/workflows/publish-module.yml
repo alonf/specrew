@@ -132,7 +132,15 @@ jobs:
 
       - name: Execute every named test file on disk
         shell: pwsh
+        env:
+          # Progress records serialize into the redirected stream on a non-interactive host, so a
+          # test's captured output arrives as CLIXML progress objects instead of its own assertions.
+          # Two census failures had that exact shape - one reporting raw <Objs ...> XML, one
+          # reporting NOTHING at all - which is a diagnosability failure in the harness, not a
+          # defect in either test. Silencing progress at job scope is the documented remedy.
+          PROGRESS_PREFERENCE_NOTE: 'set below in the step body'
         run: |
+          $ProgressPreference = 'SilentlyContinue'
           ./tests/full-powershell-test-sweep.ps1 -MaxParallel 4 -PerFileTimeoutSeconds 420
           if ($LASTEXITCODE -ne 0) {
             Write-Host 'Release gate FAILED: at least one test file on disk did not pass.' -ForegroundColor Red

@@ -83,7 +83,24 @@ function Start-SweepFile {
     $kind = if ($source -match '(?m)^\s*Describe\s+[''"]') { 'pester' } else { 'script' }
     $processArguments = if ($kind -ceq 'pester') {
         $quoted = $File.FullName.Replace("'", "''")
-        $command = "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.Exit=`$true; `$c.Output.Verbosity='None'; Invoke-Pester -Configuration `$c"
+        # STRUCTURED FAILURE REPORTING - not a verbosity firehose.
+        #
+        # Measured 2026-09-02: 147 of 401 census files are Pester - 36.7% of this gate's subject set.
+        # Every one of them ran with Output.Verbosity='None', so a failing Pester file produced ZERO
+        # bytes on both streams and the census could report THAT it failed and never WHY. Two files in
+        # the beta3 respin surfaced it; the share says the gate has been unable to explain a failure
+        # across more than a third of the tree for its whole life.
+        #
+        # Verbosity is NOT raised to fix it. Detailed was measured against this: on a FAILING file it
+        # emits 1866 bytes, mostly Pester banner, against PassThru's 557 that name the test and its
+        # ErrorRecord; on a PASSING file it emits 1579 bytes against PassThru's ZERO - roughly 600KB of
+        # noise per green run across 401 files. Silencing and flooding are the same failure: the reason
+        # is unavailable either way.
+        #
+        # -PassThru returns a result object whose Failed entries carry their own ErrorRecord. Print
+        # only those, keep the console silent, and propagate the exit code by hand since Run.Exit
+        # would terminate before the reporting runs.
+        $command = "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.PassThru=`$true; `$c.Output.Verbosity='None'; `$r=Invoke-Pester -Configuration `$c; foreach (`$t in @(`$r.Failed)) { Write-Output ('FAILED: ' + `$t.ExpandedPath); if (`$t.ErrorRecord) { Write-Output ('  ' + (`$t.ErrorRecord | Out-String).Trim()) } }; exit ([int](`$r.FailedCount -gt 0))"
         $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
         @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
     }

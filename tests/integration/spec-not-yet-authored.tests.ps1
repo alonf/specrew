@@ -55,7 +55,14 @@ function New-SpecFixture {
 # what the block itself operates on.
 function Invoke-StubReplacement {
     param([string]$SpecFile)
+    # LINE ENDINGS: the end marker below is written with `n separators, and the source file is pure
+    # CRLF (170 CRLF, 0 bare LF). IndexOf is a BYTE-level match, so the marker never matched and the
+    # block could not be located - the failure this test reported was its own, not the script's.
+    # Normalising here makes the match independent of how the file was checked out; without it this
+    # test passes only where git happens to deliver LF. Same family as the byte-versus-text rule the
+    # batch recorded after a comment rewrite silently converted four files' line endings.
     $source = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\create-governed-feature.ps1') -Raw -Encoding UTF8
+    $source = $source -replace "`r`n", "`n"
     $startMarker = '$specStub = @('
     $endMarker = "        [System.IO.File]::WriteAllText(`$specFile, (`$specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new(`$false))`n    }`n}`nelse {`n    [System.IO.File]::WriteAllText(`$specFile, (`$specStub + [Environment]::NewLine), [System.Text.UTF8Encoding]::new(`$false))`n}"
     $start = $source.IndexOf($startMarker)
