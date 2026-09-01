@@ -1,3 +1,31 @@
+# RELOCATED OUT OF tests/ 2026-09-02 - THIS IS A DEVELOPER PROBE, NOT A TEST (DRIFT-199-I003-025).
+#
+# It measures THIS REPOSITORY'S LIVE INSTANCE. It reads `.specrew/start-context.json` and whatever review
+# campaigns are on disk - both GITIGNORED runtime state - and its no-campaign-yet case depends on the
+# ambient coincidence that the active iteration differs from the campaign's.
+#
+# CONSEQUENCE, and it is why it moved: in a fresh clone `Get-SpecrewReviewCoverageState` answers
+# available=$false, the coverage line comes back empty, and this file fails on its first assertion. It
+# could NEVER have passed in a clean checkout, so it was never a test of the code - it was a probe of a
+# developer's working tree, misfiled under tests/.
+#
+# It stayed invisible because the curated lanes never named it and the full-tree census - the only reader
+# that would have run it - was not run until 2026-08-31.
+#
+# THE GATE WAS NOT WEAKENED TO ACCOMMODATE THIS. Per-file census exclusion was explicitly refused
+# (maintainer, 2026-09-02): the census is all-or-nothing and the publish depends on it, so an exclusion
+# list would carve a hole in the only reader that looks at the whole tree. An exclusion says "this test
+# may fail"; this relocation says "this was never a test". The census keeps its every-test-on-disk promise
+# honestly, because this file is no longer on that disk.
+#
+# HOW TO RUN IT: by hand, from a working developer checkout that has live review campaigns:
+#   pwsh -NoProfile -File tools/probes/coverage-line-names-its-campaign.probe.ps1
+# It will fail in a fresh clone, and that is correct behaviour, not a regression.
+#
+# The property it probes - T025 / DRIFT-199-I002-006, that a figure in a decision slot names the campaign
+# it was read from - still deserves a real test built on a synthesized campaign fixture. That needs the
+# campaign-budget record subsystem fixtured (Get-ReviewCampaignRoundBudgetState), which is a beta4 item,
+# NOT a reason to keep a probe in the gate's subject set.
 # Iteration 002, T025 (DRIFT-199-I002-006): the figure in a decision slot must be the figure that governs
 # the decision.
 #
@@ -17,7 +45,7 @@
 # would move, which is the line this fix must not cross).
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
 $script:failCount = 0
 function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -ForegroundColor Green }
