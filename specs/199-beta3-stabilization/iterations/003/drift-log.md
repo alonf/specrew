@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 24 (DRIFT-199-I003-001 through -024)
+**Total drift events**: 26 (DRIFT-199-I003-001 through -026)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -900,3 +900,60 @@ harness fixes on `main` cannot reach a publish of 4f4dce52 without moving the ta
   `C:\Temp\b2base2` (v0.40.0-beta2), plus per-file results at the session scratchpad's
   `triage23-results.json`.
 - **Class closure**: NONE. The decision is the maintainer's; the beta4 items are in DRIFT-199-I003-022.
+
+### DRIFT-199-I003-025 - a whole-tree gate is only as meaningful as the tree's file classification, and nobody had ever checked it (OPEN; the correction is reclassification, never exclusion)
+
+**The census promises to execute every named test file on disk. It kept that promise. What nobody had
+checked is whether everything in `tests/` is a test.**
+
+- **The shape, found while triaging**: `tests/unit/coverage-line-names-its-campaign.tests.ps1` reads this
+  repository's own **gitignored runtime state** - `.specrew/start-context.json` and whatever review
+  campaigns happen to be on disk - and its case 2 depended on the ambient coincidence that the active
+  iteration differed from the campaign's. In any fresh clone `Get-SpecrewReviewCoverageState` answers
+  `available=$false`, the function returns an empty line, and the file fails before its second case runs.
+  **It could never have passed in a clean checkout.** That is not a fixture gap. It is a **developer probe
+  living in `tests/`** - a thing that measures the live instance, misfiled as a thing that tests the code.
+- **Why it went unnoticed for the life of the file**: the curated lanes never named it, and the census -
+  the only reader that would have - **was never run until 2026-08-31** (DRIFT-199-I003-022). A promise to
+  run everything on disk is only a guarantee about the code if the disk holds only runnable things, and
+  the check that would have told us was the one nobody ran.
+- **MAINTAINER RULING, 2026-09-02: per-file exclusion from the census is NOT available.** The gate is
+  all-or-nothing and the publish job depends on it, so an exclusion means editing the census's own subject
+  set - **carving a hole in the only reader that looks at the whole tree**. That is the hand-enumerated-set
+  defect this batch has recorded repeatedly (the lanes naming 45 of 384), at maximum stakes. The gate is
+  not weakened to fit the tree.
+- **The correction is CLASSIFICATION, and every remaining failure gets one of exactly three**, with
+  evidence per file:
+  1. **Genuine test with a closable fixture gap** - fix it, proportionately.
+  2. **Developer probe requiring ambient repo state** - relocate it out of the census's discovered set
+     (`tools/probes/`, or off the discovered pattern), carrying a comment that says it needs live repo
+     runtime state, cannot run in a fresh clone, and is run by hand. **This corrects a misfiling rather
+     than weakening a gate**, and the census keeps its every-test-on-disk promise honestly, because the
+     file was never a test on disk in the first place.
+  3. **Real product defect** - STOP AND REPORT. That is a packaged file and the maintainer's decision.
+- **The distinction that makes this safe**: an exclusion list says *this test may fail*. A relocation says
+  *this was never a test*. The first hides a red; the second fixes a lie about what the directory holds.
+- **Class closure**: NONE yet. The durable guard is a classification check - nothing under the census's
+  discovered pattern may depend on gitignored runtime state - which is beta4 work alongside the pre-tag
+  dry run.
+
+### DRIFT-199-I003-026 - the dry-run's first act was catching a transient that would have silently blocked the publish for the SECOND consecutive release (POSITIVE CONTROL EVIDENCE)
+
+- **What happened, 2026-09-01**: the `workflow_dispatch` dry-run on `respin/beta3-census` failed in
+  **`prepublish-validation`**, before the census had even finished:
+  `Install-Package: Package 'Specrew' failed to be installed because: End of Central Directory` ->
+  `Docker build FAILED. Blocking publication.`
+- **Not a tree defect.** That step builds the publish-test container, which installs Specrew **from
+  PSGallery**; "End of Central Directory" is a corrupt zip mid-download. Nothing in the respin branch is in
+  that path - the branch touches five files, all tests, harness and workflow - and the same step passed on
+  the tag push two days earlier. Re-run and move on.
+- **THE POINT, and it is the whole justification for the rehearsal**: on a tag push this failure looks
+  exactly like the census failure did - a red job, a skipped publish, an empty gallery, and **nobody
+  watching**. It would have blocked the publish silently **for the second consecutive release**, on a
+  cause entirely unrelated to the first. The dry-run turned a silent two-day outage into a re-run.
+- **What it says about the beta4 surfacing item**: the case for it no longer rests on one incident. Two
+  consecutive releases, two unrelated causes, the same failure mode - **the publish stops and the room
+  finds out later**. A gate that can fail after the ceremony declares success needs to tell someone.
+- **Class closure**: NONE. The dry-run is now this release's practice (maintainer ruling); automating it
+  into the pre-tag checklist, and surfacing a failed publish, remain the beta4 lines in
+  DRIFT-199-I003-022.

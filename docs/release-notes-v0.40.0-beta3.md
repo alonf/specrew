@@ -190,6 +190,14 @@ review that stands behind it is the **campaign record** — reviewer evidence pr
 than the one that wrote the code — together with the **two field walks** described above, both run on these
 exact bits.
 
+**The release gate is rehearsed before the tag exists, and that rehearsal has already paid for itself.**
+A `workflow_dispatch` dry-run now runs the full-tree census on the release branch before any tag is cut.
+The first one caught a PSGallery corrupt-zip transient in `prepublish-validation` - the publish-test
+container failing to install Specrew with `End of Central Directory` - which had nothing to do with the
+code and everything to do with what happens next: on a tag push that is a red job, a skipped publish, an
+empty gallery, and no one watching. It would have blocked this release silently for the **second
+consecutive time**, on a cause unrelated to the first. The rehearsal turned it into a re-run.
+
 **The full PR review of the beta3 branch happens once, at `feature-closeout`, in beta4.** The feature branch
 stays unmerged until then; only documentation crosses to `main` ahead of it, so that the repository's front
 page describes the release a visitor can actually install.
