@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 31 (DRIFT-199-I003-001 through -031)
+**Total drift events**: 33 (DRIFT-199-I003-001 through -033)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1128,3 +1128,65 @@ checked is whether everything in `tests/` is a test.**
   blocked. **Beta4.**
 - **Class closure**: NONE. Named, not closed, and named specifically so the duplication is not mistaken
   for the fix.
+
+### DRIFT-199-I003-032 - this project has never had a census baseline, so nothing in the artifact may be read as regression-versus-longstanding without a local control (READING RULE for the 22)
+
+**The consequence of DRIFT-199-I003-030, stated plainly because it changes how every remaining
+classification must be read.**
+
+- **The one green census was green because the runner happened to satisfy Node 24 that day.** The floor did
+  not move; the runner drifted to Node 22. So that run measured a machine that could bootstrap the product,
+  on one day, once. **It is not a baseline.**
+- **Therefore every failure in the 22 is "new" only in the sense that nobody ever looked.** There is no
+  prior census result that means anything, so the artifact cannot answer "did this break recently" for any
+  file in it. A reader who treats the 22 as a regression list is reading a history that does not exist.
+- **THE READING RULE**: nothing in the census artifact is classified as regression-versus-longstanding
+  **on the artifact alone**. The only instrument that can answer that question here is a **local control** -
+  same machine, same harness, only the tree varying between `v0.40.0-beta2` and `4f4dce52`.
+  - Those controls remain valid and are the reason two calls in this respin are trustworthy:
+    `refocus-digests` fails at beta2 too (**longstanding**), and `self-leak-lint` passes at beta2 and fails
+    at the tag with **beta2's own test file** (**regression**, and the only category-3 of the batch).
+  - **The runner has no history worth comparing against.** Its verdicts are valid about the tree TODAY and
+    say nothing about when a failure began.
+- **Why this matters beyond bookkeeping**: the natural way to triage 22 failures is to ask which are new.
+  That question has no answer here, and asking it anyway produces confident wrong answers - which is the
+  shape this batch has recorded repeatedly (the summariser's severity counts; the ahead-count read off the
+  adjacent row). **The available question is "is it real on the tagged tree", and it is answered per file
+  by running it, not by comparing runs.**
+- **Class closure**: NONE. A baseline begins to exist the first time the census is green; until then this
+  rule stands.
+
+### DRIFT-199-I003-033 - a duplication defect that was WRONG AT BIRTH rather than drifted, and byte-comparison is structurally blind to it (new entry in the guard-scope catalog; the sharpest form of DRIFT-199-I003-031)
+
+**Every duplication defect this fortnight was DRIFT - copies that diverged over time. This one was wrong
+the moment it was written, and no amount of byte-checking could ever have caught it.**
+
+- **What happened**: the census provisioning was mirrored from `specrew-ci.yml` **step for step**, including
+  `--from "git+...@v${SPEC_KIT_VERSION}"`. Those CI jobs run **ubuntu-latest**, where `${VAR}` is a shell
+  variable that expands. The census runs **windows-latest** under **pwsh**, where `${VAR}` is a PowerShell
+  variable that does not exist. It expanded to **empty**, `uv` tried to fetch tag `v`, and the job died
+  before the sweep - so no diagnostics artifact was produced either.
+- **The copy was TEXTUALLY FAITHFUL and CONTEXTUALLY WRONG.** The same characters mean different things in
+  bash and pwsh. There was no moment at which the two agreed and then diverged; **the copy was defective at
+  the instant it was made.**
+- **AND THIS IS WHY BYTE-COMPARISON CANNOT CATCH IT.** `ProviderMirrorParity` and the mirror-parity checks
+  this project relies on assert **byte-identity** between copies. That is exactly the right guard for
+  copies that **execute in the same context** - the `extensions/` and `.specify/extensions/` mirrors, where
+  identical bytes mean identical behaviour. It is **structurally blind** to copies that execute in
+  DIFFERENT contexts, where identical bytes mean DIFFERENT behaviour and the correct copy is a
+  *non*-identical one.
+- **The unasked question, and it is the finding**: **nobody has ever asked which mirrors are which.** The
+  project has same-context mirrors (byte-identity is correct) and cross-context mirrors (byte-identity is
+  actively wrong), and one guard applied to both. A cross-context pair that passes byte-parity may be
+  passing *because* it is broken.
+- **It proved itself within minutes of being written down.** DRIFT-199-I003-031 recorded the duplication
+  hazard; the very change that recorded it shipped this defect. That is not irony worth enjoying - it is
+  evidence that naming a hazard does not protect against it, which is the batch's own repeated finding
+  (*writing a rule down does not make you apply it*).
+- **Resolution**: OPEN, beta4, and it is now TWO items rather than one: (a) the shared composite step from
+  DRIFT-199-I003-031, which removes the copy; (b) **classify every mirror as same-context or
+  cross-context**, and stop asserting byte-identity on the cross-context ones. (b) is the larger finding
+  and would not have been visible without (a) failing.
+- **Class closure**: NONE. The fix applied today (`${{ env.VAR }}`, evaluated by GitHub before any shell
+  sees it) removes the instance by making the reference context-free, which is the right local answer and
+  not the guard.
