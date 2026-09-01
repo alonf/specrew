@@ -2763,9 +2763,8 @@ function Test-SpecrewBoundaryOwedArtifactsOnDisk {
     # FR-024 (iteration 002, T014): the LIVE-FILESYSTEM owed-artifact check consulted at MINT time.
     #
     # The bound-tree evidence readers (Get-SpecrewBoundaryStageEvidence) answer "did the tree the
-    # verdict binds to carry the artifact"; at mint time there is no tree to bind yet, and the field
-    # case (KeyContextAI iteration 003; reproduced live at 199/001's closeout, DRIFT-199-I002-001) read
-    # as UNVERIFIABLE on that path because the iteration directory did not exist - which is exactly
+    # verdict binds to carry the artifact"; at mint time there is no tree to bind yet, and a measured
+    # case read as UNVERIFIABLE on that path because the iteration directory did not exist - which is exactly
     # the state a mint must call ABSENT. So this check asks the disk: does the boundary being ENTERED
     # have the artifacts its contract owes, under the directory the crossing would open? Missing
     # directory = missing artifact. Unverifiable is reserved for "no feature identity at all".
@@ -3682,7 +3681,7 @@ function Get-SpecrewCrossingMirrorMap {
     # file already speaks. state.md Current Phase is the boundary name itself; plan.md Status is the
     # validator's own enum, mapped. state.md Iteration Status is NOT a copy - it is derived from task
     # progress by task-progress.ps1 in its own enum - and the crossing writer touches it only at
-    # iteration-closeout (-> complete). No value is migrated; no upgrade breaks (DRIFT-199-I002-007).
+    # iteration-closeout (-> complete). No value is migrated; no upgrade breaks.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$Boundary)
     $canonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $Boundary
@@ -7557,7 +7556,7 @@ function Get-SpecrewReviewCoverageLine {
     $state = $null
     try { $state = Get-SpecrewReviewCoverageState -ProjectRoot $ProjectRoot } catch { return '' }
     if ($null -eq $state -or -not [bool]$state.available) { return '' }
-    # DRIFT-199-I002-006 (T025): the figure in a packet's decision slot must be the figure that governs the
+    # The figure in a packet's decision slot must be the figure that governs the
     # decision. The allowance is PER CAMPAIGN, and a campaign belongs to one iteration; when the active
     # iteration has no campaign of its own, this line was reporting the PREVIOUS campaign's remainder in the
     # position a reader takes the current constraint from - and it nearly produced a wrong split decision.
