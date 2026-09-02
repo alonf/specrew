@@ -198,6 +198,13 @@ code and everything to do with what happens next: on a tag push that is a red jo
 empty gallery, and no one watching. It would have blocked this release silently for the **second
 consecutive time**, on a cause unrelated to the first. The rehearsal turned it into a re-run.
 
+**What the code-unchanged proof proves, stated so it is not read as more than it is.** It compares
+NON-COMMENT token streams, so what it establishes is that **the code is unchanged** - not that the comments
+are inert. Those two claims come apart exactly where a comment carries something a tool reads, and this
+tree has such a case: an authority-marker comment that a guard parses as machine-readable data. None of the
+six rewrites touched a marker, so the gap did not bite - but that was luck rather than scope, and the proof
+is named for what it measures. **A comment correction to a marker-bearing line is NOT covered by it.**
+
 **Scope of the inertness proof, stated so it is not read as more than it is.** The six comment rewrites in
 the deployed scripts were proved inert by tokenizing the four affected files before and after, discarding
 comment and whitespace tokens, and showing the remaining token streams identical - with a negative control

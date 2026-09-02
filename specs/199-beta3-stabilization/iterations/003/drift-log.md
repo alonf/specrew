@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 41 (DRIFT-199-I003-001 through -041)
+**Total drift events**: 42 (DRIFT-199-I003-001 through -042)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1540,3 +1540,47 @@ about a check whose setup, not whose logic, decides the answer.
 - **This is a real, scoped piece of beta4 work with two sessions of evidence behind it**, and it is worth
   more than a fifth entry restating any of the four rules.
 - **Class closure**: NONE here by design - the entry IS the scoping, and the work is beta4's.
+
+### DRIFT-199-I003-042 - the census caught a REAL defect this batch introduced in a PACKAGED file, and the guard that caught it only works where the malformation does not collide with a real identifier (FIXED; the guard-scope half is beta4)
+
+**The strongest single justification for the whole-tree gate that exists, and it is not an argument - it
+is this instance.**
+
+- **The defect**: `extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1:108` read
+  `# SPECREW-AUTHORITY-CONSUMER: the finite transition contract. A TECHNICAL lens closes only from a` -
+  **the marker prefix followed by PROSE rather than a control identifier.** Every other consumer marker in
+  the tree is a proper identifier (`workshop-agenda-question-identity`, `workshop-repair-human-authorization`,
+  `coverage-deferral`, `pause-decision`, `review-round-budget`, `approval-withdrawal`). This was the only
+  malformed one, and the scanner's regex captured **`the`**.
+- **Introduced 2026-08-30 by `be573254` - a batch item**, inside exactly the intra-batch window the
+  timestamp control identified. **No curated lane would ever have run this test.** The census did, and it
+  found a defect this batch put into a file that ships.
+- **THE CONTROL WAS RIGHT IN SHAPE AND WRONG IN DIRECTION, which is the lesson.** The
+  authored-vs-code-changed control said intra-batch staleness was live (test last edited 2026-08-15, the
+  code it asserts against changed 2026-08-30). That framing set up the conclusion *test stale, code
+  authorised*. **The opposite was true**: the test was correct, the production change was the defect, and
+  the guard did precisely what it exists for. **A control that dates a change cannot tell you which side
+  of it was wrong** - only reading both sides can.
+- **WHICH ASSERTION FAILED DECIDED THE FIX, and it was checked rather than assumed.** Line 118 - *controls
+  without consumers* - **PASSED**, so every declared control already had a real consumer and line 108 was
+  never a missing declaration. Only line 119 - *consumers without controls* - failed. **Therefore prose
+  borrowing the marker syntax, and the fix is a reword; nothing about the authority contract changes.**
+- **Fixed as a sentence, not a capitalised noun phrase** (maintainer, and the reasoning is not style): a
+  capitalised label-shaped phrase would preserve the visual form of a label **in the exact position where a
+  label was just misread**. `This is the finite transition contract: ...` removes the ambiguity for a human
+  and for any future scanner. Guard now 7/7; `.specify/` mirror synced.
+
+**THE BETA4 ITEM, recorded here because THIS defect is its evidence:**
+
+- **The guard only caught this by luck.** Its regex captures the first lowercase token after the prefix and
+  flags it **only when that token fails to match a declared control**. Several control names are ordinary
+  words. **Had the prose after the prefix begun with a word that IS a control name, the guard would have
+  accepted a false consumer silently and reported green.**
+- So the guard detects malformed markers **only in the subset where the malformation does not collide with
+  a real identifier** - which is the guard-scope pattern one level above the instance it just caught: a
+  check whose coverage is decided by the accident of what the bad input happens to say.
+- **The countermeasure is validation at DECLARATION, not audit afterwards**: a marker line must be the
+  prefix followed by an identifier **and nothing else**, enforced where it is written rather than
+  reconstructed by set-equality across the tree. Set equality can only find the mismatches that are
+  visible as mismatches.
+- **Class closure**: the instance is closed; the class is not. Beta4.
