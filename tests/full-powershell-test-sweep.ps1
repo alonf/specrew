@@ -97,10 +97,18 @@ function Start-SweepFile {
         # noise per green run across 401 files. Silencing and flooding are the same failure: the reason
         # is unavailable either way.
         #
+        # THE EXIT CODE COUNTS MORE THAN FAILED TESTS, and this is the false-green direction the
+        # codebase already warns about. `FailedCount -gt 0` alone is a HOLE: a file that dies during
+        # DISCOVERY - a parse error, a missing dot-sourced dependency, a throw before any Describe
+        # body runs - defines zero tests, so FailedCount is 0 and the child exits 0. Measured:
+        # a parse-error file and a throws-early file BOTH exited 0 under the count-only form.
+        # That is strictly worse than the silence this fix removed - silence stops a publish and a
+        # false green does not - and before -PassThru those files died loudly through Run.Exit.
+        # A run is red unless tests were discovered AND none failed AND the run itself passed.
         # -PassThru returns a result object whose Failed entries carry their own ErrorRecord. Print
         # only those, keep the console silent, and propagate the exit code by hand since Run.Exit
         # would terminate before the reporting runs.
-        $command = "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.PassThru=`$true; `$c.Output.Verbosity='None'; `$r=Invoke-Pester -Configuration `$c; foreach (`$t in @(`$r.Failed)) { Write-Output ('FAILED: ' + `$t.ExpandedPath); if (`$t.ErrorRecord) { Write-Output ('  ' + (`$t.ErrorRecord | Out-String).Trim()) } }; exit ([int](`$r.FailedCount -gt 0))"
+        $command = "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.PassThru=`$true; `$c.Output.Verbosity='None'; `$r=Invoke-Pester -Configuration `$c; foreach (`$t in @(`$r.Failed)) { Write-Output ('FAILED: ' + `$t.ExpandedPath); if (`$t.ErrorRecord) { Write-Output ('  ' + (`$t.ErrorRecord | Out-String).Trim()) } }; exit ([int]((`$r.FailedCount -gt 0) -or (`$r.TotalCount -eq 0) -or (`$r.Result -ne 'Passed')))"
         $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
         @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
     }

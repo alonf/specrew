@@ -105,7 +105,7 @@ catch {
 # Two refusals that are each correct in isolation and jointly a trap - the pause-recovery shape again.
 $isIntakeLens = Test-SpecrewWorkshopIntakeLens -Lens $Lens
 
-# SPECREW-AUTHORITY-CONSUMER: the finite transition contract. A TECHNICAL lens closes only from a
+# This is the finite transition contract: a TECHNICAL lens closes only from a
 # confirmed agenda; the INTAKE lens closes from the pre-agenda state, which is how the controller reaches
 # `pending-product-projection`.
 $transitionOperation = if ($isIntakeLens) { 'confirm-intake-lens' } else { 'confirm-lens' }
