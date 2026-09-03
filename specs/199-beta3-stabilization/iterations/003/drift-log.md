@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 44 (DRIFT-199-I003-001 through -044)
+**Total drift events**: 45 (DRIFT-199-I003-001 through -045)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1631,3 +1631,30 @@ where ~409 belong, no `extensions/specrew-speckit`, no `scripts/internal/`, and 
 - **The two findings are one pair**: the rule said do not reinstall; the tool did not check what it was
   installing. **Prose on one side, no guard on the other.**
 - **Class closure**: NONE separately. Folded into the DRIFT-199-I003-041 queue.
+
+### DRIFT-199-I003-045 - the conformance journal names the CLASSIFICATION, never the DECISION: a stop that assessed nothing and a stop that assessed and found no obligation write indistinguishable records (CONFIRMED; beta4 fix shape stated)
+
+**Confirmed by instrumentation, not suspected.** Investigating `crossing-owner` Case 3, the journal record
+read `block_kind=boundary`, `has_pending=True`, `dx_owner=claude|session-beta`,
+`dx_foreign_owner_suppressed=False`, `event=observe` - a record that reads as "the boundary branch ran and
+chose not to block". The provider emitted **zero bytes**, and probes showed it never reached
+`$blockWarranted` (line 1528) at all.
+
+- **`block_kind` is a classification computed independently of whether any block was decided.** It answers
+  *what kind this would be*, not *what happened*. A reader - including me, for several hours - takes it as
+  evidence the corresponding branch executed.
+- **`$canAssess` (line 1235) is absent from the journal entirely**, and it is the one term that can
+  silently suppress every block: `$blockWarranted = $canAssess -and ($blockKind -ne 'none') -and ...`.
+  So the single most suppressive input is the one the record does not carry.
+- **`event` has no label for the owner-scoped release path.** It is derived from `$blockReason` and the
+  workshop flags, so an owner-scoped boundary release that emits an ordinary injection records as plain
+  `observe` - the one release path FR-032 exists for is invisible in the event taxonomy.
+- **THE SENTENCE**: *the journal names the classification, never the decision.* Two stops with entirely
+  different behaviour - one that never assessed, one that assessed and found nothing owed - produce
+  identical records.
+- **BETA4 FIX SHAPE**: add `canAssess` to the record; give the owner-scoped release its own `event` label;
+  and record the decision alongside the classification, so `block_kind` cannot be read as an outcome.
+- **What it cost here, as its evidence**: several hours of code archaeology on a single failing test,
+  during which the record actively pointed the wrong way. The journal is the provider's only per-stop
+  diagnostic surface, and it answered a question adjacent to the one being asked.
+- **Class closure**: NONE. Beta4, beside the other diagnosability items.
