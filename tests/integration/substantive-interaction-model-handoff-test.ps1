@@ -17,9 +17,21 @@ function Write-Fail {
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $validatorScript = Join-Path $repoRoot 'extensions\specrew-speckit\validators\handoff-governance-validator.ps1'
 $fixtureIteration = Join-Path $repoRoot 'tests\integration\fixtures\016-substantive-interaction-model\interaction-model-state'
-$existingPlanUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md'
-$existingGateUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md'
-$missingUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/missing-artifact.md'
+# THESE URIs MUST RESOLVE ON THE MACHINE RUNNING THE TEST.
+#
+# They were hardcoded to file:///C:/Dev/Specrew/..., which is one developer's checkout. The
+# validator emits soft-warning.broken-file-url-reference for a file:/// URI that does not resolve, so
+# the compliant-input case returned 'warn' instead of 'pass' anywhere that path is absent - it passed
+# only on the machine where C:/Dev/Specrew happens to exist. The release census, running from
+# D:/a/specrew/specrew, was the first thing to execute it on a machine that is not that one.
+#
+# Built from $repoRoot so the references resolve wherever the repository is checked out. The
+# missing-artifact URI is built the same way and names a file that genuinely does not exist, so it
+# stays a real negative rather than an accident of location.
+$repoUri = 'file:///' + ($repoRoot -replace '\\', '/')
+$existingPlanUri = "$repoUri/specs/016-substantive-interaction-model/iterations/001/plan.md"
+$existingGateUri = "$repoUri/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md"
+$missingUri = "$repoUri/specs/016-substantive-interaction-model/missing-artifact.md"
 $settingsPath = Join-Path $repoRoot '.specrew\config.yml'
 $barePathSeverity = 'soft-warning'
 if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
