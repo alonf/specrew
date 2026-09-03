@@ -253,8 +253,62 @@ Write-Pass 'Baseline helper fails closed on write errors and leaves the prompt u
 $lifecycleProject = New-TestProject -ProjectRoot (Join-Path $scratchRoot 'lifecycle') -FeatureRef '029-baseline-hygiene-lifecycle'
 $boundaries = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
 
+# UPDATED 2026-09-03 to the CURRENT crossing contract (FR-024 / T014, iteration 002 - the
+# owed-artifact mint guard). The sync for boundary X opens the successor crossing X -> next(X), and the
+# guard refuses to mint a crossing whose ENTERED stage owes artifacts that are not on disk. This fixture
+# predates the guard: it walked all nine boundaries with a bare spec.md, so the successor crossing after
+# 'clarify' (entering 'plan', which owes iterations/001/plan.md) could not mint, pending_crossing was
+# null, and the walk died at clarify. The 'specify' special-case below was an earlier carve-out for the
+# same cause.
+#
+# The fix stages each ENTERED stage's owed artifacts before the sync that mints the crossing into it -
+# exactly what a real project does (plan.md exists BEFORE the plan boundary approves it). The owed set
+# per stage comes from the same contract the guard reads. The ratchet is not weakened: every crossing is
+# still minted by the engine and authorized explicitly.
+$owedByBoundary = @{
+    'clarify'            = @(@{ Rel = 'spec.md'; Content = "# Spec`n`n## Clarifications`n`n### Session 2026-09-03`n`n- Q: scope? A: baseline fixture.`n"; Feature = $true })
+    'plan'               = @(@{ Rel = 'iterations/001/plan.md'; Content = "# Iteration Plan: 001`n`n**Status**: planning`n"; Feature = $true })
+    'tasks'              = @(@{ Rel = 'iterations/001/plan.md'; Content = $null; Feature = $true })
+    'before-implement'   = @(@{ Rel = 'iterations/001/quality/hardening-gate.md'; Content = "# Hardening Gate`n"; Feature = $true })
+    'review-signoff'     = @(
+        # EXISTENCE satisfies the mint guard (contract row Marker = $null). The verdict is deliberately
+        # NOT 'accepted': the recovery gate fires only on ^accepted$, and an accepted review at a
+        # pre-review boundary is genuinely stale state. 'blocked' is what the scaffolder writes, and
+        # 'accepted' is authored at sign-off - verified: nothing in the review engine writes the label.
+        @{ Rel = 'iterations/001/review.md'; Content = "# Review: 001`n`n**Overall Verdict**: ``blocked```n"; Feature = $true },
+        @{ Rel = 'iterations/001/state.md'; Content = '<TRACKS-BOUNDARY>'; Feature = $true })
+    'retro'              = @(@{ Rel = 'iterations/001/retro.md'; Content = "# Retro: 001`n"; Feature = $true })
+    'iteration-closeout' = @(@{ Rel = 'iterations/001/state.md'; Content = "# State`n`n**Current Phase**: retro`n"; Feature = $true })
+}
+
 for ($index = 0; $index -lt $boundaries.Count; $index++) {
     $boundary = $boundaries[$index]
+    # Stage what the NEXT boundary's stage owes, so the successor crossing minted by this sync can open.
+    if ($index + 1 -lt $boundaries.Count) {
+        $entered = $boundaries[$index + 1]
+        foreach ($owed in @($owedByBoundary[$entered])) {
+            if ($null -eq $owed) { continue }
+            $owedPath = Join-Path $lifecycleProject.ProjectRoot ("specs/{0}/{1}" -f $lifecycleProject.FeatureRef, $owed.Rel)
+            $owedDir = Split-Path -Parent $owedPath
+            if (-not (Test-Path -LiteralPath $owedDir)) { New-Item -ItemType Directory -Path $owedDir -Force | Out-Null }
+            $owedContent = $owed.Content
+            if ($owedContent -eq '<TRACKS-BOUNDARY>') {
+                # Mirror the boundary the crossing enters, and rewrite it every pass so it never lags.
+                $mirrorPhase = if ($index -gt 0) { $boundaries[$index - 1] } else { $boundaries[0] }
+                $owedContent = "# State`n`n**Current Phase**: $mirrorPhase`n`n**Iteration Status**: executing`n"
+                $dir2 = Split-Path -Parent $owedPath
+                if (-not (Test-Path -LiteralPath $dir2)) { New-Item -ItemType Directory -Path $dir2 -Force | Out-Null }
+                [System.IO.File]::WriteAllText($owedPath, $owedContent, [System.Text.UTF8Encoding]::new($false))
+                continue
+            }
+            if ($null -ne $owedContent -and -not (Test-Path -LiteralPath $owedPath)) {
+                [System.IO.File]::WriteAllText($owedPath, $owedContent, [System.Text.UTF8Encoding]::new($false))
+            }
+            elseif ($null -ne $owed.Content -and $owed.Rel -eq 'spec.md') {
+                [System.IO.File]::WriteAllText($owedPath, $owedContent, [System.Text.UTF8Encoding]::new($false))
+            }
+        }
+    }
     if ($boundary -ne 'specify') {
         $targetPath = if (($index % 2) -eq 0) { $lifecycleProject.CharterPath } else { $lifecycleProject.AgentPath }
         Add-Content -LiteralPath $targetPath -Value ("boundary-{0}" -f $boundary) -Encoding UTF8
