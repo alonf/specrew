@@ -1671,11 +1671,16 @@ now bounds it:
 | Test tree | 476 | **0** (after this repair) |
 | `tools/` | 4 | **0** |
 
-- **No corrupted regex or literal ships in this tag.** The class is test-side, not a stop-and-report.
+- **No corrupted regex or literal ships in this tag, and the null result is the half that closes the
+  class.** 223 packaged scripts scanned, zero hits; the FileList carries 409 entries and **none under
+  `tests/`**, so the one corrupted regex was COMMITTED, never SHIPPED. Test-side, not a
+  stop-and-report.
 - **Exactly one file ever matched**: `tests/integration/workshop-state-transition-table.tests.ps1`, two
   `0x08` bytes, committed and present at `4f4dce52` - **not introduced by this respin**. Repaired here.
   Two occurrences in one line, not file-scope corruption: the post-repair scan is empty, so nothing else
   was hiding in it.
+- **Two measurements of different things, and only the second bears on the tag** - the same shape as
+  the census-at-beta2 correction, where a remembered scope stood in for a measured one.
 - **The earlier repository-wide framing is superseded**: five files carrying control bytes were recorded
   in DRIFT-199-I003-019, but those were `.md` records and `.squad` decision files. **In SOURCE, the class
   is one file.**
@@ -1701,9 +1706,9 @@ DRIFT-199-I003-041: **a rule that depends on recollection will not be applied.**
 
 | Rule | Evidence | Enforceable shape |
 | --- | --- | --- |
-| **A mutation proof requires its target GREEN before the mutation** | `002/drift-log.md:667` claimed *"disabling the consumer turns crossing-owner case 3 red"* - case 3 was ALREADY red, so the mutation discriminated nothing. 7th unverified-precondition control. | a mutation-proof helper that refuses to report a discriminating result unless it observed the baseline PASS first |
+| **A mutation proof requires its target GREEN before the mutation** | `002/drift-log.md:667` claimed *"disabling the consumer turns crossing-owner case 3 red"* - case 3 was ALREADY red, so the mutation discriminated nothing. One void claim of the two mutation-proof claims in 001/002 records. | a mutation-proof helper that refuses to report a discriminating result unless it observed the baseline PASS first |
 | **A count claim states the set it counted over, or it is not a claim** | Three wrong counts this session - FileList `423` (two arrays instead of one), *"only Case 3 fails"* (truncated list), `201` (test-by-line pairs instead of distinct lines). **None failed at arithmetic; all three counted the right things over the wrong set.** | counts are reported with their scope, and a claim without one is not accepted as evidence |
-| **No control characters outside tab, LF and CR in any source file** | one shipped corrupted regex, silently weakening an assertion; found only because an edit script refused to write it | a commit-time scan - 223 packaged + 476 test files scan in seconds |
+| **No control characters outside tab, LF and CR in any source file** | ONE COMMITTED corrupted regex in a TEST file (`workshop-state-transition-table.tests.ps1`), and **zero across 223 packaged scripts** - the FileList has 409 entries and none under `tests/`, so it was committed, never shipped. Found only because an edit script refused to write it. | a commit-time scan - 223 packaged + 476 test files scan in seconds |
 
 - **The first two join the four already queued** (prove both directions; assert and print your
   precondition; read and write bytes for byte-level claims; build the needle from the haystack's
