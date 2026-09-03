@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 45 (DRIFT-199-I003-001 through -045)
+**Total drift events**: 47 (DRIFT-199-I003-001 through -047)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1658,3 +1658,56 @@ chose not to block". The provider emitted **zero bytes**, and probes showed it n
   during which the record actively pointed the wrong way. The journal is the provider's only per-stop
   diagnostic surface, and it answered a question adjacent to the one being asked.
 - **Class closure**: NONE. Beta4, beside the other diagnosability items.
+
+### DRIFT-199-I003-046 - the escape-collapse class is BOUNDED and closed: zero packaged files, one test file, now repaired (SUPERSEDES the repository-wide framing in DRIFT-199-I003-019)
+
+**Measured rather than feared.** DRIFT-199-I003-019 recorded this class as repository-wide with one
+instance SHIPPING. A full control-character scan - every character below 0x20 except tab, LF and CR -
+now bounds it:
+
+| Scope | Files scanned | With control bytes |
+| --- | --- | --- |
+| Packaged scripts (`scripts`, `extensions`, `templates`, `hosts`, `bin`; `.ps1/.psm1/.psd1`) | 223 | **0** |
+| Test tree | 476 | **0** (after this repair) |
+| `tools/` | 4 | **0** |
+
+- **No corrupted regex or literal ships in this tag.** The class is test-side, not a stop-and-report.
+- **Exactly one file ever matched**: `tests/integration/workshop-state-transition-table.tests.ps1`, two
+  `0x08` bytes, committed and present at `4f4dce52` - **not introduced by this respin**. Repaired here.
+  Two occurrences in one line, not file-scope corruption: the post-repair scan is empty, so nothing else
+  was hiding in it.
+- **The earlier repository-wide framing is superseded**: five files carrying control bytes were recorded
+  in DRIFT-199-I003-019, but those were `.md` records and `.squad` decision files. **In SOURCE, the class
+  is one file.**
+
+**WHY THIS CLASS DESERVES A LINT RATHER THAN CASE-BY-CASE DISCOVERY, and it is the durable part:**
+
+- A corrupted **path** breaks visibly - a link resolves to nothing and someone notices.
+- A corrupted **prose** string reads oddly and someone re-reads it.
+- A corrupted **regex** does neither. `'(?i)\bcontroller\b|...'` shipped as
+  `'(?i)<0x08>controller<0x08>|...'`: the first alternative can never match, the assertion keeps
+  passing on its other alternatives, and **the check is silently weaker than it is written**. Nothing
+  fails, so nothing prompts a reader.
+- **It was found only because an unrelated edit script refused to write a file containing control
+  bytes** - not by any check that was looking for it.
+
+- **Class closure**: bounded and repaired for this tag; the LINT is beta4 (see -047).
+
+### DRIFT-199-I003-047 - the harness-enforcement queue, now THREE rules with this session's evidence attached (extends DRIFT-199-I003-041)
+
+Three more rules earned mechanically-enforceable status this session. Each has a measured failure behind
+it, and each is trivial to enforce and impossible to remember reliably - which is the whole finding of
+DRIFT-199-I003-041: **a rule that depends on recollection will not be applied.**
+
+| Rule | Evidence | Enforceable shape |
+| --- | --- | --- |
+| **A mutation proof requires its target GREEN before the mutation** | `002/drift-log.md:667` claimed *"disabling the consumer turns crossing-owner case 3 red"* - case 3 was ALREADY red, so the mutation discriminated nothing. 7th unverified-precondition control. | a mutation-proof helper that refuses to report a discriminating result unless it observed the baseline PASS first |
+| **A count claim states the set it counted over, or it is not a claim** | Three wrong counts this session - FileList `423` (two arrays instead of one), *"only Case 3 fails"* (truncated list), `201` (test-by-line pairs instead of distinct lines). **None failed at arithmetic; all three counted the right things over the wrong set.** | counts are reported with their scope, and a claim without one is not accepted as evidence |
+| **No control characters outside tab, LF and CR in any source file** | one shipped corrupted regex, silently weakening an assertion; found only because an edit script refused to write it | a commit-time scan - 223 packaged + 476 test files scan in seconds |
+
+- **The first two join the four already queued** (prove both directions; assert and print your
+  precondition; read and write bytes for byte-level claims; build the needle from the haystack's
+  convention). The third is new and is the cheapest of all of them.
+- **Count claims fail by SCOPE** is the sharper statement, and it is what makes the rule enforceable:
+  "verify counts" is advice, "state your set" is a check.
+- **Class closure**: NONE - the queue IS the beta4 item.
