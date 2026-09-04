@@ -2051,8 +2051,25 @@ red-at-birth assertions, three days after the record said otherwise.**
 - **Executed 2026-09-04.** The file is now `tools/pending/crossing-owner.pending.ps1` with its cost in the
   header, and FR-032's lane in the regression suite was REMOVED rather than repointed - pointing a lane at
   a known-red file makes the suite permanently red for work that was never green.
+- **AND THE RELOCATION WAS STILL NOT FINISHED WHEN I SAID IT WAS.** Moving the file broke **two**
+  registries, and I found only one before declaring the set complete:
+
+  | registry | names the file | how it was found |
+  | --- | --- | --- |
+  | `tests/f198-regression-suite.ps1` | as a lane | grep over `tests/ scripts/ .github/ *.psd1` |
+  | `.specrew/release-gate-suites.txt` | as a release-cadence suite | **the census, on the next run** |
+
+  The first grep searched a **chosen subset of directories that did not include `.specrew/`** - the third
+  scope error of the same family in this investigation, after the WARN-versus-error read and the filename
+  pattern that missed `.specrew-extension-runtime.json` (DRIFT-199-I003-054). **A relocation is not finished
+  until every registry naming the file is checked, and "every" has to mean the repository.**
+- **WHAT SAVED IT**: `tests/unit/every-suite-is-named-by-a-lane.tests.ps1`, which compares the suites the
+  plans name against the files on disk in both directions. It failed on the count within one census run.
+  **Without that guard the suite would have been named by a manifest, absent from disk, and silently never
+  run** - which is the exact state the guard's own header says it exists to prevent. It earned its place
+  here.
 - **Class closure**: NONE - practice, and it pairs with DRIFT-199-I003-054. Both are claims that outran
-  their evidence; this one outran a directory listing.
+  their evidence; this one outran a directory listing, then outran a grep.
 
 ### DRIFT-199-I003-057 - THE PRECONDITION GATE HAD A PRECONDITION IT DID NOT STATE: the walk's Step 0 demanded a match that Step 1 is what creates
 
