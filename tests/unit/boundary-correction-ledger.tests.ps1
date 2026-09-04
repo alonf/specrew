@@ -116,11 +116,26 @@ try {
         "Boundary commit hash: $boundaryCommit",
         "Artifact state: git-tree $boundaryTree",
         'Human approval phrase: approved for tasks',
-        '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->',
         'Numeric labels are non-authoritative'
     )) {
         Assert-True ($renderOne.Contains($required)) "pending packet carries exact scoped semantic: $required"
     }
+
+    # THE MARKER IS ASSERTED AS A CONTRACT, NOT AS ONE RENDERING.
+    #
+    # It was pinned as the exact literal '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->' and went red
+    # when FR-024 (T014) began appending the crossing identity - see sync-boundary-state.ps1:658, 'the
+    # marker carries the crossing identity when the pending state has one'. Re-pinning the literal with
+    # the suffix would repeat the original mistake, so this asserts the SHAPE the capture reader actually
+    # requires: two boundary tokens separated by ->, with an OPTIONAL @ crossing-<hex>.
+    #
+    # CONTRACT SOURCE: scripts/internal/bootstrap/ConversationCaptureAccessor.ps1:667 and :800, where the
+    # reader's regex is written out TWICE, independently and byte-identically. This comment exists so
+    # that whoever edits either site can grep to the test mirroring them. It does not enforce agreement,
+    # and the accessor is deliberately NOT dot-sourced to borrow the pattern - that is more coupling than
+    # is wise. The durable fix is one named pattern constant consumed by both reader sites and this test.
+    $markerContract = 'SPECREW-VERDICT-BOUNDARY:\s*plan\s*->\s*tasks(?:\s*@\s*crossing-[0-9a-f]{8,})?\s*-->'
+    Assert-True ($renderOne -match $markerContract) 'pending packet carries the paired verdict marker, crossing identity optional'
 
     $duplicate = Add-SpecrewBoundaryAuthorizationCorrection @correctionArgs
     Assert-True (-not [bool]$duplicate.Appended -and @((Get-SpecrewBoundaryEnforcementState -ProjectRoot $scratch).State['correction_history']).Count -eq 1) 'same correction is idempotent and does not append twice'
