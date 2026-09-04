@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 56 (DRIFT-199-I003-001 through -056)
+**Total drift events**: 57 (DRIFT-199-I003-001 through -057)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2053,3 +2053,30 @@ red-at-birth assertions, three days after the record said otherwise.**
   a known-red file makes the suite permanently red for work that was never green.
 - **Class closure**: NONE - practice, and it pairs with DRIFT-199-I003-054. Both are claims that outran
   their evidence; this one outran a directory listing.
+
+### DRIFT-199-I003-057 - THE PRECONDITION GATE HAD A PRECONDITION IT DID NOT STATE: the walk's Step 0 demanded a match that Step 1 is what creates
+
+**The candidate walk opens with a step whose whole purpose is to stop a walk that runs against the wrong
+bits. It could not have been run.**
+
+- **THE DEFECT**: Step 0 said *"proceed only when the `commit` and `content` values match between the two"*,
+  comparing the candidate build against the installed module - **before Step 1, which is the step that
+  installs it.** The comparison had no second operand. Worse, the module actually on this machine is the
+  six-file remnant left by the broken three-direction control (DRIFT-199-I003-043), so the check would not
+  merely have been vacuous, it would have **failed and stopped the walk at its first instruction**.
+- **WHY IT SURVIVED WRITING AND REVIEW**: every individual sentence is correct. Using commit and content
+  hash rather than the version string is right. Refusing a small file count is right. The failure is in the
+  ORDER, and order is the one property you cannot see by reading a step on its own - which is exactly how a
+  walk is read while being written.
+- **THE SHAPE, and it is the reason this is recorded rather than just fixed**: **a check that verifies
+  starting conditions is itself a thing with starting conditions.** Step 0 exists because four checks in
+  this session ran without confirming their preconditions; it then did the same thing one level up. The
+  rule it enforces did not get applied to it.
+- **HOW IT WAS CAUGHT**: by running the build dry (`-WhatIfOnly`) as a pre-check and reading its
+  `installed False` line against the doc's own instruction. **Executing the first command of a document you
+  wrote is a cheaper review than re-reading it.**
+- **FIXED**: Step 0 now RECORDS the candidate's commit and content hash and compares nothing. Step 1
+  installs and then asserts the match, and says plainly that a small file count means the install did not
+  replace the remnant.
+- **Class closure**: NONE - practice, and it belongs with DRIFT-199-I003-054 and -056. All three are the
+  same family: a claim or a check that was correct in substance and wrong about the state it assumed.
