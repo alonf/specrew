@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 48 (DRIFT-199-I003-001 through -048)
+**Total drift events**: 51 (DRIFT-199-I003-001 through -051)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1754,3 +1754,82 @@ this session, after the FileList `423`, "only Case 3 fails", `201`, and the cens
   optional identity rather than one rendering - the same lesson as the transition-table pin: assert the
   contract, not a rendering of it.
 - **Class closure**: the test is fixed; the five-way agreement is not. Beta4.
+
+### DRIFT-199-I003-049 - SUPERSEDES the T023 mutation-proof claim in sealed iteration 002: the mutation discriminated nothing, because its target was already red (records-only supersession; the sealed record is NOT amended)
+
+**Dated supersession, 2026-09-04.** The sealed record is left exactly as signed off. This entry names the
+claim it supersedes and why; an edit would erase the fact that the claim was ever made, and
+DRIFT-199-I001-035 already ruled that authority facts are immutable by design - *a store that can be
+corrected by hand is not evidence.*
+
+- **THE SUPERSEDED CLAIM**: `specs/199-beta3-stabilization/iterations/002/drift-log.md:667` -
+  *"Finding 2: disabling the consumer turns crossing-owner case 3 red."*
+- **WHY IT IS VOID**: `crossing-owner` **case 3 was already red** at the time the claim was written.
+  Measured: the same 8 assertions fail at `03e080bf` - the commit that ADDED them - and at the tag, and
+  the two failing sets are byte-identical. **A mutation that turns a red test red discriminates nothing.**
+  The proof could not distinguish the control being disabled from the control never having worked.
+- **THE T023 VERDICT LINE**: `002/review.md:105` records T023 / FR-032 as **`pass`**. That verdict rests
+  in part on the void proof. The line is not amended; a reader of the sign-off should be able to see both
+  what was claimed and that it was later found void.
+- **SCOPE, MEASURED, because the difference matters**: of the claims in iterations 001 and 002 that cite a
+  test which was red at the tag - **60 distinct lines** -
+
+| kind | count |
+| --- | --- |
+| mutation-proof claims | **2** |
+| ...of which VOID (target already red) | **1** (`002/drift-log.md:667`) |
+| ...of which VALID | 1 (`002/drift-log.md:1069`, cites case 8 - case 8 PASSES at both commits) |
+| coverage-table rows | 58 |
+
+  **This is an instance, not a systemic failure of the batch's proof practice.**
+- **AND NO FR IS UNSUPPORTED.** `001/coverage-evidence.md` has 22 FR/SC rows; all 22 cite at least one
+  red-at-tag test, and **0 cite ONLY red tests** - every row's conclusion survives on its other citations.
+  Overstated, not unsupported. Separately, 26 lines DO name only a red test, but **none carries an FR id**:
+  they are `001/code-map.md` source-to-test mappings (14), `001/drift-log.md` narrative citations (11) and
+  one erratum line. Weaker artifacts making weaker claims, recorded separately rather than merged into the
+  FR number.
+- **Class closure**: the enforceable rule is in DRIFT-199-I003-047 - a mutation proof requires its target
+  GREEN before the mutation.
+
+### DRIFT-199-I003-050 - FR-032 ships with no passing automated test and no field proof, and the reason it could not be walked is a testability finding (DISCLOSED, not blocking)
+
+- **Automated**: none. Its locking test, `crossing-owner`, had **8 assertions red from the moment
+  `03e080bf` authored them** - the same commit as the block-release fix they were written to lock. The
+  file is relocated to `tools/pending/`; 17 assertions that DO pass were lost with it, which was the right
+  trade only because the 8 never worked.
+- **Field**: none. FR-032 requires **two concurrent sessions** - one recording a crossing, another live
+  session arriving at the same stop. None of the three walks staged that: `beta3-tagwalk` (claude),
+  the ConsoleFractal recovery close (codex) and the Copilot walk were each single-session.
+- **AND THAT IS A TESTABILITY FINDING, NOT AN OVERSIGHT.** A fifteen-to-twenty-minute single-session walk
+  **cannot** stage two concurrent sessions, and should not try. The behaviour is outside what the walk
+  format can reach at all - so no amount of walk discipline would have caught it, and the gap is
+  structural rather than procedural.
+- **The mechanism narrowed as far as it went** travels with it: the informational line is composed only
+  inside `elseif ($blockWarranted)`, and instrumentation showed execution never reaches the
+  `$blockWarranted` assignment for this stop - the assessment section is skipped entirely and the emit is
+  reached with nothing composed. Companion: **DRIFT-199-I003-045**, the journal names the classification,
+  never the decision.
+- **DISPOSITION: ship disclosed.** The fix answers a real observed defect - a foreign session stop-blocked
+  with nothing it could discharge - and reverting reinstates that interruption. **Shipping a fix with a
+  disclosed verification gap is better than shipping a known interruption**, provided the disclosure is
+  specific, which is what this entry and the release record are for.
+- **Class closure**: NONE. The replacement test is a beta4 item.
+
+### DRIFT-199-I003-051 - RED-AT-BOTH IS NOT EVIDENCE OF LONGSTANDING: compare WHICH assertions are red, three encounters in one session
+
+**A test that fails on both sides of a comparison has told you nothing until you compare the failing
+SETS.** Three encounters, three different underlying truths, all of which looked settled at the exit-code
+level:
+
+1. **`crossing-owner`** - red at `03e080bf` and at the tag. The sets are **byte-identical**, which is what
+   established *wrong at birth* and made relocation the right call.
+2. **`conformance-detection`** - red at beta2 and at the tag. **Different cases**: beta2's Case 7 (the
+   deliberate W53 cap-announcement, `DRIFT-199-I001-119`) versus the tag's Case 16a3. Reading the exit
+   code alone would have called a deliberate change a regression AND missed the real failure.
+3. **`validate-governance-changed-only`** - red at beta2 and at the tag. The sets are **DISJOINT**: three
+   `-FullRun` failures at beta2, three scoping failures at the tag. One file carried a repair and an
+   apparent regression inside the same exit code.
+- **THE RULE**: red-at-both is an unexamined coincidence of exit codes. **Compare the sets.** It is the
+  same defect as counting over the wrong set - a claim resting on a coarser measurement than the claim
+  requires - and it belongs beside the count-scope rule in the harness queue.
+- **Class closure**: NONE - practice, recorded with three measured instances.

@@ -261,6 +261,27 @@ list**. Nothing in a census result should be read as "this broke recently"; only
 the machine and the harness fixed while varying the tree, can date a failure. The tests are years older
 than the gate, so an individual failure may still be long-standing - one of them is confirmed so.
 
+## A disclosed verification gap: FR-032
+
+**FR-032 - a pending crossing is owed by the session that recorded it - ships in this release with no
+passing automated test and no field proof.** It is disclosed here rather than inherited quietly.
+
+The fix is real and answers an observed defect: a second, live session arriving at a boundary it did not
+create was stop-blocked with nothing it could discharge, producing repeated interruptions until the cap.
+Reverting the fix reinstates that. So it ships.
+
+What does not exist behind it:
+
+- **No passing automated test.** Its locking test had eight assertions that were red from the moment they
+  were authored, in the same commit as the fix they were written to lock. That test is relocated to
+  `tools/pending/` with the mechanism recorded.
+- **No field proof.** The behaviour needs two concurrent sessions, and a single-session walk cannot stage
+  that. All three walks behind this release were single-session. **This is a limit of the walk format, not
+  an oversight** - no amount of walk discipline reaches a two-session scenario.
+
+A replacement test is a beta4 item. Until it exists, FR-032's behaviour is supported by the reasoning in
+its fix and by the defect it was written to remove, and by nothing else.
+
 ## Known issues
 
 - **Review severity summaries understate what the review found — read the raw findings.** A round's
