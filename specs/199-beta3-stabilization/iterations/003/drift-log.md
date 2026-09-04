@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 47 (DRIFT-199-I003-001 through -047)
+**Total drift events**: 48 (DRIFT-199-I003-001 through -048)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1716,3 +1716,41 @@ DRIFT-199-I003-041: **a rule that depends on recollection will not be applied.**
 - **Count claims fail by SCOPE** is the sharper statement, and it is what makes the rule enforceable:
   "verify counts" is advice, "state your set" is a check.
 - **Class closure**: NONE - the queue IS the beta4 item.
+
+### DRIFT-199-I003-048 - the verdict marker has TWO writers and TWO independent copies of its reader regex, with nothing checking any of them agree (OPEN; beta4, and the evidence is a near-miss)
+
+**Found by nearly reporting a regression that was not one.** Reading
+`sync-boundary-state.ps1:659` in isolation showed `'<!-- SPECREW-VERDICT-BOUNDARY: {0} -->'` - a single
+placeholder - against `shared-governance.ps1:2869`'s `'{0} -> {1}'` pair, and I reported two writers
+disagreeing on the marker's shape. **They do not disagree.** Line 656, three lines above, assigns
+`$boundary = ('{0} -> {1}' -f $fromMarkerBoundary, $toMarkerBoundary)`, so 659's placeholder receives the
+already-joined pair. **The fact was right and the scope was wrong** - the fifth instance of that class
+this session, after the FileList `423`, "only Case 3 fails", `201`, and the census-at-beta2 premise.
+
+- **But checking the reader to test the hypothesis found something real.** The capture regex at
+  `ConversationCaptureAccessor.ps1:667` and `:800` requires the separator and the second boundary -
+  `SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|,|to)\s*([a-z-]+)(?:\s*@\s*(crossing-[0-9a-f]{8,}))?` -
+  with **no `?` on that group**. A single-boundary marker genuinely would not parse, and **a typed human
+  verdict would silently fail to be captured.** Had the divergence been real it would have been the most
+  serious finding of this census by a wide margin.
+- **AND THE READER DUPLICATES ITSELF.** That pattern is written out at 667 and again at 800,
+  **independently and byte-identically**. So the contract-shape problem is not two writers and one parser:
+  it is **two writers and TWO parser copies**, with nothing checking that any of the four agree - and this
+  batch's test fix is about to become a fifth hand-maintained copy of the same contract.
+- **If 667 and 800 ever drift**, the two capture paths disagree about what a valid marker is, and the
+  symptom is a verdict captured on one path and **silently dropped** on the other. That is the same
+  failure class as the authority-capture silent drop this batch already fixed, arriving by a different
+  route.
+- **BETA4 SHAPE, concrete rather than a concern**: one named pattern constant, defined once, consumed by
+  both reader sites and available to the test. A small refactor that collapses a five-way hand-maintained
+  agreement into one definition. Same family as the cross-context mirror question (DRIFT-199-I003-033) -
+  copies whose agreement nothing verifies - and it belongs beside it in the queue.
+- **What was fixed here** is only the test: `boundary-correction-ledger` pinned the exact literal
+  `<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->` and went red when FR-024/T014 began appending the
+  crossing identity (`sync-boundary-state.ps1:658` states the reason in the code). Confirmed by
+  measurement - the artifact renders
+  `<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks @ crossing-b386bb11... -->`, and that ONE string of the
+  six required was missing. **Stale test, citation FR-024/T014**, now asserting the paired marker with an
+  optional identity rather than one rendering - the same lesson as the transition-table pin: assert the
+  contract, not a rendering of it.
+- **Class closure**: the test is fixed; the five-way agreement is not. Beta4.
