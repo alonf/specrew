@@ -1131,8 +1131,22 @@ try {
     New-LensApplicability -Proj $p16a3 -Selected @('architecture-core','code-implementation','security-compliance') -Done @('architecture-core','code-implementation') -BindingsByLens @{ 'code-implementation' = [ordered]@{ 'http-client' = 'IHttpClientFactory' } }
     Set-Content -LiteralPath (Join-Path $p16a3 'specs\050-host-neutral-gate\implementation-rules.yml') -Value "schema_version: '1.0'" -Encoding UTF8
     New-HandoverSnapshot -Proj $p16a3 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
+    # WHAT MAKES A REPAIR *TARGETED* IS THAT IT NAMES THE OFFENDING TOKEN (2026-09-04).
+    #
+    # This asserted the literal 'lowercase stable values'. be573254 (DRIFT-199-I002-029) split the
+    # refusal into name and value branches so it names WHICH half failed, and that phrase went with the
+    # old single message - the guidance survives, expressed per failure mode. Swapping one literal for
+    # two would re-pin renderings, which is the same mistake as the transition-table argument pin and
+    # the exact-marker pin.
+    #
+    # The case is 'targeted repair, not a generic packet'. The not-generic half is already asserted
+    # ('five-part context packet' absent). The TARGETED half is that the refusal names the specific
+    # token the fixture supplied - here the value 'IHttpClientFactory' and the decision 'http-client'.
+    # That is rendering-independent, survives the name/value split, and is STRONGER than the literal it
+    # replaces: a refusal could carry the phrase 'lowercase stable values' while naming nothing at all,
+    # and the old assertion would have passed it.
     $r16a3 = Invoke-Conformance -Proj $p16a3 -TranscriptPath (New-Transcript -Proj $p16a3 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
-    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'could not be recorded cleanly' -or $r16a3.Out -notmatch 'lowercase stable values' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
+    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'could not be recorded cleanly' -or $r16a3.Out -notmatch 'IHttpClientFactory' -or $r16a3.Out -notmatch 'http-client' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
     Write-Pass "Case 16a3: mixed-case binding tokens are repaired in place before the next lens, with no generic packet"
 
     $p16a4 = New-Fixture -Working 'plan' -LastAuth 'plan'
