@@ -1,3 +1,34 @@
+# RELOCATED OUT OF tests/ 2026-09-04 - EIGHT OF ITS ASSERTIONS WERE NEVER GREEN, NOT EVEN ONCE.
+#
+# MAINTAINER RULING (2026-09-02, executed here). This file locks FR-032 - a pending crossing is owed by
+# the session that recorded it. Eight of its 25 assertions have been RED SINCE THE COMMIT THAT AUTHORED
+# THEM, 03e080bf, which is the same commit as the block-release fix they were written to lock. Measured:
+# the failing set at 03e080bf and the failing set at the tag are BYTE-IDENTICAL.
+#
+# WHY THAT MATTERS MORE THAN THE COUNT: a mutation proof in iteration 002 claimed that disabling the
+# consumer "turns crossing-owner case 3 red". Case 3 was ALREADY red. A mutation that turns a red test red
+# discriminates nothing, so that proof is void - it could not tell a disabled control apart from one that
+# never worked. It is superseded by DRIFT-199-I003-049; the sealed record is not amended.
+#
+# WHAT THIS COSTS, STATED PLAINLY: 17 assertions in this file DO pass and go with it - ownership identity,
+# idempotence across sessions, the refusal to infer ownership from the last session to start, and the
+# suppression/render matrix. That is real coverage lost. It is the accepted trade only because the other
+# eight never worked, and a red that has never been green is indistinguishable from a regression in a
+# census whose whole job is to tell those apart.
+#
+# WHAT FR-032 SHIPS ON, since this file no longer supports it: nothing automated, and no field proof. The
+# behaviour needs TWO CONCURRENT SESSIONS - one recording a crossing, another arriving at the same stop -
+# and a single-session walk cannot stage that. All three walks behind this release were single-session.
+# That is a limit of the walk format, not an oversight. Disclosed in the release notes; DRIFT-199-I003-050.
+#
+# THE MECHANISM, narrowed as far as instrumentation went: the informational line is composed only inside
+# `elseif ($blockWarranted)`, and execution never reaches the `$blockWarranted` assignment for this stop -
+# the assessment section is skipped entirely and the emit is reached with nothing composed.
+#
+# THE GATE DOES NOT RUN IT. Run it by hand while replacing it:
+#   pwsh -NoProfile -File tools/pending/crossing-owner.pending.ps1
+# Its RED is a specification of work owed, not a failure to investigate again.
+#
 # Iteration 002, T023 (FR-032, SC-019): a pending crossing is owed by the session that recorded it.
 #
 # Field case (DRIFT-199-I002-001, the maintainer watching): the boundary demand fired in the REVIEWER
