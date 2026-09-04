@@ -204,7 +204,7 @@
     },
     {
       "path": "refocus/general.md",
-      "sha256": "1df74b7201dbf6a22d3e88d043facb9eabc39b2508f24fe1ff6319b062b9314e"
+      "sha256": "44d9623f82bfe00765390d15065523ee210145060d44861cf8efa13cebadbdc6"
     },
     {
       "path": "refocus/implement.md",
@@ -252,7 +252,7 @@
     },
     {
       "path": "scripts/confirm-workshop-lens.ps1",
-      "sha256": "ec08d8404631b59dba27c387ae056d95272979defc369c954d14c6899598f91d"
+      "sha256": "484772d01ef929244f33e6037e9b81537aee3f4b3f4b7f6c31201f13a6cc223f"
     },
     {
       "path": "scripts/conformance-turn-delta.ps1",
@@ -392,7 +392,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "ff2c845c5c0fa9869721a985af47cd77e71339f0f2b0052889350374fc18610b"
+      "sha256": "b5f498bec3df71d52be6eef5046fd20a39a56067fd867f840db6a692d7214ef0"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -404,7 +404,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "c13a944f6104158e46b1184370e34e9c0e2e27a26b9cf70fbb0c6fea3939a91b"
+      "sha256": "79ba1c7d927c3e00da606ca12acf6d4d8e9bfa66ab26ec42bcfba91f675dcc82"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -448,7 +448,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "5c94c6ac3804ebf058d428d1c60f4871ab660ce7c38ddc07a1e91b49a27d87d3"
+      "sha256": "280bfd90b15b338fff988924b42893f83d05532a030dad25804988bf6e553df4"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
