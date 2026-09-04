@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 57 (DRIFT-199-I003-001 through -057)
+**Total drift events**: 58 (DRIFT-199-I003-001 through -058)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2097,3 +2097,32 @@ bits. It could not have been run.**
   replace the remnant.
 - **Class closure**: NONE - practice, and it belongs with DRIFT-199-I003-054 and -056. All three are the
   same family: a claim or a check that was correct in substance and wrong about the state it assumed.
+
+### DRIFT-199-I003-058 - THE CENSUS PASSED, for the first time since it was added: 400 files, zero failures, at 43815938
+
+**Measured 2026-09-04 on the respin candidate.** `files=400, pester=147, scripts=253, failed=0,
+caller_contaminated=False`.
+
+- **This has no precedent to compare against.** The census job entered `publish-module.yml` on 2026-08-26,
+  after the beta2 release, and **every run containing it has failed** - including the run the original
+  v0.40.0-beta3 tag triggered, which failed 23 of 404 named test files. This is the first green, so it is a
+  first measurement rather than a return to a known-good state.
+- **The subject set shrank by four and the reason is recorded per file**, because a count states its set:
+  404 named files at the tag, 400 now. Relocated out of `tests/`: `fr066-first-boundary-arrival`,
+  `fr068-verdict-demand-reproduction` (both red by design), `coverage-line-names-its-campaign` (a developer
+  probe) and `crossing-owner` (red at birth). **No file was excluded to make the gate pass** - per-file
+  exclusion is not available in this harness, and the gate is all-or-nothing.
+- **THE LAST FAILURE WAS ONE I CAUSED, and the harness caught it in one run.** Relocating `crossing-owner`
+  left its name in two registries; I found one. `every-suite-is-named-by-a-lane` failed on the count
+  mismatch, which is exactly what it exists to do. Recorded in DRIFT-199-I003-056.
+- **THE CANDIDATE**: commit `43815938`, content `fdda26710aa9bba67f216ea1d468862dcc152416c9796a7af1a19678699c8ab5`,
+  414 packaged files, byte verification passed on all of them, stamp verified against installed contents.
+  **The install also repaired the module destroyed by the broken control** (DRIFT-199-I003-043): 6 files
+  where roughly 414 belong, now 414.
+- **THREE FILE COUNTS ARE CORRECT AT ONCE, and the walk now names all three** rather than leaving a reader
+  to suspect the package: **413** is `content_file_count`, every staged file except `build-stamp.json`,
+  which cannot contain its own hash; **414** is what the installer reports as packaged; **416** is the
+  install root, being the 414 plus two files the installer deliberately preserves across a clean replace -
+  PowerShellGet's provenance file and the module's version-check cache. The packaging code's own comment
+  predicted this confusion, having already seen a verifier scope to FileList and disagree with the stamp.
+- **Class closure**: NONE - a measurement, recorded so the next census has a baseline to be compared with.

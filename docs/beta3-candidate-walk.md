@@ -88,8 +88,15 @@ $s = Get-Content -LiteralPath (Join-Path $m.ModuleBase 'build-stamp.json') -Raw 
 "files     : $($s.content_file_count)   base: $($m.ModuleBase)"
 ```
 
-**Proceed only when `commit` and `content` match the values you wrote down in Step 0, and
-`content_file_count` is in the low 400s.**
+**Proceed only when `commit` and `content` match the values you wrote down in Step 0.**
+
+**Three different file counts are correct here, and they are meant to differ.** Expect exactly:
+
+| number | what it counts |
+| --- | --- |
+| **413** | `content_file_count` - every staged file except `build-stamp.json`, which cannot contain its own hash |
+| **414** | what the installer reports as `packaged` - the 413 plus the stamp |
+| **416** | files in the install root - the 414 plus two the installer deliberately preserves across a clean replace: PowerShellGet's `PSGetModuleInfo.xml` and the module's `.specrew\version-check-cache.json` |
 
 **FAILURE - stop here if:**
 
