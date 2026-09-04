@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 55 (DRIFT-199-I003-001 through -055)
+**Total drift events**: 56 (DRIFT-199-I003-001 through -056)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2024,3 +2024,32 @@ rather than assume it." This is that proof, and it is a measurement rather than 
   behavioural change carrying its own three-direction proof, and is contributor-only.
 - **Class closure**: the proof script generalises to any comment-only claim and should become the harness
   check that makes "code-unchanged" a measured assertion rather than a review opinion. Beta4 item.
+
+### DRIFT-199-I003-056 - TWO DRIFT ENTRIES STATED A RELOCATION THAT HAD NOT HAPPENED: the record described a decision as though deciding it moved the file
+
+**DRIFT-199-I003-049 and -050 both say `crossing-owner.tests.ps1` "is relocated to `tools/pending/`". It
+was not. The file was still in `tests/`, still discovered by the census, and still failing its eight
+red-at-birth assertions, three days after the record said otherwise.**
+
+- **HOW IT WAS CAUGHT**: not by re-reading the record, which was self-consistent, but by listing
+  `tools/pending/` while checking that all eight census dispositions were actually in the candidate. The
+  directory held three files; the record implied four. **A record cannot audit itself.**
+- **WHAT MADE IT INVISIBLE**: the entries are correct about everything else - the byte-identical failing
+  sets, the void mutation proof, the 17 assertions given up, the reason the trade is right. **A paragraph
+  that is right about the analysis reads as right about the action**, and the sentence describing the move
+  sat inside it, in the same tense as the findings around it.
+- **THIS IS THE PROJECT'S OWN RULE 7 TURNED ON ITS RECORDS.** state.md and task statuses must reflect disk
+  truth; so must a drift entry that asserts a file's location. **A claim about where a file lives is a
+  claim about disk, not a summary of a decision**, and it needs the same check as a count claim needs its
+  set.
+- **AND IT WOULD HAVE FAILED THE TAG.** The census would have reported `crossing-owner` red, after a report
+  that all eight failures were cleared. The gap between the record and the tree was exactly one census run
+  wide.
+- **THE RULE**: **a disposition is not recorded until the disk shows it.** When an entry says relocated,
+  removed, or renamed, verify the path before writing the sentence, and again before reporting the set
+  complete. Cheap: one directory listing.
+- **Executed 2026-09-04.** The file is now `tools/pending/crossing-owner.pending.ps1` with its cost in the
+  header, and FR-032's lane in the regression suite was REMOVED rather than repointed - pointing a lane at
+  a known-red file makes the suite permanently red for work that was never green.
+- **Class closure**: NONE - practice, and it pairs with DRIFT-199-I003-054. Both are claims that outran
+  their evidence; this one outran a directory listing.

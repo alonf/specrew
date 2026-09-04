@@ -238,6 +238,29 @@ the fewest eyes. Every gate this batch built points inward at the code and the l
 pointed at the prose that represents them. The bot was the only reader positioned to see the page as a
 stranger sees it.
 
+## This tag was cut once before, on 31 August, and did not publish
+
+**A tag named `v0.40.0-beta3` already existed. It was deleted and re-cut, and this section is why.**
+
+On 31 August the tag was cut on commit `4f4dce52` and a GitHub pre-release was published from it. The
+publish never completed. The workflow the tag triggered ran three jobs: pre-publish validation passed, the
+full-test census failed, and the publish job was skipped because the census gates it.
+
+The census failed 23 of 404 named test files.
+
+**Nobody noticed for two days.** The pre-release was visible the whole time, so from outside it looked like
+a release had happened. What had actually happened is that the gate did its job and the result went unread.
+That is the part worth saying plainly: the failure was not subtle and not hidden, it was simply not looked
+at.
+
+The response was a respin rather than a patch on top. A branch was taken from the same commit, and the work
+was confined to tests, the census harness, and a small set of packaged fixes the census surfaced. The
+original tag and its pre-release were then deleted and `v0.40.0-beta3` re-cut at the respin candidate, so
+the name points at bits that passed their own gate.
+
+**If you installed from the 31 August pre-release, replace it.** It carries a malformed authority marker in
+a deployed script, described in the next section, and it is a build whose gate never went green.
+
 ## What the release gate measured, and why its failure count went up
 
 The full-tree census is the gate this release hangs on. Reading its numbers needs one fact stated plainly,
