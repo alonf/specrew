@@ -38,55 +38,63 @@ path per the call graph, carries a three-direction proof, and **you exercise it 
 
 ---
 
-## Step 0 — PROVE YOU ARE RUNNING THE CANDIDATE (do not skip)
+## Step 0 - WRITE DOWN WHAT THE CANDIDATE IS (do not skip)
 
 **A walk against the wrong bits proves nothing while looking like a pass.** Four checks in this session ran
 without confirming their starting conditions, three of them after the rule was written down. This walk is a
 check too, and it is the most expensive one to get wrong, because a tag would follow it.
 
-**Do not use the version string** — it cannot distinguish two builds of `0.40.0`, and you hit exactly this
+**Do not use the version string** - it cannot distinguish two builds of `0.40.0`, and you hit exactly this
 problem earlier when the version commands would not show you a hash. Use commit and content hash.
 
+This step does not compare anything yet. It records the two values you will compare **after** you install,
+because right now there is deliberately nothing to match: the installed module was destroyed by a broken
+control earlier in this work, and Step 1 is what replaces it.
+
 ```powershell
-# 1. What the candidate SHOULD be (run from the respin worktree, prints without installing):
+# Run from the respin worktree. Prints what WOULD be installed; installs nothing.
+cd C:\Temp\b3census
 pwsh -File scripts/internal/install-local-build.ps1 -WhatIfOnly
 ```
 
-```powershell
-# 2. What is ACTUALLY installed and loaded:
-$m = Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending | Select-Object -First 1
-$s = Get-Content -LiteralPath (Join-Path $m.ModuleBase 'build-stamp.json') -Raw | ConvertFrom-Json
-"installed : commit $($s.commit)  content $($s.content_sha256)"
-"files     : $($s.content_file_count)   base: $($m.ModuleBase)"
-```
+**Expect** a line of the form `commit <sha> content <sha256>`, a file count in the low 400s, and
+`WhatIfOnly: nothing was installed.` **Write the commit and content values down.** They are the walk's
+subject.
 
-**Proceed only when the `commit` and `content` values match between the two, and `content_file_count` is in
-the low 400s.**
-
-**FAILURE — stop here if:**
-
-- the hashes differ → you are not running the candidate and the walk would be vacuous
-- `content_file_count` is small (single digits or tens) → the install is not a real Specrew build
+**FAILURE - stop here if**: the command refuses, or reports a file count in the single digits or tens, which
+would mean the source tree is not a real Specrew build.
 
 ---
 
-## Step 1 — Install the candidate
+## Step 1 - Install the candidate, then prove it is what got installed
 
 **Install from the candidate build directly. Do NOT use `specrew update`.** The standing rule against
-updating walk projects holds; this is a fresh project taking the candidate build directly, and saying so
+updating walk projects holds; this is a fresh install taking the candidate build directly, and saying so
 here rather than leaving it to habit is deliberate.
 
 ```powershell
-cd C:\Temp\b3census          # the respin worktree, at the commit being tagged
 pwsh -File scripts/internal/install-local-build.ps1
 ```
 
 **Expect**: `packaged <N> files from <commit>`, `version 0.40.0 prerelease 'beta3'`,
 `commit <sha> content <sha256>`, `target <module path>`, then an install confirmation.
 
-**Then re-run Step 0's second command.** The installed stamp must now match the candidate.
+**Now the comparison Step 0 set up.** This is the gate:
 
-**FAILURE**: any refusal, or a stamp that still does not match.
+```powershell
+$m = Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending | Select-Object -First 1
+$s = Get-Content -LiteralPath (Join-Path $m.ModuleBase 'build-stamp.json') -Raw | ConvertFrom-Json
+"installed : commit $($s.commit)  content $($s.content_sha256)"
+"files     : $($s.content_file_count)   base: $($m.ModuleBase)"
+```
+
+**Proceed only when `commit` and `content` match the values you wrote down in Step 0, and
+`content_file_count` is in the low 400s.**
+
+**FAILURE - stop here if:**
+
+- the hashes differ from Step 0 - you are not running the candidate and the rest of the walk would be vacuous
+- `content_file_count` is small (single digits or tens) - the install did not replace the broken remnant
 
 ---
 
