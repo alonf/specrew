@@ -181,6 +181,6 @@ list, or a menu.
 All of: hashes matched at step 0, install clean, init clean, refocus line rendered, one lens closed with an
 artifact, one boundary crossed on a typed verdict. **15-20 minutes, not a full lifecycle.**
 
-Report the result and I will proceed to the tag. **No commit lands on `respin/beta3-census` after the walk**
-- the next git operation on that branch is the tag itself, because any commit in between invalidates the
-walk and it starts over.
+Report the result and I will proceed to the tag. **No commit lands on `respin/beta3-census` after the
+walk.** The next git operation on that branch is the tag itself, because any commit in between invalidates
+the walk and it starts over.

@@ -278,9 +278,9 @@ Of the 13 new entries, 9 were a single mirror-parity defect introduced and fixed
 are distinct. 12 entries survived from the first run and are the real remainder.
 
 **A related limit, stated rather than implied**: this project has no census baseline, because **the census
-has never passed**. The job was added on 2026-08-26 - after the beta2 release, which therefore never ran it
-- and every run containing it since has failed. These results are a **first measurement, not a regression
-list**. Nothing in a census result should be read as "this broke recently"; only a local control, holding
+has never passed**. The job was added on 2026-08-26, after the beta2 release, which therefore never ran
+it, and every run containing it since has failed. These results are a **first measurement, not a
+regression list**. Nothing in a census result should be read as "this broke recently"; only a local control, holding
 the machine and the harness fixed while varying the tree, can date a failure. The tests are years older
 than the gate, so an individual failure may still be long-standing - one of them is confirmed so.
 
@@ -398,6 +398,30 @@ Boundary packets also run a provider-free preflight before state mutation: remot
 must have the current branch pushed at HEAD, ahead-count provenance is surfaced, dirty paths are
 classified by writer, task/status summaries must agree, and the boundary's owed artifact must exist.
 Local-only projects name the remote check as not applicable rather than inventing a forge obligation.
+
+**The test corpus has to catch up with the provenance shift, and that is the largest item here.** This
+release moved several checks from asking whether an artifact exists to asking whether it was produced
+through the governed path. Every fixture in the corpus fabricates its artifacts, so any fixture that
+hand-writes a governed artifact is now living on borrowed time. Two are already measured: one trips four
+separate gates, another can no longer mint the crossing it depends on. The method is known rather than
+speculative, because the release walk already uses it: drive the real lifecycle and let each boundary
+produce its own artifacts.
+
+**Nothing checks that the deployed machinery still matches its install stamp.** This release found that
+disagreement the hard way, from inside a test that inherited it. The check that catches it runs only when
+an iteration is validated, so a repository can carry the drift for days without noticing. Re-stamping
+belongs in whatever syncs the deployed copy, or the release gate should assert the two agree. It is a
+one-line assertion either way.
+
+**"This change is comments only" should be measured, not reviewed.** The four such changes in this release
+were proven by parsing each file before and after, dropping comments, and comparing the token streams. That
+proof was written for this release and should become a standing check, because reading a diff and
+concluding it is inert is exactly the judgement a machine makes better.
+
+**Auto-scoping has no test for narrowing on the ordinary path.** Seven separate tests confirm it does not
+silently narrow when the diff base is ambiguous, and they all pass. None covers the case where everything
+resolves cleanly and it selects too few iterations anyway. The confirmation that exists is real and it is
+narrower than it looks.
 
 ## What "continuous co-review" means in this release — read this before relying on it
 
