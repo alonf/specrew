@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 51 (DRIFT-199-I003-001 through -051)
+**Total drift events**: 55 (DRIFT-199-I003-001 through -055)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -1833,3 +1833,194 @@ level:
   same defect as counting over the wrong set - a claim resting on a coarser measurement than the claim
   requires - and it belongs beside the count-scope rule in the harness queue.
 - **Class closure**: NONE - practice, recorded with three measured instances.
+
+### DRIFT-199-I003-052 - the fixture corpus predates a PROVENANCE SHIFT: the batch moved governance from "the artifact exists" to "the artifact was PRODUCED through the governed path", and every fixture fabricates its artifacts (the beta4 item, with three measured instances)
+
+**This is the systematic finding behind three separate test failures, and it has predictive value rather
+than being a post-hoc grouping.**
+
+- **What the batch changed.** Three checks added or tightened in this line test **provenance, not
+  presence**:
+  1. the **owed-artifact mint guard** (FR-024/T014) - a crossing cannot open into a stage whose artifacts
+     are absent, so the artifact must exist *before* the crossing, in the order the product produces it;
+  2. the **state-truth mirror** - `state.md` must lag the authority record, which only happens if the
+     record wrote it;
+  3. **`review-authorship-unobserved`** - `review.md` must carry observed authorship: *"Nothing watched it
+     being written."*
+- **Every fixture in the corpus fabricates its artifacts.** They write `plan.md`, `review.md`, `state.md`
+  directly, because that was sufficient when the checks asked whether a file existed. **It is no longer
+  sufficient, and every such fixture is now on borrowed time.**
+- **TWO MEASURED INSTANCES, same defect at different depths.** This was written as three; the third was
+  withdrawn on evidence, and the correction is DRIFT-199-I003-054. `validate-governance-changed-only` is
+  **NOT** an instance - its refusal has an unrelated cause. `crossing-owner` is **NOT** an instance either -
+  it was wrong at birth (DRIFT-199-I003-049), which is a different defect. The count states its set.
+
+| test | gates it now fails | shape |
+| --- | --- | --- |
+| `baseline-hygiene` boundary walk | **four** - mint guard, state-truth mirror, honest-state floor, genuine-change path | staging satisfies three and breaks the fourth, in rotation |
+| `pretag-slice3-certify-findings` | **one** - mint guard | *"scoped fixture mint failed: WARN CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT"* - the gate refusing a crossing the fixture used to be able to make (recorded above, this log) |
+
+- **PREDICTION, which is why this is recorded once rather than rediscovered per fixture**: more of these
+  will surface as the census runs on future releases. Any fixture that hand-writes a governed artifact is
+  a candidate, and the corpus is large.
+- **THE METHOD IS ALREADY IDENTIFIED, and it is not the word "rewrite"**: drive the real lifecycle and let
+  each boundary produce its own artifacts - exactly what `docs/beta3-candidate-walk.md` does for the
+  release walk. The technique exists in this repository today; the fixtures predate it.
+- **Class closure**: NONE - this IS the beta4 item, and its evidence is the three rows above.
+
+### DRIFT-199-I003-053 - validate-governance-changed-only: the validator SCOPES CORRECTLY; the refusal is the respin's own un-re-stamped deployment marker (W43), not a scoping regression and not a stale fixture - FIXED, and the narrowing gap stated exactly
+
+- **The failure is over-blocking, and it is orderly.** Measured from the validator's own output:
+  `[validator-scope] changed-only to origin/main...HEAD (1 iterations, 1 files in diff)`,
+  `[validator] (1/1) validating specs\013-validator-hardening\iterations\001`,
+  `[validator] iteration loop complete: 1 iterations in 132.3s`,
+  `[validator-timing] mode=scoped ... iterations_validated=1`. **It selected exactly the touched
+  iteration.** Scoping is correct: it neither widened nor narrowed.
+- **REFUSED, NOT CRASHED** - zero exception, stack-trace or terminating-error indicators, and the run
+  reached its own completion lines. The release record says *over-strict*, never *fault*.
+- **THE CAUSE, measured from the validator's own error list rather than inferred from its output**: **W43,
+  `Test-DeployedExtensionIntegrity`** - *"The deployed Specrew machinery under
+  .specify/extensions/specrew-speckit does not match what was installed (modified: refocus/general.md,
+  scripts/confirm-workshop-lens.ps1, scripts/shared-governance.ps1, scripts/specrew-conformance-provider.ps1,
+  scripts/workshop-authority-store.ps1)."* **Those five files are exactly this batch's authorized packaged
+  delta.**
+- **THE MECHANISM.** The deployed mirror carries an install stamp,
+  `.specify/extensions/specrew-speckit/.specrew-extension-runtime.json`, written by `specrew init`/`update`
+  and **tracked in git**. The respin's three packaged-fix commits edited the mirrored machinery and **did not
+  re-stamp the marker**, so the recorded install state and the deployed state disagree - and W43 is an ERROR
+  by design, because *"a modified validator is not information to reconcile, it is a reason to distrust the
+  run."*
+- **THE FIXTURE IS INNOCENT.** It copies the repository tree, so all **13** workspaces inherit the
+  repository's own disagreement. Which of them can SHOW it is decided by two facts, and together they
+  predict the failing set exactly:
+  1. **W43 runs inside the per-iteration review-record validation** - the call sits four lines below
+     `Test-ReviewRecordAuthorship` in the same function, which is precisely why the warning and the error
+     appeared together and why I conflated them (DRIFT-199-I003-054). **No iteration validated, no W43.**
+  2. It can only change an outcome where a **zero** exit was expected.
+
+  | scenarios | iterations validated | expected exit | result |
+  | --- | --- | --- | --- |
+  | `explicit-changed-only`, `auto-scoped-feature-branch`, `missing-origin-head` | 1 | 0 | **the 3 failures** |
+  | `session-state-only`, `identity-now-only` | **0** | 0 | pass - W43 never runs |
+  | the other 8 | 0 or 1 | non-zero | pass - already refusing for their own reasons |
+
+  **Five scenarios expect a zero exit; exactly the three that validate an iteration fail.** That is the whole
+  failing set, derived rather than observed, and it is why this looked like a scoping story and was not one.
+- **ONE CAUSE COVERS ALL THREE, and the mechanism explains why** (the same discipline as a count stating its
+  set): explicit `-ChangedOnly`, feature-branch auto-scope and the `origin/HEAD` fallback are constructed
+  identically - `New-Workspace` (which copies one source tree) -> `Initialize-GitWorkspace` ->
+  `Touch-IterationForDiff` -> `Remove-UntouchedStateArtifact` - differing only in validator flags and the
+  `origin/HEAD` removal.
+- **INTRODUCED BY THE RESPIN, NOT PRESENT AT THE TAG - dated, not asserted.** The marker was last re-stamped
+  by `0b1e95f6` on 2026-08-30, which **is** an ancestor of the tag `4f4dce52` (2026-08-31). The three commits
+  that edited the mirrored machinery - `580da17a` (2026-09-01), `87040c5d` (2026-09-02), `ba75820d`
+  (2026-09-03) - are **respin-only**. So the original tag was clean and the respin introduced this.
+- **THE FIX IS THE REMEDY THE PRODUCT ITSELF NAMES**, and it is a re-stamp, not an edit: the marker was
+  regenerated by calling the product's own `Write-SpecrewDeployedExtensionMarker`. **Hand-editing five hashes
+  would have been precisely the fabrication DRIFT-199-I003-052 condemns.** Precedent for a deliberate
+  re-stamp is in this batch already - `0b1e95f6`, and the tag commit's own subject line.
+  - **Precondition asserted and printed before the write** (`drifted=5 missing=0`), postcondition after
+    (`drifted=0 missing=0`), and the diff bounded: **164 files before and after, zero added, zero removed,
+    zero field changes, exactly five hash changes** - the five authorized files and nothing else.
+- **NOTHING SHIPS DIFFERENTLY.** The marker is **not** in the packaged source (`extensions/specrew-speckit/`
+  has no such file) and **not** in the module FileList. It is per-project deployment state that every
+  install regenerates, so **no downstream user was ever affected** - a project installing this build gets a
+  marker describing this build. The disagreement existed only in this repository's own self-hosted
+  deployment.
+- **NARROWING IS RULED OUT BY POSITIVE EVIDENCE, and the limit of that evidence is stated.** The suite
+  carries **eight assertions requiring a NON-ZERO exit** - the validator must refuse, not skip - covering
+  seven distinct ambiguity paths: `-FullRun` bypassing auto-scope, main-branch staying full-repo, and
+  fallback to unscoped when `config.yml` changed, when `wisdom` changed, when there is no remote, on
+  detached HEAD without a base, and when the diff base cannot be resolved. **All of them pass at the tag**;
+  not one is in the failing set.
+  - **THE GAP, recorded rather than papered over**: those eight cover **fallback** conditions. **No
+    assertion covers narrowing on the ordinary happy path** - auto-scope silently selecting fewer
+    iterations while everything resolves cleanly. So the seven passes prove auto-scope does not narrow
+    *under ambiguity*; they do not establish that it never narrows, and must not be read as more.
+- **Separately longstanding**: three `-FullRun` assertions are red at beta2 and still red under beta2's
+  test at the tag. The current test no longer asserts them.
+- **DISPOSITION: FIXED, not disclosed.** The maintainer's *disclose, do not block* ruling was given on the
+  cause as I had reported it - over-strictness against a fabricated artifact. That cause was wrong, and the
+  real one is repairable in the tree rather than something to ship around, so the disclosure it was meant to
+  authorise is no longer needed. **The gate was not touched.**
+- **CLASS CLOSURE, and it is mechanical rather than a resolution to be careful**: nothing today checks that
+  the deployed marker still describes the deployed machinery, so any future edit to the mirror re-opens this
+  silently. **The mirror-sync step must re-stamp the marker, or the census must assert the two agree.** This
+  is a beta4 harness item and it is a one-line check: `Test-SpecrewDeployedExtensionIntegrity` on the repo
+  root must report `drifted=0`.
+- The narrowing-on-happy-path assertion below remains a beta4 gap, unaffected by this correction.
+
+### DRIFT-199-I003-054 - I NAMED A WARNING AS THE CAUSE OF AN ERROR EXIT, AND A GREP THAT MISSED A FILENAME TOLD ME IT WAS UNTRACKED: two scope errors in one investigation, caught before the record stood
+
+**Both are the same defect this log has now recorded six times - the fact was right and the SET it was
+claimed over was wrong - and this instance is worth its own entry because the first error was already
+written into the drift log and the release record before the second check caught it.**
+
+1. **A WARN line is not an exit code.** I read `WARN [trust-hardening] review-authorship-unobserved` in the
+   validator's output, saw it was the only anomaly near the failure, and recorded it as the cause of a
+   non-zero exit. **`Write-TrustHardeningWarning` increments `$script:ValidatorSoftWarnings` and writes to
+   the host. That counter is passed to the summary writer and never reaches `$ExitCode`.** The function's own
+   comment says so in its first line: *"A WARNING, not an error, and deliberately so."* The real cause, W43,
+   was in the error list I had not read - four lines further down the same capture.
+   - **What made it stick**: the warning was *plausible* - it named `review.md`, the fixtures do hand-write
+     `review.md`, and it fit a pattern (DRIFT-199-I003-052) I had just finished writing up. **A cause that
+     confirms the theory you just wrote is the one to check hardest.**
+2. **A grep proves absence only over the pattern it searched.** I ran `git ls-files | grep -iE
+   "deployed-extension|extension-marker"`, got no match, and concluded the marker was untracked - which made
+   it environmental and therefore harmless. **The file is `.specrew-extension-runtime.json`.** It matches
+   neither alternative. `git ls-files --error-unmatch <path>` returned it immediately. **Absence of a match
+   is evidence about the pattern, not about the repository.**
+
+- **THE RULE, and it is mechanical**: **read the failure list, not the scariest line in the output.** A
+  validator that distinguishes errors from warnings has already done the classification; taking the visually
+  alarming line instead discards it. Where a check's severity decides the outcome, **cite the line that adds
+  to `$Errors`.**
+- **AND FOR ABSENCE CLAIMS**: prove a file's git status with a command that takes the path
+  (`git ls-files --error-unmatch`, `git check-ignore -v`), never with a pattern search over a listing.
+- **Cost**: one wrong cause written into two artifacts, corrected here before either was published. The
+  three-scenario confirmation the maintainer asked for was sound in its reasoning - the scenarios do share
+  one cause - but the cause it confirmed was the wrong one. **A correct method over a wrong premise still
+  produces a wrong answer**, which is why the premise gets the check.
+- **Class closure**: NONE - practice. Sixth instance; the count is what makes it systematic.
+
+### DRIFT-199-I003-055 - INERTNESS PROVEN, NOT ASSUMED: the four packaged scripts are executable-identical between the tag and the candidate, and the first proof said otherwise
+
+**The maintainer's ruling on the comment rewrites was "rewrite rather than annotate, and PROVE inertness
+rather than assume it." This is that proof, and it is a measurement rather than a reading of the diff.**
+
+- **METHOD**: parse each file at `4f4dce52` and at the candidate with the PowerShell AST parser
+  (`[Parser]::ParseInput`), drop `Comment` tokens, collapse runs of `NewLine` to one separator, and compare
+  the remaining streams token-by-token including token text. Parse errors abort. **Precondition asserted per
+  file: the two versions must actually DIFFER** - a proof that silently compares a file to itself proves
+  nothing, which is the same defect as a control that runs with its variable unset.
+
+| file | tokens minus comments (tag -> candidate) | executable stream | verdict |
+| --- | --- | --- | --- |
+| `shared-governance.ps1` | 51764 -> 51763 | 49871 -> 49871 | identical |
+| `workshop-authority-store.ps1` | 4740 -> 4740 | 4647 -> 4647 | identical |
+| `confirm-workshop-lens.ps1` | 1799 -> 1799 | 1732 -> 1732 | identical |
+| `specrew-conformance-provider.ps1` | 15616 -> 15616 | 15061 -> 15061 | identical |
+
+- **THE FIRST PROOF REPORTED `shared-governance.ps1` AS NOT INERT, AND IT WAS WRONG - by one token.** The
+  first pass dropped comments but kept every `NewLine`. **Removing a comment LINE removes the newline that
+  ended it**, and the first hunk turns three comment lines into two. So the file lost exactly one `NewLine`
+  and the proof called a comment edit an executable change.
+  - **Reported as a near-miss because the outcome depended on reading the diff before believing the tool.**
+    A one-token difference in a 51,764-token file, on the eve of a tag, is exactly the shape of finding that
+    gets escalated. The diff showed three hunks, all comment lines, and that is what sent me back to the
+    instrument rather than to the alarm. **The measurement was right about what it measured and wrong about
+    what I asked it.**
+  - Newlines are not noise in PowerShell - they separate statements - so they are **collapsed, not
+    discarded**: a run of newlines becomes one separator, which tolerates comment-line count changes while
+    still catching a genuine statement join or split.
+- **ONE NUANCE THAT THE WORD "INERT" WOULD OTHERWISE HIDE**: `confirm-workshop-lens.ps1`'s change is inert to
+  the RUNTIME and deliberately **not** inert to the authority scanner. It repairs a malformed
+  `SPECREW-AUTHORITY-CONSUMER` marker whose prefix was followed by prose, so the scanner captured the word
+  *"the"* as a control name. **A comment that a machine reads is not decoration**, and this proof establishes
+  only that the interpreter's token stream is unchanged - which is the claim being made, and no more.
+- **THE OTHER TWO CHANGES ARE NOT COMMENT REWRITES AND ARE NOT COVERED HERE**, stated so the scope of this
+  proof is not read wider than it is: `refocus/general.md` is shipped prose, proven by measurement against
+  its own ceiling (2367 characters against 2400); `scripts/internal/install-local-build.ps1` is a real
+  behavioural change carrying its own three-direction proof, and is contributor-only.
+- **Class closure**: the proof script generalises to any comment-only claim and should become the harness
+  check that makes "code-unchanged" a measured assertion rather than a review opinion. Beta4 item.

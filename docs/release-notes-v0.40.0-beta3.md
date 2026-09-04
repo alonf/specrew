@@ -261,6 +261,45 @@ list**. Nothing in a census result should be read as "this broke recently"; only
 the machine and the harness fixed while varying the tree, can date a failure. The tests are years older
 than the gate, so an individual failure may still be long-standing - one of them is confirmed so.
 
+## What the release gate actually found
+
+**The census found ZERO regressions.** Nothing that worked in the previous release stopped working in this
+one.
+
+It found one **defect at birth** - a malformed authority marker in a deployed script, where the marker
+prefix was followed by prose instead of an identifier, so a scanner captured the word "the" as a control
+name. It shipped in `v0.40.0-beta3`'s first tag and is fixed here.
+
+Everything else was a **test corpus that had not caught up with the batch's own tightening.** This release
+moved several governance checks from *"the artifact exists"* to *"the artifact was produced through the
+governed path"* - a crossing cannot open into a stage whose artifacts are absent, `state.md` must mirror
+the authority record rather than be written alongside it, and `review.md` must carry observed authorship.
+Every fixture in the corpus fabricates its artifacts, because fabrication was sufficient when the checks
+asked only whether a file existed. It is no longer sufficient.
+
+So the honest summary of this census is: **the batch tightened the contracts and the test corpus had not
+caught up.** That is a more useful finding than a regression list, and it is what the evidence supports.
+The remaining items are environmental (a runner that could not bootstrap the product) and longstanding
+(failures already present in the previous release).
+
+One consequence worth stating: the validator's scoping was checked directly during this work and is
+correct. It selects exactly the changed iteration and reports scoped mode. Seven distinct fallback
+conditions positively confirm it does not silently narrow when the diff base is ambiguous. No test covers
+narrowing on the ordinary path, so that confirmation should not be read as broader than it is.
+
+The gate also caught a defect this work introduced, which is the clearest argument for having run it.
+Editing the deployed machinery in this repository without re-stamping its install marker left the recorded
+install state disagreeing with the deployed files, and the integrity check refused rather than reporting a
+clean run it could not vouch for. The marker was regenerated through the product's own writer rather than
+edited by hand, because hand-writing the artifact a check reads is the exact habit this release exists to
+make harder. Nothing here reached users: the marker is per-project deployment state that every install
+regenerates, it is not part of the package, and a project installing this build gets a marker describing
+this build.
+
+The comment-only changes in this release are proven, not asserted. Each affected script was parsed at the
+previous tag and at this one, comments dropped, and the remaining token streams compared. All four are
+executable-identical.
+
 ## A disclosed verification gap: FR-032
 
 **FR-032 - a pending crossing is owed by the session that recorded it - ships in this release with no
