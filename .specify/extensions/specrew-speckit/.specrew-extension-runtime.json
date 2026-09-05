@@ -404,7 +404,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "2321d29b1c6bfb48d8740ecfc81306ceb7adba7045e2dfa5c944effe4ee48ef4"
+      "sha256": "cdc7a611c285de5ac018e835e47d867a1f54685a5c857118a0efc5b8c7efc558"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",

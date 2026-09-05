@@ -1422,8 +1422,8 @@ try {
     # candidate. The three preceding attempts to be clever about this each produced a measured harm and
     # never once prevented anything:
     #   - T020's lens re-ask;
-    #   - walk one's turn-one packet, from an exemption that had been dead for 22 days (DRIFT-199-I003-059);
-    #   - a note on EVERY turn of a workshop (DRIFT-199-I003-074).
+    #   - a packet on the very first turn of a workshop, from an exemption that had been dead for weeks;
+    #   - a note repeated on EVERY turn of a workshop.
     #
     # SPECREW'S OWN GOVERNED WRAPPER WRITES THAT STUB. Flagging it is the system failing to recognise its
     # own output, and no amount of predicate refinement changes that.
@@ -1818,7 +1818,7 @@ try {
                 # W73: this branch asks for a sentence, not a packet, so nothing it produces can ever
                 # satisfy $packetPresent - and the baseline advance below required exactly that. The
                 # obligation was therefore never discharged and the SAME delta recurred on every
-                # subsequent turn, for the life of the workshop (DRIFT-199-I003-074). The report is
+                # subsequent turn, for the life of the workshop. The report is
                 # fire-and-continue: emitting it IS the discharge.
                 $workshopLightFormEmitted = $true
                 # The discharge happens HERE, not on the compliant path below: this branch is the BLOCKING
