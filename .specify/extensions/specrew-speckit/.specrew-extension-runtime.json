@@ -260,7 +260,7 @@
     },
     {
       "path": "scripts/create-governed-feature.ps1",
-      "sha256": "5863e409f690d0f015ba5ab32d0b83269a336b65241dbd05a5c34346482965cb"
+      "sha256": "b82c235a4737daf81ed299bf64ee6c314632f4e1a661a9ba9d8d1ac463a3734e"
     },
     {
       "path": "scripts/deploy-refocus-hooks.ps1",

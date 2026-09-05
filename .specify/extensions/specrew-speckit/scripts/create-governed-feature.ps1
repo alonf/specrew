@@ -72,6 +72,57 @@ function Get-ScaffoldRecord {
     throw 'Feature scaffold did not report BRANCH_NAME; workshop controller was not initialized.'
 }
 
+function Get-SpecrewFeatureBranchOutcomeLine {
+    # AN OPERATION THAT REPORTS SUCCESS WHILE ONE OF ITS EFFECTS SILENTLY DID NOT OCCUR IS THE DEFECT.
+    #
+    # Measured 2026-09-05 on a fresh walk project. The scaffold printed `BRANCH_NAME: 001-csv-to-json`,
+    # the agent reported the feature as scaffolded, and the project stayed on `master` with no such branch
+    # anywhere. Nothing was wrong with either statement in isolation: BRANCH_NAME is the feature reference,
+    # and it is also the name a branch WOULD have. The reader has no way to tell which one it is being told.
+    #
+    # WHY THE BRANCH IS MISSING, and it is not a failure: Spec Kit 0.12.9 moved branch creation out of
+    # create-new-feature.ps1 and into its OPTIONAL `git` extension. `specrew init` installs only
+    # specrew-speckit, so a project created today has no component that creates branches. Projects
+    # scaffolded before that split still carry a base script that does, which is why this went unseen -
+    # the repository Specrew is developed in is one of them.
+    #
+    # So this says which happened, in a sentence, rather than leaving a field named after an effect that
+    # may not have occurred. A boolean the reader has to know how to interpret is not a report.
+    param([string]$ProjectRoot, [string]$FeatureRef)
+    $insideRepo = $false
+    $currentBranch = ''
+    try {
+        $probe = (& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null)
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace([string]$probe)) {
+            $insideRepo = $true
+            $currentBranch = ([string]$probe).Trim()
+        }
+    }
+    catch { $insideRepo = $false }
+
+    if (-not $insideRepo) {
+        return (("BRANCH: not created - this directory is not a git repository, so there was nothing to branch. " +
+            "The feature lives in specs/{0} and the lifecycle does not require a branch.") -f $FeatureRef)
+    }
+    if ($currentBranch -ceq $FeatureRef) {
+        return ("BRANCH: created and checked out - this project is now on '{0}'." -f $FeatureRef)
+    }
+    $branchExists = $false
+    try {
+        $null = (& git -C $ProjectRoot rev-parse --verify --quiet ("refs/heads/{0}" -f $FeatureRef) 2>$null)
+        $branchExists = ($LASTEXITCODE -eq 0)
+    }
+    catch { $branchExists = $false }
+    if ($branchExists) {
+        return (("BRANCH: '{0}' exists but is not checked out - this project is still on '{1}'. Nothing failed; " +
+            "switch to it yourself if you want the work on that branch.") -f $FeatureRef, $currentBranch)
+    }
+    return (("BRANCH: not created - this project stays on '{0}'. Spec Kit moved branch creation into its " +
+        "optional 'git' extension, which this project does not have, so no component here creates branches. " +
+        "Nothing failed and nothing is missing: the feature is specs/{1} and the lifecycle is directory-based. " +
+        "Create a branch yourself if you want one.") -f $currentBranch, $FeatureRef)
+}
+
 $projectRoot = Resolve-ProjectRoot -StartPath (Get-Location).Path
 $scaffoldScript = Join-Path $projectRoot '.specify\scripts\powershell\create-new-feature.ps1'
 if (-not (Test-Path -LiteralPath $scaffoldScript -PathType Leaf)) {
@@ -167,4 +218,5 @@ else {
     Write-Output "BRANCH_NAME: $featureRef"
     Write-Output "SPEC_FILE: $specFile"
     Write-Output "WORKSHOP_STATE: $(Join-Path (Split-Path -Parent $specFile) 'lens-applicability.json')"
+    Write-Output (Get-SpecrewFeatureBranchOutcomeLine -ProjectRoot $projectRoot -FeatureRef $featureRef)
 }
