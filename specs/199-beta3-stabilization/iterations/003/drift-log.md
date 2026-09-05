@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 68 (DRIFT-199-I003-001 through -068)
+**Total drift events**: 71 (DRIFT-199-I003-001 through -071)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2470,3 +2470,97 @@ every path that looked ran inside the one project shaped least like the ones use
   author runs it.* Here, **a product is only proven on configurations someone actually creates.**
 - **Class closure**: NONE - **this is the highest-value beta4 item to come out of this walk**, and the
   measure of its value is that it would have prevented a shipped defect rather than merely caught one.
+
+### DRIFT-199-I003-069 - THE WORKSHOP STOP WAS CORRECT DETECTION, NOT A DETECTION DEFECT: measured against the maintainer's own project, and the premise does not survive it
+
+**The proposed defect was that `workshopOutsidePaths` treats untracked as changed, which would stop every
+turn of every workshop in every fresh project until something is committed. Measured in
+`C:/Temp/VacationMatch`, that is not what happens, and the correction matters because the proposed fix
+would have suppressed a signal that is working.**
+
+- **UNTRACKED IS NOT TREATED AS CHANGED.** `Get-SpecrewTurnSnapshot` runs
+  `git status --porcelain=v1 --untracked-files=all` and records each path as `status|fingerprint`, where the
+  **fingerprint is the file's SHA256 content hash**. The delta is a baseline-versus-current comparison of
+  that map, not a read of porcelain status codes. **An untracked file whose content has not changed produces
+  identical entries on both sides and no delta.**
+- **MEASURED, all four paths in the live project**:
+
+| path | baseline fingerprint | current | verdict |
+| --- | --- | --- | --- |
+| `spec.md` | `5a4075102c610e67` | `5a4075102c610e67` | **same** |
+| `lens-applicability.json` | `b45ffb9fad31659e` | `b45ffb9fad31659e` | same |
+| `workshop/product-domain.md` | `a96184a4525003ee` | `a96184a4525003ee` | same |
+| `workshop/product-domain.yml` | `29e1c02d0e8fe52e` | `29e1c02d0e8fe52e` | same |
+
+  **The delta is currently EMPTY.** The condition has cleared, with nothing committed.
+- **AND THE PROOF THAT IT CLEARS IS STRONGER THAN THE FINGERPRINTS.** `spec.md` did not exist at session
+  start, yet **it is present in the baseline carrying its current hash**. A baseline that was never rewritten
+  could not contain it at all. **The baseline updates, so a file is "new" for exactly one turn.**
+- **NEITHER SESSION HOLDS A STOP-BLOCK ARTIFACT.** Both hold `material-satisfied.json` with a
+  `material|turn|...` key. The stop fired **once per session and was then satisfied** - it did not recur.
+- **TWO PREMISE CORRECTIONS, stated because they were load-bearing**: the project **has** a HEAD commit
+  (`e08000d7`), so "never had a commit" does not hold; and the stop is not "on every turn for the life of the
+  workshop" - it is one turn, the turn the file was created.
+- **SO WHAT THE STOP ACTUALLY WAS: correct detection.** `spec.md` genuinely was created during that turn, by
+  the scaffold, and it genuinely is outside the workshop notes. The rule fired on a true condition.
+- **WHICH LANDS THE FINDING ENTIRELY ON THE SECOND POINT, DRIFT-199-I003-071.** The human had nothing to
+  decide - the packet's own *What Needs Your Review* said *"Nothing new to review."* **The defect is that a
+  correctly-detected, agent-correctable condition was rendered as a human-facing interruption.** Fixing
+  detection would have hidden a true signal instead of routing it correctly.
+- **THE AGENT'S HEDGE IS EXPLAINED, AND IT WAS HONEST.** It ran `git status`, saw `??`, and told the human
+  *"if it shows as changed, that's tracking/scaffolding state"* - correct, unactionable, and the best
+  available answer to a question the human should never have been asked.
+- **Class closure**: no packaged change. The disposition is DRIFT-199-I003-071.
+
+### DRIFT-199-I003-070 - THIRD FRESH-PROJECT INSTANCE, and it is a real one: a single-host init deployed FOUR host integrations, and every typed turn is minted FOUR TIMES
+
+**Found while disproving the premise above, in the same project, and it is invisible in this repository -
+which legitimately has every host.**
+
+- **THE INIT WAS SINGLE-HOST.** `.specify/init-options.json` reads `"ai": "copilot"` and
+  `"integration": "copilot"`.
+- **FOUR HOST INTEGRATIONS ARE ON DISK**: `.agents`, `.claude`, `.copilot`, `.github`.
+- **AND TWO ADAPTERS ARE BOTH LIVE**: two `conformance-sessions` directories, created **nine seconds apart**
+  (orientation rendered at `17:03:03` and `17:03:12`), each with its own baseline, last-fire and
+  satisfied-key.
+- **THE MEASURED CONSEQUENCE**: `.specrew/authority/exhausted-turns.jsonl` holds **20 records for 5 typed
+  turns** - **each human turn recorded exactly four times**, as the cross product of two axes:
+
+| axis | values |
+| --- | --- |
+| `host_kind` | `copilot`, `claude` |
+| `source_event` | `UserPromptSubmit`, `stop-transcript` |
+
+  **Four different `turn_id`s per turn, one `content_hash`.** The content hash is what proves they are the
+  same human message; the turn ids are what prove the system does not know that.
+- **WHY IT CANNOT BE SEEN HERE**: this repository has every host deployed **on purpose**, so four
+  integrations is its correct state. **A project that asked for one host and got four is a shape only a
+  fresh project can show.** That is the third instance, after DRIFT-199-I003-059 and -063.
+- **NOT DIAGNOSED FURTHER, and not fixed**: whether the extra hosts are deployed by init or left by the
+  walk's own tooling is not established here, and it touches packaged files. **Stop-and-report applies.**
+- **Class closure**: NONE - a beta4 item, and further evidence for the verification lane in
+  DRIFT-199-I003-068.
+
+### DRIFT-199-I003-071 - THE ARCHITECTURAL RULING: during a workshop, a condition the agent can correct belongs in the agent's context, not in a human-facing packet
+
+**The maintainer's ruling, recorded on its own because it stands without the detection question and would
+have been right even if detection had been wrong.**
+
+- **THE RULE**: **interrupting a conversation to report internal state the human cannot act on is a design
+  error, not a rough edge.** A workshop is a conversation with a person; a stop hook that surfaces
+  agent-correctable machinery state into it is answering the wrong audience.
+- **THE EVIDENCE IS THE PACKET'S OWN TEXT.** Its *What Needs Your Review* section read **"Nothing new to
+  review."** A packet whose own review section is empty has announced that it had no reason to interrupt.
+- **AND THE CONDITION WAS AGENT-CORRECTABLE.** The agent had already explained the placeholder unprompted in
+  its orientation before the hook fired at all (DRIFT-199-I003-059), and here it could see the file, know
+  what wrote it, and say so - all without the human. **The obligation the guard enforces was dischargeable
+  in the agent's own context.**
+- **THE REDESIGN, stated as scope rather than as a fix**: the stop hook should route agent-correctable
+  conditions **into the agent's context** - as an instruction the agent must satisfy in its next message -
+  and reserve the human-facing packet for conditions **only a human can resolve**. The current design has
+  one output channel and uses it for both.
+- **THIS IS THE THIRD DISTINCT FINDING POINTING AT THE SAME PLACE**, which is what makes it a redesign rather
+  than three fixes: DRIFT-199-I003-059 (a guard firing after its purpose was served), this entry (a guard
+  addressing the wrong audience), and the beta4 UX priority already on record.
+- **Class closure**: NONE - **a beta4 redesign of what the stop hook does with agent-correctable
+  conditions.** It is not attempted in this batch and no packaged file was touched for it.
