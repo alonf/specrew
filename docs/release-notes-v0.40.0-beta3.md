@@ -433,13 +433,16 @@ cause is that the placeholder exists. Nothing reads it before the workshop ends,
 it has to special-case it, and the walk that found this hit it on turn one. Removing it changes feature
 creation, which is why it was not done under a release candidate.
 
-**Every exemption owes a test that proves it fires.** The interruption fixed in this release had an
-exemption written for exactly that case, and it had never once worked in the twenty-two days since it was
-added. It compared the placeholder against the wrong file, so it declined every time it was asked. Nothing
-noticed, because a rule that declines because the case does not apply and a rule that declines because it
-is broken behave identically, and the tests around it only ever checked that the guard stops things. A
-suite written entirely in the negative agrees with a dead exemption perfectly. The cheap fix is a rule: any
-exemption needs one test proving it says yes, not only tests proving the guard says no.
+**Every exemption owes a test that proves it fires**, and the one this release repaired now has one. The
+interruption fixed here had an exemption written for exactly that case, and it had never once worked in the
+twenty-two days since it was added. It compared the placeholder against the wrong file, so it declined every
+time it was asked. Nothing noticed, because a rule that declines because the case does not apply and a rule
+that declines because it is broken behave identically, and the tests around it only ever checked that the
+guard stops things. A suite written entirely in the negative agrees with a dead exemption perfectly.
+
+That rule is applied here rather than deferred: the repaired exemption ships with a guard asserting it
+fires, which is mutation-proved to go red if the exemption dies again. Applying the same rule to every other
+exemption in the codebase is the beta4 half.
 
 **A guard should test its purpose, not a proxy for it.** The interruption above fired after the agent had
 already explained the placeholder unprompted, so the thing the guard exists to guarantee had happened and
