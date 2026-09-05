@@ -2493,6 +2493,7 @@ would have suppressed a signal that is working.**
 | `workshop/product-domain.yml` | `29e1c02d0e8fe52e` | `29e1c02d0e8fe52e` | same |
 
   **The delta is currently EMPTY.** The condition has cleared, with nothing committed.
+
 - **AND THE PROOF THAT IT CLEARS IS STRONGER THAN THE FINGERPRINTS.** `spec.md` did not exist at session
   start, yet **it is present in the baseline carrying its current hash**. A baseline that was never rewritten
   could not contain it at all. **The baseline updates, so a file is "new" for exactly one turn.**
@@ -2533,6 +2534,7 @@ which legitimately has every host.**
 
   **Four different `turn_id`s per turn, one `content_hash`.** The content hash is what proves they are the
   same human message; the turn ids are what prove the system does not know that.
+
 - **WHY IT CANNOT BE SEEN HERE**: this repository has every host deployed **on purpose**, so four
   integrations is its correct state. **A project that asked for one host and got four is a shape only a
   fresh project can show.** That is the third instance, after DRIFT-199-I003-059 and -063.
