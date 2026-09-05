@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 62 (DRIFT-199-I003-001 through -062)
+**Total drift events**: 65 (DRIFT-199-I003-001 through -065)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2287,3 +2287,105 @@ has tested.**
 - **Class closure**: DRIFT-199-I003-060's enforcement is no longer a beta4 aspiration for this exemption -
   it is a lane guard with a home for the next one. The generalisation to every OTHER exemption in the tree
   remains beta4.
+
+### DRIFT-199-I003-063 - THE SCAFFOLD REPORTED AN EFFECT THAT NEVER HAPPENED, and the cause is that the tree Specrew is developed in is not shaped like the trees it creates
+
+**Found by the second candidate walk, in a fresh project.** The scaffold printed
+`BRANCH_NAME: 001-csv-to-json`, the agent reported the feature as scaffolded, and the project sat on
+`master` with no such branch anywhere.
+
+- **NEITHER STATEMENT WAS FALSE, WHICH IS WHY IT SURVIVED.** `BRANCH_NAME` is the feature reference; it is
+  also the name a branch WOULD have had. **The reader has no way to tell which of the two they are being
+  told**, and a field named after an effect, printed whether or not the effect occurred, is not a report.
+- **READ FROM DISK, NOT FROM THE AGENT.** A model's account of why it did something is what it believes
+  now, not what happened. Evidence, all from artifacts:
+
+| observation | value |
+| --- | --- |
+| `git branch --show-current` in the walk project | `master`, one commit, **no feature branch exists** |
+| that project's `create-new-feature.ps1` | **248 lines, zero occurrences of `hasGit`, no `git checkout` at all** |
+| its `.specify/init-options.json` | `speckit_version: 0.12.9` |
+| extensions installed there | **`specrew-speckit` only** |
+| extensions in this repository | **`git` AND `specrew-speckit`** |
+| this repository's `create-new-feature.ps1` | 382 lines, gates branch creation on `$hasGit` at line 294 |
+| when that copy last changed | **2026-04-17**, tracked in git |
+
+- **SO IT IS NOT THE `$hasGit` GATE.** That premise pointed at line 294 of a script which **does not exist
+  in a project created today** - the deployed one is 248 lines and has no git logic whatsoever. **Spec Kit
+  0.12.9 moved branch creation out of the base scaffold into an OPTIONAL `git` extension**, and
+  `specrew init` adds only its own (`specify extension add --dev <specrew-speckit>`,
+  `spec-kit-deploy.ps1:231`). **Nothing was skipped and nothing errored: no component in such a project
+  creates branches.**
+- **UNIVERSAL, NOT ENVIRONMENTAL - and that was the question that decided urgency.** Every project
+  `specrew init` creates on 0.12.9 behaves this way. Earlier walks appeared to succeed because they ran in
+  **this repository**, whose `.specify` copies are April-vintage pins predating the split.
+  - **THE GENERALISABLE FINDING, and it is bigger than the branch**: **the tree Specrew is developed in is
+    not shaped like the trees it creates.** Dogfooding proves the product against a project that is months
+    old, carries pinned upstream copies, and has every extension installed. The most common real case - a
+    project made minutes ago - is the one least represented in testing. **This is the second time in this
+    respin that a fresh-project path failed where the development tree did not**; the first was
+    DRIFT-199-I003-059, whose exemption also died on a difference between deployed and pinned copies.
+- **THE FIX IS A SENTENCE, NOT A BOOLEAN** (maintainer ruling): the scaffold now reports which of four
+  things happened - created and checked out, exists but not checked out, no repository, or not created and
+  why - and says plainly that nothing failed, because nothing did. `HAS_GIT: False` is a boolean the reader
+  has to know how to interpret; it is not a report.
+- **GUARDED**: `tests/unit/scaffold-reports-what-it-did.tests.ps1`, in the class-guard lane. It asserts all
+  four states, that the four sentences are **distinguishable from one another** (a constant string would
+  satisfy every individual assertion), and that the scaffold **emits** the line rather than merely defining
+  it.
+- **AND WRITING THE GUARD CAUGHT A REAL BUG BEFORE COMMIT.** PowerShell's `-f` binds to the **last literal
+  of a concatenation**, not to the whole expression, so two of the four messages rendered `{0}` and `{1}`
+  verbatim. **Reading the code would not have shown that; running it did.** The guard now asserts that no
+  placeholder survives in any line.
+- **Class closure**: the guard covers this scaffold. The class - an operation reporting success while one
+  of its effects silently did not occur - now has a home in that lane for the next one.
+
+### DRIFT-199-I003-064 - THE INSTRUCTION THAT SENT THE AGENT INTO THE SOURCE: naming a script is an invitation unless you say it is not for reading
+
+- **MEASURED**: the walk agent spent **over three minutes before asking its first question**, and spent it
+  reading `create-governed-feature.ps1` and `create-new-feature.ps1` for branch logic.
+- **IT WENT EXACTLY WHERE ITS STANDING INSTRUCTIONS POINTED.** The deployed coordinator instructions name
+  the script paths and then say *"Those scripts and commands are the machinery of this project."* **That is
+  an invitation whether or not it was meant as one**, and it was the only guidance available when an outcome
+  did not match the message (DRIFT-199-I003-063) - a question it could not have answered by reading, because
+  the answer lay in an extension that was absent.
+- **THE PATHS STAY**, because the agent needs to know what to invoke. **What was missing is that they are
+  invoked and never read**, and that their behaviour is described in the instructions rather than being
+  discoverable by opening them.
+- **CHANGED IN THE PACKAGED TEMPLATE, not in this project's copy**, so it reaches new projects - the only
+  place it matters, since this is the first thing an agent reads in one.
+- **THE BUDGET GATE CAUGHT THE FIRST WORDING**: the packaged coordinator fragment has a **4096-byte ceiling
+  (the Codex `AGENTS.md` cap)** and the first draft came to 4141. **Trimmed to a clause rather than
+  relaxed** - the same discipline `general.md` got earlier in this batch. Final: 4052 bytes.
+- **Class closure**: NONE. The general shape - an instruction naming an artifact without saying what the
+  reader is meant to do with it - is a beta4 UX item, and it belongs beside DRIFT-199-I003-059's finding
+  that a guard should test its purpose rather than a proxy for it.
+
+### DRIFT-199-I003-065 - THE ARCHITECTURE QUESTION, with this respin's own cost as its evidence: should the engine be one compiled artifact rather than several hundred deployed scripts?
+
+**Raised by the maintainer. Recorded as a question with evidence attached, not as a proposal.**
+
+- **THE STRONGEST ARGUMENT IS NOT SPEED OR TYPE SAFETY.** It is that **a large share of this respin's cost
+  came from the same logic existing in more than one place on disk, with nothing checking that the copies
+  agree.** Measured, from this respin alone:
+
+| instance | the duplication |
+| --- | --- |
+| mirror parity failures | `extensions/**` and `.specify/extensions/**` must be byte-identical, by convention alone |
+| the `.specify` re-stamp (DRIFT-199-I003-053) | the deployed copy carries an install marker that nothing keeps in step with it |
+| cross-context copies wrong at birth | a control shipped red because its two contexts were never compared |
+| four host copies of one instruction doc | `CLAUDE.md`, `AGENTS.md`, `copilot-instructions.md`, and the template they come from |
+| a reader duplicating its own regex (DRIFT-199-I003-048) | the verdict-marker pattern written twice, byte-identically, with nothing asserting agreement |
+| provisioning duplicated across two CI jobs | the census job needed its own copy of what publish already did |
+| **the second walk's defect (DRIFT-199-I003-063)** | **the development tree's pinned `.specify` copies diverging from what a fresh init deploys** |
+
+- **ONE ARTIFACT COLLAPSES THAT CATEGORY RATHER THAN MITIGATING IT.** Every row above is answered today by a
+  mitigation - a parity test, a re-stamp, a mirror check, a census, a guard. **They are the same defect
+  answered seven times.** A single compiled engine has no second copy to disagree with, so the class stops
+  existing rather than being policed.
+- **WHAT THE QUESTION MUST NOT SKIP, stated so this is not read as a recommendation**: deployed scripts are
+  readable and patchable in the field, which is how several defects in this batch were diagnosed at all; the
+  `.specify` layout is Spec Kit's contract rather than Specrew's alone; and a compiled artifact only moves
+  the duplication if the deployed scaffolds must still exist beside it.
+- **Class closure**: NONE - a beta4-and-beyond question. The evidence is the seven rows above, and it is the
+  honest measure of what this duplication cost in a single respin.
