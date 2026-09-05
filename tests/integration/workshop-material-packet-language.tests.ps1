@@ -158,14 +158,25 @@ For pacing, choose one: 1) all at once, or 2) one by one. Which do you prefer?
 '@
     $blocked = Invoke-ProviderStop -AssistantText $lensQuestion
 
-    Assert-True ($blocked -match 'SPECREW-STOP-BLOCK') 'work outside the workshop notes still owes the packet: enforcement is unchanged'
-    Assert-True ($blocked -match '(?i)design workshop is still open') 'the correction says the workshop is still open instead of only demanding a packet'
+    # W72, DIRECTION ONE: WORKSHOP OPEN. The FACT is still carried - a human who opens spec.md and reads
+    # it as agreed is exactly what T020 exists to prevent - but its FORM is a single sentence inside the
+    # agent's normal reply, not a five-part packet and a full question re-ask for a condition the human
+    # has no decision in. Detection is unchanged and deliberately so: it was never wrong.
+    Assert-True ($blocked -match 'SPECREW-STOP-BLOCK') 'the instruction still reaches the agent: detection and delivery are unchanged'
+    Assert-True ($blocked -match '(?i)design workshop is still open') 'the correction says the workshop is still open'
     Assert-True ($blocked -match "architecture-core") 'the correction names the topic the human is standing on'
-    Assert-True ($blocked -match [regex]::Escape("specs/$feature/spec.md")) 'the correction names the exact work that cost the turn its workshop exemption'
-    Assert-True ($blocked -match '(?i)asking the SAME workshop question again') 'the packet must not take the human''s place in the conversation with it'
-    Assert-True ($blocked -match '(?i)do not open the next topic') 'the correction forbids skipping ahead while the question is unanswered'
+    Assert-True ($blocked -match [regex]::Escape("specs/$feature/spec.md")) 'the correction names the exact work it is reporting'
+
+    # The light form, asserted positively.
+    Assert-True ($blocked -match '(?i)ONE sentence') 'the agent is asked for ONE sentence, not a packet'
+    Assert-True ($blocked -match '(?i)continue with the workshop question that is already open') 'the open question continues in place rather than being re-asked'
+    Assert-True ($blocked -match '(?i)not yet agreed') 'the specification is named plainly as not yet agreed'
     Assert-True ($blocked -match '(?i)specification is written after the workshop finishes') 'spec authoring during the workshop is named as premature rather than left implicit'
-    Assert-True ($blocked -match '## What I Just Did') 'the five-heading packet is still required'
+
+    # And asserted negatively, which is the half that would catch a silent regression to the old form.
+    Assert-True ($blocked -notmatch '## What I Just Did') 'NO five-part packet is demanded while a workshop is open'
+    Assert-True ($blocked -notmatch '(?i)asking the SAME workshop question again') 'the question is NOT re-asked as a separate block'
+    Assert-True ($blocked -match '(?i)Do NOT render a context packet') 'the instruction says plainly not to render a packet'
     Assert-True ($blocked -notmatch 'SPECREW-VERDICT-BOUNDARY: ') 'a non-boundary material stop still emits no boundary verdict marker'
     Assert-True ($blocked -notmatch '(?i)lens-applicability|controller|digest|material surface') 'the workshop-aware correction keeps machinery vocabulary out of the human-facing text'
 
@@ -188,8 +199,9 @@ For pacing, choose one: 1) all at once, or 2) one by one. Which do you prefer?
     New-Item -ItemType Directory -Path (Join-Path $scratch 'src') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'src\engine.js') -Value 'export const add = (a, b) => a + b;' -Encoding UTF8
     $codeTurn = Invoke-ProviderStop -AssistantText $lensQuestion
-    Assert-True ($codeTurn -match '(?i)design workshop is still open') 'source code written during the workshop still owes the packet'
-    Assert-True ($codeTurn -match [regex]::Escape('src/engine.js')) 'the packet still names the code that triggered it'
+    Assert-True ($codeTurn -match '(?i)design workshop is still open') 'source code written during the workshop is still reported'
+    Assert-True ($codeTurn -match [regex]::Escape('src/engine.js')) 'the report still names the code that triggered it'
+    Assert-True ($codeTurn -notmatch '## What I Just Did') 'source code mid-workshop takes the light form too, not a packet'
     Remove-Item -LiteralPath (Join-Path $scratch 'src') -Recurse -Force
     Remove-Item -LiteralPath (Join-Path $scratch 'README.md') -Force
     # The generic material directive must survive untouched where no workshop is open: this change is a
@@ -198,8 +210,12 @@ For pacing, choose one: 1) all at once, or 2) one by one. Which do you prefer?
     New-Item -ItemType Directory -Path (Join-Path $scratch 'src') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'src\calculator.js') -Value 'export const add = (a, b) => a + b;' -Encoding UTF8
     $noWorkshop = Invoke-ProviderStop -AssistantText 'I refactored the calculation engine and tidied the display formatter.'
+    # W72, DIRECTION TWO: WORKSHOP CLOSED. Losing this would be far worse than the interruption removed
+    # above, so it is asserted positively rather than left to the absence of a failure.
     Assert-True ($noWorkshop -match 'SPECREW-STOP-BLOCK') 'ordinary material work still blocks with no workshop open'
     Assert-True ($noWorkshop -match '(?i)this Stop followed material work') 'the ordinary material directive is unchanged when no workshop is open'
+    Assert-True ($noWorkshop -match '## What I Just Did') 'the FIVE-PART PACKET is still required when no workshop is open - the light form is scoped to the workshop case only'
+    Assert-True ($noWorkshop -notmatch '(?i)Do NOT render a context packet') 'the light-form instruction never leaks into the no-workshop case'
     Assert-True ($noWorkshop -notmatch '(?i)design workshop is still open') 'the workshop-aware wording never fires without an active workshop'
 }
 finally {

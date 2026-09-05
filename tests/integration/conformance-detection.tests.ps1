@@ -1112,7 +1112,13 @@ try {
     Write-Pass "Case 16: strict active iteration workshop state suppresses the generic packet without a model marker and retains durable re-entry context"
 
     # ---- Case 16a2 / beta3 dogfood guard: the question exemption is only for the workshop record set.
-    #      A source/test/doc change in the same turn is ordinary material work and must win.
+    #      A source/test/doc change in the same turn is still REPORTED rather than exempted.
+    #
+    #      W72 (2026-09-05) changed the FORM, not the detection. While a workshop is open the report is one
+    #      sentence inside the agent's normal reply; the five-part packet is reserved for material work with
+    #      NO workshop open, which tests/integration/workshop-material-packet-language.tests.ps1 asserts in
+    #      both directions. This case therefore checks that the outside path is still NAMED and still owes a
+    #      report - the property it was written for - without pinning the rendering it used to demand.
     $p16a2 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16a2
     New-LensApplicability -Proj $p16a2 -Selected @('architecture-core','data-storage') -Done @()
@@ -1120,7 +1126,8 @@ try {
     New-HandoverSnapshot -Proj $p16a2 -ChangedUserFiles 1 -FileList 'src/provider.ps1'
     $t16a2 = New-Transcript -Proj $p16a2 -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16a2 = Invoke-Conformance -Proj $p16a2 -TranscriptPath $t16a2
-    if (-not $r16a2.Blocked -or $r16a2.Out -notmatch 'five-part context packet') { Fail "Case 16a2: a proved workshop question that also changed a non-workshop path MUST still require the material packet. Out: $($r16a2.Out)" }
+    if (-not $r16a2.Blocked -or $r16a2.Out -notmatch 'src/provider\.ps1' -or $r16a2.Out -notmatch '(?i)design workshop is still open') { Fail "Case 16a2: a proved workshop question that also changed a non-workshop path MUST still be reported, naming the path. Out: $($r16a2.Out)" }
+    if ($r16a2.Out -match '## What I Just Did') { Fail "Case 16a2: while a workshop is open the report is one sentence, not a five-part packet (W72). Out: $($r16a2.Out)" }
     Write-Pass "Case 16a2: material work outside the workshop record set wins over a proved workshop question"
 
     # ---- Cases 16a3/16a4 / beta3 full-walk regressions: repairable controller mistakes get a
@@ -1297,7 +1304,14 @@ Set-Content -LiteralPath (Join-Path $p16pa0bFeature 'spec.md') -Value '# Authore
 & pwsh -NoProfile -File (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -ProjectRoot $p16pa0b -FeatureRef '050-host-neutral-gate' | Out-Null
 $t16pa0b = New-Transcript -Proj $p16pa0b -Turns @(@{ role = 'assistant'; text = 'Does this product framing match what you have in mind?' })
 $r16pa0b = Invoke-Conformance -Proj $p16pa0b -TranscriptPath $t16pa0b -SessionId $p16pa0bSession
-if (-not $r16pa0b.Blocked -or $r16pa0b.Out -notmatch 'five-part context packet') { Fail "Case 16pa0b: authored spec content during the question turn MUST retain material enforcement. Out: $($r16pa0b.Out)" }
+# W72 (2026-09-05): the ENFORCEMENT this case exists for is unchanged - authored spec content is still
+# detected and still reported, unlike the untouched scaffold in 16pa0 which is exempt outright. What
+# changed is the rendering: a workshop is open here, so the report is one sentence in the agent's normal
+# reply rather than a five-part packet. Both directions are asserted in
+# tests/integration/workshop-material-packet-language.tests.ps1.
+if (-not $r16pa0b.Blocked -or $r16pa0b.Out -notmatch '(?i)design workshop is still open') { Fail "Case 16pa0b: authored spec content during the question turn MUST retain material enforcement. Out: $($r16pa0b.Out)" }
+if ($r16pa0b.Out -notmatch '(?i)not yet agreed') { Fail "Case 16pa0b: authored spec content must still be named as not yet agreed. Out: $($r16pa0b.Out)" }
+if ($r16pa0b.Out -match '## What I Just Did') { Fail "Case 16pa0b: while a workshop is open the report is one sentence, not a five-part packet (W72). Out: $($r16pa0b.Out)" }
 Write-Pass "Case 16pa0b: only the byte-identical scaffold is exempt; authored spec content still owes the material packet"
 
 # ---- Case 16pa2 / beta3 blind-walk regression: the model scaffolded the feature and persisted

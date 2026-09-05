@@ -1837,24 +1837,39 @@ try {
                 }
             }
             elseif ($blockKind -eq 'material' -and $workshopIntermediate) {
-                # A DESIGN CONVERSATION IS STILL OPEN, so the generic packet demand lands as an
-                # engineering interrupt mid-question and takes the human's place in the workshop with
-                # it. Enforcement is unchanged - work outside the workshop notes still owes the packet -
-                # but the correction now names WHICH work cost the exemption and requires the pending
-                # question to survive the packet, so the human is not left re-finding the conversation.
+                # W72: A WORKSHOP IS A CONVERSATION WITH A PERSON, AND THIS CONDITION IS NOT THEIRS TO
+                # DECIDE. The fact still matters - a human who opens spec.md and reads it as agreed is
+                # exactly what T020 exists to prevent - so it is NOT suppressed. What is removed is the
+                # FORM: a five-part packet plus a full question re-ask, spent on something the human has
+                # no decision in.
+                #
+                # Measured 2026-09-05 across two walks. The packet fired on the workshop's first turn over
+                # the specification placeholder the scaffold itself had written, and its own What Needs
+                # Your Review section read "Nothing new to review." A packet whose review section is empty
+                # has announced it had no reason to interrupt. Detection was CORRECT both times - the file
+                # genuinely was created that turn - so the defect was never detection and suppressing it
+                # would have hidden a true signal.
+                #
+                # THE LIGHT FORM IS NOT A GUESS. In the Claude walk the agent volunteered this exact shape
+                # unprompted: its orientation said the spec file is a deliberate placeholder until the
+                # workshop finishes - one clause, mid-flow, no interruption. The behaviour was already
+                # observed in the field; the hook was simply asking for the wrong thing.
+                #
+                # SCOPE, deliberately narrow: this branch is the workshop-OPEN case only. The branch below
+                # it - material work with no workshop open - keeps the packet unchanged, because losing
+                # that would be far worse than the interruption being removed here.
                 $topicLabel = if ([string]::IsNullOrWhiteSpace([string]$workshopQuestion.lens)) { 'current' } else { [string]$workshopQuestion.lens }
                 if (@($workshopOutsidePaths).Count -gt 0) {
-                    [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also changed work outside the workshop notes: {1}. That work owes the human a short summary before the conversation continues." -f $topicLabel, (@($workshopOutsidePaths) -join ', ')))
+                    [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also touched work outside the workshop notes: {1}." -f $topicLabel, (@($workshopOutsidePaths) -join ', ')))
                 }
                 else {
-                    [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also changed work outside the workshop notes. That work owes the human a short summary before the conversation continues." -f $topicLabel))
+                    [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also touched work outside the workshop notes." -f $topicLabel))
                 }
-                [void]$sb.AppendLine('Render the five-part context packet NOW as your message:')
-                [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You')
-                [void]$sb.AppendLine('END that message by asking the SAME workshop question again, in full, so the human keeps their place in the conversation and can simply answer it. Do not replace the question with the packet, and do not open the next topic.')
+                [void]$sb.AppendLine('Do NOT render a context packet and do NOT stop the conversation. The human has no decision to make here, so interrupting them with one would be the error.')
+                [void]$sb.AppendLine('Instead, in your NORMAL reply, mention that work in ONE sentence, then continue with the workshop question that is already open - the same question, still in its place, not re-asked as a separate block.')
+                [void]$sb.AppendLine('If that outside work was the feature specification, say plainly in that sentence that it is not yet agreed: the specification is written after the workshop finishes, so its content is not settled and the human should not read it as agreed.')
                 [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
-                [void]$sb.AppendLine('This is a NON-BOUNDARY material-work stop; do NOT emit a SPECREW-VERDICT-BOUNDARY marker.')
-                [void]$sb.AppendLine('If that outside work was the feature specification, say so plainly: the specification is written after the workshop finishes, so its content is not settled yet and the human should not read it as agreed.')
+                [void]$sb.AppendLine('Do NOT emit a SPECREW-VERDICT-BOUNDARY marker; this is not a boundary and no verdict is being asked for.')
             }
             elseif ($blockKind -eq 'material') {
                 [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')
