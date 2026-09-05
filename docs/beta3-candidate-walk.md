@@ -44,16 +44,20 @@ to exercise that host on the exact bits you will be presenting.
 
 ## What this walk covers, and why one walk is enough
 
-The packaged delta is **six distinct files in five categories**. Two files appear twice, because a change
-can be both a comment rewrite and a behavioural fix:
+The packaged delta is **10 changes across 8 files** - measured from
+`git diff --stat 4f4dce52..HEAD` over the packaged paths, and stated as two numbers because they are two
+different things. Two files carry two changes each, so a single figure would misdescribe whichever question
+you were asking:
 
 | Category | Files |
 | --- | --- |
 | Comment rewrites (code-unchanged proof) | `shared-governance.ps1`, `workshop-authority-store.ps1`, `confirm-workshop-lens.ps1` |
 | Behavioural fix (both directions proven) | `specrew-conformance-provider.ps1` *(also a comment rewrite; the inertness proof no longer covers it)* |
 | Behavioural fix (three-direction proof) | `install-local-build.ps1` |
+| Behavioural fix (four outcomes guarded) | `create-governed-feature.ps1` *(the scaffold now reports whether it made a branch)* |
 | Machine-read comment correction | `confirm-workshop-lens.ps1` *(second change)* |
 | **Shipped content injected into every session, every host** | **`refocus/general.md`** |
+| **The first thing an agent reads in a new project** | **`templates/coordinator-instructions.md`** |
 
 Four of those are the scripts a workshop-and-boundary walk exercises. `general.md` is loaded at session
 start. So one governed feature - workshop through a lens, then one boundary with a typed verdict - covers

@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 65 (DRIFT-199-I003-001 through -065)
+**Total drift events**: 68 (DRIFT-199-I003-001 through -068)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2389,3 +2389,84 @@ has tested.**
   the duplication if the deployed scaffolds must still exist beside it.
 - **Class closure**: NONE - a beta4-and-beyond question. The evidence is the seven rows above, and it is the
   honest measure of what this duplication cost in a single respin.
+
+### DRIFT-199-I003-066 - BRANCHLESS PROJECTS SHIPPED IN BETA2: not a beta3 regression, does not block the tag (maintainer ruling, dated from the repository)
+
+- **THE RULING**: branchless projects are **not** a beta3 regression. They shipped in beta2, and every
+  project `specrew init` has created since July has behaved this way. **It does not block the tag, and
+  holding the tag would not fix it.**
+- **DATED FROM THE REPOSITORY, not from the ruling**:
+
+| fact | evidence |
+| --- | --- |
+| the 0.12.9 pin landed | `02f5e9b9`, **2026-07-10**, *"toolchain pins 0.12.9 / 0.11.0"* |
+| it predates beta2 | `git merge-base --is-ancestor 02f5e9b9 v0.40.0-beta2` -> **yes** |
+| beta2 shipped | `67a5d7bc`, **2026-08-08**, 29 days later |
+| **what beta2 SHIPPED as the init default** | **`scripts/specrew-init.ps1:9` -> `$SpecKitVersion = '0.12.9'`** |
+| beta2's CI pin | `specrew-ci.yml` and `specrew-confidence-lane.yml`, both `0.12.9` |
+| found | **2026-09-05**, 57 days after the pin, 28 after beta2 |
+
+- **ONE PRECISION CORRECTION, because it looked like a contradiction and is actually the mechanism.**
+  beta2's `.specrew/config.yml` reads `speckit_version: "0.8.13"`, which appears to contradict the ruling.
+  It does not: **that file is THIS PROJECT'S OWN state, not what the product ships.** The shipped default
+  was already `0.12.9`. This repository only moved its own pin to 0.12.9 in `90451ef9` on **2026-08-24**,
+  inside the beta3 batch.
+  - **So for roughly six weeks this repository was running a Spec Kit layout two minor versions behind the
+    one it was shipping to everyone else**, which is not a footnote - **it is precisely why nobody saw
+    this**, and it belongs to DRIFT-199-I003-068 as its hardest number.
+- **The `publish-module.yml` pin is NOT evidence here**, and stating that keeps the record honest: that
+  workflow gained `SPEC_KIT_VERSION` with the census job on 2026-08-26, after beta2. The beta2-era evidence
+  is `specrew-init.ps1` and the two CI workflows above.
+- **WHAT STILL SHIPS IN THIS BATCH**: the reporting fix (DRIFT-199-I003-063). **The scaffold saying what it
+  did and did not do is correct regardless of why the branch is absent**, and it is a reporting change
+  rather than a behavioural one.
+- **Class closure**: the classification is settled. The absent extension is DRIFT-199-I003-067; the reason
+  it went unseen is DRIFT-199-I003-068.
+
+### DRIFT-199-I003-067 - THE ABSENT `git` EXTENSION: likely an oversight rather than a decision, and NOT changed in this batch (beta4, for the maintainer to rule)
+
+- **NOT DONE HERE, deliberately.** Adding the `git` extension changes what **every new project receives**.
+  That is a behaviour change rather than a reporting one, and it needs its own walk. **The maintainer ruled
+  it out of this batch and the record says so rather than leaving it to look like an omission.**
+- **THE EVIDENCE THAT IT IS LIKELY AN OVERSIGHT, and "likely" is doing real work in that sentence** -
+  nothing here establishes intent, and the ruling is the maintainer's:
+  1. Specrew has been pinned to a Spec Kit version carrying the extension split **for two months**
+     (`02f5e9b9`, 2026-07-10), and the split is what removed branch creation from the base scaffold;
+  2. **the lifecycle assumes feature branches everywhere** - the validator's changed-only scoping resolves
+     `origin/main...HEAD`, boundary preflight requires the current branch pushed at HEAD, and the
+     main-branch path is treated as the exception rather than the norm;
+  3. **nothing anywhere records a decision to run without them** - no drift entry, no ruling, no comment.
+- **A decision would have left a trace, and an oversight is exactly what leaves none.** That asymmetry is
+  the argument, and it is suggestive rather than conclusive.
+- **Class closure**: NONE - beta4, and it needs a walk of its own because it changes what every new project
+  receives.
+
+### DRIFT-199-I003-068 - THE STRUCTURAL GAP, and it is the highest-value item from this walk: everything that looked, looked inside this repository
+
+**A defect shipped in beta2 and went unnoticed for nearly two months - not for want of looking, but because
+every path that looked ran inside the one project shaped least like the ones users have.**
+
+- **THE CONFIGURATION ALMOST EVERY USER HAS IS THE ONE LEAST REPRESENTED IN THIS PROJECT'S TESTING.** This
+  repository has `.specify` copies pinned from **2026-04-17**, carries **every** Spec Kit extension
+  including `git`, and until 2026-08-24 ran **0.8.13 while shipping a 0.12.9 default**. A project created
+  minutes ago has none of that. **Every one of those differences hides a defect of exactly this shape.**
+- **THIS IS NOT A BUG TO FIX. IT IS A GAP IN HOW THE PRODUCT IS EXERCISED**, and it now has three measured
+  instances:
+
+| instance | what the development tree hid |
+| --- | --- |
+| DRIFT-199-I003-059 | an exemption dead for 22 days, because the pinned copies made its condition unreachable |
+| DRIFT-199-I003-063 | a scaffold reporting a branch it never created, invisible here because this tree still branches |
+| **DRIFT-199-I003-066** | **a defect that SHIPPED IN BETA2 and survived a full release cycle plus a respin** |
+
+- **THE COUNTERMEASURE, concrete rather than an observation**: **at least one verification path must run
+  against a project created MINUTES AGO by the shipped `init`, not against this repository.** Not a review
+  step, not a convention - a lane, run like any other.
+  - **The candidate walk script is already that shape.** It creates a fresh directory, runs the shipped
+    init, reaches a boundary, and checks what the human sees. **It just needs to be a lane rather than a
+    manual step performed when someone remembers.**
+  - **It would have caught this in July**, the first time a fresh project was created after the pin landed.
+- **AND IT IS THE SAME LESSON AS THE LANE MEMBERSHIP GUARD**, one level up: *a guard only guards code whose
+  author runs it.* Here, **a product is only proven on configurations someone actually creates.**
+- **Class closure**: NONE - **this is the highest-value beta4 item to come out of this walk**, and the
+  measure of its value is that it would have prevented a shipped defect rather than merely caught one.

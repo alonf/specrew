@@ -128,6 +128,25 @@ that init/update copies into consumer projects, not module-only engine internals
   conversation is never replaced by an engineering interrupt. Recovery says whether an answer was
   actually preserved, proposes one action, and does not diagnose or blame Specrew.
 
+## Your features do not get a git branch, and now the tool says so
+
+**Creating a feature makes a directory under `specs/`. It does not create or switch to a branch.** If you
+expected one, nothing failed and nothing is misconfigured.
+
+This has been true since the previous release, not this one. Spec Kit moved branch creation out of its base
+scaffold and into an optional `git` extension, and Specrew installs only its own extension, so no component
+in a project created by `specrew init` makes branches.
+
+What changed here is that you are told. The scaffold used to print a `BRANCH_NAME` line and stop, which is
+the feature's name and also the name a branch would have had, with no way to tell which you were being
+shown. It now says which of four things happened - the branch was created and checked out, it exists but is
+not checked out, there is no repository, or it was not created and why - and says plainly that nothing
+failed.
+
+**If you want feature branches, create them yourself for now.** Whether Specrew should install the extension
+that makes them is an open question rather than a settled one, and it will be answered in a release where
+changing what every new project receives can be exercised properly.
+
 ## The workshop's first turn no longer interrupts you
 
 **Type what you want to build, and the first thing you see is the first question.** That was not true
@@ -426,6 +445,21 @@ Boundary packets also run a provider-free preflight before state mutation: remot
 must have the current branch pushed at HEAD, ahead-count provenance is surfaced, dirty paths are
 classified by writer, task/status summaries must agree, and the boundary's owed artifact must exist.
 Local-only projects name the remote check as not applicable rather than inventing a forge obligation.
+
+**Something must be tested against a project made minutes ago, not against this repository.** This is the
+most valuable thing the release walk found, and what makes it valuable is that it would have prevented a
+shipped defect rather than merely caught one. The missing feature branches above went unnoticed through an
+entire release cycle - not for want of looking, but because everything that looked ran inside the Specrew
+repository, whose scaffolding is pinned from April, which carries every optional extension, and which until
+late August was running a Spec Kit version two minors behind the one it was shipping to everyone else. The
+configuration almost every user has is the one least represented in the project's own testing. The candidate
+walk already has the right shape - a fresh directory, the shipped installer, a real first session - and it
+needs to be a lane that runs rather than a checklist someone remembers.
+
+**Whether Specrew should install Spec Kit's `git` extension.** Not changed in this release, because it
+alters what every new project receives and that deserves its own exercise. It looks more like an oversight
+than a decision: the version carrying the change has been pinned for two months, the lifecycle assumes
+feature branches nearly everywhere, and nothing anywhere records a decision to work without them.
 
 **Feature creation should not write a specification file at all.** This release fixes the symptom: a guard
 that interrupted the workshop's first turn over a placeholder the product itself had just written. The
