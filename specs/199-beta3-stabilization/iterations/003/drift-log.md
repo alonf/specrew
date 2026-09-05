@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 58 (DRIFT-199-I003-001 through -058)
+**Total drift events**: 59 (DRIFT-199-I003-001 through -059)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2126,3 +2126,63 @@ caller_contaminated=False`.
   PowerShellGet's provenance file and the module's version-check cache. The packaging code's own comment
   predicted this confusion, having already seen a verifier scope to FileList and disagree with the stamp.
 - **Class closure**: NONE - a measurement, recorded so the next census has a baseline to be compared with.
+
+### DRIFT-199-I003-059 - A GUARD FIRED AFTER ITS OWN PURPOSE HAD BEEN SERVED, on turn one of the most common path in the product - and the exemption written to prevent it could never fire, because it compared against the wrong artifact
+
+**Found by the candidate walk, on the first turn, by the maintainer typing what they wanted.** *"create a
+small CLI that converts CSV to JSON"* produced a five-part re-entry packet before a single question had been
+answered.
+
+- **THE SHARPER FINDING, and it is sharper than the stop itself**: the agent had **already explained the
+  placeholder, unprompted, in its orientation** - *"The spec at ... is a deliberate placeholder until the
+  workshop finishes."* **The requirement the guard exists to enforce was satisfied before the guard ran.**
+  The hook fired anyway, because it tests **whether a file outside the workshop changed**, not **whether the
+  human was told**. A guard that fires after its own purpose has been served is the most expensive kind:
+  it costs the interruption and buys nothing, and this one does it on turn one of the most common path in
+  the product. **This is the clearest evidence yet for the beta4 UX priority.**
+- **AND THE FILE WAS WRITTEN BY THE PRODUCT ITSELF**, seconds earlier, by the governed create step. The
+  human had not touched it and could not have.
+- **THE MECHANICAL CAUSE: an exemption existed for exactly this and had never once fired.**
+  `Test-SpecrewUntouchedFeatureSpecScaffold` hashed `spec.md` against
+  `.specify/templates/spec-template.md` - what the UPSTREAM scaffold leaves behind. But the governed wrapper
+  **immediately replaces that template with a short not-yet-authored stub**, deliberately, so that a
+  template cannot invite premature authoring. Measured: **the stub is 917 bytes and the template is 5374**,
+  so the comparison failed on size before it ever reached a hash.
+  - **The exemption and the thing it exempts were written against different versions of the same file.**
+    Nothing detected that, because a predicate that always returns `$false` is indistinguishable from a
+    predicate whose condition is simply never met.
+- **THE FIX IS NARROW BY RULING**, and the root fix is named rather than taken: stopping the scaffold from
+  writing `spec.md` at all is the correct root cause, but it changes feature creation itself and needs its
+  own walk. **Recorded as the beta4 root fix.** Today the predicate reads the sentinel
+  `<!-- specrew:spec-not-yet-authored -->` that **the specify gate already reads for this same question**, so
+  there is one contract about whether a specification has been authored instead of two opinions. The
+  template comparison is kept beneath it for projects scaffolded before the wrapper existed.
+- **BOTH DIRECTIONS PROVEN, because losing T020 silently would be far worse than the stop being removed.**
+  Six cases run against the predicate **extracted from the shipped provider by AST** so the provider's
+  load-time behaviour could not influence the result, with preconditions asserted first:
+
+| case | expected | actual |
+| --- | --- | --- |
+| **A** untouched governed stub | exempt | exempt |
+| **B1** authored spec, sentinel replaced | **stops** | **stops** |
+| legacy: upstream template still in place | exempt | exempt |
+| unrelated content | stops | stops |
+| stub present, no template on disk | exempt | exempt |
+| **B2** stub with requirements appended | exempt at this predicate | exempt at this predicate |
+
+- **B2 IS THE RESIDUAL AND IT IS STATED RATHER THAN GLOSSED.** An append that leaves the sentinel intact is
+  not caught by the predicate. It is bounded at the caller, which also requires
+  `agenda_status -eq 'pending-confirmation'` and exempts only the single path `specs/<ref>/spec.md`, so it
+  can only happen on the pre-agenda product-domain turn - before anything has been decided. On every later
+  workshop turn the stop returns. The specify boundary also still refuses while the sentinel stands, so
+  nothing can advance on a file in that state.
+- **SCOPE CONSEQUENCE, stated plainly rather than folded in**: `specrew-conformance-provider.ps1` was in the
+  delta as a comment rewrite with a code-unchanged proof. **It now also carries a behavioural change, so it
+  sits in two categories** as `confirm-workshop-lens.ps1` already does, **and the inertness proof no longer
+  covers it**. Measured: its executable token stream moves 15061 -> 15095. The proof now covers **three**
+  files, and the release record says three.
+- **The walk restarts on the rebuilt candidate.** That is expected and cheap; the walk exists precisely so
+  that a change to the shipped bits gets exercised before the tag.
+- **Class closure**: the beta4 root fix is the scaffold not writing `spec.md`. The broader class - guards
+  that test a proxy for their purpose rather than the purpose - is the beta4 UX item, and this is its
+  sharpest measured instance.

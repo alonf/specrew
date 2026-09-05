@@ -128,6 +128,29 @@ that init/update copies into consumer projects, not module-only engine internals
   conversation is never replaced by an engineering interrupt. Recovery says whether an answer was
   actually preserved, proposes one action, and does not diagnose or blame Specrew.
 
+## The workshop's first turn no longer interrupts you
+
+**Type what you want to build, and the first thing you see is the first question.** That was not true
+until this release.
+
+Creating a feature writes a placeholder specification, which says in so many words that the specification
+comes after the workshop. A guard then noticed that a file outside the workshop notes had changed and
+stopped to tell you about it, before you had answered anything, about a file the product had written
+itself seconds earlier and you had never touched.
+
+An exemption for exactly this case already existed and had never once worked. It compared the placeholder
+against the upstream specification template, but the governed step replaces that template with a much
+shorter stub, on purpose, so a template cannot tempt anyone into writing requirements early. The two files
+were never the same size, so the comparison failed before it began.
+
+The check now reads the same marker the specify boundary already reads to decide whether a specification
+has been written. One rule, one answer.
+
+**What still stops you is unchanged.** If anything writes real content into that file during the workshop,
+you are told, because that is genuine work you did not see happen. That protection was proven in both
+directions before this shipped: an authored specification still stops, and the untouched placeholder no
+longer does.
+
 ## What a review actually costs
 
 Stated as a receipt rather than an estimate, from the authority ledger of T067 (the dogfood feature whose review loop exposed these costs):
@@ -320,8 +343,13 @@ regenerates, it is not part of the package, and a project installing this build 
 this build.
 
 The comment-only changes in this release are proven, not asserted. Each affected script was parsed at the
-previous tag and at this one, comments dropped, and the remaining token streams compared. All four are
-executable-identical.
+previous tag and at this one, comments dropped, and the remaining token streams compared. **Three** are
+executable-identical, and the proof covers those three only.
+
+The fourth, the conformance provider, no longer belongs in that set. It began as a comment rewrite and now
+also carries a behavioural fix, so it sits in two categories the way the workshop-lens script already does.
+The fix is described under the workshop's first turn below, and it is the reason the candidate was rebuilt
+and re-walked.
 
 ## A disclosed verification gap: FR-032
 
@@ -398,6 +426,18 @@ Boundary packets also run a provider-free preflight before state mutation: remot
 must have the current branch pushed at HEAD, ahead-count provenance is surfaced, dirty paths are
 classified by writer, task/status summaries must agree, and the boundary's owed artifact must exist.
 Local-only projects name the remote check as not applicable rather than inventing a forge obligation.
+
+**Feature creation should not write a specification file at all.** This release fixes the symptom: a guard
+that interrupted the workshop's first turn over a placeholder the product itself had just written. The
+cause is that the placeholder exists. Nothing reads it before the workshop ends, every path that touches
+it has to special-case it, and the walk that found this hit it on turn one. Removing it changes feature
+creation, which is why it was not done under a release candidate.
+
+**A guard should test its purpose, not a proxy for it.** The interruption above fired after the agent had
+already explained the placeholder unprompted, so the thing the guard exists to guarantee had happened and
+it stopped anyway. It checks whether a file changed rather than whether the human was told. That shape is
+worth hunting for elsewhere, because a guard that fires after its own purpose is served costs the
+interruption and buys nothing.
 
 **The test corpus has to catch up with the provenance shift, and that is the largest item here.** This
 release moved several checks from asking whether an artifact exists to asking whether it was produced

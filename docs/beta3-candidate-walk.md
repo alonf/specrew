@@ -24,7 +24,8 @@ The packaged delta is **six distinct files in four categories**:
 
 | Category | Files |
 | --- | --- |
-| Comment rewrites (code-unchanged proof) | `shared-governance.ps1`, `workshop-authority-store.ps1`, `confirm-workshop-lens.ps1`, `specrew-conformance-provider.ps1` |
+| Comment rewrites (code-unchanged proof) | `shared-governance.ps1`, `workshop-authority-store.ps1`, `confirm-workshop-lens.ps1` |
+| Behavioural fix (both directions proven) | `specrew-conformance-provider.ps1` *(also a comment rewrite; the inertness proof no longer covers it)* |
 | Behavioural fix (three-direction proof) | `install-local-build.ps1` |
 | Machine-read comment correction | `confirm-workshop-lens.ps1` *(second change)* |
 | **Shipped content injected into every session, every host** | **`refocus/general.md`** |
