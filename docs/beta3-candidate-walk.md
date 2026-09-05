@@ -20,7 +20,8 @@ to exercise that host on the exact bits you will be presenting.
 
 ## What this walk covers, and why one walk is enough
 
-The packaged delta is **six distinct files in four categories**:
+The packaged delta is **six distinct files in five categories**. Two files appear twice, because a change
+can be both a comment rewrite and a behavioural fix:
 
 | Category | Files |
 | --- | --- |
@@ -31,8 +32,14 @@ The packaged delta is **six distinct files in four categories**:
 | **Shipped content injected into every session, every host** | **`refocus/general.md`** |
 
 Four of those are the scripts a workshop-and-boundary walk exercises. `general.md` is loaded at session
-start. So one governed feature — workshop through a lens, then one boundary with a typed verdict — covers
+start. So one governed feature - workshop through a lens, then one boundary with a typed verdict - covers
 all of it.
+
+**This is the second walk on this delta, and the reason is Step 4.** The first attempt stopped on the
+workshop's very first turn with a re-entry packet about the placeholder specification the scaffold had
+just written. That is fixed in the conformance provider, which is why it now sits in two categories above
+and why the candidate was rebuilt. **Watch Step 4 closely: the first thing after you state a feature
+request should be the first workshop question, and nothing else.**
 
 `install-local-build.ps1` needs no walk step of its own: contributor-only, unreachable from any lifecycle
 path per the call graph, carries a three-direction proof, and **you exercise it incidentally in step 1**.
@@ -182,7 +189,9 @@ authority-marker correction), `workshop-authority-store.ps1` (the transition tab
 `specs/<feature>/workshop/`.
 
 **FAILURE**: the workshop refuses to close a lens it should accept; a refusal naming a parameter you did
-not supply; any message citing an internal `DRIFT-` identifier; or a lens closing with no artifact written.
+not supply; any message citing an internal `DRIFT-` identifier; a lens closing with no artifact written; or
+**a five-part re-entry packet before you have answered anything** - that is the defect this rebuild fixes,
+and seeing it again means the fix did not take.
 
 ---
 
