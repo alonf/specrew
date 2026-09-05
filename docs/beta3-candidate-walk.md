@@ -63,11 +63,27 @@ Four of those are the scripts a workshop-and-boundary walk exercises. `general.m
 start. So one governed feature - workshop through a lens, then one boundary with a typed verdict - covers
 all of it.
 
-**This is the second walk on this delta, and the reason is Step 4.** The first attempt stopped on the
-workshop's very first turn with a re-entry packet about the placeholder specification the scaffold had
-just written. That is fixed in the conformance provider, which is why it now sits in two categories above
-and why the candidate was rebuilt. **Watch Step 4 closely: the first thing after you state a feature
-request should be the first workshop question, and nothing else.**
+## THE POINT OF THIS WALK IS STEP 5. EVERYTHING BEFORE IT IS SETUP.
+
+**Two walks have now ended before reaching a boundary, and the two behaviours the delta most needs
+exercised are the two neither of them touched: a lens confirmation completing, and a boundary advancing on
+a typed verdict.** The first walk stopped on the packet interruption; the second went into archaeology over
+a missing branch. Both produced real findings and neither proved the thing the delta changes.
+
+So read Steps 0 to 4 as setup. **A walk that installs cleanly, initialises cleanly, and stops before the
+boundary has not verified this release.** If something goes wrong before Step 5, note it and keep going
+where you safely can - the goal is to reach the verdict.
+
+**Three things to watch for, in this order:**
+
+| # | Watch for | Where |
+| --- | --- | --- |
+| 1 | the agent reaches its first question **without opening any Specrew source** | Step 4 |
+| 2 | the scaffold **states plainly whether it created a branch** | Step 4 |
+| 3 | **the boundary advances when you type your verdict** | Step 5 |
+
+Each is a fix in this candidate. The first two are the second walk's findings; the third is what the whole
+delta exists to keep working, and is the one still unproven.
 
 `install-local-build.ps1` needs no walk step of its own: contributor-only, unreachable from any lifecycle
 path per the call graph, carries a three-direction proof, and **you exercise it incidentally in step 1**.
@@ -216,14 +232,30 @@ authority-marker correction), `workshop-authority-store.ps1` (the transition tab
 **Expect on closing a lens**: an acknowledgment that the lens was recorded, and a durable artifact under
 `specs/<feature>/workshop/`.
 
+**WATCH 1 - the agent reaches its first question without reading source.** The previous walk spent over
+three minutes opening `create-governed-feature.ps1` and `create-new-feature.ps1` before asking anything,
+because the instructions named those paths and never said they are not for reading. That clause is now in
+the shipped template. **You should see the orientation and then the first question. Any stretch of file
+reads before the first question means the clause did not land.**
+
+**WATCH 2 - the scaffold says whether it made a branch.** Look for a `BRANCH:` line alongside `BRANCH_NAME:`
+in the feature-creation output. **It should say the branch was not created and why**, and say that nothing
+failed - this project will stay on `master`, which is correct and expected. A bare `BRANCH_NAME:` with no
+`BRANCH:` line means the reporting fix did not reach you.
+
 **FAILURE**: the workshop refuses to close a lens it should accept; a refusal naming a parameter you did
 not supply; any message citing an internal `DRIFT-` identifier; a lens closing with no artifact written; or
-**a five-part re-entry packet before you have answered anything** - that is the defect this rebuild fixes,
-and seeing it again means the fix did not take.
+**a five-part re-entry packet before you have answered anything** - that is the defect the previous rebuild
+fixed, and seeing it again means it did not take.
+
+**Do not stop here for a cosmetic problem.** Note it and continue to Step 5, which is the step that has
+never been reached.
 
 ---
 
-## Step 5 - One boundary, with a typed verdict
+## Step 5 - One boundary, with a typed verdict (THIS IS THE STEP THAT MATTERS)
+
+**No walk on this delta has reached this step.** Everything above exists to get you here.
 
 Let the lifecycle reach its first boundary stop (specify).
 
@@ -241,6 +273,10 @@ approved for specify
 **This exercises** `specrew-conformance-provider.ps1` (the stop/packet path) and the crossing machinery in
 `shared-governance.ps1`.
 
+**WATCH 3 - the boundary advances on your typed verdict.** This is the behaviour the delta most needs
+proven and the one two walks have missed. The packet should render as prose with four sendable response
+lines, you type the phrase as your whole message, and the boundary moves.
+
 **FAILURE**: the packet renders without the four response lines; the verdict is not captured and you are
 asked again; the boundary advances without a captured verdict; or the packet offers a picker, a numbered
 list, or a menu.
@@ -251,6 +287,9 @@ list, or a menu.
 
 All of: hashes matched at step 0, install clean, init clean, refocus line rendered, one lens closed with an
 artifact, one boundary crossed on a typed verdict. **15-20 minutes, not a full lifecycle.**
+
+**The last item is the one that decides it.** A walk that does everything else and does not cross a
+boundary is not a pass - it is a third walk that stopped before the point.
 
 Report the result and I will proceed to the tag. **No commit lands on `respin/beta3-census` after the
 walk.** The next git operation on that branch is the tag itself, because any commit in between invalidates
