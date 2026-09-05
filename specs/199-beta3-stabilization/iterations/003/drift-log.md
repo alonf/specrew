@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 61 (DRIFT-199-I003-001 through -061)
+**Total drift events**: 62 (DRIFT-199-I003-001 through -062)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2246,3 +2246,44 @@ found in SHIPPED CODE, and it is the best finding of the respin.**
   against it in the provider. **That touches feature creation, which is the same blast radius as the beta4
   root fix it belongs beside.**
 - **Class closure**: beta4, one line, and it lands with the root fix rather than before it.
+
+### DRIFT-199-I003-062 - THE RULE APPLIED TO ITS OWN FIX, in the same session that wrote it: the repaired exemption now has a positive test, and the test is mutation-proved
+
+**DRIFT-199-I003-060 named the enforcement - every guard exemption owes a POSITIVE test - and then filed it
+as a beta4 item while the exemption it had just repaired sat in exactly the state that let the original die
+for 22 days: correct today, with nothing that would say if it stopped firing.** The maintainer caught that
+and ruled it be done now. **A rule proposed and not applied to the case that produced it is a rule nobody
+has tested.**
+
+- **THE GAP, precisely**: the six-case run behind the fix was a **scratch proof**, not a suite test. It
+  proved the predicate on the day and then ceased to exist. Zero tests in the tree named
+  `Test-SpecrewUntouchedFeatureSpecScaffold` before this entry, and none does the work a scratch script did.
+- **`tests/unit/guard-exemptions-still-fire.tests.ps1`**, 18 assertions, registered in the
+  **`f199-class-guards`** lane - beside the membership, package-completeness and hook-coverage guards,
+  which all exist for the same reason: **two computable things that nothing was comparing.**
+- **IT READS THE SHIPPED FILES, NOT COPIES, and that is the design rather than a detail.** The original
+  defect was the scaffold and the predicate **drifting apart while each stayed internally correct**, so a
+  test carrying its own pasted copy of the stub would have passed throughout the 22 days. Instead:
+  - the predicate is extracted from the provider **by AST**, so the provider's load-time behaviour cannot
+    influence the result;
+  - the expected stub is **rendered from the scaffold's own `$specStub` literal**, so if the scaffold
+    changes what it writes, this test uses the new text and still demands the predicate recognise it.
+  - **The coupling is the subject of the test.** That is the property that was missing.
+- **THE ASSERTION THAT CANNOT BE SATISFIED BY A CONSTANT**: the predicate must be observed returning **both
+  `$true` and `$false` in the same run**. A dead exemption returning `$false` forever fails it, and so does
+  a permanently-open one.
+- **AND THE B2 RESIDUAL IS PINNED AS TEXT**: three caller conditions - `pending-confirmation`,
+  `product-domain`, `scope = feature` - plus the single-path binding, asserted against the provider source.
+  **Relaxing any of them widens the disclosed residual, and now it cannot be widened silently.**
+- **MUTATION-PROVED, with the target GREEN first** - the rule from DRIFT-199-I003-047, which exists because
+  iteration 002's mutation turned an already-red test red and discriminated nothing. All 18 assertions
+  passed; the sentinel was then made unmatchable, reproducing the 22-day defect; **the POSITIVE assertion
+  went red and no other**; the provider was restored and verified **byte-identical by hash**. So the guard
+  demonstrably catches the thing it was written for, rather than being assumed to.
+- **IT COSTS THE WALK NOTHING, which is why it could be done now.** `Specrew.psd1`'s FileList carries no
+  test files, so the package is unchanged: measured, `content_sha256` at the new commit is
+  `79efee9b...aa31f4`, identical to what is installed, 414 files both sides. **The installed module is
+  byte-identical, the walk proceeds on it, and the tag moves to the commit that includes the test.**
+- **Class closure**: DRIFT-199-I003-060's enforcement is no longer a beta4 aspiration for this exemption -
+  it is a lane guard with a home for the next one. The generalisation to every OTHER exemption in the tree
+  remains beta4.
