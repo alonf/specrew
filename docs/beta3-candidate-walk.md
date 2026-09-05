@@ -63,9 +63,9 @@ Four of those are the scripts a workshop-and-boundary walk exercises. `general.m
 start. So one governed feature - workshop through a lens, then one boundary with a typed verdict - covers
 all of it.
 
-## THIS IS THE FOURTH WALK. THREE HAVE ENDED BEFORE A BOUNDARY. REACHING ONE IS THE WHOLE JOB.
+## THIS IS THE FIFTH WALK. FOUR HAVE ENDED BEFORE A BOUNDARY. REACHING ONE IS THE WHOLE JOB.
 
-**Read this before anything else.** Three walks have run on this delta and **not one has crossed a
+**Read this before anything else.** Four walks have run on this delta and **not one has crossed a
 boundary with a typed verdict** - the single behaviour the release most needs proven. Each stopped
 somewhere earlier and each found something real, so the walks have been worth running. But the thing they
 were for is still unverified.
@@ -75,7 +75,8 @@ were for is still unverified.
 | 1 | stopped on turn one | a packet interrupting the workshop's first question |
 | 2 | never left the scaffold | a branch reported but never created |
 | 3 | reached the workshop | a packet interrupting mid-lens |
-| **4 (this one)** | **must reach Step 5** | |
+| 4 | reached the workshop | the same note repeated on every turn |
+| **5 (this one)** | **must reach Step 5** | |
 
 **Steps 0 to 4 are setup. They are not the walk.** A run that installs cleanly, initialises cleanly, opens
 a lens and then stops has not verified this release - it is a fourth walk that ended before the point.
@@ -92,7 +93,7 @@ abandoning the walk for unless it physically blocks you. Write it down and conti
 | 3 | outside work is mentioned in **one sentence, mid-conversation**, with no packet and no re-ask | Step 4 | yes |
 | 4 | **THE BOUNDARY ADVANCES WHEN YOU TYPE YOUR VERDICT** | **Step 5** | **the one still unproven** |
 
-The first three are fixes the previous three walks paid for. **The fourth is the one that decides whether
+The first three are fixes the previous four walks paid for. **The fourth is the one that decides whether
 this release is verified.**
 
 `install-local-build.ps1` needs no walk step of its own: contributor-only, unreachable from any lifecycle
@@ -271,7 +272,7 @@ never been reached.
 
 ## Step 5 - One boundary, with a typed verdict (THIS IS THE STEP THAT MATTERS)
 
-**No walk on this delta has reached this step. Three have tried.** Everything above exists to get you
+**No walk on this delta has reached this step. Four have tried.** Everything above exists to get you
 here, and if you have arrived with unresolved notes from earlier steps, that is fine - finish this step
 first and report the notes afterwards.
 
