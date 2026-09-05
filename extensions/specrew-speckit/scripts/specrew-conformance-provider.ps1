@@ -499,15 +499,39 @@ function Test-SpecrewWorkshopComplete {
 }
 
 function Test-SpecrewUntouchedFeatureSpecScaffold {
+    # FR-029 (T020) companion. This exempts exactly one path from the outside-work stop: the turn that
+    # OPENS the workshop, where the only file outside the workshop notes is the specification placeholder
+    # the governed scaffold wrote seconds earlier, before the human had answered anything.
+    #
+    # IT WAS COMPARING AGAINST THE WRONG ARTIFACT, and so it could never fire. It hashed spec.md against
+    # .specify/templates/spec-template.md - what the UPSTREAM scaffold leaves behind - but the governed
+    # wrapper immediately REPLACES that template with a short not-yet-authored stub, precisely so a
+    # template cannot invite premature authoring. Measured on the beta3 candidate walk: the stub is 917
+    # bytes and the template is 5374, so the sizes disagreed on the first comparison every time. The
+    # human's first turn after saying what they wanted ended in a five-part re-entry packet about a file
+    # the product had written itself.
+    #
+    # The stub carries the sentinel the specify gate ALREADY reads for this exact question. Using the same
+    # sentinel keeps one contract rather than inventing a second opinion about whether a specification has
+    # been authored. The template comparison is kept below it, because a project scaffolded before the
+    # wrapper existed still has the upstream template sitting in that path.
+    #
+    # This does NOT weaken T020. Authoring into spec.md replaces the stub, which takes the sentinel with
+    # it; and the caller admits this exemption only while the agenda is still pending confirmation, so a
+    # write on any later workshop turn is outside work again and stops exactly as before.
     param([string]$ProjectRoot, [AllowNull()][string]$FeatureRef)
     try {
         if ([string]::IsNullOrWhiteSpace($FeatureRef)) { return $false }
         $specPath = Join-Path $ProjectRoot ("specs/{0}/spec.md" -f $FeatureRef)
-        $templatePath = Join-Path $ProjectRoot '.specify/templates/spec-template.md'
-        if (-not (Test-Path -LiteralPath $specPath -PathType Leaf) -or -not (Test-Path -LiteralPath $templatePath -PathType Leaf)) { return $false }
+        if (-not (Test-Path -LiteralPath $specPath -PathType Leaf)) { return $false }
         $specItem = Get-Item -LiteralPath $specPath -ErrorAction Stop
+        if ($specItem.Length -le 0 -or $specItem.Length -gt 1048576) { return $false }
+        $specText = Get-Content -LiteralPath $specPath -Raw -Encoding UTF8
+        if ($specText -match '<!--\s*specrew:spec-not-yet-authored\s*-->') { return $true }
+        $templatePath = Join-Path $ProjectRoot '.specify/templates/spec-template.md'
+        if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) { return $false }
         $templateItem = Get-Item -LiteralPath $templatePath -ErrorAction Stop
-        if ($specItem.Length -le 0 -or $specItem.Length -ne $templateItem.Length -or $specItem.Length -gt 1048576) { return $false }
+        if ($specItem.Length -ne $templateItem.Length) { return $false }
         return ([string](Get-FileHash -LiteralPath $specPath -Algorithm SHA256 -ErrorAction Stop).Hash -ceq
             [string](Get-FileHash -LiteralPath $templatePath -Algorithm SHA256 -ErrorAction Stop).Hash)
     }
