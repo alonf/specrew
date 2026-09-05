@@ -57,9 +57,19 @@ cd C:\Temp\b3census
 pwsh -File scripts/internal/install-local-build.ps1 -WhatIfOnly
 ```
 
-**Expect** a line of the form `commit <sha> content <sha256>`, a file count in the low 400s, and
+**Expect** a line of the form `commit <sha> content <sha256>`, a file count of 414, and
 `WhatIfOnly: nothing was installed.` **Write the commit and content values down.** They are the walk's
 subject.
+
+**IGNORE THE `installed` COLUMN IN THE TABLE THIS PRINTS. It says `False` and that is not an answer about
+your machine.** The field records whether *this invocation* installed anything, so under `-WhatIfOnly` it is
+hard-coded `False` and can never say anything else. It is not a check of whether the candidate is present,
+and reading it as one here is the natural mistake, because this step is about exactly that question.
+
+The same applies to `install_root`: it shows where an install *would* go, not what is there now.
+
+**Where the real answer comes from** is the stamp inside the installed module, which Step 1 reads. Nothing
+in this step's output can tell you what is installed.
 
 **FAILURE - stop here if**: the command refuses, or reports a file count in the single digits or tens, which
 would mean the source tree is not a real Specrew build.
