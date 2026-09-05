@@ -8,6 +8,30 @@ as a failure. If a step fails, stop and report it rather than working around it.
 
 ---
 
+## PRECONDITION - where the walk runs
+
+**The walk runs the agent in a FRESH, EMPTY directory. Never in C:\Temp\b3census.**
+
+That worktree is not a neutral place to stand: it is itself a governed Specrew project, with its own
+lifecycle state, its own feature history, and the candidate's own source tree in it. Launching the agent
+there does three things wrong at once:
+
+- **it creates a real feature in the candidate tree** - the first walk did exactly this, scaffolding
+  `specs/201-csv-to-json/` and switching the worktree onto a new branch;
+- **it pollutes the census subject**, because the validator suites copy the repository including `specs/`;
+- **it does not exercise what the walk is for.** The clean session-start path - a project with no history,
+  reaching its first boundary for the first time - is the thing being checked, and an established project
+  cannot show it to you.
+
+`C:\Temp\b3census` is used for exactly two commands, both of which package or install the module and neither of
+which launches an agent: Step 0's `-WhatIfOnly` and Step 1's install. **From Step 2 onward you are in
+`C:\Temp\b3walk` and you do not go back.**
+
+Stating this at the top rather than inside a step is deliberate: it is a precondition like any other, and
+the rule this project runs on is that a control states the conditions it requires.
+
+---
+
 ## Before you start: one question
 
 **Which agent CLI do you want to walk on — Claude, Codex, or Copilot?**
@@ -141,7 +165,7 @@ $s = Get-Content -LiteralPath (Join-Path $m.ModuleBase 'build-stamp.json') -Raw 
 
 ## Step 2 — Fresh project, governed feature
 
-Use a directory that does not exist yet and is visually distinct from your other walk projects.
+Use a directory that does not exist yet and is visually distinct from your other walk projects. **This is the second pass, so if `C:\Temp\b3walk` is left over from an earlier attempt, delete it first** - a project with history cannot show you the clean session-start path this walk is checking.
 
 ```powershell
 mkdir C:\Temp\b3walk

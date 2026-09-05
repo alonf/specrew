@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 59 (DRIFT-199-I003-001 through -059)
+**Total drift events**: 61 (DRIFT-199-I003-001 through -061)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2186,3 +2186,63 @@ answered.
 - **Class closure**: the beta4 root fix is the scaffold not writing `spec.md`. The broader class - guards
   that test a proxy for their purpose rather than the purpose - is the beta4 UX item, and this is its
   sharpest measured instance.
+
+### DRIFT-199-I003-060 - THE VACUOUS CONTROL, IN PRODUCTION CODE: a predicate whose condition can never be met is indistinguishable from one correctly declining, and nothing in the system can tell them apart
+
+**This class has appeared repeatedly in this session's CONTROLS. DRIFT-199-I003-059 is the first instance
+found in SHIPPED CODE, and it is the best finding of the respin.**
+
+- **THE STATEMENT OF THE CLASS**: a guard exemption that returns `$false` because its condition is
+  genuinely not met, and one that returns `$false` because its condition **can never be met**, produce
+  byte-identical behaviour. Every test passes. Every log line is the same. **The system has no way to
+  distinguish a rule that is declining from a rule that is dead.**
+- **MEASURED LIFETIME**: introduced `2244d08c` on **2026-08-14** ("keep workshop stops conversational"),
+  found on **2026-09-05**. **22 days, and it never fired once.** It could not: it hashed a 917-byte stub
+  against a 5374-byte template, so it failed on the size comparison before reaching a hash, on every
+  invocation of its entire life.
+- **AND NOTHING WAS WATCHING, which is the enforceable part.** No test in the tree names
+  `Test-SpecrewUntouchedFeatureSpecScaffold`, and none asserts that a pre-agenda `spec.md` turn is exempt.
+  **The suite only ever asserted the guard STOPS things.** A suite written entirely in the negative cannot
+  notice that the positive case is unreachable - it agrees with a dead exemption perfectly.
+- **THE SAME FAMILY, in this session's own controls, for scale**:
+
+| instance | why it measured nothing |
+| --- | --- |
+| the three-direction module-visibility proof | PowerShell 7 re-added the default `PSModulePath`, so direction 1 passed vacuously |
+| iteration 002's T023 mutation proof (DRIFT-199-I003-049) | the mutation turned an ALREADY-RED test red |
+| the instrumented provider copy in the scratchpad | no `$PSScriptRoot` siblings, so the machinery never loaded |
+| the coverage probe reading `.Output` | the helper returns `.Text`; the probe fired and read nothing |
+| **this exemption** | **compared against an artifact the scaffold stopped producing** |
+
+- **THE ENFORCEMENT, and it is cheap and mechanical**: **every guard exemption owes a POSITIVE test - one
+  that proves it returns true at least once.** Not a test that the guard stops things; a test that the
+  exemption fires. That single rule would have caught this on the day it was written, and it generalises to
+  every predicate in the tree whose job is to say "not this one".
+  - **The stronger version, if it is wanted later**: an exemption that has never fired in its lifetime is a
+    fact the system could notice ABOUT ITSELF. A counter behind each named exemption, surfaced when it
+    reads zero over a long window, turns "is this rule alive" from a question nobody asks into an
+    observation the product makes. Recorded as the ambitious form; the positive test is the one to ship.
+- **WHY IT IS WORTH A CLASS RATHER THAN A LINE IN THE FIX**: the fix repairs one predicate. The class says
+  where to look for the next one, and gives a test rule that makes the next one impossible to introduce
+  silently. **A dead rule is worse than a missing one, because a missing rule is visible.**
+- **Class closure**: the positive-test rule is a beta4 harness item. The self-observing counter is the
+  ambitious form of the same idea and is recorded, not proposed for this release.
+
+### DRIFT-199-I003-061 - the natural closure of the B2 residual: compare against the STUB, which is what the broken predicate was reaching for with the wrong baseline
+
+- **THE RESIDUAL** (DRIFT-199-I003-059, case B2): the repaired predicate reads the sentinel
+  `<!-- specrew:spec-not-yet-authored -->`, so an append that LEAVES the sentinel in place is not caught by
+  the predicate itself. It is bounded at the caller to the pre-agenda product-domain turn and to one path,
+  and disclosed on that basis.
+- **THE CLOSURE, and it completes the original design rather than replacing it**: compare `spec.md` against
+  the **stub**, not merely against its marker. An append changes the file, so a content comparison catches
+  it where a marker read cannot. **That is exactly what the broken predicate was reaching for - it had the
+  right shape and the wrong baseline**, comparing against the upstream template instead of the stub that
+  replaced it.
+- **WHAT IT NEEDS, which is why it is not today's fix**: the stub is currently rendered from a literal
+  inside `create-governed-feature.ps1`. Reproducing it inside the provider would create a second writer of
+  the same text - the defect DRIFT-199-I003-048 already names. The honest form is one definition, two
+  consumers: lift the stub into a shipped template or a shared helper, render it in the scaffold, compare
+  against it in the provider. **That touches feature creation, which is the same blast radius as the beta4
+  root fix it belongs beside.**
+- **Class closure**: beta4, one line, and it lands with the root fix rather than before it.
