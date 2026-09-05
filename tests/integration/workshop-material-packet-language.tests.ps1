@@ -156,29 +156,27 @@ This topic decides the structural baseline for the retro calculator demo.
 
 For pacing, choose one: 1) all at once, or 2) one by one. Which do you prefer?
 '@
+    # Commit the fixture's own setup files first, so the ONLY outside-workshop path in this turn is the
+    # one under test. Without this the fixture's uncommitted bootstrap accessors are themselves outside work
+    # and the case proves nothing about the specification.
+    Push-Location $scratch
+    try { & git add -A 2>&1 | Out-Null; & git -c user.email='t@t' -c user.name='t' commit -m spec-only-baseline --quiet 2>&1 | Out-Null }
+    finally { Pop-Location }
+    Set-Content -LiteralPath (Join-Path $scratch "specs\$feature\spec.md") -Value '# Feature Specification: retro calculator' -Encoding UTF8
+
     $blocked = Invoke-ProviderStop -AssistantText $lensQuestion
 
-    # W72, DIRECTION ONE: WORKSHOP OPEN. The FACT is still carried - a human who opens spec.md and reads
-    # it as agreed is exactly what T020 exists to prevent - but its FORM is a single sentence inside the
-    # agent's normal reply, not a five-part packet and a full question re-ask for a condition the human
-    # has no decision in. Detection is unchanged and deliberately so: it was never wrong.
-    Assert-True ($blocked -match 'SPECREW-STOP-BLOCK') 'the instruction still reaches the agent: detection and delivery are unchanged'
-    Assert-True ($blocked -match '(?i)design workshop is still open') 'the correction says the workshop is still open'
-    Assert-True ($blocked -match "architecture-core") 'the correction names the topic the human is standing on'
-    Assert-True ($blocked -match [regex]::Escape("specs/$feature/spec.md")) 'the correction names the exact work it is reporting'
-
-    # The light form, asserted positively.
-    Assert-True ($blocked -match '(?i)ONE sentence') 'the agent is asked for ONE sentence, not a packet'
-    Assert-True ($blocked -match '(?i)continue with the workshop question that is already open') 'the open question continues in place rather than being re-asked'
-    Assert-True ($blocked -match '(?i)not yet agreed') 'the specification is named plainly as not yet agreed'
-    Assert-True ($blocked -match '(?i)specification is written after the workshop finishes') 'spec authoring during the workshop is named as premature rather than left implicit'
-
-    # And asserted negatively, which is the half that would catch a silent regression to the old form.
-    Assert-True ($blocked -notmatch '## What I Just Did') 'NO five-part packet is demanded while a workshop is open'
-    Assert-True ($blocked -notmatch '(?i)asking the SAME workshop question again') 'the question is NOT re-asked as a separate block'
-    Assert-True ($blocked -match '(?i)Do NOT render a context packet') 'the instruction says plainly not to render a packet'
-    Assert-True ($blocked -notmatch 'SPECREW-VERDICT-BOUNDARY: ') 'a non-boundary material stop still emits no boundary verdict marker'
-    Assert-True ($blocked -notmatch '(?i)lens-applicability|controller|digest|material surface') 'the workshop-aware correction keeps machinery vocabulary out of the human-facing text'
+    # W73, DIRECTION ONE: A WORKSHOP TURN TOUCHING ONLY THE SCAFFOLDED SPEC SAYS NOTHING AT ALL.
+    #
+    # spec.md is no longer a candidate for outside-work detection while a workshop is open. Not
+    # content-hashed, not windowed, not gated on a predicate. The three attempts to be clever about it each
+    # produced a measured harm and never prevented anything, and Specrew's own wrapper writes that stub -
+    # flagging it is the system failing to recognise its own output. The fact is still told to the human
+    # ONCE, at session start, by the orientation.
+    Assert-True ($blocked -notmatch '(?i)design workshop is still open') 'a workshop turn touching only the scaffolded spec produces NO note'
+    Assert-True ($blocked -notmatch '## What I Just Did') 'and certainly no five-part packet'
+    Assert-True ($blocked -notmatch [regex]::Escape("specs/$feature/spec.md")) 'the spec is not named, because it is not watched'
+    Assert-True ($blocked -notmatch 'SPECREW-VERDICT-BOUNDARY: ') 'and no boundary verdict marker is emitted'
 
     # W26: a README the human asked for during the workshop is not a surprise, so it does not owe a
     # re-entry packet. The exemption's own rationale is "it cannot surprise the human who co-authored
@@ -199,9 +197,19 @@ For pacing, choose one: 1) all at once, or 2) one by one. Which do you prefer?
     New-Item -ItemType Directory -Path (Join-Path $scratch 'src') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $scratch 'src\engine.js') -Value 'export const add = (a, b) => a + b;' -Encoding UTF8
     $codeTurn = Invoke-ProviderStop -AssistantText $lensQuestion
+    # W73, DIRECTION TWO: REAL PRODUCT SOURCE IS STILL REPORTED. Removing the spec from the watch set must
+    # not remove anything else from it.
     Assert-True ($codeTurn -match '(?i)design workshop is still open') 'source code written during the workshop is still reported'
     Assert-True ($codeTurn -match [regex]::Escape('src/engine.js')) 'the report still names the code that triggered it'
     Assert-True ($codeTurn -notmatch '## What I Just Did') 'source code mid-workshop takes the light form too, not a packet'
+
+    # W73, THE REPETITION: the light form renders no packet, so it can never satisfy the packet-present
+    # test that used to advance the turn baseline. The obligation was therefore never discharged and the
+    # SAME note recurred on every following turn for the life of the workshop. Emitting the report is now
+    # itself the discharge, so an unchanged next turn must be SILENT.
+    $codeTurnAgain = Invoke-ProviderStop -AssistantText $lensQuestion
+    Assert-True ($codeTurnAgain -notmatch [regex]::Escape('src/engine.js')) 'THE REPETITION: with nothing further changed, the next turn does NOT repeat the report'
+    Assert-True ($codeTurnAgain -notmatch '(?i)design workshop is still open') 'the workshop note does not recur once it has been made'
     Remove-Item -LiteralPath (Join-Path $scratch 'src') -Recurse -Force
     Remove-Item -LiteralPath (Join-Path $scratch 'README.md') -Force
     # The generic material directive must survive untouched where no workshop is open: this change is a

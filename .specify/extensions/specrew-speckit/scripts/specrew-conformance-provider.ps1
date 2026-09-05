@@ -498,46 +498,6 @@ function Test-SpecrewWorkshopComplete {
     return $false
 }
 
-function Test-SpecrewUntouchedFeatureSpecScaffold {
-    # FR-029 (T020) companion. This exempts exactly one path from the outside-work stop: the turn that
-    # OPENS the workshop, where the only file outside the workshop notes is the specification placeholder
-    # the governed scaffold wrote seconds earlier, before the human had answered anything.
-    #
-    # IT WAS COMPARING AGAINST THE WRONG ARTIFACT, and so it could never fire. It hashed spec.md against
-    # .specify/templates/spec-template.md - what the UPSTREAM scaffold leaves behind - but the governed
-    # wrapper immediately REPLACES that template with a short not-yet-authored stub, precisely so a
-    # template cannot invite premature authoring. Measured on the beta3 candidate walk: the stub is 917
-    # bytes and the template is 5374, so the sizes disagreed on the first comparison every time. The
-    # human's first turn after saying what they wanted ended in a five-part re-entry packet about a file
-    # the product had written itself.
-    #
-    # The stub carries the sentinel the specify gate ALREADY reads for this exact question. Using the same
-    # sentinel keeps one contract rather than inventing a second opinion about whether a specification has
-    # been authored. The template comparison is kept below it, because a project scaffolded before the
-    # wrapper existed still has the upstream template sitting in that path.
-    #
-    # This does NOT weaken T020. Authoring into spec.md replaces the stub, which takes the sentinel with
-    # it; and the caller admits this exemption only while the agenda is still pending confirmation, so a
-    # write on any later workshop turn is outside work again and stops exactly as before.
-    param([string]$ProjectRoot, [AllowNull()][string]$FeatureRef)
-    try {
-        if ([string]::IsNullOrWhiteSpace($FeatureRef)) { return $false }
-        $specPath = Join-Path $ProjectRoot ("specs/{0}/spec.md" -f $FeatureRef)
-        if (-not (Test-Path -LiteralPath $specPath -PathType Leaf)) { return $false }
-        $specItem = Get-Item -LiteralPath $specPath -ErrorAction Stop
-        if ($specItem.Length -le 0 -or $specItem.Length -gt 1048576) { return $false }
-        $specText = Get-Content -LiteralPath $specPath -Raw -Encoding UTF8
-        if ($specText -match '<!--\s*specrew:spec-not-yet-authored\s*-->') { return $true }
-        $templatePath = Join-Path $ProjectRoot '.specify/templates/spec-template.md'
-        if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) { return $false }
-        $templateItem = Get-Item -LiteralPath $templatePath -ErrorAction Stop
-        if ($specItem.Length -ne $templateItem.Length) { return $false }
-        return ([string](Get-FileHash -LiteralPath $specPath -Algorithm SHA256 -ErrorAction Stop).Hash -ceq
-            [string](Get-FileHash -LiteralPath $templatePath -Algorithm SHA256 -ErrorAction Stop).Hash)
-    }
-    catch { return $false }
-}
-
 function Resolve-SpecrewWorkshopQuestionPause {
     # FR-056: controller-owned durable state is the cross-host workshop authority. Model-authored comments and
     # question-tool payloads are intentionally irrelevant: hosts may omit or swallow them. The exact active feature /
@@ -1455,12 +1415,30 @@ try {
     # the human does. Without them the correction says "render a packet" in the middle of a design
     # conversation and names nothing the human can act on.
     $workshopOutsidePaths = @()
-    $preAgendaUntouchedScaffoldTurn = ($workshopIntermediate -and
-        [string]$workshopQuestion.scope -eq 'feature' -and
-        [string]$workshopQuestion.lens -eq 'product-domain' -and
-        [string]$workshopQuestion.agenda_status -eq 'pending-confirmation' -and
-        (Test-SpecrewUntouchedFeatureSpecScaffold -ProjectRoot $projectRoot -FeatureRef ([string]$workshopQuestion.feature_ref)))
-    $preAgendaSpecPath = if ($preAgendaUntouchedScaffoldTurn) { ("specs/{0}/spec.md" -f [string]$workshopQuestion.feature_ref) } else { $null }
+    $workshopLightFormEmitted = $false
+    # W73: WHILE A WORKSHOP IS OPEN, THE FEATURE'S OWN spec.md IS NOT WATCHED AT ALL.
+    #
+    # Not content-hashed, not windowed to one turn, not gated on a predicate that can rot. Simply not a
+    # candidate. The three preceding attempts to be clever about this each produced a measured harm and
+    # never once prevented anything:
+    #   - T020's lens re-ask;
+    #   - walk one's turn-one packet, from an exemption that had been dead for 22 days (DRIFT-199-I003-059);
+    #   - a note on EVERY turn of a workshop (DRIFT-199-I003-074).
+    #
+    # SPECREW'S OWN GOVERNED WRAPPER WRITES THAT STUB. Flagging it is the system failing to recognise its
+    # own output, and no amount of predicate refinement changes that.
+    #
+    # THE PROTECTION PEOPLE IMAGINE THIS GIVES IS ALREADY ELSEWHERE, which is why removing it costs nothing:
+    # the specify boundary REFUSES while the not-yet-authored sentinel stands, and the specification is
+    # authored from the workshop records regardless of what sits in the file meanwhile. The fact itself is
+    # still told to the human ONCE, at session start, where the orientation already says the spec file is a
+    # deliberate placeholder until the workshop finishes.
+    #
+    # Everything else stays watched, including source, tests and any OTHER file under specs/.
+    $workshopSpecPath = if ($workshopIntermediate -and -not [string]::IsNullOrWhiteSpace([string]$workshopQuestion.feature_ref)) {
+        ("specs/{0}/spec.md" -f [string]$workshopQuestion.feature_ref)
+    }
+    else { $null }
     if ($blockKind -eq 'material' -and $canAssess -and $null -ne $materialSignal) {
         $turnPaths = @()
         try { $turnPaths = @($materialSignal.changed_paths | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) }
@@ -1471,7 +1449,7 @@ try {
                     -not ($normalizedTurnPath -match '(^|/)workshop/' -or
                         $normalizedTurnPath -match '(^|/)lens-applicability\.json$' -or
                         $normalizedTurnPath -match '(^|/)\.specrew/handover/workshop-question\.json$' -or
-                        ($preAgendaUntouchedScaffoldTurn -and $normalizedTurnPath.Equals($preAgendaSpecPath, [StringComparison]::OrdinalIgnoreCase)) -or
+                        ($null -ne $workshopSpecPath -and $normalizedTurnPath.Equals($workshopSpecPath, [StringComparison]::OrdinalIgnoreCase)) -or
                         # W26: PROJECT DOCUMENTATION THE HUMAN ASKED FOR IS NOT A SURPRISE EITHER.
                         #
                         # The exemption's own ruling says a workshop-record turn is exempt because "the
@@ -1837,6 +1815,19 @@ try {
                 }
             }
             elseif ($blockKind -eq 'material' -and $workshopIntermediate) {
+                # W73: this branch asks for a sentence, not a packet, so nothing it produces can ever
+                # satisfy $packetPresent - and the baseline advance below required exactly that. The
+                # obligation was therefore never discharged and the SAME delta recurred on every
+                # subsequent turn, for the life of the workshop (DRIFT-199-I003-074). The report is
+                # fire-and-continue: emitting it IS the discharge.
+                $workshopLightFormEmitted = $true
+                # The discharge happens HERE, not on the compliant path below: this branch is the BLOCKING
+                # branch, and the baseline advance further down runs only when the agent complied with a
+                # packet. A report that asks for no packet can never reach it, which is why the same note
+                # recurred every turn. Emitting the report IS the discharge, so the baseline advances now.
+                if ($null -ne $turnCurrentSnapshot -and [bool]$turnCurrentSnapshot.available) {
+                    $null = Write-SpecrewTurnBaseline -Path $materialBaselinePath -Snapshot $turnCurrentSnapshot -CaptureEvent 'Stop'
+                }
                 # W72: A WORKSHOP IS A CONVERSATION WITH A PERSON, AND THIS CONDITION IS NOT THEIRS TO
                 # DECIDE. The fact still matters - a human who opens spec.md and reads it as agreed is
                 # exactly what T020 exists to prevent - so it is NOT suppressed. What is removed is the
@@ -1859,17 +1850,19 @@ try {
                 # it - material work with no workshop open - keeps the packet unchanged, because losing
                 # that would be far worse than the interruption being removed here.
                 $topicLabel = if ([string]::IsNullOrWhiteSpace([string]$workshopQuestion.lens)) { 'current' } else { [string]$workshopQuestion.lens }
+                # NOTHING OUTSIDE MEANS NOTHING TO SAY. The pathless variant of this note used to fire
+                # whenever the turn was material but every changed path had been filtered out - workshop
+                # records, project documentation, and now the feature's own spec.md. It told the human that
+                # something happened outside the workshop while being unable to name anything, which is the
+                # least actionable sentence the product can produce.
                 if (@($workshopOutsidePaths).Count -gt 0) {
                     [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also touched work outside the workshop notes: {1}." -f $topicLabel, (@($workshopOutsidePaths) -join ', ')))
+                    [void]$sb.AppendLine('Do NOT render a context packet and do NOT stop the conversation. The human has no decision to make here, so interrupting them with one would be the error.')
+                    [void]$sb.AppendLine('Instead, in your NORMAL reply, mention that work in ONE sentence, then continue with the workshop question that is already open - the same question, still in its place, not re-asked as a separate block.')
+                    [void]$sb.AppendLine('If that outside work was the feature specification, say plainly in that sentence that it is not yet agreed: the specification is written after the workshop finishes, so its content is not settled and the human should not read it as agreed.')
+                    [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
+                    [void]$sb.AppendLine('Do NOT emit a SPECREW-VERDICT-BOUNDARY marker; this is not a boundary and no verdict is being asked for.')
                 }
-                else {
-                    [void]$sb.AppendLine(("Specrew: the design workshop is still open on the '{0}' topic, and this turn also touched work outside the workshop notes." -f $topicLabel))
-                }
-                [void]$sb.AppendLine('Do NOT render a context packet and do NOT stop the conversation. The human has no decision to make here, so interrupting them with one would be the error.')
-                [void]$sb.AppendLine('Instead, in your NORMAL reply, mention that work in ONE sentence, then continue with the workshop question that is already open - the same question, still in its place, not re-asked as a separate block.')
-                [void]$sb.AppendLine('If that outside work was the feature specification, say plainly in that sentence that it is not yet agreed: the specification is written after the workshop finishes, so its content is not settled and the human should not read it as agreed.')
-                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
-                [void]$sb.AppendLine('Do NOT emit a SPECREW-VERDICT-BOUNDARY marker; this is not a boundary and no verdict is being asked for.')
             }
             elseif ($blockKind -eq 'material') {
                 [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')

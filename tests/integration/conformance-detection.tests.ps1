@@ -1304,14 +1304,25 @@ Set-Content -LiteralPath (Join-Path $p16pa0bFeature 'spec.md') -Value '# Authore
 & pwsh -NoProfile -File (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -ProjectRoot $p16pa0b -FeatureRef '050-host-neutral-gate' | Out-Null
 $t16pa0b = New-Transcript -Proj $p16pa0b -Turns @(@{ role = 'assistant'; text = 'Does this product framing match what you have in mind?' })
 $r16pa0b = Invoke-Conformance -Proj $p16pa0b -TranscriptPath $t16pa0b -SessionId $p16pa0bSession
-# W72 (2026-09-05): the ENFORCEMENT this case exists for is unchanged - authored spec content is still
-# detected and still reported, unlike the untouched scaffold in 16pa0 which is exempt outright. What
-# changed is the rendering: a workshop is open here, so the report is one sentence in the agent's normal
-# reply rather than a five-part packet. Both directions are asserted in
-# tests/integration/workshop-material-packet-language.tests.ps1.
-if (-not $r16pa0b.Blocked -or $r16pa0b.Out -notmatch '(?i)design workshop is still open') { Fail "Case 16pa0b: authored spec content during the question turn MUST retain material enforcement. Out: $($r16pa0b.Out)" }
-if ($r16pa0b.Out -notmatch '(?i)not yet agreed') { Fail "Case 16pa0b: authored spec content must still be named as not yet agreed. Out: $($r16pa0b.Out)" }
-if ($r16pa0b.Out -match '## What I Just Did') { Fail "Case 16pa0b: while a workshop is open the report is one sentence, not a five-part packet (W72). Out: $($r16pa0b.Out)" }
+# W73 (2026-09-05, maintainer ruling): SUPERSEDES THIS CASE'S ORIGINAL PREMISE. While a workshop is open,
+# specs/<ref>/spec.md is not a candidate for outside-work detection AT ALL - authored or untouched, it is
+# simply not watched. So 16pa0 and 16pa0b no longer differ in outcome, and that is deliberate rather than
+# a lost distinction.
+#
+# THE PROTECTION IS NOT LOST, IT IS ELSEWHERE, which is what makes the removal safe: the specify boundary
+# REFUSES while the not-yet-authored sentinel stands (tests/integration/spec-not-yet-authored.tests.ps1),
+# and the specification is authored from the workshop records regardless of what sits in the file
+# meanwhile. The guard removed here produced three measured harms and never once prevented anything.
+#
+# What this case now pins is that the silence is SCOPED: the spec is quiet, and everything else is not.
+if ($r16pa0b.Out -match '(?i)design workshop is still open') { Fail "Case 16pa0b: spec.md is not watched while a workshop is open (W73), so it must produce no note. Out: $($r16pa0b.Out)" }
+if ($r16pa0b.Out -match '## What I Just Did') { Fail "Case 16pa0b: and certainly no five-part packet. Out: $($r16pa0b.Out)" }
+# The scope proof: the SAME fixture, with real product source touched, still reports.
+New-Item -ItemType Directory -Path (Join-Path $p16pa0b 'src') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $p16pa0b 'src\engine.ps1') -Value '# product source' -Encoding UTF8
+New-HandoverSnapshot -Proj $p16pa0b -ChangedUserFiles 1 -FileList 'src/engine.ps1'
+$r16pa0bSrc = Invoke-Conformance -Proj $p16pa0b -TranscriptPath $t16pa0b -SessionId $p16pa0bSession
+if ($r16pa0bSrc.Out -notmatch 'src/engine\.ps1') { Fail "Case 16pa0b: real product source during a workshop must STILL be reported - the silence is scoped to the spec. Out: $($r16pa0bSrc.Out)" }
 Write-Pass "Case 16pa0b: only the byte-identical scaffold is exempt; authored spec content still owes the material packet"
 
 # ---- Case 16pa2 / beta3 blind-walk regression: the model scaffolded the feature and persisted
