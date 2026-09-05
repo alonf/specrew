@@ -66,15 +66,31 @@ would mean the source tree is not a real Specrew build.
 
 ---
 
-## Step 1 - Install the candidate, then prove it is what got installed
+## Step 1 - Put the candidate ENGINE on this machine (no project involved)
 
-**Install from the candidate build directly. Do NOT use `specrew update`.** The standing rule against
-updating walk projects holds; this is a fresh install taking the candidate build directly, and saying so
-here rather than leaving it to habit is deliberate.
+**No, this step does not need `specrew init`.** That question is the right one to ask and the step did not
+answer it, so here is the distinction the whole walk rests on:
+
+| | what it is | what it touches |
+| --- | --- | --- |
+| **Step 1** (this step) | the **Specrew module** - the engine itself | your PowerShell modules directory, machine-wide. **No project.** |
+| **Step 2** (next step) | a **throwaway project** to exercise the engine on | a new folder, `C:\Temp\b3walk`, where `specrew init` runs |
+
+You are installing a tool now, and pointing it at a subject later. `specrew init` cannot run in this step
+because there is no project yet; that is what Step 2 creates.
+
+**This is also why `specrew update` is the wrong command here.** `specrew update` refreshes the copy of the
+machinery deployed *inside a project*. It is not how the module gets onto the machine, and the standing rule
+against running it on a walk project still holds.
 
 ```powershell
 pwsh -File scripts/internal/install-local-build.ps1
 ```
+
+**You can skip the install if the check below already shows the candidate.** It was run when the candidate
+was built, so the module on this machine should already be the right one. Running it again is safe and
+idempotent; it does a clean replace and preserves PowerShellGet's provenance file and the version-check
+cache.
 
 **Expect**: `packaged <N> files from <commit>`, `version 0.40.0 prerelease 'beta3'`,
 `commit <sha> content <sha256>`, `target <module path>`, then an install confirmation.
