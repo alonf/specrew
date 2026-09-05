@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 71 (DRIFT-199-I003-001 through -071)
+**Total drift events**: 73 (DRIFT-199-I003-001 through -073)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2566,3 +2566,84 @@ have been right even if detection had been wrong.**
   addressing the wrong audience), and the beta4 UX priority already on record.
 - **Class closure**: NONE - **a beta4 redesign of what the stop hook does with agent-correctable
   conditions.** It is not attempted in this batch and no packaged file was touched for it.
+
+### DRIFT-199-I003-072 - W72: THE WORKSHOP INTERRUPTION BECOMES ONE SENTENCE - the fix is the report's FORM, not its existence
+
+**Maintainer's verdict, re-made on the corrected numbers from DRIFT-199-I003-069: once is enough, and this
+ships fixed.**
+
+- **NOTHING IS SUPPRESSED, and that is the design constraint.** Detection stays - it was never wrong. The
+  fact stays too: **a human who opens `spec.md` and reads it as agreed is exactly what T020 exists to
+  prevent**, so the outside work is still carried to them. **What was indefensible was the FORM**: a
+  five-part packet plus a full question re-ask, spent on a condition the human has no decision in.
+- **THE PACKET ANNOUNCED ITS OWN REDUNDANCY.** Its *What Needs Your Review* section read **"Nothing new to
+  review."**
+- **THE NEW CONTRACT, while a workshop is open**: mention the outside work in **ONE sentence inside the
+  normal reply**, name the specification plainly as **not yet agreed** if that is what it was, and
+  **continue with the question already open** - the same question, in its place. **No packet, no re-ask, no
+  `SPECREW-VERDICT-BOUNDARY` marker.**
+- **THE LIGHT FORM IS FIELD-OBSERVED, NOT REASONED FROM FIRST PRINCIPLES.** In the Claude walk the agent
+  **volunteered exactly this shape unprompted**: its orientation said the spec file is *a deliberate
+  placeholder until the workshop finishes* - one clause, mid-flow, no interruption. **The behaviour wanted
+  had already been demonstrated; the hook was simply asking for the wrong thing.** That is the strongest
+  argument available for the shape, and it costs nothing to cite.
+- **BOTH DIRECTIONS PROVEN END-TO-END against the real provider**, in
+  `tests/integration/workshop-material-packet-language.tests.ps1`, not asserted from source:
+
+| direction | asserted |
+| --- | --- |
+| **workshop OPEN + outside work** | one sentence; the open question continues in place; **no** five-part packet; **no** re-ask; **no** boundary marker; the path still named |
+| **workshop CLOSED + material work** | the five-part packet **is still required**, and the light-form wording **never leaks into it** |
+
+  The closed direction is asserted **positively** rather than left to the absence of a failure, because
+  losing it would be far worse than the interruption being removed.
+
+- **TWO EXISTING CASES PINNED THE RENDERING RATHER THAN THE PROPERTY.** `conformance-detection` Case 16a2
+  and Case 16pa0b both demanded the literal *"five-part context packet"*. Both now assert what they were
+  written for - **the outside work is still detected, still named, and still reported** - plus the new
+  negative, that it is not a packet while a workshop is open. **The untouched-scaffold exemption in 16pa0 is
+  unchanged**, so the two cases remain distinguishable: a scaffold nobody authored is exempt, authored
+  content is reported.
+- **SCOPE, stated as the maintainer required**: this is `specrew-conformance-provider.ps1` **again**, a file
+  already in two categories. **Another behavioural change to the same file, not a new file.** The packaged
+  delta remains **8 files**; the change count rises.
+- **DRIFT-199-I003-071 IS NOT CLOSED BY THIS.** This removes the interruption for the workshop case. The
+  general question - **which conditions belong in the agent's context rather than in front of the human** -
+  is larger than one hook branch and stays a beta4 redesign.
+- **Class closure**: the workshop branch only. The class is DRIFT-199-I003-071.
+
+### DRIFT-199-I003-073 - THE FOUR HOST DIRECTORIES ARE DELIBERATE, AND THEY ARE NOT WHAT MULTIPLIES THE RECORDS: diagnosis only, nothing changed
+
+**The maintainer asked whether the four host directories on a single-host init and the four-per-turn
+authority records are connected, because a cosmetic extra directory and a defect that quadruples authority
+records are very different findings. They are connected - and both halves are by design.**
+
+- **THE DIRECTORIES ARE DELIBERATE, and the code says so in its own comment.** Skills deploy to
+  `.claude/skills/`, `.github/skills/` and `.agents/skills/` unconditionally
+  (`post-bootstrap-output.ps1:215`). Hook wiring is provisioned for every hook-capable host, and
+  `refocus-deploy-integration.ps1` states the reason: a PATH gate *"left a SILENT degradation hole: a user
+  who ran `specrew init`, later installed Codex/Copilot/Cursor/Antigravity, and launched directly got
+  hookless behavior with no warning."* **Provisioning ahead of the binary is the fix for that hole, not an
+  oversight.**
+- **AND THE WIRING IS LIVE, NOT INERT** - which is the half worth knowing. In the copilot-initialised
+  project, `.claude/settings.local.json` registers **four hook events**: `SessionStart`,
+  `UserPromptSubmit`, `Stop`, `PostToolUse`. **A Claude session opened in that project participates fully in
+  governance.**
+- **SO THE 4x DECOMPOSES CLEANLY, and neither factor is an unknown defect**:
+
+| factor | value | status |
+| --- | --- | --- |
+| `host_kind` | `copilot`, `claude` | both hosts genuinely ran - two sessions, orientations 9s apart - which the deliberate provisioning enables |
+| `source_event` | `UserPromptSubmit`, `stop-transcript` | **the accepted W71 cross-channel residual**, deliberately recorded so its real-world rate can be measured rather than argued about |
+
+- **`host_kind` IS NOT DERIVED FROM DIRECTORY PRESENCE.** It comes from the host handler that ran
+  (`hosts/claude/handlers.ps1` -> `'claude'`, `hosts/copilot/handlers.ps1` -> `'copilot'`), with a
+  `'claude'` default in `SessionBootstrapManager.ps1:190` when unset. **Directories alone cannot produce a
+  record.**
+- **WHAT IS NOT ESTABLISHED, and is left open rather than guessed**: why two host sessions ran nine seconds
+  apart in a project initialised for one. That is a question about what the walk actually launched, not
+  about the deployment.
+- **NOTHING CHANGED. Diagnosis only**, per the ruling: reading is not modifying, and the finding is that
+  there is no deployment defect here to fix.
+- **Class closure**: NONE. The **duplication itself** - four host copies of one skill doc - remains listed
+  as evidence in DRIFT-199-I003-065's architecture question, where it belongs.

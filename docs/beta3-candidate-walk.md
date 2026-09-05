@@ -63,27 +63,37 @@ Four of those are the scripts a workshop-and-boundary walk exercises. `general.m
 start. So one governed feature - workshop through a lens, then one boundary with a typed verdict - covers
 all of it.
 
-## THE POINT OF THIS WALK IS STEP 5. EVERYTHING BEFORE IT IS SETUP.
+## THIS IS THE FOURTH WALK. THREE HAVE ENDED BEFORE A BOUNDARY. REACHING ONE IS THE WHOLE JOB.
 
-**Two walks have now ended before reaching a boundary, and the two behaviours the delta most needs
-exercised are the two neither of them touched: a lens confirmation completing, and a boundary advancing on
-a typed verdict.** The first walk stopped on the packet interruption; the second went into archaeology over
-a missing branch. Both produced real findings and neither proved the thing the delta changes.
+**Read this before anything else.** Three walks have run on this delta and **not one has crossed a
+boundary with a typed verdict** - the single behaviour the release most needs proven. Each stopped
+somewhere earlier and each found something real, so the walks have been worth running. But the thing they
+were for is still unverified.
 
-So read Steps 0 to 4 as setup. **A walk that installs cleanly, initialises cleanly, and stops before the
-boundary has not verified this release.** If something goes wrong before Step 5, note it and keep going
-where you safely can - the goal is to reach the verdict.
+| walk | how far it got | what it found |
+| --- | --- | --- |
+| 1 | stopped on turn one | a packet interrupting the workshop's first question |
+| 2 | never left the scaffold | a branch reported but never created |
+| 3 | reached the workshop | a packet interrupting mid-lens |
+| **4 (this one)** | **must reach Step 5** | |
+
+**Steps 0 to 4 are setup. They are not the walk.** A run that installs cleanly, initialises cleanly, opens
+a lens and then stops has not verified this release - it is a fourth walk that ended before the point.
+
+**If something goes wrong before Step 5, note it and keep going.** Nothing before the boundary is worth
+abandoning the walk for unless it physically blocks you. Write it down and continue.
 
 **Three things to watch for, in this order:**
 
-| # | Watch for | Where |
-| --- | --- | --- |
-| 1 | the agent reaches its first question **without opening any Specrew source** | Step 4 |
-| 2 | the scaffold **states plainly whether it created a branch** | Step 4 |
-| 3 | **the boundary advances when you type your verdict** | Step 5 |
+| # | Watch for | Where | New in this candidate |
+| --- | --- | --- | --- |
+| 1 | the agent reaches its first question **without opening any Specrew source** | Step 4 | yes |
+| 2 | the scaffold **states plainly whether it created a branch** | Step 4 | yes |
+| 3 | outside work is mentioned in **one sentence, mid-conversation**, with no packet and no re-ask | Step 4 | yes |
+| 4 | **THE BOUNDARY ADVANCES WHEN YOU TYPE YOUR VERDICT** | **Step 5** | **the one still unproven** |
 
-Each is a fix in this candidate. The first two are the second walk's findings; the third is what the whole
-delta exists to keep working, and is the one still unproven.
+The first three are fixes the previous three walks paid for. **The fourth is the one that decides whether
+this release is verified.**
 
 `install-local-build.ps1` needs no walk step of its own: contributor-only, unreachable from any lifecycle
 path per the call graph, carries a three-direction proof, and **you exercise it incidentally in step 1**.
@@ -238,6 +248,12 @@ because the instructions named those paths and never said they are not for readi
 the shipped template. **You should see the orientation and then the first question. Any stretch of file
 reads before the first question means the clause did not land.**
 
+**WATCH 3 - outside work is mentioned in one sentence, not a packet.** If the agent touches something
+outside the workshop notes - the specification placeholder is the usual one - it should say so in **a
+single sentence inside its normal reply**, name the specification as not yet agreed, and **carry straight
+on with the open question**. **A five-part packet here, or the question re-asked as a separate block, is
+the defect this candidate fixes.** The previous walk hit exactly that mid-lens.
+
 **WATCH 2 - the scaffold says whether it made a branch.** Look for a `BRANCH:` line alongside `BRANCH_NAME:`
 in the feature-creation output. **It should say the branch was not created and why**, and say that nothing
 failed - this project will stay on `master`, which is correct and expected. A bare `BRANCH_NAME:` with no
@@ -255,7 +271,9 @@ never been reached.
 
 ## Step 5 - One boundary, with a typed verdict (THIS IS THE STEP THAT MATTERS)
 
-**No walk on this delta has reached this step.** Everything above exists to get you here.
+**No walk on this delta has reached this step. Three have tried.** Everything above exists to get you
+here, and if you have arrived with unresolved notes from earlier steps, that is fine - finish this step
+first and report the notes afterwards.
 
 Let the lifecycle reach its first boundary stop (specify).
 
