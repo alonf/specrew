@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 73 (DRIFT-199-I003-001 through -073)
+**Total drift events**: 75 (DRIFT-199-I003-001 through -075)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2647,3 +2647,75 @@ records are very different findings. They are connected - and both halves are by
   there is no deployment defect here to fix.
 - **Class closure**: NONE. The **duplication itself** - four host copies of one skill doc - remains listed
   as evidence in DRIFT-199-I003-065's architecture question, where it belongs.
+
+### DRIFT-199-I003-074 - THE LIGHT FORM CREATED THE REPETITION IT WAS MEANT TO SOFTEN: a report that renders no packet can never satisfy the packet test that discharges it
+
+**I introduced this defect this morning, in W72 (DRIFT-199-I003-072), and it reached the maintainer's
+machine. The framing offered to me was that the light form "reduced the cost of each instance and did
+nothing about the count". The truth is worse and it is mine: before W72 there was no count.**
+
+- **THE MECHANISM, and it is four lines**: the turn baseline advances only on the compliant path, gated on
+  `($blockKind -eq 'none') -or ($materialStop -and $packetPresent)`. `$packetPresent` requires **four of the
+  six packet headings** in the last assistant message. **W72 asks for a sentence and forbids a packet**, so
+  `$packetPresent` can never become true, the baseline never advances, and the **same delta recurs on every
+  following turn** for the life of the workshop.
+- **THE OLD FORM SELF-CLEARED, WHICH IS WHY NOBODY SAW THIS COMING.** The packet WAS the discharge: the
+  agent rendered it, `$packetPresent` went true, the baseline advanced, the condition cleared. **Removing
+  the packet removed the only thing that could ever satisfy the gate.** A cost reduction that deletes the
+  discharge is not a cost reduction.
+- **MEASURED**: three consecutive turns in the maintainer's transcript carrying the same note. An
+  eight-lens workshop would have carried twenty or more. **A paragraph repeated every turn reads as broken
+  in a way a single interruption does not.**
+- **THE QUESTION THAT HAD TO BE ANSWERED FIRST, and the answer is the narrower of the two**: *is the
+  baseline failing to update generally, or is spec.md re-entering the scan?* **Neither.** The baseline
+  fails to update **only on the light-form path**, because only that path blocks without a packet. It is
+  not every file in the project - which is what made excluding spec.md safe rather than a way to hide a
+  larger defect. **That check was the right order and it changed the fix.**
+- **THE FIX IS WHERE THE REPORT IS EMITTED**, not on the compliant path: the light-form branch is the
+  BLOCKING branch, and the advance below it is unreachable from there. **Emitting the report is now the
+  discharge**, because nothing else can ever be.
+- **AND A THIRD THING FELL OUT OF THE FIXTURE**: the note had a **pathless variant** that fired whenever a
+  turn was material but every changed path had been filtered out - workshop records, documentation, and now
+  the spec. It told the human that something happened outside the workshop **while being unable to name
+  anything**. Removed. **Nothing outside means nothing said.**
+- **Class closure**: the discharge is a property of every blocking branch that does not demand a packet.
+  There is exactly one such branch today; a second one would reintroduce this, and the repetition assertion
+  in `workshop-material-packet-language.tests.ps1` is what would catch it.
+
+### DRIFT-199-I003-075 - W73: THE WORKSHOP STOPS WATCHING ITS OWN SPECIFICATION - not exempted, not windowed, not watched
+
+**Maintainer ruling. While a workshop is open, `specs/<ref>/spec.md` is not a candidate for outside-work
+detection at all.**
+
+- **THE JUSTIFICATION IS THIS PROJECT'S OWN HISTORY, not a principle.** That guard has produced **three
+  measured harms** and is **recorded preventing nothing**:
+
+| harm | entry |
+| --- | --- |
+| T020's lens re-ask | iteration 002 |
+| walk one's turn-one packet, from an exemption dead for 22 days | DRIFT-199-I003-059 / -060 |
+| a note on **every turn** of a workshop | DRIFT-199-I003-074 |
+
+- **SPECREW'S OWN GOVERNED WRAPPER WRITES THAT STUB.** Flagging it is the system failing to recognise its
+  own output, and **no amount of predicate refinement changes that** - which is precisely what the previous
+  three attempts were.
+- **THE PROTECTION IS NOT LOST, IT IS ALREADY ELSEWHERE**, and that is what makes removal safe rather than
+  brave: the **specify boundary refuses while the not-yet-authored sentinel stands**, and the specification
+  is **authored from the workshop records** regardless of what sits in the file meanwhile.
+- **THE FACT IS KEPT, ONCE, WHERE IT BELONGS.** The session-start orientation already says the spec file is
+  a deliberate placeholder until the workshop finishes - **the Claude walk did exactly that unprompted and
+  it read perfectly**. Said once, never again.
+- **THE PREDICATE IS REMOVED, NOT LEFT DEAD** - `Test-SpecrewUntouchedFeatureSpecScaffold`, its two caller
+  variables, its test and its lane entry all go. **A predicate that can no longer fire is the class this
+  session spent a day on** (DRIFT-199-I003-060), and leaving one behind while writing that entry would have
+  been the worst possible ending to it.
+- **BOTH DIRECTIONS PROVEN, plus the scope**: a workshop turn touching only the scaffolded spec produces
+  **no note at all**; real product source touched mid-workshop **still reports and names itself**; the
+  following turn with nothing further changed is **silent**; and with no workshop open the **five-part
+  packet is unchanged**.
+- **ONE CASE'S PREMISE IS SUPERSEDED, deliberately.** `conformance-detection` Case 16pa0b distinguished an
+  untouched scaffold from authored spec content. **That distinction no longer exists** - neither is watched
+  - so the case now pins that the silence is SCOPED, with product source touched in the same fixture still
+  reporting.
+- **Class closure**: this closes the spec-in-workshop case. **DRIFT-199-I003-071 stays open**: which
+  conditions belong in the agent's context rather than in front of the human is larger than one path.
