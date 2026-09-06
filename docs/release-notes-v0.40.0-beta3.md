@@ -446,7 +446,7 @@ must have the current branch pushed at HEAD, ahead-count provenance is surfaced,
 classified by writer, task/status summaries must agree, and the boundary's owed artifact must exist.
 Local-only projects name the remote check as not applicable rather than inventing a forge obligation.
 
-**Something must be tested against a project made minutes ago, not against this repository.** This is the
+**Something must be tested against a project made minutes ago, not against this repository.** The drift runs both ways, which is the sharper version of this. Four times in one release cycle the two trees disagreed: three where this repository had something users did not, and once where the shipped behaviour was right and this repository was the stale one. Nothing compares them in either direction, so each can be wrong about the other until someone stumbles into it. This is the
 most valuable thing the release walk found, and what makes it valuable is that it would have prevented a
 shipped defect rather than merely caught one. The missing feature branches above went unnoticed through an
 entire release cycle - not for want of looking, but because everything that looked ran inside the Specrew
@@ -455,6 +455,8 @@ late August was running a Spec Kit version two minors behind the one it was ship
 configuration almost every user has is the one least represented in the project's own testing. The candidate
 walk already has the right shape - a fresh directory, the shipped installer, a real first session - and it
 needs to be a lane that runs rather than a checklist someone remembers.
+
+**The generated .gitignore has two authors and only one is checked.** Half of it comes from a third-party SDK that Specrew deploys but does not write, including the rule that a team’s identity state must stay committed. Specrew tests the half it writes, by calling its own function directly rather than running a real install, so the file people actually get is asserted nowhere. If that SDK changes its block, every new project quietly loses a rule and nothing here would notice. The fix is to run the real install and assert the composed result.
 
 **Whether Specrew should install Spec Kit's `git` extension.** Not changed in this release, because it
 alters what every new project receives and that deserves its own exercise. It looks more like an oversight

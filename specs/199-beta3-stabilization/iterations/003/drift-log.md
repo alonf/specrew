@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 75 (DRIFT-199-I003-001 through -075)
+**Total drift events**: 77 (DRIFT-199-I003-001 through -077)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2719,3 +2719,63 @@ detection at all.**
   reporting.
 - **Class closure**: this closes the spec-in-workshop case. **DRIFT-199-I003-071 stays open**: which
   conditions belong in the agent's context rather than in front of the human is larger than one path.
+
+### DRIFT-199-I003-076 - THE DRIFT IS BIDIRECTIONAL: the development tree is not "ahead" of user projects, it is simply UNRECONCILED with them, in both directions
+
+**This supersedes the framing in DRIFT-199-I003-068, which called this a fresh-project blind spot. That was
+half the problem. Nothing reconciles the two trees EITHER WAY.**
+
+- **THREE FINDINGS RAN ONE WAY - the dev tree carrying what users lack:**
+
+| finding | what this repository had that a user's project did not |
+| --- | --- |
+| DRIFT-199-I003-063 | Spec Kit's `git` extension, so features got branches here and nowhere else |
+| DRIFT-199-I003-063 | `.specify` scaffolding pinned 2026-04-17, predating the extension split |
+| DRIFT-199-I003-066 | a pre-split spec-kit layout, while shipping a `0.12.9` init default for six weeks |
+
+- **AND ONE RUNS THE OTHER WAY, which is the correction**: the `.gitignore` question. **The SHIPPED
+  behaviour is correct and matches the maintainer's own post-beta2 ruling** - `specrew init` writes the
+  per-session block and untracks previously-committed per-session files. **This repository is the stale
+  side**: it still holds the **156 tracked files** that ruling approved untracking, and a comment at
+  `.gitignore:31` describing the world before the decision was made.
+- **SO THE STATEMENT OF THE PROBLEM IS NOT "the dev tree is ahead".** It is that **the two trees are never
+  compared**, so each can be stale in the other's direction and nobody finds out until a walk stumbles into
+  it. A project created minutes ago and this repository are two configurations of the same product with
+  **no reconciliation in either direction**.
+- **THIS STRENGTHENS THE COUNTERMEASURE RATHER THAN ADDING ONE.** A lane running against a project the
+  shipped `init` created (DRIFT-199-I003-068) catches drift **both ways**: it would have caught the missing
+  branches, and it would equally catch a shipped ignore rule that this repository had quietly stopped
+  honouring. **The lane is not a fresh-project test; it is a reconciliation.**
+- **Class closure**: NONE - it refines DRIFT-199-I003-068's countermeasure and does not replace it. The
+  156 files and the stale line-31 comment are a chore already approved, not a defect found here.
+
+### DRIFT-199-I003-077 - NOTHING ASSERTS THE COMPOSED `.gitignore`: Specrew tests the half it writes and ships the half it does not
+
+**A user's `.gitignore` correctness depends on two authors, and only one of them is verified.**
+
+- **THE SPLIT, measured**:
+
+| lines | content | author | verified by Specrew |
+| --- | --- | --- | --- |
+| 1-10 | the Squad block, including *"`.squad/casting/*` is identity and MUST be committed"* | **`@bradygaster/squad-sdk`** (`dist/config/init.js:1165`) | **no** |
+| 12-32 | the Specrew per-session block | `specrew init` -> `Update-GitignoreForSession` | yes |
+
+- **THE COVERAGE GAP, established rather than assumed**:
+  `tests/unit/feature-051-file-classification.tests.ps1` has 21 assertions and calls
+  **`Update-GitignoreForSession` directly** - the function, not a real `specrew init`. Its expected list
+  contains two `.squad/` paths, but those are **Specrew's own canonical patterns**; it never asserts the
+  SDK's block. **No test anywhere names the carve-out sentence or `.squad/casting` as an ignore concern.**
+  So **the composed post-init file is asserted nowhere.**
+- **THE FAILURE THIS ALLOWS, concretely**: if that SDK changes its block or drops the `.squad/casting`
+  carve-out, **every new project silently loses a rule** - and identity state that must be committed starts
+  being ignored. **Nothing in this repository would know**, because Specrew deploys that block, does not
+  author it, and does not check it.
+- **THE BETA4 ITEM: assert the COMPOSED result, not the half we control.** Run the real `init` and assert
+  the resulting `.gitignore` carries **both** blocks - Specrew's per-session patterns AND the Squad block
+  with its carve-out intact.
+- **AND IT IS THE SAME PRINCIPLE AS EVERY OTHER FINDING THIS WEEK**: verify **the thing that ships**, not
+  the input you control. The inertness proof compares shipped token streams; the scaffold guard renders the
+  stub from the scaffold's own literal; the exemption guard reads the shipped provider by AST. **This is
+  that rule applied to a file with a co-author.**
+- **Class closure**: NONE - beta4, and it belongs in the same lane as DRIFT-199-I003-068, because the
+  composed file only exists in a project the shipped init created.
