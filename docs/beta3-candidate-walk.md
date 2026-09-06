@@ -44,10 +44,32 @@ to exercise that host on the exact bits you will be presenting.
 
 ## What this walk covers, and why one walk is enough
 
-The packaged delta is **10 changes across 8 files** - measured from
-`git diff --stat 4f4dce52..HEAD` over the packaged paths, and stated as two numbers because they are two
-different things. Two files carry two changes each, so a single figure would misdescribe whichever question
-you were asking:
+The packaged delta is **14 changes across 8 files**, and the two numbers are stated separately because
+they answer different questions. Measured, not remembered: the FileList in `Specrew.psd1` was intersected
+with `git diff --name-only 4f4dce52..7f8aa1e9`. **37 files changed in total; 29 of them are tests, harness
+and records that do not ship.** One file carries six of the fourteen changes, so a single figure would
+misdescribe whichever question you were asking.
+
+The fourteen, enumerated so the count is checkable rather than asserted:
+
+| # | file | change |
+| --- | --- | --- |
+| 1 | `refocus/general.md` | the redundant lede removed, to fit its own token ceiling |
+| 2 | `confirm-workshop-lens.ps1` | comment rewrite |
+| 3 | `confirm-workshop-lens.ps1` | malformed authority marker corrected |
+| 4 | `shared-governance.ps1` | comment rewrites |
+| 5 | `workshop-authority-store.ps1` | comment rewrite |
+| 6 | `specrew-conformance-provider.ps1` | comment rewrite |
+| 7 | `specrew-conformance-provider.ps1` | the scaffold-stub exemption, which had never once fired |
+| 8 | `specrew-conformance-provider.ps1` | the workshop light form |
+| 9 | `specrew-conformance-provider.ps1` | the feature spec no longer watched during a workshop |
+| 10 | `specrew-conformance-provider.ps1` | the light form discharges its own obligation |
+| 11 | `specrew-conformance-provider.ps1` | the pathless note removed |
+| 12 | `create-governed-feature.ps1` | the scaffold reports whether it created a branch |
+| 13 | `install-local-build.ps1` | `-WhatIfOnly` no longer requires an installed module |
+| 14 | `templates/coordinator-instructions.md` | the machinery is invoked, never read |
+
+Their categories:
 
 | Category | Files |
 | --- | --- |

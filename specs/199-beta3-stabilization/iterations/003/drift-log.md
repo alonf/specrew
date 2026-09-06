@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 77 (DRIFT-199-I003-001 through -077)
+**Total drift events**: 82 (DRIFT-199-I003-001 through -082)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2779,3 +2779,79 @@ half the problem. Nothing reconciles the two trees EITHER WAY.**
   that rule applied to a file with a co-author.**
 - **Class closure**: NONE - beta4, and it belongs in the same lane as DRIFT-199-I003-068, because the
   composed file only exists in a project the shipped init created.
+
+### DRIFT-199-I003-078 - THE WALK PASSED, and the release is verified: a boundary crossed on a typed verdict, on the exact commit that gets tagged
+
+**Fifth walk. The first four ended before a boundary; this one crossed one.** Verified from disk rather
+than from the agent's account:
+
+| fact | evidence |
+| --- | --- |
+| the verdict was captured and the boundary advanced | `start-context.json`: `last_authorized_boundary = specify`, pending crossing to `clarify` |
+| the crossings are real commits | `275b8d7 boundary(specify)`, `b1a6321 boundary(clarify)` |
+| a second stop is standing | the pending clarify crossing |
+| **the walk covers the tagged bits** | branch head `7f8aa1e9` = installed module `7f8aa1e9`, tree clean |
+
+- **THE LAST ITEM IS WHAT MAKES IT A VERIFICATION rather than an exercise.** Four earlier walks proved
+  things about builds that were then superseded. This one ran against the commit being tagged, with the
+  installed stamp matching it, on a clean tree.
+- **Class closure**: NONE - the release-gate question is answered.
+
+### DRIFT-199-I003-079 - THE CONTROLLER'S MISSING product-domain ENTRY IS COSMETIC: the technical agenda deliberately excludes it, and nothing downstream reads that list for it
+
+**Investigated before the tag because a lens vanishing from controller state would be data loss rather than
+friction. It is neither - the entry was never supposed to be in that list.**
+
+- **THE OBSERVATION WAS ACCURATE.** In the walk project, `lens-applicability.json` carries `selected` (5),
+  `agenda` (5), `skipped` (5) and `workshop` (5), and **`product-domain` appears in none of them**, while
+  `workshop/product-domain.md` and `product-domain.yml` sit on disk. **The agent reported exactly what was
+  there and correctly refused to hand-fix it.**
+- **AND IT IS BY DESIGN, stated in the shipped code twice**:
+  - `repair-workshop-controller-state.ps1:123` -
+    `$technicalWorkshopKeys = @($workshopKeys | Where-Object { $_ -cne 'product-domain' })` - the key is
+    **explicitly excluded** from the technical set. That list is the TECHNICAL agenda; product-domain is
+    the pre-agenda product lens and belongs to a different phase.
+  - `confirm-workshop-agenda.ps1:125-139` requires the product-domain **receipt and both record files** to
+    exist before the technical agenda may even be rendered - it reads those, never the list.
+- **NOTHING DOWNSTREAM READS THE LIST FOR IT.** `design-analysis-gate.ps1:447` resolves it as
+  `Get-SpecrewWorkshopAuthorityReceipt -Phase 'product-domain'`, and that receipt store
+  (`.specrew/runtime/workshop-authority.jsonl`) is present in the walk project. **The durable evidence is
+  the receipt plus the records; the agenda list is not evidence of anything about it.**
+- **Class closure**: NONE - cosmetic. Worth a beta4 note only in that a list a human reads should probably
+  not silently omit a lens they just answered, which is presentation rather than state.
+
+### DRIFT-199-I003-080 - THE ORIENTATION GUARD FIRED AT THE BOUNDARY, and the cost of a displaced orientation is now measured: a duplicated packet plus an eight-minute stop
+
+- **THE GUARD WORKS.** At the specify boundary it caught the missing orientation and made the agent
+  **re-render the entire specify packet a second time**, carrying the orientation with it.
+- **SO THE COST OF PUTTING RESEARCH BEFORE THE ORIENTATION IS NOW A NUMBER**: a duplicated boundary packet
+  and an **eight-minute stop**, on top of the 5m55s turn that displaced it.
+- **THIS IS THE SECOND EVIDENCE FOR THE INSTRUCTION-ORDERING FIX** and belongs with it: read what you need
+  to orient, scaffold, **render the orientation**, and only then do other work - research in particular.
+- **AND THE METHODOLOGICAL REASON IS THE STRONGER ONE.** Research done before the first workshop question
+  is **research done on assumptions nobody confirmed**. That session spent three minutes establishing exact
+  1981 Casio module 134 behaviour before asking a single scope question - and then offered *"a kid-friendly
+  simplification"* as Decision 3. **If the human takes it, most of the research bought nothing.** The
+  workshop exists to decide what is worth researching; doing it first inverts that.
+- **Class closure**: NONE - the ordering fix is pending the maintainer's ruling and is not in this tag.
+
+### DRIFT-199-I003-081 - THE BRANCH REPORT WORKED AND THE HUMAN ROUTED AROUND THE GAP BY HAND
+
+- **The scaffold said plainly that it had not created a branch** (DRIFT-199-I003-063's fix, shipped in this
+  candidate). **The agent then created the feature branch itself with `git`.**
+- **BOTH HALVES ARE THE POINT.** The honest report did its job - the absence was visible instead of implied
+  by a `BRANCH_NAME` line - and **the product gap is still being routed around by hand**, which is what
+  DRIFT-199-I003-067 predicted and left for a beta4 ruling.
+- **Class closure**: NONE - it is the evidence for that ruling, not a defect in this candidate.
+
+### DRIFT-199-I003-082 - "I DON'T UNDERSTAND WHAT I SHOULD ANSWER NOW": the clearest evidence yet for the beta4 UX priority, handled correctly
+
+- **THE MAINTAINER TYPED THAT AT THE FIRST WORKSHOP QUESTION**, then moved past it without answering.
+- **THE PRODUCT'S OWN AUTHOR COULD NOT TELL WHAT THE FIRST QUESTION WANTED.** No amount of correctness in
+  the machinery survives that, and it is a sharper datum than any inspection could produce.
+- **THE AGENT HANDLED IT CORRECTLY**, which is worth recording separately so the two are not conflated: it
+  **recorded delegation and flagged it for review rather than pretending agreement**. The refusal to
+  manufacture consent worked exactly as designed.
+- **So this is a question-design finding, not an enforcement one.** The beta4 UX priority already on record
+  gains its strongest instance.
+- **Class closure**: NONE - beta4 UX.
