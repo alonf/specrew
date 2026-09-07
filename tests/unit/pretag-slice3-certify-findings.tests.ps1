@@ -50,6 +50,22 @@ function New-ScopedEvidencelessFixture {
     # this fixture wants can no longer be opened at all. The test was left red certifying the
     # superseded contract - a test asserting yesterday's rule, not a product defect.
     #
+    # THE TWO GATES READ DIFFERENT SOURCES - checked at source 2026-09-02, at the maintainer's demand,
+    # because if capture consulted a flag written at mint this fixture would be a fixture-only
+    # half-state:
+    #   MINT gate (FR-024/T014) reads the LIVE DISK - Test-SpecrewBoundaryOwedArtifactsOnDisk.
+    #   CAPTURE gate (FR-068/T090) reads the crossing's OWN BOUND GIT TREE, via ArtifactStateId, and
+    #   deliberately NOT the live filesystem: "The first version checked Test-Path against the MUTABLE
+    #   LIVE filesystem while the marker it authorizes ..." - reading live was a defect they fixed, so
+    #   that producing an artifact after the fact cannot retro-satisfy an older crossing.
+    # There is NO cached evidence flag written at mint; StageEvidenceAbsent is computed at stop time.
+    #
+    # So the constructed state is PRODUCT-REACHABLE, and by an ordinary path: review.md present on disk
+    # but UNCOMMITTED satisfies the mint gate, while the bound tree never contains it, so capture reads
+    # it absent. That is a real project whose author wrote the review and had not committed it. The
+    # Remove-Item below makes the disk agree with the bound tree; it is NOT what makes capture see
+    # absence, and the fixture would reach the same capture verdict without it.
+    #
     # The scenario f2/f3 pin is preserved exactly, by reaching it the way the product now permits:
     # the owed artifact EXISTS at mint time, so the guard is satisfied on its own terms, and is then
     # removed so the stage's evidence is genuinely absent when the stop is evaluated. The guard checks

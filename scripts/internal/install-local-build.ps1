@@ -105,14 +105,28 @@ try {
 
     if (-not $InstallRoot) {
         $installed = @(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending | Select-Object -First 1)
-        if ($installed.Count -eq 0) { throw 'no installed Specrew module found; pass -InstallRoot explicitly' }
-        $InstallRoot = $installed[0].ModuleBase
+        # A DRY RUN MUST NOT REQUIRE AN INSTALL TARGET IT WILL NEVER USE.
+        #
+        # This throw sat BEFORE the -WhatIfOnly branch, so `-WhatIfOnly` - which installs nothing by
+        # definition - still demanded an installed Specrew module and died without one. It passed on
+        # any developer machine and failed on every clean one, which is why it surfaced only when the
+        # release census first ran on a bare runner: 'no installed Specrew module found' before the
+        # identity it was asked to report. The documented contract was already right - '-WhatIfOnly
+        # reports the identity it would install without touching anything' - and the code did not
+        # honour it.
+        #
+        # The guard is NOT weakened for a real install: without -WhatIfOnly an unresolvable target is
+        # still fatal, because installing into nowhere is the failure it was written to prevent.
+        if ($installed.Count -eq 0) {
+            if (-not $WhatIfOnly) { throw 'no installed Specrew module found; pass -InstallRoot explicitly' }
+        }
+        else { $InstallRoot = $installed[0].ModuleBase }
     }
-    Write-InstallInfo ("target {0}" -f $InstallRoot)
+    Write-InstallInfo ("target {0}" -f $(if ($InstallRoot) { $InstallRoot } else { 'none resolved - -WhatIfOnly installs nothing, so install_root is null' }))
 
     if ($WhatIfOnly) {
         Write-InstallInfo 'WhatIfOnly: nothing was installed.'
-        return [pscustomobject]@{ commit = $stamp.commit; content_sha256 = $stamp.content_sha256; installed = $false; install_root = $InstallRoot }
+        return [pscustomobject]@{ commit = $stamp.commit; content_sha256 = $stamp.content_sha256; installed = $false; install_root = $(if ($InstallRoot) { $InstallRoot } else { $null }) }
     }
 
     if (-not (Test-Path -LiteralPath $InstallRoot -PathType Container)) { throw "install root does not exist: $InstallRoot" }

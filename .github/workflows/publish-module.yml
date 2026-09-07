@@ -28,6 +28,10 @@ on:
         required: false
         type: string
 
+env:
+  SPEC_KIT_VERSION: '0.12.9'
+  SQUAD_VERSION: '0.11.0'
+
 permissions:
   contents: write  # write needed for gh release create on tag push
 
@@ -96,9 +100,47 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      # THE CENSUS RUNNER MUST BE PROVISIONED LIKE THE LANES IT IS SUPERSEDING.
+      #
+      # Measured on the 2026-09-01 dry-run: a bare windows-latest runner has no uv and ships Node 22,
+      # so `specrew init` fails its own dependency check and every test that bootstraps a project fails
+      # with `Bootstrap failed: Missing required dependencies ... uv not installed ... Node.js v22`.
+      # That was 3 of the 23 census failures, and generator-markdown-parity was a 4th - it refuses to
+      # fake a pass and exits INCONCLUSIVE when markdownlint is absent, exactly as specrew-ci.yml
+      # already documents for its own lane.
+      #
+      # None of those four was a defect in the tree. The gate was measuring a runner that could not run
+      # the product, which is a harness bug wearing a product failure's clothes - and it is why the
+      # census had never been green. Versions are pinned at workflow scope to the SAME values
+      # specrew-ci.yml uses, so the two cannot drift apart silently.
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install specify CLI
+        run: uv tool install --force specify-cli --from "git+https://github.com/github/spec-kit.git@v${{ env.SPEC_KIT_VERSION }}"
+
+      - name: Install squad CLI
+        run: npm install -g "@bradygaster/squad-cli@${{ env.SQUAD_VERSION }}"
+
       - name: Execute every named test file on disk
         shell: pwsh
+        env:
+          # Progress records serialize into the redirected stream on a non-interactive host, so a
+          # test's captured output arrives as CLIXML progress objects instead of its own assertions.
+          # Two census failures had that exact shape - one reporting raw <Objs ...> XML, one
+          # reporting NOTHING at all - which is a diagnosability failure in the harness, not a
+          # defect in either test. Silencing progress at job scope is the documented remedy.
+          PROGRESS_PREFERENCE_NOTE: 'set below in the step body'
         run: |
+          $ProgressPreference = 'SilentlyContinue'
           ./tests/full-powershell-test-sweep.ps1 -MaxParallel 4 -PerFileTimeoutSeconds 420
           if ($LASTEXITCODE -ne 0) {
             Write-Host 'Release gate FAILED: at least one test file on disk did not pass.' -ForegroundColor Red
@@ -106,6 +148,19 @@ jobs:
             exit 1
           }
           Write-Host 'Release gate PASSED: every named test file on disk is green.' -ForegroundColor Green
+
+      # WHY always(): the artifact is only interesting when the gate FAILED, and a failing step would
+      # otherwise skip it - which is exactly how the 2026-08-31 census failure ended up with 23
+      # filenames and no reasons, costing a full local reproduction to triage. if-no-files-found:
+      # ignore keeps a green run from failing on a file the passing path never writes.
+      - name: Upload census failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-test-census-failures
+          path: ${{ runner.temp }}/specrew-full-sweep-failures.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   publish-module:
     needs: [prepublish-validation, full-test-census]

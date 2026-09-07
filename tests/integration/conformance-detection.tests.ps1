@@ -1112,7 +1112,13 @@ try {
     Write-Pass "Case 16: strict active iteration workshop state suppresses the generic packet without a model marker and retains durable re-entry context"
 
     # ---- Case 16a2 / beta3 dogfood guard: the question exemption is only for the workshop record set.
-    #      A source/test/doc change in the same turn is ordinary material work and must win.
+    #      A source/test/doc change in the same turn is still REPORTED rather than exempted.
+    #
+    #      W72 (2026-09-05) changed the FORM, not the detection. While a workshop is open the report is one
+    #      sentence inside the agent's normal reply; the five-part packet is reserved for material work with
+    #      NO workshop open, which tests/integration/workshop-material-packet-language.tests.ps1 asserts in
+    #      both directions. This case therefore checks that the outside path is still NAMED and still owes a
+    #      report - the property it was written for - without pinning the rendering it used to demand.
     $p16a2 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16a2
     New-LensApplicability -Proj $p16a2 -Selected @('architecture-core','data-storage') -Done @()
@@ -1120,7 +1126,8 @@ try {
     New-HandoverSnapshot -Proj $p16a2 -ChangedUserFiles 1 -FileList 'src/provider.ps1'
     $t16a2 = New-Transcript -Proj $p16a2 -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16a2 = Invoke-Conformance -Proj $p16a2 -TranscriptPath $t16a2
-    if (-not $r16a2.Blocked -or $r16a2.Out -notmatch 'five-part context packet') { Fail "Case 16a2: a proved workshop question that also changed a non-workshop path MUST still require the material packet. Out: $($r16a2.Out)" }
+    if (-not $r16a2.Blocked -or $r16a2.Out -notmatch 'src/provider\.ps1' -or $r16a2.Out -notmatch '(?i)design workshop is still open') { Fail "Case 16a2: a proved workshop question that also changed a non-workshop path MUST still be reported, naming the path. Out: $($r16a2.Out)" }
+    if ($r16a2.Out -match '## What I Just Did') { Fail "Case 16a2: while a workshop is open the report is one sentence, not a five-part packet (W72). Out: $($r16a2.Out)" }
     Write-Pass "Case 16a2: material work outside the workshop record set wins over a proved workshop question"
 
     # ---- Cases 16a3/16a4 / beta3 full-walk regressions: repairable controller mistakes get a
@@ -1131,8 +1138,22 @@ try {
     New-LensApplicability -Proj $p16a3 -Selected @('architecture-core','code-implementation','security-compliance') -Done @('architecture-core','code-implementation') -BindingsByLens @{ 'code-implementation' = [ordered]@{ 'http-client' = 'IHttpClientFactory' } }
     Set-Content -LiteralPath (Join-Path $p16a3 'specs\050-host-neutral-gate\implementation-rules.yml') -Value "schema_version: '1.0'" -Encoding UTF8
     New-HandoverSnapshot -Proj $p16a3 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
+    # WHAT MAKES A REPAIR *TARGETED* IS THAT IT NAMES THE OFFENDING TOKEN (2026-09-04).
+    #
+    # This asserted the literal 'lowercase stable values'. be573254 (DRIFT-199-I002-029) split the
+    # refusal into name and value branches so it names WHICH half failed, and that phrase went with the
+    # old single message - the guidance survives, expressed per failure mode. Swapping one literal for
+    # two would re-pin renderings, which is the same mistake as the transition-table argument pin and
+    # the exact-marker pin.
+    #
+    # The case is 'targeted repair, not a generic packet'. The not-generic half is already asserted
+    # ('five-part context packet' absent). The TARGETED half is that the refusal names the specific
+    # token the fixture supplied - here the value 'IHttpClientFactory' and the decision 'http-client'.
+    # That is rendering-independent, survives the name/value split, and is STRONGER than the literal it
+    # replaces: a refusal could carry the phrase 'lowercase stable values' while naming nothing at all,
+    # and the old assertion would have passed it.
     $r16a3 = Invoke-Conformance -Proj $p16a3 -TranscriptPath (New-Transcript -Proj $p16a3 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
-    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'could not be recorded cleanly' -or $r16a3.Out -notmatch 'lowercase stable values' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
+    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'could not be recorded cleanly' -or $r16a3.Out -notmatch 'IHttpClientFactory' -or $r16a3.Out -notmatch 'http-client' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
     Write-Pass "Case 16a3: mixed-case binding tokens are repaired in place before the next lens, with no generic packet"
 
     $p16a4 = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -1283,7 +1304,25 @@ Set-Content -LiteralPath (Join-Path $p16pa0bFeature 'spec.md') -Value '# Authore
 & pwsh -NoProfile -File (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -ProjectRoot $p16pa0b -FeatureRef '050-host-neutral-gate' | Out-Null
 $t16pa0b = New-Transcript -Proj $p16pa0b -Turns @(@{ role = 'assistant'; text = 'Does this product framing match what you have in mind?' })
 $r16pa0b = Invoke-Conformance -Proj $p16pa0b -TranscriptPath $t16pa0b -SessionId $p16pa0bSession
-if (-not $r16pa0b.Blocked -or $r16pa0b.Out -notmatch 'five-part context packet') { Fail "Case 16pa0b: authored spec content during the question turn MUST retain material enforcement. Out: $($r16pa0b.Out)" }
+# W73 (2026-09-05, maintainer ruling): SUPERSEDES THIS CASE'S ORIGINAL PREMISE. While a workshop is open,
+# specs/<ref>/spec.md is not a candidate for outside-work detection AT ALL - authored or untouched, it is
+# simply not watched. So 16pa0 and 16pa0b no longer differ in outcome, and that is deliberate rather than
+# a lost distinction.
+#
+# THE PROTECTION IS NOT LOST, IT IS ELSEWHERE, which is what makes the removal safe: the specify boundary
+# REFUSES while the not-yet-authored sentinel stands (tests/integration/spec-not-yet-authored.tests.ps1),
+# and the specification is authored from the workshop records regardless of what sits in the file
+# meanwhile. The guard removed here produced three measured harms and never once prevented anything.
+#
+# What this case now pins is that the silence is SCOPED: the spec is quiet, and everything else is not.
+if ($r16pa0b.Out -match '(?i)design workshop is still open') { Fail "Case 16pa0b: spec.md is not watched while a workshop is open (W73), so it must produce no note. Out: $($r16pa0b.Out)" }
+if ($r16pa0b.Out -match '## What I Just Did') { Fail "Case 16pa0b: and certainly no five-part packet. Out: $($r16pa0b.Out)" }
+# The scope proof: the SAME fixture, with real product source touched, still reports.
+New-Item -ItemType Directory -Path (Join-Path $p16pa0b 'src') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $p16pa0b 'src\engine.ps1') -Value '# product source' -Encoding UTF8
+New-HandoverSnapshot -Proj $p16pa0b -ChangedUserFiles 1 -FileList 'src/engine.ps1'
+$r16pa0bSrc = Invoke-Conformance -Proj $p16pa0b -TranscriptPath $t16pa0b -SessionId $p16pa0bSession
+if ($r16pa0bSrc.Out -notmatch 'src/engine\.ps1') { Fail "Case 16pa0b: real product source during a workshop must STILL be reported - the silence is scoped to the spec. Out: $($r16pa0bSrc.Out)" }
 Write-Pass "Case 16pa0b: only the byte-identical scaffold is exempt; authored spec content still owes the material packet"
 
 # ---- Case 16pa2 / beta3 blind-walk regression: the model scaffolded the feature and persisted

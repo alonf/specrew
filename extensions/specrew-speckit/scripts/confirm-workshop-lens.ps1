@@ -105,7 +105,7 @@ catch {
 # Two refusals that are each correct in isolation and jointly a trap - the pause-recovery shape again.
 $isIntakeLens = Test-SpecrewWorkshopIntakeLens -Lens $Lens
 
-# SPECREW-AUTHORITY-CONSUMER: the finite transition contract. A TECHNICAL lens closes only from a
+# This is the finite transition contract: a TECHNICAL lens closes only from a
 # confirmed agenda; the INTAKE lens closes from the pre-agenda state, which is how the controller reaches
 # `pending-product-projection`.
 $transitionOperation = if ($isIntakeLens) { 'confirm-intake-lens' } else { 'confirm-lens' }
@@ -144,7 +144,7 @@ if (-not $isIntakeLens) {
 # `phase: 'product-domain'` - measured in the field: HelloWinUIReactive's store holds 12 of them - while
 # this lookup asked for `phase: 'lens'`. Fixing only the membership check above would have moved the
 # deadlock one line down and reported "no typed reply from you is on record" for a reply that was.
-# A fact that fails two contracts reports one (DRIFT-199-I002-020).
+# A fact that fails two contracts reports only one of them.
 $receiptPhase = if ($isIntakeLens) { $Lens } else { 'lens' }
 $receipt = Get-SpecrewWorkshopAuthorityReceipt -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef -Phase $receiptPhase -Lens $Lens
 if ($null -eq $receipt) {

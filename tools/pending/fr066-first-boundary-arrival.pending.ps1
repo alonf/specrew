@@ -1,3 +1,27 @@
+# RELOCATED OUT OF tests/ 2026-09-02 - THIS IS A SPECIFICATION OF FUTURE WORK, NOT A TEST.
+#
+# CATEGORY 4 (maintainer ruling, 2026-09-02): a file that is RED BY DESIGN is not a test, it is a TODO
+# wearing a test's clothes. This one says so itself - its assertions are labelled
+# "RED (expected until T088/T089)". It has never been green and was never intended to be, yet it sat in
+# the census's subject set where a red is indistinguishable from a regression.
+#
+# WHAT IT WAITS ON: T088/T089. Until those land, `Set-SpecrewPendingBoundaryCrossingScope` throws when
+# boundary enforcement was never bootstrapped, boundary sync catches that and degrades to
+# `HasPendingVerdict = $false` behind a Write-Warning - a value INDISTINGUISHABLE from "there is
+# legitimately no pending verdict" - and the provider still emits a boundary stop naming a boundary with
+# no marker text.
+#
+# WHAT IT WILL ASSERT WHEN THAT WORK LANDS: FR-066 - that on a project's FIRST arrival at a lifecycle
+# boundary, boundary state is synchronized and the boundary record established BEFORE the first packet
+# renders, so a packet is never the event that creates the boundary state it reports.
+#
+# THE GATE DOES NOT RUN IT. It is off the census's discovered pattern and named by no lane registry.
+# Run it by hand while working T088/T089:
+#   pwsh -NoProfile -File tools/pending/fr066-first-boundary-arrival.pending.ps1
+# Its RED is the specification, not a failure.
+#
+# Deleting it would have lost real design intent; leaving it in tests/ held the tag hostage to beta4
+# work. Relocation preserves both. An exclusion says "this may fail"; this says "this was never a test".
 $ErrorActionPreference = 'Stop'
 
 # T087 — FR-066 RED fixtures (F-198 iteration 011).

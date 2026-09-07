@@ -52,7 +52,16 @@ Assert-Match -Text $ws -Pattern '`code-implementation`' 'T015: code-implementati
 Assert-Match -Text $ws -Pattern '(?is)controller-owned workshop state.+feature-level.+lens-applicability\.json.+exact iteration' 'T052: skill selects durable authority by the real feature/iteration workshop scope'
 Assert-Match -Text $ws -Pattern '(?i)Do not rely on a model-authored hidden marker' 'T052: model comments and question-tool transcripts are explicitly non-authoritative'
 Assert-Match -Text $ws -Pattern '(?is)write the nonempty `workshop/<lens-id>\.md`.+then persist.+moved_on: true' 'T052: lens completion uses the durable record-before-structured-entry order'
-Assert-Match -Text $ws -Pattern '(?is)Checkpoint this lens durable.+persist the Markdown decision record FIRST.+ONLY AFTER.+complete `lens-applicability\.json` entry.+moved_on: true' 'T052: checkpoint procedure cannot contradict the record-before-structured-entry order'
+# UPDATED 2026-09-02 (DRIFT-199-I003-024, old-contract family). This asserted the SUPERSEDED rule: the
+# skill used to tell the agent to hand-write a complete `lens-applicability.json` entry carrying
+# `moved_on: true`. Beta3 FORBIDS exactly that and routes the structured entry through the governed
+# checkpoint writer instead - a strengthening, not a regression, so the red was the test pinning
+# yesterday's instruction. The safety property this row exists for is the ORDER, and it is unchanged:
+# the Markdown record is persisted FIRST and the lens closes only after. Both halves are asserted, and
+# the new prohibition is asserted as its own row so a silent return to hand-editing turns this red.
+Assert-Match -Text $ws -Pattern '(?is)Checkpoint this lens durable.+persist the Markdown decision record FIRST.+ONLY AFTER that\s+nonempty file exists' 'T052: checkpoint procedure keeps the record-before-structured-entry order'
+Assert-Match -Text $ws -Pattern '(?is)ONLY AFTER that\s+nonempty file exists.+RUNNING THE GOVERNED CHECKPOINT WRITER' 'T052: the structured entry is closed by the governed writer, not by hand'
+Assert-Match -Text $ws -Pattern '(?is)do not hand-edit\s+`lens-applicability\.json`, and never write `moved_on` yourself' 'T052: hand-editing lens-applicability.json and writing moved_on yourself are explicitly forbidden'
 Assert-Match -Text $ws -Pattern '(?is)final selected lens.+workshop `complete`.+ordinary Stop behavior resumes' 'T052: final completion explicitly restores ordinary Stop behavior'
 Assert-Match -Text $ws -Pattern '(?is)loose flag.+missing record.+malformed artifact.+cannot keep\s+the\s+exception active' 'T052: malformed or incomplete completion fails closed instead of suppressing forever'
 Assert-Match -Text $ws -Pattern '(?i)Never invent an iteration during feature intake' 'T052: feature-level intake cannot fabricate an iteration identity'

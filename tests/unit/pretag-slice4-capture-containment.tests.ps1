@@ -68,15 +68,26 @@ try {
 
     # Mint the SCOPED crossing with the engine's own writer, bound to the real tree — the shape in
     # which StageEvidenceAbsent is computed from the bound tree (review.md genuinely absent).
+    # UPGRADED 2026-09-02 to a PRODUCT-REACHABLE path (maintainer standard, DRIFT-199-I003-024).
+    # Checked at source: the MINT gate (T014) reads the LIVE DISK; the CAPTURE gate (T090) reads the
+    # crossing's OWN BOUND GIT TREE via ArtifactStateId and deliberately not the live filesystem. The
+    # two sources differ, so an UNCOMMITTED review.md satisfies the mint gate while the bound tree
+    # still lacks it - which is an ordinary project whose author wrote the review and had not
+    # committed it. The suite therefore reaches its evidence-less crossing through the writer, and the
+    # direct-write fallback below is retained only as a safety net rather than as the normal path.
+    $owedOnDisk = Join-Path $iterDir "review.md"
+    Set-Content -LiteralPath $owedOnDisk -Value "# Review: 001`n`n**Overall Verdict**: accepted`n" -Encoding UTF8
     $mint = Join-Path $scratch 'mint.ps1'
     [System.IO.File]::WriteAllText($mint, @"
 `$ErrorActionPreference = 'Stop'
 . '$($repoRoot -replace "'", "''")\extensions\specrew-speckit\scripts\shared-governance.ps1'
 `$scope = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot '$proj' -WorkingBoundary 'review-signoff' -BoundaryCommitHash '$head'
 if (`$null -eq `$scope) {
-    # T014 (FR-024, iteration 002): the engine now REFUSES to mint a crossing whose stage owes artifacts, so the
-    # evidence-less state this suite measures can no longer come from the writer. Write the record directly - the
-    # shape of a pre-gate or hand-edited record - so the CAPTURE-side refusal stays tested as defense in depth.
+    # SAFETY NET, no longer the normal path (upgraded 2026-09-02). The caller now leaves an uncommitted
+    # review.md on disk, so T014's disk-reading mint gate is satisfied and the writer mints normally. If
+    # that ever stops working this arm still constructs the record directly - the shape of a pre-gate or
+    # hand-edited record - so the CAPTURE-side refusal stays tested as defense in depth. Reaching here
+    # means the product-reachable path broke and is worth investigating, not routing around.
     `$st = Get-SpecrewBoundaryEnforcementState -ProjectRoot '$proj'
     `$tree = Get-SpecrewGitArtifactStateId -ProjectRoot '$proj' -BoundaryCommitHash '$head'
     `$scope = New-SpecrewPendingCrossingScope -LastAuthorizedBoundary 'before-implement' -WorkingBoundary 'review-signoff' -BoundaryCommitHash '$head' -ArtifactStateId `$tree -RecordedAt '2026-08-29T00:00:00Z' -ExistingScope `$null

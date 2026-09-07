@@ -100,11 +100,27 @@ Assert-True ($evaluatedCells -eq 56) 'finite workshop table evaluates all 8 stat
 
 # The transition contract is not a test-only model. Pin every production consumer whose drift would reopen the
 # illegal-transition class, plus the hook capture that makes repair authority genuinely human-authored.
+# PIN THE CALL, NOT THE ARGUMENT (2026-09-04).
+#
+# The contract stated two lines above is that these files ROUTE THROUGH the shared transition
+# control. An argument VALUE is not the routing, and pinning one diverges from that contract in
+# BOTH directions: it passes on a file carrying the literal in a comment or in dead code, and it
+# fails on a file that genuinely routes through the control using a variable.
+#
+# The second case is why this test was red. fc43804b introduced the intake-lens branch, so
+# confirm-workshop-lens.ps1 now selects between 'confirm-intake-lens' and 'confirm-lens' at
+# runtime and passes the result as -Operation $transitionOperation. There is no single literal
+# left to match, BY DESIGN: two operations, chosen at runtime. The change was authorised and
+# intended; the pin asserted a shape the batch deliberately replaced.
+#
+# Repairing this by pinning BOTH literals would preserve the original defect. Pinning the call
+# survives argument refactoring and cannot be satisfied by dead text nearly as easily, so the
+# fixed test is STRONGER than it was when it was last green.
 $consumerPins = [ordered]@{
-    'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1' = "-Operation 'initialize'"
-    'scripts\internal\bootstrap\ProjectMetadataAccessor.ps1' = "-Operation 'read'"
+    'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1' = 'Resolve-SpecrewWorkshopStateTransition'
+    'scripts\internal\bootstrap\ProjectMetadataAccessor.ps1' = 'Resolve-SpecrewWorkshopStateTransition'
     'extensions\specrew-speckit\scripts\confirm-workshop-agenda.ps1' = 'Resolve-SpecrewWorkshopStateTransition'
-    'extensions\specrew-speckit\scripts\confirm-workshop-lens.ps1' = "-Operation 'confirm-lens'"
+    'extensions\specrew-speckit\scripts\confirm-workshop-lens.ps1' = 'Resolve-SpecrewWorkshopStateTransition'
     'extensions\specrew-speckit\scripts\repair-workshop-controller-state.ps1' = 'Resolve-SpecrewWorkshopStateTransition'
     'scripts\internal\bootstrap\HandoverStore.ps1' = 'Write-SpecrewWorkshopRepairAuthorization'
 }
@@ -152,7 +168,7 @@ try {
     Assert-True $noAuthorityRefused 'repair apply refuses before typed human authorization'
     Assert-True ($noAuthorityMessage -match 'No typed authorization is on record for the repair proposed for') 'the refusal says plainly what is missing, and for which feature, rather than throwing a machine token'
     Assert-True ($noAuthorityMessage -match 'type: approved for workshop repair') 'and names the exact phrase to type'
-    Assert-True ($noAuthorityMessage -notmatch '(?i)controller|lens-applicability|governed writer') 'in project language, with no machinery vocabulary'
+    Assert-True ($noAuthorityMessage -notmatch '(?i)\bcontroller\b|lens-applicability|governed writer') 'in project language, with no machinery vocabulary'
 
     . $projectAuthority
     $wrongReply = Write-SpecrewWorkshopRepairAuthorization -ProjectRoot $scratch -Response 'yes, repair it' -HostKind 'test' -SourceEvent 'UserPromptSubmit'

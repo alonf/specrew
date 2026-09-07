@@ -9,8 +9,6 @@ reviewed_at: 2026-06-08
 ---
 ## Specrew refocus — always-true core
 
-Inside Specrew, these rules hold at every stage and on every host:
-
 The governed subject is the project resolved at `{{project_root}}`; Specrew is the methodology tool, never the project being specified or implemented.
 
 1. **Boundaries.** Every boundary needs explicit HUMAN authorization. One approval advances at most ONE boundary; discussion is not approval.

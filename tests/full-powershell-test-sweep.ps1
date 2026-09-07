@@ -83,7 +83,32 @@ function Start-SweepFile {
     $kind = if ($source -match '(?m)^\s*Describe\s+[''"]') { 'pester' } else { 'script' }
     $processArguments = if ($kind -ceq 'pester') {
         $quoted = $File.FullName.Replace("'", "''")
-        $command = "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.Exit=`$true; `$c.Output.Verbosity='None'; Invoke-Pester -Configuration `$c"
+        # STRUCTURED FAILURE REPORTING - not a verbosity firehose.
+        #
+        # Measured 2026-09-02: 147 of 401 census files are Pester - 36.7% of this gate's subject set.
+        # Every one of them ran with Output.Verbosity='None', so a failing Pester file produced ZERO
+        # bytes on both streams and the census could report THAT it failed and never WHY. Two files in
+        # the beta3 respin surfaced it; the share says the gate has been unable to explain a failure
+        # across more than a third of the tree for its whole life.
+        #
+        # Verbosity is NOT raised to fix it. Detailed was measured against this: on a FAILING file it
+        # emits 1866 bytes, mostly Pester banner, against PassThru's 557 that name the test and its
+        # ErrorRecord; on a PASSING file it emits 1579 bytes against PassThru's ZERO - roughly 600KB of
+        # noise per green run across 401 files. Silencing and flooding are the same failure: the reason
+        # is unavailable either way.
+        #
+        # THE EXIT CODE COUNTS MORE THAN FAILED TESTS, and this is the false-green direction the
+        # codebase already warns about. `FailedCount -gt 0` alone is a HOLE: a file that dies during
+        # DISCOVERY - a parse error, a missing dot-sourced dependency, a throw before any Describe
+        # body runs - defines zero tests, so FailedCount is 0 and the child exits 0. Measured:
+        # a parse-error file and a throws-early file BOTH exited 0 under the count-only form.
+        # That is strictly worse than the silence this fix removed - silence stops a publish and a
+        # false green does not - and before -PassThru those files died loudly through Run.Exit.
+        # A run is red unless tests were discovered AND none failed AND the run itself passed.
+        # -PassThru returns a result object whose Failed entries carry their own ErrorRecord. Print
+        # only those, keep the console silent, and propagate the exit code by hand since Run.Exit
+        # would terminate before the reporting runs.
+        $command = "Import-Module Pester -MinimumVersion 5.0 -Force; `$c=New-PesterConfiguration; `$c.Run.Path='$quoted'; `$c.Run.PassThru=`$true; `$c.Output.Verbosity='None'; `$r=Invoke-Pester -Configuration `$c; foreach (`$t in @(`$r.Failed)) { Write-Output ('FAILED: ' + `$t.ExpandedPath); if (`$t.ErrorRecord) { Write-Output ('  ' + (`$t.ErrorRecord | Out-String).Trim()) } }; exit ([int]((`$r.FailedCount -gt 0) -or (`$r.TotalCount -eq 0) -or (`$r.Result -ne 'Passed')))"
         $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
         @('-NoProfile', '-NonInteractive', '-EncodedCommand', $encoded)
     }
@@ -185,7 +210,18 @@ if ($contaminated) {
     exit 1
 }
 if ($failed.Count -gt 0) {
-    $reportPath = Join-Path ([IO.Path]::GetTempPath()) ("specrew-full-sweep-failures-{0}.json" -f ([guid]::NewGuid().ToString('N')))
+    # DIAGNOSTICS MUST OUTLIVE THE RUNNER (DRIFT-199-I003-022). This file used to be written to the
+    # process temp directory and nothing uploaded it, so a failed release gate preserved a list of
+    # filenames and not one reason - the 2026-08-31 census failure cost a full local reproduction to
+    # learn WHY 23 files failed. Under Actions, write it to RUNNER_TEMP under a deterministic name so
+    # the workflow can upload it as an artifact. Outside CI, keep the unique temp name so concurrent
+    # local sweeps cannot overwrite each other.
+    $reportPath = if (-not [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+        Join-Path $env:RUNNER_TEMP 'specrew-full-sweep-failures.json'
+    }
+    else {
+        Join-Path ([IO.Path]::GetTempPath()) ("specrew-full-sweep-failures-{0}.json" -f ([guid]::NewGuid().ToString('N')))
+    }
     [IO.File]::WriteAllText($reportPath, ($failed | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
     Write-Host 'Failed paths:' -ForegroundColor Red
     @($failed | Sort-Object path) | ForEach-Object { Write-Host ("  - {0}" -f $_.path) -ForegroundColor Red }
