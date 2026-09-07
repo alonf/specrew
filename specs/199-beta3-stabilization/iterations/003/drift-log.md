@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 82 (DRIFT-199-I003-001 through -082)
+**Total drift events**: 85 (DRIFT-199-I003-001 through -085)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2855,3 +2855,65 @@ friction. It is neither - the entry was never supposed to be in that list.**
 - **So this is a question-design finding, not an enforcement one.** The beta4 UX priority already on record
   gains its strongest instance.
 - **Class closure**: NONE - beta4 UX.
+
+### DRIFT-199-I003-083 - THE LOCAL CENSUS IS NOT THE GATE: green twice on the tagged commit, red in CI, and the failure existed only where the environment differs
+
+**The tag was cut, the workflow ran, and the publish was skipped. The census failed on ONE test - and that
+test could not have failed locally, by construction.**
+
+- **THE FAILURE, and it is one token.** Eight assertions in
+  `tests/integration/validate-governance-changed-only.tests.ps1` matched
+  `[validator-timing] ... trigger_source=local`. **The validator correctly reports `ci` under CI.** Every
+  other field on every one of those lines was exactly right - `mode=scoped`, `mode=unscoped`,
+  `elapsed_ms=\d+`, `iterations_validated=1` or `=0`. **Only the environment token differed.**
+- **SO THE ASSERTION WAS UNPASSABLE IN CI AND UNFAILABLE LOCALLY.** I ran the full census green **twice on
+  this exact commit**. It could not have caught this. **I verified the thing I could run rather than the
+  thing that gates**, which is the whole finding and is worth stating in those words.
+- **THIS IS THE GAP A LOCAL PROXY CANNOT SEE BY DEFINITION**: a local sweep and a CI run differ precisely in
+  environment, so any failure that lives in the difference is invisible to the proxy. **"Census green
+  locally" was never evidence about the gate; it was evidence about my machine.**
+- **THE RULE THIS EARNS**: **the last green before a tag must be a DISPATCHED WORKFLOW RUN, not a local
+  sweep.** Local runs stay useful for iteration - they are faster and they caught eight real failures this
+  week - but they do not close the gate.
+  - **The mechanism already exists and costs a wait rather than new machinery.** `workflow_dispatch` runs
+    have been used on this branch all week; six of them appear in the run history. **Dispatch one, wait for
+    green, then cut the tag.**
+- **AND IT WOULD HAVE COST NOTHING TO KNOW.** The failing run took **862 seconds** against its 1800-second
+  budget, so the timeout question is closed as well: nothing was near its limit.
+- **Class closure**: the rule above. It generalises past this test to anything environment-sensitive, which
+  is exactly the category a local proxy is worst at.
+
+### DRIFT-199-I003-084 - THE FIX DROPS THE PIN RATHER THAN WIDENING IT: sixth instance of asserting the rendering instead of the property
+
+- **`local|ci` WOULD HAVE BEEN THE WRONG FIX.** Each of those eight assertions exists to check **mode,
+  elapsed_ms and iterations_validated**. `trigger_source` came along because it sits on the same emitted
+  line - **it is not what any of them is testing.** An alternation would have made a wrong assertion pass;
+  dropping the field makes each assertion say exactly what it means.
+- **SIXTH MEASURED INSTANCE OF THE SAME SHAPE this batch**, which is what makes it a lint item rather than
+  six repairs:
+
+| instance | the rendering that was pinned |
+| --- | --- |
+| transition-table consumers | the ARGUMENT rather than the call |
+| boundary-correction ledger | the exact marker literal rather than the contract |
+| conformance Case 16a3 | the prose rather than the offending token |
+| conformance Case 16a2 / 16pa0b | the packet wording rather than the enforcement |
+| **timing assertions** | **an environment value on the same line as the substance** |
+
+- **Class closure**: it belongs to the beta4 lint item with the others - **assert the property, not the
+  rendering.**
+
+### DRIFT-199-I003-085 - THE WALK DOES NOT RE-RUN FOR THIS, and the reason is measurable rather than a judgement call
+
+**Recorded explicitly so that nobody later reads a moved tag as an unverified one.**
+
+- **`Specrew.psd1`'s FileList contains no test files.** This fix lands entirely in
+  `tests/integration/validate-governance-changed-only.tests.ps1`, so **the installed module is
+  byte-identical before and after it** - same 414 packaged files, same content hash.
+- **The walk's subject is therefore unchanged.** The fifth walk (DRIFT-199-I003-078) crossed a boundary on
+  a typed verdict against a module built from the packaged tree, and this commit ships that same module.
+  **Re-walking would exercise identical bits and prove nothing new.**
+- **The packaged delta is likewise unchanged**: still **8 files and 14 changes**, measured by intersecting
+  the FileList with the diff. A test-only commit cannot move either number.
+- **What DOES re-run is the gate**, per DRIFT-199-I003-083 - a dispatched workflow, watched to completion.
+- **Class closure**: NONE - a statement of scope, kept with the tag record.
