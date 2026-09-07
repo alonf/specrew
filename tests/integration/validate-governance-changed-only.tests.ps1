@@ -340,7 +340,13 @@ if (-not (Assert-True -Condition ($explicitChangedOnlyResult.ExitCode -eq 0) -Fa
 if (-not (Assert-FirstLineMatch -Text $explicitChangedOnlyResult.Text -Pattern '^\[validator-scope\] changed-only to origin/main\.\.\.HEAD \(1 iterations, 1 files in diff\)$' -FailureMessage 'Explicit -ChangedOnly runs should emit the changed-only scope banner as the first informational line.')) { $allChecksPassed = $false; $explicitChangedOnlyChecksPassed = $false }
 if (-not (Assert-Match -Text $explicitChangedOnlyResult.Text -Pattern '\[validator\] \(1/1\) validating .*iterations[/\\]001' -FailureMessage 'Explicit -ChangedOnly validation should still validate the touched iteration.')) { $allChecksPassed = $false; $explicitChangedOnlyChecksPassed = $false }
 if (-not (Assert-NotMatch -Text $explicitChangedOnlyResult.Text -Pattern 'iterations\\002' -FailureMessage 'Explicit -ChangedOnly validation should skip untouched iterations.')) { $allChecksPassed = $false; $explicitChangedOnlyChecksPassed = $false }
-if (-not (Assert-Match -Text $explicitChangedOnlyResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage 'Explicit -ChangedOnly validation should emit scoped timing output.')) { $allChecksPassed = $false; $explicitChangedOnlyChecksPassed = $false }
+# The timing assertions below check mode, elapsed_ms and iterations_validated - the substance. They used
+# to also match `trigger_source=local`, which is not what any of them is testing: it came along because it
+# sits on the same emitted line. The validator correctly reports `ci` under CI, so the pin made these eight
+# assertions UNPASSABLE in CI and unfailable locally - the census was green on this commit twice and could
+# not have caught it. The pin is DROPPED rather than widened to `local|ci`: matching an environment value
+# at all is the defect, and an alternation would only make the wrong assertion pass.
+if (-not (Assert-Match -Text $explicitChangedOnlyResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=1' -FailureMessage 'Explicit -ChangedOnly validation should emit scoped timing output.')) { $allChecksPassed = $false; $explicitChangedOnlyChecksPassed = $false }
 if ($explicitChangedOnlyChecksPassed) {
     Write-Pass 'Explicit -ChangedOnly still validates only the touched iteration and emits the changed-only scope banner.'
 }
@@ -354,7 +360,7 @@ $autoScopedChecksPassed = $true
 if (-not (Assert-True -Condition ($autoScopedResult.ExitCode -eq 0) -FailureMessage 'Feature-branch validation with no flags should auto-scope and pass when only the touched iteration remains in scope.')) { $allChecksPassed = $false; $autoScopedChecksPassed = $false }
 if (-not (Assert-FirstLineMatch -Text $autoScopedResult.Text -Pattern '^\[validator-scope\] auto-scoped to origin/main\.\.\.HEAD \(1 iterations, 1 files in diff\)$' -FailureMessage 'Feature-branch validation with no flags should emit the auto-scoped banner as the first informational line.')) { $allChecksPassed = $false; $autoScopedChecksPassed = $false }
 if (-not (Assert-NotMatch -Text $autoScopedResult.Text -Pattern 'iterations\\002' -FailureMessage 'Auto-scoped validation should skip untouched iterations.')) { $allChecksPassed = $false; $autoScopedChecksPassed = $false }
-if (-not (Assert-Match -Text $autoScopedResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage 'Auto-scoped validation should emit scoped timing output.')) { $allChecksPassed = $false; $autoScopedChecksPassed = $false }
+if (-not (Assert-Match -Text $autoScopedResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=1' -FailureMessage 'Auto-scoped validation should emit scoped timing output.')) { $allChecksPassed = $false; $autoScopedChecksPassed = $false }
 if ($autoScopedChecksPassed) {
     Write-Pass 'Feature-branch validation with no flags auto-scopes and emits the banner first.'
 }
@@ -382,7 +388,7 @@ if (-not (Assert-True -Condition ($fullRunResult.ExitCode -ne 0) -FailureMessage
 if (-not (Assert-FirstLineMatch -Text $fullRunResult.Text -Pattern '^\[validator-scope\] closed-iteration filter: 1 closed iterations skipped' -FailureMessage '-FullRun should first report that the valid closed fixture was excluded.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
 if (-not (Assert-Match -Text $fullRunResult.Text -Pattern '(?m)^\[validator-scope\] full-repo \(-FullRun override; 2 iterations\)$' -FailureMessage '-FullRun should emit the full-repo override banner.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
 if (-not (Assert-Match -Text $fullRunResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '-FullRun should still report untouched iteration failures.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
-if (-not (Assert-Match -Text $fullRunResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage '-FullRun should emit unscoped timing output for the one open iteration.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
+if (-not (Assert-Match -Text $fullRunResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1' -FailureMessage '-FullRun should emit unscoped timing output for the one open iteration.')) { $allChecksPassed = $false; $fullRunChecksPassed = $false }
 if ($fullRunChecksPassed) {
     Write-Pass '-FullRun bypasses auto-scope and emits the expected full-repo banner.'
 }
@@ -423,7 +429,7 @@ $sessionStateResult = Invoke-Validator -ProjectPath $sessionStateWorkspace -Chan
 $sessionStateChecksPassed = $true
 if (-not (Assert-True -Condition ($sessionStateResult.ExitCode -eq 0) -FailureMessage 'Changed-only validation should stay scoped when only .specrew\last-start-prompt.md changes.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
 if (-not (Assert-NotMatch -Text $sessionStateResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation:' -FailureMessage 'Session-state prompt changes should not trigger full-validation fallback.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
-if (-not (Assert-Match -Text $sessionStateResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=0 trigger_source=local' -FailureMessage 'Session-state prompt changes should emit scoped timing output with zero validated iterations.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
+if (-not (Assert-Match -Text $sessionStateResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=0' -FailureMessage 'Session-state prompt changes should emit scoped timing output with zero validated iterations.')) { $allChecksPassed = $false; $sessionStateChecksPassed = $false }
 if ($sessionStateChecksPassed) {
     Write-Pass 'Session-state prompt changes stay scoped and do not trigger full-validation fallback.'
 }
@@ -436,7 +442,7 @@ $identityNowResult = Invoke-Validator -ProjectPath $identityNowWorkspace -Change
 $identityNowChecksPassed = $true
 if (-not (Assert-True -Condition ($identityNowResult.ExitCode -eq 0) -FailureMessage 'Changed-only validation should stay scoped when only .squad\identity\now.md changes.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
 if (-not (Assert-NotMatch -Text $identityNowResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation:' -FailureMessage '.squad\identity\now.md changes should not trigger full-validation fallback.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
-if (-not (Assert-Match -Text $identityNowResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=0 trigger_source=local' -FailureMessage '.squad\identity\now.md changes should emit scoped timing output with zero validated iterations.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
+if (-not (Assert-Match -Text $identityNowResult.Text -Pattern '\[validator-timing\] mode=scoped elapsed_ms=\d+ iterations_validated=0' -FailureMessage '.squad\identity\now.md changes should emit scoped timing output with zero validated iterations.')) { $allChecksPassed = $false; $identityNowChecksPassed = $false }
 if ($identityNowChecksPassed) {
     Write-Pass '.squad\identity\now.md changes stay scoped and do not trigger full-validation fallback.'
 }
@@ -450,7 +456,7 @@ $configChecksPassed = $true
 if (-not (Assert-True -Condition ($configResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .specrew\config.yml changes.')) { $allChecksPassed = $false; $configChecksPassed = $false }
 if (-not (Assert-Match -Text $configResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '.specrew\config.yml changes should still validate untouched iterations and surface their failures.')) { $allChecksPassed = $false; $configChecksPassed = $false }
 if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: global-state-changed' -FailureMessage '.specrew\config.yml changes should emit the expected full-validation fallback reason.')) { $allChecksPassed = $false; $configChecksPassed = $false }
-if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage '.specrew\config.yml changes should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $configChecksPassed = $false }
+if (-not (Assert-Match -Text $configResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1' -FailureMessage '.specrew\config.yml changes should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $configChecksPassed = $false }
 if ($configChecksPassed) {
     Write-Pass '.specrew\config.yml changes force unscoped validation so untouched iteration failures still surface.'
 }
@@ -464,7 +470,7 @@ $wisdomChecksPassed = $true
 if (-not (Assert-True -Condition ($wisdomResult.ExitCode -ne 0) -FailureMessage 'Changed-only validation should fall back to unscoped validation when .squad\identity\wisdom.md changes.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
 if (-not (Assert-Match -Text $wisdomResult.Text -Pattern 'FAIL .*iterations[/\\]002' -FailureMessage '.squad\identity\wisdom.md changes should still validate untouched iterations and surface their failures.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
 if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: global-state-changed' -FailureMessage '.squad\identity\wisdom.md changes should emit the expected full-validation fallback reason.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
-if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage '.squad\identity\wisdom.md changes should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
+if (-not (Assert-Match -Text $wisdomResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1' -FailureMessage '.squad\identity\wisdom.md changes should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $wisdomChecksPassed = $false }
 if ($wisdomChecksPassed) {
     Write-Pass '.squad\identity\wisdom.md changes force unscoped validation so untouched iteration failures still surface.'
 }
@@ -513,7 +519,7 @@ if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '(?m)^\[validator-sco
 if (-not (Assert-NotMatch -Text $fallbackResult.Text -Pattern '\[validator\].*validating .*iterations[/\\]001' -FailureMessage 'Base-resolution fallback should exclude the closed touched iteration from the unscoped validation loop.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if (-not (Assert-Match -Text $fallbackResult.Text -Pattern 'iterations[/\\]002' -FailureMessage 'Base-resolution fallback should validate untouched iterations through the unscoped path.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator\] -ChangedOnly fallback to full validation: base-ref-undetectable' -FailureMessage 'Base-resolution fallback should emit the expected verbose fallback reason.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
-if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1 trigger_source=local' -FailureMessage 'Base-resolution fallback should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
+if (-not (Assert-Match -Text $fallbackResult.Text -Pattern '\[validator-timing\] mode=unscoped elapsed_ms=\d+ iterations_validated=1' -FailureMessage 'Base-resolution fallback should emit unscoped timing output for the open iteration.')) { $allChecksPassed = $false; $fallbackChecksPassed = $false }
 if ($fallbackChecksPassed) {
     Write-Pass 'Changed-only mode falls back to full validation with a base-undetectable banner when the PR base ref cannot be resolved.'
 }
