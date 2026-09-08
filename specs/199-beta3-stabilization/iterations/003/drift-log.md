@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 95 (DRIFT-199-I003-001 through -095)
+**Total drift events**: 96 (DRIFT-199-I003-001 through -096)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3310,3 +3310,33 @@ predicts.**
   documenting.
 - **Class closure**: NONE - beta4, and it is now the second first-run item with a live measurement behind
   it rather than a design argument.
+
+### DRIFT-199-I003-096 - AN APPROVAL BOUND TO A TREE STATE MAKES CORRECT DOCUMENTATION DESTRUCTIVE: the mechanism has a second role nobody noticed
+
+**Same family as "the packet was also the discharge" - a mechanism carrying a second responsibility that
+only becomes visible when something moves.**
+
+- **THE TENSION, as a mechanism rather than an inconvenience.** The signoff gate binds a human approval to
+  an **exact tree state**, and says so plainly: *"Writing records - a drift entry, a plan note - between
+  (1) and (3) moves the state your approval was bound to and it will refuse again."* **The binding is
+  correct and it is the point**: an approval that survives arbitrary edits is not an approval of anything.
+- **BUT IT MAKES THIS PROJECT'S OWN DISCIPLINE SELF-DEFEATING FOR THE DURATION.** Findings are supposed to
+  be recorded when found. **An agent that recorded a defect at the moment of discovery, during a pending
+  approval, would invalidate the approval it was documenting** - and the more diligent the agent, the more
+  reliably it breaks the thing it is describing.
+- **MEASURED HERE, not hypothesised.** The near-miss in DRIFT-199-I003-095 was discovered while an approval
+  request was pending. **Recording it correctly required staying silent for a turn**, deliberately rather
+  than incidentally. **Correct behaviour looked like doing nothing.**
+- **WHY IT IS THE SAME SHAPE AS THE DISCHARGE DEFECT** (DRIFT-199-I003-074): there, the five-part packet was
+  ALSO what advanced the turn baseline, so removing the packet silently removed the discharge. Here, the
+  tree-state binding is ALSO a freeze on recording, so documenting during it silently removes the approval.
+  **One mechanism, two responsibilities, only one of them named.**
+- **THE ASYMMETRY WORTH FIXING**: a record written to `drift-log.md` or under `specs/**` **cannot change
+  what the approval is about** - it is commentary on the tree, not part of the reviewed surface. **The
+  binding does not need to be that wide.** Excluding the record surfaces from the bound state removes the
+  tension entirely without weakening what the approval covers.
+- **BETA5 rather than beta4**, for the standing reason: machinery quality, not what a stranger meets in
+  their first ten minutes. **Recorded now while it is fresh**, because it was found by doing the right thing
+  and noticing that it hurt.
+- **Class closure**: NONE - beta5, beside DRIFT-199-I003-090. Both are mechanisms whose second role was
+  invisible until something moved.
