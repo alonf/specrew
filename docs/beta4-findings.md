@@ -231,3 +231,138 @@ compared against the captured length, which is one measurement and belongs to wh
 **Bootstrap journal records carry no timestamp field at all**, so the record that immediately preceded
 B4F-002's write could only be dated by file mtime. Recorded here beside the other diagnosability gap because
 it is the same defect in a second journal.
+
+---
+
+## B4F-005 - MECHANISM ESTABLISHED: the punctuation heuristic is real and is NOT what blocked this; the resolve never looked at feature 201 at all
+
+**Tested rather than implemented, on instruction.** The reviewer's hypothesis was that question detection
+depends on a line ending in `?`. **Both halves were checked, and they separate.**
+
+### The heuristic is real, and this session would fail it every time
+
+`specrew-conformance-provider.ps1:564`, confirmed verbatim:
+
+```powershell
+$questionLines = @($LastAssistantText -split "`r?`n" | Where-Object { $_.TrimEnd().EndsWith('?') } | Select-Object -Last 1)
+```
+
+**Measured over this session's transcript - all 34 assistant text messages: ZERO have a line ending in
+`?`.** That includes message `[17]` (8430 characters, 71 lines), the last assistant text before the failing
+Stop, which *contains* a question mark but never at a line end. The prediction the heuristic makes about
+this agent's prose is correct: it would find nothing, every time.
+
+### BUT IT DOES NOT GATE VALIDITY, and that is the half that kills it as the cause
+
+Read the control flow rather than the line. Two lines below the filter:
+
+```
+566  $result.valid = $true                # unconditional
+581  $result.question = $question         # null is fine
+582  $result.message_hash = Get-SpecrewFireIdentity -Parts @(..., $LastAssistantText)
+```
+
+**A message with no `?`-terminated line still returns `valid = $true`, still causes the projection to be
+written, and still carries a bindable `message_hash`.** The heuristic degrades the *readable* `question`
+field in a projection whose own comment says it is not authority. **It cannot be what stopped registration**,
+because had line 564 been reached at all, `workshop-question.json` would exist.
+
+### The actual mechanism, traced through the guard chain
+
+`$ActiveFeatureRef` and `$ActiveIterationNumber` come from the start context, which names
+**`199-beta3-stabilization` / `003`** - the CLOSED feature.
+
+| line | what happens |
+| --- | --- |
+| 531 | `$ActiveIterationNumber` is `003`, non-empty, so `$scope = 'iteration'`, `$iteration = '003'` |
+| 545 | `Get-SpecrewWorkshopLifecycleState -FeatureRef 199-beta3-stabilization -IterationNumber 003` |
+| - | **`specs/199-beta3-stabilization/iterations/003/lens-applicability.json` DOES NOT EXIST** (verified) |
+| 550 | `$state` is null, so scope / feature_ref / iteration_number are left **null** and the function returns |
+
+**Feature 201 was never consulted.** The resolve did not fail to recognise the workshop question - **it never
+looked at the workshop that was open.** This matches the journal exactly: all four `workshop_*` fields null,
+which is the one outcome the punctuation path cannot produce.
+
+**PRED-BETA4-001's predicted mechanism is therefore PROVEN**, having been recorded as unproven in B4F-004.
+The stale start context is the cause. The journal could not confirm it; the control flow does.
+
+### The truncation is real, separate, and did not cause this
+
+`dx_lat_len = 3538` against message `[17]`'s actual **8430** characters. **The capture truncates.** But the
+full 8430-character message has zero `?`-terminated lines too, so truncation changes nothing here. Confirmed
+as its own defect, queued behind this one exactly as instructed.
+
+### THREE SPECIFICATIONS, THREE MISSES, AND THEY SHARE ONE SHAPE
+
+| reading | what it named | why it was wrong |
+| --- | --- | --- |
+| DRIFT-199-I003-094 | line 627 "reads" the file | 627 is a path assignment inside the WRITER |
+| B4F-001's correction | the live re-resolve is the gate | correct, but the gate is upstream of it |
+| this one | line 564's filter decides detection | the filter feeds a field; `valid` is set unconditionally two lines later |
+
+**Every one was right about the line and wrong about whether the line decides anything.** The rule this
+earns, and it is cheap: **when a line is named as a cause, trace to the `return` that carries it.** A filter,
+an assignment and a guard look identical in a grep hit.
+
+### WHAT THE EVIDENCE SUPPORTS ABOUT THE FIX - stated as scope, not taken
+
+The resolve must consult **the feature whose workshop is open**, not the one the start context happens to
+name. And that reframes the blast radius:
+
+**THE DECISIVE OPEN QUESTION, NOT ESTABLISHED**: the start context is stale **by construction** between
+feature creation and the first boundary sync - a new feature's workshop always runs while the context still
+names its predecessor. If that is what fires, **the block hits the second and every later feature in any
+project**, not just this tree, and Casio and `beta3-tagwalk` worked only because they were *first* features
+with no predecessor to name. **That is a much larger scope than "this tree is unusual" and it shapes the fix
+rather than merely following it**, so it is in scope under the standing rule. It needs one test: a second
+governed feature in a scratch project, with the first one closed.
+
+---
+
+## B4F-006 - THE WORK KIND IS COMPLETE MACHINERY THAT NOBODY IS OFFERED: a silent resolution whose default is the heaviest contract
+
+**`bug-bash-lifecycle.md` ships.** So do `docs-only-lifecycle.md`, `devops-lifecycle.md` and
+`software-feature-lifecycle.md`, beside `work-kinds.yml`, `work-kinds.schema.json`, `work-kind-common.ps1`,
+`work-kind-validator.ps1`, a deployed `templates/work-kind/`, a CI workflow and four test suites. **The
+capability is finished. It was simply never selected.**
+
+### What bug-bash actually asks for
+
+| required evidence | beta4's status |
+| --- | --- |
+| bug list, each with a reproduction or failing signal | **already written** - six items in `docs/beta4-scope.md` |
+| root cause per bug | **already written** - the drift log's measured causes |
+| fix evidence | owed |
+| regression tests | owed |
+| closeout note | owed |
+
+Flow: `bug-list + root-cause -> fix -> regression-tests -> review -> closeout -> merge`.
+
+**There is no workshop, no spec, no design lenses, no plan/tasks ceremony in it.** The drift log *is* the
+bug list, and it was complete before feature 201 was created.
+
+### The declaration is inherited, and it names a feature from two features ago
+
+`.specrew/work-kind.yml` reads `work_kind: software-feature`, and its own note begins *"Feature 183 (this
+branch)"*. It is a **project-level** file, so 199 inherited it and 201 inherited it, and nothing at feature
+creation asked. Its note even records the tension it was written under: *"uses bug-bash conduct for the
+individual fixes while retaining software-feature release discipline."*
+
+### It explains iteration 003 retroactively
+
+003 fought a dashboard it could not produce, a task row it never had, a Task Verdicts table with no
+reviewer, and a campaign that never ran. **The honest closure was right; the finding is one level up.** 003
+was reactive stabilization measured against a planned-feature contract, and **bug-bash may have fitted it
+without a single deviation.** Two work items in a row have now paid full feature ceremony for work that had
+a lighter contract sitting unused in the same directory.
+
+### THE FINDING IS THE SELECTION, NOT THE CAPABILITY
+
+**A work kind resolves silently, its default is the heaviest contract, and nothing at feature creation asks
+which applies.** That is not a missing capability - it is **a shipped one nobody is offered**, which is
+squarely beta4's own first-run theme: a stranger meets the heaviest ceremony the product has, for work that
+may warrant the lightest, and is never shown that a choice existed.
+
+**Deferred under the standing rule** unless declaring it removes the workshop dependency in front of the
+registration fix - which it does, and which is why it was read now rather than later.
+
