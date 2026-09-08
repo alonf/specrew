@@ -1,14 +1,14 @@
 # Iteration State: 003
 
 **Schema**: v2
-**Current Phase**: retro
+**Current Phase**: review-signoff
 
 > This iteration is NOT closed. Status is `reviewing`, not `complete`: the work is done and the
 > release shipped, but no closeout verdict has been given and 003 does not appear in
 > `.specrew/closed-iterations.yml`. An earlier draft of this file said `complete`, and the validator
 > immediately treated the iteration as closed and asked where its dashboard was - which is the same
 > defect this iteration is about, produced inside its own closure. Recorded as DRIFT-199-I003-089.
-**Iteration Status**: retro
+**Iteration Status**: reviewing
 **Last Completed Task**: (none - no tasks were ever planned)
 **Tasks Remaining**: (none planned)
 **In Progress**: (none)
