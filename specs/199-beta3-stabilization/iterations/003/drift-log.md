@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 96 (DRIFT-199-I003-001 through -096)
+**Total drift events**: 97 (DRIFT-199-I003-001 through -097)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3340,3 +3340,55 @@ only becomes visible when something moves.**
   and noticing that it hurt.
 - **Class closure**: NONE - beta5, beside DRIFT-199-I003-090. Both are mechanisms whose second role was
   invisible until something moved.
+
+### DRIFT-199-I003-097 - A BOUNDARY ADVANCED WITH NO HUMAN VERDICT, WROTE A SEAL, AND APPENDED TO THE CLOSED-ITERATION LEDGER: the most serious defect in this arc
+
+**A governance system's central claim is that no boundary advances without a human verdict. This one did.
+It is not in the same class as a noisy packet, and it should not be filed with the first-run items.**
+
+- **WHAT HAPPENED, measured**:
+
+| | |
+| --- | --- |
+| boundary recorded | `iteration-closeout`, `2026-09-08T21:20:24Z` |
+| `auth_commit_hash` | **`45c7e7ec`** |
+| what that commit is | **a drift-log commit the session wrote thirty seconds earlier** |
+| verdict captured | **none, in any store** |
+| side effects | appended to `.specrew/closed-iterations.yml`; wrote `.specrew-iteration-seal.json` over 7 files |
+| what asked the human | **nothing** |
+
+- **IT WAS CAUGHT BECAUSE SOMEONE LOOKED.** No check fired, no warning, no refusal. The session verified the
+  boundary's provenance after the fact and found the authorization hash pointing at its own commit.
+- **SECOND OCCURRENCE, AND BOTH WERE FOUND THE SAME WAY.** DRIFT-199-I003-086 recorded the first: the `plan`
+  boundary whose `auth_commit_hash` was the scaffold commit that created the stub, written thirty-two
+  seconds after it. **Two instances, one detection method - a human checking afterwards.** The first was
+  found by reading history days later; this one by watching it happen. **Neither was found by the system.**
+- **WHY IT OUTRANKS EVERYTHING ELSE ON THE LIST.** The first-run items are about what a stranger meets: a
+  noisy packet, an unhelpful refusal, a missing branch. **This is about whether the product's central claim
+  is true.** A boundary ledger that records authorizations nobody gave is not a weaker version of
+  governance; it is a record that cannot be relied on for the one thing it exists to record.
+- **THE COUNTERMEASURE, and it would have caught BOTH instances**: **a boundary record must name the verdict
+  receipt that authorized it, and a record without one is invalid rather than merely unusual.**
+  - **The receipts already exist.** `workshop-authority.jsonl` shows the shape: `receipt_id`,
+    `question_hash`, `response_hash`, `confirmation`, `source_event`, `recorded_at`.
+  - **The ledger already carries an `auth_commit_hash`.**
+  - **What is missing is the LINK** - a `verdict_receipt_id` beside the commit hash - **and the rule that
+    its absence invalidates the record.** Under that rule, both instances fail immediately: the scaffold
+    commit names no receipt, and neither does this one.
+- **AND IT IS THE SCOPE-DETERMINING-FIELD CLASS AGAIN** (DRIFT-199-I003-090), in its worst position: the
+  boundary record decides what later gates resolve - stage evidence, constraint diffs, review coverage -
+  **so a fabricated authorization propagates into every check that trusts it**, and none of them can
+  contradict it because it is their input.
+- **THE CLOSURE WAS RATIFIED, NOT REVERSED, and the reasoning is recorded because it is a judgement.**
+  Reversal would mean hand-editing `closed-iterations.yml` and deleting a seal - **and a store that can be
+  corrected by hand is not evidence**, which this project has ruled before. It would also leave beta3 open
+  for days over a gate defect that reversing does not fix. **The maintainer ratified after being shown the
+  anomaly**; that decision is real and is recorded in `state.md` and `review.md` as well as here, so a
+  reader of the iteration's own record sees it without finding this log.
+  - **The ratification itself has no machine record.** It was given in conversation because **the gate never
+    opened a capture to receive one.** That is the defect restating itself at the moment of its own repair.
+- **RELEASE PLACEMENT: not decided here, and deliberately not defaulted to beta4.** It outranks first-run
+  polish on severity whatever that does to scope. **What is decided is that it is not in the same class as
+  the items it would otherwise sit beside.**
+- **Class closure**: NONE. Parent class is DRIFT-199-I003-090; siblings are DRIFT-199-I003-086 and this.
+  **The receipt link is the countermeasure for all three.**

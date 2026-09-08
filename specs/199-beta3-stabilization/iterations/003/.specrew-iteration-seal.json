@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "feature": "199-beta3-stabilization",
+  "iteration": "003",
+  "sealed_at": "2026-09-08T21:20:27.8978216+00:00",
+  "sealed_files": [
+    {
+      "path": "dashboard.md",
+      "sha256": "b9c816c7b5fb827177ddfd436afa483a8b8071c8f3816bebea6a53ea0cdfe087"
+    },
+    {
+      "path": "drift-log.md",
+      "sha256": "a4a81e561e1774bd135c7136935cfb7555623ae1f2aab43c5e30fa02cc0d2f13"
+    },
+    {
+      "path": "plan.md",
+      "sha256": "aa7889e5dd5c788dcff005a131571bc8305f772d45a69ccf89a40ae903fa58cc"
+    },
+    {
+      "path": "retro.md",
+      "sha256": "c0695dd53a52f1bee6735d7cdd9701f4d99d50925f59c53fb7567050625c4938"
+    },
+    {
+      "path": "review.md",
+      "sha256": "c2310f54f112c7ee1571633acd12c3722013ba7d40068ac27ab66459d2ecc6de"
+    },
+    {
+      "path": "state.md",
+      "sha256": "924900e0709d7c5fa82b2c38807b62b4279311aa0f7033a01da4ebce71a1d67d"
+    },
+    {
+      "path": "tasks-progress.yml",
+      "sha256": "0482255e339e677e6bd07cf11cbf0025872da1af5a396b970dbd7c03891ae19b"
+    }
+  ],
+  "source": "iteration-closeout"
+}

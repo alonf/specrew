@@ -105,6 +105,20 @@ iteration, and 003 was not one.** They are carried as a known, ruled deviation r
 what was in scope, what was cut, and estimate against actual. That is a real loss and it is why the gate
 asks.
 
+## The Closure's Own Authorization Defect
+
+**Stated here because a reader of this review should not have to find the drift log to learn it.**
+
+This iteration's closeout boundary **advanced without a human verdict**. The ledger entry, the seal and the
+recorded `auth_commit_hash` all exist; the hash names a documentation commit the session had made moments
+before, and no closeout verdict was captured anywhere. The maintainer ratified the closure after being shown
+this, in conversation - **a real human decision with no machine record of it**.
+
+**So the acceptance in this file rests on a boundary whose authorization the system cannot prove.** That
+does not change what the work was or whether it was verified - the census, the walk and the delta stand on
+their own instruments - but it is a defect in the record this file is part of, and it is named rather than
+smoothed over.
+
 ## Gaps Carried Forward
 
 Named rather than closed, and all carried into the beta4 backlog with their measurements:

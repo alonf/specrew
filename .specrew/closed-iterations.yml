@@ -401,3 +401,6 @@ closed:
   - feature: 199-beta3-stabilization
     iteration: 002
     closed_at: 2026-08-31T14:16:55Z
+  - feature: 199-beta3-stabilization
+    iteration: 003
+    closed_at: 2026-09-08T21:20:25Z

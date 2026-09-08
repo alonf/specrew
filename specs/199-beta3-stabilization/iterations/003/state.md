@@ -1,14 +1,14 @@
 # Iteration State: 003
 
 **Schema**: v2
-**Current Phase**: review-signoff
+**Current Phase**: iteration-closeout
 
 > This iteration is NOT closed. Status is `reviewing`, not `complete`: the work is done and the
 > release shipped, but no closeout verdict has been given and 003 does not appear in
 > `.specrew/closed-iterations.yml`. An earlier draft of this file said `complete`, and the validator
 > immediately treated the iteration as closed and asked where its dashboard was - which is the same
 > defect this iteration is about, produced inside its own closure. Recorded as DRIFT-199-I003-089.
-**Iteration Status**: reviewing
+**Iteration Status**: complete
 **Last Completed Task**: (none - no tasks were ever planned)
 **Tasks Remaining**: (none planned)
 **In Progress**: (none)
@@ -45,6 +45,33 @@ by the maintainer, implemented, proven in both directions and recorded. The work
 **The lifecycle record was wrong; the release was not.** The two claims are independent, and separating them
 is the point of this state file. The release rests on the census, the CI gate and the walk - none of which
 depend on the boundary ledger being right.
+
+## How This Iteration Was Closed, And What Was Wrong With It
+
+**The iteration-closeout boundary advanced WITHOUT asking for a human verdict, and its authorization hash
+points at a documentation commit rather than an approval.**
+
+| | |
+| --- | --- |
+| `boundary_type` recorded | `iteration-closeout` |
+| `auth_commit_hash` | `45c7e7ec` |
+| what that commit actually is | a drift-log commit written by the session, thirty seconds earlier |
+| iteration-closeout verdict captured | **none, anywhere** |
+
+The gate appended to `.specrew/closed-iterations.yml`, wrote `.specrew-iteration-seal.json` over seven
+files, and asked for nothing. **It was noticed because the session checked afterwards, not because anything
+detected it.**
+
+**The maintainer then ratified the closure deliberately, after being shown this.** That ratification was
+given in conversation; **it is not a captured verdict receipt**, because the gate never opened a capture to
+receive one. So this iteration is closed with a human decision behind it and **no machine record of that
+decision** - which is precisely the defect, stated here rather than left to the drift log.
+
+Reversal was considered and rejected: restoring the ledger and deleting the seal means hand-editing an
+authority store, and **a store that can be corrected by hand is not evidence**. Refusing to ratify would
+also punish a finished closure for a gate's failure.
+
+Recorded in full as DRIFT-199-I003-097.
 
 ## Repair Escalation
 
