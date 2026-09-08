@@ -95,6 +95,20 @@ iteration argument is kept as a candidate reason, not as the prediction's basis.
 **The instrument**: `.specrew/runtime/conformance-journal.jsonl` for the turn, plus the presence, `phase`
 and `feature_ref` of `.specrew/handover/workshop-question.json` itself.
 
+### RESOLVED 2026-09-09: the file is ABSENT, and the journal cannot say why
+
+**The prediction held.** The file was not written; `workshop-authority.jsonl` still does not exist. The Stop
+record carries `block_kind = material` with `workshop_scope`, `workshop_feature`, `workshop_iteration` and
+`workshop_lens` all null - the resolve returned nothing, and both symptoms reproduced.
+
+**By the meanings fixed above, this is the FOURTH branch, not the second.** The journal names no reason, so
+the three candidate causes are indistinguishable from the instrument the product provides. **The reason
+predicted - the stale start context - is still the leading candidate and is NOT established**; predicting
+the outcome correctly for a reason the instrument cannot confirm is a held prediction with an unproven
+mechanism, and it is recorded as exactly that.
+
+Full record: `docs/beta4-findings.md`, B4F-004.
+
 ### Two observations from the turn this prediction was written in
 
 - **A LIVE INSTANCE OF DRIFT-199-I003-080, on beta4's first turn.** The session-start contract requires the
