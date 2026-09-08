@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 85 (DRIFT-199-I003-001 through -085)
+**Total drift events**: 88 (DRIFT-199-I003-001 through -088)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -2917,3 +2917,109 @@ test could not have failed locally, by construction.**
   the FileList with the diff. A test-only commit cannot move either number.
 - **What DOES re-run is the gate**, per DRIFT-199-I003-083 - a dispatched workflow, watched to completion.
 - **Class closure**: NONE - a statement of scope, kept with the tag record.
+
+### DRIFT-199-I003-086 - ITERATION 003 NEVER CROSSED A BOUNDARY: the scaffold set the boundary state, and a stub plan was never authored or authorized
+
+**Established before writing 003's closure, because the closure has to name which of two things happened.
+It is the AUTHORIZATION problem, not the evidence-tier one, and the alternative is ruled out rather than
+merely less likely.**
+
+- **THE TIMELINE, from disk**:
+
+| event | time (UTC) | source |
+| --- | --- | --- |
+| iteration 002 closed | **14:16:55** | `.specrew/closed-iterations.yml` |
+| `16a43c03` *"chore(beta3): scaffold iteration 003"* | **15:40:08** | commit date |
+| session state records boundary_type `plan` | **15:40:40** | `.specrew/start-context.json` |
+
+  **Thirty-two seconds.** And `auth_commit_hash` in that session state is `16a43c03` itself - **the
+  scaffold chore commit**, which is also the commit that created `plan.md`.
+- **THE PLAN WAS NEVER AUTHORED.** `iterations/003/plan.md` is titled **"Iteration Plan: 003 (Stub)"** and
+  every requirement row carries `-` in its Stories column. `tasks-progress.yml` has an empty `tasks:` key.
+  **There were no tasks because none were ever planned**, so a back-filled task table would not be
+  completing a record - it would be inventing a plan that never existed.
+- **AND NO BOUNDARY WAS EVER CROSSED.** **No `boundary(` commit has ever touched `iterations/003/`** - the
+  only commits are the scaffold `chore` and three `docs`. This project's own Rule 5 requires a focused
+  `boundary(<stage>)` commit for every artifact write that closes a boundary. There is no crossing store,
+  and `.specrew/authority/` holds only typed-turn facts, no verdicts.
+- **SO THE OTHER SHAPE IS RULED OUT, not weighed.** "A gate accepted an empty artifact" cannot be what
+  happened: **no gate ran, because no boundary was crossed.** There was nothing for a gate to accept. What
+  happened is that **work proceeded past a boundary that never opened**, and the ledger showed `plan`
+  authorized because **scaffolding wrote it as a side effect of creating the iteration**.
+- **THE DEFECT IS THE FAMILY THIS FORTNIGHT KEEPS FINDING: a template's PRESENCE mistaken for its CONTENT.**
+  A stub plan exists on disk, so the tree looks planned. A boundary state exists in the ledger, so the
+  lifecycle looks authorized. **Neither was true, and nothing compared the artifact to its own emptiness.**
+  Compare DRIFT-199-I003-059 (an exemption whose condition could never be met), -063 (a field named after
+  an effect that did not occur) and -083 (a green that measured the wrong environment). **Same shape:
+  something whose existence was read as evidence of its substance.**
+- **IT IS NOT FATAL AND THE RELEASE STANDS**, which is worth saying plainly: `v0.40.0-beta3` was verified by
+  other means - a governed walk that crossed a real boundary on a typed verdict, and a CI gate green on the
+  tagged commit. **The lifecycle record was wrong; the release was not.**
+- **BETA4 ITEM, with the measurement attached**: a scaffolded iteration must not advance boundary state, and
+  a plan that is still a stub must be detectable as one. The cheapest form: **an iteration whose `plan.md`
+  still carries the scaffold's stub title, or whose `tasks:` is empty, cannot hold an authorized boundary**.
+  Both are one-line checks over artifacts that already exist.
+- **Class closure**: NONE - beta4. Recorded here rather than inside 003's retro, so the finding travels
+  with the backlog rather than with the closure.
+
+### DRIFT-199-I003-087 - THE ORIENTATION CONTRACT RENDERS DIFFERENTLY IN THIS TREE THAN IN THE TREES SPECREW CREATES: no user-profile file exists here
+
+- **MEASURED**: this repository has **no user-profile file at all** under `.specrew/`, so the orientation's
+  expertise dials cannot be resolved. The walk projects created by the shipped `init` **do** resolve them
+  and render them.
+- **PRESUMED CAUSE, stated as presumption**: `specrew init` writes the profile, and this tree predates that.
+  Not verified, and not worth verifying for the value it carries.
+- **THE HANDLING WAS RIGHT AND IS WORTH SEPARATING FROM THE FINDING**: the dials were reported as **unset**
+  rather than invented, which is the honest form - a human cannot correct an adaptation they were never
+  shown, and they equally cannot correct one that was fabricated.
+- **THE POINT IS THE PATTERN, NOT THE FILE**: **the orientation contract - CLAUDE.md's first and most
+  user-visible obligation - renders differently in the tree Specrew is developed in than in the trees it
+  creates.** That is the bidirectional drift of DRIFT-199-I003-076 in one more place, and it is the one
+  place where the difference is visible to a human in the product's first thirty seconds.
+- **NO ACTION.** One line in the record, and one more row of evidence for the shipped-init verification lane
+  (DRIFT-199-I003-068), which would surface this without anyone looking for it.
+- **Class closure**: NONE - evidence, not a defect to fix here.
+
+### DRIFT-199-I003-088 - WE FIXED A HAND-ENUMERATED SET BY ADDING A NAME TO IT, AND IT BROKE ON THE THIRD INSTANCE: the sibling branch, the same class
+
+**Not a regression of the repaired path. A DIFFERENT branch reading the SAME set through a SECOND
+condition - and only the first was tested.**
+
+- **THE PATH, named from disk rather than reasoned about.** In the affected project the turn delta held
+  four paths; three are excluded by long-standing rules (`workshop/`, `lens-applicability.json`). The one
+  that survived is **`specs/<feature>/spec.md`** - **the very file the exemption was written for.**
+- **WHY IT SURVIVED ITS OWN EXEMPTION**: the exclusion is computed only when `$workshopIntermediate` is
+  true. The controller at that moment read `agenda_status: confirmed`, eight technical lenses selected, and
+  `workshop` containing **only `product-domain`** - the turn had confirmed the agenda and persisted the
+  product-domain record. **That is the gap between agenda confirmation and the first technical lens
+  question**, where no question is pending, so the workshop does not prove, `$workshopSpecPath` is `$null`,
+  and spec.md stays in the set. Count one, `workshopRecordOnlyTurn` false, material block through with the
+  full five-part demand.
+- **AND THE TWO CLAUSES DO NOT AGREE, which is the defect rather than a detail.** The light-form note
+  branch requires `$workshopIntermediate`; the material path is reached whenever `workshopQuestionWins` is
+  false. **They read the same `$outsideWorkshop` set through two conditions that diverge in exactly that
+  gap.** Only the note path had a test.
+- **THE LESSON, and it is the sharpest instance of this fortnight's own theme.** The ruling was never
+  *"spec.md is exempt"* - it was that **during an open workshop the human gets no packet, because there is
+  no decision in it for them.** We implemented a CONDITION as a PATH, which is a hand-enumerated set, and
+  **it failed the way hand-enumerated sets fail: the next legitimate write was not on the list.** Appending
+  a second path would repeat the mistake a third time.
+- **THE CONDITION TO ENCODE IS THE ONE THE EXEMPTION'S OWN COMMENT ALREADY STATES**: *a workshop turn's
+  material IS the workshop record for the question just answered, so it cannot surprise the human who
+  co-authored it.* **Governed-scaffold output belongs to that category as much as the spec does** - the
+  human asked for the feature and the machinery produced its files. **Product source and tests do not**, and
+  that distinction is the whole reason the guard exists. **Draw the line by ORIGIN, not by name**, and make
+  "a workshop is open" the gate rather than "a question is pending right now" - otherwise the same gap
+  recurs at every lens transition.
+- **IT SITS BESIDE TWO RULES ALREADY IN THIS LOG, and argues for the same beta4 shape**: the count-scope
+  rule (a count states the set it counted over) and *the measurement should be the guard*. **All three say
+  the same thing: an enumeration is a snapshot of a judgement, and the judgement is what should be in the
+  code.** This is the enumeration version, with three measured failures behind it.
+- **NOT LANDED IN BETA3, deliberately.** `specrew-conformance-provider.ps1` is a packaged file; changing it
+  means a rebuild, a walk and a re-cut tag. **v0.40.0-beta3 is published, field-proved and installed on the
+  demo machine**, and the fortnight's own evidence says a hurried packaged change two days before a
+  presentation is how the previous two defects arrived. **It belongs with the beta4 demo-preview bucket**,
+  where it can carry both directions proven - an open-workshop turn writing only governed-scaffold and
+  workshop artifacts produces no packet and no note; the same turn writing product source or tests still
+  stops - and a check that the note path and the material path agree.
+- **Class closure**: NONE - beta4, and it is the third instance of its own class rather than the first.
