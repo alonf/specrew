@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 94 (DRIFT-199-I003-001 through -094)
+**Total drift events**: 95 (DRIFT-199-I003-001 through -095)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3277,3 +3277,36 @@ wrong, and the second one was advice the maintainer could have acted on.**
   silently.
 - **Class closure**: NONE - beta4 first item, now with a mechanism and a smaller scope than when it was
   two items.
+
+### DRIFT-199-I003-095 - A NEAR MISS, MEASURED LIVE: the approval phrase was right in shape, one clause short, and the refusal said nothing about what was missing
+
+**Caught in this closure, on the maintainer's own verdict, in the exact shape the beta4 near-miss item
+predicts.**
+
+- **WHAT HAPPENED.** The gate required
+  'approved for partial review signoff - <why accepting partial coverage is safe>'. The maintainer typed
+  **'approved for partial review signoff'** - correct verb, correct boundary, correct wording - **without
+  the reason clause.** The gate refused and **re-printed the same block verbatim.** It did not say the
+  phrase had been seen, did not say what was missing, and did not distinguish this from having typed
+  nothing at all.
+- **THE COST WAS ONE FULL ROUND TRIP**, and it was only cheap because the required phrase was recoverable
+  from '.specrew/review/signoff-gate/latest.json' - 'decision.override_request.required_phrase'. **A human
+  without that file cannot tell a near miss from a non-match.**
+- **THIS IS THE ITEM ALREADY ON THE BETA4 LIST, now with field evidence rather than a hypothesis**:
+  near-miss reporting when an approval phrase is present but does not match. **The measured instance is
+  better than the argument for it**: the product author, holding the spec, typing the phrase he had just
+  been shown, still got it wrong and was told nothing.
+- **AND IT SITS BESIDE THE OTHER FIRST-RUN ITEMS FOR A REASON.** Whitespace normalisation, near-miss
+  reporting and this are the same surface: **the moment a human types the thing that grants authority.**
+  Getting refused there, with no explanation, is the worst possible first impression of a governance tool -
+  it reads as the tool being broken rather than the phrase being short.
+- **THE COUNTERMEASURE IS SMALL**: when a typed reply matches the required phrase as a prefix, or matches
+  it ignoring case and whitespace, **say so and name the missing part** rather than re-printing the
+  original demand.
+- **RECORDING WAS DELIBERATELY DEFERRED.** The gate binds an approval to an exact tree state and warns that
+  writing records between the request and the approval invalidates it. **So this entry was held until the
+  verdict landed** - which is itself worth noting: the correct behaviour cost a turn of silence, and an
+  agent that recorded diligently at the moment of discovery would have broken the very approval it was
+  documenting.
+- **Class closure**: NONE - beta4, and it is now the second first-run item with a live measurement behind
+  it rather than a design argument.
