@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 97 (DRIFT-199-I003-001 through -097)
+**Total drift events**: 98 (DRIFT-199-I003-001 through -098)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3392,3 +3392,52 @@ It is not in the same class as a noisy packet, and it should not be filed with t
   the items it would otherwise sit beside.**
 - **Class closure**: NONE. Parent class is DRIFT-199-I003-090; siblings are DRIFT-199-I003-086 and this.
   **The receipt link is the countermeasure for all three.**
+
+### DRIFT-199-I003-098 - ITERATION 003 IS A NAMED EXCEPTION TO ITS OWN COUNTERMEASURE, and a PREDICTION recorded before the test that decides whether DRIFT-097 is systematic
+
+**Two things, written before running the last boundary, because a prediction stated afterwards is not
+evidence and an exception discovered later is a violation.**
+
+## Part 1 - 003 fails the rule it produced, and that is the rule working
+
+**If the DRIFT-199-I003-097 countermeasure ships - a boundary record must name the verdict receipt that
+authorized it, and a record without one is invalid - then THIS ITERATION'S OWN CLOSURE FAILS IT.**
+
+- Its `iteration-closeout` record names `auth_commit_hash 45c7e7ec` and **no receipt**, because none exists.
+- The maintainer's ratification is **prose in `state.md` and `review.md`**, with no capture behind it,
+  **because the gate never opened one to receive it.**
+- **This is not an argument against the rule.** 003's closure genuinely is unauthorized by the standard the
+  rule sets, and softening the rule so its author passes would be the original defect wearing a different
+  hat.
+- **SO IT IS RECORDED NOW AS A KNOWN, NAMED EXCEPTION** rather than left to surface as a violation the first
+  time the rule is run over history: **iteration 199/003 was closed under the pre-receipt standard, the
+  boundary advanced without demanding a verdict, and the maintainer ratified after being shown the anomaly.
+  Closed knowingly, not silently.**
+- **Why write it today**: the reason is one sentence now and an archaeology exercise later. **A future
+  reader should not have to reconstruct why the iteration that discovered the defect is the one that fails
+  its fix.**
+
+## Part 2 - The prediction, stated before the run
+
+**Feature-closeout is the last boundary of feature 199 and it is about to be run. What it does is
+diagnostic, and the expectation is recorded first so neither outcome can be rationalised afterwards.**
+
+- **PREDICTION: it will close WITHOUT demanding a verdict**, and its `auth_commit_hash` will name whatever
+  commit is HEAD at the time - a commit written by the session - rather than a captured receipt.
+- **THE REASONING, so the prediction is falsifiable rather than a guess**:
+  1. `gate-preflight.ps1:124` puts `iteration-closeout` and `feature-closeout` in the same
+     `$deliveryBoundaries` set, and they run the same sync path.
+  2. **Nothing in that preflight checks for a verdict receipt.** Its checks are `pushed-head`,
+     `verdict-commit-durable`, working-tree cleanliness and state mirroring - all satisfiable mechanically.
+  3. **`review-signoff` demanded a typed phrase for a DIFFERENT reason**: the review-coverage gate refused
+     with `no-authoritative-campaign-result` and offered an override. **That was a review subsystem
+     blocking, not a boundary requiring authorization.** Feature-closeout has no equivalent coverage gate in
+     its path.
+- **WHAT EACH OUTCOME MEANS, fixed in advance**:
+
+| outcome | conclusion |
+| --- | --- |
+| **closes without a verdict** | the defect is in the **shared delivery path**, DRIFT-199-I003-097 is **systematic**, and the receipt link must be enforced at the boundary writer rather than per-boundary |
+| **demands a verdict** | the defect is **specific to iteration-closeout**, the fix narrows considerably, and the question becomes what review-signoff has that iteration-closeout lost |
+
+- **Class closure**: NONE. Part 1 is a grandfather record; Part 2 resolves on the next run.
