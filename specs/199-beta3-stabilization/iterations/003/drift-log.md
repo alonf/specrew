@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 92 (DRIFT-199-I003-001 through -092)
+**Total drift events**: 93 (DRIFT-199-I003-001 through -093)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3204,3 +3204,49 @@ technical lens; the one that repaired it could not close the next.**
   new user takes.** Someone who tries Specrew after the talk and runs a workshop can reach it.
 - **Class closure**: NONE - beta4, diagnosed as one component fault with a reproduction designed and a
   candidate workaround named.
+
+### DRIFT-199-I003-093 - CORRECTS DRIFT-199-I003-092 ON BOTH POINTS: typed replies stopped being JOURNALED, and the repair does not destroy anything - it declines
+
+**Field transcript from the affected session, plus the journal read from disk. Two claims I made were
+wrong, and the second one was advice the maintainer could have acted on.**
+
+- **CORRECTION 1 - THE MECHANISM.** I recorded that re-running the lens writer *spent the turn's receipt*.
+  **It is broader than that: typed-turn journaling stopped entirely after the agenda.**
+  `.specrew/runtime/workshop-authority.jsonl` holds **exactly nine records** - eight `product-domain` and
+  one `agenda` at `19:56:44` - **and nothing after it.** The session then worked a whole lens with four
+  further typed replies, including two `move on` confirmations. **None were journaled.**
+- **WHY, from the record shape**: every entry binds a `question_hash` to a `response_hash`. **A reply is
+  journaled only when there is a REGISTERED PENDING QUESTION to bind it to.** No pending-question artifact
+  exists anywhere on disk in that project. So after the agenda, nothing registered a question for
+  `architecture-core`, every subsequent reply was unbindable, and the checkpoint that requires a lens-bound
+  receipt can never find one **no matter how many times the human types.**
+- **THIS KILLS THE WORKAROUND I PROPOSED.** "Close the lens in a bare turn" assumed the receipt was being
+  consumed by the agent's own actions. **It is not consumption, it is non-registration** - a bare turn
+  produces nothing to bind either. **The scratch reproduction as I specified it would have tested the wrong
+  hypothesis.**
+- **CORRECTION 2, AND IT WAS ACTIONABLE ADVICE.** I told the maintainer that
+  `repair-workshop-controller-state.ps1` *"destroys the intact agenda to recover the cosmetic fault"* and
+  recommended not running it. **In the field it simply DECLINED**: it repairs the **pre-agenda state only**,
+  and this feature is past that point. My reading of its target state was right; **my conclusion was
+  wrong.** It is not a costly recovery to be avoided - **it is inapplicable, a no-op.**
+  - **The corrected position is better than the one I gave**: there is no destructive option to weigh,
+    because there is no option. **And that is the real gap - the only governed recovery path does not cover
+    the state a workshop can actually reach.**
+- **THE CASIO CONTRAST STILL HOLDS and now means something sharper**: journaling continued there and five
+  lenses closed. **So question registration works on the ordinary path and stops working after this
+  sequence** - agenda persistence, the product-domain clearing, and the restore. Which of those three ends
+  registration is **not established**, and I am not going to infer it a second time.
+- **WHAT WOULD ESTABLISH IT, replacing my earlier reproduction**: on a scratch project, drive a workshop to
+  the agenda confirmation and then **watch for the pending-question artifact when the first technical lens
+  opens.** If it never appears, registration is the fault and the receipt is a symptom. That is a different
+  test from the one I specified, and it is the one worth running.
+- **THE LESSON I OWE THIS ENTRY**: I diagnosed a mechanism from two controller snapshots and a plausible
+  story, and reported it with more confidence than two data points support. **The journal was on disk the
+  whole time and I did not read it** - the same defect as reading a WARN line instead of the error list
+  (DRIFT-199-I003-054), and the same correction: **read the record that would falsify the claim, not the
+  one that fits it.**
+- **BETA4 IMPACT, unchanged in priority and sharper in content**: a workshop cannot advance past its first
+  technical lens, the failure is silent, and **the sanctioned repair does not cover it.** Still beta4's
+  first item, still above the material-work packet.
+- **Class closure**: NONE - beta4. This entry supersedes DRIFT-199-I003-092's mechanism and its repair
+  advice; that entry stands as written, with this one naming what was wrong in it.
