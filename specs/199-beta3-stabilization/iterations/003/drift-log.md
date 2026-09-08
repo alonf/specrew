@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 98 (DRIFT-199-I003-001 through -098)
+**Total drift events**: 99 (DRIFT-199-I003-001 through -099)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3441,3 +3441,44 @@ diagnostic, and the expectation is recorded first so neither outcome can be rati
 | **demands a verdict** | the defect is **specific to iteration-closeout**, the fix narrows considerably, and the question becomes what review-signoff has that iteration-closeout lost |
 
 - **Class closure**: NONE. Part 1 is a grandfather record; Part 2 resolves on the next run.
+
+### DRIFT-199-I003-099 - THE PREDICTION FAILED, AND THAT NARROWS DRIFT-097 CONSIDERABLY: feature-closeout demands a verdict; iteration-closeout is the outlier
+
+**DRIFT-199-I003-098 Part 2 predicted that feature-closeout would close without demanding a verdict, and
+fixed the meaning of each outcome in advance. The prediction was WRONG, and the result is better than the
+one it expected.**
+
+- **WHAT WAS PREDICTED**, committed at `71895b38` before the run: feature-closeout closes silently, its
+  `auth_commit_hash` names a session commit, and DRIFT-199-I003-097 is therefore **systematic** across the
+  shared delivery path.
+- **WHAT HAPPENED**: feature-closeout **wrote a proper `pending-verdict-stop.md`** carrying the boundary
+  transition, the exact approval phrase, a crossing ID, the verbatim marker, the coverage line, and an
+  explicit instruction: *"Do not record authorization yourself; the Stop/UserPromptSubmit verdict capture
+  writes authorization only after the human replies."* **It behaved exactly as a boundary should.**
+- **SO, BY THE CRITERION FIXED IN ADVANCE**: the defect is **specific to `iteration-closeout`**, not the
+  shared delivery path. **DRIFT-199-I003-097 is not systematic**, and its fix narrows from "enforce receipts
+  at the boundary writer" to "find what `iteration-closeout` lacks that its neighbours have."
+- **THE THREE-WAY COMPARISON, which is now the diagnosis rather than the symptom**:
+
+| boundary | pending stop written | verdict demanded | outcome |
+| --- | --- | --- | --- |
+| `review-signoff` | no - blocked earlier by the review-coverage gate | **yes**, via override phrase | authorized |
+| `iteration-closeout` | **NO** | **NO** | **closed silently - the defect** |
+| `feature-closeout` | **yes**, with crossing + marker | **yes** | authorized |
+
+  **Its two neighbours both stop. It alone does not.** That is a much smaller and more findable fault than a
+  broken shared path.
+- **WHY STATING THE PREDICTION FIRST MATTERED, and it is the point of the exercise.** Had the expectation
+  gone unrecorded, the natural reading of a clean feature-closeout would have been *"the gate works, the
+  earlier one was a fluke"* - and the iteration-closeout silence would have softened into an anomaly rather
+  than hardening into a located defect. **The prediction turned one gate run into a controlled comparison,
+  and it cost one commit.**
+- **AND IT IS THE RED-AT-BOTH RULE'S SIBLING** (DRIFT-199-I003-051): there, two failures looked alike and
+  differed on inspection; here, two successes and one silence would have looked like noise without a
+  prediction to measure them against. **Both say the same thing: the comparison has to be designed before
+  the observation, or the observation will be fitted to whatever story is nearest.**
+- **DRIFT-199-I003-098 PART 1 IS UNAFFECTED.** 003 remains a named exception to the receipt rule: its
+  closure carries no verdict receipt, and that stands whatever the fault's scope turns out to be.
+- **Class closure**: NONE. DRIFT-199-I003-097's severity is unchanged - a boundary that advances unasked is
+  still the most serious defect in this arc - but its **scope is now one boundary**, and that is a beta4-
+  sized fix rather than a redesign.
