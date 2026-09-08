@@ -29152,3 +29152,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 16a43c03885c59ce2d2165a2e3b0fa6ca969300e
 - **Recorded At**: 2026-08-31T15:40:40Z
+
+## 2026-09-08T21:08:54Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-09-08T21:08:54Z
+- **Warning**: Expected next boundary 'tasks' but received 'review-signoff'.
+
+## 2026-09-08T21:08:55Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 199-beta3-stabilization
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: b6d023aad99d975208786567b956133c75f39860
+- **Recorded At**: 2026-09-08T21:08:54Z

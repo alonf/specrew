@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "boundary_type": "review-signoff",
-  "recorded_at": "2026-08-31T10:06:00Z",
+  "recorded_at": "2026-09-08T21:08:54Z",
   "decision": {
     "schema_version": "1.0",
     "decision": "allow",
@@ -13,19 +13,19 @@
     "override": {
       "schema_version": "1.0",
       "fact_type": "review-signoff-partial-override",
-      "request_id": "override-511affde4a36cf95105e3874",
-      "target_tree_id": "631c84902e3904ef923ee72b540ef81ade16714d",
-      "campaign_id": "cmp-199-beta3-stabilization-i002",
-      "run_id": "run-20260830-160011946-a3d8338c",
+      "request_id": "override-e8778be5352564d97e2f53b9",
+      "target_tree_id": "2dcef9c5841878edb8d9d7d2d8ad44e3fcbc4f64",
+      "campaign_id": "cmp-199-beta3-stabilization-i003",
+      "run_id": "",
       "authority_kind": "human",
       "authorized_by": "unattributed-human",
-      "verdict_text": "approved for partial review signoff - the uncovered delta is round 3's own output plus the records documenting it, not new scope: finding 1's cap, the checker cap the replay found inside that cap, finding 2's wiring, and the drift entries recording them. A fourth round would review the response to the third and produce work needing a fifth. I committed to no round 4 before this finding existed, precisely so this moment would not be the one deciding it. The changes carry mutation proof, and the cap additionally carries end-to-end proof through the real top-level sync path, which is where it caught the checker defect the fixtures missed. The residual is named rather than absorbed: finding 1 is replay-proved and not field-proved, and 003's plan sync is a gating step before the tag.",
-      "rationale": "the uncovered delta is round 3's own output plus the records documenting it, not new scope: finding 1's cap, the checker cap the replay found inside that cap, finding 2's wiring, and the drift entries recording them. A fourth round would review the response to the third and produce work needing a fifth. I committed to no round 4 before this finding existed, precisely so this moment would not be the one deciding it. The changes carry mutation proof, and the cap additionally carries end-to-end proof through the real top-level sync path, which is where it caught the checker defect the fixtures missed. The residual is named rather than absorbed: finding 1 is replay-proved and not field-proved, and 003's plan sync is a gating step before the tag.",
-      "response_hash": "53e7f737a770c73abf98f0605d63e6e1f28edec1de56b401d3174d2c8e9b33e1",
+      "verdict_text": "approved for partial review signoff - no reviewer ran because this was a reactive stabilisation with no task table to review against, and the release itself was verified independently by a CI-green census and a governed walk that crossed a boundary",
+      "rationale": "no reviewer ran because this was a reactive stabilisation with no task table to review against, and the release itself was verified independently by a CI-green census and a governed walk that crossed a boundary",
+      "response_hash": "0c285f7d4b4b248bcd0082ea4551d3cb627a47dc768f42be928eac753a071b11",
       "evidence_source": "hook-captured-user-prompt",
       "source_event": "UserPromptSubmit",
       "host_kind": "claude",
-      "observed_at": "2026-08-31T10:04:48.8055141Z"
+      "observed_at": "2026-09-08T21:08:29.2264689Z"
     },
     "evidence_labels": null,
     "acknowledgement": null
