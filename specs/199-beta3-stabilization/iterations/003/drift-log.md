@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 93 (DRIFT-199-I003-001 through -093)
+**Total drift events**: 94 (DRIFT-199-I003-001 through -094)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3250,3 +3250,30 @@ wrong, and the second one was advice the maintainer could have acted on.**
   first item, still above the material-work packet.
 - **Class closure**: NONE - beta4. This entry supersedes DRIFT-199-I003-092's mechanism and its repair
   advice; that entry stands as written, with this one naming what was wrong in it.
+
+### DRIFT-199-I003-094 - TWO SYMPTOMS, ONE DEFECT: the missing question record causes BOTH the unclosable lens and the packet on every turn
+
+**Verified in the provider rather than inferred, and it SHRINKS beta4 rather than growing it.**
+
+- **THE CHAIN, unbroken**: line **627** reads `.specrew/handover/workshop-question.json`; line **1117**
+  sets `$workshopIntermediate` from whether that resolves and is valid; line **1479** makes
+  `$workshopQuestionWins` require it. With no question registered:
+  1. `workshopIntermediate` is false, so the checkpoint has no `question_hash` to bind a receipt to -
+     **the lens cannot close**;
+  2. `workshopQuestionWins` is false, so **the material block fires**;
+  3. the light-form branch is itself gated on `$workshopIntermediate`, so it is **unreachable** - and the
+     human gets the **full five-part packet**.
+- **THE TRANSCRIPT PROVES IT INDEPENDENTLY.** That session received the FULL five-part packet, not the
+  one-sentence note. **Had a question been registered, the light form would have fired instead.** So the
+  packets were never the outside-paths condition.
+- **VacationMatch REMAINS SEPARATE and is now the less urgent item**: a question WAS registered there and
+  the note fired anyway, which is the outside-paths condition proper. **It still matters; it no longer
+  blocks a workshop.**
+- **ONE COUNTERMEASURE CLOSES BOTH**: opening a lens writes the pending question, and **a lens that would
+  present a question without one registered refuses to present it** rather than proceeding into a state
+  where nothing the human types can be captured. Both symptoms disappear from the same change.
+- **DIRECTIONS TO PROVE**: a lens opened with its question registered closes on a typed reply and produces
+  no packet; a lens whose question failed to register **refuses to present** rather than proceeding
+  silently.
+- **Class closure**: NONE - beta4 first item, now with a mechanism and a smaller scope than when it was
+  two items.
