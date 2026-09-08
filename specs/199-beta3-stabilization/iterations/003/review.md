@@ -3,8 +3,20 @@
 **Schema**: v1
 **Reviewed**: 2026-09-08
 **Overall Verdict**: accepted, with the lifecycle record corrected rather than defended
-**Campaign**: none - see below
+**Campaign**: none - no review campaign ran
 **Rounds**: 0 of 4 used
+**Verdict provenance**: **WRITTEN BY HAND. These are not review outcomes.**
+
+> **Read this before the verdict above.** No reviewer ran against this iteration. There was no campaign, no
+> rounds, and no findings ledger, so nothing here was produced by a review process. The validator asked for
+> this sentence explicitly rather than letting an accepted verdict stand unqualified, and it was right to:
+> an `accepted` written by the author of the work is an author's assessment, not a review.
+>
+> What the acceptance rests on instead is stated in full below - instruments independent of this
+> iteration's own records: the census green in CI on the tagged commit, a governed walk that crossed a
+> boundary on a typed verdict, and a packaged delta measured from the module FileList. **Those are
+> checkable by someone who does not trust this file.** The verdict is offered on that basis and on no
+> other.
 
 ## What This Sign-off Claims, and What It Does Not
 
@@ -74,6 +86,24 @@ The 88 drift entries are the findings ledger. The dispositions that shipped:
 - **FR-032 ships disclosed** with no passing automated test and no field proof, because proving it needs two
   concurrent sessions and a single-session walk cannot stage that. A limit of the walk format, not an
   oversight.
+
+## Two Gate Findings That Are Not Satisfied, Deliberately
+
+**The validator requires `plan.md` to contain at least one task row, and `review.md` to contain a populated
+Task Verdicts table. Neither is provided, and neither can be without fabricating a record.**
+
+There were no tasks. `plan.md` is the scaffold's stub, titled *"Iteration Plan: 003 (Stub)"*, with `-` in
+every Stories column; `tasks-progress.yml` has an empty `tasks:` key. **A task row would be an invention,
+and a Task Verdicts table would be verdicts on work items that never existed.**
+
+The maintainer's ruling on this closure was explicit: record what actually happened rather than back-filling
+tasks that were never planned, because an honest record of an unusual iteration is worth more than a tidy
+one that implies planning nobody did. **These two refusals are the gate correctly describing a conventional
+iteration, and 003 was not one.** They are carried as a known, ruled deviation rather than satisfied.
+
+**What that costs, stated rather than minimised**: this iteration cannot answer what a task table answers -
+what was in scope, what was cut, and estimate against actual. That is a real loss and it is why the gate
+asks.
 
 ## Gaps Carried Forward
 
