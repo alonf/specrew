@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 89 (DRIFT-199-I003-001 through -089)
+**Total drift events**: 91 (DRIFT-199-I003-001 through -091)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3058,3 +3058,95 @@ The first draft of `state.md` did the same thing, in the same file, about the sa
   `closed-iterations.yml`. Two artifacts that already exist, never compared - the same form as every other
   enforcement rule this batch produced.
 - **Class closure**: NONE - beta4, and it belongs beside DRIFT-199-I003-086 as its second instance.
+
+### DRIFT-199-I003-090 - THE GENERAL FORM: a field that determines what gets validated cannot be validated by what it determines
+
+**A wrong value in a scope-determining field is UNFALSIFIABLE BY CONSTRUCTION.** It does not merely escape
+the check - it removes itself from the check's subject set, so the instrument that could dispute it never
+sees it. **This is a class, and this project has paid for it more than once.**
+
+- **THE STATEMENT**: any field whose value decides **what gets checked** must itself be checked **from
+  outside that selection**. Checking it from inside is circular: the field selects the checker's input, so
+  the field is never in it.
+- **WHY IT IS SHARPER THAN THE INSTANCES IT COVERS**: an ordinary wrong value produces a failure somewhere.
+  A wrong scope-determining value produces **silence**, and silence is indistinguishable from correctness.
+  Every instance below was found by accident or by a human, never by the system.
+
+**FOUR MEASURED INSTANCES IN THIS REPOSITORY:**
+
+| field | what it selects | how it failed |
+| --- | --- | --- |
+| `Iteration Status: complete` (`state.md`) | whether the iteration is validated at all | **live, this closure** - asserted a closed iteration, which filtered it out of validation, then the validator asked where the closed iteration's dashboard was (DRIFT-199-I003-089) |
+| `release_model` (`repository-governance.yml:16`) | which closeout steps apply | TB-3's finding |
+| `enforcement_mode` (`repository-governance.yml:45`) | the intended-vs-active delivery distinction | **already paid for**: the code's own comment records that it *"sat in the same file the check already reads and was never consulted"*, fixed by FR-025/T016 |
+| lens `agenda_status` | whether the workshop exemption is reachable | gated the exemption two days of this respin went into, and its gap is DRIFT-199-I003-088 |
+
+- **THE `enforcement_mode` ROW IS THE MOST USEFUL ONE**, because it is the class's receipt: the defect was
+  found, understood, and repaired - **and the class it belonged to was never named**, so three more
+  instances followed. **Fixing an instance does not retire a class.**
+- **THE COUNTERMEASURE, with DRIFT-199-I003-089's one-liner as its first concrete case**: a status may not
+  read `complete` unless the iteration appears in `closed-iterations.yml`. **The general form is the same
+  shape every enforcement rule this batch produced has taken - two artifacts that already exist, never
+  compared** - but with an extra requirement that the others do not have: **the comparison must run outside
+  the selection the field controls**, or it inherits the same blindness.
+  - Practically: enumerate scope-determining fields, and for each, name the independent source that can
+    contradict it. `Iteration Status` has `closed-iterations.yml`. `release_model` has the closeout steps
+    that actually ran. `agenda_status` has the workshop records on disk. **A field with no independent
+    contradictor is the finding, not the exception.**
+- **BETA5, and the reason is stated rather than assumed**: this is **machinery quality - how this crew
+  builds Specrew - not first-run experience.** Beta4's theme is what a stranger meets in their first ten
+  minutes, and a release aimed at that should not spend itself on internal verification machinery, however
+  well evidenced. **Recorded now while the instance is fresh, because the general form is sharper than any
+  of the individual findings it covers and would be harder to reconstruct later.**
+- **Class closure**: NONE - beta5. It is the parent of DRIFT-199-I003-089 and a sibling of the
+  count-scope rule and *the measurement should be the guard*: all three say that a judgement encoded once,
+  in a place nothing else reads, is a judgement nobody can check.
+
+### DRIFT-199-I003-091 - FIVE PACKAGED FILES NEVER SHIPPED: the respin branched from the tag commit, and work done on the mainline after that point was silently left behind
+
+**Found while re-stamping this worktree's deployed marker after the merge - the drift the marker reported
+was not staleness, it was work the release does not contain.**
+
+- **THE MEASUREMENT**, FileList intersected with `git diff 11f47c4b..HEAD`:
+
+| packaged file | in `v0.40.0-beta3` |
+| --- | --- |
+| `extensions/specrew-speckit/scripts/shared-governance.ps1` | **no** |
+| `docs/getting-started.md` | **no** |
+| `docs/user-guide.md` | **no** |
+| `docs/troubleshooting.md` | **no** |
+| `docs/release-discipline.md` | **no** |
+
+  All five come from one commit: `e3ccc53f` *"fix(beta3): the clarify refusal names the form it accepts,
+  and three records"*.
+
+- **THE DATES ARE THE WHOLE EXPLANATION**:
+
+| event | time |
+| --- | --- |
+| respin base `4f4dce52` | 2026-08-31 **20:38:08** +0300 |
+| `e3ccc53f` clarify fix | 2026-08-31 **23:48:28** +0300 |
+
+  **Three hours and ten minutes.** The respin branched from the tag commit, correctly and by ruling; the
+  clarify fix landed on the mainline afterwards; and nothing ever compared the two.
+  **Confirmed at the artifact rather than inferred: the shipped build contains ZERO occurrences of
+  `AcceptedForms`.**
+
+- **WHAT IS ACTUALLY MISSING**: the clarify refusal that names the forms it accepts - **the first fix this
+  whole arc was asked for** - plus updates to four packaged documents, three of which
+  (`getting-started`, `user-guide`, `troubleshooting`) are first-run surfaces.
+- **THE DEFECT IS NOT THE OMISSION, IT IS THE RECORD.** The drift log says the clarify refusal was fixed.
+  It was. **A reader of these records would reasonably conclude it shipped, and it did not.** That gap
+  between what the records claim and what the release contains is the thing worth naming, and it is the
+  same shape as everything else this fortnight: two artifacts that disagree, with nothing comparing them.
+- **NOT A CORRECTNESS DEFECT, and the disposition follows from that**: a refusal message and documentation.
+  `v0.40.0-beta3` is published, field-proved and installed on the demo machine, and re-cutting it days
+  before a presentation to add a message improvement is precisely the move this fortnight's own evidence
+  argues against. **It carries to beta4**, where it fits the first-run theme better than it fits a patch -
+  a refusal a stranger hits, and three documents a stranger reads.
+- **THE ENFORCEABLE FORM, and it is cheap**: at tag time, diff the FileList against the branch the tag was
+  cut from and refuse silently leaving packaged work behind. **The tag already knows its base; nothing asks
+  what the base has moved on to.**
+- **Class closure**: NONE - beta4 for the content, and the tag-time comparison is a release-gate item that
+  belongs with the dispatched-run rule (DRIFT-199-I003-083), since both are things the tag path should
+  check and does not.
