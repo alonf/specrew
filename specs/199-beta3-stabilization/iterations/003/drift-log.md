@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 88 (DRIFT-199-I003-001 through -088)
+**Total drift events**: 89 (DRIFT-199-I003-001 through -089)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3023,3 +3023,38 @@ condition - and only the first was tested.**
   workshop artifacts produces no packet and no note; the same turn writing product source or tests still
   stops - and a check that the note path and the material path agree.
 - **Class closure**: NONE - beta4, and it is the third instance of its own class rather than the first.
+
+### DRIFT-199-I003-089 - I WROTE THE DEFECT THIS ITERATION IS ABOUT, INTO ITS OWN CLOSURE, and the validator caught it in one run
+
+**The closure's job was to record that a boundary state was written without the authorization behind it.
+The first draft of `state.md` did the same thing, in the same file, about the same iteration.**
+
+- **WHAT I WROTE**: `**Iteration Status**: complete`. That is the value a CLOSED iteration carries - 87 of
+  this repository's state files use it that way, and iteration 002's closed state carries it.
+- **WHAT WAS TRUE**: 003 is not closed. **No closeout verdict has been given**, and it does not appear in
+  `.specrew/closed-iterations.yml`, which still ends at 002.
+- **THE VALIDATOR CAUGHT IT IMMEDIATELY, and its complaint names the shape exactly**:
+  `WARN [dashboard] missing-dashboard-auto-render-regression: Specrew-managed closed iteration is missing
+  dashboard.md ... closed iteration '199-beta3-stabilization 003'`. **It read the status, concluded the
+  iteration was closed, filtered it out of validation entirely** (`133 closed iterations skipped`), and then
+  asked where the closed iteration's dashboard was.
+- **SO THE ARTIFACT ASSERTED A LIFECYCLE POSITION THE LIFECYCLE HAD NOT REACHED** - which is precisely
+  DRIFT-199-I003-086, one level up: there, scaffolding wrote an authorized boundary nobody authorized; here,
+  a closure record wrote a completed iteration nobody closed. **Both are a state field standing in for an
+  event that never happened.**
+- **AND IT WOULD HAVE BEEN SELF-CONCEALING.** A `complete` status excludes the iteration from validation, so
+  **the very artifact claiming the iteration was sound would have removed it from the check that could have
+  disputed the claim.** That is worse than a wrong value: it is a wrong value that suppresses its own
+  contradiction.
+- **CORRECTED** to `**Iteration Status**: reviewing` - work done, release shipped, not closed - with the
+  reason written into `state.md` itself rather than only here, because the next reader of that file is the
+  one who needs it.
+- **THE LESSON, and it is uncomfortable in a useful way**: this fortnight has recorded a template mistaken
+  for its content, an exemption that could never fire, a field named for an effect that did not occur, and a
+  green that measured the wrong environment. **The closure written to record that class contained an
+  instance of it.** Enum values that encode lifecycle events are exactly as dangerous as boundary states
+  that encode authorization - and neither is checked against the event it claims.
+- **BETA4 SHAPE, one line**: an iteration's status may not read `complete` unless it appears in
+  `closed-iterations.yml`. Two artifacts that already exist, never compared - the same form as every other
+  enforcement rule this batch produced.
+- **Class closure**: NONE - beta4, and it belongs beside DRIFT-199-I003-086 as its second instance.
