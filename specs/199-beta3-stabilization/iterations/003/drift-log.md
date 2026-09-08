@@ -1,7 +1,7 @@
 # Drift Log: Iteration 003
 
 **Schema**: v1
-**Total drift events**: 91 (DRIFT-199-I003-001 through -091)
+**Total drift events**: 92 (DRIFT-199-I003-001 through -092)
 **Resolution rate**: 3 resolved this session; 1 open to beta4 as a class fix; 2 recorded as evidence and
 lessons rather than defects
 
@@ -3150,3 +3150,57 @@ was not staleness, it was work the release does not contain.**
 - **Class closure**: NONE - beta4 for the content, and the tag-time comparison is a release-gate item that
   belongs with the dispatched-run rule (DRIFT-199-I003-083), since both are things the tag path should
   check and does not.
+
+### DRIFT-199-I003-092 - THE REPAIR CREATED THE BLOCK: the agenda write's clearing of product-domain is COSMETIC, and restoring it spends the turn's receipt
+
+**Two projects hit the same clearing and responded differently. The one that did nothing closed every
+technical lens; the one that repaired it could not close the next.**
+
+| | Casio walk | router-skill |
+| --- | --- | --- |
+| `product-domain` in the `workshop` map | **absent** - the clearing left alone | **present** - restored by re-running the lens writer |
+| technical lenses closed afterwards | **5 of 5** | **0 of 8** - `architecture-core` refuses |
+| agenda | confirmed, 5 lenses | confirmed, 8 lenses, intact |
+
+- **EVIDENCE PROVENANCE, stated because it matters**: the router-skill controller was read from disk today.
+  **The Casio controller was read earlier in this same session and that project has since been deleted** -
+  only a bare `.git` remains, with no `specs/`. The comparison is sound but **cannot be re-verified**, and a
+  claim that cannot be re-checked should say so.
+- **THE STRONGER CONCLUSION, which the hypothesis did not require**: Casio closed five technical lenses
+  **with `product-domain` absent from the workshop map entirely**. **So its absence blocks nothing.** The
+  clearing is cosmetic, the Casio agent's judgement to leave it alone was correct, and **the correct
+  response to seeing it is to do nothing.**
+- **THE MECHANISM this supports**: `human_turn_contract: typed-turns-v1` mints a turn's receipt **at most
+  once, ever**. Re-running the lens writer to restore the entry **spends that turn's receipt on the restore
+  write**, so the lens checkpoint that follows finds none. **The repair is the cause of the block, not a
+  response to it.**
+- **WHAT WOULD CONFIRM IT, and it must not be run on live work**: on a SCRATCH project, drive a workshop to
+  the first technical lens, let the agenda write clear `product-domain`, then run the lens checkpoint **in a
+  turn where the agent does nothing else** - no file write, no other governed call, just the checkpoint
+  against a fresh typed turn.
+  - **If it closes**: the receipt is consumed by the agent's own prior actions within the turn, and there is
+    an immediate documented workaround - **close a lens in a bare turn**.
+  - **If it still refuses**: the receipt is gone for another reason and the write ordering is the next thing
+    to read.
+- **AND RETRYING MAKES IT WORSE, which is why the affected agent was right to stop.** Each "move on" is a
+  turn. If turns are being consumed before the checkpoint sees them, **retrying burns receipts without
+  progressing.**
+- **THE SANCTIONED REPAIR IS NOT A RECOVERY HERE, and this is the decisive operational fact.**
+  `repair-workshop-controller-state.ps1` writes `target_state = 'pending-confirmation'`:
+  `selected = @()`, `agenda = {}`, `skipped = {}`, `workshop = {}`, `agenda_turn_receipt = 'pending'`. It
+  preserves the workshop **record files** with SHA-256, and records `discarded_selected` /
+  `discarded_workshop` **as a record of what was thrown away, not for restoration** - there is no
+  `preserved_agenda` and nothing restores `selected` or `agenda`.
+  - **So it destroys the intact thing to recover the broken one**: the confirmed agenda, all eight lenses
+    with their depths and decision statements, plus product-domain's own closure. **A repair path that costs
+    more than the fault is not a recovery**, and this one **has never been exercised on a live workshop**.
+  - **NOT RUN on the router-skill project.** The decision records are on disk and safe; the agenda is intact
+    right now, and repair is the thing that would destroy it.
+- **THREE FAILURES IN ONE COMPONENT, IN ONE PROJECT** - the agenda write clearing product-domain twice, and
+  a lens that will not close. **That is a component diagnosis rather than three bugs**, and all three sit on
+  the same write-then-restore path.
+- **BETA4'S FIRST ITEM, above the material-work packet.** The packet is friction. **This is a stop: a
+  workshop that cannot advance past its first technical lens, on published bits, on the most common path a
+  new user takes.** Someone who tries Specrew after the talk and runs a workshop can reach it.
+- **Class closure**: NONE - beta4, diagnosed as one component fault with a reproduction designed and a
+  candidate workaround named.
