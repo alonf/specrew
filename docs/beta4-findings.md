@@ -1793,3 +1793,65 @@ nothing" are different claims, and only the second is true for those three.
 
 **BETA5**, with the deployment-surface items: disclose the global write, and keep the no-op measured rather
 than assumed, since it is the only thing making the user-level deployment acceptable.
+
+---
+
+## B4F-033 - CENSUS 34346555521 CLASSIFIED: every part of PRED-BETA4-006 held, and the two remaining failures are unchanged files that were green twice
+
+### First, before classification: the sweep executed
+
+`Execute every named test file on disk` **ran and failed** - not skipped - and
+`Upload census failure diagnostics` **succeeded**, carrying two per-file entries with assertion text. **A
+sweep that ran and found things, not a provisioning death wearing a failure's clothes.** Not a timeout: the
+run completed with `conclusion: failure`.
+
+### PRED-BETA4-006, resolved against what was fixed in advance
+
+| part | outcome |
+| --- | --- |
+| 1. the sweep executes | **HELD** |
+| 2. the five prior failures are green, `validate-governance-changed-only` included | **HELD - all five green** |
+| 3. any failure is in untouched code | **HELD** |
+| 4. a timeout is named a timeout | n/a - completed in failure |
+
+**Five failures down to two, and the two are not this branch's.**
+
+### ITEM 4's PREDICTION RESOLVES, and it resolves against my doubt
+
+`validate-governance-changed-only` is **GREEN**. By the meaning fixed in advance: **W43 held, and the marker
+re-stamp plus the update cleared it.** DRIFT-199-I003-053's original attribution was correct, and B4F-026's
+suspicion - that the local base-ref cause matched CI's three assertions better than W43 did - **is
+withdrawn.** The local failure was about the local environment, exactly as DRIFT-199-I003-083 cuts both ways.
+
+### The two remaining failures, measured
+
+| file | changed since `b62ba968` | changed since `11f47c4b` (last green census) | in the previous run's failures |
+| --- | --- | --- | --- |
+| `tests/bootstrap/DispatcherLargeStdout.Tests.ps1` | **0** | **0** | no - it was green |
+| `tests/integration/squad-init-closed-stdin.tests.ps1` | **0** | **0** | no - it was green |
+
+**Both files are byte-unchanged since the last green census, were green in that census, were green in the
+previous run, and fail now.** Their assertions are timing and process-lifetime claims:
+
+- *"large-stdout: returned fast - no pipe deadlock (**17.9s**, well under the **20s** timeout)"* - a pass
+  message reported as a failure, at **90% of its budget**;
+- *"timeout did not prove that the complete fake Squad descendant process tree was terminated"*.
+
+### THE FINDING: the census is deterministic for content and NOT for timing
+
+**B4F-021 established the census was deterministic** - two runs on `11f47c4b` with identical job results.
+**That stands, and this refines it rather than contradicting it**: those runs agreed because nothing
+timing-sensitive tripped. Here, **unchanged files that passed twice now fail**, so the gate's verdict on a
+fixed tree is not a function of the tree alone.
+
+**That matters for the release rule.** "Tag only on the SHA a green dispatch ran on" assumes green is a
+property of the SHA. **With timing-sensitive tests in an all-or-nothing gate, green is partly a property of
+the run** - so a red census no longer distinguishes "this tree is broken" from "this runner was slow", and
+re-running until green quietly converts a gate into a lottery nobody named.
+
+**This is the diagnosability family again** (DRIFT-199-I003-037/-038): a gate whose failures cannot be acted
+on trains people to stop reading it.
+
+**BETA5**: either give the timing assertions budgets that survive a loaded runner, or move them off the
+all-or-nothing gate as environment-bound - the category DRIFT-199-I003-025 already defined and refused to
+let become an exclusion list.
