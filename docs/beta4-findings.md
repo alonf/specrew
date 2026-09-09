@@ -2113,3 +2113,66 @@ two-active ambiguity is CASE 9. **Coverage increases and no assertion was weaken
 but an existing green assertion changed, so it is named here for the maintainer to overrule.
 
 **Classification summary**: 1 finding, **1 fix**, 0 record, 0 dispute.
+
+---
+
+## B4F-038 - `/specrew-user-profile` IS ADVERTISED BY THREE SURFACES AND SHIPPED BY NONE - and this session reproduced the defect on every turn
+
+**Walk finding, first minute. Verified here before recording.**
+
+### Measured
+
+| fact | value |
+| --- | --- |
+| tracked in this repo | **yes** - `.claude/skills/specrew-user-profile/` |
+| occurrences in `Specrew.psd1` FileList | **0** |
+| present in the deployable skill set (`squad-templates/skills/`, 16 entries) | **no** |
+| any `user-profile` item under `extensions/` | **one**, and it is `directives/user-profile-awareness.md` - a directive, not the skill |
+| deployed in three consumer-shaped projects (maintainer's count) | **0 of 37 skills** |
+
+**Advertised by three surfaces**, all verified: `scripts/specrew-init.ps1` (the completion message),
+`specrew-bootstrap-provider.ps1` (the session banner) and
+`squad-templates/coordinator/specrew-governance.md` (the launch contract).
+
+**So it is dogfood-only.** It works here, which is exactly why nobody noticed - **the tree Specrew is
+developed in is not shaped like the trees it creates** (DRIFT-199-I003-068), and this is that finding on the
+product's first-minute surface.
+
+### THE ALTERNATIVE, and it needs no command
+
+The profile is **user-level**, at `~/.specrew/user-profile.yml`. **The four dials are real and correctly
+named** - verified on disk:
+
+```yaml
+expertise:
+  software_architecture: 10
+  ui_ux: 6
+  product_management: 7
+  ai_research_project_management: 6
+```
+
+Each is `1`-`10` or `null`, persists across every project for that user, and editing the file is sufficient.
+**Nothing about the settings is broken; only the advertised route to them.**
+
+### AND THIS SESSION REPRODUCED IT ON EVERY TURN
+
+**The orientation banner rendered in this session has told the maintainer to run `/specrew-user-profile
+edit` on every single turn.** In this repository that command exists. **In a consumer project it does not.**
+
+The banner takes that instruction from the same source that misleads users, so **the agent reproduces the
+defect verbatim, with the product's own authority behind it** - and a user who follows it gets nothing, from
+the one surface designed to invite correction. That is what makes this a first-run item rather than a
+documentation nit: it is in the paragraph whose entire purpose is to let a human correct what the system
+believes about them.
+
+**The dials the banner reported were accurate** - `10 / 6 / 7 / 6` maps to expert / mid / mid / mid. **The
+content was right and the remedy was unavailable**, which is the harder failure to notice.
+
+### Disposition
+
+- **Beta4**: known issue in the release notes, in plain words, with the file path and the four dials so the
+  reader can act without the command.
+- **Beta5**: **ship the skill.** And `preferences.preferred_intake_depth` is written by the helper
+  (`user-profile.ps1:258/292/532`) and defaulted in `Read-IntakeYaml.ps1:266`, but **nothing reads it to
+  change behaviour** - a setting the product offers, stores, and ignores. Same family as
+  DRIFT-199-I003-060's dead exemption: written, honoured by nothing.

@@ -78,6 +78,35 @@ being indistinguishable.
 
 **This does not affect a workshop you are actually running.** It only affects features left at intake.
 
+## Known issue: `/specrew-user-profile` is advertised but not installed
+
+**Specrew tells you about a command it does not give you.** `init`'s completion message, the session
+banner, and the launch contract all point at `/specrew-user-profile` — and **the skill is not shipped**, so
+in your project the command does not exist.
+
+**What to do instead — the settings are real and editable, just not through that command.** Your profile is
+**per-user, not per-project**, and lives at:
+
+```
+~/.specrew/user-profile.yml
+```
+
+Edit it directly. The four expertise dials are under `expertise:`, each `1`–`10` or `null` (null keeps
+Specrew's automatic choice):
+
+```yaml
+expertise:
+  software_architecture: 10
+  ui_ux: 6
+  product_management: 7
+  ai_research_project_management: 6
+```
+
+They control how much Specrew asks, explains, recommends and decides for you, and they apply across every
+Specrew project you work in. Changing the file is enough — nothing needs to be re-run.
+
+**Fixed in beta5** by shipping the skill.
+
 ## Verification
 
 - Regression test: `tests/integration/workshop-resolve-prefers-open-feature.tests.ps1`, in the
