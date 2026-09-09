@@ -2234,3 +2234,92 @@ half that worked.
 **Beta5 shape**: a session record needs a liveness signal - a heartbeat, an expiry, or a process check - and
 the counter must consult it. Until then, "two live sessions" means "two session directories exist", and the
 two are not the same claim.
+
+---
+
+# BETA5 ITEM 1 - ABOVE EVERYTHING ELSE DEFERRED
+
+**DO NOT START UNTIL BETA4 IS TAGGED.** Recorded now because it is the maintainer's top UX complaint and
+because the measurement is cheap today and expensive to reconstruct later.
+
+## B5-001 - THE STOP-INTENT CLASSIFIER WAS BUILT ON THE HOOK SIDE AND NEVER DELIVERED TO THE AGENT
+
+**FR-045a's classifier is wired, tested, and reads two markers. Nothing ever teaches the agent to emit
+either one.**
+
+### Measured
+
+`SPECREW-STOP-INTENT` appears in **exactly four files** in the whole repository:
+
+| file | role |
+| --- | --- |
+| `scripts/internal/continuous-co-review/stop-intent-contract.ps1` | **the classifier** - defines both markers at lines 37-38 |
+| `tests/continuous-co-review/unit/stop-intent-contract.Tests.ps1` | unit test |
+| `tests/integration/conformance-stop-intent-wiring.tests.ps1` | wiring test |
+| `specs/198-beta2-hardening/spec.md` | the spec that defined it |
+
+| instruction surface | files teaching the markers |
+| --- | --- |
+| `refocus/` | **0** |
+| `squad-templates/directives/` | **0** |
+| `knowledge/` | **0** |
+| skills | **0** |
+| commands | **0** |
+
+**Built, tested, specified - and never taught to the only party that can produce the input.**
+
+### The consequence is deterministic, not probabilistic
+
+`stop-intent-contract.ps1:112` is the fail-safe:
+
+```
+return 'real' ... 'no current-turn continue marker with authorization, no async in flight,
+                   and no other trigger; normal real-stop enforcement applies'
+```
+
+**Absent a marker, EVERY stop classifies as `real` and owes a packet.** Rule 9's *"after material work"*
+clause then makes the agent render one. **So every material turn, in every session, forever, takes the
+fail-safe path** - and the stop-that-is-not-a-stop, which exists in code, has never once been reachable.
+
+**FIELD EVIDENCE WAS ALREADY IN HAND.** This session's own conformance journal, read at its first Stop,
+carries that exact reason string verbatim. The classifier has been announcing the cause of the complaint in
+its own diagnostic output the entire time.
+
+### The class
+
+**Same family as the inert controls this arc has recorded, and the purest instance yet.**
+DRIFT-199-I003-060's exemption *could never* fire - its condition was unreachable. **This one CAN fire;
+nothing ever asks it to.** A contract with a reader, a test, and no writer - which is why every test passes
+and the behaviour never appears.
+
+---
+
+## The beta5-preview scope, sized
+
+### (1) Instruction layer
+
+- **Rule 9 rewritten** from *"after material work"* to **"boundary gate or decision owed"**.
+- **In-flight ends are one line plus the intermediate marker.**
+- **In-phase continuation carries the continue marker.**
+- **Orientation once per session, never inside a packet.**
+- **One test asserting the directive teaches the markers** - so the writer can never go missing again while
+  the reader stays green.
+
+### (2) Hook advisories, gated on the three conditions
+
+- **Actual work by THIS session** - which requires fixing the **cross-session material-owner
+  misattribution**.
+- **Elapsed time since the last advisory.**
+- **Content unchanged means silence.**
+
+### (3) The review-required advisory
+
+Gated on **this-session material**.
+
+### Acceptance - counted, on the beta4-mdlink walk
+
+- **packets per turn**
+- **banners per session**
+- **advisories on a read-only session**
+
+Counted rather than judged, on a real walk rather than in this tree.
