@@ -33,7 +33,9 @@ shown to the human.
 **The rest of the lifecycle runs through the governed commands.** Plan, tasks and implement go through
 the per-boundary speckit commands where the host exposes them, otherwise the governed lifecycle scripts:
 `.specify/extensions/specrew-speckit/scripts/create-governed-feature.ps1`, `validate-governance.ps1`, and the `sync-*`
-boundary wrappers. Those scripts and commands are the machinery of this project. The raw, un-governed
+boundary wrappers. Those scripts and commands are the machinery of this project, and **they are invoked,
+never read** - their behaviour is described here, so a surprising result is reported, not investigated in
+their source. The raw, un-governed
 `specify.exe workflow` and the bundled SDD automation bypass the boundary gates and are not used here —
 the Specrew-governed scripts above are not that.
 
