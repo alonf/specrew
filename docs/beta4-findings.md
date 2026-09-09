@@ -1916,3 +1916,77 @@ PRED-BETA4-008 commit was pushed before dispatching and `workflow_dispatch --ref
 head. **Measured**: the delta is three commits, two files, **both under `docs/`, zero census subject files**
 - so the run measures identical code and its verdict is valid evidence about the same tree. **The tag SHA is
 the maintainer's to settle**, and it is surfaced now rather than discovered at the tag.
+
+---
+
+## B4F-035 - STEP 1 AND 2 DONE, AND THE CREW HANDOVER IS BLOCKED BY A CONTROLLER BETA4 DOES NOT TOUCH
+
+### Step 1: installed == tagged
+
+Built and installed from the tag SHA with a guaranteed return to the branch:
+
+```
+packaged 414 files from d4a89ab7
+byte verification: all 414 packaged files match
+stamp verified against installed contents
+stamp_commit = d4a89ab7   content = bbe308f8...   INSTALLED_EQUALS_TAGGED = True
+branch restored, dirty_after = 0
+```
+
+The crew and the walk will now run on the build that gets published, not on `356e3295` - the accumulated-
+proofs-on-intermediate-builds error DRIFT-199-I003-008 recorded and had to withdraw.
+
+### Step 2: the router-skill project is updated, and the pre-flight found a blocker
+
+`specrew update` moved **61 files** there onto the tag build. Then the pre-flight ran, and it found two
+things - **one of them a defect in the brief I wrote.**
+
+**(a) MY PRE-FLIGHT WAS SCOPED TO THE WRONG STAGE.** It scanned for features whose spec still carries the
+unauthored marker - an **intake** check. **The router-skill crew is resuming TECHNICAL LENSES**, past
+intake with an authored spec, so the check returned **0** and my own guidance for 0 said *"the feature you
+mean to work has no open intake. Check you are in the right project"* - which would have sent the crew
+chasing a non-problem.
+
+**B4F-018's shape in an artifact I authored**: the claim was *the crew can start*; the check measured *an
+intake workshop is open*. **Replaced with a check that asks the machinery** -
+`Get-SpecrewWorkshopLifecycleState` per feature, exactly one must report `active` - which is the same
+question the resolve itself asks.
+
+**(b) THE ROUTER-SKILL CONTROLLER IS INVALID**, and the corrected pre-flight is what surfaced it:
+
+```
+001-agentic-architecture-skills    status=invalid   reason=workshop-record-not-selected
+```
+
+**Verified at source.** `ProjectMetadataAccessor.ps1:602` invalidates a controller when any workshop record
+names a lens absent from `selected`:
+
+```powershell
+foreach ($recordProperty in $records.PSObject.Properties) {
+    if ([string]$recordProperty.Name -cnotin $selected) { ... 'workshop-record-not-selected' ... }
+```
+
+**Measured**: `workshop` = `['product-domain']`; `selected` = the eight technical lenses;
+**`product-domain` is in the record map and not in the selection.** And the technical agenda **deliberately
+excludes** `product-domain` (DRIFT-199-I003-079), so the two cannot both be right.
+
+### THIS IS THE THIRD FINDING ON THAT RESTORE, AND THE DECISIVE ONE
+
+DRIFT-199-I003-092 examined the `product-domain` restore and concluded the clearing was cosmetic and the
+correct response was to do nothing - the Casio walk left it alone and closed five lenses.
+DRIFT-199-I003-093 corrected its mechanism (journaling stopped; the receipt was not consumed).
+
+**Neither established what the restore actually left behind: a structurally INVALID controller.** The entry
+that put `product-domain` into the workshop map is what the accessor now rejects. **-092's advice was right
+and the repair had already happened.**
+
+### Consequences, stated plainly
+
+- **Beta4's fix does not clear this.** The workshop is not blocked by question registration; the controller
+  is rejected before any of that matters.
+- **The crew handover cannot proceed** until the controller is valid.
+- **There is no sanctioned repair for this state.** Hand-editing `lens-applicability.json` is forbidden by
+  the workshop conduct, and `repair-workshop-controller-state.ps1` covers pre-agenda state only and declines
+  past it (DRIFT-199-I003-093). **Same shape as B4F-030 and B4F-017: a real condition with no reachable
+  remedy.**
+- **It is not beta4's to absorb.** Recorded, brief updated with it as a named known blocker, and reported.

@@ -4,27 +4,53 @@
 
 ## PRE-FLIGHT - run this before the crew starts, not after
 
-**List every feature that has both a `lens-applicability.json` and a specification still carrying the
-unauthored scaffold marker. EXACTLY ONE must exist.**
+**ASK THE MACHINERY, not a proxy.** An earlier draft of this brief scanned for features whose specification
+still carried the unauthored scaffold marker. **That check is scoped to INTAKE workshops and answers the
+wrong question for a crew resuming technical lenses** - it returned zero for a project with a live workshop.
+It has been replaced.
 
 ```powershell
-Get-ChildItem specs -Directory | Where-Object {
-    (Test-Path (Join-Path $_.FullName 'lens-applicability.json')) -and
-    (Test-Path (Join-Path $_.FullName 'spec.md')) -and
-    ((Get-Content (Join-Path $_.FullName 'spec.md') -Raw) -match 'spec-not-yet-authored')
-} | Select-Object -ExpandProperty Name
+. '<specrew-repo>\scripts\internal\bootstrap\ProjectMetadataAccessor.ps1'
+Get-ChildItem specs -Directory | ForEach-Object {
+    $s = Get-SpecrewWorkshopLifecycleState -ProjectRoot (Get-Location).Path -FeatureRef $_.Name
+    '{0,-34} status={1,-9} reason={2}' -f $_.Name, $s.status, $s.reason
+}
 ```
 
-- **Exactly one** - that is the workshop you are about to run. Proceed.
-- **More than one** - **stop.** The resolve cannot tell which workshop a typed reply belongs to and will
-  refuse as ambiguous rather than guess. Author the specification of every feature that is not the one you
-  are running, then re-run this check.
-- **None** - the feature you mean to work has no open intake. Check you are in the right project before
-  scaffolding anything.
+**Exactly one feature must report `status=active`.**
 
-**Why it is a pre-flight and not a troubleshooting step**: a second stub does not fail loudly. It makes the
-resolve refuse, and the refusal reaches the journal rather than you (B4F-012). You would experience it as
-the workshop simply not advancing.
+- **Exactly one active** - that is your workshop. Its `current_lens` names where it resumes. Proceed.
+- **More than one active** - **stop.** The resolve cannot tell which workshop a typed reply belongs to and
+  refuses as ambiguous rather than guessing.
+- **None active** - **stop, and read the `reason`.** It names the condition. It does not mean the project is
+  empty; it usually means a controller is in a state the resolve rejects.
+
+**Why it is a pre-flight and not a troubleshooting step**: none of these fail loudly. They make the resolve
+refuse, and **the refusal reaches the journal rather than you** (B4F-012). You would experience it as the
+workshop simply not advancing.
+
+### KNOWN BLOCKER IN THIS PROJECT - read before starting
+
+At the time of writing, `001-agentic-architecture-skills` reports:
+
+```
+status=invalid   reason=workshop-record-not-selected
+```
+
+**Cause, verified at source.** `ProjectMetadataAccessor.ps1:602` invalidates a controller when any workshop
+record names a lens that is not in `selected`. This controller has `workshop: { product-domain }` while
+`selected` holds the eight technical lenses - and **the technical agenda deliberately excludes
+`product-domain`** (DRIFT-199-I003-079). So the record and the selection cannot both be right, and the
+accessor rejects the whole controller.
+
+**Where it came from**: the `product-domain` entry was restored by re-running the lens writer, the repair
+DRIFT-199-I003-092 examined and concluded was unnecessary - the Casio walk left the same clearing alone and
+closed five lenses. **That entry's conclusion was right and the repair had already happened.**
+
+**This is NOT beta4's defect and beta4's fix does not clear it.** The workshop will not resume until the
+controller is valid. **Hand-editing `lens-applicability.json` is forbidden**, and the sanctioned repair
+(`repair-workshop-controller-state.ps1`) covers pre-agenda state only and declines past it
+(DRIFT-199-I003-093). **Raise it rather than working around it.**
 
 ## What changes for you
 
