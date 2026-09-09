@@ -726,3 +726,68 @@ person who hits it finds the reason without reading a journal.
 **The per-round lanes and the release gate are COMPLEMENTS, not overlapping lists**: over all 395 suites on
 disk - 50 lane-only, 338 gate-only, 7 in both, and **zero covered by neither**. A suite belongs to one or
 the other; the 7 in both are permanent class guards. **A lane-registered suite needs no gate entry.**
+
+---
+
+## B4F-013 - THE RULE: a block upstream hides every defect downstream of it, and they surface together when it is lifted
+
+**Promoted from an observation in B4F-011 to a stated rule, because it predicts rather than explains.**
+
+> **A defect that suppresses a subsystem also suppresses every defect downstream of it. Lifting the block
+> does not reveal them one at a time - it reveals all of them at once, and they arrive looking like
+> regressions caused by the fix.**
+
+**The instance that produced it.** The registration block meant no workshop question was ever projected in
+this tree, so no receipt could ever mint. B4F-011's over-eager confirmation was therefore *unobservable* -
+not absent, unobservable. It appeared within minutes of the fix, and the natural reading of its arrival was
+that the fix caused it. **It did not.** The mechanism is untouched by the fix and predates it.
+
+**Why this is worth a rule rather than a note**: the arrival pattern is indistinguishable from a regression,
+so the default reaction to it is wrong. Anything found immediately after a block is lifted needs its
+provenance established - *was this reachable before?* - before it is attributed to the change.
+
+### It predicts, and here is the standing prediction it makes
+
+**Expect more of B4F-011's kind during the router-skill crew's eight-lens re-close.** That is the **first
+time the downstream path runs on real work** rather than on this tree's review traffic. Registration,
+receipt minting, lens checkpoints and confirmations have never been exercised end to end on a genuine
+workshop under this machinery.
+
+**What that means operationally**: findings from that re-close are *new visibility*, not new breakage, until
+shown otherwise - and they should be recorded before they are worked around. The brief handed to that crew
+is `docs/beta4-router-skill-crew-brief.md`.
+
+### Siblings
+
+Same family as the census (DRIFT-199-I003-030/-035): provisioning the runner so the product could bootstrap
+made the count go **up**, because the gate began measuring more of the tree. **The gate did not weaken - it
+started working**, and more measurement found more findings. This entry is that shape one level up, in
+product behaviour rather than in a gate.
+
+---
+
+## B4F-014 - WHAT A RECEIPT PROVES, restated: a turn, not an assent
+
+**The definition, to be used wherever the record previously implied more.**
+
+> **A receipt proves that a typed human turn occurred while a question was projected. It does not prove the
+> reply answered that question.** `confirmation: human-confirmed` with `confirmation_scope: lens-question`
+> is **evidence of a turn, not of assent**, and the record carries nothing that can tell the two apart.
+
+**Five receipts minted from code-review messages validate identically to five minted from real answers.**
+That is measured, not argued - it is B4F-011.
+
+### Where the record is corrected by this
+
+- **B4F-001** said the file's absence means *"a typed reply cannot be bound to a question."* True as
+  written, and it must not be read in reverse: its presence does not mean a reply **answered** one.
+- **B4F-009** described the chain as `resolve -> projection -> receipt -> lens closes`. Correct as a
+  mechanism, **and it is not a chain of proof.** Only the first two links are machine-verified. The last
+  link - that the human's turn was an answer - rests on the agent having actually asked the question and
+  reported honestly, which the design-workshop conduct already places on the agent and no gate can check.
+- **PRED-BETA4-003's resolution** said *"a receipt can now mint where it could not before."* True, and
+  narrower than it sounds: what became possible is the **binding**, not the **agreement**.
+
+**The practical consequence, stated once**: a lens may be recorded `human-confirmed` only for a question
+actually surfaced and actually answered. The receipt id is the *evidence trail* for that claim, never the
+claim itself.
