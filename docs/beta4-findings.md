@@ -366,3 +366,92 @@ may warrant the lightest, and is never shown that a choice existed.
 **Deferred under the standing rule** unless declaring it removes the workshop dependency in front of the
 registration fix - which it does, and which is why it was read now rather than later.
 
+**DECLARED 2026-09-09.** `.specrew/work-kind.yml` now reads `work_kind: bug-bash`, and the resolver confirms
+`Kind: bug-bash -> templates/lifecycle/bug-bash-lifecycle.md`, `Exists: True`. The project-level consequence
+is written into the file itself, above the value, so the next reader meets a decision rather than an
+inheritance: **this makes the project a bug-bash project until someone changes it back, and beta5 must
+revisit it if beta5 carries features rather than defects.**
+
+---
+
+## B4F-007 - ANSWERED: the block does NOT require a missing controller. Any stale ref produces it, so every second-and-later feature in every project is affected
+
+**The scope question from B4F-005, tested rather than reasoned.**
+
+### Method, with the setup stated because the setup is what decides the answer
+
+`Get-SpecrewWorkshopLifecycleState` was loaded from `scripts/internal/bootstrap/ProjectMetadataAccessor.ps1`
+in a subprocess. **The file was first parsed by AST and confirmed to contain ZERO top-level non-function
+statements**, so loading it cannot execute anything - the load-time-behaviour precaution DRIFT-199-I003-062
+established. Preconditions were printed, not assumed. File mtimes were captured before and after, because a
+`Get-` verb already wrote once today (B4F-002) and the verb is not evidence.
+
+### Result
+
+| case | controller on disk | status | reason |
+| --- | --- | --- | --- |
+| **f201 feature-scope, workshop OPEN - POSITIVE CONTROL** | present | **`active`** | `workshop-pre-agenda-active` |
+| f199 / i002, workshop COMPLETE | **present** | **`invalid`** | `workshop-workshop-intake-invalid` |
+| f199 / i001, workshop COMPLETE | **present** | **`invalid`** | `workshop-workshop-intake-invalid` |
+| f199 / i003, the never-planned stub | absent | `absent` | `workshop-applicability-absent` |
+
+`files_mutated_by_test = 0`.
+
+**THE POSITIVE CONTROL IS WHY THE NEGATIVES MEAN ANYTHING.** Without it, four non-active results are
+indistinguishable from a harness that never reached its subject - the defect DRIFT-199-I003-039 catalogues
+three instances of in one session. 201 returning `active` with `current_lens = 'product-domain'` proves the
+function runs and reads a live controller.
+
+### The answer
+
+Provider line 550 tests `$null -eq $state -or [string]$state.status -ne 'active'`. **All three stale-ref
+cases fail that test.** The missing controller changes only the `reason` string; it is not what causes the
+block.
+
+**So the trigger is the stale ref itself, and iteration 003's stub is not required.** A start context naming
+any previous feature whose workshop is complete produces the same block. **Every second-and-later feature in
+every project is affected**, and Casio and `beta3-tagwalk` worked because they were first features with no
+predecessor to name. **The fix is a scope correction with the general blast radius, not a narrow one keyed
+to this tree's anomaly.**
+
+### A CORRECTION TO B4F-005, and it is mine - the fourth reading in this chain
+
+B4F-005 traced the observed failure to line 550's return. **That cannot be right.** For 003 the state is
+non-null (`status = 'absent'`), so line 552's `if ($null -ne $state)` would set `scope`, `feature_ref` and
+`iteration_number` - **yet the journal recorded all four as null.** The all-null signature matches the
+EARLIER return at line 532, `workshop-active-iteration-missing` - **the reason PRED-BETA4-001 originally
+named and then rejected.**
+
+**What survives is stronger than what it replaces**: the stale ref is the cause, now proven by direct test
+against a positive control rather than by reading control flow. **Which of the two returns it takes does not
+change the fix**, since both are downstream of pointing the resolve at the wrong feature. But the record
+must not claim a path it has not established.
+
+**Fifth instance of the shape B4F-005 itself named** - right about the line, wrong about whether that line
+is what decides - committed by the entry that named it, one turn later. The rule survives its author, which
+is the only test of a rule that matters here.
+
+---
+
+## B4F-008 - THE ORIENTATION GUARD'S DISCHARGE IS PER-TURN, so a compliant session renders the banner on every turn
+
+**Three firings, measured across this session.**
+
+| turn | orientation rendered | stop |
+| --- | --- | --- |
+| 1 | yes, in full, opening the reply | blocked at a later stop |
+| 4 | yes, forced by the guard | went through |
+| 5 | no | **blocked** |
+
+**The guard reads the CURRENT turn's last assistant message and has no memory that the orientation was ever
+shown.** Its only discharge is re-rendering, so the condition returns on every turn that does not repeat the
+banner - and a session that complies renders the full orientation every single turn.
+
+**That is DRIFT-199-I003-074's shape exactly**: *a report that renders no packet can never satisfy the packet
+test that discharges it.* Here the discharge is a thing the design intends to happen once. For a new user it
+is the banner on every turn, which is the repetition that reads as broken - and it is the same surface
+DRIFT-199-I003-080 is already in beta4 scope for.
+
+**Not investigated further and not fixed.** Recorded per the standing rule. **Beta5**, beside the capture
+truncation, the post-seal writer and the orientation-text drift.
+

@@ -1,8 +1,28 @@
 # .specrew/work-kind.yml — Specrew's OWN work-kind declaration (dogfood, FR-013/SC-007).
 #
-# Feature 183 (this branch) is product/runtime stability work delivered through the full Specrew lifecycle.
-# It uses bug-bash conduct for the individual fixes while retaining software-feature release discipline.
+# THIS FILE IS PROJECT-LEVEL, NOT PER-FEATURE. Whatever it says applies to every feature created
+# afterwards, until someone changes it. That is not a detail — it is how the previous value reached two
+# features that never chose it: the note below used to open "Feature 183 (this branch)", and feature 199
+# and then feature 201 inherited `software-feature` from it unchanged, with nothing at feature creation
+# asking which contract applied. A work kind resolved silently, its default was the heaviest contract, and
+# the selection was invisible. See docs/beta4-findings.md B4F-006.
 
-work_kind: software-feature
+work_kind: bug-bash
 schema_version: "1.0"
-notes: "Feature 183 — Stability & Quality Bundle (product/runtime behavior delivered through the full Specrew lifecycle with bug-bash conduct for the individual fixes). Runtime hooks, dispatcher/provider behavior, closeout sync, tests, and release surfaces ship a release, so this is a software-feature, not docs-only."
+notes: >-
+  Beta4 (feature 201-first-run-experience) is a defect sweep, not a feature. Its bug list and root causes
+  were complete before the feature was created — six items with measured causes in docs/beta4-scope.md and
+  the iteration 003 drift log. bug-bash-lifecycle.md asks for exactly that shape: bug list with
+  reproductions, root cause per bug, fix evidence, regression tests, closeout. It has no workshop, no spec
+  and no design lenses, which is what makes it correct here rather than merely lighter — beta4's scope is
+  already decided and written, so a discovery workshop would re-derive a settled decision at full cost, and
+  it would run the repair through the part being repaired.
+  DECLARED 2026-09-09 by the maintainer, on the reviewer's recommendation, with this consequence stated
+  first and accepted: this makes the project a bug-bash project until someone changes it back.
+  BETA5 MUST REVISIT THIS. If beta5 carries features rather than defects it needs `software-feature` again,
+  and the deferred beta5 items — the post-seal writer, the capture truncation, the orientation drift and
+  the work-kind selection gap itself — are recorded in docs/beta4-findings.md. Retroactively, iteration
+  199/003 was reactive stabilization measured against a planned-feature contract: it fought a dashboard it
+  could not produce, a task row it never had, a Task Verdicts table with no reviewer and a campaign that
+  never ran, and bug-bash may have fitted it without a deviation. Two work items in a row paid full feature
+  ceremony for work that had a lighter contract sitting unused in the same directory.
