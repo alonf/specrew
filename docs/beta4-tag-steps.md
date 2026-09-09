@@ -61,7 +61,33 @@ repository (DRIFT-199-I003-068).
 
 ## 5. Tag
 
-On the SHA the green dispatch ran on. Nothing else.
+On the SHA the green dispatch ran on: **`d4a89ab7`**. Nothing else.
+
+### What the green run did and did not do - verified from the run, not assumed
+
+**Run `34354188094` ran in DRY-RUN mode.** `publish-module` reports `success`, and that is the dry run
+succeeding: it **stamped and validated, and released nothing**. **The gallery's latest is still
+`0.40.0-beta3`.**
+
+**So the tag push is the REAL publish, and it re-runs the census.** The green dry run does not carry over -
+the tag push gets its own census run, on the same code but a fresh runner.
+
+### If the tag-push census goes red on the two timing tests ALONE
+
+**Condition, checked before acting** - the same two assertions and nothing else:
+`DispatcherLargeStdout` (elapsed against its 15s budget, with every payload line passed - no truncation, no
+deadlock) and `squad-init-closed-stdin`'s `line 209`. Both are confirmed runner-bound
+(PRED-BETA4-008), and neither has beta4 code on its path.
+
+**The single sanctioned fallback is ONE `workflow_dispatch` in `publish-prerelease` mode with the tag as its
+input.**
+
+- **Never a second tag push.** A tag names bytes; re-pushing it either fails the workflow's own
+  divergence guard or moves what the tag means.
+- **Never a third run.** One re-run with its meaning fixed is a discriminator; a second is a lottery
+  (PRED-BETA4-008), and that holds at the publish exactly as it held at the dry run.
+- **Any other failure - a third file, a different assertion, a payload line - is NOT this fallback.** It is a
+  real blocker, and nothing is published until it is understood.
 
 ## 6. Watch the publish to completion
 
