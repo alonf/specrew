@@ -1730,3 +1730,66 @@ not per-project - as its own output said at the time: *"codex hooks deployed to 
 - does not fully hold for codex.** The hooks follow the user, not the working directory. Harmless here (a
 scratch directory has no governed state to mutate), but the rule's premise is weaker than it reads and the
 next person relying on it should know. **Beta5, with the deployment-surface items.**
+
+---
+
+## B4F-032 - A PROJECT INSTALL WRITES USER-LEVEL FILES AND DOES NOT SAY SO - the hook is a strict no-op, the undisclosed global write is the finding
+
+**Not filed as harmless. The no-op was measured; the disclosure gap is what remains.**
+
+### The hook IS a strict no-op outside a Specrew project - measured, not assumed
+
+Ran the deployed launcher directly for all three events, from a scratch directory that is not a Specrew
+project, watching both that directory and `~/.specrew`:
+
+```
+SessionStart       exit=0  stdout_bytes=0
+UserPromptSubmit   exit=0  stdout_bytes=0
+Stop               exit=0  stdout_bytes=0
+
+files_created  = 0
+files_modified = 0
+STRICT_NO_OP   = True
+```
+
+**So a codex session in an unrelated directory is not silently governed, and probing there does not mutate
+state.** That half of the standing rule survives, and it now rests on a measurement rather than on
+assumption.
+
+### The finding: `--project-path` performs USER-LEVEL writes and discloses them as project output
+
+`specrew update --project-path .` wrote **three files outside the project**, reported in the same flat list
+as the project's own deployments:
+
+| host | hook target | scope |
+| --- | --- | --- |
+| claude | `<project>/.claude/settings.local.json` | **project** |
+| antigravity | `<project>/.agents/hooks.json` | **project** |
+| cursor | `~/.cursor/hooks.json` | **USER** |
+| codex | `~/.codex/hooks.json` | **USER** |
+| copilot | `~/.copilot/hooks/specrew-refocus.json` | **USER** |
+
+**A command whose only path parameter names a project changed three files that outlive it and affect every
+other project on the machine.** The output lines are truthful and give the paths; nothing marks them as
+global, and nothing asks. A reader scanning a long deploy log reads them as more project deployment.
+
+**The requirement**: the install must **disclose the global write as global** - name it as a machine-level
+change, separately from project deployment, before or as it happens.
+
+### The probe-hygiene premise, corrected - and the correction is not the one proposed
+
+The standing rule was *never probe an agentic CLI in a governed cwd; use scratch directories*. The proposed
+correction was that scratch directories are hook-free **"for Claude and Copilot only"**.
+
+**Measured from the update's own output, that is wrong about Copilot.** Copilot's hooks are USER-level
+(`~/.copilot/hooks/specrew-refocus.json`). The hosts whose hooks are confined to the project are **Claude
+and Antigravity**:
+
+> **Scratch directories are hook-free for CLAUDE and ANTIGRAVITY only. Cursor, codex and copilot install
+> hooks at user level, so they fire in every directory on the machine.**
+
+**They still fire harmlessly** - `STRICT_NO_OP = True` above - but "no hooks run" and "hooks run and do
+nothing" are different claims, and only the second is true for those three.
+
+**BETA5**, with the deployment-surface items: disclose the global write, and keep the no-op measured rather
+than assumed, since it is the only thing making the user-level deployment acceptable.
