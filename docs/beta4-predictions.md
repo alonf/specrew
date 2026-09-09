@@ -109,6 +109,37 @@ mechanism, and it is recorded as exactly that.
 
 Full record: `docs/beta4-findings.md`, B4F-004.
 
+---
+
+## PRED-BETA4-003 - will the fix fire in THIS tree, at the Stop of the turn that shipped it?
+
+**Stated 2026-09-09, before the Stop that tests it, with the fix in the working tree.**
+
+The fix is live in `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1` and its mirror. The
+resolve runs at every Stop regardless of whether a workshop question was asked, so this turn is a free field
+test of the change on the tree that produced it.
+
+**The precondition, measured rather than assumed**: this tree has **exactly one** intake candidate -
+`201-first-run-experience` - being the only feature whose `spec.md` still carries the not-yet-authored
+sentinel and which also has a feature-level `lens-applicability.json`. Uniqueness is required; the fix
+refuses to guess between two.
+
+**PREDICTION: `.specrew/handover/workshop-question.json` will EXIST after this turn's Stop**, carrying
+`feature_ref: 201-first-run-experience` and `phase: product-domain` - on a turn where the start context
+still names closed feature `199-beta3-stabilization` / iteration `003`, exactly the state that produced
+PRED-BETA4-001's absence.
+
+**`question` is expected to be EMPTY or absent, and that is not a failure of this prediction.** No line of
+this message ends in `?`, and provider line 564 detects a question only that way (B4F-005). That heuristic
+populates a display field and does not gate the write. **If the file appears with an empty `question`, both
+facts are confirmed at once**: the fix works, and the punctuation heuristic is real but not load-bearing.
+
+| outcome | conclusion |
+| --- | --- |
+| **file present, `feature_ref` = 201** | The fix is field-proved on the tree that shipped it, on the exact state that reproduced the defect. |
+| **file present, `feature_ref` = 199** | The candidate was resolved but the wrong ref was carried through - a defect in the fix, caught immediately. |
+| **file absent** | Something upstream of the candidate logic returns first - most likely the `HasPendingVerdict` or accessor guards - and the fix is incomplete for the live hook path even though it passes at the function level. |
+
 ### Two observations from the turn this prediction was written in
 
 - **A LIVE INSTANCE OF DRIFT-199-I003-080, on beta4's first turn.** The session-start contract requires the

@@ -29,7 +29,27 @@ All small, all evidenced by this fortnight's walks.
 
 | item | evidence |
 | --- | --- |
-| **The workshop question is not registered**, so a lens cannot close AND a full packet fires every turn | DRIFT-199-I003-094. One defect, two symptoms, verified in the provider. Blocks a workshop on published bits, on the most common path a new user takes. **Top of the list.** |
+| **The workshop question is not registered**, so a lens cannot close AND a full packet fires every turn | DRIFT-199-I003-094, mechanism corrected and measured in B4F-005/B4F-007. One defect, two symptoms. **Top of the list, and see the reframing below — this is not a first-run item.** |
+
+### The reframing: it is not first-run, and that makes it worse
+
+**The item above was scoped as first-run. It is not, and the correct statement is more alarming than the
+one it replaces.** Measured in B4F-007: a stranger's **first** feature works. The block lands on their
+**second**.
+
+The start context names the lifecycle's feature, which after any completed feature is the previous one —
+stale by construction from feature creation until the first boundary sync. A first feature has no
+predecessor to name, so it resolves correctly. Every feature after it does not.
+
+**Failing early is cheaper for a user than failing after they have committed.** Someone who hits a wall in
+their first ten minutes has lost ten minutes and can walk away. This defect gives them a good first
+experience instead: the workshop works, the lenses close, the boundaries hold, and they conclude the tool is
+sound. **So they commit to it — they bring it into a real repository they care about, and they invest.**
+Then they open their second feature and hit a block they cannot recover from, with no message that explains
+it, on a tool they have already staked work on. That is the expensive shape, and it is the one we shipped.
+
+The theme still holds — this is what a stranger meets — but the item is not "polish the first ten minutes".
+It is **the product stops working at the point the user starts trusting it.**
 | **`iteration-closeout` advances without demanding a verdict** | DRIFT-199-I003-097, narrowed by -099. Its two neighbouring boundaries both stop; it alone does not. Severe, and now one boundary rather than a shared path. |
 | **Near-miss reporting** when an approval phrase is present but not matching | DRIFT-199-I003-095. Measured live: the product's author, holding the spec, typing the phrase he had just been shown, got it wrong and was told nothing. |
 | **Verdict whitespace and line-ending normalisation** before matching | Same surface as the near-miss — the moment a human types the thing that grants authority. |
@@ -68,6 +88,23 @@ reconciles the two in either direction.**
 The candidate walk script already has the right shape — fresh directory, shipped installer, real first
 session. It needs to be a lane that runs rather than a checklist someone remembers. **It would have caught
 the branchless defect in July.**
+
+## The work kind, and what declaring it settled without anyone's judgment
+
+**Beta4 is declared `bug-bash`** (`.specrew/work-kind.yml`, 2026-09-09). The capability had shipped and was
+simply never selected: `work_kind` is a **project-level** declaration, its previous value's own note still
+opened *"Feature 183 (this branch)"*, and features 199 and 201 inherited it unchanged because nothing at
+feature creation asks. See `docs/beta4-findings.md` B4F-006.
+
+**Its flow is `bug-list -> root-cause -> fix -> regression-tests -> REVIEW -> closeout -> merge`.** That
+matters beyond the ceremony it removes: **review is a required stage of the contract now in force, not a
+discretionary round somebody chooses to spend.** Three releases have closed with the reviewer column empty.
+This one will not — and not because anyone decided to be more careful this time. **Declaring the work kind
+answered the review question structurally.** That is the difference between a practice and a control, which
+is a distinction this project has now paid for repeatedly.
+
+**Beta5 must revisit the declaration.** It is project-level, so it stays `bug-bash` until changed, and beta5
+needs `software-feature` again if it carries features rather than defects.
 
 ## Standing practice for beta4's own work
 

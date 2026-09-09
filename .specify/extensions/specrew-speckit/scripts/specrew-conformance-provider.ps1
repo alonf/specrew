@@ -512,7 +512,8 @@ function Resolve-SpecrewWorkshopQuestionPause {
         [bool]$HasActiveLifecycleBoundary,
         [ValidateSet('absent', 'readable', 'unreadable')][string]$StartContextState = 'absent',
         [AllowNull()][string]$LastAssistantText,
-        [bool]$HasPendingVerdict
+        [bool]$HasPendingVerdict,
+        [AllowNull()][string[]]$WorkshopFeatureCandidates
     )
     $result = [pscustomobject]@{ valid = $false; reason = 'workshop-state-unproven'; scope = $null; feature_ref = $null; iteration_number = $null; lens = $null; phase = $null; agenda_status = $null; question = $null; message_hash = $null; agenda_digest = $null; agenda_binding = $null; agenda_visibility = $null; artifact_path = $null; binding_conflict = $null }
     try {
@@ -525,19 +526,45 @@ function Resolve-SpecrewWorkshopQuestionPause {
         try { . $pma } catch { $result.reason = 'workshop-accessor-unreadable'; return $result }
         if (-not (Get-Command Get-SpecrewWorkshopLifecycleState -ErrorAction SilentlyContinue)) { $result.reason = 'workshop-accessor-contract-missing'; return $result }
 
+        # BETA4 (B4F-007): the start context names the LIFECYCLE's feature, and after any completed feature
+        # that is the PREVIOUS one - stale by construction from feature creation until the first boundary
+        # sync. Selecting the workshop from it looks up a completed workshop, or an iteration that does not
+        # exist under the new feature, and returns nothing active. Measured: every SECOND and later feature
+        # in a project is blocked; a first feature works only because there is no predecessor to name.
+        # An INTAKE workshop is open on the feature whose spec is still the not-yet-authored stub AND whose
+        # feature-level controller reports active. Ask that, and prefer it. Two properties keep this safe: a
+        # design-analysis workshop is ITERATION-scoped and its spec IS authored, so it can never be a
+        # candidate here; and when the start context already names the open feature, that feature is itself
+        # the unique candidate, so the resolution is unchanged. More than one open intake workshop is
+        # ambiguous and is NOT guessed at - it falls through to the lifecycle-derived scope below.
         $scope = 'feature'
         $iteration = $null
-        $featureRoot = Join-Path $ProjectRoot ("specs/{0}" -f $ActiveFeatureRef)
-        if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) {
-            if ([string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $result.reason = 'workshop-active-iteration-missing'; return $result }
-            $scope = 'iteration'
-            $iteration = $ActiveIterationNumber
+        $intakeCandidate = $null
+        if ($null -ne $WorkshopFeatureCandidates) {
+            $distinctCandidates = @($WorkshopFeatureCandidates |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+            if ($distinctCandidates.Count -eq 1) { $intakeCandidate = ([string]$distinctCandidates[0]).Trim() }
         }
-        else {
-            $iterationsRoot = Join-Path $featureRoot 'iterations'
-            if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
-                $numericIterations = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction Stop | Where-Object { $_.Name -match '^[0-9]{3,}$' })
-                if ($numericIterations.Count -gt 0) { $result.reason = 'workshop-feature-scope-after-lifecycle-activation'; return $result }
+        if (-not [string]::IsNullOrWhiteSpace($intakeCandidate)) {
+            $candidateState = $null
+            try { $candidateState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $intakeCandidate }
+            catch { $candidateState = $null }
+            if ($null -ne $candidateState -and [string]$candidateState.status -eq 'active') { $ActiveFeatureRef = $intakeCandidate }
+            else { $intakeCandidate = $null }
+        }
+        $featureRoot = Join-Path $ProjectRoot ("specs/{0}" -f $ActiveFeatureRef)
+        if ([string]::IsNullOrWhiteSpace($intakeCandidate)) {
+            if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) {
+                if ([string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $result.reason = 'workshop-active-iteration-missing'; return $result }
+                $scope = 'iteration'
+                $iteration = $ActiveIterationNumber
+            }
+            else {
+                $iterationsRoot = Join-Path $featureRoot 'iterations'
+                if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
+                    $numericIterations = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction Stop | Where-Object { $_.Name -match '^[0-9]{3,}$' })
+                    if ($numericIterations.Count -gt 0) { $result.reason = 'workshop-feature-scope-after-lifecycle-activation'; return $result }
+                }
             }
         }
 
@@ -834,6 +861,20 @@ try {
     }
     catch { $anySpec = $false }
 
+    # BETA4 (B4F-007): features still at INTAKE - the spec is the governed not-yet-authored stub and a
+    # feature-level workshop controller exists. Reuses the $specs enumeration already taken above, so this
+    # adds no directory walk. This is the signal the workshop resolve prefers over the stale start context.
+    $workshopIntakeCandidates = @()
+    foreach ($specCandidatePath in $specs) {
+        try {
+            $candidateDir = Split-Path $specCandidatePath -Parent
+            if (-not (Test-Path -LiteralPath (Join-Path $candidateDir 'lens-applicability.json') -PathType Leaf)) { continue }
+            $candidateSpec = Get-Content -LiteralPath $specCandidatePath -Raw -Encoding UTF8 -ErrorAction Stop
+            if ($candidateSpec -match 'specrew:spec-not-yet-authored') { $workshopIntakeCandidates += (Split-Path $candidateDir -Leaf) }
+        }
+        catch { $null = $_ }
+    }
+
     # Active feature ref (145 OB-1): workshop validation must scope to THIS feature, not the whole project.
     # session_state.feature_ref is canonical; fall back to the current material signal and then the discovered spec.
     $activeFeatureRef = $null
@@ -1000,7 +1041,7 @@ try {
     $workshopAgendaPresentationMissing = $false
     if ($hasPending -or $anySpec -or $rawHit -or $materialStop) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
-        $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $null -HasPendingVerdict $hasPending
+        $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $null -HasPendingVerdict $hasPending -WorkshopFeatureCandidates $workshopIntakeCandidates
         $workshopStateInProgress = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
         $workshopConflictState = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
         $workshopRepairState = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -in $workshopRepairReasons)
@@ -1113,7 +1154,7 @@ try {
     }
     # Re-resolve only to enrich the non-authoritative handover projection with the visible question, if one exists.
     # Artifact classification remains identical whether the host emitted plain prose, a question tool, or a comment.
-    $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending
+    $workshopQuestion = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -ActiveFeatureRef $activeFeatureRef -ActiveIterationNumber $activeIterationNumber -HasActiveLifecycleBoundary $hasActiveLifecycleBoundary -StartContextState $startContextState -LastAssistantText $lastAssistantText -HasPendingVerdict $hasPending -WorkshopFeatureCandidates $workshopIntakeCandidates
     $workshopIntermediate = ($null -ne $workshopQuestion -and [bool]$workshopQuestion.valid)
     $workshopConflict = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -eq 'workshop-decision-binding-conflict')
     $workshopRepair = ($null -ne $workshopQuestion -and [string]$workshopQuestion.reason -in $workshopRepairReasons)

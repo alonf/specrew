@@ -455,3 +455,86 @@ DRIFT-199-I003-080 is already in beta4 scope for.
 **Not investigated further and not fixed.** Recorded per the standing rule. **Beta5**, beside the capture
 truncation, the post-seal writer and the orientation-text drift.
 
+---
+
+## B4F-009 - THE FIX: the workshop resolve selects the feature whose intake controller is open
+
+**Beta4's one shipped change.** Bug-bash evidence, in the order its contract asks for it.
+
+### Bug
+
+A workshop question could not be registered, so no receipt could mint and no lens could close. Reproduced on
+demand in this tree (B4F-004) and measured to affect **every second-and-later feature in any project**
+(B4F-007).
+
+### Root cause
+
+`Resolve-SpecrewWorkshopQuestionPause` selected the workshop from `.specrew/start-context.json`'s
+`session_state`, which names the **lifecycle's** feature. After any completed feature that is the
+**previous** one, and it is stale by construction from feature creation until the first boundary sync. The
+resolve then looked up a completed workshop - or an iteration absent under the new feature - and returned
+nothing active, silently.
+
+### Fix
+
+`specrew-conformance-provider.ps1`, plus its `.specify/` mirror, byte-identical.
+
+- The call site computes `$workshopIntakeCandidates`: features whose `spec.md` still carries
+  `<!-- specrew:spec-not-yet-authored -->` **and** which have a feature-level `lens-applicability.json`.
+  It reuses the `$specs` enumeration already taken, so it adds no directory walk.
+- The resolve prefers a **unique** candidate whose controller reports `active`, at feature scope, over the
+  start-context pair.
+
+**Three properties make it safe, and each is asserted by the test rather than argued:**
+
+1. **It cannot suppress a working workshop.** It only ever turns a non-active result into an active one.
+2. **It cannot capture design-analysis.** That workshop is iteration-scoped and its spec IS authored, so it
+   can never be an intake candidate.
+3. **It does not guess.** More than one open intake workshop is ambiguous and falls through to the previous
+   behaviour rather than picking one - which would manufacture a binding no human made.
+
+**Both call sites patched.** The provider calls the resolve **twice**, and the first anchor matched only
+one. Caught by checking rather than by trusting the anchor; a half-applied fix here would have been silent,
+which is the two-writers family (DRIFT-199-I003-048). Case 6 of the test now pins it.
+
+### Regression test
+
+`tests/integration/workshop-resolve-prefers-open-feature.tests.ps1`, registered in the **`f199-class-guards`**
+lane (`every-suite-is-named-by-a-lane` went red on the unregistered file and named the remedy; green after,
+56 -> 57 suites).
+
+**It drives the resolve and never writes `workshop-question.json`** - because every existing fixture in this
+area hand-writes that file, which is precisely why none of them could notice a defect in its production
+(B4F-001).
+
+**It carries its own positive control (Case 1)**, on the reviewer's instruction: a test that sets up the
+stale ref and asserts a negative passes just as happily when it never reached the function, and would join
+the fixtures that could not notice. Case 1 asserts an open feature resolves **active** in the same run, and
+the file exits INCONCLUSIVE rather than reporting a verdict if that control does not hold.
+
+Six cases: positive control; the regression; candidate validation; a negative control that must stay
+non-valid; ambiguity refused; and every call site passing the parameter.
+
+### Mutation proof
+
+Target **GREEN first** (DRIFT-199-I003-047), then the candidate adoption disabled at exactly one site:
+
+```
+baseline_exit           = 0
+mutation_sites          = 1
+mutant_exit             = 1   -> only CASE 2's three assertions red; the positive control still passed
+restored_byte_identical = True
+mirror_identical        = True
+post_restore_exit       = 0
+```
+
+**Only the regression case discriminated**, which is what distinguishes a proof from a test that fails for
+any reason.
+
+### Reported, not acted on
+
+`.specrew/release-gate-suites.txt` names **124 of 127** integration suites; the new file is among the three
+it does not name. `every-suite-is-named-by-a-lane` passes on it, so the release-cadence manifest evidently
+does not intend to name all of them. **Adding it to a second registry without knowing that registry's
+selection rule is the hand-enumerated-set defect**, so it is reported for a ruling rather than taken.
+
