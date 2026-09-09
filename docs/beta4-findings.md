@@ -1611,3 +1611,63 @@ So the act declares itself.**
 
 **BETA5, as a candidate resolution rather than an open question.** Beta4 ships the fix as-is; the stub
 condition is disclosed in the release notes and pre-flighted in the crew brief instead.
+
+---
+
+## B4F-030 - THE REVIEW CAMPAIGN REQUIRES AN ITERATION THAT A BUG-BASH FEATURE LEGITIMATELY NEVER HAS
+
+**B4F-025's prediction landing, and a third instance of the remedy-wrong-for-state family.**
+
+### What happened
+
+The round is no longer blocked by runtime drift - the build-then-update cleared that. It now refuses with:
+
+```
+review-campaign-active-iteration-unresolved
+
+The human's typed approval was NOT spent - nothing ran. Once the feature is named,
+run this again; their approval is still standing.
+```
+
+**Two halves, and they deserve opposite verdicts.**
+
+### The good half, recorded because this log skews to failures
+
+**That refusal is the standard working.** It names the condition, states plainly that **the human's typed
+approval was NOT spent**, confirms the approval still stands, and gives one concrete action. Nobody has to
+wonder whether a round was burned. **Compare B4F-017's `specrew update`, whose named remedy would have
+destroyed the fix.** This one protects the human's authority and says so.
+
+### The bad half: the named remedy does not clear the condition
+
+**I took the named action - `--feature 201-first-run-experience` - and the refusal is byte-identical.**
+
+The real condition is not an unnamed feature. It is that **feature 201 has no `iterations/` directory at
+all**: it never reached the plan boundary, by the maintainer's explicit ruling that a defect sweep does not
+run planning ceremony. `specs/201-first-run-experience/` contains exactly `lens-applicability.json` and
+`spec.md`.
+
+**Third instance of remedy-wrong-for-state** (DRIFT-199-I003-016's family, after `specrew update` twice):
+the message describes a state the reader is not in, and following it changes nothing.
+
+### And this is B4F-025's prediction landing
+
+B4F-025 recorded that 201's closeout would demand a specification it honestly does not have. **The review
+stage demands an iteration on the same grounds** - the `software-feature` contract expects planning
+artifacts that bug-bash conduct deliberately never produced, and work-kind is project-scoped so the
+distinction could not be declared (B4F-006, B4F-020).
+
+### Three ways forward, and the first carries a real hazard
+
+1. **Scaffold `iterations/001` for 201.** It is the artifact the campaign wants. **But DRIFT-199-I003-086
+   measured iteration scaffolding ADVANCING boundary state as a side effect** - `boundary_type: plan`
+   written 32 seconds after the scaffold, with no verdict. That is DRIFT-199-I003-097's defect triggered
+   deliberately, and it is not something to do unasked. (Feature scaffolding does not do this - B4F-020
+   measured that separately.)
+2. **Skip the governed round, record the deviation.** The fix already had a full adversarial review that
+   found a real defect - property 1 was false, the ambiguity guard exists because of it - and that review
+   is recorded across B4F-010 and its commits. The deviation would say: reviewed, not campaign-recorded.
+3. **Run the round against a different scope** that resolves an iteration - none is honest here, since
+   199/003 is sealed and closed and this work is not its.
+
+**STOPPED AND REPORTED. The approval is still unspent and still standing.**
