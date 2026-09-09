@@ -201,3 +201,35 @@ exists and holds **five receipts**, all `201-first-run-experience` / `product-do
 **So the chain is proved further than predicted - resolve, projection, AND receipt mint.** It also surfaced
 a defect the block had been hiding, which is recorded as B4F-011: **those five receipts answer no question
 the human was ever asked**, and none of them may be cited when the product-domain lens is eventually closed.
+
+---
+
+## PRED-BETA4-004 - what the dispatched census will say about THIS branch
+
+**Stated 2026-09-09, before the dispatch, with no run in existence.** DRIFT-199-I003-083's rule is that the
+last green before a tag must be a DISPATCHED run, because a local sweep and CI differ precisely in
+environment and any failure living in that difference is invisible to the local proxy. So this run can tell
+me something my six green local suites cannot, and the expectation is fixed first.
+
+**What this branch changed**: `specrew-conformance-provider.ps1` and its mirror, one new integration suite,
+one lane registration, `.specrew/work-kind.yml`, and documentation.
+
+**PREDICTION, in three parts, each independently falsifiable:**
+
+1. **`workshop-resolve-prefers-open-feature` passes in CI.** It builds its own temp fixture and reads only
+   tracked sources, so it has no dependency on gitignored runtime state - the category-2 condition that
+   makes a file unable to pass in a fresh clone (DRIFT-199-I003-025).
+2. **No failure names `specrew-conformance-provider.ps1`, `conformance-detection`, or any workshop suite.**
+3. **Any failure that does appear is in a file this branch did not touch**, and is therefore a fact about
+   the tree since the last green census (`43815938`, 2026-09-04, 400 files, 0 failures), not about this fix.
+
+**I am NOT predicting the run is green overall.** I have not measured what landed on this branch's ancestry
+since 2026-09-04, and claiming a whole-tree result from six curated local suites is the exact error
+DRIFT-199-I003-022 records - lanes green reported as tree green.
+
+| outcome | conclusion |
+| --- | --- |
+| green | the fix ships clean and the tree is green on a dispatched run, which is the gate's own standard |
+| red, only in untouched files | the branch is clean; the failures are a separate fact about the tree and are triaged, not attributed here |
+| **red naming my new suite** | it depends on something the local environment supplies and CI does not - DRIFT-199-I003-083's shape, and my own test would have joined the fixtures that cannot notice |
+| **red naming the provider or a workshop suite** | the fix has an environment-dependent effect the local runs could not see, and it blocks the tag until understood |
