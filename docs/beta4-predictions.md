@@ -348,3 +348,39 @@ carries a failure-shaped entry on a green run will mislead someone eventually.
 `22772117`'s code exactly; the three commits between them are docs-only with zero census subject files
 (measured in B4F-034). The branch head has since moved past it with records, which is the normal shape -
 records live outside the tag (DRIFT-199-I003-040).
+
+---
+
+## PRED-BETA4-010 - fix 1, the agenda-clearing trap. Stated before the code.
+
+**Why the two halves cannot be shipped separately**, established at source before predicting:
+`confirm-workshop-agenda.ps1` refuses to render **or** confirm an agenda unless the `product-domain` typed
+receipt **and both** `workshop/product-domain.md` / `.yml` are on disk. **So every project whose
+`agenda_status` is `confirmed` necessarily carries them.**
+
+- **The control alone would re-strand** DRIFT-199-I003-020's projects: refusing any lens not in `selected`
+  once confirmed also refuses `confirm-intake-lens` from `confirmed-complete`, which is the recovery that
+  entry field-proved on the original stranded specimen.
+- **The trigger removal alone leaves the trap**: the clearing still reads as data loss to the next crew.
+- **Together they are safe**, because completion derived from the guaranteed records makes the stranded
+  case report *complete* - so the recovery the control forbids is no longer needed by anyone.
+
+### THE PREDICTION, four parts, each falsifiable
+
+1. **POSITIVE CONTROL, and it names its path.** Against
+   `tests/fixtures/beta4-agenda-clearing/001-mdlink-checker/`, `Get-SpecrewWorkshopLifecycleState` reports
+   `product-domain` as completed - `completed` is **non-empty** - and it does so **from the RECORDS**, since
+   that fixture's controller `workshop` map is empty. The test asserts *which path supplied it*, because a
+   control that does not name its path can certify a path it never took (B4F-028).
+2. **The guard refuses.** `confirm-workshop-lens.ps1` refuses `product-domain` against that fixture's
+   confirmed state, and the message **states the clearing is normal** and **names
+   `workshop/product-domain.md`** as the durable record.
+3. **The stranded case is NOT re-stranded.** A confirmed controller with an empty `workshop` map and the
+   records present reports **complete**, so no `confirm-intake-lens` recovery is required. DRIFT-199-I003-020's
+   ground is held.
+4. **MUTATION.** With the guard removed, running the writer against the preserved fixture **corrupts it** to
+   `workshop-record-not-selected` - the router-skill outcome, reproduced on demand. If the mutation does not
+   corrupt it, the fixture is not the state I think it is and the guard is unproven.
+
+**Fixed in advance**: if (1) fails, the trigger removal is in the wrong place and the guard must not ship
+alone. If (4) survives, the guard is untested regardless of what (2) reports.
