@@ -392,7 +392,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "446a9eae6663e0717e9314fcdb0f42f54c320063651718d6aa2618037920ebb6"
+      "sha256": "fb7a6413ff00e4953275e65abc548bf3b40fb059f1aeef9bbf3b4ff675e5375a"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
