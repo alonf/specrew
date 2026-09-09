@@ -1990,3 +1990,65 @@ and the repair had already happened.**
   past it (DRIFT-199-I003-093). **Same shape as B4F-030 and B4F-017: a real condition with no reachable
   remedy.**
 - **It is not beta4's to absorb.** Recorded, brief updated with it as a named known blocker, and reported.
+
+---
+
+## B4F-036 - THE ROUTER-SKILL CONTROLLER REPAIRED, and two beta5 items with priority
+
+### The repair, bounded and verified
+
+Authorized by the maintainer's typed instruction, executed with precondition and postcondition printed:
+
+```
+before : invalid / workshop-record-not-selected
+         workshop = [product-domain]; selected = the eight technical lenses; agenda_status = confirmed
+after  : ACTIVE / workshop-active / current_lens = architecture-core, remaining = 8
+
+other controller properties changed : 0
+workshop evidence files changed     : 0   (9 lens records + product-domain.yml + implementation-rules.yml + spec.md)
+runtime stores touched              : 0   (receipt store and conformance journal, by hash AND mtime)
+REPAIR_VERIFIED = True
+```
+
+Written the product's own way - **atomic temp-and-move, UTF-8 without BOM**, the
+`Write-SpecrewLensAtomicUtf8NoBom` pattern from `confirm-workshop-lens.ps1:56`. Never `Set-Content`, never
+a hand-edited digest. Committed in the router-skill project as `e1181f0` with the authorization quoted
+verbatim. **Pre-flight now passes: exactly one active workshop.**
+
+**Recorded as a documented gap, not a preference**, and both halves were verified at source before the
+ruling stood:
+
+| writer | refusal |
+| --- | --- |
+| `confirm-workshop-agenda.ps1:112` | refuses unless `agenda_status` is `pending-confirmation`; this one was `confirmed` |
+| `repair-workshop-controller-state.ps1:105-106` | `throw 'workshop-repair-only-pending-state-supported'` |
+
+**No sanctioned path reaches a post-agenda controller.** That is why the repair was done by hand under
+explicit typed authorization rather than by a writer, and why it is written down that way.
+
+**And the nine lens decision records were on disk the whole time**, untouched. Only the controller's
+*projection* of them was wrong - which is what made a bounded repair the right size of act.
+
+### BETA5, priority
+
+**(a) `repair-workshop-controller-state.ps1` must cover post-agenda states**, at minimum
+`workshop-record-not-selected`, **under the existing proposal + typed-authorization mechanism** it already
+has. The mechanism is right; only its reachable state set is too narrow. Today a project in this state has a
+real condition, a correct detector, and **no reachable remedy** - the shape B4F-017, B4F-030 and this entry
+now share three times over.
+
+**(b) THE WRITER WROTE A RECORD THE READER REJECTS.** The lens writer produced a `product-domain` entry in
+the workshop map; the accessor (`ProjectMetadataAccessor.ps1:602`) rejects any record naming a lens absent
+from `selected`; and the technical agenda **excludes `product-domain` by construction**
+(`confirm-workshop-agenda.ps1:148`, DRIFT-199-I003-079). **Two components disagree about what a valid
+controller is, and neither is wrong on its own terms.**
+
+**One of the two must change, and it must be decided rather than left:**
+
+- the **writer** enforces the reader's invariant and refuses to record a lens that is not selected; **or**
+- the **reader** tolerates intake-lens records, since `product-domain` is legitimately outside the technical
+  agenda.
+
+**Leaving both as they are is the third option and it is the one that produced this.** It is the
+records-versus-controller split (DRIFT-199-I003-010) reaching the point where it stops a workshop rather
+than merely disagreeing.
