@@ -1268,3 +1268,123 @@ failure still reproduces locally. **Cause open.**
 
 **Two of three open is the honest state**, and it is recorded as such rather than rounded into the one that
 is solved.
+
+---
+
+## B4F-023 - THE SEAL GATE REFUSED EVERY VALIDATOR RUN IN THE PROJECT, and closeout sealed before writing its own records
+
+**The finding of the day, established by the maintainer running the artifact rather than reading its head.
+`pr-review-integration` was never a pr-review defect at all.**
+
+### What was actually happening
+
+Every condition Test 7's soft warning needs is TRUE on this tree - `Active=True Host=github`,
+`OptIn.Enabled=True`, `038/001 state.md` matching, `pr-review-resolution.md` absent - and
+`validate-governance.ps1` is unchanged since the green tag. **The warning is never reached, because the run
+terminates before it.** Test 7's command, whole output, three lines:
+
+```
+[validator-scope] explicit-targets (1 iterations)
+FAIL [trust-hardening] closed-iteration-edited: Closed iteration
+     specs/199-beta3-stabilization/iterations/003 was edited after its closeout seal:
+     drift-log.md, review.md, tasks-progress.yml, state.md.
+[validator-timing] mode=scoped elapsed_ms=723
+```
+
+**The W51 seal gate is project-wide.** It runs on every validator invocation regardless of
+`-IterationPath` and exits on the spot - so a broken seal on one iteration **refuses every validator run in
+the project**, and every test that drives the validator fails for a reason that has nothing to do with what
+it tests.
+
+**That is B4F-013's rule exactly**: *a block upstream hides every defect downstream of it.* Here it hid
+whether the pr-review soft warning works at all.
+
+### TWO PRODUCT DEFECTS, both beta5
+
+**(a) Closeout writes the seal BEFORE its own last records.** 003 was sealed `2026-09-08T21:20:27Z` over
+dashboard, drift-log, plan, retro, review, state and tasks-progress. Then **`8a7e9f2e` edited `review.md`
+AFTER writing the seal, inside the same commit** - the closeout breaking its own seal, in one atomic change.
+`71895b38` and `a32434f4` then wrote the DRIFT-097 and prediction records into `drift-log.md` and
+`state.md`. **The seal must be the final write of closeout**, and `8a7e9f2e` proves it against itself.
+
+**Why the tag was green**: 003 was not yet sealed when it ran.
+
+**(b) B4F-002 UPGRADED - it is worse than recorded.** The post-seal writer does not merely write a false
+value. It flipped 003's `Iteration Status` from `complete` to `not-started`, rewrote `tasks-progress.yml`,
+**and thereby put the whole project into a state where the seal gate refuses every validator run.** A
+session resume - no user action, no command - can disable validation project-wide.
+
+### THE GATE OFFERS NO REMEDY, which puts it in B4F-017's family
+
+The refusal names the condition and **offers no remedy at all**. The only remedy that exists - a re-seal
+through the product's writer - **is not mentioned, because the product treats the condition as impossible.**
+Sealed means immutable, and the gate does not consult Post-Ship Amendments. So a human meeting this has a
+correct, specific, actionable-sounding failure and **nowhere to go**.
+
+That is the same family as B4F-017's `specrew update`, one step worse: there the named remedy was
+destructive; here there is no named remedy at all.
+
+### PRED-BETA4-007, stated before the fresh-project walk runs it
+
+**On a fresh project: close an iteration, resume the session, run the validator - it goes RED on
+`closed-iteration-edited`, for files the product itself rewrote.**
+
+If it holds, it is a **beta4 release-note known issue** with the one-line workaround
+(`git checkout` the iteration's `state.md` and `tasks-progress.yml`), and **whether it becomes a beta4 fix
+is the maintainer's call after the walk, not before.**
+
+### What was done here
+
+003's two writer-dirtied files were restored with `git checkout` (never staged - they re-dirty on every
+resume), and **003 was re-sealed on the maintainer's authorization**, bounded: `touched=3` before
+(review.md, drift-log.md, state.md), `touched=0` after, and the only changed path in 003 is
+`.specrew-iteration-seal.json`. **Nothing touches 003 after that point** - any edit inside it breaks the
+seal again, which is why this record lives here and not in 003.
+
+---
+
+## B4F-024 - I READ THE HEAD OF THE OUTPUT AND CALLED IT THE VERDICT
+
+**B4F-018's instance in my reading, the fourth this arc, and it changed a classification.**
+
+I reported `self-leak-lint` as failing on "171 annotated hits, zero unannotated" and classified its cause as
+**NOT MINE and unexplained**. **"Zero unannotated" was the FIRST line of the lint's output.** The verdict was
+further down:
+
+```
+RED: 1 unannotated Specrew-self fact(s): shared-governance.ps1:2169
+     matched 'DRIFT-199-I002-029' class self-provenance-id
+```
+
+**One unannotated hit, in the AcceptedForms comment block from the same `e3ccc53f` insertion** - the comment
+that read *"the same standard the batch settled at DRIFT-199-I002-029"*. The annotated 171 were never the
+failure; the suite's own PASS line says so: *"real repo deploy surface green (annotated debt recorded with
+reasons)"*.
+
+**The fix is the lint's own doctrine**: deployed teaching states the rule and never cites the internal
+record. Reworded to *"the same standard already settled for refusals - name the thing that actually
+failed"*.
+
+**The shape, again**: a claim measured over a narrower slice than it covers - here the first screen of an
+output rather than the output. **Running the artifact and reading the verdict is what found it**, which is
+the countermeasure B4F-018 names, applied by the maintainer to my report.
+
+---
+
+## B4F-025 - FEATURE 201 HAS NO SPEC, AND ITS CLOSEOUT WILL DEMAND ONE
+
+**Measured: feature 201 is the only live workshop candidate in this repository** - it carries both
+`lens-applicability.json` and a `spec.md` still holding the `specrew:spec-not-yet-authored` sentinel.
+
+Under the `software-feature` contract - correctly restored per B4F-020 - **201's closeout will demand a
+specification it honestly does not have**, because beta4 is a defect sweep whose bug list and root causes
+were complete before the feature existed.
+
+**A workshop is NOT run to satisfy that.** Running eight lenses to manufacture a spec for a fix that is
+already written, reviewed and mutation-proved would be producing the artifact to satisfy the gate rather
+than the work - the failure this project exists to prevent.
+
+**201 closes the way 003 did**: on the maintainer's explicit override, with the deviation stated in the
+record - that its conduct was bug-bash, that no spec was authored, and that the mechanism could not express
+either because work-kind is project-scoped (B4F-006, B4F-020). **The deviation record must say this
+explicitly rather than leaving a reader to infer it from an empty spec.**
