@@ -2681,3 +2681,77 @@ was testing a state the defect does not occur in.
   own artifacts and never asks the reader whether the result is readable. One assertion at the end of the
   write - read the controller back through `Get-SpecrewWorkshopLifecycleState` - would have caught both this
   and B4F-035 at the moment of the write.
+
+---
+
+## B4F-043 - A RECOGNIZED VERDICT WITH NOTHING PENDING IS DROPPED IN SILENCE, and the standard for this already exists
+
+**Router-skill session at design-analysis, `d4a89ab7`.** A human types a phrase the capture recognizes, no
+crossing is pending, and nothing is said. The human has no way to tell an accepted approval from a
+discarded one.
+
+**The standard is already written, in the same tree, for a different phrase family.**
+`HumanAuthorityStore.ps1` handles the partial-review-signoff override exactly as this finding asks:
+
+> `YOUR APPROVAL WAS NOT RECORDED. The phrase matched, but no partial-coverage approval is currently
+> outstanding for this project, so there was nothing for it to authorize. Nothing is wrong with your
+> decision.`
+
+and its comment states the rule in general terms: *"A phrase that did NOT match stays silent: that is
+ordinary conversation. A phrase that DID match and was then rejected is a human trying to authorize
+something, and their attempt must never vanish."*
+
+**So this is not a new standard to invent - it is an existing one that reached one phrase family and not
+the boundary family.** The capture must answer audibly, naming the crossing that IS pending or saying
+plainly that none is.
+
+---
+
+## B4F-044 - THE ITERATION SCAFFOLD CONSULTS NO AUTHORIZATION, and DRIFT-199-I003-086 is what that costs
+
+**Measured at source**: `extensions/specrew-speckit/scripts/scaffold-iteration-plan.ps1` contains **zero**
+references to authorization state - no `last_authorized_boundary`, no `Get-SpecrewPendingVerdictState`, no
+`boundary_enforcement`. It scaffolds and it sets boundary state, and nothing asks whether the crossing it
+implies was ever approved.
+
+**DRIFT-199-I003-086 is the recorded instance**: iteration 003's own scaffold set `boundary_type: plan`
+at 15:40:40 with no plan authored and no crossing authorized - in this project, by this project's own
+tooling.
+
+**In the router-skill session the scaffold advanced no state.** That is the finding's honest shape: the
+outcome was fine and **nothing checked**. A control that happens not to fire is not a control.
+
+---
+
+## B4F-045 - THE DESIGN DECISION HAS NO CAPTURE AT ALL - fix 2 item (f)
+
+**The gap, stated as three facts that are each checkable:**
+
+1. **`approved for plan with Option N` is defined nowhere.** It is not in the launch contract, not in the
+   skills, not in the capture.
+2. **The boundary grammar cannot carry it.** The approval anchor
+   (`ConversationCaptureAccessor.ps1:229`) admits an option only as a LEADING prefix and **caps it at
+   `[12]`** - so a three-option design decision cannot be expressed at all, and the trailing
+   `with option N` form falls inside the boundary remainder rather than being read as a choice.
+3. **So the crew recorded the choice as prose in `design-analysis.md`** - the one place nothing validates.
+
+**And the skill forbids the shortcut that would have avoided it.** `design-workshop.md:337` -
+*"Co-design - do NOT hand down finished options"* - requires the options to be co-built with the human.
+The methodology demands a real choice at design-analysis and the machinery offers nowhere to put it, so
+the choice lands in prose and the gate cannot see it.
+
+**Building as fix 2 item (f)**: `record-design-decision.ps1` writing a declared artifact the gate
+validates, under **its own phrase family** so it can never be confused with a boundary verdict. Distinct
+by construction rather than by convention: a decision phrase that does not begin with the approval verb
+cannot match the boundary anchor, and the test asserts that in both directions.
+
+---
+
+## B4F-046 - THE HANDOFF-EVIDENCE CHECK AND THE SYNC ORDER DISAGREE (beta5, seal-ordering family)
+
+The validator expects the handoff packet **before** the boundary commit; the sync writes it **after**
+(`sync-boundary-state.ps1:1756` validates the handoff text, `:2072` records the evidence). Same family as
+the seal-ordering items: a check and a writer that each behave correctly and disagree about when.
+
+**Deferred to beta5 at the maintainer's direction.** Recorded here so the family has all its members in
+one place.

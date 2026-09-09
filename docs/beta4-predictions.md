@@ -424,3 +424,52 @@ M2 tolerance removed -> Case 3 only; M3 completion hard-wired -> Case 2 only; M4
 -> Case 8 only. All restored byte-identical, mirror synced, post-restore green.
 
 **M1 also killed an assertion of mine that was green for the wrong reason** - see B4F-042.
+
+---
+
+## PRED-BETA4-011 - fix 2, the turn-end declaration. Stated before the code.
+
+**The principle being built**, in the maintainer's words: *the hook verifies artifacts the agent's scripts
+wrote, never the agent's prose.* The agent supplies facts as parameters; the script decides what to render;
+the hook checks that the script ran for this session and this turn.
+
+**What the surfaces look like before the change**, read rather than remembered:
+
+- `Test-SpecrewReentryPacketPresent` scores >= 4 of 6 header phrases in the flattened last assistant
+  message. Prose scoring.
+- The W25 orientation lane reads up to **200 transcript lines** and scans them for banner prose, because a
+  compliant session was told 188 times that its orientation was never shown.
+- `Get-SpecrewMaterialRuntimeState` already scopes per-session state under
+  `.specrew/runtime/conformance-sessions/<sha256(host|session)>/`, and already owns `orientation-rendered.json`
+  at that path. So (b) replaces WHO writes that file, not where it lives.
+- Skills deploy from `squad-templates/skills/*.md` as `specrew-<basename>`, so `turn-end.md` there becomes
+  `specrew-turn-end` with no catalog change.
+
+### THE PREDICTION, six parts, each falsifiable
+
+1. **The identity handshake is the failure mode, and it is tested first.** The script and the hook must
+   derive the *same* record path or the refusal fires on every compliant turn - strictly worse than what it
+   replaces. Prediction: deriving it in ONE shared function that both dot-source makes a mismatch
+   impossible, and a test that runs the script and then asks the provider's own resolver returns a
+   byte-identical path. **If this fails, nothing else in fix 2 matters.**
+2. **Well under a second.** `declare-turn-end.ps1` measured over at least 10 runs, worst case **under
+   400 ms**, and **no `git` invocation and no transcript read on any path**. The timing alone does not
+   settle it: if any path shells out or opens the transcript, the claim fails regardless of the clock.
+3. **Host-neutral.** Zero host names in the script outside the identity value it copies from
+   `session-marker.json` - falsifiable by grep for claude/codex/copilot/cursor/antigravity.
+4. **Four branches, exhaustive and disjoint**: in-flight -> silent; boundary -> verified against
+   `pending-verdict-stop.md`; conversational -> silent; absent with material work by this session -> exactly
+   ONE refusal naming the command and its parameters. A read-only second session in the same project
+   receives no advisory.
+5. **The retirements are real, not shadowed.** After the change, `Test-SpecrewReentryPacketPresent`, the
+   STOP-INTENT marker parse and the material-owner baseline attribution have **zero live callers**, proved
+   by a tree-wide grep excluding the tests that assert their absence. Attribution becomes the declaring
+   session.
+6. **(d) closes the receipt hole.** With `present-workshop-question.ps1` writing the projection, the
+   candidate scan requiring it, and line 564's punctuation heuristic gone, **a receipt cannot mint without a
+   declared question**. That is the direct control on B4F-012's class - the ConsoleFractal specimen's four
+   `architecture-core` receipts minted against a refusal, which is not a question anyone asked.
+
+**Fixed in advance**: if (1) fails the build is abandoned rather than patched, because a handshake that can
+drift is a refusal engine. If (2) fails, this is a per-turn cost nobody should accept and the design goes
+back. If (5) shows a live caller, the retirement is a claim and not a fact.

@@ -64,16 +64,11 @@ $script:SpecrewSubstantialChars = 600
 $script:SpecrewContinueLoopGuardBound = 3  # FR-045a: bound on consecutive `continue` classifications for the SAME material surface before the guard trips the classifier to a real stop (a runaway continue can never loop forever).
 $script:SpecrewLongTurnAssistantEntries = 15  # maintainer 2026-07-14 fixture (d): a read-only turn with >= this many assistant transcript entries since the last HUMAN message is a LONG investigation and owes the five-part packet (re-entry cost is the turn itself, not the diff).
 
-function Test-SpecrewReentryPacketPresent {
-    # >=4 of the 6 canonical section-header phrases present in the (flattened) last assistant message = the packet
-    # was rendered. Phrase-based (not '## '-prefixed) so it survives the transcript flattening; >=4 (not all 6)
-    # tolerates minor wording drift without letting a bare message through.
-    param([AllowNull()][string]$Text)
-    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
-    $hits = 0
-    foreach ($h in $script:SpecrewReentryHeaders) { if ($Text -match [regex]::Escape($h)) { $hits++ } }
-    return ($hits -ge 4)
-}
+# RETIRED 2026-09-09 (fix 2): Test-SpecrewReentryPacketPresent scored the agent's prose - four of the six
+# section headers in the flattened last assistant message meant "the packet was rendered". It is gone, and
+# nothing replaces it in kind. Whether a packet was rendered is now something the agent's own script RECORDS
+# when it renders one, and this provider reads that record. $SpecrewReentryHeaders survives only as the
+# diagnostic header count in the journal row, which observes and decides nothing.
 
 function Get-SpecrewBlockCount {
     # Consecutive-block count for THIS advance ($Key = "<working>|<lastAuth>"). 0 if absent / a DIFFERENT advance /
@@ -762,6 +757,37 @@ try {
         return  # Stop enforcement + genuine turn-start capture + PostToolUse nudge only (defensive).
     }
     $materialRuntime = Get-SpecrewMaterialRuntimeState -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg
+    # THE TURN-END DECLARATION. The paths come from turn-end-store.ps1, which the AGENT'S script also
+    # dot-sources - one resolver, both sides. A second copy of that arithmetic here would be the bug this
+    # whole design is trying not to have: a writer and a reader that can drift apart, producing a refusal on
+    # every compliant turn.
+    $turnEndPaths = $null
+    $turnEndRecord = $null
+    $turnEndKind = ''
+    try {
+        $turnEndStorePath = Join-Path $PSScriptRoot 'turn-end-store.ps1'
+        if (-not (Get-Command Get-SpecrewTurnEndPaths -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $turnEndStorePath -PathType Leaf)) {
+            . $turnEndStorePath
+        }
+        if (Get-Command Get-SpecrewTurnEndPaths -ErrorAction SilentlyContinue) {
+            $turnEndPaths = Get-SpecrewTurnEndPaths -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg
+            $turnEndRecord = Read-SpecrewTurnEndRecord -Path $turnEndPaths.RecordPath
+            if ($null -ne $turnEndRecord) { $turnEndKind = [string]$turnEndRecord.kind }
+        }
+    }
+    catch { $turnEndPaths = $null; $turnEndRecord = $null; $turnEndKind = '' }
+    # THE FOUR BRANCHES, and they are exhaustive over what the record can say:
+    #   boundary       -> verified against the pending crossing further down ($packetPresent).
+    #   in-flight      -> silent, UNLESS its bound tripped, which makes it a real stop.
+    #   conversational -> silent.
+    #   absent         -> nothing was declared this turn; material work then owes the refusal.
+    # `$turnEndDeclared` is what separates the last branch from the other three. It is deliberately NOT
+    # `$packetPresent`: a turn that declared in-flight or conversational HAS declared, and demanding a
+    # boundary packet from it would be the over-blocking this fix exists to end.
+    $turnEndDeclared = (-not [string]::IsNullOrWhiteSpace($turnEndKind))
+    $turnEndInFlightExhausted = ($turnEndKind -eq 'in-flight' -and $null -ne $turnEndRecord -and
+        $turnEndRecord.PSObject.Properties['in_flight_exhausted'] -and [bool]$turnEndRecord.in_flight_exhausted)
+    $turnEndPendingText = if ($null -ne $turnEndRecord -and $turnEndRecord.PSObject.Properties['pending']) { [string]$turnEndRecord.pending } else { '' }
     $turnCorePath = Join-Path $PSScriptRoot 'conformance-turn-delta.ps1'
     if (-not (Get-Command Get-SpecrewTurnSnapshot -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $turnCorePath -PathType Leaf)) {
         try { . $turnCorePath } catch { $null = $_ }
@@ -1135,68 +1161,35 @@ try {
             $intakeRx = [regex]::new('(?i)\bwhat\b[^.?!]{0,60}\b(?:do you want|would you like|are you looking|should we|are we|can i help you)\b[^.?!]{0,40}\b(?:build|create|make|work on)\b|(?i)\bwhat\b[^.?!]{0,40}\b(?:feature|app|project|product)\b[^.?!]{0,40}\b(?:build|create|want|like)\b|(?i)\bwhat (?:do you want|would you like) to build\b')
             if ($intakeRx.IsMatch($lastAssistantText)) { $intakeHit = $true }
         }
-        # BOUNDARY VERDICT MARKER (Antigravity dogfood gap): at a boundary the six-section HEADERS alone do NOT
-        # authorize the crossing - the <!-- SPECREW-VERDICT-BOUNDARY --> marker is what captures the verdict. A weak
-        # host rendered the headers but NOT the marker, so the verdict was never captured (last_authorized stayed
-        # none) yet the header check suppressed the block. So at a boundary, suppress ONLY when the marker for the
-        # PENDING crossing is present; headers without that marker still block.
-        if ($hasPending -and $ccLoaded -and (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue)) {
-            try {
-                $pkt = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $transcriptPathArg
-                if ($null -ne $pkt -and [bool]$pkt.Found -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
-                    $pktFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pkt.FromBoundary)
-                    $pktTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pkt.ToBoundary)
-                    $expectedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
-                    $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
-                    if (-not [string]::IsNullOrWhiteSpace($pktTo) -and $pktFrom -eq $expectedFrom -and $pktTo -eq $expectedTo) { $markerForPendingCrossing = $true }
-                }
-            }
-            catch { $null = $_ }
-        }
+        # THE BOUNDARY MARKER IS VERIFIED AGAINST THE DECLARATION, NOT THE TRANSCRIPT.
+        #
+        # What stood here read the transcript back and hunted for a rendered crossing marker, because at a
+        # boundary the six section headers alone never authorized anything - a host that rendered the headers
+        # and dropped the marker suppressed the block while capturing no verdict. That was a true problem
+        # solved by reading prose. Now the agent's own script records WHICH crossing it rendered, and this
+        # compares that against the crossing the gate says is pending: artifact against artifact, with no
+        # host, no transcript and no wording in the path.
     }
-    $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
-    $transcriptRereadAttempted = $false
-    $transcriptRereadRecovered = $false
-    # DRIFT-199-I001-015: a transcript writer can expose a parseable but incomplete final assistant
-    # record while Stop is reading it. Do not tax every Stop with repeated tail-200 parsing. A 1-3 header
-    # near-miss is the measured signature, so only then wait one scheduler slice and re-read eight lines.
-    # This is a bounded recovery read, not a poll loop; an unreadable retry preserves fail-safe enforcement.
-    $initialHeaderHits = 0
-    foreach ($header in $script:SpecrewReentryHeaders) {
-        if (-not [string]::IsNullOrEmpty([string]$lastAssistantText) -and [string]$lastAssistantText -match [regex]::Escape($header)) { $initialHeaderHits++ }
-    }
-    if (-not $packetPresent -and $initialHeaderHits -ge 1 -and $initialHeaderHits -le 3 -and $ccLoaded -and
-        -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)) {
-        $transcriptRereadAttempted = $true
+    # WHAT "THE PACKET IS PRESENT" NOW MEANS: the agent's turn-end script ran for THIS session and THIS
+    # turn and declared a boundary. Not four of six header phrases in the flattened last message.
+    #
+    # What this replaces is worth stating precisely, because it was not a bad implementation of a good idea -
+    # it was a detector inferring intent from its shadow. It scored prose; a 1-3 header near-miss then
+    # triggered a sleep and an eight-line transcript re-read to recover from a partially-written record. Every
+    # part of that existed because the signal was never designed to be read - it was reconstructed.
+    #
+    # A declaration is designed to be read. The re-read lane, the header scoring and the sleep all go with it.
+    $packetPresent = ($turnEndKind -eq 'boundary')
+    if ($packetPresent -and $hasPending -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
         try {
-            Start-Sleep -Milliseconds 15
-            $retryTail = @(Get-Content -LiteralPath $transcriptPathArg -Tail 8 -Encoding UTF8 -ErrorAction Stop)
-            $retryAssistantText = $null
-            for ($retryIndex = $retryTail.Count - 1; $retryIndex -ge 0; $retryIndex--) {
-                $retryTurn = Get-SpecrewConversationTurnFromLine -Line $retryTail[$retryIndex]
-                if ($null -ne $retryTurn -and [string]$retryTurn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$retryTurn.text)) {
-                    $retryAssistantText = [string]$retryTurn.text
-                    break
-                }
-            }
-            if (-not [string]::IsNullOrWhiteSpace($retryAssistantText) -and (Test-SpecrewReentryPacketPresent -Text $retryAssistantText)) {
-                $lastAssistantText = $retryAssistantText
-                $packetPresent = $true
-                $transcriptRereadRecovered = $true
-                # Boundary packets also owe an exact crossing marker. Re-run the canonical capture only
-                # after a recovered near-miss so the header and marker decisions see the same bytes.
-                if ($hasPending -and (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue)) {
-                    try {
-                        $retryPacket = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $transcriptPathArg
-                        if ($null -ne $retryPacket -and [bool]$retryPacket.Found -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
-                            $retryFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$retryPacket.FromBoundary)
-                            $retryTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$retryPacket.ToBoundary)
-                            $expectedRetryFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
-                            $expectedRetryTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
-                            if (-not [string]::IsNullOrWhiteSpace($retryTo) -and $retryFrom -eq $expectedRetryFrom -and $retryTo -eq $expectedRetryTo) { $markerForPendingCrossing = $true }
-                        }
-                    }
-                    catch { $null = $_ }
+            $declaredBoundary = [string]$turnEndRecord.boundary
+            if (-not [string]::IsNullOrWhiteSpace($declaredBoundary) -and $declaredBoundary -match '^\s*(.+?)\s*->\s*(.+?)\s*$') {
+                $declaredFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary $Matches[1]
+                $declaredTo = Normalize-SpecrewCanonicalBoundaryType -Boundary $Matches[2]
+                $expectedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
+                $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
+                if (-not [string]::IsNullOrWhiteSpace($declaredTo) -and $declaredFrom -eq $expectedFrom -and $declaredTo -eq $expectedTo) {
+                    $markerForPendingCrossing = $true
                 }
             }
         }
@@ -1329,8 +1322,12 @@ try {
     # check, because there is no crossing to approve.
     $boundaryBlock = $hasPending -and (-not $markerForPendingCrossing)
     $materialAlreadySatisfied = $materialStop -and (-not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) -and ([string]$materialSignal.key -eq [string]$materialSatisfiedKey)
-    $materialInitialBlock = (-not $hasPending) -and $materialStop -and (-not $packetPresent) -and (-not $materialAlreadySatisfied)
-    $materialRetryBlock = (-not $hasPending) -and (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $packetPresent)
+    # A DECLARATION OF ANY KIND SATISFIES THE MATERIAL LANE. What is owed after material work is that the
+    # agent END ITS TURN THROUGH THE SCRIPT - not that it produce a boundary packet, which most material
+    # turns do not owe. Keying this on $packetPresent would demand a six-section packet from every turn that
+    # changed a file, which is the over-blocking the measured eight-stops session was made of.
+    $materialInitialBlock = (-not $hasPending) -and $materialStop -and (-not $turnEndDeclared) -and (-not $materialAlreadySatisfied)
+    $materialRetryBlock = (-not $hasPending) -and (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $turnEndDeclared)
     $materialBlock = $materialInitialBlock -or $materialRetryBlock
     # FR-068 (T090): stage-evidence absence PRE-EMPTS the ordinary boundary block, so the demand and
     # its marker instruction are never composed. It deliberately does NOT clear $hasPending.
@@ -1469,7 +1466,7 @@ try {
         }
         catch { $coverageDecisionBlock = $false }
     }
-    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($unauthorizedSourceBlock) { 'unauthorized-source' } elseif ($coverageDecisionBlock) { 'coverage-decision' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
+    $blockKind = if ($hasPending -and $stageEvidenceAbsent) { 'boundary-evidence-absent' } elseif ($boundaryBlock) { 'boundary' } elseif ($boundaryUnrecordable) { 'boundary-unrecordable' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair -or $missingWorkshopController -or $workshopAgendaPresentationMissing -or $preScaffoldWorkshopAttempt -or $workshopProductRecordMissingAgenda -or $workshopAgendaReformatted -or $workshopProductRecordsUnreceipted) { 'workshop-repair' } elseif ($unauthorizedSourceBlock) { 'unauthorized-source' } elseif ($coverageDecisionBlock) { 'coverage-decision' } elseif ($turnEndInFlightExhausted) { 'in-flight-exhausted' } elseif ($materialBlock) { 'material' } elseif ($orientationOwed) { 'orientation' } else { 'none' }
 
     # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
     # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
@@ -1668,6 +1665,11 @@ try {
     elseif ($blockKind -eq 'orientation') {
         # Keyed per session so the cap counts THIS session's unshown orientation, not a pooled 'na'.
         ("orientation|{0}" -f [string]$materialRuntime.Owner)
+    }
+    elseif ($blockKind -eq 'in-flight-exhausted') {
+        # Keyed by the repeated text: a different thing being waited on is a different surface, and the cap
+        # should count each one separately rather than pooling every long wait a session ever had.
+        ("in-flight-exhausted|{0}" -f $turnEndPendingText)
     }    elseif ($blockKind -eq 'boundary-unrecordable' -and $null -ne $pending) {
         ("unrecordable|{0}" -f [string]$pending.WorkingBoundary)
     }
@@ -1956,12 +1958,25 @@ try {
                 }
             }
             elseif ($blockKind -eq 'material') {
-                [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')
+                # THE REFUSAL NAMES THE COMMAND AND ITS PARAMETERS, because what is owed is now one runnable
+                # thing rather than a shape to compose from memory. What stood here dictated five headings and
+                # a URL convention, then judged the result by scoring the prose that came back: the agent had
+                # to reproduce a format and the check had to recognise it. Both halves are gone. The script
+                # renders; this says which script and what to pass it.
+                [void]$sb.AppendLine('Specrew: this Stop followed material work and no turn-end declaration was recorded for this turn. Run the turn-end script NOW as your last action, then stop again:')
+                [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>'")
+                [void]$sb.AppendLine("Pick the kind by what this turn actually was. -Kind boundary when the human's judgment decides what happens next, adding -Owed '<artifact>' if the stage owes something it has not produced. -Kind in-flight with -Pending '<the work>' while background work is still running. -Kind conversational when nothing material changed.")
+                [void]$sb.AppendLine('Output whatever the script returns, verbatim. It may return nothing, and nothing is a complete answer.')
                 $w52MaterialLine = if (Get-Command Get-SpecrewReviewCoverageLine -ErrorAction SilentlyContinue) { try { [string](Get-SpecrewReviewCoverageLine -ProjectRoot $projectRoot) } catch { '' } } else { '' }
-                if (-not [string]::IsNullOrWhiteSpace($w52MaterialLine)) { [void]$sb.AppendLine(('Include this line verbatim in the packet: {0}' -f $w52MaterialLine)) }
-                [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You')
-                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
-                [void]$sb.AppendLine('This is a NON-BOUNDARY material-work stop; do NOT emit a SPECREW-VERDICT-BOUNDARY marker.')
+                if (-not [string]::IsNullOrWhiteSpace($w52MaterialLine)) { [void]$sb.AppendLine(('Pass this line through in -Summary: {0}' -f $w52MaterialLine)) }
+            }
+            elseif ($blockKind -eq 'in-flight-exhausted') {
+                # In-flight is the one kind no artifact can confirm, so it is the one kind that can be used to
+                # never stop. The bound is FR-045a's, carried rather than re-chosen: two numbers for one idea
+                # is how a guard rots.
+                [void]$sb.AppendLine(("Specrew: this turn declared in flight on '{0}' again, and that has now been the pending item on more consecutive turns than the guard allows with nothing else recorded. Waiting is no longer a report." -f $turnEndPendingText))
+                [void]$sb.AppendLine('Say plainly what is actually happening: what is being waited on, how long it has been waiting, and what you propose - keep waiting, check it directly, or abandon it. Then stop and let the human answer.')
+                [void]$sb.AppendLine('Do NOT declare in-flight again for the same item without something new to report.')
             }
             if ($blockKind -eq 'orientation') {
                 [void]$sb.AppendLine('Specrew: this session''s orientation was handed to you and the human never saw it. Render it NOW as visible prose: that Specrew is active with its version and host, where this project stands in the lifecycle, where their artifacts live, what will be asked of them at boundaries, and what you believe about them so they can correct it. Then continue what you were doing.')
@@ -2078,10 +2093,31 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_reread_attempted = $transcriptRereadAttempted; dx_reread_recovered = $transcriptRereadRecovered; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }
+    }
+
+    # --- THE TURN ADVANCES HERE, and only here ------------------------------------------------------
+    #
+    # The turn id is a counter this hook increments, because the alternative - deriving it from the turn
+    # baseline the host's prompt event writes - resolves every turn of a host that emits no prompt event to
+    # the SAME id, and a single declaration made in turn 1 would then satisfy this check forever.
+    #
+    # It advances AFTER the declaration for this turn has been read and judged, so a declaration written
+    # earlier in the same turn - which is where it will be, since the agent runs the script as its last
+    # ACTION and this hook fires after the message - still matches when it is looked for.
+    #
+    # It does NOT advance when a block fires. A block force-continues the SAME turn: the agent renders what
+    # was demanded and stops again, and that second stop is the same turn reaching its end. Advancing on the
+    # block would orphan the declaration the block exists to demand.
+    #
+    # A duplicate hook delivery never reaches this line - the dedupe above returns first - so a re-fire for
+    # one message cannot move the turn underneath a declaration that is still current.
+    if ([string]::IsNullOrWhiteSpace($blockReason) -and $null -ne $turnEndPaths -and
+        (Get-Command Step-SpecrewTurnCounter -ErrorAction SilentlyContinue)) {
+        try { $null = Step-SpecrewTurnCounter -StateRoot ([string]$turnEndPaths.StateRoot) } catch { $null = $_ }
     }
 
     # --- emit: a block sentinel (the dispatcher force-continues), else the plain inject nudges, else nothing ---

@@ -231,7 +231,7 @@ try {
     $ra = Invoke-Conformance -Proj $pa -TranscriptPath $ta
     if ($ra.Code -ne 0) { Fail "Case (a): provider must exit 0 (got $($ra.Code)); out: $($ra.Out)" }
     if (-not $ra.Blocked) { Fail "Case (a): a continue-marker stop still force-continues the turn (it emits the STOP-BLOCK sentinel carrying the continuation directive). Out: $($ra.Out)" }
-    if ($ra.Out -match 'five-part context packet') { Fail "Case (a): a continue classification MUST NOT render the five-part material packet. Out: $($ra.Out)" }
+    if ($ra.Out -match 'declare-turn-end\.ps1') { Fail "Case (a): a continue classification MUST NOT render the five-part material packet. Out: $($ra.Out)" }
     if ($ra.Out -match 'What I Just Did' -or $ra.Out -match 'What I Need From You') { Fail "Case (a): the continuation directive MUST NOT carry the packet section headings. Out: $($ra.Out)" }
     if ($ra.Out -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case (a): a non-boundary continue MUST NOT demand a verdict-boundary marker. Out: $($ra.Out)" }
     if ($ra.Out -notmatch 'CONTINUATION DIRECTIVE') { Fail "Case (a): the output MUST be the continuation directive. Out: $($ra.Out)" }
@@ -253,7 +253,7 @@ try {
     $rb = Invoke-Conformance -Proj $pb -TranscriptPath $tb
     if ($rb.Code -ne 0) { Fail "Case (b): provider must exit 0 (got $($rb.Code)); out: $($rb.Out)" }
     if ($rb.Blocked) { Fail "Case (b): an intermediate-marker stop MUST NOT block (async in flight; the turn ends and resumes on completion). Out: $($rb.Out)" }
-    if ($rb.Out -match 'five-part context packet') { Fail "Case (b): an intermediate stop MUST NOT render the material packet. Out: $($rb.Out)" }
+    if ($rb.Out -match 'declare-turn-end\.ps1') { Fail "Case (b): an intermediate stop MUST NOT render the material packet. Out: $($rb.Out)" }
     if ($rb.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (b): an intermediate stop is not a continuation directive. Out: $($rb.Out)" }
     Write-Pass "Case (b): a material INTERMEDIATE-marker stop is SUPPRESSED (no block, no packet, no directive) - the async completion resumes the agent"
 
@@ -266,8 +266,9 @@ try {
     $tc = New-Transcript -Proj $pc -Turns @(@{ role = 'assistant'; text = 'I updated the provider and tests. Stopping here.' })
     $rc = Invoke-Conformance -Proj $pc -TranscriptPath $tc
     if (-not $rc.Blocked) { Fail "Case (c): a material stop with NO marker MUST still block with the five-part packet (fail-safe/real). Out: $($rc.Out)" }
-    if ($rc.Out -notmatch 'five-part context packet') { Fail "Case (c): the no-marker material block must demand the five-part context packet. Out: $($rc.Out)" }
-    if ($rc.Out -notmatch 'What I Just Did' -or $rc.Out -notmatch 'What I Need From You') { Fail "Case (c): the material block directive must name the packet headings. Out: $($rc.Out)" }
+    if ($rc.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case (c): the no-marker material block must demand the five-part context packet. Out: $($rc.Out)" }
+    # Same change as conformance-detection Case 4c: the fail-safe material path now names the command.
+    if ($rc.Out -notmatch '-Kind <boundary\|in-flight\|conversational>') { Fail "Case (c): the no-marker material block must name the turn-end command and its parameters. Out: $($rc.Out)" }
     if ($rc.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (c): a no-marker material stop is NOT a continuation. Out: $($rc.Out)" }
     if ($rc.Out -match '<!-- SPECREW-VERDICT-BOUNDARY') { Fail "Case (c): a material stop must not demand a boundary verdict marker. Out: $($rc.Out)" }
     Write-Pass "Case (c): a material stop with NO stop-intent marker falls through to the existing five-part packet (fail-safe / real path unchanged)"
@@ -297,14 +298,14 @@ try {
         $rn = Invoke-Conformance -Proj $pe -TranscriptPath $tn
         if (-not $rn.Blocked) { Fail "Case (e): continue #$n (within the bound) must force-continue. Out: $($rn.Out)" }
         if ($rn.Out -notmatch 'CONTINUATION DIRECTIVE') { Fail "Case (e): continue #$n must emit the continuation directive. Out: $($rn.Out)" }
-        if ($rn.Out -match 'five-part context packet') { Fail "Case (e): continue #$n must NOT yet fall back to the material packet. Out: $($rn.Out)" }
+        if ($rn.Out -match 'declare-turn-end\.ps1') { Fail "Case (e): continue #$n must NOT yet fall back to the material packet. Out: $($rn.Out)" }
     }
     New-HandoverSnapshot -Proj $pe -ChangedUserFiles 2
     $t4 = New-Transcript -Proj $pe -Turns @(@{ role = 'assistant'; text = ("Still the same surface, no progress (attempt 4).`n`n" + $continueMarker) })
     $r4 = Invoke-Conformance -Proj $pe -TranscriptPath $t4
     if (-not $r4.Blocked) { Fail "Case (e): the 4th continue (guard tripped) must still block. Out: $($r4.Out)" }
     if ($r4.Out -match 'CONTINUATION DIRECTIVE') { Fail "Case (e): once the guard trips, the classifier returns 'real' - it must NOT keep emitting continuation directives. Out: $($r4.Out)" }
-    if ($r4.Out -notmatch 'five-part context packet') { Fail "Case (e): once the guard trips, the standard five-part material packet MUST fire (runaway-continue fallback). Out: $($r4.Out)" }
+    if ($r4.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case (e): once the guard trips, the standard five-part material packet MUST fire (runaway-continue fallback). Out: $($r4.Out)" }
     Write-Pass "Case (e): a runaway continue on the same material surface is BOUNDED - after 3 continues the guard trips and the five-part material packet fires (never an infinite continue loop)"
 
     Write-Host "`n=== conformance-stop-intent-wiring.tests.ps1: all assertions passed ===" -ForegroundColor Green

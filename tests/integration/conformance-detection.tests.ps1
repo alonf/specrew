@@ -51,6 +51,45 @@ function New-Fixture {
     return $proj
 }
 
+function New-PendingVerdictStop {
+    # The INPUT artifact sync-boundary-state.ps1 writes when a crossing is pending. These fixtures never run
+    # the sync, so it is written here - and that is the right split: the artifact UNDER TEST is the turn-end
+    # record, and that one is always produced by running its real producer, never hand-written. Fabricating
+    # the artifact whose production is broken is exactly how a whole family of workshop fixtures stayed green
+    # through a defect they were written to catch.
+    param([string]$Proj, [string]$From, [string]$To)
+    $runtime = Join-Path $Proj '.specrew\runtime'
+    if (-not (Test-Path -LiteralPath $runtime)) { New-Item -ItemType Directory -Path $runtime -Force | Out-Null }
+    $boundary = ('{0} -> {1}' -f $From, $To)
+    $lines = @(
+        '# Specrew Pending Verdict Stop'
+        ''
+        ('Boundary to ask for: {0}' -f $boundary)
+        ('Human approval phrase: approved for {0}' -f $To)
+        'Marker last line exactly:'
+        ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
+        ''
+        ('Working boundary: {0}' -f $To)
+        ('Last authorized boundary: {0}' -f $From)
+        'Feature: 050-host-neutral-gate'
+    )
+    [System.IO.File]::WriteAllText((Join-Path $runtime 'pending-verdict-stop.md'), (($lines -join [Environment]::NewLine) + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+}
+
+function New-Declaration {
+    # RUNS THE REAL declare-turn-end.ps1. Nothing in this suite writes a turn-end record by hand: the hook now
+    # depends on that artifact, so the artifact must come from its producer or the suite proves only that the
+    # test can write JSON.
+    param([string]$Proj, [string]$Kind = 'boundary', [string]$Summary = 'fixture turn', [AllowNull()][string]$Pending, [AllowNull()][string]$From, [AllowNull()][string]$To)
+    if (-not [string]::IsNullOrWhiteSpace($From)) { New-PendingVerdictStop -Proj $Proj -From $From -To $To }
+    $declarer = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\declare-turn-end.ps1'
+    $argsList = @('-NoProfile', '-File', $declarer, '-Kind', $Kind, '-ProjectRoot', $Proj, '-Summary', $Summary, '-AsJson')
+    if (-not [string]::IsNullOrWhiteSpace($Pending)) { $argsList += @('-Pending', $Pending) }
+    $out = & pwsh @argsList 2>&1
+    $joined = (@($out) -join "`n")
+    try { return ($joined | ConvertFrom-Json) } catch { throw ("declare-turn-end failed: " + $joined) }
+}
+
 function Save-FixtureStructure {
     param([string]$Proj, [string]$Message)
     $null = & git -C $Proj add -- specs
@@ -474,14 +513,38 @@ try {
     if ($r1.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 1: the block directive must carry the contiguous clarify -> plan marker. Out: $($r1.Out)" }
     Write-Pass "Case 1: a boundary silent-advance emits the block sentinel + the six-section directive + the contiguous clarify -> plan marker (#2884 / SC-008 #2)"
 
-    # ---- Case 2: FALSE-POSITIVE GUARD (boundary). Same state, but the packet WAS rendered this turn
-    #              (clarify -> plan == pending crossing) -> no block.
+    # ---- Case 2 (NEGATIVE CONTROL, FLIPPED 2026-09-09): PROSE IS NOT EVIDENCE.
+    #
+    # This case asserted the opposite until fix 2, and it was right for the design it was written against: a
+    # message carrying the six headers and the matching marker suppressed the block. That design read the
+    # agent's prose and believed it. The measured cost of believing prose is in the record - a compliant
+    # session told 188 times its orientation was never shown, a workshop refused for an underscore in a name
+    # while the message quoted the value - and the replacement does not score text at all.
+    #
+    # So a perfect packet with NO declaration must BLOCK. This is the control that fails if the hook ever
+    # drifts back to reading messages, and the mutation at the end of this file proves it does.
     $p2 = New-Fixture -Working 'plan' -LastAuth 'clarify'
     New-BoundaryStageEvidence -Proj $p2
     $t2 = New-Transcript -Proj $p2 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $realPacket })
     $r2 = Invoke-Conformance -Proj $p2 -TranscriptPath $t2
-    if ($r2.Blocked) { Fail "Case 2: a rendered packet (clarify -> plan == pending crossing) is a legitimate awaiting-verdict stop - MUST NOT block. Out: $($r2.Out)" }
-    Write-Pass "Case 2: a rendered six-section packet matching the pending crossing SUPPRESSES the block (false-positive guard)"
+    if (-not $r2.Blocked) { Fail "Case 2: a six-section packet with the matching marker but NO turn-end declaration MUST block - prose is not evidence. Out: $($r2.Out)" }
+    Write-Pass "Case 2 (negative control): a flawless prose packet with no declaration BLOCKS - the hook does not read messages"
+
+    # ---- Case 2b (POSITIVE CONTROL, AND IT NAMES ITS PATH): the same state, declared through the real script.
+    #
+    # A control that only asserts "no block" can pass while the hook is broken in the permissive direction, so
+    # this one also asserts WHERE the evidence came from: the record file exists at the path the shared store
+    # resolves, and it is the file the script wrote. If Case 2b fails, every suppression verdict below is void.
+    $p2b = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p2b
+    $d2b = New-Declaration -Proj $p2b -Kind 'boundary' -From 'clarify' -To 'plan'
+    if (-not $d2b.record_written) { Fail "Case 2b: the declaration script did not write its record. $($d2b | ConvertTo-Json -Compress)" }
+    if (-not (Test-Path -LiteralPath $d2b.record_path -PathType Leaf)) { Fail "Case 2b: the record path the script reported does not exist: $($d2b.record_path)" }
+    if ($d2b.record_path -notmatch 'turn-end') { Fail "Case 2b: the record must live under the turn-end store, not somewhere incidental: $($d2b.record_path)" }
+    $t2b = New-Transcript -Proj $p2b -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'Done. Stopping for your verdict.' })
+    $r2b = Invoke-Conformance -Proj $p2b -TranscriptPath $t2b
+    if ($r2b.Blocked) { Fail "Case 2b: a DECLARED boundary matching the pending crossing MUST suppress, whatever the message says. Out: $($r2b.Out)" }
+    Write-Pass "Case 2b (positive control): a declared boundary suppresses the block, and the record is at the path the shared store resolves"
 
     # ---- Case 3: cursor caught up. working == authorized, no spec, short msg -> not pending, not substantial -> no block.
     $p3 = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -515,8 +578,11 @@ try {
     $t4c = New-Transcript -Proj $p4c -Turns @(@{ role = 'assistant'; text = 'I updated the provider and tests. Stopping here.' })
     $r4c = Invoke-Conformance -Proj $p4c -TranscriptPath $t4c
     if (-not $r4c.Blocked) { Fail "Case 4c: a material non-boundary Stop with no context packet MUST block. Out: $($r4c.Out)" }
-    if ($r4c.Out -notmatch 'five-part context packet') { Fail "Case 4c: material block must demand the five-part context packet, not a boundary verdict packet. Out: $($r4c.Out)" }
-    if ($r4c.Out -notmatch 'What I Just Did' -or $r4c.Out -notmatch 'What I Need From You') { Fail "Case 4c: material block directive must name the packet headings. Out: $($r4c.Out)" }
+    if ($r4c.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 4c: material block must demand the five-part context packet, not a boundary verdict packet. Out: $($r4c.Out)" }
+    # The material directive no longer dictates headings - it names the command that renders them. Asserting
+    # the headings here would pin the very thing fix 2 removed: a format the agent reproduces from memory and
+    # a check that recognises the reproduction.
+    if ($r4c.Out -notmatch '-Kind <boundary\|in-flight\|conversational>') { Fail "Case 4c: the material directive must name the command's parameters, not a set of headings. Out: $($r4c.Out)" }
     if ($r4c.Out -match '<!-- SPECREW-VERDICT-BOUNDARY') { Fail "Case 4c: material block must not demand a boundary verdict marker. Out: $($r4c.Out)" }
     Write-Pass "Case 4c: a MATERIAL non-boundary Stop without the context packet emits the stop-block sentinel + five-part directive"
 
@@ -524,7 +590,8 @@ try {
     $p4d = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p4d
     New-HandoverSnapshot -Proj $p4d -ChangedUserFiles 2
-    $t4d = New-Transcript -Proj $p4d -Turns @(@{ role = 'assistant'; text = $materialPacket })
+    $null = New-Declaration -Proj $p4d -Kind 'conversational' -Summary 'material work, declared'
+    $t4d = New-Transcript -Proj $p4d -Turns @(@{ role = 'assistant'; text = 'Done.' })
     $r4d = Invoke-Conformance -Proj $p4d -TranscriptPath $t4d
     if ($r4d.Blocked) { Fail "Case 4d: a material Stop with the five-part context packet already rendered MUST NOT block. Out: $($r4d.Out)" }
     Write-Pass "Case 4d: a MATERIAL non-boundary Stop with the five-part context packet does NOT block"
@@ -567,7 +634,8 @@ try {
     $t4f2 = New-Transcript -Proj $p4f -Turns @(@{ role = 'assistant'; text = 'Still stopping without the packet.' })
     $r4f2 = Invoke-Conformance -Proj $p4f -TranscriptPath $t4f2
     if (-not $r4f2.Blocked) { Fail "Case 4f: a forced-continue response that still omits the packet MUST re-block against the existing material key. Out: $($r4f2.Out)" }
-    $t4f3 = New-Transcript -Proj $p4f -Turns @(@{ role = 'assistant'; text = $materialPacket })
+    $null = New-Declaration -Proj $p4f -Kind 'conversational' -Summary 'material work, declared'
+    $t4f3 = New-Transcript -Proj $p4f -Turns @(@{ role = 'assistant'; text = 'Done.' })
     $r4f3 = Invoke-Conformance -Proj $p4f -TranscriptPath $t4f3
     if ($r4f3.Blocked) { Fail "Case 4f: rendering the material context packet must reset/release the material retry block. Out: $($r4f3.Out)" }
     Write-Pass "Case 4f: material stop-block retries until the packet is rendered, then releases"
@@ -579,7 +647,7 @@ try {
     New-HandoverSnapshot -Proj $p4g -ChangedUserFiles 3 -FileList 'AGENTS.md, CLAUDE.md, specs/001-multi-ai-arena-ui/spec.md'
     $t4g = New-Transcript -Proj $p4g -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
     $r4g = Invoke-Conformance -Proj $p4g -TranscriptPath $t4g
-    if (-not $r4g.Blocked -or $r4g.Out -notmatch 'five-part context packet') { Fail "Case 4g: a material workshop-shaped turn without exact iteration state MUST require the ordinary packet. Out: $($r4g.Out)" }
+    if (-not $r4g.Blocked -or $r4g.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 4g: a material workshop-shaped turn without exact iteration state MUST require the ordinary packet. Out: $($r4g.Out)" }
     Write-Pass "Case 4g: a workshop-shaped material turn outside exact durable workshop state still requires the five-part packet"
 
     # ---- Case 4h: MATERIAL after WORKSHOP COMPLETE, even if lifecycle state still has no active boundary/auth.
@@ -593,7 +661,7 @@ try {
     $t4h = New-Transcript -Proj $p4h -Turns @(@{ role = 'assistant'; text = 'I committed the hook budget fix and the repository is clean.' })
     $r4h = Invoke-Conformance -Proj $p4h -TranscriptPath $t4h
     if (-not $r4h.Blocked) { Fail "Case 4h: completed-workshop material commit MUST still block for the material packet even when start-context is pre-boundary. Out: $($r4h.Out)" }
-    if ($r4h.Out -notmatch 'five-part context packet') { Fail "Case 4h: completed-workshop material block must demand the five-part context packet. Out: $($r4h.Out)" }
+    if ($r4h.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 4h: completed-workshop material block must demand the five-part context packet. Out: $($r4h.Out)" }
     Write-Pass "Case 4h: completed-workshop material commit still requires the five-part context packet"
 
     # ---- Case 4i: MATERIAL after WORKSHOP COMPLETE in a multi-feature repo. If start-context is anchorless, the
@@ -613,7 +681,7 @@ try {
     $t4i = New-Transcript -Proj $p4i -Turns @(@{ role = 'assistant'; text = 'I committed the verdict capture fix and refreshed the dogfood project.' })
     $r4i = Invoke-Conformance -Proj $p4i -TranscriptPath $t4i
     if (-not $r4i.Blocked) { Fail "Case 4i: handover active_feature must beat first-spec fallback; completed active feature material commit MUST block. Out: $($r4i.Out)" }
-    if ($r4i.Out -notmatch 'five-part context packet') { Fail "Case 4i: material block must demand the five-part context packet. Out: $($r4i.Out)" }
+    if ($r4i.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 4i: material block must demand the five-part context packet. Out: $($r4i.Out)" }
     Write-Pass "Case 4i: handover active_feature scopes material enforcement in multi-feature pre-boundary state"
 
     # ==== Maintainer packet-hardening fixtures (a)-(f), 2026-07-14: the Stop packet demand keys on the TURN'S
@@ -702,7 +770,7 @@ try {
     $workB = New-Transcript -Proj $phms -Turns @(@{ role = 'user'; text = 'finish the repair' }, @{ role = 'assistant'; text = 'I implemented the session B repair and its tests.' })
     $stopB = Invoke-Conformance -Proj $phms -TranscriptPath $workB -SessionId $sessionB
     if (-not $stopB.Blocked) { Fail "Case PH-ms: the owning session's genuine material Stop did not request its packet. Out: $($stopB.Out)" }
-    if ([regex]::Matches($stopB.Out, 'five-part context packet').Count -ne 1) { Fail "Case PH-ms: the owning session must receive exactly one packet request. Out: $($stopB.Out)" }
+    if ([regex]::Matches($stopB.Out, 'declare-turn-end\.ps1').Count -ne 1) { Fail "Case PH-ms: the owning session must receive exactly one packet request. Out: $($stopB.Out)" }
     Write-Pass 'Case PH-ms: barrier-synchronized sessions keep separate baselines; foreign work stays conversational and same-owner work requests one packet'
 
     # ---- Case PH-c: SUBSTANTIAL STATE-CHANGING WORK -> packet required. Same project: the surface CHANGES
@@ -711,11 +779,12 @@ try {
     $thc = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'fix it' }, @{ role = 'assistant'; text = 'I implemented the module and its tests. Stopping here.' })
     $rhc = Invoke-Conformance -Proj $phb -TranscriptPath $thc
     if (-not $rhc.Blocked) { Fail "Case PH-c: state-changing work (surface != baseline) without the packet MUST block. Out: $($rhc.Out)" }
-    if ($rhc.Out -notmatch 'five-part context packet') { Fail "Case PH-c: the demand must be the five-part non-boundary packet. Out: $($rhc.Out)" }
+    if ($rhc.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case PH-c: the demand must be the five-part non-boundary packet. Out: $($rhc.Out)" }
     Write-Pass "Case PH-c: substantial state-changing work still requires the five-heading packet (maintainer fixture c)"
 
     # ---- Case PH-e: an ALREADY VALID packet is accepted without another turn (same changed surface).
-    $the = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'fix it' }, @{ role = 'assistant'; text = $materialPacket })
+    $null = New-Declaration -Proj $phb -Kind 'conversational' -Summary 'material work, declared'
+    $the = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'fix it' }, @{ role = 'assistant'; text = 'Done.' })
     $rhe = Invoke-Conformance -Proj $phb -TranscriptPath $the
     if ($rhe.Blocked) { Fail "Case PH-e: a rendered five-part packet MUST be accepted without another forced turn. Out: $($rhe.Out)" }
     Write-Pass "Case PH-e: an already-valid five-part packet is accepted as-is - no duplicate turn (maintainer fixture e)"
@@ -735,7 +804,8 @@ try {
     $phb3 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $phb3
     New-HandoverSnapshot -Proj $phb3 -ChangedUserFiles 2 -NewCommits 1 -Head 'def5678' -HeadTitle 'record substantial work'
-    $thb3a = New-Transcript -Proj $phb3 -Turns @(@{ role = 'assistant'; text = $materialPacket })
+    $null = New-Declaration -Proj $phb3 -Kind 'conversational' -Summary 'material work, declared'
+    $thb3a = New-Transcript -Proj $phb3 -Turns @(@{ role = 'assistant'; text = 'Done.' })
     $rhb3a = Invoke-Conformance -Proj $phb3 -TranscriptPath $thb3a
     if ($rhb3a.Blocked) { Fail "Case PH-b3: the packet rendered for the newly observed commit MUST discharge that surface. Out: $($rhb3a.Out)" }
     New-HandoverSnapshot -Proj $phb3 -ChangedUserFiles 2 -Head 'def5678' -HeadTitle 'record substantial work'
@@ -749,7 +819,7 @@ try {
     New-HandoverSnapshot -Proj $phb3 -ChangedUserFiles 2 -NewCommits 1 -Head 'fed9876' -HeadTitle 'second substantial change'
     $thc2 = New-Transcript -Proj $phb3 -Turns @(@{ role = 'assistant'; text = 'I committed a second substantial change.' })
     $rhc2 = Invoke-Conformance -Proj $phb3 -TranscriptPath $thc2
-    if (-not $rhc2.Blocked -or $rhc2.Out -notmatch 'five-part context packet') { Fail "Case PH-c2: a genuinely different HEAD MUST still require the material packet. Out: $($rhc2.Out)" }
+    if (-not $rhc2.Blocked -or $rhc2.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case PH-c2: a genuinely different HEAD MUST still require the material packet. Out: $($rhc2.Out)" }
     Write-Pass "Case PH-c2: a genuinely new HEAD remains a new material surface and still requires the packet"
 
     # ---- Case PH-d: LONG READ-ONLY INVESTIGATION (no material delta) -> packet required. >= 15 assistant
@@ -762,9 +832,12 @@ try {
     $thd = New-Transcript -Proj $phd -Turns $longTurns
     $rhd = Invoke-Conformance -Proj $phd -TranscriptPath $thd
     if (-not $rhd.Blocked) { Fail "Case PH-d: a LONG read-only investigation (16 assistant entries) without the packet MUST block. Out: $($rhd.Out)" }
-    if ($rhd.Out -notmatch 'five-part context packet') { Fail "Case PH-d: the long-turn demand is the five-part packet. Out: $($rhd.Out)" }
-    # and the SAME long turn WITH the packet is accepted.
-    $longTurnsOk = @($longTurns[0..($longTurns.Count - 2)]) + @(@{ role = 'assistant'; text = $materialPacket })
+    if ($rhd.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case PH-d: the long-turn demand must name the turn-end command. Out: $($rhd.Out)" }
+    # and the SAME long turn, DECLARED, is accepted. A long read-only investigation owes the human an
+    # end-of-turn account; what discharges it is ending the turn through the script, not producing a
+    # particular shape of message.
+    $null = New-Declaration -Proj $phd -Kind 'conversational' -Summary 'long read-only investigation'
+    $longTurnsOk = @($longTurns[0..($longTurns.Count - 2)]) + @(@{ role = 'assistant'; text = 'Investigation complete.' })
     $thdOk = New-Transcript -Proj $phd -Turns $longTurnsOk
     $rhdOk = Invoke-Conformance -Proj $phd -TranscriptPath $thdOk
     if ($rhdOk.Blocked) { Fail "Case PH-d: the long-turn packet, once rendered, MUST be accepted. Out: $($rhdOk.Out)" }
@@ -858,7 +931,7 @@ try {
     $thi = New-RawTranscript -Proj $phi -Lines $phiLines
     $rhi = Invoke-Conformance -Proj $phi -TranscriptPath $thi
     if (-not $rhi.Blocked) { Fail "Case PH-i: a short turn with a REAL material file delta MUST still demand the packet (maintainer fixture c, unaffected by the long-turn fix). Out: $($rhi.Out)" }
-    if ($rhi.Out -notmatch 'five-part context packet') { Fail "Case PH-i: the material-delta demand is the five-part packet. Out: $($rhi.Out)" }
+    if ($rhi.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case PH-i: the material-delta demand is the five-part packet. Out: $($rhi.Out)" }
     Write-Pass "Case PH-i: a genuine material-delta turn still demands the packet regardless of the long-turn fragmentation fix (maintainer fixture c)"
 
     # ---- Case PH-j: the fix does not WEAKEN a genuinely long investigation. FIVE real tool round-trips, each
@@ -944,8 +1017,9 @@ try {
     if ($r7cap2.Blocked) { Fail "Case 7: past the announcement the cap releases the stop (no hang). Out: $($r7cap2.Out)" }
     if ($r7cap2.Out -notmatch 'ENFORCEMENT STOPPED after 3 consecutive blocks') { Fail "Case 7: the capped release MUST announce that enforcement stopped and name the cap. Out: $($r7cap2.Out)" }
     if ($r7cap2.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 7: over the cap, degrade to a plain marker nudge. Out: $($r7cap2.Out)" }
-    # A packet-present stop resets the counter.
-    $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = $realPacket })
+    # A DECLARED stop resets the counter (it was a prose packet before fix 2).
+    $null = New-Declaration -Proj $p7 -Kind 'boundary' -From 'clarify' -To 'plan'
+    $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
     $null = Invoke-Conformance -Proj $p7 -TranscriptPath $t7ok
     $t7re = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (post-reset attempt).' })
     $r7reset = Invoke-Conformance -Proj $p7 -TranscriptPath $t7re
@@ -977,17 +1051,20 @@ try {
     #               rendered packet targets the FIRST unauthorized crossing clarify -> plan -> suppress and let capture bind.
     $p9b = New-Fixture -Working 'tasks' -LastAuth 'clarify'
     New-BoundaryStageEvidence -Proj $p9b
-    $t9b = New-Transcript -Proj $p9b -Turns @(@{ role = 'assistant'; text = $realPacket })
+    $null = New-Declaration -Proj $p9b -Kind 'boundary' -From 'clarify' -To 'plan'
+    $t9b = New-Transcript -Proj $p9b -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
     $r9b = Invoke-Conformance -Proj $p9b -TranscriptPath $t9b
     if ($r9b.Blocked) { Fail "Case 9b: a marker for the first unauthorized crossing clarify -> plan MUST suppress even when working already jumped to tasks. Out: $($r9b.Out)" }
     Write-Pass "Case 9b: multi-gate over-advance suppresses only when the packet names the FIRST unauthorized crossing (clarify -> plan)"
 
     # ---- Case 9c: MULTI-GATE-GAP wrong marker. The gate-skipping plan -> tasks marker must NOT suppress; it would
     #               let the human authorize a later crossing while clarify -> plan is still missing.
-    $packetPlanTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
     $p9c = New-Fixture -Working 'tasks' -LastAuth 'clarify'
     New-BoundaryStageEvidence -Proj $p9c
-    $t9c = New-Transcript -Proj $p9c -Turns @(@{ role = 'assistant'; text = $packetPlanTasks })
+    # DECLARED, but for the gate-skipping crossing. The declaration is real; what it names is wrong, and that
+    # is the whole point - a declaration is evidence of a render, never of the right one.
+    $null = New-Declaration -Proj $p9c -Kind 'boundary' -From 'plan' -To 'tasks'
+    $t9c = New-Transcript -Proj $p9c -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
     $r9c = Invoke-Conformance -Proj $p9c -TranscriptPath $t9c
     if (-not $r9c.Blocked) { Fail "Case 9c: a gate-skipping plan -> tasks marker MUST NOT suppress while clarify -> plan is first unauthorized. Out: $($r9c.Out)" }
     if ($r9c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 9c: block must demand the first unauthorized clarify -> plan marker. Out: $($r9c.Out)" }
@@ -997,8 +1074,10 @@ try {
     #               in the tail must NOT suppress the genuine plan->tasks advance (to != working).
     $p10 = New-Fixture -Working 'tasks' -LastAuth 'plan'
     New-BoundaryStageEvidence -Proj $p10
+    # A STALE declaration: clarify -> plan was declared, then the work advanced to plan -> tasks.
+    $null = New-Declaration -Proj $p10 -Kind 'boundary' -From 'clarify' -To 'plan'
     $t10 = New-Transcript -Proj $p10 -Turns @(
-        @{ role = 'assistant'; text = $realPacket },
+        @{ role = 'assistant'; text = 'Stopping for your verdict.' },
         @{ role = 'user'; text = 'approved for plan' },
         @{ role = 'assistant'; text = 'Plan approved. I have written tasks.md and am starting implementation now in earnest.' }
     )
@@ -1009,30 +1088,30 @@ try {
 
     # ---- Case 11: RELEVANT packet (matches pending crossing) suppresses. working 'tasks', authorized 'plan',
     #                a plan->tasks packet rendered.
-    $packetTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
     $p11 = New-Fixture -Working 'tasks' -LastAuth 'plan'
     New-BoundaryStageEvidence -Proj $p11
-    $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetTasks })
+    $null = New-Declaration -Proj $p11 -Kind 'boundary' -From 'plan' -To 'tasks'
+    $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'Stopping for your verdict.' })
     $r11 = Invoke-Conformance -Proj $p11 -TranscriptPath $t11
     if ($r11.Blocked) { Fail "Case 11: a packet whose marker matches the pending crossing is a legitimate awaiting stop - MUST suppress. Out: $($r11.Out)" }
     Write-Pass "Case 11: the RELEVANT packet (plan -> tasks == pending crossing) correctly suppresses the block (guard precision)"
 
     # ---- Case 11b: FIRST boundary marker. With no authorized boundary and working already at clarify, the first
     #                 authorizable crossing is still intake -> specify. That exact marker suppresses.
-    $packetFirst = $realPacket -replace 'clarify -> plan', 'intake -> specify'
     $p11b = New-Fixture -Working 'clarify' -LastAuth ''
     New-BoundaryStageEvidence -Proj $p11b
-    $t11b = New-Transcript -Proj $p11b -Turns @(@{ role = 'assistant'; text = $packetFirst })
+    $null = New-Declaration -Proj $p11b -Kind 'boundary' -From 'intake' -To 'specify'
+    $t11b = New-Transcript -Proj $p11b -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
     $r11b = Invoke-Conformance -Proj $p11b -TranscriptPath $t11b
     if ($r11b.Blocked) { Fail "Case 11b: first-boundary marker intake -> specify MUST suppress even when working already jumped to clarify. Out: $($r11b.Out)" }
     Write-Pass "Case 11b: first-boundary over-advance suppresses on the marker-only intake -> specify crossing"
 
     # ---- Case 11c: FIRST boundary wrong marker. specify -> clarify is the NEXT crossing, not the first
     #                 authorization from an empty ledger; it must block and demand intake -> specify.
-    $packetWrongFirst = $realPacket -replace 'clarify -> plan', 'specify -> clarify'
     $p11c = New-Fixture -Working 'clarify' -LastAuth ''
     New-BoundaryStageEvidence -Proj $p11c
-    $t11c = New-Transcript -Proj $p11c -Turns @(@{ role = 'assistant'; text = $packetWrongFirst })
+    $null = New-Declaration -Proj $p11c -Kind 'boundary' -From 'specify' -To 'clarify'
+    $t11c = New-Transcript -Proj $p11c -Turns @(@{ role = 'assistant'; text = 'Stopping for your verdict.' })
     $r11c = Invoke-Conformance -Proj $p11c -TranscriptPath $t11c
     if (-not $r11c.Blocked) { Fail "Case 11c: first-boundary wrong marker specify -> clarify MUST block when specify is not authorized yet. Out: $($r11c.Out)" }
     if ($r11c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: intake -> specify') { Fail "Case 11c: block must demand intake -> specify for the first unauthorized boundary. Out: $($r11c.Out)" }
@@ -1101,8 +1180,8 @@ try {
     $t16 = New-Transcript -Proj $p16 -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16a = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
     $r16bDuplicate = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
-    if ($r16a.Blocked -or $r16a.Out -match 'five-part context packet') { Fail "Case 16: strict active workshop state MUST leave the unmarked current-lens question as the final visible turn. Out: $($r16a.Out)" }
-    if ($r16bDuplicate.Blocked -or $r16bDuplicate.Out -match 'five-part context packet') { Fail "Case 16: a duplicate Stop delivery MUST remain a no-op. Out: $($r16bDuplicate.Out)" }
+    if ($r16a.Blocked -or $r16a.Out -match 'declare-turn-end\.ps1') { Fail "Case 16: strict active workshop state MUST leave the unmarked current-lens question as the final visible turn. Out: $($r16a.Out)" }
+    if ($r16bDuplicate.Blocked -or $r16bDuplicate.Out -match 'declare-turn-end\.ps1') { Fail "Case 16: a duplicate Stop delivery MUST remain a no-op. Out: $($r16bDuplicate.Out)" }
     $workshopHandoverPath = Join-Path $p16 '.specrew\handover\workshop-question.json'
     if (-not (Test-Path -LiteralPath $workshopHandoverPath -PathType Leaf)) { Fail 'Case 16: workshop-intermediate must persist bounded re-entry context' }
     $workshopHandover = Get-Content -LiteralPath $workshopHandoverPath -Raw | ConvertFrom-Json
@@ -1153,7 +1232,7 @@ try {
     # replaces: a refusal could carry the phrase 'lowercase stable values' while naming nothing at all,
     # and the old assertion would have passed it.
     $r16a3 = Invoke-Conformance -Proj $p16a3 -TranscriptPath (New-Transcript -Proj $p16a3 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
-    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'could not be recorded cleanly' -or $r16a3.Out -notmatch 'IHttpClientFactory' -or $r16a3.Out -notmatch 'http-client' -or $r16a3.Out -match 'five-part context packet') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
+    if (-not $r16a3.Blocked -or $r16a3.Out -notmatch 'could not be recorded cleanly' -or $r16a3.Out -notmatch 'IHttpClientFactory' -or $r16a3.Out -notmatch 'http-client' -or $r16a3.Out -match 'declare-turn-end\.ps1') { Fail "Case 16a3: invalid binding tokens need a targeted workshop repair, not a generic packet. Out: $($r16a3.Out)" }
     Write-Pass "Case 16a3: mixed-case binding tokens are repaired in place before the next lens, with no generic packet"
 
     $p16a4 = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -1161,7 +1240,7 @@ try {
     New-LensApplicability -Proj $p16a4 -Selected @('architecture-core','code-implementation','security-compliance') -Done @('architecture-core','code-implementation')
     New-HandoverSnapshot -Proj $p16a4 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/iterations/001/lens-applicability.json'
     $r16a4 = Invoke-Conformance -Proj $p16a4 -TranscriptPath (New-Transcript -Proj $p16a4 -Turns @(@{ role = 'assistant'; text = 'Lens 3: security-compliance. Should private addresses be blocked?' }))
-    if (-not $r16a4.Blocked -or $r16a4.Out -notmatch 'agreed coding rules have not been recorded' -or $r16a4.Out -notmatch 'project-provided workshop action' -or $r16a4.Out -match 'five-part context packet') { Fail "Case 16a4: missing code manifest needs a targeted workshop repair, not a generic packet. Out: $($r16a4.Out)" }
+    if (-not $r16a4.Blocked -or $r16a4.Out -notmatch 'agreed coding rules have not been recorded' -or $r16a4.Out -notmatch 'project-provided workshop action' -or $r16a4.Out -match 'declare-turn-end\.ps1') { Fail "Case 16a4: missing code manifest needs a targeted workshop repair, not a generic packet. Out: $($r16a4.Out)" }
     Write-Pass "Case 16a4: a completed code lens cannot move on without its manifest, and no generic packet is rendered"
 
     # ---- Case 16b / FR-056(d): lifecycle boundary state has precedence even when every workshop-question signal
@@ -1184,7 +1263,7 @@ try {
     New-HandoverSnapshot -Proj $p16c -ChangedUserFiles 0
     $t16c = New-Transcript -Proj $p16c -Turns @(@{ role = 'assistant'; text = 'I saved the current discussion and am pausing for your response.' })
     $r16c = Invoke-Conformance -Proj $p16c -TranscriptPath $t16c
-    if ($r16c.Blocked -or $r16c.Out -match 'five-part context packet') { Fail "Case 16c: valid active workshop state MUST suppress the generic packet independently of assistant prose. Out: $($r16c.Out)" }
+    if ($r16c.Blocked -or $r16c.Out -match 'declare-turn-end\.ps1') { Fail "Case 16c: valid active workshop state MUST suppress the generic packet independently of assistant prose. Out: $($r16c.Out)" }
     Write-Pass "Case 16c: active workshop classification is independent of assistant prose and question-tool rendering"
 
     # ---- Case 16d / FR-056 narrow scope: a real old iteration artifact and matching marker are still stale when
@@ -1196,7 +1275,7 @@ try {
     $staleIterationQuestion = $workshopQuestion.Replace('iteration=001', 'iteration=002')
     $t16d = New-Transcript -Proj $p16d -Turns @(@{ role = 'assistant'; text = $staleIterationQuestion })
     $r16d = Invoke-Conformance -Proj $p16d -TranscriptPath $t16d
-    if (-not $r16d.Blocked -or $r16d.Out -notmatch 'five-part context packet') { Fail "Case 16d: a marker/artifact for a non-active iteration MUST NOT bypass material enforcement. Out: $($r16d.Out)" }
+    if (-not $r16d.Blocked -or $r16d.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16d: a marker/artifact for a non-active iteration MUST NOT bypass material enforcement. Out: $($r16d.Out)" }
     Write-Pass "Case 16d: stale iteration state and its matching marker cannot suppress the active iteration's packet"
 
     # ---- Case 16e / live T029 regression: specify/intake has a feature-level agenda but no iteration yet. Its strict
@@ -1207,7 +1286,7 @@ try {
     New-HandoverSnapshot -Proj $p16e -ChangedUserFiles 0
     $t16e = New-Transcript -Proj $p16e -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion })
     $r16e = Invoke-Conformance -Proj $p16e -TranscriptPath $t16e
-    if ($r16e.Blocked -or $r16e.Out -match 'five-part context packet') { Fail "Case 16e: a proved feature-level intake question MUST remain the final visible turn. Out: $($r16e.Out)" }
+    if ($r16e.Blocked -or $r16e.Out -match 'declare-turn-end\.ps1') { Fail "Case 16e: a proved feature-level intake question MUST remain the final visible turn. Out: $($r16e.Out)" }
     $featureHandoverPath = Join-Path $p16e '.specrew\handover\workshop-question.json'
     if (-not (Test-Path -LiteralPath $featureHandoverPath -PathType Leaf)) { Fail 'Case 16e: feature-level workshop-intermediate must persist bounded re-entry context' }
     $featureHandover = Get-Content -LiteralPath $featureHandoverPath -Raw | ConvertFrom-Json
@@ -1226,7 +1305,7 @@ Write-Pass "Case 16e: feature-level intake question stops once without a generic
 $p16p0 = New-Fixture -Working '' -LastAuth ''
 $t16p0 = New-Transcript -Proj $p16p0 -Turns @(@{ role = 'assistant'; text = "Product-domain — Light pass`n`nDoes this product framing match what you want?" })
 $r16p0 = Invoke-Conformance -Proj $p16p0 -TranscriptPath $t16p0
-if (-not $r16p0.Blocked -or $r16p0.Out -match 'five-part context packet') { Fail "Case 16p0: a product question before feature setup MUST get a targeted ordering correction. Out: $($r16p0.Out)" }
+if (-not $r16p0.Blocked -or $r16p0.Out -match 'declare-turn-end\.ps1') { Fail "Case 16p0: a product question before feature setup MUST get a targeted ordering correction. Out: $($r16p0.Out)" }
 if ($r16p0.Out -notmatch '(?i)create the feature.*project-provided' -or
     $r16p0.Out -notmatch '(?i)show the same product question again' -or
     $r16p0.Out -match '(?i)lens-applicability|controller') {
@@ -1241,7 +1320,7 @@ New-PreAgendaLensApplicability -Proj $p16pa
 New-HandoverSnapshot -Proj $p16pa -ChangedUserFiles 0
 $t16pa = New-Transcript -Proj $p16pa -Turns @(@{ role = 'assistant'; text = 'Who uses this product day to day, and what does the current workflow look like?' })
 $r16pa = Invoke-Conformance -Proj $p16pa -TranscriptPath $t16pa
-if ($r16pa.Blocked -or $r16pa.Out -match 'five-part context packet') { Fail "Case 16pa: strict pre-agenda product-domain state MUST leave the ordinary question visible. Out: $($r16pa.Out)" }
+if ($r16pa.Blocked -or $r16pa.Out -match 'declare-turn-end\.ps1') { Fail "Case 16pa: strict pre-agenda product-domain state MUST leave the ordinary question visible. Out: $($r16pa.Out)" }
 $preAgendaHandoverPath = Join-Path $p16pa '.specrew\handover\workshop-question.json'
 if (-not (Test-Path -LiteralPath $preAgendaHandoverPath -PathType Leaf)) { Fail 'Case 16pa: pre-agenda question must persist bounded re-entry context' }
 $preAgendaHandover = Get-Content -LiteralPath $preAgendaHandoverPath -Raw | ConvertFrom-Json
@@ -1260,7 +1339,7 @@ New-PreAgendaLensApplicability -Proj $p16paAgenda
 New-HandoverSnapshot -Proj $p16paAgenda -ChangedUserFiles 0
 $t16paAgenda = New-Transcript -Proj $p16paAgenda -Turns @(@{ role = 'assistant'; text = "Workshop agenda`n`nSelected lenses:`n- architecture-core (medium): choose structure`n`nSkipped lenses:`n- data-storage: no durable data`n`nDoes this agenda look right?" })
 $r16paAgenda = Invoke-Conformance -Proj $p16paAgenda -TranscriptPath $t16paAgenda
-if (-not $r16paAgenda.Blocked -or $r16paAgenda.Out -match 'five-part context packet') { Fail "Case 16pa-agenda: a technical agenda before product records exist MUST get a targeted ordering correction. Out: $($r16paAgenda.Out)" }
+if (-not $r16paAgenda.Blocked -or $r16paAgenda.Out -match 'declare-turn-end\.ps1') { Fail "Case 16pa-agenda: a technical agenda before product records exist MUST get a targeted ordering correction. Out: $($r16paAgenda.Out)" }
 if ($r16paAgenda.Out -notmatch '(?i)product grounding.*recorded' -or
     $r16paAgenda.Out -notmatch '(?i)before.*technical' -or
     $r16paAgenda.Out -notmatch '(?i)do not ask.*agenda confirmation.*first' -or
@@ -1287,7 +1366,7 @@ Copy-Item -LiteralPath (Join-Path $p16pa0 '.specify\templates\spec-template.md')
 & pwsh -NoProfile -File (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\initialize-workshop-controller-state.ps1') -ProjectRoot $p16pa0 -FeatureRef '050-host-neutral-gate' | Out-Null
 $t16pa0 = New-Transcript -Proj $p16pa0 -Turns @(@{ role = 'assistant'; text = 'Does this product framing match what you have in mind?' })
 $r16pa0 = Invoke-Conformance -Proj $p16pa0 -TranscriptPath $t16pa0 -SessionId $p16pa0Session
-if ($r16pa0.Blocked -or $r16pa0.Out -match 'five-part context packet') { Fail "Case 16pa0: untouched feature+controller scaffold MUST NOT defeat the product-domain question. Out: $($r16pa0.Out)" }
+if ($r16pa0.Blocked -or $r16pa0.Out -match 'declare-turn-end\.ps1') { Fail "Case 16pa0: untouched feature+controller scaffold MUST NOT defeat the product-domain question. Out: $($r16pa0.Out)" }
 Write-Pass "Case 16pa0: untouched feature scaffold is workshop setup and the first product-domain question stays visible"
 
 $p16pa0b = New-Fixture -Working '' -LastAuth ''
@@ -1335,7 +1414,7 @@ New-Spec -Proj $p16pa2
 New-HandoverSnapshot -Proj $p16pa2 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/workshop/product-domain.md'
 $t16pa2 = New-Transcript -Proj $p16pa2 -Turns @(@{ role = 'assistant'; text = 'Architecture-core lens: would you like to take all three decisions at once, or one at a time?' })
 $r16pa2 = Invoke-Conformance -Proj $p16pa2 -TranscriptPath $t16pa2
-if (-not $r16pa2.Blocked -or $r16pa2.Out -match 'five-part context packet') { Fail "Case 16pa2: missing machine-owned pre-agenda state MUST get the targeted repair, never the generic packet. Out: $($r16pa2.Out)" }
+if (-not $r16pa2.Blocked -or $r16pa2.Out -match 'declare-turn-end\.ps1') { Fail "Case 16pa2: missing machine-owned pre-agenda state MUST get the targeted repair, never the generic packet. Out: $($r16pa2.Out)" }
 if ($r16pa2.Out -notmatch 'workshop setup is not ready' -or $r16pa2.Out -notmatch 'project-provided setup action' -or $r16pa2.Out -notmatch 'show the current question again') {
     Fail "Case 16pa2: targeted repair must name the situation, a project-owned recovery, and the conversational retry. Out: $($r16pa2.Out)"
 }
@@ -1353,7 +1432,7 @@ New-PreAgendaLensApplicability -Proj $p16pa3
 New-HandoverSnapshot -Proj $p16pa3 -ChangedUserFiles 1 -FileList 'specs/050-host-neutral-gate/workshop/product-domain.md'
 $t16pa3 = New-Transcript -Proj $p16pa3 -Turns @(@{ role = 'assistant'; text = "Preparing lens 1 of 4: architecture-core`n`nArchitecture-Core Lens`n`nWould you like all three decisions at once or one at a time?" })
 $r16pa3 = Invoke-Conformance -Proj $p16pa3 -TranscriptPath $t16pa3
-if (-not $r16pa3.Blocked -or $r16pa3.Out -match 'five-part context packet') { Fail "Case 16pa3: opening lens 1 before the agenda decision MUST get a targeted correction, never the generic packet. Out: $($r16pa3.Out)" }
+if (-not $r16pa3.Blocked -or $r16pa3.Out -match 'declare-turn-end\.ps1') { Fail "Case 16pa3: opening lens 1 before the agenda decision MUST get a targeted correction, never the generic packet. Out: $($r16pa3.Out)" }
 if ($r16pa3.Out -notmatch 'cannot start until the human has seen and confirmed its agenda' -or $r16pa3.Out -notmatch 'every skipped topic' -or
     $r16pa3.Out -notmatch 'whether to confirm or change' -or $r16pa3.Out -notmatch 'recorded through the workshop flow') {
     Fail "Case 16pa3: correction must restore selected+skipped visibility, human choice, and governed persistence without exposing machinery. Out: $($r16pa3.Out)"
@@ -1374,7 +1453,7 @@ New-Spec -Proj $p16pc
 New-PreAgendaLensApplicability -Proj $p16pc -Selected @('architecture-core')
 New-HandoverSnapshot -Proj $p16pc -ChangedUserFiles 2
 $r16pc = Invoke-Conformance -Proj $p16pc -TranscriptPath (New-Transcript -Proj $p16pc -Turns @(@{ role = 'assistant'; text = 'Who uses this product?' }))
-if (-not $r16pc.Blocked -or $r16pc.Out -notmatch 'five-part context packet') { Fail "Case 16pc: malformed pending state with a selected lens MUST fail closed. Out: $($r16pc.Out)" }
+if (-not $r16pc.Blocked -or $r16pc.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16pc: malformed pending state with a selected lens MUST fail closed. Out: $($r16pc.Out)" }
 Write-Pass "Case 16pc: malformed pre-agenda transition cannot suppress ordinary material Stop enforcement"
 
 $p16pd = New-Fixture -Working '' -LastAuth ''
@@ -1383,7 +1462,7 @@ New-PreAgendaLensApplicability -Proj $p16pd
 New-Item -ItemType Directory -Path (Join-Path $p16pd 'specs\050-host-neutral-gate\iterations\001') -Force | Out-Null
 New-HandoverSnapshot -Proj $p16pd -ChangedUserFiles 2
 $r16pd = Invoke-Conformance -Proj $p16pd -TranscriptPath (New-Transcript -Proj $p16pd -Turns @(@{ role = 'assistant'; text = 'Who uses this product?' }))
-if (-not $r16pd.Blocked -or $r16pd.Out -notmatch 'five-part context packet') { Fail "Case 16pd: on-disk lifecycle activation MUST invalidate feature pre-agenda suppression. Out: $($r16pd.Out)" }
+if (-not $r16pd.Blocked -or $r16pd.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16pd: on-disk lifecycle activation MUST invalidate feature pre-agenda suppression. Out: $($r16pd.Out)" }
 Write-Pass "Case 16pd: stale feature-level pre-agenda state fails closed after iteration activation"
 
 # ---- Case 16e2 / live Copilot regression: the rolling handover can legitimately carry the pre-intake
@@ -1395,7 +1474,7 @@ New-LensApplicability -Proj $p16e2 -Selected @('architecture-core','data-storage
 New-HandoverSnapshot -Proj $p16e2 -ChangedUserFiles 0 -ActiveFeature '(no active feature)'
 $t16e2 = New-Transcript -Proj $p16e2 -Turns @(@{ role = 'assistant'; text = 'Should we continue with the next architecture decision?' })
 $r16e2 = Invoke-Conformance -Proj $p16e2 -TranscriptPath $t16e2
-if ($r16e2.Blocked -or $r16e2.Out -match 'five-part context packet') { Fail "Case 16e2: a placeholder handover feature MUST NOT hide the sole durable active workshop. Out: $($r16e2.Out)" }
+if ($r16e2.Blocked -or $r16e2.Out -match 'declare-turn-end\.ps1') { Fail "Case 16e2: a placeholder handover feature MUST NOT hide the sole durable active workshop. Out: $($r16e2.Out)" }
 Write-Pass "Case 16e2: placeholder handover identity falls back only to the sole durable feature workshop"
 
 # ---- Case 16e3: repeated load-bearing bindings are durable cross-lens truth. A later delegated/default
@@ -1420,7 +1499,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     New-HandoverSnapshot -Proj $p16f -ChangedUserFiles 0
     $t16f = New-Transcript -Proj $p16f -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
     $r16f = Invoke-Conformance -Proj $p16f -TranscriptPath $t16f
-    if ($r16f.Blocked -or $r16f.Out -match 'five-part context packet') { Fail "Case 16f: model text MUST NOT redirect away from valid active iteration state. Out: $($r16f.Out)" }
+    if ($r16f.Blocked -or $r16f.Out -match 'declare-turn-end\.ps1') { Fail "Case 16f: model text MUST NOT redirect away from valid active iteration state. Out: $($r16f.Out)" }
     Write-Pass "Case 16f: active iteration artifact wins over a stale model-authored feature marker"
 
     # ---- Case 16g: the inverse model-text mismatch also has no authority. Genuine feature intake state wins over
@@ -1431,7 +1510,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     New-HandoverSnapshot -Proj $p16g -ChangedUserFiles 0
     $t16g = New-Transcript -Proj $p16g -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
     $r16g = Invoke-Conformance -Proj $p16g -TranscriptPath $t16g
-    if ($r16g.Blocked -or $r16g.Out -match 'five-part context packet') { Fail "Case 16g: model text MUST NOT redirect away from valid feature intake state. Out: $($r16g.Out)" }
+    if ($r16g.Blocked -or $r16g.Out -match 'declare-turn-end\.ps1') { Fail "Case 16g: model text MUST NOT redirect away from valid feature intake state. Out: $($r16g.Out)" }
     Write-Pass "Case 16g: feature intake artifact wins over an iteration-shaped model comment"
 
     # ---- Case 16h: malformed lifecycle state with a boundary but no iteration cannot fall back to feature
@@ -1446,7 +1525,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     New-HandoverSnapshot -Proj $p16h -ChangedUserFiles 2
     $t16h = New-Transcript -Proj $p16h -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
     $r16h = Invoke-Conformance -Proj $p16h -TranscriptPath $t16h
-    if (-not $r16h.Blocked -or $r16h.Out -notmatch 'five-part context packet') { Fail "Case 16h: active lifecycle state with missing iteration MUST NOT borrow feature workshop scope. Out: $($r16h.Out)" }
+    if (-not $r16h.Blocked -or $r16h.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16h: active lifecycle state with missing iteration MUST NOT borrow feature workshop scope. Out: $($r16h.Out)" }
     Write-Pass "Case 16h: malformed active lifecycle state cannot borrow the feature-level workshop exception"
 
     # ---- Case 16i: an existing but unreadable start context cannot prove that feature intake is still
@@ -1458,7 +1537,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     New-HandoverSnapshot -Proj $p16i -ChangedUserFiles 2
     $t16i = New-Transcript -Proj $p16i -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
     $r16i = Invoke-Conformance -Proj $p16i -TranscriptPath $t16i
-    if (-not $r16i.Blocked -or $r16i.Out -notmatch 'five-part context packet') { Fail "Case 16i: unreadable start context MUST NOT prove the feature-level workshop exception. Out: $($r16i.Out)" }
+    if (-not $r16i.Blocked -or $r16i.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16i: unreadable start context MUST NOT prove the feature-level workshop exception. Out: $($r16i.Out)" }
     Write-Pass "Case 16i: unreadable start context fails closed for the feature-level workshop exception"
 
     # ---- Case 16j: an absent start context is valid only for genuinely pre-iteration intake. Durable numeric
@@ -1471,7 +1550,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     New-HandoverSnapshot -Proj $p16j -ChangedUserFiles 2
     $t16j = New-Transcript -Proj $p16j -Turns @(@{ role = 'assistant'; text = $featureWorkshopQuestion })
     $r16j = Invoke-Conformance -Proj $p16j -TranscriptPath $t16j
-    if (-not $r16j.Blocked -or $r16j.Out -notmatch 'five-part context packet') { Fail "Case 16j: on-disk iteration truth MUST prevent feature-scope suppression when start context is absent. Out: $($r16j.Out)" }
+    if (-not $r16j.Blocked -or $r16j.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16j: on-disk iteration truth MUST prevent feature-scope suppression when start context is absent. Out: $($r16j.Out)" }
     Write-Pass "Case 16j: on-disk numeric iteration truth fails closed when start context is absent"
 
     # ---- Cases 16k-16o: incomplete or corrupt completion evidence never suppresses the packet. These are the
@@ -1484,7 +1563,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     [IO.File]::WriteAllText($loosePath, '{"workshop_intake":true,"confirmation_required":true,"selected":["architecture-core","data-storage"],"workshop":{"architecture-core":{"moved_on":true}}}', [Text.UTF8Encoding]::new($false))
     New-HandoverSnapshot -Proj $p16k -ChangedUserFiles 2
     $r16k = Invoke-Conformance -Proj $p16k -TranscriptPath (New-Transcript -Proj $p16k -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
-    if (-not $r16k.Blocked -or $r16k.Out -notmatch 'five-part context packet') { Fail "Case 16k: a loose moved_on flag MUST fail closed. Out: $($r16k.Out)" }
+    if (-not $r16k.Blocked -or $r16k.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16k: a loose moved_on flag MUST fail closed. Out: $($r16k.Out)" }
     Write-Pass "Case 16k: a moved_on flag without the full completion contract cannot suppress normal Stop behavior"
 
     $p16l = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -1493,7 +1572,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     Remove-Item -LiteralPath (Join-Path $p16l 'specs\050-host-neutral-gate\iterations\001\workshop\architecture-core.md') -Force
     New-HandoverSnapshot -Proj $p16l -ChangedUserFiles 2
     $r16l = Invoke-Conformance -Proj $p16l -TranscriptPath (New-Transcript -Proj $p16l -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
-    if (-not $r16l.Blocked -or $r16l.Out -notmatch 'five-part context packet') { Fail "Case 16l: a completed record without its Markdown artifact MUST fail closed. Out: $($r16l.Out)" }
+    if (-not $r16l.Blocked -or $r16l.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16l: a completed record without its Markdown artifact MUST fail closed. Out: $($r16l.Out)" }
     Write-Pass "Case 16l: structured completion without its durable lens record cannot suppress normal Stop behavior"
 
     $p16m = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -1501,7 +1580,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     New-LensApplicability -Proj $p16m -Selected @('architecture-core','architecture-core') -Done @()
     New-HandoverSnapshot -Proj $p16m -ChangedUserFiles 2
     $r16m = Invoke-Conformance -Proj $p16m -TranscriptPath (New-Transcript -Proj $p16m -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
-    if (-not $r16m.Blocked -or $r16m.Out -notmatch 'five-part context packet') { Fail "Case 16m: duplicate selected lenses MUST fail closed. Out: $($r16m.Out)" }
+    if (-not $r16m.Blocked -or $r16m.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16m: duplicate selected lenses MUST fail closed. Out: $($r16m.Out)" }
     Write-Pass "Case 16m: an ambiguous duplicate lens agenda cannot suppress normal Stop behavior"
 
     $p16n = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -1509,7 +1588,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     New-LensApplicability -Proj $p16n -Selected @('architecture-core','data-storage') -Done @('data-storage')
     New-HandoverSnapshot -Proj $p16n -ChangedUserFiles 2
     $r16n = Invoke-Conformance -Proj $p16n -TranscriptPath (New-Transcript -Proj $p16n -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
-    if (-not $r16n.Blocked -or $r16n.Out -notmatch 'five-part context packet') { Fail "Case 16n: out-of-order completion MUST fail closed. Out: $($r16n.Out)" }
+    if (-not $r16n.Blocked -or $r16n.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16n: out-of-order completion MUST fail closed. Out: $($r16n.Out)" }
     Write-Pass "Case 16n: out-of-order completion cannot suppress normal Stop behavior"
 
     $p16o = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -1518,7 +1597,7 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     [IO.File]::WriteAllText((Join-Path $p16o 'specs\050-host-neutral-gate\iterations\001\lens-applicability.json'), '{not-json', [Text.UTF8Encoding]::new($false))
     New-HandoverSnapshot -Proj $p16o -ChangedUserFiles 2
     $r16o = Invoke-Conformance -Proj $p16o -TranscriptPath (New-Transcript -Proj $p16o -Turns @(@{ role = 'assistant'; text = $liveWorkshopQuestion }))
-    if (-not $r16o.Blocked -or $r16o.Out -notmatch 'five-part context packet') { Fail "Case 16o: malformed applicability JSON MUST fail closed. Out: $($r16o.Out)" }
+    if (-not $r16o.Blocked -or $r16o.Out -notmatch 'declare-turn-end\.ps1') { Fail "Case 16o: malformed applicability JSON MUST fail closed. Out: $($r16o.Out)" }
     Write-Pass "Case 16o: malformed durable workshop state cannot suppress normal Stop behavior"
 
     # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) cannot prove an intermediate pause;
