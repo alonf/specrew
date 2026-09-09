@@ -2533,6 +2533,28 @@ knew it would be needed).
 **Found while executing fix 1, by an existing green test going red.** This is the largest finding of the
 reopen and it reverses a conclusion this project has been carrying since 2026-09-01.
 
+**SCOPE OF THE CLAIM, corrected 2026-09-09 after the maintainer refused the first wording.** The finding was
+first written as if the specimen's history had been measured. It had not: what was measured was a
+*reconstruction* under beta3's writer and reader. The mechanism below is proven that way and stands on its
+own. The specimen evidence came afterwards, is reported separately in **THE SPECIMEN, RECONCILED**, and is
+kept apart from the mechanism on purpose - the first version blurred them, and that is the error being
+corrected.
+
+### The mechanism, proven by reconstruction
+
+**How the write happens, at both revisions that matter**: `confirm-workshop-lens.ps1` sets
+`$workshopMap[$Lens] = $entry` **unconditionally** - `be573254` (2026-08-30, the writer ConsoleFractal ran)
+line 274, HEAD line 341. There is no intake branch. The same loop copies the existing map whole
+(`foreach ($property in @($workshop.PSObject.Properties))`), which is why a later technical close preserves
+whatever is already there rather than dropping it.
+
+**How the reader treats it**: `workshop-record-not-selected` was introduced in `ff86a1e6` (2026-07-22) and
+has rejected a `workshop` key outside `selected` ever since - verified with `git log -S` over the accessor,
+which returns that commit and no earlier one.
+
+**So: closing `product-domain` from a confirmed agenda writes a key the reader has rejected for seven
+weeks.** That is the whole mechanism, and it needs no specimen.
+
 ### What happened
 
 The fix-1 guard made `tests/integration/workshop-lens-checkpoint.tests.ps1` **Case 7c** fail. Case 7c is
@@ -2550,10 +2572,42 @@ pre-fix reader (beta3 as shipped)  -> invalid | False | workshop-record-not-sele
 post-fix reader (tolerance)        -> active  | True  | workshop-active
 ```
 
-**The sanctioned recovery produces `workshop-record-not-selected`.** That is byte-for-byte the state the
-router-skill project was found in after a crew "restored" the cleared entry (B4F-035). **The recovery that
-was field-proved and the repair that bricked a controller are one operation.** Only their reputations
+**The sanctioned recovery produces `workshop-record-not-selected`.** That is the same reason the router-skill
+project was found under after a crew "restored" the cleared entry (B4F-035). **The recovery that was
+field-proved and the repair that bricked a controller are the same operation.** Only their reputations
 differed.
+
+### THE SPECIMEN, RECONCILED - and it was the other copy
+
+**The maintainer's correction was right about what had been shown, and their reading of the archive was of
+the copy the 2026-09-01 proof did not run on.** DRIFT-199-I003-020 is explicit on this point, because the
+distinction is the whole reason it was held for:
+
+> **`C:\Temp\ConsoleFractal`** - the ORIGINAL stranded specimen, **not** the `-stranded-backup` copy that
+> carried the earlier `confirm-lens` evidence.
+
+Both copies survive at `C:\Dev\SpecrewSpecArchive\_temp-trials\`. Read (the archive was **not** written to -
+each was copied to a temp root and the `4f4dce52` lens catalog restored there, because the archive was
+stripped of `.specify/` and the accessor otherwise stops at `workshop-lens-catalog-missing` before reaching
+the check at issue; that catalog's lens-id set is identical to HEAD's):
+
+| | `ConsoleFractal` (the 09-01 copy) | `ConsoleFractal-stranded-backup` |
+| --- | --- | --- |
+| `workshop` keys | **`[product-domain]`** | the six technical lenses |
+| keys not in `selected` | **`[product-domain]`** | none |
+| beta3's reader | **`invalid` / `workshop-record-not-selected`** | `complete` / valid |
+| reader with the fix | `active` / valid | `complete` / valid |
+
+**The backup is exactly as the maintainer described it** - six technical lenses, no `product-domain` key -
+and that is what the technical-close path produces. It is the touched copy. **The original carries the
+state.**
+
+**WHAT IS STILL NOT PROVEN, and the wording keeps it that way**: the *date* of that controller write. Both
+archived controllers carry an mtime of 2026-09-08 23:38, which is when the archive was made, so no timestamp
+attributes the key to 09-01. What attributes it is that the only writer of a `product-domain` workshop key
+is `confirm-workshop-lens.ps1 -Lens product-domain`, and DRIFT-199-I003-020 records that operation running
+on this copy. **The specimen carries the output; the record says the operation ran there. That is the claim,
+and it is not a measured history.**
 
 ### Why four field checks missed it
 
@@ -2562,6 +2616,16 @@ validated at the checkpoint, and it ran on the original specimen. Each is a real
 asked the reader.** The entry was written, the artifacts were well-formed - and the accessor that every Stop
 classification consults called the result invalid. *A write that validates at the writer is not a write the
 reader accepts*, and this batch now has two instances of that gap.
+
+### An unrelated thing the specimen shows, recorded because it was in front of me
+
+The 09-01 copy's receipt store holds **four `architecture-core` lens receipts** (2026-08-31, 21:06 to
+21:20) and its map holds **no `architecture-core` key**. Four typed human turns were minted and none of them
+closed anything. The cause is on disk and needs no theory: `specs/001-console-fractal/workshop/` in that
+copy contains only `product-domain.md` and `.yml`, so every attempt was refused for a missing lens record.
+**Four receipts spent against a refusal the human had no way to see.** Related to DRIFT-199-I003-021's
+compaction re-ask observation but not the same thing - that one was a re-ask, this is four turns bound to a
+refusal. Carried to beta5 with the receipt-vs-assent items; not acted on here.
 
 ### And the two states are not distinguishable
 
