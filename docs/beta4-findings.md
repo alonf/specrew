@@ -844,3 +844,118 @@ because a rule that only names the safe action leaves the unsafe one as the defa
 
 **BETA5**, with B4F-011, B4F-014 and the refusal-standard items. The standing rule holds; nothing here is
 fixed in beta4, and the disclosure in `docs/release-notes-v0.40.0-beta4.md` is what beta4 ships instead.
+
+---
+
+## B4F-016 - I REPORTED A NEAR-MISS THAT DID NOT HAPPEN, and the same message shows the product getting it RIGHT in one store and WRONG in another
+
+**A withdrawal and a much sharper finding, from one typed turn.**
+
+### The withdrawal
+
+I reported that `approved for review round` produced **silence** - that it was verdict-shaped, matched
+nothing, and that the human was told nothing - and I filed it as a live DRIFT-199-I003-095 near-miss.
+
+**That was wrong.** The phrase matched exactly and was captured:
+
+```
+.specrew/review/round-approval/pending-round-approval.json
+  fact_type       = review-round-approval
+  approval_kind   = typed-phrase
+  verdict_text    = "approved for review round"
+  evidence_source = hook-captured-user-prompt
+  observed_at     = 2026-09-09T01:06:31.1730233Z
+  spent_at        = null
+```
+
+**I checked `start-context.json`'s boundary state and concluded absence from it.** Review-round approval is
+not a boundary crossing and does not live there. **An absence claim proves absence only over the store you
+looked in** - DRIFT-199-I003-054's rule with `git ls-files` swapped for a JSON file, made while reporting on
+that very class. Fifth or sixth instance depending how you count; the count is the point.
+
+**And the question I asked was already answered.** I put two readings of "review round" to the maintainer as
+materially different work. The machinery had resolved it: `approved for review round` is the product's own
+documented approval phrase, and the action is `specrew review --live --approve-round`. **The human typed
+exactly what the product asks for and I treated it as ambiguous** - friction I introduced, on the surface
+beta4 exists to fix.
+
+### The finding that replaces it, and it is better
+
+**One typed message hit two capture paths, and they behaved differently:**
+
+| store | what it required | outcome |
+| --- | --- | --- |
+| `.specrew/review/round-approval/` | an **exact phrase match** (`approval_kind: typed-phrase`) | **correct** - a real approval, recorded as one, unspent |
+| `.specrew/runtime/workshop-authority.jsonl` | **any non-whitespace message** | **spurious** - receipt 13, `human-confirmed` / `lens-question`, for a product-domain question never asked |
+
+**Same message. Same instant** - 01:06:31.17Z and 01:06:31.66Z, half a second apart. One store asked what
+the human said; the other asked only that they said something.
+
+### Why this sharpens the beta5 fix rather than restating it
+
+B4F-015 said the checkpoint must require assent rather than presence, which is correct and abstract. **This
+gives it a working reference implementation inside the same product**: the round-approval capture already
+does the discriminating thing - it binds a **phrase** to a **fact_type**, records `approval_kind`, and
+carries `spent_at` so the fact can be consumed once and only once.
+
+**The workshop receipt has none of those.** No phrase requirement, no statement of what the turn was
+evidence of, no spend marker - so it can be minted by anything and cited any number of times.
+
+**So beta5's fix is no longer a design question.** Make the workshop receipt carry what the round-approval
+fact already carries: what was required, what was seen, and whether it has been spent. **The pattern does
+not need inventing; it needs copying from the file next door.**
+
+**BETA5**, with B4F-011, B4F-014 and B4F-015.
+
+---
+
+## B4F-017 - THE REVIEW ENGINE REFUSES THE EXACT CHANGE BETA4 SHIPS, and its named remedy would destroy it
+
+**Hit while spending the approved review round.** `specrew review --live --approve-round` refused:
+
+```
+review-engine-project-runtime-drifted:
+  marker=df8a01650e9665d4d806741b06c22e6a8c12ce493036f98a4c51b577ba7f06d4
+  actual=b56b0f25e7263763e74f5dc7c9a0580f31c15ac908ecedd6c35b54ce29273ec5
+  run 'specrew update --project-path "C:\Dev\specrew-beta3-stabilization"'
+```
+
+**The detection is correct.** The deployed machinery under `.specify/extensions/specrew-speckit` no longer
+matches the recorded install marker - **because beta4's fix edited it**, which is the whole point of the
+change.
+
+### THE NAMED REMEDY IS FORBIDDEN, and this is the fifth instance of that family
+
+`specrew update` would **overwrite the deployed provider with the installed beta3 bits** - silently
+destroying the fix the detector just detected.
+
+**This is DRIFT-199-I003-016's family, and its exact fourth instance repeated**: *a detector naming the
+remedy that destroys its own finding.* DRIFT-199-I003-014 recorded the identical trap during the beta3
+respin, in the same file, for the same reason: *"The remedy the message names is FORBIDDEN: it says run
+`specrew update --project-path ...`, which would overwrite the fix with the 4f4dce52 bits."*
+
+**And what saved it both times was a standing rule, not the control.** In beta3 it was the no-rebuild hold;
+here it is that this crew had already read that entry. DRIFT-199-I003-016's own warning applies unchanged:
+**a control that only works because an unrelated rule happened to be active is not a control.** The message
+is locally sensible, authoritative, and now blocks a required lifecycle stage - which is precisely the
+condition under which advice gets followed.
+
+### The sanctioned unblock is a RE-STAMP, not an update
+
+DRIFT-199-I003-053 settled this during the respin: regenerate the marker through the product's own writer
+`Write-SpecrewDeployedExtensionMarker`, with the precondition printed before the write, the postcondition
+after, and the diff bounded to the authorized files. **Hand-editing the hashes would be exactly the
+fabrication DRIFT-199-I003-052 condemns.**
+
+The marker is **not packaged** - absent from `Specrew.psd1`'s FileList and from `extensions/` - so it is
+per-project deployment state that every install regenerates. **Nothing ships differently either way.**
+
+### Why it is worth its own entry rather than a line in the fix
+
+**Any beta4-shaped change hits this.** The release edits deployed machinery by design, so every crew that
+fixes a deployed script will meet this refusal, be told to run the one command that undoes their work, and
+have nothing in the message to warn them. **The refusal should compare direction** - a project AHEAD of its
+module must never be told to update as though it were BEHIND - which is the fix DRIFT-199-I003-016 already
+named and which is still owed.
+
+**Recorded, not fixed.** The standing rule holds: beta4 ships the registration fix and nothing else.
