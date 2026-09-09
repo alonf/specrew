@@ -70,8 +70,18 @@ if (-not (Test-Path -LiteralPath $storePath -PathType Leaf)) {
 $root = if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { (Get-Location).Path } else { $ProjectRoot }
 $root = [System.IO.Path]::GetFullPath($root)
 
-$identity = Get-SpecrewSessionIdentityFromMarker -ProjectRoot $root
-$paths = Get-SpecrewTurnEndPaths -ProjectRoot $root -HostKind $identity.host -SessionId $identity.session_id
+# IDENTITY COMES FROM THE HOOK'S OWN TOKEN, never from a project-wide file. The marker read that used to
+# stand here put one session's declaration under another session's path; a project-scoped file cannot answer
+# a session-scoped question, so it is gone rather than hardened.
+$turnToken = Find-SpecrewCurrentTurnToken -ProjectRoot $root
+$paths = if (-not [string]::IsNullOrWhiteSpace($turnToken.state_root)) {
+    Get-SpecrewTurnEndPathsForStateRoot -ProjectRoot $root -StateRoot $turnToken.state_root -OwnerHash $turnToken.owner_hash
+}
+else {
+    # No token: this host delivered no turn-start event, so there is nothing to echo. The hook will have
+    # none either, and the two degrade together - absence is not mismatch.
+    Get-SpecrewTurnEndPaths -ProjectRoot $root -HostKind '' -SessionId ''
+}
 
 function Read-SpecrewPendingVerdictStop {
     # Parses the artifact sync-boundary-state.ps1 writes. THE VALUES COME FROM THE FILE, never from a guess
@@ -289,7 +299,7 @@ if ($inFlightExhausted) {
 $orientationOwed = -not (Test-Path -LiteralPath $paths.OrientationPath -PathType Leaf)
 $orientationText = ''
 if ($orientationOwed) {
-    $orientationText = Get-SpecrewOrientationBlock -Root $root -Identity $identity
+    $orientationText = Get-SpecrewOrientationBlock -Root $root -Identity $null
 }
 
 $rendered = ''
@@ -302,8 +312,10 @@ $record = [pscustomobject][ordered]@{
     schema_version = '1.0'
     kind           = $Kind
     turn_id        = [string]$paths.TurnId
-    session_id     = [string]$identity.session_id
-    host           = [string]$identity.host
+    # The token the hook issued for this turn, echoed back. At Stop the hook accepts only a record carrying
+    # the token IT wrote; anything else is another session's turn and is refused rather than credited.
+    turn_token     = [string]$turnToken.token
+    owner_hash     = [string]$paths.OwnerHash
     rendered       = (-not [string]::IsNullOrWhiteSpace($rendered))
     render_reason  = [string]$decision.reason
     content_hash   = $contentHash

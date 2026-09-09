@@ -14,7 +14,8 @@
 # the bug, not a convenience.
 #
 # HOST-NEUTRAL BY CONSTRUCTION: nothing below names a host, branches on one, or asks one anything. The host
-# name is data that arrives in session-marker.json and is hashed into a directory name.
+# name is data the dispatcher passes to the hook and is hashed into a directory name. The script never reads
+# it at all - it takes identity from the token the hook issued, for the reasons under THE IDENTITY HANDSHAKE.
 #
 # CHEAP BY CONSTRUCTION: no git, no transcript, no module load. The whole path is small JSON reads on files
 # the session already wrote, because this runs at the end of every turn and a per-turn cost is paid forever.
@@ -50,23 +51,116 @@ function Get-SpecrewTurnEndOwnerHash {
     catch { return '' }
 }
 
-function Get-SpecrewSessionIdentityFromMarker {
-    # The agent's script has no host arguments - it is invoked by a human-facing skill, not by the
-    # dispatcher - so it takes its identity from the marker the session's own bootstrap wrote. The hook
-    # receives the same two values as flags and does NOT read the marker, which is the point: if the two
-    # ever disagree the handshake is broken, and the test asserts they do not.
+# THE IDENTITY HANDSHAKE: THE HOOK DECLARES, THE SCRIPT ECHOES, A MISMATCH FAILS CLOSED.
+#
+# What stood here read `.specrew/runtime/session-marker.json` for the declaring session's identity. The
+# independent review broke it in one probe: the marker is PROJECT-WIDE and stamped by whichever session
+# started last, so with two sessions open, A declared and the record landed under B's path - A refused for a
+# declaration it made, B credited with one it did not.
+#
+# The root of that is not the marker's implementation. **A project-scoped file cannot answer a
+# session-scoped question**, and no amount of care in reading it changes that. So the read is gone, not
+# repaired.
+#
+# What replaces it: the party that KNOWS declares. The hook writes a per-turn token into its OWN session
+# directory when the turn starts; declare-turn-end finds that token and stamps it into the record; at Stop
+# the hook accepts only a record carrying the token it wrote itself. Nothing infers whose turn it is from
+# shared state, because inferring it is what failed.
+#
+# ABSENCE IS NOT MISMATCH, and the difference is what keeps this from bricking honest hosts. A host that
+# delivers no turn-start event writes no token; the script then stamps none, and the hook - which also has
+# none - accepts that. Both sides degrade together. What fails closed is the case where the hook HAS a
+# token and the record carries a different one: that is two sessions, and neither is credited.
+
+function Get-SpecrewTurnTokenPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    return (Join-Path $StateRoot 'turn-token.json')
+}
+
+function Write-SpecrewTurnToken {
+    # THE HOOK'S WRITE, at turn start. A fresh random token per turn: it is an identity, not a secret, and
+    # it only has to be different from the one another session is holding.
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot, [AllowNull()][string] $TurnId)
+
+    $temp = $null
+    try {
+        if (-not (Test-Path -LiteralPath $StateRoot -PathType Container)) { New-Item -ItemType Directory -Path $StateRoot -Force | Out-Null }
+        $token = [guid]::NewGuid().ToString('N')
+        $path = Get-SpecrewTurnTokenPath -StateRoot $StateRoot
+        $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        # issued_ms is a NUMBER on purpose, and it is what the ordering reads. ConvertFrom-Json coerces an
+        # ISO-8601 string into a [datetime] on the way back, and re-parsing that lost the sub-second part -
+        # so two tokens issued in the same second compared EQUAL and the newest-wins sort became arbitrary.
+        # Measured: session B won over a token issued 30 ms later, and the losing session could not recover.
+        # This is the second time in this batch that date coercion has broken a round-trip; a number cannot
+        # be coerced into something else, so the ordering no longer depends on a type surviving JSON.
+        $record = [ordered]@{ schema_version = '1.0'; token = $token; turn_id = [string]$TurnId; issued_at = [DateTimeOffset]::UtcNow.ToString('o'); issued_ms = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+        [System.IO.File]::WriteAllText($temp, ($record | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $path, $true)
+        return $token
+    }
+    catch { return '' }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Read-SpecrewTurnToken {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    try {
+        $path = Get-SpecrewTurnTokenPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return '' }
+        $record = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $record -or -not $record.PSObject.Properties['token']) { return '' }
+        return ([string]$record.token)
+    }
+    catch { return '' }
+}
+
+function Find-SpecrewCurrentTurnToken {
+    # THE SCRIPT'S SIDE. It has no host arguments - it is run by a human-facing skill, not the dispatcher -
+    # so it finds the token by looking for the most recently issued one across this project's session
+    # directories. In a single-session project there is exactly one and this is unambiguous.
+    #
+    # With two sessions it resolves to whichever started its turn last, which is the honest answer to "whose
+    # turn is happening right now" from where this script stands. The other session's Stop will then find no
+    # record under its own token and refuse - failing CLOSED, naming the collision, crediting neither - and
+    # that session's NEXT turn issues a fresh token, so it recovers by declaring again rather than by
+    # anything being repaired.
     [OutputType([pscustomobject])]
     param([Parameter(Mandatory)][string] $ProjectRoot)
 
-    $result = [pscustomobject]@{ host = ''; session_id = ''; found = $false }
+    $result = [pscustomobject]@{ token = ''; state_root = ''; owner_hash = ''; competitors = 0 }
     try {
-        $markerPath = Join-Path $ProjectRoot '.specrew/runtime/session-marker.json'
-        if (-not (Test-Path -LiteralPath $markerPath -PathType Leaf)) { return $result }
-        $marker = Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-        if ($null -eq $marker) { return $result }
-        $result.host = if ($marker.PSObject.Properties['host']) { [string]$marker.host } else { '' }
-        $result.session_id = if ($marker.PSObject.Properties['session_id']) { [string]$marker.session_id } else { '' }
-        $result.found = -not [string]::IsNullOrWhiteSpace($result.session_id)
+        $sessionsRoot = Join-Path $ProjectRoot '.specrew/runtime/conformance-sessions'
+        if (-not (Test-Path -LiteralPath $sessionsRoot -PathType Container)) { return $result }
+        $candidates = @()
+        foreach ($dir in @(Get-ChildItem -LiteralPath $sessionsRoot -Directory -ErrorAction Stop)) {
+            $tokenPath = Get-SpecrewTurnTokenPath -StateRoot $dir.FullName
+            if (-not (Test-Path -LiteralPath $tokenPath -PathType Leaf)) { continue }
+            try {
+                $record = Get-Content -LiteralPath $tokenPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+                if ($null -eq $record -or [string]::IsNullOrWhiteSpace([string]$record.token)) { continue }
+                # Ordered by the NUMBER, with the file's own write time as the fallback for a token written
+                # before this field existed. Never by re-parsing the ISO string: that is what made two tokens
+                # from the same second indistinguishable.
+                $issued = if ($record.PSObject.Properties['issued_ms']) { [long]$record.issued_ms }
+                          else { [DateTimeOffset]::new((Get-Item -LiteralPath $tokenPath).LastWriteTimeUtc, [TimeSpan]::Zero).ToUnixTimeMilliseconds() }
+                $candidates += [pscustomobject]@{ token = [string]$record.token; state_root = $dir.FullName; owner_hash = $dir.Name; issued = $issued }
+            }
+            catch { continue }
+        }
+        if ($candidates.Count -eq 0) { return $result }
+        $newest = @($candidates | Sort-Object issued -Descending)[0]
+        $result.token = $newest.token
+        $result.state_root = $newest.state_root
+        $result.owner_hash = $newest.owner_hash
+        $result.competitors = $candidates.Count - 1
         return $result
     }
     catch { return $result }
@@ -169,6 +263,33 @@ function Get-SpecrewTurnEndPaths {
         TurnId          = $turnId
         RecordPath      = Join-Path $turnEndRoot ($turnId + '.json')
         OrientationPath = Join-Path $stateRoot 'orientation-rendered.json'
+    }
+}
+
+function Get-SpecrewTurnEndPathsForStateRoot {
+    # The same shape Get-SpecrewTurnEndPaths returns, but resolved from a state root the caller already
+    # found rather than from a host/session pair it would have to guess. This is the script's route: it
+    # located the session by the token the hook issued, so it must write into THAT session's directories,
+    # not into ones derived from anything it inferred for itself.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $StateRoot,
+        [AllowNull()][string] $OwnerHash
+    )
+
+    $runtimeRoot = Join-Path $ProjectRoot '.specrew/runtime'
+    $anchored = -not [string]::IsNullOrWhiteSpace($OwnerHash)
+    $turnEndRoot = if ($anchored) { Join-Path (Join-Path $runtimeRoot 'turn-end') $OwnerHash } else { Join-Path $runtimeRoot 'turn-end' }
+    $turnId = Get-SpecrewTurnId -StateRoot $StateRoot
+    return [pscustomobject]@{
+        Anchored        = $anchored
+        OwnerHash       = [string]$OwnerHash
+        StateRoot       = $StateRoot
+        TurnEndRoot     = $turnEndRoot
+        TurnId          = $turnId
+        RecordPath      = Join-Path $turnEndRoot ($turnId + '.json')
+        OrientationPath = Join-Path $StateRoot 'orientation-rendered.json'
     }
 }
 

@@ -2884,3 +2884,48 @@ what fix 2 item (c) makes impossible by scoping attribution to the declaring ses
 - **The release notes disclose** that beta4's own repair was reviewed by codex **out of engine**, not by a
   governed campaign, and why - because the engine has no path to review this feature, which is finding (2)
   applied to this very release.
+
+---
+
+## B4F-049 - B4F-018's ATTRIBUTION COROLLARY: three defects, one root - inferring WHO from shared project state
+
+**Recorded at the maintainer's direction.** B4F-018 was the spine finding - a claim measured over a narrower
+set than it covers. This is its attribution counterpart, and it has three members already found in this arc:
+
+| defect | what it inferred | from what shared state | how it failed |
+| --- | --- | --- | --- |
+| material-owner attribution | which session did the work | a baseline **diff** over the project tree | a read-only session was charged with another session's dirty files |
+| workshop typed-turn receipts | that the human answered **this** question | **any** typed message in the conversation | five `human-confirmed` receipts minted for a question never asked |
+| turn-end identity | whose turn is being declared | the **project-wide** `session-marker.json` | session A declared, the record landed under B; A refused, B credited |
+
+**One root: each asked shared project state a question only a specific party could answer.** A tree diff
+does not know who edited; a message does not know which question it answers; a project-wide marker does not
+know which session is speaking. Every one of them was a reasonable inference and every one produced a
+confident wrong answer, because **an inference has no way to report that it was guessing**.
+
+**The corollary, which is the reusable part**: *have the party that knows declare it.* Not a better
+inference - a different shape.
+
+- Material owner -> retired; attribution is now the declaring session.
+- Turn-end identity -> the hook issues a per-turn token into its own session directory; the script echoes
+  it; the Stop accepts only its own token. **A project-scoped file cannot answer a session-scoped question**,
+  so the read was deleted rather than hardened.
+- Workshop receipts -> **still open**, and it is the third member: a receipt still mints against any typed
+  message rather than against a declared question. Fix 2 item (d) is that declaration, and B4F-012's class -
+  four receipts spent against refusals on the archived specimen - is the same defect seen from the other end.
+
+**The test for whether a future control belongs to this family**: if it answers "who" or "which" by reading
+state that more than one party writes, it is inferring, and it will be confidently wrong at least once.
+
+### A SECOND, SMALLER ROOT, recorded because it has now bitten twice in one batch
+
+`ConvertFrom-Json` silently coerces an ISO-8601 string into a `[datetime]`.
+
+1. The design-decision record failed its own read-back verify: a `recorded_at` the script had just written
+   came back as a `[datetime]` and failed a `[string]` type check.
+2. The turn-token ordering compared two tokens as EQUAL because re-parsing the coerced value lost the
+   sub-second part - so the newest-wins sort was arbitrary, and the losing session could not recover.
+
+**Both were caught by a verify step rather than by a test**, which is the argument for verify steps. The
+durable fix in each case was to stop depending on a type surviving JSON: check presence rather than type,
+and order by a number that cannot be coerced into something else.

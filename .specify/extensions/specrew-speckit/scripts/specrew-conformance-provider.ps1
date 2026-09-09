@@ -784,6 +784,24 @@ try {
     # `$turnEndDeclared` is what separates the last branch from the other three. It is deliberately NOT
     # `$packetPresent`: a turn that declared in-flight or conversational HAS declared, and demanding a
     # boundary packet from it would be the over-blocking this fix exists to end.
+    # THE ECHO IS CHECKED, AND A MISMATCH FAILS CLOSED. A record exists, but does it carry the token THIS
+    # hook issued? If it carries another session's token, two sessions are live in one project and the
+    # declaration belongs to the other one. That is refused rather than credited to either - the losing
+    # session recovers on its next turn, which issues a fresh token and accepts a fresh declaration.
+    #
+    # ABSENCE IS NOT MISMATCH. A host that delivers no turn-start event issues no token, the script echoes
+    # none, and both sides degrade together rather than the session being unable to declare at all.
+    $turnEndOwnToken = ''
+    if ($null -ne $turnEndPaths -and (Get-Command Read-SpecrewTurnToken -ErrorAction SilentlyContinue)) {
+        try { $turnEndOwnToken = [string](Read-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot)) } catch { $turnEndOwnToken = '' }
+    }
+    $turnEndRecordToken = if ($null -ne $turnEndRecord -and $turnEndRecord.PSObject.Properties['turn_token']) { [string]$turnEndRecord.turn_token } else { '' }
+    $turnEndTokenMismatch = $false
+    if (-not [string]::IsNullOrWhiteSpace($turnEndOwnToken) -and $null -ne $turnEndRecord -and $turnEndRecordToken -cne $turnEndOwnToken) {
+        $turnEndTokenMismatch = $true
+        $turnEndKind = ''      # not this session's declaration, so it declares nothing for this session
+        $turnEndRecord = $null
+    }
     $turnEndDeclared = (-not [string]::IsNullOrWhiteSpace($turnEndKind))
     $turnEndInFlightExhausted = ($turnEndKind -eq 'in-flight' -and $null -ne $turnEndRecord -and
         $turnEndRecord.PSObject.Properties['in_flight_exhausted'] -and [bool]$turnEndRecord.in_flight_exhausted)
@@ -807,6 +825,17 @@ try {
             if ($turnCoreAvailable) {
                 $snapshot = Get-SpecrewTurnSnapshot -ProjectRoot $projectRoot
                 $null = Write-SpecrewTurnBaseline -Path $materialRuntime.BaselinePath -Snapshot $snapshot -CaptureEvent $sourceEventArg
+            }
+        }
+        catch { $null = $_ }
+        # THE TURN TOKEN, ISSUED HERE AND NOWHERE ELSE. This is the hook declaring, for this turn, who it
+        # is - into its OWN session directory. declare-turn-end echoes it back and the Stop below accepts
+        # only the token it wrote itself. Nothing downstream has to infer whose turn it is from shared
+        # project state, which is the inference that failed: the project-wide session marker put one
+        # session's declaration under another session's path.
+        try {
+            if ($null -ne $turnEndPaths -and (Get-Command Write-SpecrewTurnToken -ErrorAction SilentlyContinue)) {
+                $null = Write-SpecrewTurnToken -StateRoot ([string]$turnEndPaths.StateRoot) -TurnId ([string]$turnEndPaths.TurnId)
             }
         }
         catch { $null = $_ }
@@ -1963,7 +1992,16 @@ try {
                 # a URL convention, then judged the result by scoring the prose that came back: the agent had
                 # to reproduce a format and the check had to recognise it. Both halves are gone. The script
                 # renders; this says which script and what to pass it.
-                [void]$sb.AppendLine('Specrew: this Stop followed material work and no turn-end declaration was recorded for this turn. Run the turn-end script NOW as your last action, then stop again:')
+                if ($turnEndTokenMismatch) {
+                    # NAMES THE COLLISION, CREDITS NEITHER. Saying "you did not declare" here would be
+                    # false - this session did - and saying nothing would leave a correct session refused
+                    # for a reason it cannot see.
+                    [void]$sb.AppendLine('Specrew: a turn-end declaration was recorded for this turn, but it belongs to a DIFFERENT session working in this project. Two sessions are live here at once, so neither is credited with the other''s declaration.')
+                    [void]$sb.AppendLine('Nothing is wrong with your work. Run the turn-end script again as your last action and this turn will be recorded against this session:')
+                }
+                else {
+                    [void]$sb.AppendLine('Specrew: this Stop followed material work and no turn-end declaration was recorded for this turn. Run the turn-end script NOW as your last action, then stop again:')
+                }
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>'")
                 [void]$sb.AppendLine("Pick the kind by what this turn actually was. -Kind boundary when the human's judgment decides what happens next, adding -Owed '<artifact>' if the stage owes something it has not produced. -Kind in-flight with -Pending '<the work>' while background work is still running. -Kind conversational when nothing material changed.")
                 [void]$sb.AppendLine('Output whatever the script returns, verbatim. It may return nothing, and nothing is a complete answer.')
@@ -2093,7 +2131,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; workshop_scope = $(if ($workshopQuestionWins) { [string]$workshopQuestion.scope } else { $null }); workshop_feature = $(if ($workshopQuestionWins) { [string]$workshopQuestion.feature_ref } else { $null }); workshop_iteration = $(if ($workshopQuestionWins) { [string]$workshopQuestion.iteration_number } else { $null }); workshop_lens = $(if ($workshopQuestionWins) { [string]$workshopQuestion.lens } else { $null }); intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_turn_end_kind = $turnEndKind; dx_turn_end_token_mismatch = $turnEndTokenMismatch; dx_turn_end_turn = $(if ($null -ne $turnEndPaths) { [string]$turnEndPaths.TurnId } else { '' }); dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_foreign_owner_suppressed = $materialForeignOwnerSuppressed; dx_owner = [string]$materialRuntime.Owner; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }
