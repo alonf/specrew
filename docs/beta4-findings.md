@@ -1099,3 +1099,172 @@ measured against the drifted marker. **PRED-BETA4-005: on a re-dispatch with the
 `validate-governance-changed-only` goes green, and `pr-review-integration` goes green if and only if its
 cause was the same W43 error.** If `pr-review-integration` still fails, its cause is independent and this
 entry's UNDETERMINED becomes a separate finding rather than a suspicion.
+
+---
+
+## B4F-020 - THE WORK-KIND REVERT, and a correction of B4F-019 that is the spine finding in my own reading
+
+### The correction first, because B4F-019 is wrong
+
+B4F-019 said `work-kind-runtime` T212 **"pins the VALUE `software-feature`"**, that the assertion **"adds
+nothing the property assertion does not"**, and offered repairing the test as a live option. **All three are
+wrong, and the maintainer caught it by reading the source.**
+
+Line 57 sits inside a block headed
+`# --- SC-014 dogfood self-consistency: Specrew's own capture matches its actual posture (structural) ---`,
+beside:
+
+```
+work-kind.yml exists · declares software-feature · repository-governance.yml exists
+provider: github · release_truth_branch: main · protected/no-force-push/no-deletions · apply_to_admins: true
+```
+
+**One invariant, not a value pin.** Specrew IS a software product, so `software-feature` is its true
+posture. Declaring `bug-bash` at project scope made the dogfood file **false**, and **the test caught it
+correctly**. Repairing it would have been **editing a guard to accept the falsehood it exists to flag** -
+B4F-018's exact class, and the most expensive possible instance of it.
+
+**AND THE ERROR IS B4F-018'S OWN SHAPE, in my reading rather than my measuring.** I read the failing
+assertion line in isolation instead of the block containing it. **That is now the third instance of this
+exact error in this arc:**
+
+| reading | what I read | what contained it |
+| --- | --- | --- |
+| DRIFT-199-I003-094 | line 627 as a reader | the WRITER function it sits inside |
+| B4F-005 | line 564's filter as a validity gate | the unconditional `valid = $true` two lines below |
+| **B4F-019** | **line 57 as a value pin** | **the SC-014 self-consistency block it belongs to** |
+
+B4F-005 stated the rule as *when a line is named as a cause, trace to the `return` that carries it.* **It
+generalises, and the general form is what B4F-018 already says**: a line read outside the construct that
+contains it is a claim measured over a narrower set than it covers. **State predictions and rulings against
+the source, not the summary** - here the summary said "pins software-feature" and the source said "asserts
+self-consistency", and they lead to opposite fixes.
+
+### The revert
+
+`.specrew/work-kind.yml` is back to `work_kind: software-feature`. **T212 is green again with no test
+touched** - verified, all SC-014 assertions pass.
+
+### THIS PROVES B4F-006 RATHER THAN ILLUSTRATING IT
+
+B4F-006 recorded that the work-kind selection is invisible and defaults to the heaviest contract. **The
+stronger form, demonstrated rather than argued:**
+
+> **work-kind is declared at PROJECT scope, and beta4's bug-bash character is a FEATURE-level truth. So
+> expressing it through the only available lever forced the PROJECT to misdescribe itself.**
+
+**There was no correct value to write.** `software-feature` is wrong for beta4's conduct; `bug-bash` is
+wrong for Specrew's posture; and the mechanism offers nowhere else to say it. That is not a defaulting
+problem - it is a **missing scope**, and per-feature work-kind is the beta5 item with this as its evidence.
+
+### How beta4 proceeds instead
+
+**Feature 201 closes the way iteration 003 did**: as the reactive defect sweep it honestly is, **under the
+`software-feature` contract, with a recorded deviation that its conduct was bug-bash.** No eight-lens
+workshop is run for a bug fix. The deviation exists only because the mechanism cannot express per-feature
+work-kind - it is a disclosure, not an irregularity to be tidied away.
+
+---
+
+## B4F-021 - THE CENSUS IS DETERMINISTIC, and the three remaining failures are therefore IN SCOPE
+
+**The largest available finding did not materialise, and establishing that took reading the JOB results
+rather than the run conclusions - B4F-018 applied to the gate's own output.**
+
+Two runs on the identical SHA `11f47c4b`, an hour apart, with **opposite run conclusions**:
+
+| run | event | prepublish | **full-test-census** | publish-module | run conclusion |
+| --- | --- | --- | --- | --- | --- |
+| `34104867264` | workflow_dispatch | success | **success** | success | success |
+| `34110313527` | push | success | **success** | **failure** | **failure** |
+
+**`full-test-census` succeeded in BOTH.** The entire run-level difference is `publish-module`, and within
+it exactly one failing step: **`Create GitHub Release with module zip attached`**. `Stamp and publish`
+**succeeded** - the module reached the gallery; only the GitHub Release object failed.
+
+**So:**
+
+1. **The census is NOT non-deterministic.** "A green census gates the tag" is intact. Had the run colours
+   been trusted, the conclusion would have been the opposite and it would have stopped the tag.
+2. **The census was GREEN at `11f47c4b`.** Therefore the three non-beta4 failures -
+   `no-internal-ids-in-emitted-strings`, `self-leak-lint`, `pr-review-integration` - are **genuinely new
+   since that commit**, introduced by work landed after it, and **they block the tag whoever caused them.**
+3. **All three test files are unchanged since `11f47c4b`** (measured: zero diffs). **The code moved, not the
+   tests.**
+
+**One inference tried and withdrawn before it reached a conclusion**: that the clarify-refusal fix
+introduced the `no-internal-ids` offender. The `AcceptedForms` block IS new (0 at `11f47c4b`, 4 today), but
+**the offending `Provenance` line carrying `DRIFT-198-I011-006` is NOT** - it is present at both commits and
+was introduced by `70b4fef3`. **The cause is still open**, and it is being established by running the three
+rather than reasoned about.
+
+---
+
+## B4F-022 - THE MERGE-BACK DETACHED A POSITIONAL EXEMPTION: one cause established, two still open
+
+**All three reproduce locally (exit 1 each), so none is CI-only.**
+
+### `no-internal-ids-in-emitted-strings` - CAUSE ESTABLISHED, and the fix is one line
+
+The guard scans string literals in shipped `.ps1` files for internal ids, and exempts a hit when a comment
+carrying `specrew-internal-id-ok:` sits **on the same line or the line directly above**:
+
+```powershell
+if ($commentLines.Contains($line) -or $commentLines.Contains($line - 1)) { continue }
+```
+
+**At `11f47c4b` the exemption was adjacent, and the test was green:**
+
+```
+2161   # specrew-internal-id-ok: maintainer-facing rule-table provenance data
+2162   ); MarkerMatch = 'any'; Provenance = '... after DRIFT-198-I011-006' }      <- line-1 exempt
+```
+
+**Today the clarify-refusal fix has split that one-liner and inserted twelve lines between them:**
+
+```
+2161   # specrew-internal-id-ok: maintainer-facing rule-table provenance data
+2162   ); MarkerMatch = 'any'
+2163+  # AcceptedForms is CONSUMER-FACING ... (10 comment lines)
+2172   )
+2174   Provenance = '... after DRIFT-198-I011-006' }                              <- 13 lines away
+```
+
+**Nothing about the exemption or the string changed. The distance between them did.** The annotation is
+still there, still correct, still describing a maintainer-facing field - and it no longer reaches its
+subject.
+
+**This is DRIFT-199-I003-060's class arriving by a new route.** That entry found an exemption that could
+never fire because its baseline had changed. **This one fired correctly for months and was detached by an
+insertion between it and the thing it exempts** - so the failure mode is not a stale predicate but a
+**positional binding broken by unrelated editing**, and no reviewer of the clarify fix would have seen it:
+the diff reads as adding a consumer-facing message.
+
+**The cause is `e3ccc53f`**, the clarify-refusal fix, arriving through the merge-back - the change
+DRIFT-199-I003-091 recorded as never having shipped in beta3 and as carrying to beta4. **It carried this
+with it.**
+
+**The fix is to move the annotation to the line directly above `Provenance`** - a comment-only change to a
+packaged file. **NOT TAKEN: packaged file, stop-and-report.**
+
+**And the durable form worth naming**: a positional exemption is a hand-maintained adjacency. The guard
+could bind the annotation to the *string* rather than to a *line number*, which is the same lesson as
+asserting the property rather than the rendering.
+
+### `self-leak-lint` - OPEN
+
+Test 9's born-clean guard fails on **171 annotated hits, zero unannotated** - the exact count
+DRIFT-199-I003-028 measured. **I introduced none of them.** But 171 sanctioned hits would also have been
+present at `11f47c4b`, where the census was green, so **something about the count or the guard changed and
+I have not established which.** The discriminating measurement is the annotated-hit count at `11f47c4b`
+against today's; it has not been taken, and no cause is being asserted without it.
+
+### `pr-review-integration` - OPEN
+
+`NONBLOCK_WARNING_MISSING exit=1`. The test runs the validator end-to-end and captures only the result
+token, so the validator's own reason is absent from both the CI artifact and the local log. **Its earlier
+suspected link to the W43 marker drift is now doubtful** - the marker is re-stamped and `drifted=0`, yet the
+failure still reproduces locally. **Cause open.**
+
+**Two of three open is the honest state**, and it is recorded as such rather than rounded into the one that
+is solved.
