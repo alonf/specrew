@@ -1388,3 +1388,68 @@ than the work - the failure this project exists to prevent.
 record - that its conduct was bug-bash, that no spec was authored, and that the mechanism could not express
 either because work-kind is project-scoped (B4F-006, B4F-020). **The deviation record must say this
 explicitly rather than leaving a reader to infer it from an empty spec.**
+
+---
+
+## B4F-026 - `validate-governance-changed-only`: NOT beta4's, cause identified, and the dispatch is its discriminator
+
+**Four of the five previously-red suites are green** - `pr-review-integration`, `no-internal-ids`,
+`self-leak-lint`, `work-kind-runtime`. **`pr-review-integration` going green confirms B4F-023 end to end**:
+its soft warning was unreachable only because the project-wide seal gate terminated every validator run.
+
+### The remaining red, read from the output rather than filtered
+
+```
+[validator] -ChangedOnly fallback to full validation: base-ref-undetectable (base (unresolved))
+[validator] (1/1) validating specs\013-validator-hardening\iterations\002
+FAIL ... /013-validator-hardening/iterations/002
+  category=missing-artifact | message=Missing required artifact: state.md
+[validator-timing] mode=unscoped elapsed_ms=48017 iterations_validated=1 trigger_source=local
+```
+
+**The chain**: the fixture's git base ref does not resolve, so `-ChangedOnly` **falls back to unscoped**;
+unscoped validation then reaches iterations whose `state.md` the fixture **deliberately strips**
+(`Remove-UntouchedStateArtifact`), and fails on the missing artifact. Every failing assertion in the local
+set follows from that one fallback - including the scope-banner and `mode=scoped` timing assertions, which
+are simply describing the unscoped run they got.
+
+**My first read of this was wrong twice over** and both errors are B4F-018's: I reported the touched
+iteration as *skipped* when it was validated and failing, having grepped for `closed-iteration filter`
+instead of reading the output; and I compared exit codes rather than assertion sets.
+
+### NOT CAUSED BY BETA4'S DIFF - proved, not asserted
+
+The only beta4 change to this code path is the comment move and reword in `shared-governance.ps1`.
+**Inertness proof, with the precondition asserted first** (a proof that compares a file to itself proves
+nothing - DRIFT-199-I003-055):
+
+```
+versions_differ  = True
+before           = 49965 executable tokens
+after            = 49965 executable tokens
+differing_tokens = 0     -> identical, position for position
+```
+
+**A comment-only claim is a byte-level claim and it has been measured**, not reviewed by eye.
+
+### The assertion SETS differ from CI's, so the causes are not assumed to be the same
+
+| | failing assertions |
+| --- | --- |
+| CI at `f712345e` | explicit-changed-only, auto-scoped-feature-branch, missing-origin-head |
+| local, now | those plus should-still-validate-touched, should-skip-untouched, scoped-timing |
+
+**DRIFT-199-I003-051: red-at-both is an unexamined coincidence of exit codes until the sets are compared.**
+CI's cause at `f712345e` was consistent with W43 marker drift, which is now cleared (`drifted=0`). **The
+local cause is base-ref resolution in the fixture, which is a property of the machine's git state as much as
+of the tree** - and DRIFT-199-I003-083's rule cuts both ways: a local result is evidence about the local
+environment.
+
+### Classification, and what settles it
+
+**Not beta4's.** Whether it is a real tree failure or local-environment-only is **not established**, and the
+instrument that settles it is the **dispatched run** - which is the next step regardless, and which
+DRIFT-199-I003-083 already requires as the last green before a tag.
+
+**If it is red on the dispatch, it is a fourth pre-existing blocker beta4 did not cause**, and whether it
+holds the tag is the maintainer's decision rather than something to absorb into "fix it and move on".
