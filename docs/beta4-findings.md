@@ -1855,3 +1855,64 @@ on trains people to stop reading it.
 **BETA5**: either give the timing assertions budgets that survive a loaded runner, or move them off the
 all-or-nothing gate as environment-bound - the category DRIFT-199-I003-025 already defined and refused to
 let become an exclusion list.
+
+---
+
+## B4F-034 - THE REVIEW DEVIATION, taken as option (3), and this run's beta5 items
+
+### The review deviation
+
+**Beta4's fix is shipped REVIEWED BUT NOT CAMPAIGN-RECORDED**, on the maintainer's ruling, and the deviation
+is stated here rather than left implied.
+
+- **A real adversarial review happened.** It found that safety property 1 was false and that the fix could
+  displace a workshop a human was actually answering. That defect was reproduced against a control, fixed
+  two-directionally, and mutation-proved at both guarded sites with disjoint failure sets. The record is
+  B4F-010 and its commits.
+- **The governed campaign could not run.** Three attempts, three distinct refusals, each traced:
+  `review-engine-project-runtime-drifted` twice (B4F-017, B4F-027 - a second runtime marker the extension
+  re-stamp never reached, cleared by build-then-update), then
+  `review-campaign-active-iteration-unresolved` (B4F-030 - the campaign needs an iteration that bug-bash
+  conduct legitimately never produces).
+- **The out-of-engine reviewer never ran** (B4F-031): the export and the engine's own contract-valid prompt
+  were built, and codex returned a 400 because its CLI is older than its pinned model. **That is
+  reviewer-never-ran, not an empty review.**
+- **The maintainer's typed approval was never spent and is still standing.** Every refusal said so
+  explicitly, which is the refusal standard working.
+- **The export is kept** at `C:\Temp\beta4-codex-review-20260909-142846` - diff, full file contents, and the
+  rendered prompt - so the review is one command away whenever a model is named. **A finding from it is a
+  fix with its own commit, named before any re-dispatch, never folded in silently.**
+
+### Beta5 items from this run
+
+**(a) Timing assertions inside an all-or-nothing gate make green partly a property of the RUN.** They should
+report the measured value and gate on a **margin against a calibrated baseline**, or live in a report-only
+lane. As it stands, a red census cannot separate *this tree is broken* from *this runner was slow*.
+
+**(b) `squad-init-closed-stdin.tests.ps1:209` must separate "observed alive" from "could not observe."**
+
+```powershell
+if ([int]$result.timeout_child_pid -le 0 -or [bool]$result.timeout_child_alive) {
+    Write-Fail 'timeout did not prove that the complete fake Squad descendant process tree was terminated'
+}
+```
+
+**Two conditions, one message** - an absent measurement and a surviving process are indistinguishable in the
+output. One is a missing observation, the other is a real leak, and they need different messages because
+they need different responses.
+
+**A sibling worth fixing with it**: `DispatcherLargeStdout.Tests.ps1:71` **gates on 15 seconds and its
+message names 20**, so a genuine budget failure reads as a comfortable pass. **An assertion's message must
+name the threshold the assertion enforces.**
+
+**(c) The single fixed-meaning re-dispatch is the sanctioned discriminator, and a second re-run of a red
+census is refused.** One re-run whose meaning is fixed in advance distinguishes runner-bound from real. A
+second converts the gate into a lottery, on the release the gate exists to protect.
+
+### A deviation in executing the re-dispatch, recorded rather than left to surface at tag time
+
+The ruling was to re-dispatch **on `22772117`**. The run went out on **`d4a89ab7`**, because the
+PRED-BETA4-008 commit was pushed before dispatching and `workflow_dispatch --ref <branch>` takes the branch
+head. **Measured**: the delta is three commits, two files, **both under `docs/`, zero census subject files**
+- so the run measures identical code and its verdict is valid evidence about the same tree. **The tag SHA is
+the maintainer's to settle**, and it is surfaced now rather than discovered at the tag.
