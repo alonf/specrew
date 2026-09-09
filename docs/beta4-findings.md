@@ -2176,3 +2176,61 @@ content was right and the remedy was unavailable**, which is the harder failure 
   (`user-profile.ps1:258/292/532`) and defaulted in `Read-IntakeYaml.ps1:266`, but **nothing reads it to
   change behaviour** - a setting the product offers, stores, and ignores. Same family as
   DRIFT-199-I003-060's dead exemption: written, honoured by nothing.
+
+---
+
+## B4F-039 - TWO CONSUMER-PROJECT OBSERVATIONS, live on `d4a89ab7`. Neither blocks.
+
+Both from the router-skill session, on the tag-candidate build.
+
+### (1) A full six-section packet after every clarify answer - the three-gates finding, in the field
+
+The crew rendered the complete re-entry packet after **each** clarify answer, with
+**`Why I Stopped: mid-clarify, not a boundary`**.
+
+**The packet names its own redundancy in its second heading.** That is DRIFT-199-I003-071/-072's exact
+shape - there the packet's *What Needs Your Review* read *"Nothing new to review"*, and the ruling was that
+**interrupting a conversation to report internal state the human cannot act on is a design error, not a
+rough edge.** Here the packet does not merely lack a reason; **it states that it has none.**
+
+**And the standing rule already says so.** The always-true refocus core carries it verbatim:
+*"Clarify-stage ambiguity questions are NOT packet stops."* So this is not an unspecified case - **the rule
+exists, is deployed, is loaded into the agent's context every session, and did not hold.** That is the
+instruction-layer family again (DRIFT-199-I003-041/-047): *a rule that depends on recollection will not be
+applied*, now measured on the clarify surface rather than in a control.
+
+**Cost, in the units that matter here**: one clarify pass is several questions, so a human answering three
+clarify questions receives three full six-section packets, each announcing it is not a boundary. **The
+first-run cost of that is the same one beta4's theme exists for.**
+
+### (2) "Two live sessions", owner unknown - presence counted as liveness
+
+The specify sync reported **two live sessions** and recorded the crossing owner as **unknown**.
+
+**Verified on disk** in the router-skill project's `.specrew/runtime/conformance-sessions/`:
+
+| session directory | `captured_at` | recorded `head` |
+| --- | --- | --- |
+| `8c283057...` | 2026-09-09 19:51 | current |
+| `33b42de4...` | 2026-09-09 15:13 | `e1181f0b` - the controller-repair commit |
+| `41644c60...` | **2026-09-08 19:37Z** | `01519e32` - **long superseded** |
+
+**`turn-baseline.json` carries `schema_version`, `capture_event`, `captured_at`, `head`, `key`,
+`dirty_user_file_count`, `entries` - and NO liveness field.** No `alive`, no `last_seen`, no `pid`, no
+`heartbeat`, no `expires_at`. **The count of directories on disk IS the count of live sessions**, so a
+session record from roughly twenty-one hours earlier, pinned to a commit that no longer exists in the
+working head, is counted as live.
+
+**That is presence read as liveness** - the same shape as a template's presence mistaken for its content
+(DRIFT-199-I003-086/-089): an artifact's existence taken as evidence of a state it does not assert.
+
+**AND IT IS FR-032's FIRST FIELD FIRING.** DRIFT-199-I003-050 recorded that FR-032 - the crossing-owner /
+concurrent-session path - shipped with **no passing automated test and no field proof**, because a
+single-session walk structurally cannot stage two concurrent sessions. **This is that field evidence
+arriving, and it is a false positive**: the "second session" is a stale directory, not a concurrent human.
+The owner-unknown disclosure then behaved exactly as designed - it failed open and said so, which is the
+half that worked.
+
+**Beta5 shape**: a session record needs a liveness signal - a heartbeat, an expiry, or a process check - and
+the counter must consult it. Until then, "two live sessions" means "two session directories exist", and the
+two are not the same claim.
