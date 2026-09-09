@@ -10,19 +10,35 @@ works and receipts mint.**
 
 That is the fix. **The consequence below is the part that needs a change in how you work.**
 
-## The rule that matters: eight lenses, eight replies, no chatter between presentation and reply
+## The rule that matters, and it has TWO halves
 
-**Once beta4 is installed, every typed message binds to the pending question.**
+**Once beta4 is installed, EVERY typed message binds to the pending question.** Verified at source:
+`scripts/internal/bootstrap/HandoverStore.ps1:1101` writes the workshop receipt on **any non-whitespace user
+message**, with no inspection of its content. **There is no redirect-shaped reply that escapes it.**
 
-When a lens is presented for closing, the maintainer's **immediate next message must be `move on` and
-nothing else.**
+### Half one - to CONFIRM a lens
 
-A clarifying question typed in between **mints a receipt the checkpoint would cite as confirmation.** The
-receipt is not wrong about anything it records - a typed turn did occur while that question was projected -
-but it cannot tell that the turn was a question rather than an answer, and nothing downstream can either.
+**The immediate next message must be `move on` and nothing else.** Eight lenses, eight replies, no chatter
+between presentation and reply.
 
-**So: eight lenses, eight replies, no chatter between presentation and reply.** Ask anything you need
-*before* the lens is presented, or *after* it is closed.
+### Half two - to CHANGE or QUESTION a lens, and this is the dangerous half
+
+**Do not type the correction into the lens-closing turn.** If you disagree with a presented lens and type
+the disagreement there, **that correction mints a receipt exactly as an agreement would**, and a checkpoint
+that reads a present receipt as the close will record the lens as closed **against your objection**.
+
+**The safe path for a disagreement:**
+
+1. **Raise it before the lens is presented for closing** - during the discussion, while the lens is being
+   worked. That is the cheap moment and it costs nothing.
+2. **If it is already presented, stop the lens-closing exchange rather than answering into it.** Say plainly
+   that this is a redirect and not a confirmation, and that the lens stays open.
+3. **Settle it outside the exchange, then have the lens re-presented** and confirm it with `move on`.
+
+**And the crew's half of the same rule**: a receipt's existence is **not** permission to close a lens. If
+the human's reply was a question, a correction, or an aside, **do not cite that receipt** - re-present the
+lens instead. The receipt id is the evidence trail for a confirmation that actually happened; it is never
+the confirmation itself.
 
 ## Why - and what a receipt actually proves
 

@@ -791,3 +791,56 @@ That is measured, not argued - it is B4F-011.
 **The practical consequence, stated once**: a lens may be recorded `human-confirmed` only for a question
 actually surfaced and actually answered. The receipt id is the *evidence trail* for that claim, never the
 claim itself.
+
+---
+
+## B4F-015 - THE DEFECT IS AT THE READER, NOT THE WRITER: an honest evidence record promoted to authority downstream
+
+**The reader-side statement of B4F-011/B4F-014's class, and it sharpens them rather than repeating them.**
+
+### The mint site is honest, and says so in its own words
+
+`scripts/internal/bootstrap/HandoverStore.ps1:1101`, verified at source:
+
+```powershell
+# The workshop RECEIPT is not one of them: it records that a phrase was seen, which is
+# evidence rather than authority, and it belongs only to the branch the human types into.
+if ((Get-Command Write-SpecrewWorkshopAuthorityReceipt -ErrorAction SilentlyContinue) -and
+    -not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+```
+
+**The only condition is that the message is not whitespace.** No content inspection, and **no
+redirect-shaped reply escapes it** - a correction, a question and an agreement all mint identically.
+
+**But the writer is not the defect.** Its comment states precisely what it is doing: *a phrase was seen,
+which is **evidence rather than authority***. It never claims assent. **It is honest about its own tier.**
+
+### The defect is that a lower-tier fact is read as a higher-tier one
+
+**The checkpoint treats a PRESENT receipt as the close.** So evidence is promoted to authority *downstream*
+of an honest write, and nothing between the two records the promotion.
+
+**That is the same shape as the boundary record trusting its own `auth_commit_hash`** (DRIFT-199-I003-097,
+under DRIFT-199-I003-090's class): the fabrication risk does not live where the fact is written, it lives
+**where a lower-tier fact is consumed as a higher-tier one.** In both cases the writer is doing its job and
+the reader is asking the wrong question of the answer it gets.
+
+### Why this matters for the disagreement case specifically
+
+The confirm case was already covered by "type `move on` and nothing else". **The redirect case was left as a
+trap**: a maintainer who disagrees with a presented lens and types the correction into the open workshop
+mints a receipt, and a presence-reading checkpoint records the lens as closed **against the objection it
+just received.** The natural human action produces the opposite of its intent, silently.
+
+`docs/beta4-router-skill-crew-brief.md` now carries both halves, including an explicit redirect path -
+because a rule that only names the safe action leaves the unsafe one as the default.
+
+### It strengthens the beta5 fix, and names its two halves
+
+1. **The receipt must carry what it is evidence OF** - the question it was bound to, and that it records a
+   turn rather than an assent. Today the tier is stated in a source comment and nowhere in the record.
+2. **The checkpoint must require assent, not mere presence.** A receipt whose reply was not an answer must
+   not be citable as a close.
+
+**BETA5**, with B4F-011, B4F-014 and the refusal-standard items. The standing rule holds; nothing here is
+fixed in beta4, and the disclosure in `docs/release-notes-v0.40.0-beta4.md` is what beta4 ships instead.

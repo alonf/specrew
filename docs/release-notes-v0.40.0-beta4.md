@@ -34,9 +34,18 @@ an aside, or an unrelated instruction validates **identically** to one minted fr
 for a `product-domain` lens whose question had never been asked. Every one came from a code-review message.
 
 **What this means in practice.** When a lens is presented for closing, **the next typed message is the one
-that gets bound.** If you want to ask a clarifying question first, expect that turn to be recorded against
-the lens. The safest pattern is to answer the lens (or type `move on`) as the immediate next message, and
-hold side conversation for after the lens is closed.
+that gets bound** - whatever it says. There is no reply shape that avoids it: the receipt is written for any
+non-whitespace message, without inspecting its content.
+
+- **To confirm a lens**: make `move on` the immediate next message, and hold side conversation until after
+  the lens is closed.
+- **To disagree with a lens - and this is the case to watch.** Typing the correction into the lens-closing
+  turn mints a receipt exactly as an agreement would. **Do not answer a disagreement into the open lens.**
+  Raise it while the lens is still being discussed, or stop the closing exchange and say plainly that the
+  reply is a redirect and the lens stays open, then confirm it once it has been re-presented.
+
+The natural action - typing your objection where the question was asked - is the one that binds, which is
+why it is called out rather than left to be discovered.
 
 **Why this appears in beta4 and not beta3.** Beta3 could not mint these receipts at all - the registration
 defect above meant no question was ever projected, so nothing could bind. **Beta4 makes the path reachable.**
