@@ -959,3 +959,70 @@ module must never be told to update as though it were BEHIND - which is the fix 
 named and which is still owed.
 
 **Recorded, not fixed.** The standing rule holds: beta4 ships the registration fix and nothing else.
+
+---
+
+## B4F-018 - THE SPINE FINDING: a claim measured over a narrower set than the claim covers
+
+**This sits ABOVE every other entry in this file, and above most of iteration 003's drift log. Those are
+instances. This is the class, and it is a method rather than a bug.**
+
+> **A claim is stated over one set and measured over a narrower one. The measurement is correct. The claim
+> is wrong. Nothing in the output distinguishes the two, because the check reports on what it examined and
+> the reader hears what was asserted.**
+
+### Why it is the spine and not one more entry
+
+**It has appeared on every surface this project has**, which is what makes it a method rather than a defect
+with a location:
+
+| surface | instance |
+| --- | --- |
+| **production code** | the authority-marker guard catching malformed markers only where the malformation does not collide with a real identifier (DRIFT-199-I003-042); self-leak-lint and mirror-parity holding different scopes over the same content (-034) |
+| **tests** | a needle built in LF against a CRLF haystack, so `IndexOf` returned -1 and the test reported its own defect as the script's (DRIFT-199-I003-036); `crossing-owner` red at both commits with nobody comparing WHICH assertions (-051) |
+| **the release gate** | the census reporting the product's own dependency refusal as a tree defect, because it ran where the product cannot bootstrap (DRIFT-199-I003-030); "lanes green" read as "tree green" for days (-022) |
+| **human rulings** | the remembered "beta2's census succeeded" premise, stated in passing and built upon, with the run list one command away (DRIFT-199-I003-030) |
+| **verification controls** | three controls in one session that produced confident answers about nothing (DRIFT-199-I003-039); a mutation proof whose target was already red (-049) |
+| **records about the class** | the entry written to record two escape-corruption instances reproduced both of them (DRIFT-199-I003-018) |
+
+**And five more in this session alone, all mine:**
+
+1. **The whitespace grep** - `"invoked, never read"` claimed absent tree-wide; it was present, line-wrapped
+   across two lines, so a single-line pattern could not match it. (B4F-003)
+2. **The registry regex-hit count** - "124 of 127 integration suites" was a count of `tests/integration/`
+   matches inside the manifest text, not of files. The real figure was 11 unnamed. (B4F-009)
+3. **The traced route** - B4F-005 attributed the failure to line 550's return, but for that state the
+   object is non-null and line 552 would have populated the fields the journal recorded as null. (B4F-007)
+4. **The boundary-store absence claim** - `approved for review round` reported as producing silence, because
+   the boundary store was checked and round-approval does not live there. (B4F-016)
+5. **The bounding control** - a re-stamp check that compared only `managed_files` and reported "BOUNDED AS
+   EXPECTED" while `specrew_version` degraded from `0.40.0` to `unknown` outside the set it examined.
+
+**Instance 5 is the one that settles it**: the defect appeared inside the control written specifically to
+bound a claim, in the same session that had recorded the class four times.
+
+### THE COUNTERMEASURE IS NOT ANOTHER GUARD, and that is the load-bearing part
+
+**A guard is a checker, and a checker has a scope.** Adding one to catch scope errors reproduces the
+problem one level up - which is exactly what DRIFT-199-I003-042 found (a guard whose coverage is decided by
+what the bad input happens to say) and what -034 found (two guards whose scopes compose only by accident).
+**Every attempt to answer this class with a control has become a new instance of it.**
+
+The two things that have actually worked, every time, across the whole arc:
+
+1. **STATE THE SET.** A count, an absence, a "bounded as expected", a "nothing failed" is not a claim until
+   it names what it counted over. *"Zero matches"* is meaningless; *"zero matches for this pattern over
+   these files"* can be checked and can be wrong.
+2. **VERIFY FROM THE ARTIFACT, NOT THE CHECKER.** Every instance above was caught by reading the thing
+   itself - the git diff, the run list, the directory listing, the failing-assertion sets, the file's own
+   bytes - and **none was caught by the check that was supposed to cover it.** A checker's green means
+   "nothing I examined is wrong", and the reader hears "nothing is wrong".
+
+### What this reorganises
+
+Iteration 003's drift log reads as ninety-nine findings. **It is closer to one finding with ninety-nine
+instances**, plus a smaller set about authorization. That is not a criticism of the record - the instances
+had to be found individually and each cost something real - but the next reader should meet the class
+first, because it predicts where to look and no individual instance does.
+
+**Beta5 owes this a place in the methodology, not a guard in the harness.**
