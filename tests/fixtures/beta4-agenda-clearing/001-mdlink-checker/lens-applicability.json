@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.1",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "agenda_contract": "complete-coverage-v1",
+  "human_turn_contract": "typed-turns-v1",
+  "agenda_status": "confirmed",
+  "selected": [
+    "architecture-core",
+    "code-implementation"
+  ],
+  "agenda": {
+    "architecture-core": {
+      "depth": "light",
+      "decision": "How the single script is structured: enumerate/extract/resolve-and-check as three functions, no shared state, no configuration."
+    },
+    "code-implementation": {
+      "depth": "light",
+      "decision": "Source of coding-rule truth, PowerShell 7 stack specifics, zero-dependency policy, and reviewer host/authorization setup."
+    }
+  },
+  "skipped": {
+    "component-design": "Single-script CLI with three functions in one file; nothing beyond what architecture-core already covers.",
+    "requirements-nfr": "No NFR surface beyond what is already pinned as a constraint (zero dependencies, zero false positives on a clean folder); nothing left to decide.",
+    "ui-ux": "No UI; explicitly out of scope.",
+    "security-compliance": "No auth, secrets, PII, or compliance surface; reads local Markdown files only.",
+    "data-storage": "No persistent/durable state; reads the filesystem it is pointed at and writes nothing.",
+    "integration-api": "No external services or APIs; HTTP links are explicitly out of scope.",
+    "devops-operations": "No deployment, CI/CD, or release change; CI integration is explicitly out of scope.",
+    "observability-resilience": "No performance/scale or resilience concerns for a local, single-run CLI over a documentation folder."
+  },
+  "agenda_confirmation": "human-confirmed",
+  "agenda_confirmation_scope": "lens-selection",
+  "agenda_turn_receipt": "5fb57b48806c7f5d5185ceaf7d35df2cd0d4386b63ba83af18d84fc0eb783c61",
+  "agenda_digest": "99326b16b51d5b75fddd23de586b70da4115d19071fe2f5c08f24eea22c2aa91",
+  "workshop": {}
+}

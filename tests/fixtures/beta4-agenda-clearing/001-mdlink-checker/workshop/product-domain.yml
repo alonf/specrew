@@ -1,0 +1,62 @@
+schema_version: "1.1"
+depth: light
+depth_reason: >-
+  Tiny, fully understood personal CLI utility with no unknowns; risk is nil, so deeper
+  discovery (competitive/alternative analysis, stakeholder map, adoption plan) is not
+  warranted.
+context_scope: feature_standalone
+product_id: null
+product_context_ref: null
+areas:
+  user_stakeholder: >-
+    A solo developer maintaining Markdown documentation folders (the requester themself).
+    No separate buyer/operator/stakeholder role — user and stakeholder are the same person.
+  pain_job: >-
+    Relative links and in-document #anchors break silently when Markdown files move or get
+    renamed. Today this is caught only by clicking through links by hand, or not at all.
+  mvp: >-
+    A command-line tool that takes a directory, scans every .md file beneath it, checks every
+    relative file link and every #anchor against the actual files and headings on disk, prints
+    each broken link as path, line, and target, and exits 1 if any broken links were found.
+  out_of_scope: >-
+    HTTP/HTTPS links, auto-fixing broken links, CI integration, any UI.
+  key_constraints: >-
+    PowerShell 7. Single script. No external dependencies. Zero false positives on a clean
+    folder.
+statements:
+  - text: >-
+      A solo developer maintaining Markdown documentation folders is the sole user and
+      stakeholder.
+    area: user_stakeholder
+    evidence: known
+  - text: >-
+      Relative links and in-document anchors break silently when files move; today this is
+      checked by hand or not checked at all.
+    area: pain_job
+    evidence: known
+  - text: >-
+      The MVP is a CLI that scans .md files beneath a directory, checks relative file links and
+      #anchors against real files/headings, reports path/line/target for each break, and exits 1
+      on any break.
+    area: mvp
+    evidence: known
+  - text: HTTP links, auto-fixing, CI integration, and any UI are explicitly out of scope for this feature.
+    area: out_of_scope
+    evidence: known
+  - text: >-
+      The implementation must be PowerShell 7, a single script, with zero external dependencies,
+      and must produce zero false positives on a clean folder.
+    area: key_constraints
+    evidence: known
+skipped:
+  - area: alternatives_competitors
+    reason: >-
+      Light depth; tiny personal utility with no competitive landscape to evaluate — the
+      current workaround (manual click-through / nothing) is already captured under pain_job.
+  - area: adoption_rollout
+    reason: >-
+      Light depth; single-user personal tool with no rollout, training, or change-management
+      surface.
+follow_up_research: []
+confirmation: human-confirmed
+confirmation_scope: lens-question

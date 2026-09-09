@@ -2467,3 +2467,61 @@ the receipt reader and the intake-lens predicate all already exist and are alrea
 4. **mutation**: remove the receipt check → case 1 goes red **and only case 1**.
 
 **The maintainer decides whether it rides with (C).** Recorded with the estimate rather than implemented.
+
+---
+
+# BETA4 REOPENS
+
+**`d4a89ab7` stays as the candidate that FAILED the fresh walk. Nothing is tagged.**
+
+## Why, in one sentence that is not about a bug count
+
+**On the main workshop path, the product invited a corrupting repair - and the outcome depended on the
+agent's discipline, which is not a control.**
+
+Three encounters, three different outcomes, same state: Casio left the clearing alone and closed five
+lenses; the router-skill crew re-ran the lens writer and corrupted its controller into
+`workshop-record-not-selected`; the `beta4-mdlink` crew proposed the same repair and was talked out of it
+(B4F-041). **The variable each time was the judgement of whoever was sitting there.**
+
+A release whose correctness depends on an agent noticing that a normal state is normal has not shipped a
+control. It has shipped a hazard with a good track record.
+
+## PRED-BETA4-009 - stated now, before the fix set, for the re-walk
+
+**A fresh project completes feature 1 through `approved for specify` and reaches feature 2's first question
+with:**
+
+| counted | required |
+| --- | --- |
+| repair proposals | **0** |
+| packets at non-boundaries | **0** |
+| orientations per session | **1** |
+| advisories on a read-only session | **0** |
+| feature 2's first typed reply registers | **yes** |
+
+**Counted on a RECREATED `C:\Dev\walks\beta4-mdlink`, not judged.** Each number is a count a human can take
+while walking, in the units the work is actually for - the same instrument that produced *nine stops by the
+specify boundary* and later *zero governance stops not about the work*.
+
+**Feature 2's first question is the load-bearing one**: a first feature has no predecessor to name, so only
+the second exercises the defect beta4 exists to fix.
+
+## The fixture is preserved, because the state is not reproducible on demand
+
+`tests/fixtures/beta4-agenda-clearing/001-mdlink-checker/`, copied from the failed walk **before the project
+is recreated**:
+
+```
+agenda_status       = confirmed
+agenda_confirmation = human-confirmed
+selected            = [architecture-core, code-implementation]
+workshop keys       = []            <- the clearing the crew read as data loss
+agenda keys         = [architecture-core, code-implementation]
+workshop/product-domain.md, .yml    <- intact, which is the whole point
+```
+
+**This is the exact post-confirmation state the trap fires on**, produced by the product itself on a real
+walk rather than posed by a fixture - the strongest evidence tier this project has
+(DRIFT-199-I003-020's principle: the precondition was written by the defect, in the field, before anyone
+knew it would be needed).
