@@ -270,3 +270,51 @@ matches CI's three assertions better than W43 did:
 before a tag must be a dispatched workflow run.
 
 **The tag is cut only on the SHA a green dispatch ran on.**
+
+---
+
+## PRED-BETA4-008 - the single sanctioned re-dispatch on 22772117
+
+**Meaning fixed before dispatch. ONE re-run on the same SHA. There is no third run.**
+
+Census `34346555521` on `22772117` left two failures, both in files **byte-unchanged since the last green
+census**, both green in that census and in the run before this one. Verified at source, their assertions are
+runner-bound:
+
+**`DispatcherLargeStdout.Tests.ps1:71`**
+
+```powershell
+Assert-True ($sw.Elapsed.TotalSeconds -lt 15) ("... ({0:N1}s, well under the 20s timeout)" -f ...)
+```
+
+**It gates on 15 seconds and its message names 20.** The observed 17.9s failed a **15s** budget while the
+text claimed it was well under 20 - which is why the failure first read as a pass reported as a failure. The
+comment above it states the design: the provider timeout is 20s + Kill, and *"15s cleanly separates the two
+even under moderate load"*. **17.9s is between the separator and the real ceiling: a slow runner, not a
+deadlock.** Every payload assertion passed - no truncation, no deadlock - and the provider under test is a
+stub, so **none of beta4's code is on that path.**
+
+**`squad-init-closed-stdin.tests.ps1:209`**
+
+```powershell
+if ([int]$result.timeout_child_pid -le 0 -or [bool]$result.timeout_child_alive) {
+    Write-Fail 'timeout did not prove that the complete fake Squad descendant process tree was terminated'
+}
+```
+
+**Two conditions, one message.** `pid -le 0` is **could not observe**; `child_alive` is **observed alive**.
+The output cannot say which fired, and "did not prove" is the could-not-observe reading - an absent
+measurement, not a surviving process.
+
+### THE PREDICTION
+
+**Both pass on the re-run.**
+
+| outcome | conclusion, fixed now |
+| --- | --- |
+| **both green** | Confirmed **runner-bound**. `22772117` has its green run and is the tag SHA. |
+| **either red again** | **NOT flakiness. A real blocker.** Nothing is tagged until it is understood. |
+
+**AND THERE IS NO THIRD RUN.** A single re-dispatch with its meaning fixed in advance is a discriminator. A
+second re-run of a red census is a lottery, and it is refused - it would convert the gate into a dice roll
+nobody named, on the release the gate exists to protect.
