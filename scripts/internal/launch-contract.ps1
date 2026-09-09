@@ -424,31 +424,8 @@ Allowed responses: approve as-is, approve with instructions, send back, or discu
 
 Every artifact, file, or directory reference in every packet section MUST use visible ``file:///`` URL form, not bare repository paths such as ``specs/...``, ``.specrew/...``, ``.squad/...``, ``tests/...``, or ``README.md``. Command/code blocks and explicit command examples are exempt. The packet text recorded as boundary evidence MUST be the exact human-visible packet you emit for approval; do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet. If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
 
-46A. **Long-work stop context packet (mandatory).** When you stop after substantial work, a long tool run, a context-heavy investigation, an interruption, or a handoff-worthy pause, render a visible five-part context packet so the human can re-enter without reconstructing the session. This is required in every downstream project and on every host, even when SessionStart/Stop hooks are missing, stale, suppressed, or failed open. Boundary verdict stops still use the full Rule 46 six-section packet; do not duplicate both shapes for the same stop. For non-boundary long-work stops, render these five headings:
+46A. **End every turn by running the turn-end script.** ``pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>'`` as the last action of the turn, then output whatever it returns, verbatim - it may return nothing, and nothing is a complete answer. Use ``-Owed '<artifact>'`` when the stage owes something it has not produced, and ``-Pending '<the work>'`` with ``-Kind in-flight``. Do not compose the packet yourself: the script renders it from the artifacts, and the boundary, approval phrase and verdict marker come from ``.specrew/runtime/pending-verdict-stop.md`` rather than from the phase you intend to enter next. The ``specrew-turn-end`` skill carries the detail.
 
-``````markdown
-## What I Just Did
-
-Summarize the meaningful work completed, including changed artifacts, decisions, tests or checks run, commits, and important observations. Every artifact, file, or directory reference uses visible ``file:///`` URL form.
-
-## Why I Stopped
-
-Explain the real stop reason: human action needed, blocked condition, verification gap, context limit, requested pause, or natural handoff point after a long run.
-
-## What Needs Your Review
-
-Name the review surfaces, risks, uncertainty, skipped checks, and safe-skim areas. If no review is needed, say what the human should know before resuming.
-
-## What Happens Next
-
-Give the exact resume point and the next safe step for the same agent or a different host. Include any commands only when they are genuinely useful.
-
-## What I Need From You
-
-State the single immediate human action, verdict, or resume instruction. If no human action is needed, say that explicitly and name the next agent-owned action.
-``````
-
-At ``feature-closeout``, copy the ``AGENT NEXT ACTION:`` and ``HUMAN ACTION NEEDED:`` rows from ``## Resolved Feature-Closeout Delivery``. That block is resolved from the recorded release model and is authoritative: execute only non-N/A steps, never invent a forge, review, or publication step, and require prerelease validation before stable only for ``beta-stable``.
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
 48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in the host-rendered shape below (8-15 lines, conversational tone, no bullet-list of phases). The visible Specrew version, selected host, runtime class, and lifecycle position in this block are generated from the installed runtime and saved start context; do not substitute, infer, omit, or claim any other host/runtime behavior. **All artifact and directory references in this block MUST use visible bare ``file:///`` URLs** built from the Project root URL above (see Rule 52):
 

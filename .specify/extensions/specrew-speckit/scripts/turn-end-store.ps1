@@ -286,6 +286,15 @@ function Get-SpecrewInFlightRepeatCount {
     # declaration about to be written. The run must be unbroken: any other kind, or a different pending text,
     # resets it - because the thing being bounded is "nothing is changing", not "in-flight was used a lot".
     # A session that alternates real work with in-flight waits is doing exactly what in-flight is for.
+    #
+    # IT COUNTS SUPPRESSED NO-OPS TOO, and that is the opposite of what Get-SpecrewTurnEndPreviousRecord does
+    # with -RenderedOnly. The asymmetry is deliberate and load-bearing. The render gates ask *what did the
+    # human last SEE*, so a no-op must not suppress against itself. This bound asks *how long has nothing
+    # changed*, and a suppressed no-op is the strongest possible evidence for that - it is a turn that
+    # produced nothing new, by the gates' own judgement. Filtering it out here would mean the quieter a
+    # session got, the longer it could go on saying nothing, which is exactly backwards.
+    # Measured: runs 1-5 against one pending item give run counts 1,2,3,4,5 with renders at 1, 4 and 5 - the
+    # two suppressed turns still carry the run forward and the bound trips on schedule.
     [OutputType([int])]
     param(
         [Parameter(Mandatory)][string] $TurnEndRoot,

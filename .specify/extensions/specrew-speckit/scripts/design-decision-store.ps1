@@ -23,7 +23,20 @@
 #   - a rationale, because the value of the record is why, not which.
 
 $script:SpecrewDesignDecisionSchemaVersion = '1.0'
-$script:SpecrewDesignDecisionConfirmation = 'human-decided'
+
+# THE CONFIRMATION VALUE NAMES WHAT IT ACTUALLY IS, AND IT IS NOT `human-confirmed`.
+#
+# No hook captures a receipt for a design decision yet. What this record carries is the CREW'S DECLARATION
+# of what the human typed - the agent's word for the human's - and calling that `human-confirmed` would
+# claim an authority no artifact supports. This batch has already measured what that claim costs: five
+# `human-confirmed` receipts were minted for a workshop question that had never been asked, and the record
+# could not tell them from real ones because both validated identically.
+#
+# So the value is `crew-declared-human-reply`, which a reader can weigh correctly without being told.
+# BETA5 closes the gap: `design decision - option N` becomes a reserved phrase in the handover store, the
+# hook mints a receipt for it like any other typed turn, and this record cites that receipt - at which
+# point the value can honestly become a confirmation.
+$script:SpecrewDesignDecisionConfirmation = 'crew-declared-human-reply'
 $script:SpecrewDesignDecisionScope = 'design-decision'
 
 function Get-SpecrewDesignDecisionPath {
