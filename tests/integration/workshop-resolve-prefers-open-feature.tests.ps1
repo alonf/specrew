@@ -131,6 +131,17 @@ try {
         -WorkshopFeatureCandidates @($openRef)
     Assert-True ($null -ne $c1 -and [bool]$c1.valid) 'CONTROL: an open intake workshop resolves valid'
     Assert-True ($null -ne $c1 -and [string]$c1.feature_ref -eq $openRef) 'CONTROL: it resolves to the open feature'
+
+    # A CONTROL MUST NAME THE PATH THAT RESOLVED IT (B4F-028). This case passes -ActiveFeatureRef $openRef,
+    # so the START-CONTEXT path can satisfy it without the candidate logic being reached at all. Under a
+    # rejected predicate that disabled the candidate path entirely, this case stayed GREEN while Cases 2, 7
+    # and 8 went red - a passing control covering a dead fix. Re-running it with NO candidates offered
+    # proves which path carried it, so the control can never again certify a path it did not take.
+    $c1path = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $openRef -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @()
+    Assert-True ($null -ne $c1path -and [bool]$c1path.valid) 'CONTROL NAMES ITS PATH: it resolves with NO candidates offered, so the START-CONTEXT path carried it - this case does NOT cover the candidate path'
     $controlHeld = ($null -ne $c1 -and [bool]$c1.valid)
     if (-not $controlHeld) {
         Write-Host '  INCONCLUSIVE: the positive control did not hold, so every verdict below is void.'
@@ -144,7 +155,9 @@ try {
         -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
         -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
         -WorkshopFeatureCandidates @($openRef)
-    Assert-True ($null -ne $c2 -and [bool]$c2.valid) 'a stale ref no longer blocks the open workshop'
+    # And THIS case is the candidate-path control: the start-context pair is non-active, so nothing but the
+    # candidate logic can produce a valid result. Case 1 proves the resolve works; only this proves the fix.
+    Assert-True ($null -ne $c2 -and [bool]$c2.valid) 'CANDIDATE-PATH CONTROL: a stale ref no longer blocks the open workshop'
     Assert-True ($null -ne $c2 -and [string]$c2.feature_ref -eq $openRef) 'it resolves to the OPEN feature, not the stale one'
     Assert-True ($null -ne $c2 -and [string]$c2.scope -eq 'feature') 'and at FEATURE scope, not the stale iteration scope'
 

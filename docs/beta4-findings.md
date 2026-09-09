@@ -1593,3 +1593,21 @@ without spelling it. Same shape as DRIFT-199-I003-018 - the record about a defec
 Restored the gallery snapshot into a scratch module root and imported it in a clean process: **411 files,
 import succeeded, version 0.40.0, stamp commit `11f47c4b`, 16 commands exported.** The pre-beta4 gallery
 build is recoverable, and has now been recovered once.
+
+### RESOLUTION - beta5's candidate fix, and it supersedes "open design question" above
+
+**The predicate is not discoverable from durable state because nothing durable records the act of posing.
+So the act declares itself.**
+
+> **The workshop skill DECLARES the posed question durably at the moment it poses it, and the candidate scan
+> requires that declaration. Declared, not detected.**
+
+- **It removes the punctuation dependency entirely.** Detection asks a heuristic to infer what happened;
+  declaration records it. Line 564's `?` heuristic stops being load-bearing for anything.
+- **It separates the two states that are currently byte-identical**: an untouched stub has no declaration; a
+  genuine second feature's first question has one, written by the skill in the same turn it asks.
+- **It is the same pattern as the turn-end intent** recorded alongside it - the agent states what it did
+  rather than leaving a hook to infer it from output shape. Two findings, one mechanism.
+
+**BETA5, as a candidate resolution rather than an open question.** Beta4 ships the fix as-is; the stub
+condition is disclosed in the release notes and pre-flighted in the crew brief instead.

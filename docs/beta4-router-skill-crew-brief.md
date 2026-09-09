@@ -2,6 +2,30 @@
 
 **One page. It is operational, not background.** Hand this over with the build.
 
+## PRE-FLIGHT - run this before the crew starts, not after
+
+**List every feature that has both a `lens-applicability.json` and a specification still carrying the
+unauthored scaffold marker. EXACTLY ONE must exist.**
+
+```powershell
+Get-ChildItem specs -Directory | Where-Object {
+    (Test-Path (Join-Path $_.FullName 'lens-applicability.json')) -and
+    (Test-Path (Join-Path $_.FullName 'spec.md')) -and
+    ((Get-Content (Join-Path $_.FullName 'spec.md') -Raw) -match 'spec-not-yet-authored')
+} | Select-Object -ExpandProperty Name
+```
+
+- **Exactly one** - that is the workshop you are about to run. Proceed.
+- **More than one** - **stop.** The resolve cannot tell which workshop a typed reply belongs to and will
+  refuse as ambiguous rather than guess. Author the specification of every feature that is not the one you
+  are running, then re-run this check.
+- **None** - the feature you mean to work has no open intake. Check you are in the right project before
+  scaffolding anything.
+
+**Why it is a pre-flight and not a troubleshooting step**: a second stub does not fail loudly. It makes the
+resolve refuse, and the refusal reaches the journal rather than you (B4F-012). You would experience it as
+the workshop simply not advancing.
+
 ## What changes for you
 
 Beta4 fixes the defect that stopped the router-skill workshop advancing past its first technical lens. The

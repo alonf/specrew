@@ -57,6 +57,27 @@ stated in the design-workshop conduct - a lens may be recorded `human-confirmed`
 surfaced and actually confirmed - and that remains the agent's obligation. Tightening the machinery so the
 record can distinguish a turn from an assent is deferred to beta5 with the refusal-standard items.
 
+## Known issue: a scaffolded feature you never started keeps announcing its workshop
+
+**If you create a feature and then leave it alone, it will assert an open workshop on every turn** — in
+every session in that project — until you either author its specification or actually run its workshop.
+
+You will see a short note about workshop work in progress on turns that had nothing to do with it, and the
+feature's lens will accept your typed replies as though they answered a question it never asked.
+
+**Either action clears it:**
+
+- **run the workshop** for that feature, or
+- **author its specification** — which is what a feature past intake has anyway.
+
+**Why**: Specrew decides a workshop is open by looking for a feature whose specification is still the
+untouched scaffold stub. A feature created and abandoned looks identical, on disk, to one whose first
+question was just asked — the only difference is whether a question was actually posed, and nothing durable
+records that today. Beta5's fix is for the workshop to record the question as it asks it, so the two stop
+being indistinguishable.
+
+**This does not affect a workshop you are actually running.** It only affects features left at intake.
+
 ## Verification
 
 - Regression test: `tests/integration/workshop-resolve-prefers-open-feature.tests.ps1`, in the
