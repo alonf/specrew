@@ -107,6 +107,27 @@ Specrew project you work in. Changing the file is enough — nothing needs to be
 
 **Fixed in beta5** by shipping the skill.
 
+## Known issue: clarify refuses on a brand-new feature
+
+**On a feature that has not reached the plan boundary yet, the clarify sync refuses:**
+
+> Specrew cannot record this boundary because it does not know which iteration it belongs to.
+
+**Workaround — pass the iteration explicitly:**
+
+```
+… sync-boundary-state.ps1 -BoundaryType clarify -IterationNumber 001 …
+```
+
+**Why**: clarify runs *before* the plan boundary creates `iterations/001/`, but the sync still expects an
+iteration for it. The refusal even says so itself — it tells you to create the iteration first, which only a
+*later* boundary does. Passing `-IterationNumber 001` satisfies it and nothing is lost.
+
+**You may also see a literal `{0}` in that message** where a folder path should be. That is a formatting
+defect in the message only; the refusal itself is behaving as described above.
+
+Both are fixed in beta5.
+
 ## Verification
 
 - Regression test: `tests/integration/workshop-resolve-prefers-open-feature.tests.ps1`, in the

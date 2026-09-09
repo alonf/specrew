@@ -2323,3 +2323,69 @@ Gated on **this-session material**.
 - **advisories on a read-only session**
 
 Counted rather than judged, on a real walk rather than in this tree.
+
+---
+
+## B4F-040 - DRIFT-199-I003-012 REACHED A CONSUMER, and the fixture masked it twice
+
+**The clarify boundary requires an iteration that a LATER boundary creates.** Recorded during the beta3
+respin as DRIFT-199-I003-012, where the fix was *"one list entry, written, not applied - HELD FOR A
+RULING"*. **The ruling never came, beta3 shipped, and the router-skill project hit it at clarify on
+`d4a89ab7`.** That is the cost of a held fix, measured rather than argued.
+
+### Verified here
+
+`scripts/internal/sync-boundary-state.ps1:404`:
+
+```powershell
+if ([string]::IsNullOrWhiteSpace($effectiveIteration) -and
+    $BoundaryType -notin @('before-specify', 'specify', 'feature-closeout')) {
+```
+
+**`clarify` is absent from the exemption list**, and clarify runs before any iteration exists.
+
+**Shipped since `aa25909b` (2026-08-12)** - confirmed by `git log -S` on the list itself. **That postdates
+the `v0.40.0-beta2` tag of 2026-08-08, so beta3 is affected and beta2 is not.**
+
+### FOUR NEW FACTS BEYOND -012
+
+**1. The governed command omits the parameter the script requires.** The sanctioned `sync-clarify` path
+does not pass `-IterationNumber`, so **following the governed route cannot satisfy the gate** - the only way
+through is the parameter the command does not offer.
+
+**2. THE FIXTURE MASKED IT TWICE.** Measured: **27 sync-related test invocations pass
+`-IterationNumber '001'`**, *and* the fixtures **seed `iterations/001`**. Both the parameter and the
+directory. **So the pre-plan state - no iteration on disk, no parameter supplied - was never exercised by
+anything**, and the suite is green on a state the product cannot actually reach.
+
+**B4F-018 in a fixture**: the tests measured a narrower world than the claim "clarify works" covers, and the
+narrowing was in the setup, which is the part nobody prints.
+
+**3. THE REFUSAL'S `{0}` IS UNFORMATTED**, and it is a bug this project has already fixed once:
+
+```powershell
+throw ("… it belongs to. " +
+    "No iteration was given and none was found under {0}. " +
+    "Create the iteration first … -IterationNumber with the one you mean." -f (Join-Path $featurePath 'iterations'))
+```
+
+**`-f` binds to the LAST string literal of the `+` chain, not to the concatenated whole.** The `{0}` sits in
+the *middle* fragment, so it renders verbatim and the path never appears - while `-f` substitutes into a
+fragment that has no placeholder.
+
+**DRIFT-199-I003-063 found this exact bug** in the scaffold's four messages and added a guard asserting no
+placeholder survives in any line. **That guard is scoped to `scaffold-reports-what-it-did`, so it does not
+reach this file.** The instance was fixed; the class was not - **a guard scoped narrower than the defect it
+was written for**, which is B4F-018 once more, one level above the fixture.
+
+**4. The refusal contradicts itself, as -012 recorded**: it tells the reader to *"create the iteration first
+(the plan boundary scaffolds `iterations/001/`)"* - and **plan comes after clarify**. A boundary demanding
+an artifact only a later boundary produces.
+
+### Disposition
+
+- **Beta4**: known issue in the release notes with the workaround (`-IterationNumber 001`) and a note that
+  the literal `{0}` is cosmetic.
+- **Beta5, or with (C) if the tag reopens**: exempt `clarify` at `:404` **or** put the parameter in the
+  command; **add a no-iteration fixture case** so the pre-plan state is exercised at all; **fix the format
+  string** - and consider whether the -063 guard should cover every refusal rather than one scaffold.
