@@ -1520,3 +1520,76 @@ changed.**
 
 **STOPPED AND REPORTED.** This needs the maintainer's ruling: it writes a governance artifact, the product's
 own remedy is destructive, and the drift is not beta4's to absorb.
+
+---
+
+## B4F-028 - PREDICATE (A) TESTED AND REJECTED, and the control meant to decide it does not cover the path
+
+**Implemented, run, reverted. The decision rule would have shipped a dead fix on a green control.**
+
+### What (A) did
+
+(A) qualified an intake candidate only when its controller shows an underway workshop - `agenda_status`
+confirmed, a real `agenda_turn_receipt`, a non-empty selection, or a recorded lens. Applied to source and
+mirror, parse clean, mirror identical. Result on the eight-case suite:
+
+| case | under (A) |
+| --- | --- |
+| **1 - POSITIVE CONTROL** | **PASS** |
+| 2 - the regression the fix exists for | **FAIL** (3 assertions) |
+| 7 - ambiguity refusal | **FAIL** (2) |
+| 8 - the guard must not weaken the fix | **FAIL** (2) |
+
+**Seven assertions red. The fix is dead under (A)** - a stale ref no longer yields to the open workshop,
+which is the entire defect B4F-007 measured.
+
+### AND CASE 1 PASSED ANYWAY, which is the finding
+
+**Case 1 resolves through the START-CONTEXT path, not the candidate path.** It passes
+`-ActiveFeatureRef $openRef`, so the context path finds the open workshop and returns valid before the
+candidate logic matters. **Under (A) it stays green while the thing it was chosen to certify is broken.**
+
+**So "run Case 1 first; pass, ship (A)" would have shipped a dead fix on a green control.** That is
+B4F-018's shape in the TEST DESIGN rather than in a measurement: a control exercising a narrower path than
+the claim it certifies. The other cases caught it only because they were run anyway.
+
+**The correction to the suite is cheap and owed**: Case 1's assertions should state which path resolved
+them, so a control cannot silently certify a path it never took.
+
+### The deeper result: durable state cannot distinguish the two cases
+
+| | untouched stub (201) | genuine second feature, FIRST question |
+| --- | --- | --- |
+| `agenda_status` | pending-confirmation | pending-confirmation |
+| `agenda_confirmation` | pending | pending |
+| `agenda_turn_receipt` | `pending` | `pending` |
+| `selected` / `workshop` | 0 / empty | 0 / empty |
+
+**Byte-identical.** The only difference is whether a question was posed in the turn.
+
+**That also defeats "underway or presented" when `presented` must be durable**: on the first question's
+turn there is no durable record of it yet, because the projection that would record it is the thing being
+gated.
+
+**Why (B)-narrowed was rejected, recorded as instructed**: it puts the projection - and therefore the
+receipt the resolve needs to advance - behind line 564's question-mark heuristic. A missed detection would
+silently re-block a live workshop, and that is the one failure beta4 cannot ship.
+
+**So no predicate over durable state both excludes an untouched stub and admits a genuine first question.**
+Recorded as an open beta5 design question rather than resolved by guess.
+
+### It does not block beta4, because the ruling's own item 3 ends it independently
+
+Authoring 201's specification removes the not-yet-authored marker, so **201 stops qualifying as a candidate
+regardless of the predicate**. Measured: intake candidates in this repository **1 -> 0**. The receipts and
+the every-turn advisory end here with no provider change at all.
+
+**A trap found on the way**: the first draft of that specification KEPT 201 a candidate, because it named
+the marker token in prose and the scan matches it anywhere in the file. Reworded to describe the marker
+without spelling it. Same shape as DRIFT-199-I003-018 - the record about a defect reproducing it.
+
+### Restore rehearsal - the snapshot is a restore path, not a hope
+
+Restored the gallery snapshot into a scratch module root and imported it in a clean process: **411 files,
+import succeeded, version 0.40.0, stamp commit `11f47c4b`, 16 commands exported.** The pre-beta4 gallery
+build is recoverable, and has now been recovered once.
