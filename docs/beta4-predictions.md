@@ -318,3 +318,33 @@ measurement, not a surviving process.
 **AND THERE IS NO THIRD RUN.** A single re-dispatch with its meaning fixed in advance is a discriminator. A
 second re-run of a red census is a lottery, and it is refused - it would convert the gate into a dice roll
 nobody named, on the release the gate exists to protect.
+
+### RESOLVED 2026-09-09: both green. Runner-bound confirmed, and `d4a89ab7` has its green run.
+
+**Run `34354188094`, `conclusion: success`, all three jobs green:**
+
+```
+full-test-census      success
+prepublish-validation success
+publish-module        success
+```
+
+**The sweep executed** - `Execute every named test file on disk`: **success**, not skipped. Checked before
+the verdict was accepted, as every census result in this arc has been.
+
+**By the meaning fixed before the dispatch: both timing assertions are CONFIRMED RUNNER-BOUND.** They failed
+once at 90% of a budget the message misreported, on files byte-unchanged since the last green census, and
+passed on the next run of the same code. **This was the single sanctioned re-dispatch. There is no third
+run, and none is needed.**
+
+**One entry in the diagnostics artifact on a GREEN run**, read rather than assumed:
+`tests\direct-exit.tests.ps1`, output `DIRECT-EXIT-SENTINEL`. **That file does not exist in the
+repository** - it is a transient fixture written by `tests/unit/full-sweep-direct-exit.tests.ps1`, a unit
+test *of the sweep* that proves the harness captures a direct exit. **It is a passing test's by-product, not
+a swallowed failure**, which is why the job is green. Worth one beta5 line only: a diagnostics artifact that
+carries a failure-shaped entry on a green run will mislead someone eventually.
+
+**THE TAG SHA IS `d4a89ab7`** - the SHA the green dispatch ran on, which is the rule. It carries
+`22772117`'s code exactly; the three commits between them are docs-only with zero census subject files
+(measured in B4F-034). The branch head has since moved past it with records, which is the normal shape -
+records live outside the tag (DRIFT-199-I003-040).
