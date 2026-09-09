@@ -543,20 +543,34 @@ function Resolve-SpecrewWorkshopQuestionPause {
         $iteration = $null
         $state = $null
 
-        # (a) the intake candidate - validated, never trusted, and never guessed at when ambiguous.
+        # (a) the intake candidates - EVERY distinct one is validated, because ambiguity must be preserved
+        # rather than collapsed. Independent-review finding F001: dropping to null whenever more than one
+        # candidate was offered left candidateActive false, so the guard below could not fire and an active
+        # start context was returned as valid - a SECOND open workshop made the resolve LESS cautious than
+        # one, and the caller then persists that feature with the last assistant question. A name that is
+        # not an active workshop is not a competitor: only ACTIVE candidates count toward ambiguity.
         $intakeCandidate = $null
         $candidateState = $null
+        $activeCandidates = @()
         if ($null -ne $WorkshopFeatureCandidates) {
             $distinctCandidates = @($WorkshopFeatureCandidates |
                 Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
-            if ($distinctCandidates.Count -eq 1) { $intakeCandidate = ([string]$distinctCandidates[0]).Trim() }
-        }
-        if (-not [string]::IsNullOrWhiteSpace($intakeCandidate)) {
-            try { $candidateState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $intakeCandidate }
-            catch { $candidateState = $null }
-            if ($null -eq $candidateState -or [string]$candidateState.status -ne 'active') {
-                $intakeCandidate = $null; $candidateState = $null
+            foreach ($candidateName in $distinctCandidates) {
+                $candidateRef = ([string]$candidateName).Trim()
+                $candidateProbe = $null
+                try { $candidateProbe = Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $candidateRef }
+                catch { $candidateProbe = $null }
+                if ($null -ne $candidateProbe -and [string]$candidateProbe.status -eq 'active') {
+                    $activeCandidates += $candidateRef
+                    if ($null -eq $candidateState) { $intakeCandidate = $candidateRef; $candidateState = $candidateProbe }
+                }
             }
+        }
+        # Two or more ACTIVE intake workshops cannot be told apart by anything available here, and unlike the
+        # old collapse-to-null this refuses instead of quietly handing the turn to the start context.
+        if ($activeCandidates.Count -gt 1) {
+            $result.reason = 'workshop-resolve-ambiguous'
+            return $result
         }
 
         # (b) the start-context path, resolved WITHOUT returning, so it can be compared rather than assumed.

@@ -178,14 +178,21 @@ try {
         -WorkshopFeatureCandidates @()
     Assert-True ($null -ne $c4 -and -not [bool]$c4.valid) 'with no open workshop offered, nothing is resolved'
 
-    Write-Host '  --- CASE 5: ambiguity is NOT guessed at ---'
+    Write-Host '  --- CASE 5: a candidate name that is NOT an active workshop does not create ambiguity ---'
+    # RE-POINTED after independent-review finding F001. This case asserted "two open workshops are ambiguous",
+    # but its second candidate ('102-another-open') has no directory, no controller and no workshop - so it
+    # never tested two open workshops, it tested two candidate STRINGS. The label overclaimed what the
+    # fixture measured. Genuine two-active ambiguity is CASE 9, with two real fixtures. What this case
+    # actually covers is worth keeping and is now what it says: a stale or phantom name must not block a live
+    # workshop, because a name with no workshop cannot compete for a human's reply.
     # Two open intake workshops cannot tell us which one this turn belongs to. Falling back is correct;
     # picking one would manufacture a binding the human never made.
     $c5 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
         -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
         -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
         -WorkshopFeatureCandidates @($openRef, '102-another-open')
-    Assert-True ($null -ne $c5 -and -not [bool]$c5.valid) 'two open workshops are ambiguous and are not guessed at'
+    Assert-True ($null -ne $c5 -and [bool]$c5.valid) 'a phantom candidate does not block the one real open workshop'
+    Assert-True ($null -ne $c5 -and [string]$c5.feature_ref -eq $openRef) 'and it resolves to the feature that actually has an active workshop'
 
     # --- fixture 2: a SECOND feature whose own workshop is genuinely ACTIVE ---
     # It is built in the shape CASE 1 already proved active, so no authority receipt is fabricated. An
@@ -231,6 +238,35 @@ try {
         -WorkshopFeatureCandidates @($openRef)
     Assert-True ($null -ne $c8 -and [bool]$c8.valid) 'a non-active start-context path still yields to the candidate'
     Assert-True ($null -ne $c8 -and [string]$c8.feature_ref -eq $openRef) 'and still resolves the open feature'
+
+    Write-Host '  --- CASE 9: MORE candidates must not make the resolve LESS cautious ---'
+    # Independent-review finding F001 (codex, gpt-6-astra). Case 5 supplies two candidates but an INACTIVE
+    # context; Case 7 supplies an active context but only ONE candidate. Neither covers two candidates AND an
+    # active context - which is what production discovery actually collects here, since both fixtures carry a
+    # stub spec and a controller. Dropping to null on ambiguity made candidateActive false, so the guard could
+    # not fire and the context was returned as valid: adding a SECOND open workshop made the resolve less
+    # cautious than one. The caller then persists that feature with the last assistant question, which is the
+    # exact harm the guard exists to prevent.
+    $c9 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $otherRef -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef, $otherRef)
+    Assert-True ($null -ne $c9 -and -not [bool]$c9.valid) 'two ACTIVE candidates with an ACTIVE context are ambiguous, not silently resolved'
+    Assert-True ($null -ne $c9 -and [string]$c9.reason -eq 'workshop-resolve-ambiguous') 'and the refusal names ambiguity rather than looking like an ordinary miss'
+
+    Write-Host '  --- CASE 10: two ACTIVE candidates with an INACTIVE context must still refuse ---'
+    # Added because the mutation proof for CASE 9 SURVIVED: once every candidate is validated, case 9 is
+    # already caught by the candidate-vs-context guard, so it did not discriminate the multi-candidate
+    # refusal at all. This is the case that does. With an inactive start context, candidateActive is true and
+    # contextActive is false, so without the count refusal the resolve takes the FIRST active candidate and
+    # silently picks between two open workshops - the same wrong-question binding, arrived at by the other
+    # branch. A guard with no case that fails when it is removed is a guard nobody is testing.
+    $c10 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef, $otherRef)
+    Assert-True ($null -ne $c10 -and -not [bool]$c10.valid) 'two active candidates are not silently reduced to the first one'
+    Assert-True ($null -ne $c10 -and [string]$c10.reason -eq 'workshop-resolve-ambiguous') 'and the refusal names ambiguity'
 
     Write-Host '  --- CASE 6: the call site actually supplies candidates (both call sites) ---'
     # The parameter is useless if nothing passes it, and the provider calls the resolve TWICE. A fix
