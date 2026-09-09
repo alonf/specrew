@@ -2758,7 +2758,9 @@ one place.
 
 ---
 
-## B4F-047 - THE INDEPENDENT REVIEW DID NOT COMPLETE, and what it found before it died
+## B4F-048 - THE INDEPENDENT REVIEW DID NOT COMPLETE, and what it found before it died
+
+**Numbering note**: commit `181d4b57` cites this entry as B4F-047. It was renumbered when the maintainer assigned B4F-047 to the vacuous-control finding below, which is the more significant of the two. The commit message is left as written rather than rewritten; this line is the cross-reference.
 
 **Model that actually ran: `gpt-6-astra`** (provider openai), codex-cli 0.153.4 in both shells - the 400 that
 blocked the earlier attempt is gone. Range `b62ba968..b99b448b`, 46 commits, 47 files exported in full.
@@ -2825,3 +2827,60 @@ work.**
 
 **The review must be re-run after 03:57 for (b), (d) and (e)**, which are the areas it never reached - and
 (d), the deletions, is the class it was most needed for.
+
+---
+
+## B4F-047 - THE REVIEW GATE IS VACUOUS EVERYWHERE IT COULD HAVE HELPED, and unsatisfiable where it fires
+
+**The maintainer's finding, recorded at their direction as the sharpest vacuous-control instance in this
+arc.** Three parts, each verified at source.
+
+### (1) The gate is a no-op at every boundary but one, and the file says so itself
+
+`scripts/internal/continuous-co-review/signoff-gate-wiring.ps1`, line 17, in its own header:
+
+> `Invoke-ContinuousCoReviewSignoffGateIfEnabled` … **is a no-op for every boundary except
+> `review-signoff`.**
+
+So specify, clarify, plan, tasks, before-implement and implement all pass with **nothing asking whether any
+of it was reviewed**. Unbounded production work lands in a governed project and the review evidence gate
+never speaks until a boundary most features reach last, if at all.
+
+**This is not a bug in the wiring - it is the wiring working as designed, and the design is the finding.** A
+control placed where it cannot act is indistinguishable, from inside, from a control that is satisfied.
+
+### (2) And feature 201 cannot reach that boundary anyway - the loop closes
+
+- The gate routes to **`review-required` / `no-authoritative-campaign-result`**
+  (`review-signoff-evidence-gate.ps1:864`), whose message tells the agent to get a round approved and run
+  the campaign.
+- The campaign cannot be created: `review-campaign-orchestrator.ps1:1342` throws
+  **`review-campaign-active-iteration-unresolved`** unless an iteration identity resolves.
+- **Feature 201 has no `iterations/` directory at all**, by the maintainer's own ruling that a defect sweep
+  does not run planning ceremony (B4F-030).
+
+**So the gate is silent now and unsatisfiable later.** Every boundary before review-signoff asks nothing;
+review-signoff asks for something the feature's own work kind guarantees it cannot produce. Neither half
+fails loudly.
+
+### (3) The Stop-side advisory blocked a read-only reviewer session repeatedly today
+
+While the **working** session's cap store records only `material` and `boundary-evidence-absent` subjects -
+so the advisory that interrupted the reviewer was attributed to neither.
+
+**The honest limit on this evidence, stated rather than glossed**: absence is proven only over that one cap
+store. That is enough to establish the DIRECTION - a read-only session was interrupted by an advisory the
+working session's own record does not account for - and it is cross-session attribution, which is exactly
+what fix 2 item (c) makes impossible by scoping attribution to the declaring session.
+
+### DISPOSITION
+
+- **(3) is beta4**, through fix 2 item (c) as already scoped: attribution becomes the declaring session, and
+  a read-only second session in the same project receives no advisory. Its test is in the fix-2 tail.
+- **(1) and (2) are beta5**, filed with **per-feature work-kind**, which they are entangled with rather than
+  merely adjacent to: **review is a required stage of the `bug-bash` contract, and the engine has no path to
+  it for a feature without iterations.** Fixing the gate's placement without fixing work-kind scope would
+  move a vacuous control to a boundary that still cannot satisfy it.
+- **The release notes disclose** that beta4's own repair was reviewed by codex **out of engine**, not by a
+  governed campaign, and why - because the engine has no path to review this feature, which is finding (2)
+  applied to this very release.

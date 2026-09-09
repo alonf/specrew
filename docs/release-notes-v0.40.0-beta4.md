@@ -135,3 +135,26 @@ Both are fixed in beta5.
   broken, and carries its own positive control.
 - Mutation-proved at both guarded sites with disjoint failure sets, target green before each mutation.
 - Field-proved on the development tree, on the exact stale-reference state that reproduced the defect.
+
+## How this release was reviewed, and what that says about the tool
+
+**Beta4's own repair was reviewed by an external model, out of engine — not by a governed Specrew review
+campaign.** That is worth stating plainly in a release about governance, because the reason is a defect this
+release is disclosing rather than an operational shortcut.
+
+**Specrew could not review this work with its own machinery.** The review evidence gate is a no-op at every
+lifecycle boundary except `review-signoff`, so nothing asked for a review while the work was being done. At
+`review-signoff` the gate asks for a completed review campaign — and the campaign cannot be created for a
+feature that has no `iterations/` directory, which is exactly what this release's work kind produces. The
+gate is therefore silent while the code is written and unsatisfiable once it is finished.
+
+**So the independent read came from outside**: a separate model, given the full diff and pointed at the
+places the authoring session could not see about its own work. It found two real defects in the new
+turn-end machinery — a guard that could be trivially bypassed, and a failure mode that disabled enforcement
+silently — both fixed before release. It did **not** finish: it stopped on a usage limit before reaching
+the retirements and the converted tests, and that is stated here rather than rounded up to "reviewed".
+
+**What this means for you**: the fixes in this release carry an external review that is real but partial,
+and no governed campaign result. **Fixing the gate placement and the work-kind scoping is beta5's first
+review-machinery item**, because the two are entangled: review is a required stage of the `bug-bash`
+contract and the engine currently has no path to it for a feature without iterations.
