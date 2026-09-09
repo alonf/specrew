@@ -2052,3 +2052,64 @@ controller is, and neither is wrong on its own terms.**
 **Leaving both as they are is the third option and it is the one that produced this.** It is the
 records-versus-controller split (DRIFT-199-I003-010) reaching the point where it stops a workshop rather
 than merely disagreeing.
+
+---
+
+## B4F-037 - THE CODEX HARVEST: one major finding, classified FIX, reproduced and repaired
+
+**Amends B4F-031.** That entry recorded the reviewer never running. **It ran on retry after the Codex CLI was
+updated** - `codex-cli 0.153.4`, **model `gpt-6-astra`**, the model actually used. **B4F-031's first-attempt
+record stands exactly as written**; this is the sequel, not a correction of it.
+
+**Two further attempts were needed, and all three causes were mine, not codex's:**
+
+1. **A stale deadline.** `__DEADLINE__` was rendered at 14:28 as *now + 20 minutes*; the retry ran at 15:56.
+   Codex declined: *"The host clock is already past the supplied deadline"*, and reported **no source files
+   read, no findings established** - a correct refusal.
+2. **No git metadata** in the export directory.
+3. **A read-only sandbox**, so the result file could not have been written even had it reviewed.
+
+Fixed all three - fresh deadline, `git init` on the export, `--sandbox workspace-write` - and the review ran:
+**55,868 tokens, `verdict=findings`, 4 examined paths**, all four of the supplied files.
+
+**This is three attempts, and it is not "retry until it works": each failed for a different, identified,
+fixed cause.** The first two produced no review and were reported as such.
+
+### FINDING F001 - severity major - classified FIX
+
+> *Multiple intake candidates bypass the ambiguity guard when the context is active.*
+
+**Reproduced against a live control before it was accepted** (CASE 9), then repaired. Full text and the
+repair are in commit `b3387794`. In short: collapsing to null whenever more than one candidate was offered
+left `candidateActive` false, so the guard **could not fire**, and an active start context was returned as
+valid - **a second open workshop made the resolve less cautious than one**, and the caller persists that
+feature with the last assistant question.
+
+**Codex located it precisely** - the branch, the guard line, the two cases that miss it and why, and the
+concrete fixture pair that exposes it. It is the second real defect an independent review has found in this
+fix, after property 1 (B4F-010).
+
+### THE MUTATION PROOF SURVIVED, AND THAT WAS THE MOST USEFUL RESULT
+
+Removing the new multi-candidate refusal **did not turn the suite red**. Once every candidate is validated,
+CASE 9 is already caught by the *existing* candidate-vs-context guard - so the case written for the new
+refusal **never discriminated it**.
+
+**CASE 10 exists because of that**: two active candidates with an **inactive** context, where without the
+refusal the resolve takes the first active candidate and silently picks between two open workshops. Both
+mutations now kill it.
+
+**A guard with no case that fails when it is removed is a guard nobody is testing** (DRIFT-199-I003-060) -
+and here the proof caught it in the same session it was written, rather than 22 days later.
+
+### AND CASE 5 WAS RE-POINTED - flagged, not done quietly
+
+Case 5 asserted *"two open workshops are ambiguous"*, but its second candidate `'102-another-open'` **has no
+directory, no controller and no workshop**. It never tested two open workshops; it tested two candidate
+**strings**. **The label overclaimed what the fixture measured** - B4F-018's shape, in a control I wrote.
+
+It now asserts what it actually covers: **a phantom name must not block a live workshop**. Genuine
+two-active ambiguity is CASE 9. **Coverage increases and no assertion was weakened to accommodate the fix** -
+but an existing green assertion changed, so it is named here for the maintainer to overrule.
+
+**Classification summary**: 1 finding, **1 fix**, 0 record, 0 dispute.
