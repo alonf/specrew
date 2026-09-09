@@ -313,6 +313,18 @@ function Get-SpecrewInFlightRepeatCount {
         foreach ($file in $files) {
             $record = Read-SpecrewTurnEndRecord -Path $file.FullName
             if ($null -eq $record) { continue }
+            # A CONVERSATIONAL TURN DOES NOT BREAK THE RUN, and the first version of this let it.
+            #
+            # Found by the independent review, which ran the sequence rather than reading it: in-flight,
+            # conversational, in-flight, conversational... reset the count to 1 every time and the bound
+            # NEVER TRIPPED. An agent could wait forever on one item by saying "nothing to report" between
+            # waits - and "nothing to report" is, by its own declaration, nothing happening. Treating it as
+            # progress meant the cheapest possible turn laundered the guard.
+            #
+            # So the walk SKIPS conversational records. What breaks a run is something that actually
+            # happened: a boundary declaration (the human was asked something) or a wait on a DIFFERENT
+            # item. Both are real events; a no-op is the absence of one.
+            if ([string]$record.kind -ceq 'conversational') { continue }
             if ([string]$record.kind -cne 'in-flight') { break }
             $recordPending = if ($record.PSObject.Properties['pending']) { ([string]$record.pending).Trim() } else { '' }
             if ($recordPending -cne $needle) { break }

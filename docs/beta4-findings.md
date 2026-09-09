@@ -2755,3 +2755,73 @@ the seal-ordering items: a check and a writer that each behave correctly and dis
 
 **Deferred to beta5 at the maintainer's direction.** Recorded here so the family has all its members in
 one place.
+
+---
+
+## B4F-047 - THE INDEPENDENT REVIEW DID NOT COMPLETE, and what it found before it died
+
+**Model that actually ran: `gpt-6-astra`** (provider openai), codex-cli 0.153.4 in both shells - the 400 that
+blocked the earlier attempt is gone. Range `b62ba968..b99b448b`, 46 commits, 47 files exported in full.
+
+**IT DID NOT FINISH.** `candidate-result.json` was **never written**; the run ended on
+`You've hit your usage limit ... try again at 3:57 AM` after 98,355 tokens. **Reported as not written, not
+as a clean review.** Areas (b) fail-open on new provider paths, (d) the three retirements, and (e) the eight
+converted cases were **not reached**.
+
+**But it ran real probes before it stopped** - it wrote and executed its own `review-probes.ps1` against the
+committed code rather than reading it. Those outputs are facts and are harvested here from the log.
+
+### PROBE 1 - two sessions in one project: A's declaration lands in B's directory. CONFIRMED.
+
+```json
+{"probe":"A declares after B overwrites project marker","A_record_exists":false,"B_record_exists":true}
+```
+
+Session A declares; the record appears under **B's** path. Cause: `declare-turn-end.ps1` takes its identity
+from `.specrew/runtime/session-marker.json`, which is **project-wide** and stamped by whichever session
+started last - while the hook uses the `--session-id` its host passed it. **A is refused for a declaration it
+made, and B is credited with one it did not.**
+
+### PROBE 2 - the in-flight bound can be laundered by one intervening kind. CONFIRMED.
+
+```
+turn-1 in-flight      run=1     turn-2 conversational run=0
+turn-3 in-flight      run=1     turn-4 conversational run=0
+turn-5 in-flight      run=1     ...  turn-9 in-flight run=1
+```
+
+**The run resets to 1 every time and the bound never trips.** An agent that says "still waiting" and
+"nothing to report" alternately can wait forever on the same item. This is exactly the laundering the
+maintainer asked about, and the answer is yes.
+
+### PROBE 3 - a failed counter increment leaves a stale declaration accepted. CONFIRMED.
+
+```json
+{"probe":"counter write failure","result":-1,"turn":"turn-1","old_record_accepted":true}
+```
+
+When `Step-SpecrewTurnCounter` cannot write, it returns `-1`, the turn id does not advance, and the previous
+turn's declaration satisfies every later stop. It is silent: the provider swallows the failure.
+
+### PROBE 4 - the clean path holds.
+
+```json
+{"probe":"resume after declaration but before Stop","turn":"turn-1","existing_kind":"boundary"}
+{"probe":"exhaustion on a clean wait","declared_run":4,"exhausted":true,"next_turn":"turn-4"}
+```
+
+A crash between the declaration and the Stop increment leaves the declaration intact and still matching; the
+bound trips at 4 on an unbroken run and the refusal names the repeated item. **These two are the design
+working as intended, and are recorded because a register that lists only failures misdescribes the same
+work.**
+
+### CLASSIFICATION
+
+| # | finding | class | why |
+| --- | --- | --- | --- |
+| 1 | in-flight laundering | **FIX** | it defeats the bound completely; the bound is the only control on the one kind no artifact can verify |
+| 2 | cross-session declaration | **FIX** | the handshake is what PRED-BETA4-011 part 1 named as the abort condition; it holds for one session and breaks for two |
+| 3 | silent counter-write failure | **FIX** | a permanent, undiagnosable bypass, and the provider's own convention for this is fail-open **with a WARN** |
+
+**The review must be re-run after 03:57 for (b), (d) and (e)**, which are the areas it never reached - and
+(d), the deletions, is the class it was most needed for.

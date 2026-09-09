@@ -2117,7 +2117,18 @@ try {
     # one message cannot move the turn underneath a declaration that is still current.
     if ([string]::IsNullOrWhiteSpace($blockReason) -and $null -ne $turnEndPaths -and
         (Get-Command Step-SpecrewTurnCounter -ErrorAction SilentlyContinue)) {
-        try { $null = Step-SpecrewTurnCounter -StateRoot ([string]$turnEndPaths.StateRoot) } catch { $null = $_ }
+        # A FAILED STEP IS SAID OUT LOUD. Found by the independent review, which made the counter
+        # unwritable and watched what happened: the turn id never advanced, so the PREVIOUS turn's
+        # declaration went on satisfying every later stop - a permanent bypass, silent, with nothing to
+        # notice it by. Failing open is right here (a hook that hangs a session is worse than one that
+        # under-enforces), but failing open QUIETLY is what makes it undiagnosable. This is the convention
+        # the loop-guard counter already uses one branch away: degrade, and WARN on stderr so the
+        # degradation is visible to whoever is wondering why enforcement went quiet.
+        $stepped = -1
+        try { $stepped = Step-SpecrewTurnCounter -StateRoot ([string]$turnEndPaths.StateRoot) } catch { $stepped = -1 }
+        if ($stepped -lt 1) {
+            [Console]::Error.WriteLine(("[specrew-conformance] WARN TURN_COUNTER_UNWRITABLE cannot advance the turn counter at '{0}'; this turn's declaration will keep satisfying later stops until it can be written." -f ([string]$turnEndPaths.StateRoot)))
+        }
     }
 
     # --- emit: a block sentinel (the dispatcher force-continues), else the plain inject nudges, else nothing ---
