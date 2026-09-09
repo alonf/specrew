@@ -174,6 +174,51 @@ try {
         -WorkshopFeatureCandidates @($openRef, '102-another-open')
     Assert-True ($null -ne $c5 -and -not [bool]$c5.valid) 'two open workshops are ambiguous and are not guessed at'
 
+    # --- fixture 2: a SECOND feature whose own workshop is genuinely ACTIVE ---
+    # It is built in the shape CASE 1 already proved active, so no authority receipt is fabricated. An
+    # active CONFIRMED agenda requires a receipt that validates against the real hook-owned store, and
+    # writing one here would be the same fixture defect this file exists to avoid - the precondition
+    # assertion below is what caught that on the first attempt.
+    $otherRef = '102-other-active-feature'
+    New-Item -ItemType Directory -Path (Join-Path $fixture ('specs/' + $otherRef)) -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $fixture ("specs/$otherRef/spec.md")) -Encoding UTF8 -Value @(
+        '<!-- specrew:spec-not-yet-authored -->'
+        '# Feature Specification: 102-other-active-feature'
+        ''
+        '**Status**: not yet authored'
+    )
+    $openController | ConvertTo-Json -Depth 12 |
+        Set-Content -LiteralPath (Join-Path $fixture ("specs/$otherRef/lens-applicability.json")) -Encoding UTF8
+
+    Write-Host '  --- CASE 7: a candidate must NOT displace the start context''s OWN active workshop ---'
+    # PRECONDITION: the second workshop must itself be active, or this case asserts nothing.
+    $otherState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $fixture -FeatureRef $otherRef
+    Assert-True ($null -ne $otherState -and [string]$otherState.status -eq 'active') 'PRECONDITION: the second workshop is genuinely active'
+
+    # The start context names a feature whose workshop IS active, and a DIFFERENT feature is offered as the
+    # intake candidate. Nothing can tell which one the human is answering. Binding a typed reply to the
+    # wrong question is worse than resolving nothing, so this must fall through rather than pick - the same
+    # refusal the fix already makes between two candidates, applied between the candidate and the start
+    # context. The candidate list is an input to this function, so the contract must hold for whatever it
+    # is given, not only for lists production happens to produce.
+    $c7 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $otherRef -ActiveIterationNumber $null -HasActiveLifecycleBoundary $false `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef)
+    Assert-True ($null -ne $c7 -and -not [bool]$c7.valid) 'two active workshops on different features are ambiguous, not picked'
+    Assert-True ($null -ne $c7 -and [string]$c7.feature_ref -ne $openRef) 'the intake candidate does NOT displace the active workshop the start context names'
+    Assert-True ($null -ne $c7 -and [string]$c7.reason -eq 'workshop-resolve-ambiguous') 'and the refusal names why, rather than looking like an ordinary miss'
+
+    Write-Host '  --- CASE 8: the ambiguity guard must not weaken the fix ---'
+    # The stale case from CASE 2 has a NON-active start-context path, so there is no ambiguity and the
+    # candidate must still win. If this regresses, the guard has undone the thing it is guarding.
+    $c8 = Resolve-SpecrewWorkshopQuestionPause -ProjectRoot $fixture -BootstrapDir $bootstrapDir `
+        -ActiveFeatureRef $doneRef -ActiveIterationNumber '003' -HasActiveLifecycleBoundary $true `
+        -StartContextState 'readable' -LastAssistantText $ask -HasPendingVerdict $false `
+        -WorkshopFeatureCandidates @($openRef)
+    Assert-True ($null -ne $c8 -and [bool]$c8.valid) 'a non-active start-context path still yields to the candidate'
+    Assert-True ($null -ne $c8 -and [string]$c8.feature_ref -eq $openRef) 'and still resolves the open feature'
+
     Write-Host '  --- CASE 6: the call site actually supplies candidates (both call sites) ---'
     # The parameter is useless if nothing passes it, and the provider calls the resolve TWICE. A fix
     # applied to the first call site only would be silently half-applied - the two-writers family.

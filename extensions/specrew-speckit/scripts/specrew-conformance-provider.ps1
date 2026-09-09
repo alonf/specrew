@@ -528,52 +528,88 @@ function Resolve-SpecrewWorkshopQuestionPause {
 
         # BETA4 (B4F-007): the start context names the LIFECYCLE's feature, and after any completed feature
         # that is the PREVIOUS one - stale by construction from feature creation until the first boundary
-        # sync. Selecting the workshop from it looks up a completed workshop, or an iteration that does not
-        # exist under the new feature, and returns nothing active. Measured: every SECOND and later feature
-        # in a project is blocked; a first feature works only because there is no predecessor to name.
+        # sync. Selecting the workshop from it alone looks up a completed workshop, or an iteration that
+        # does not exist under the new feature, and returns nothing active: every SECOND and later feature
+        # in a project was blocked, and a first feature worked only because there was no predecessor.
+        #
         # An INTAKE workshop is open on the feature whose spec is still the not-yet-authored stub AND whose
-        # feature-level controller reports active. Ask that, and prefer it. Two properties keep this safe: a
-        # design-analysis workshop is ITERATION-scoped and its spec IS authored, so it can never be a
-        # candidate here; and when the start context already names the open feature, that feature is itself
-        # the unique candidate, so the resolution is unchanged. More than one open intake workshop is
-        # ambiguous and is NOT guessed at - it falls through to the lifecycle-derived scope below.
+        # feature-level controller reports active. BOTH paths are resolved and then compared - neither is
+        # trusted over the other. Resolving the start context first would flip the same defect round (a
+        # previous feature left active after closeout would win over a new feature's intake); preferring
+        # the candidate first lets a newly scaffolded feature DISPLACE a workshop the human is actually
+        # answering, which binds their next typed reply to a question they never saw. Neither order is safe
+        # alone, so exactly one active path may win and two are refused.
         $scope = 'feature'
         $iteration = $null
+        $state = $null
+
+        # (a) the intake candidate - validated, never trusted, and never guessed at when ambiguous.
         $intakeCandidate = $null
+        $candidateState = $null
         if ($null -ne $WorkshopFeatureCandidates) {
             $distinctCandidates = @($WorkshopFeatureCandidates |
                 Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
             if ($distinctCandidates.Count -eq 1) { $intakeCandidate = ([string]$distinctCandidates[0]).Trim() }
         }
         if (-not [string]::IsNullOrWhiteSpace($intakeCandidate)) {
-            $candidateState = $null
             try { $candidateState = Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $intakeCandidate }
             catch { $candidateState = $null }
-            if ($null -ne $candidateState -and [string]$candidateState.status -eq 'active') { $ActiveFeatureRef = $intakeCandidate }
-            else { $intakeCandidate = $null }
-        }
-        $featureRoot = Join-Path $ProjectRoot ("specs/{0}" -f $ActiveFeatureRef)
-        if ([string]::IsNullOrWhiteSpace($intakeCandidate)) {
-            if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) {
-                if ([string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $result.reason = 'workshop-active-iteration-missing'; return $result }
-                $scope = 'iteration'
-                $iteration = $ActiveIterationNumber
-            }
-            else {
-                $iterationsRoot = Join-Path $featureRoot 'iterations'
-                if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
-                    $numericIterations = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction Stop | Where-Object { $_.Name -match '^[0-9]{3,}$' })
-                    if ($numericIterations.Count -gt 0) { $result.reason = 'workshop-feature-scope-after-lifecycle-activation'; return $result }
-                }
+            if ($null -eq $candidateState -or [string]$candidateState.status -ne 'active') {
+                $intakeCandidate = $null; $candidateState = $null
             }
         }
 
-        $state = if ($scope -eq 'iteration') {
-            Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $ActiveFeatureRef -IterationNumber $iteration
+        # (b) the start-context path, resolved WITHOUT returning, so it can be compared rather than assumed.
+        $contextScope = 'feature'
+        $contextIteration = $null
+        $contextBlockedReason = $null
+        $contextRoot = Join-Path $ProjectRoot ("specs/{0}" -f $ActiveFeatureRef)
+        if ($HasActiveLifecycleBoundary -or -not [string]::IsNullOrWhiteSpace($ActiveIterationNumber)) {
+            if ([string]::IsNullOrWhiteSpace($ActiveIterationNumber)) { $contextBlockedReason = 'workshop-active-iteration-missing' }
+            else { $contextScope = 'iteration'; $contextIteration = $ActiveIterationNumber }
         }
         else {
-            Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $ActiveFeatureRef
+            $iterationsRoot = Join-Path $contextRoot 'iterations'
+            if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
+                $numericIterations = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory -ErrorAction Stop | Where-Object { $_.Name -match '^[0-9]{3,}$' })
+                if ($numericIterations.Count -gt 0) { $contextBlockedReason = 'workshop-feature-scope-after-lifecycle-activation' }
+            }
         }
+        $contextState = $null
+        if ($null -eq $contextBlockedReason) {
+            try {
+                $contextState = if ($contextScope -eq 'iteration') {
+                    Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $ActiveFeatureRef -IterationNumber $contextIteration
+                }
+                else {
+                    Get-SpecrewWorkshopLifecycleState -ProjectRoot $ProjectRoot -FeatureRef $ActiveFeatureRef
+                }
+            }
+            catch { $contextState = $null }
+        }
+        $contextActive = ($null -ne $contextState -and [string]$contextState.status -eq 'active')
+        $candidateActive = ($null -ne $candidateState)
+
+        # (c) EXACTLY ONE active path may win. Two active paths naming DIFFERENT features cannot be told
+        # apart, and picking either would bind the human's next typed reply to a question they are not
+        # answering - the same refusal made above between two candidates, applied between the candidate and
+        # the start context. This is what makes the no-displacement property hold by construction.
+        if ($candidateActive -and $contextActive -and ($intakeCandidate -cne $ActiveFeatureRef)) {
+            $result.reason = 'workshop-resolve-ambiguous'
+            return $result
+        }
+        if ($candidateActive -and -not $contextActive) {
+            $ActiveFeatureRef = $intakeCandidate
+            $state = $candidateState
+        }
+        else {
+            if ($null -ne $contextBlockedReason) { $result.reason = $contextBlockedReason; return $result }
+            $scope = $contextScope
+            $iteration = $contextIteration
+            $state = $contextState
+        }
+        $featureRoot = Join-Path $ProjectRoot ("specs/{0}" -f $ActiveFeatureRef)
+
         if ($null -eq $state -or [string]$state.status -ne 'active') {
             $result.reason = if ($null -ne $state -and -not [string]::IsNullOrWhiteSpace([string]$state.reason)) { [string]$state.reason } else { 'workshop-state-unproven' }
             if ($null -ne $state) {

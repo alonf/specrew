@@ -485,9 +485,13 @@ nothing active, silently.
 - The resolve prefers a **unique** candidate whose controller reports `active`, at feature scope, over the
   start-context pair.
 
-**Three properties make it safe, and each is asserted by the test rather than argued:**
+**Three properties make it safe, and each is asserted by the test rather than argued. Property 1 is stated
+here AS IT HOLDS AFTER REVIEW, not as it was first claimed - see B4F-010, where the first version of it was
+false and the review caught it:**
 
-1. **It cannot suppress a working workshop.** It only ever turns a non-active result into an active one.
+1. **It never displaces an active workshop.** When both the candidate path and the start-context path
+   resolve active on *different* features, the resolve refuses with `workshop-resolve-ambiguous` rather than
+   choosing. Exactly one active path may win.
 2. **It cannot capture design-analysis.** That workshop is iteration-scoped and its spec IS authored, so it
    can never be an intake candidate.
 3. **It does not guess.** More than one open intake workshop is ambiguous and falls through to the previous
@@ -533,8 +537,97 @@ any reason.
 
 ### Reported, not acted on
 
-`.specrew/release-gate-suites.txt` names **124 of 127** integration suites; the new file is among the three
-it does not name. `every-suite-is-named-by-a-lane` passes on it, so the release-cadence manifest evidently
-does not intend to name all of them. **Adding it to a second registry without knowing that registry's
-selection rule is the hand-enumerated-set defect**, so it is reported for a ruling rather than taken.
+**SETTLED - and the first report of it was wrong.** It was reported as *"names 124 of 127 integration
+suites"*. That number was a count of `tests/integration/` **regex hits inside the manifest text**, not a
+count of files - the count-scope defect (DRIFT-199-I003-047) in the very entry that refused to act without
+knowing the rule. **The real figure is 11 integration suites unnamed, not 3.**
 
+Measured properly, the rule is clean and the refusal to add was right for a better reason than caution:
+
+| coverage | suites |
+| --- | --- |
+| named by a per-round LANE only | 50 |
+| named by the RELEASE GATE only | 338 |
+| named by both | 7 |
+| **named by NEITHER** | **0** |
+
+**The two registries are complements over all 395 suites on disk, not overlapping lists.** A suite belongs
+to one or the other; the 7 in both are permanent class guards. The new test is registered in a lane, so it
+is fully covered, and adding it to the gate would put it in a 7-file overlap with no reason to be there.
+**No change needed.**
+
+
+---
+
+## B4F-010 - REVIEW FINDING ON 905c5601: safety property 1 was false, and the fix could displace the workshop a human was actually answering
+
+**Found by the reviewer against the code, reproduced here with a control before it was accepted, and fixed
+in the same session. Recorded because a claimed safety property that does not hold is worse than an
+unclaimed one - it stops the next reader checking.**
+
+### What was claimed, and why it was wrong
+
+905c5601 claimed: *"It cannot suppress a working workshop. It only ever turns a non-active result into an
+active one."* **Not true as written.** When the candidate resolved active, `$ActiveFeatureRef` was replaced
+and `$intakeCandidate` stayed non-empty, so the block guarded by `IsNullOrWhiteSpace($intakeCandidate)` was
+skipped entirely: scope stayed `feature` and **the start-context path was never attempted at all.**
+
+**Property 2 did not cover this, and that is the instructive part.** The risk was never that a
+design-analysis workshop becomes an intake candidate - it cannot. The risk is that a *different* candidate
+**displaces** it.
+
+### The consequence is worse than the block it replaced
+
+Feature A is mid-workshop and the human is answering its lens. Someone scaffolds feature B. B is the unique
+intake candidate and its pre-agenda controller reads active, so the resolve registers **B's** question.
+**The human's typed reply then mints a receipt against B's question.** A's checkpoint finds no receipt; B
+carries one it never earned.
+
+**That is a human reply bound to a question they never saw** - precisely what property 3 already refuses
+between two candidates, happening instead between a candidate and the start context. Narrow, and not worse
+than the unconditional failure it replaced - **but narrow was this defect's description too**, and it fires
+in multi-feature projects, which is where the product is meant to earn its keep.
+
+### Reproduced before it was accepted, and the first attempt to reproduce it FAILED HONESTLY
+
+Case 7 was written first and its **precondition assertion caught a fixture defect rather than reporting a
+verdict**: a completed lens entry needs its own `workshop/<lens>.md` record and a `human_turn_receipt` that
+validates against the real hook-owned authority store, so the design-analysis fixture was `invalid`, not
+`active`. Three assertions "failed" against a control that had never reached its subject - DRIFT-199-I003-039
+exactly, caught by the rule this file was built with.
+
+**Fabricating an agenda receipt to force the fixture active was available and was refused** - that is the
+fixture-fabrication defect (DRIFT-199-I003-052) this test exists to avoid. The fixture was rebuilt in the
+shape Case 1 already proves active, and only then did Case 7 fail for the right reason.
+
+### The fix, and why neither obvious ordering is safe alone
+
+**Resolving the start-context path first and falling back to the candidate has the mirror failure**: a
+previous feature whose iteration workshop was left active after closeout would win over a new feature's
+intake - the original defect with its precedence flipped. **Neither order is safe on its own.**
+
+So both paths are resolved and then compared, and **exactly one active path may win**:
+
+- candidate active, start-context not - the candidate wins (the original fix, preserved);
+- start-context active, candidate not - the start context wins (unchanged behaviour);
+- **both active on different features - refuse with `workshop-resolve-ambiguous`**, because nothing can tell
+  which question the human is answering;
+- both naming the same feature - no conflict.
+
+**Property 1 now holds by construction rather than by claim**, which is the whole point of the change.
+
+### Evidence
+
+Two cases added (7 and 8), and the mutation proof re-run against **both** sites with the target green first:
+
+```
+baseline_exit           = 0
+M1 candidate never adopted   -> exit 1, CASE 2 + CASE 8 red
+M2 ambiguity refusal removed -> exit 1, CASE 7 red
+restored_byte_identical = True
+mirror_identical        = True
+post_restore_exit       = 0
+```
+
+**Disjoint failure sets**: each site is independently guarded, so removing either is caught by a different
+case. Case 8 exists specifically to prove the new guard did not weaken the original fix.
