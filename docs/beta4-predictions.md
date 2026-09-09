@@ -157,3 +157,47 @@ facts are confirmed at once**: the fix works, and the punctuation heuristic is r
   the INSTALLED module; the deployed files are this repository's own copies. **The label is false in this
   tree** - the orientation's own claim about where its text lives does not hold. This is
   DRIFT-199-I003-076's bidirectional drift on a first-run surface, and it is reported rather than acted on.
+
+### RESOLVED 2026-09-09: the file is PRESENT, on feature 201, with an empty question
+
+**PRED-BETA4-003 held in every particular**, measured from disk at
+`.specrew/handover/workshop-question.json`, written `2026-09-09T00:42:47Z`:
+
+```json
+{
+  "schema": "v3",
+  "status": "workshop-active",
+  "scope": "feature",
+  "feature_ref": "201-first-run-experience",
+  "lens": "product-domain",
+  "phase": "product-domain",
+  "agenda_status": "pending-confirmation",
+  "question": "",
+  "message_hash": "1010cf7061cdb142591b014358ec4767f882ecc581762ae5d7709ce7f422cf69",
+  "artifact_path": "...\specs\201-first-run-experience\lens-applicability.json"
+}
+```
+
+**This is the field proof, and it is taken on the exact state that produced the defect**: the start context
+still names closed feature `199-beta3-stabilization` / iteration `003`, which is what returned nothing valid
+in PRED-BETA4-001. The same tree, the same stale ref, the opposite outcome.
+
+**`question` is empty and `message_hash` is not**, which was predicted and which confirms both facts at
+once:
+
+- **the fix works** - the resolve found the open feature and the projection was written;
+- **the punctuation heuristic (provider line 564) is real but NOT load-bearing** - no line of that message
+  ended in `?`, so no question text was captured, and the write happened anyway with a bindable hash.
+
+**So a receipt can now mint** where it could not before. That is the whole chain the defect broke:
+resolve -> projection -> receipt -> lens closes.
+
+**CORRECTION, made within a minute of writing the sentence it replaces.** This entry first said
+*"`.specrew/runtime/workshop-authority.jsonl` is still absent, because no workshop question has been
+answered since the fix landed."* **That was false and was not checked before it was written.** The store
+exists and holds **five receipts**, all `201-first-run-experience` / `product-domain`, minted between
+00:26:46Z and 00:44:12Z from the reviewer's typed turns.
+
+**So the chain is proved further than predicted - resolve, projection, AND receipt mint.** It also surfaced
+a defect the block had been hiding, which is recorded as B4F-011: **those five receipts answer no question
+the human was ever asked**, and none of them may be cited when the product-domain lens is eventually closed.

@@ -631,3 +631,98 @@ post_restore_exit       = 0
 
 **Disjoint failure sets**: each site is independently guarded, so removing either is caught by a different
 case. Case 8 exists specifically to prove the new guard did not weaken the original fix.
+
+---
+
+## B4F-011 - THE FIX SURFACED A DEFECT THE BLOCK WAS HIDING: five `human-confirmed` receipts for a question nobody was asked
+
+**Found immediately after the fix landed, by checking a claim rather than asserting it - and the claim being
+checked was one I had just written into the record.**
+
+### The measurement
+
+`.specrew/runtime/workshop-authority.jsonl` did not exist in this tree at any point before the fix. It now
+holds **five receipts**, minted 00:26:46Z to 00:44:12Z, every one of them:
+
+```
+feature_ref        = '201-first-run-experience'
+phase              = 'product-domain'
+lens               = 'product-domain'
+confirmation       = 'human-confirmed'
+confirmation_scope = 'lens-question'
+source_event       = 'UserPromptSubmit'
+```
+
+**The product-domain question was never asked in any of those turns.** The workshop is deliberately held.
+Every one of those typed turns was a code review of the fix.
+
+### The mechanism, and it is NOT caused by the fix
+
+`Write-SpecrewWorkshopAuthorityReceipt` binds a typed turn to whatever `workshop-question.json` currently
+names. The projection is rewritten at every Stop while a workshop is open, and its `message_hash` is
+computed from the **last assistant message** - whatever that message happened to be. Nothing anywhere asks
+whether the human was answering a question. `human-confirmed` / `lens-question` are what a lens-phase
+receipt is labelled, not a finding about the reply.
+
+**So this is pre-existing and it is documented** - the design-workshop skill states it plainly: *"the SC-026
+gate ... cannot see transcript truthfulness; that integrity is on you."* What is new is only that it is now
+**visible in this tree**, because the block had prevented any projection from existing at all.
+
+**That is the finding worth keeping: fixing the block did not create this, it REVEALED it.** A defect that
+suppresses a whole subsystem also suppresses every defect downstream of it, and the downstream ones arrive
+together the moment it is repaired. The same will be true for anything else that was waiting behind the
+registration block.
+
+### The live hazard, stated so nobody trips on it
+
+**Those five receipt ids are on disk, they validate, and citing any of them would close `product-domain`
+with a fabricated agreement.** The lens has had no question asked and no answer given. When 201's workshop
+resumes, the question must be asked and answered, and the receipt cited must be the one bound to that
+exchange. **None of the five may be used.**
+
+### Disposition
+
+**BETA5, with the refusal-standard items** - it is the integrity gap the skill already names, and the
+standing rule holds. Recorded now because the evidence is on disk today and because the next person to open
+this workshop will find five receipts that look like agreement.
+
+---
+
+## B4F-012 - REVIEW CLOSE-OUT: two items recorded, neither blocking
+
+### 1. A coverage gap the fixture change created, named rather than smoothed
+
+Case 7 proves the ambiguity refusal **between two intake workshops at feature scope**. The concern that
+produced it was an **iteration-scoped design-analysis** workshop being displaced.
+
+**The code path is the same** - both paths resolve, both active, different features, refuse - so the
+design-analysis case *is* covered by the guard. **It is not covered by a test.** An honest design-analysis
+fixture needs a closed lens with a `workshop/<lens>.md` record and a `human_turn_receipt` that validates
+against the real hook-owned store, and fabricating one was refused (DRIFT-199-I003-052).
+
+**The consequence is worth stating as a general fact rather than an excuse: some states can only be reached
+through the product, not staged around it.** A test suite that insists on staging everything will either
+fabricate its preconditions or silently skip those states, and this project has already paid for the first.
+
+**Assigned**: the second-feature walk, which is already on the list, gains a specific assertion - drive a
+scratch project to design-analysis, scaffold a second feature, and confirm the resolve **refuses rather than
+binds**.
+
+**And the thing to keep**: Case 7's precondition assertion caught the dead fixture *before* the verdicts
+under it were read. Without it, three green assertions would have proved nothing and looked like a pass.
+
+### 2. The refusal does not reach the human
+
+When both paths are active the resolve returns `workshop-resolve-ambiguous`. **That reason lands in the
+journal.** `workshopIntermediate` goes false, and the human gets an ordinary material-work packet with **no
+indication that two workshops are open, or which two.**
+
+Existing class, not new, and it belongs with the **refusal-standard** items rather than inside this fix: a
+refusal must name what failed and what the reader can do. **BETA5.** Recorded here in one line so the next
+person who hits it finds the reason without reading a journal.
+
+### 3. The registry rule, recorded so nobody re-derives it
+
+**The per-round lanes and the release gate are COMPLEMENTS, not overlapping lists**: over all 395 suites on
+disk - 50 lane-only, 338 gate-only, 7 in both, and **zero covered by neither**. A suite belongs to one or
+the other; the 7 in both are permanent class guards. **A lane-registered suite needs no gate entry.**
