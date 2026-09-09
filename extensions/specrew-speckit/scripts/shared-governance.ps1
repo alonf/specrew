@@ -2156,21 +2156,21 @@ function Get-SpecrewBoundaryStageEvidenceContract {
         [pscustomobject]@{ Boundary = 'clarify'; Kind = 'content'; Paths = @('spec.md'); Markers = @(
                 '(?ms)^##[ \t]+Clarifications[ \t]*\r?$(?:(?!^##[ \t]).)*?^###[ \t]+Session[ \t]+\d{4}-\d{2}-\d{2}',
                 '(?im)^[ \t]*[-*][ \t]+\*\*Clarify Disposition\*\*[ \t]*:[ \t]*skip\b[^\r\n]{20,}'
-            # The Provenance field is maintainer-facing rule-table data (who ruled what, when);
-            # no consumer surface renders it.
-            # specrew-internal-id-ok: maintainer-facing rule-table provenance data
             ); MarkerMatch = 'any'
             # AcceptedForms is CONSUMER-FACING and exists because the refusal used to say only
             # "spec.md required content". Measured on the Copilot walk: a hand-authored,
             # semantically-correct zero-question Clarifications record was refused, the message named
             # neither the expected form nor the mismatch, and the agent recovered by running the
             # validator and re-running the flow rather than by reading the refusal. The markers above are
-            # regexes; a human cannot be asked to read them. This is the same standard the batch settled
-            # at DRIFT-199-I002-029 - name the thing that actually failed - applied to a content contract.
+            # regexes; a human cannot be asked to read them. This is the same standard already settled
+            # for refusals - name the thing that actually failed - applied to a content contract.
             AcceptedForms = @(
                 'a "## Clarifications" section containing a dated "### Session YYYY-MM-DD" subheading (what the governed clarify flow writes)',
                 'or a line reading "- **Clarify Disposition**: skip <reason>", where the reason is at least 20 characters'
             )
+            # The Provenance field is maintainer-facing rule-table data (who ruled what, when);
+            # no consumer surface renders it.
+            # specrew-internal-id-ok: maintainer-facing rule-table provenance data
             Provenance = 'MAINTAINER-RULED 2026-08-06 - session block OR recorded skip-with-rationale; STRICT forms ruled 2026-08-06 after DRIFT-198-I011-006' }
 
         # plan / tasks: the iteration plan. `tasks` records its breakdown in the SAME plan.md table in
