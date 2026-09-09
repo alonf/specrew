@@ -233,3 +233,40 @@ DRIFT-199-I003-022 records - lanes green reported as tree green.
 | red, only in untouched files | the branch is clean; the failures are a separate fact about the tree and are triaged, not attributed here |
 | **red naming my new suite** | it depends on something the local environment supplies and CI does not - DRIFT-199-I003-083's shape, and my own test would have joined the fixtures that cannot notice |
 | **red naming the provider or a workshop suite** | the fix has an environment-dependent effect the local runs could not see, and it blocks the tag until understood |
+
+---
+
+## PRED-BETA4-006 - the clean dispatch, stated before it runs
+
+**Committed before the workflow is dispatched. The review does not gate this dispatch; it gates the tag.**
+
+Since census `34297054157` (which ran at `f712345e` and failed on five files), the tree has gained: the
+lint fixes restoring the detached exemption and dropping an internal id from consumer text; the work-kind
+revert to `software-feature`; the marker re-stamp; 003's re-seal; `specrew update` after installing HEAD;
+201's authored specification; and the control-naming corrections to the regression suite.
+
+**THE PREDICTION, in four parts:**
+
+1. **The sweep EXECUTES.** `Execute every named test file on disk` runs rather than being skipped, and the
+   diagnostics artifact uploads. Checked from the run artifact before any classification, because a
+   provisioning death and a sweep failure look identical at run level.
+2. **The five prior failures are GREEN — `validate-governance-changed-only` included.** The four others were
+   verified locally after their fixes; that fifth is the one carrying real risk, and it is named here rather
+   than hedged.
+3. **Any failure is in untouched code.** Nothing this branch changed fails.
+4. **A timeout is reported as a timeout**, never folded into "failed". `34297054157` completed in failure;
+   if this one exceeds its budget instead, that is a fifth outcome and it gets its own name.
+
+**ITEM 4's PREDICTION, carried in and still standing.** `validate-governance-changed-only` was green in CI
+at the tag and red at `cee33756`, and the local cause found - base-ref undetectable, unscoped fallback -
+matches CI's three assertions better than W43 did:
+
+| outcome | conclusion |
+| --- | --- |
+| **red with the same three assertions** | W43 was misattributed; the cause landed with the merge-back and it is **in scope** |
+| **green** | W43 held, and the marker re-stamp plus the update cleared it |
+
+**Either way the dispatch decides, not a local run** - DRIFT-199-I003-083, whose rule is that the last green
+before a tag must be a dispatched workflow run.
+
+**The tag is cut only on the SHA a green dispatch ran on.**
