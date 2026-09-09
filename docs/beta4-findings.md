@@ -1453,3 +1453,70 @@ DRIFT-199-I003-083 already requires as the last green before a tag.
 
 **If it is red on the dispatch, it is a fourth pre-existing blocker beta4 did not cause**, and whether it
 holds the tag is the maintainer's decision rather than something to absorb into "fix it and move on".
+
+---
+
+## B4F-027 - THE REVIEW ROUND CANNOT RUN: a second runtime marker, drifted since before the last green census, whose only named remedy destroys beta4
+
+**The round was approved, unspent, and could not be spent. The blocker is pre-existing and is not beta4's.**
+
+### The refusal, unchanged after two re-stamps
+
+```
+review-engine-project-runtime-drifted:
+  marker=df8a01650e9665d4d806741b06c22e6a8c12ce493036f98a4c51b577ba7f06d4
+  actual=b56b0f25e7263763e74f5dc7c9a0580f31c15ac908ecedd6c35b54ce29273ec5
+  run 'specrew update --project-path "..."'
+```
+
+**Byte-identical to the first refusal** - the same `marker=` and the same `actual=` - after two successful
+re-stamps of the extension marker that both ended `drifted=0`. **That is the tell: the review engine does
+not read the marker that was re-stamped.**
+
+### There are TWO runtime markers over deployed content, with two checkers
+
+| marker | scope | checker | basis |
+| --- | --- | --- | --- |
+| `.specify/.../.specrew-extension-runtime.json` | 164 managed files | `Test-SpecrewDeployedExtensionIntegrity` | per-file |
+| `scripts/internal/continuous-co-review/.specrew-runtime.json` | 61 files | `review-engine-resolution.ps1:253` | one **logical** bundle SHA |
+
+`review-engine-resolution.ps1:215` resolves `$projectRuntime = <project>/scripts/internal/continuous-co-review`,
+and the stored `runtime_bundle_sha256` is `df8a0165...` - **the refusal's `marker=` exactly.**
+
+**Re-stamping one does nothing for the other.** That is DRIFT-199-I003-034's class - two guards, different
+scopes, overlapping content, composing only by accident - with a third instance and a live cost: it blocks a
+required lifecycle stage.
+
+### PRE-EXISTING, and the proof does not depend on the hash basis
+
+| fact | value |
+| --- | --- |
+| co-review runtime files changed between `11f47c4b` and HEAD | **0** |
+| stored `runtime_bundle_sha256` at `11f47c4b` | `df8a0165...` |
+| stored `runtime_bundle_sha256` today | `df8a0165...` - identical |
+
+**Neither side moved.** The drift is byte-for-byte the same as it was at the last GREEN census, so it
+**predates beta4 entirely** and cannot have been caused by it. It never blocked the census because **the
+census does not invoke the review engine** - only `specrew review` does.
+
+**A NUMBER I WITHDRAW BEFORE PUBLISHING IT.** In flight I measured "44 of 61 files drifted" by comparing raw
+per-file SHA-256 against the marker's entries. The writer's own comment says the bundle hash is a **logical**
+hash that *"normalizes managed-text encoding and line endings"* - **a different basis**, so that figure
+measured the wrong thing and is not reported as a finding. B4F-018 again, caught before it reached a
+conclusion this time. **The pre-existing verdict above stands on its own evidence: nothing on either side
+changed.**
+
+### The remedy problem, which is B4F-017 at its worst
+
+- **`specrew update` is FORBIDDEN** - it would overwrite the deployed provider with installed beta3 bits and
+  **destroy beta4's fix**. It is the only remedy the message names.
+- **The sanctioned extension re-stamp does not reach this marker.**
+- **The writer is not a callable standalone.** It lives inline in `deploy-squad-runtime.ps1:956`, computing
+  from locals (`$continuousReviewRuntimeSource`, `$currentRuntimeManagedFiles`) inside the deploy routine -
+  so there is no `Write-...Marker` to invoke the way `Write-SpecrewDeployedExtensionMarker` was.
+- **A targeted re-stamp has precedent**: `6e0ffb4b`, *"chore(beta3): re-stamp the project runtime before
+  review-signoff"*, changed exactly 4 lines of this file. **How it was produced is not established**, and
+  guessing at it would be writing a governance digest by inference.
+
+**STOPPED AND REPORTED.** This needs the maintainer's ruling: it writes a governance artifact, the product's
+own remedy is destructive, and the drift is not beta4's to absorb.
