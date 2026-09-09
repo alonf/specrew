@@ -1671,3 +1671,62 @@ distinction could not be declared (B4F-006, B4F-020).
    199/003 is sealed and closed and this work is not its.
 
 **STOPPED AND REPORTED. The approval is still unspent and still standing.**
+
+---
+
+## B4F-031 - OPTION (4) EXECUTED TO THE REVIEWER, WHICH NEVER RAN: a CLI/model mismatch, not an empty review
+
+**Everything up to the reviewer worked. The reviewer itself returned a 400 and produced nothing.**
+
+### What was built, and it is reusable
+
+Export at `C:\Temp\beta4-codex-review-20260909-142846`, outside the project:
+
+| artifact | bytes |
+| --- | --- |
+| `diff.patch` - `b62ba968..HEAD` restricted to the fix's files | 31,989 |
+| `files/` - full HEAD content of all three touched files (2086 + 8230 + 254 lines) | 618,901 |
+| `REVIEW-PROMPT.md` - **the engine's own template**, rendered | 4,634 |
+
+**The prompt is the engine's, not an improvisation.** It was rendered from
+`scripts/internal/continuous-co-review/reviewer-candidate-prompt.md` through the engine's own
+`Test-ReviewFilePrimaryPromptTemplate`, which returned **`template_contract_valid = True`** - so it carries
+the eleven contract rules the harness enforces, including raw-JSON-only, single-reviewer-session (no
+delegation), risk-based completion, and the finding budgets. **Zero unsubstituted placeholders.** Output
+would have had the shape the engine harvests.
+
+### What the reviewer did
+
+**Nothing.** `candidate-result.json` was never created, and the log is not an empty stream - it carries an
+explicit refusal:
+
+```
+ERROR: {"type":"error","status":400,"error":{"type":"invalid_request_error",
+"message":"The 'gpt-6-astra' model requires a newer version of Codex.
+Please upgrade to the latest app or CLI and try again."}}
+```
+
+`codex-cli 0.151.0`; `~/.codex/config.toml` pins `model = "gpt-6-astra"`.
+
+**This is reported as "the reviewer never ran", NOT as "the file was empty".** An empty findings file would
+mean a review happened and found nothing; this is a review that did not happen. Conflating them is exactly
+the mislabel the codex-delivers-via-file lesson exists to prevent, and the distinction survives here because
+the log was read rather than the exit code.
+
+**Two things were deliberately NOT done**, because each decides something that is not mine to decide:
+
+- **Overriding the model** (`-c model=...`). Which model reviewed the code is evidence about the review, and
+  substituting one the maintainer did not choose would put a different reviewer's identity into the record.
+- **Upgrading the Codex CLI.** An install action on the machine the maintainer presents from, two days
+  before the conference.
+
+### A SEPARATE FINDING: a scratch directory is not hook-free for codex
+
+The log shows `hook: SessionStart` and `hook: UserPromptSubmit` firing **in the scratch directory**.
+`specrew update` deployed codex hooks **user-level** to `C:\Users\alon\.codex\hooks.json` (13:05 today),
+not per-project - as its own output said at the time: *"codex hooks deployed to C:\Users\alon\.codex\hooks.json"*.
+
+**So the standing probe-hygiene rule - never probe an agentic CLI in a governed cwd, use scratch directories
+- does not fully hold for codex.** The hooks follow the user, not the working directory. Harmless here (a
+scratch directory has no governed state to mutate), but the rule's premise is weaker than it reads and the
+next person relying on it should know. **Beta5, with the deployment-surface items.**
