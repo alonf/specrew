@@ -2389,3 +2389,81 @@ an artifact only a later boundary produces.
 - **Beta5, or with (C) if the tag reopens**: exempt `clarify` at `:404` **or** put the parameter in the
   command; **add a no-iteration fixture case** so the pre-plan state is exercised at all; **fix the format
   string** - and consider whether the -063 guard should cover every refusal rather than one scaffold.
+
+---
+
+## B4F-041 - THIRD INSTANCE OF THE POST-AGENDA REPAIR TRAP, and the writer-side guard is NOT a table change
+
+**Reads above B4F-036's beta5 item (b) - this is the concrete case that item is about.**
+
+### The instance
+
+Fresh walk, `beta4-mdlink` on `d4a89ab7`, feature 1 at agenda confirmation. The crew watched the
+`product-domain` `moved_on` entry **vanish from the workshop map when the agenda was confirmed**, read it as
+silent data loss, found `repair-workshop-controller-state.ps1` refuses post-agenda state, and **proposed
+re-running `confirm-workshop-lens.ps1` for `product-domain`** - the exact unsanctioned repair that left the
+router-skill controller `workshop-record-not-selected` (B4F-035).
+
+**Measured before answering**: `status=active`, `valid=True`, `agenda=confirmed`,
+`next=architecture-core`, `selected=[architecture-core, code-implementation]`, `workshop keys=[]`,
+`product-domain.md`/`.yml` intact. **The clearing is the product's normal post-agenda state**
+(DRIFT-199-I003-092).
+
+**Third instance.** Casio left it alone and closed five lenses; router-skill re-ran the writer and corrupted
+its controller; this crew proposed the same and was talked out of it. **The outcome depended on the agent's
+discipline, and discipline is not a control.**
+
+### THE GUARD CANNOT LIVE IN THE TRANSITION TABLE, and the table says why in its own words
+
+```powershell
+'confirm-intake-lens' { $stateClass -in @('pending-empty', 'pending-product-projection', 'confirmed-complete') }
+```
+
+The comment above that cell is explicit:
+
+> **`confirmed-complete` IS IN THIS SET BECAUSE OF A STRANDED PROJECT, not for symmetry.** … The
+> pending-only fix unblocked NEW workshops and left every already-advanced project exactly as stuck -
+> shipping it would have stranded the projects it was written to save.
+
+**So closing that cell re-strands exactly what DRIFT-199-I003-020 field-proved a recovery for.** A blanket
+post-agenda refusal is the wrong fix and would undo hard-won ground.
+
+**And here is why the trap exists at all**: the two states are **identical at the table's resolution**.
+
+| | stranded (recovery needed) | healthy (clearing is normal) |
+| --- | --- | --- |
+| `agenda_status` | confirmed | confirmed |
+| `workshop` map | **empty** | **empty** |
+| state class | `confirmed-complete` | `confirmed-complete` |
+
+**The table cannot tell them apart, so the guard cannot be a table row.**
+
+### The discriminator that does exist
+
+**A `product-domain` receipt in the authority store.** In the stranded case the intake lens was *never
+closed* - no receipt was ever minted. In the healthy case it *was* closed, a receipt exists, and the entry
+was then cleared by agenda confirmation as designed.
+
+### Estimate
+
+**Location**: `extensions/specrew-speckit/scripts/confirm-workshop-lens.ps1`, after the transition check
+passes, gated on `$isIntakeLens` and a confirmed agenda. **No transition-table change.**
+
+**Shape**: look up a `product-domain` receipt; if one exists, refuse through the existing
+`New-SpecrewLensCheckpointRefusal` with a summary saying **the topic is already recorded and the empty
+workshop list is the normal state after the agenda is confirmed**, and an action naming the legal next move
+(close the next technical lens). If no receipt exists, allow - that is the stranded case.
+
+**Diff**: roughly **15-25 lines** in one file plus the byte-identical `.specify/` mirror. The refusal helper,
+the receipt reader and the intake-lens predicate all already exist and are already imported.
+
+**Tests**:
+
+1. **healthy post-agenda** - receipt present, `workshop` empty → **refuses**, and the message states the
+   clearing is normal.
+2. **stranded post-agenda** - no receipt, `workshop` empty → **still allowed**, so DRIFT-199-I003-020's
+   recovery is preserved. *This is the case that must not regress.*
+3. **pre-agenda** (`pending-empty`) → unchanged.
+4. **mutation**: remove the receipt check → case 1 goes red **and only case 1**.
+
+**The maintainer decides whether it rides with (C).** Recorded with the estimate rather than implemented.
