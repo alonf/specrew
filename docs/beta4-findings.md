@@ -1026,3 +1026,76 @@ had to be found individually and each cost something real - but the next reader 
 first, because it predicts where to look and no individual instance does.
 
 **Beta5 owes this a place in the methodology, not a guard in the harness.**
+
+---
+
+## B4F-019 - CENSUS 34297054157 CLASSIFIED: the sweep ran, it was not a timeout, and PRED-BETA4-004's third part FAILED
+
+### First, before any classification: did the sweep execute?
+
+**Yes.** Read from the run artifact rather than from red/green:
+
+- the step `Execute every named test file on disk` **ran and failed** - it is not skipped;
+- `Upload census failure diagnostics` **succeeded**, and the artifact carries **five per-file entries** with
+  `path`, `kind`, `status`, `exit_code`, `duration_seconds` and `output`.
+
+**So this is a sweep that ran and found failures, not a provisioning death wearing a failure's clothes** -
+the distinction beta3 paid for twice (DRIFT-199-I003-026's corrupt-zip transient, and DRIFT-199-I003-030's
+census that had never once completed a sweep).
+
+**And the diagnostics artifact is DRIFT-199-I003-022's beta4 item (b), shipped.** That entry recorded the
+census writing its diagnostics to ephemeral runner storage and never uploading them, leaving "23 filenames
+and no reason for any of them". This run produced per-file output including assertion text. **The item is
+closed by evidence rather than by claim.**
+
+**Not a timeout.** The run completed with `conclusion: failure`, so the fifth outcome does not apply.
+
+### The classification
+
+| # | file | attributable to THIS branch? | evidence |
+| --- | --- | --- | --- |
+| 1 | `pr-review-integration` | **UNDETERMINED** | `NONBLOCK_WARNING_MISSING exit=1`; the test runs the validator E2E and captures only the result token, so the validator's own reason is not in the artifact |
+| 2 | `validate-governance-changed-only` | **YES** | the exact three assertions DRIFT-199-I003-053 pinned to W43 deployed-marker drift - caused by editing deployed machinery, which is what beta4's fix does |
+| 3 | `no-internal-ids-in-emitted-strings` | **NO** | offender is `shared-governance.ps1:2174 [DRIFT-198]` - a file this branch never touched |
+| 4 | `self-leak-lint` | **NO** | Test 9's born-clean guard against **171 pre-existing annotated hits** - the exact count DRIFT-199-I003-028 measured. **Zero unannotated**, and none of the provider hits are mine |
+| 5 | `work-kind-runtime` | **YES** | `FAIL: T212 (SC-014): Specrew declares software-feature (feature 182)` |
+
+**I checked whether my own comments leaked**, because the provider sits inside the linted deployed surface
+and my comments cite `B4F-007`: `[unannotated]` count is **0**, `B4F` appears **0** times in the lint output,
+and my comments carry no DRIFT ids. **I introduced no self-leak.**
+
+### PRED-BETA4-004, resolved against what was fixed in advance
+
+- **Part 1 - my new suite passes in CI: HELD.** `workshop-resolve-prefers-open-feature` is not in the
+  failing set.
+- **Part 2 - no failure names the provider, `conformance-detection`, or a workshop suite: HELD.**
+- **Part 3 - any failure is in a file this branch did not touch: FAILED.** Two of five are this branch's.
+
+**Recording the failure plainly matters more than the two that held.** The prediction's whole value is that
+its third part was falsifiable, and it was falsified.
+
+### FINDING: the work-kind test pins the VALUE, so the capability is unusable by the project that ships it
+
+`work-kind-runtime` T212 asserts **`Specrew declares software-feature`**. Declaring `bug-bash` - the
+capability's own documented purpose, on the maintainer's ruling - **turns a test red by construction.**
+
+**That is DRIFT-199-I003-084's class**, *assert the property, not the rendering*, and it sharpens
+**B4F-006** considerably: the work-kind selection is not merely invisible and defaulted to the heaviest
+contract - **it is pinned by a test.** A project cannot change its own work kind without editing a suite,
+which is a strong reason nobody ever did.
+
+**The property the test means to hold** is that Specrew dogfoods a valid declaration that resolves to a
+shipped lifecycle contract - and the neighbouring assertion already checks exactly that
+(`PASS: T212 (SC-014): Specrew dogfoods a .specrew/work-kind.yml`). **The value assertion adds nothing the
+property assertion does not, and costs the capability.**
+
+**NOT FIXED.** Two live options and the choice is the maintainer's: revert the declaration to
+`software-feature`, or repair the assertion to check the property. **Recorded, stopped, reported.**
+
+### The discriminator for the next dispatch, fixed in advance
+
+The re-stamp (`36a782cb`) landed **after** the dispatched commit `f712345e`, so failures 1 and 2 were both
+measured against the drifted marker. **PRED-BETA4-005: on a re-dispatch with the re-stamp in the tree,
+`validate-governance-changed-only` goes green, and `pr-review-integration` goes green if and only if its
+cause was the same W43 error.** If `pr-review-integration` still fails, its cause is independent and this
+entry's UNDETERMINED becomes a separate finding rather than a suspicion.
