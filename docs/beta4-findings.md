@@ -2525,3 +2525,95 @@ workshop/product-domain.md, .yml    <- intact, which is the whole point
 walk rather than posed by a fixture - the strongest evidence tier this project has
 (DRIFT-199-I003-020's principle: the precondition was written by the defect, in the field, before anyone
 knew it would be needed).
+
+---
+
+## B4F-042 - THE SANCTIONED RECOVERY AND THE CORRUPTING REPAIR ARE THE SAME OPERATION
+
+**Found while executing fix 1, by an existing green test going red.** This is the largest finding of the
+reopen and it reverses a conclusion this project has been carrying since 2026-09-01.
+
+### What happened
+
+The fix-1 guard made `tests/integration/workshop-lens-checkpoint.tests.ps1` **Case 7c** fail. Case 7c is
+DRIFT-199-I003-020's ground: *"a project that confirmed its agenda without ever closing the intake lens can
+still recover."* It was written from a real deadlocked project, and the recovery it pins was **field-proved
+on the original stranded specimen** on four separate checks.
+
+Rather than adjust it, I reconstructed what the recovery **leaves behind** and read it:
+
+```
+post-recovery workshop keys    = [product-domain]
+product-domain records on disk = 2
+
+pre-fix reader (beta3 as shipped)  -> invalid | False | workshop-record-not-selected
+post-fix reader (tolerance)        -> active  | True  | workshop-active
+```
+
+**The sanctioned recovery produces `workshop-record-not-selected`.** That is byte-for-byte the state the
+router-skill project was found in after a crew "restored" the cleared entry (B4F-035). **The recovery that
+was field-proved and the repair that bricked a controller are one operation.** Only their reputations
+differed.
+
+### Why four field checks missed it
+
+DRIFT-199-I003-020 checked four things: the receipt was consumed, the agenda was untouched, the record
+validated at the checkpoint, and it ran on the original specimen. Each is a real check. **None of them
+asked the reader.** The entry was written, the artifacts were well-formed - and the accessor that every Stop
+classification consults called the result invalid. *A write that validates at the writer is not a write the
+reader accepts*, and this batch now has two instances of that gap.
+
+### And the two states are not distinguishable
+
+Case 7c's own comment says the stranded state is reachable *because* `confirm-workshop-agenda.ps1` requires
+the product-domain **records on disk** rather than the controller entry. So the stranded project **has the
+records** - and a receipt. A healthy post-agenda project has both as well, because confirming an agenda
+clears the map by design.
+
+| | stranded | healthy |
+| --- | --- | --- |
+| `agenda_status` | confirmed | confirmed |
+| `workshop` map | empty | empty |
+| `product-domain.md` / `.yml` | **present** | **present** |
+| `product-domain` receipt | **present** | **present** |
+
+**Both discriminators I proposed are present in both states**: the receipt (my B4F-041 estimate) and the
+records (PRED-BETA4-010's premise). There is no on-disk discriminator, and there does not need to be - what
+un-deadlocks a stranded project is the **reader tolerating the intake key**, not the write.
+
+### A GREEN ASSERTION WAS CHANGED, and it is the most sensitive one in the batch
+
+**Case 7c now asserts the opposite of what it asserted**: the reopen is refused, the entry is not written,
+the controller is byte-unchanged. The case, its fixture and its comment are kept - the comment now records
+what the recovery actually produced and why the case was reversed, so nobody restores it from the old
+reasoning. **Flagged here rather than left in a diff.**
+
+### The retire-or-no-op decision, made on evidence
+
+The maintainer asked: `confirm-intake-lens`'s `confirmed-complete` cell has no caller left - retire it or
+make it a no-op with a message.
+
+**Decision: the cell stays; `confirm-workshop-lens.ps1` refuses downstream of it.** Removing it moves the
+refusal into the transition table, whose intake text says *"Ask for the workshop plan to be repaired"* - and
+`repair-workshop-controller-state.ps1:105` refuses every agenda that is not `pending-confirmation`, so that
+remedy clears nothing. That is the remedy-wrong-for-state family (B4F-030) shipped deliberately. **A
+permission nothing can use, behind a refusal that tells the truth, beats a refusal that sends the reader
+somewhere that cannot help.** The table comment now says this, so the cell is not deleted later as dead.
+
+### A mutation caught a green assertion of mine that proved nothing
+
+M1 (guard removed) left Case 5's two loudest assertions - *"refuses rather than writing"* and *"THE
+CONTROLLER IS BYTE-UNCHANGED"* - **green**. Without a `product-domain` receipt the writer refuses one check
+later anyway, so those assertions never depended on the guard. The fixture now takes `-WithIntakeReceipt`
+for that case, and under M1 both go red. **The field project had that receipt**; the fixture that omitted it
+was testing a state the defect does not occur in.
+
+### Carried to beta5
+
+- **The skill is a second controller writer with no guarantees.** `design-workshop.md` (379, 394) instructs
+  the agent to hand-write `agenda_status: confirmed`. Every invariant `confirm-workshop-agenda.ps1` enforces
+  is optional on that path. The residual branch of the new guard exists only because of it.
+- **`confirm-workshop-lens.ps1` writes a controller shape the accessor can reject.** The writer validates its
+  own artifacts and never asks the reader whether the result is readable. One assertion at the end of the
+  write - read the controller back through `Get-SpecrewWorkshopLifecycleState` - would have caught both this
+  and B4F-035 at the moment of the write.

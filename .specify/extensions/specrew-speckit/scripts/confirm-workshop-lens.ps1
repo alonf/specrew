@@ -125,6 +125,62 @@ if (-not [bool]$transition.allowed) {
             -Action $transitionAction)
 }
 
+# THE INTAKE TOPIC CANNOT BE REOPENED ONCE THE AGENDA IS CONFIRMED, and this is the control the outcome
+# used to depend on an agent having. confirm-workshop-agenda.ps1 CLEARS the `workshop` map when it writes the
+# confirmed agenda, so a healthy post-agenda controller shows an empty topic list with `product-domain`
+# nowhere in it (DRIFT-199-I003-092). Three crews in a row read that emptiness as silent data loss; one of
+# them re-ran THIS writer to "restore" the entry and left its controller invalid for every lens, so the whole
+# feature stopped (B4F-035, B4F-041). One crew was talked out of it and one left it alone - the outcome
+# depended on the agent's discipline, and discipline is not a control.
+#
+# It is deliberately NOT a transition-table row. The table cannot tell the healthy state from the stranded one
+# DRIFT-199-I003-020 field-proved a recovery for: both are `confirmed-complete` with an empty map, and closing
+# that cell would re-strand the projects the recovery was written to save. What separates them is on DISK -
+# the two product-domain records - which is why the refusal below branches on the records and why the reader
+# now surfaces them as `intake_completed`.
+if ($isIntakeLens) {
+    $agendaConfirmed = ($controller.PSObject.Properties['agenda_status'] -and [string]$controller.agenda_status -ceq 'confirmed')
+    if ($agendaConfirmed) {
+        $featureLeaf = Split-Path -Leaf $FeatureRef
+        $intakeRecordNames = @('workshop/product-domain.md', 'workshop/product-domain.yml')
+        $missingIntakeRecords = @($intakeRecordNames | Where-Object { -not (Test-Path -LiteralPath (Join-Path $featurePath $_) -PathType Leaf) })
+
+        # The next legal move, named rather than described: the first agreed topic still open.
+        $agreedTopics = @()
+        if ($controller.PSObject.Properties['selected'] -and $null -ne $controller.selected) {
+            $agreedTopics = @($controller.selected | ForEach-Object { [string]$_ })
+        }
+        $agreedRemaining = @()
+        foreach ($agreedTopic in $agreedTopics) {
+            $topicMoved = $false
+            if ($controller.PSObject.Properties['workshop'] -and $null -ne $controller.workshop) {
+                $topicEntry = $controller.workshop.PSObject.Properties[$agreedTopic]
+                if ($topicEntry -and $null -ne $topicEntry.Value -and $topicEntry.Value.PSObject.Properties['moved_on']) {
+                    $topicMoved = [bool]$topicEntry.Value.moved_on
+                }
+            }
+            if (-not $topicMoved) { $agreedRemaining += $agreedTopic }
+        }
+        $nextAgreed = if ($agreedRemaining.Count -gt 0) { $agreedRemaining[0] } elseif ($agreedTopics.Count -gt 0) { $agreedTopics[0] } else { $null }
+        $continueAction = if ($nextAgreed) { ("Continue with the next agreed topic: {0}." -f $nextAgreed) } else { 'Continue with the workshop as planned.' }
+
+        if ($missingIntakeRecords.Count -eq 0) {
+            throw (New-SpecrewLensCheckpointRefusal `
+                    -Summary ("The product and users discussion is already complete for this feature, so it cannot be closed again. Its answers are kept in 'specs/{0}/workshop/product-domain.md', and the topic list looking empty here is the normal state once the agenda has been confirmed - nothing was lost." -f $featureLeaf) `
+                    -Action $continueAction)
+        }
+        # The residual: a confirmed agenda whose product-domain records are NOT on disk. The script that writes
+        # a confirmed agenda requires both records, but the design-workshop skill still instructs the agent to
+        # hand-write `agenda_status: confirmed` - so this state is reachable and is not only a deletion. Naming
+        # the governed repair as THE remedy here would be the remedy-wrong-for-state family (B4F-030):
+        # repair-workshop-controller-state.ps1 refuses any feature whose agenda is already confirmed, so it
+        # cannot clear this. The refusal says so, and names the move that does work.
+        throw (New-SpecrewLensCheckpointRefusal `
+                -Summary ("The product and users discussion cannot be reopened once the agenda has been confirmed, and its written records are not on disk for this feature. Missing: {0}." -f (($missingIntakeRecords | ForEach-Object { "specs/{0}/{1}" -f $featureLeaf, $_ }) -join ', ')) `
+                -Action ("Write those records from the answers already on record - the governed workshop repair only covers a feature whose agenda has not been confirmed yet, so it will refuse here. {0}" -f $continueAction))
+    }
+}
+
 if (-not $isIntakeLens) {
     $selected = @()
     if ($controller.PSObject.Properties['selected'] -and $null -ne $controller.selected) { $selected = @($controller.selected | ForEach-Object { [string]$_ }) }
@@ -132,9 +188,20 @@ if (-not $isIntakeLens) {
         # Naming the agreed topics is what keeps this refusal actionable; with an empty agenda it would
         # otherwise say "close one of: " and name nothing, which is a refusal with no legal move in it.
         $agreedList = if ($selected.Count -gt 0) { ($selected -join ', ') } else { '(none yet - the agenda has not been confirmed)' }
+        # A REFUSAL MUST LEAVE A LEGAL NEXT MOVE, and "close one of these instead" answers only half of what
+        # the reader is actually asking - they wanted THIS topic covered, and were told only that they cannot
+        # have it here. So the refusal names how the agenda changes.
+        #
+        # There is ONE sentence rather than a branch on agenda_status, and that is deliberate: this check is
+        # reachable only through `confirm-lens`, which the transition table allows solely from
+        # `confirmed-complete` - so by the time a technical lens gets here the agenda is ALWAYS confirmed. A
+        # second branch for the unconfirmed case would be unreachable, and unreachable refusal text is text
+        # nobody can check. What the confirmed answer has to be is the honest one: no governed path adds a
+        # topic afterwards. confirm-workshop-agenda.ps1 refuses every state but `pending-confirmation`, and
+        # both repair operations are reachable only from the pending states.
         throw (New-SpecrewLensCheckpointRefusal `
                 -Summary ("'{0}' is not one of the topics this workshop agreed to cover." -f $Lens) `
-                -Action ("Close one of the agreed topics instead: {0}." -f $agreedList))
+                -Action ("Close one of the agreed topics instead: {0}. The agreed topic list is fixed once it has been confirmed, so '{1}' cannot be added to it now - record whatever it would have covered as a decision inside the nearest agreed topic." -f $agreedList, $Lens))
     }
 }
 

@@ -147,15 +147,27 @@ function Resolve-SpecrewWorkshopStateTransition {
         # workshop deadlocks at its first lens on EVERY greenfield feature: `confirm-lens` demanded a
         # confirmed agenda, and confirming the agenda demanded the product-domain records that only this
         # step persists. Two locally correct refusals, jointly a trap.
-        # `confirmed-complete` IS IN THIS SET BECAUSE OF A STRANDED PROJECT, not for symmetry.
-        # Measured on C:\Temp\ConsoleFractal, 2026-08-30: agenda confirmed, six technical lenses selected,
-        # and `workshop` EMPTY - the intake lens never recorded. That state is reachable because
-        # confirm-workshop-agenda requires the product-domain RECORDS on disk and not the controller entry,
-        # so a workshop can pass the agenda with the intake lens still unclosed. From there both operations
-        # refused: `confirm-intake-lens` because the state was no longer pending, `confirm-lens` because
-        # product-domain is not in `selected` and never can be. The pending-only fix unblocked NEW
-        # workshops and left every already-advanced project exactly as stuck - shipping it would have
-        # stranded the projects it was written to save.
+        # `confirmed-complete` IS IN THIS SET, AND SINCE 2026-09-09 NOTHING CAN ACT ON IT. Read this before
+        # deleting it as dead.
+        #
+        # It was added for a stranded project: C:\Temp\ConsoleFractal, 2026-08-30 - agenda confirmed, six
+        # technical lenses selected, `workshop` EMPTY, the intake lens never recorded. The recovery it enabled
+        # was field-proved against that original specimen on 2026-09-01, on four checks, and none of the four
+        # asked the reader what the recovery LEFT BEHIND. Measured 2026-09-09: it writes `product-domain` into
+        # the map of a controller whose `selected` does not contain it, which the accessor reads as
+        # `workshop-record-not-selected` - invalid, every lens stopped. That is the same state the router-skill
+        # project was found in after a crew "restored" the cleared entry (B4F-035). The sanctioned recovery and
+        # the corrupting repair were one operation.
+        #
+        # The stranded state also turned out to be INDISTINGUISHABLE from a healthy post-agenda one: confirming
+        # an agenda clears the map by design, so `records on disk` and `receipt minted` are true of both. What
+        # actually un-deadlocks the stranded projects is the reader tolerating the intake key, not this write.
+        #
+        # SO THE CELL STAYS AND confirm-workshop-lens.ps1 REFUSES DOWNSTREAM OF IT - deliberately, because that
+        # is where the good message lives. Removing the cell would make this table produce the refusal instead,
+        # and its text names the governed repair, which refuses every confirmed agenda and would clear nothing
+        # (the remedy-wrong-for-state family, B4F-030). A permission nothing can use, with a refusal that tells
+        # the reader the truth, beats a refusal that sends them somewhere that cannot help.
         'confirm-intake-lens' { $stateClass -in @('pending-empty', 'pending-product-projection', 'confirmed-complete') }
         'request-repair' { $stateClass -eq 'pending-inconsistent' }
         'apply-repair' { $stateClass -eq 'pending-inconsistent' }

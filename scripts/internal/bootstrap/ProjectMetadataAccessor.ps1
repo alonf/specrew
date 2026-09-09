@@ -297,6 +297,21 @@ function Test-SpecrewWorkshopDecisionBindings {
     return [pscustomobject]@{ valid = $true; reason = 'workshop-decision-bindings-consistent'; conflict = $null }
 }
 
+function Test-SpecrewWorkshopIntakeLensName {
+    # The intake-lens set has exactly ONE definition - Get-SpecrewWorkshopIntakeLenses in
+    # workshop-authority-store.ps1 - and the comment above that definition records what happened the last time
+    # it was enumerated by hand in several places: the copies drifted and the lens writer refused the FIRST lens
+    # of every workshop. This accessor is loaded by the Stop hook on paths where the extension is not in scope,
+    # so it prefers the shared predicate and keeps its fallback to the literal in exactly one place rather than
+    # adding another hand-written copy of the set.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][AllowEmptyString()][string] $Lens)
+    if (Get-Command Test-SpecrewWorkshopIntakeLens -ErrorAction SilentlyContinue) {
+        return [bool](Test-SpecrewWorkshopIntakeLens -Lens $Lens)
+    }
+    return ($Lens -ceq 'product-domain')
+}
+
 function Get-SpecrewWorkshopLifecycleState {
     # Strict, controller-owned workshop lifecycle truth for Stop classification. Unlike
     # Get-SpecrewWorkshopProgress (a deliberately lenient bootstrap/resume projection), this accessor treats the
@@ -316,6 +331,35 @@ function Get-SpecrewWorkshopLifecycleState {
     $scopeRoot = if ($scope -eq 'iteration') { Join-Path $featureRoot ("iterations/{0}" -f $IterationNumber) } else { $featureRoot }
     $artifactPath = Join-Path $scopeRoot 'lens-applicability.json'
     $workshopRoot = Join-Path $scopeRoot 'workshop'
+    # Intake (`product-domain`) completion is durable in the TWO RECORDS the agenda writer requires, and it is
+    # deliberately NOT durable in the controller: confirm-workshop-agenda.ps1 clears the `workshop` map when it
+    # writes the confirmed agenda, and that empty map is the product's normal post-agenda state
+    # (DRIFT-199-I003-092). Three crews in a row read the emptiness as silent data loss; one of them re-ran the
+    # lens writer to "restore" it and left its controller invalid for every lens (B4F-035, B4F-041). Surfacing
+    # completion here is the display half of that fix - the state an agent prints now says the intake topic is
+    # recorded and names the records, so an empty map is no longer the only thing there is to see.
+    #
+    # It is a SEPARATE field rather than an entry in `completed`: `completed` is the technical-lens list, two
+    # accessor tests pin it by exact count, and `remaining` is unchanged - so no existing reader shifts under
+    # this. The records are FEATURE-scoped even when this accessor is called for an iteration, because the
+    # writer that guarantees them is feature-scoped.
+    $intakeRecordNames = @('workshop/product-domain.md', 'workshop/product-domain.yml')
+    $intakeCompleted = $false
+    $intakeEvidence = $null
+    try {
+        $intakeRecordsPresent = $true
+        foreach ($intakeRecordName in $intakeRecordNames) {
+            $intakeRecordPath = Join-Path $featureRoot $intakeRecordName
+            if (-not (Test-Path -LiteralPath $intakeRecordPath -PathType Leaf)) { $intakeRecordsPresent = $false; break }
+            $intakeRecordItem = Get-Item -LiteralPath $intakeRecordPath -ErrorAction Stop
+            if ($intakeRecordItem.Length -le 0 -or $intakeRecordItem.Length -gt 262144) { $intakeRecordsPresent = $false; break }
+        }
+        if ($intakeRecordsPresent) {
+            $intakeCompleted = $true
+            $intakeEvidence = ($intakeRecordNames -join ', ')
+        }
+    }
+    catch { $intakeCompleted = $false; $intakeEvidence = $null }
 
     function New-WorkshopStateResult {
         param(
@@ -342,6 +386,8 @@ function Get-SpecrewWorkshopLifecycleState {
             current_lens     = $CurrentLens
             agenda_status    = $AgendaStatus
             binding_conflict = $BindingConflict
+            intake_completed = $intakeCompleted
+            intake_evidence  = $intakeEvidence
         }
     }
 
@@ -598,8 +644,19 @@ function Get-SpecrewWorkshopLifecycleState {
             }
         }
 
+        # Reader tolerance for the intake key, and it HEALS rather than merely permits. `selected` is the
+        # TECHNICAL agenda; the intake lens was never a member of it. A controller that still carries - or has
+        # been handed back - a `product-domain` entry is therefore not a corrupt controller, but this check read
+        # it as one and invalidated the whole feature, which is exactly how the router-skill project lost every
+        # lens at once (B4F-035). Tolerating the one intake key means those already-corrupted beta3 controllers
+        # read valid again on update, with no repair run to perform.
+        #
+        # The tolerance is exactly one key wide. A TECHNICAL lens outside `selected` is still the corruption this
+        # check exists to catch and still invalidates - that is the scope, and the test asserts it directly.
         foreach ($recordProperty in $records.PSObject.Properties) {
-            if ([string]$recordProperty.Name -cnotin $selected) {
+            $recordName = [string]$recordProperty.Name
+            if (Test-SpecrewWorkshopIntakeLensName -Lens $recordName) { continue }
+            if ($recordName -cnotin $selected) {
                 return New-WorkshopStateResult -Status 'invalid' -Reason 'workshop-record-not-selected' -Selected $selected -AgendaStatus $agendaStatus
             }
         }

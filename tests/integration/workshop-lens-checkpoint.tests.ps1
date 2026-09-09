@@ -214,28 +214,39 @@ Assert-True (-not $r7b.Ok) 'a technical lens still cannot be closed from the pre
 Assert-True ($r7b.Text -match 'not in a state where') 'and the refusal names the state, not the topic list'
 Assert-True ($r7b.Text -notmatch 'there is no agenda to confirm first') 'the intake wording does not leak into the technical refusal'
 
-Write-Host 'Case 7c (STRANDED): a project that confirmed its agenda without ever closing the intake lens can still recover'
-# THE CASE THE PENDING-ONLY FIX WOULD HAVE STRANDED, found by resuming a real deadlocked project rather
-# than building a fixture. C:\Temp\ConsoleFractal, 2026-08-30: agenda confirmed, six technical lenses
-# selected, `workshop` EMPTY. That state is reachable because confirm-workshop-agenda requires the
-# product-domain RECORDS on disk, not the controller entry - so the agenda can pass with the intake lens
-# still unclosed. From there BOTH operations refused: confirm-intake-lens because the state was no longer
-# pending, confirm-lens because product-domain is not in `selected` and structurally never will be.
+Write-Host 'Case 7c (REVERSED 2026-09-09): reopening the intake lens after the agenda is confirmed is REFUSED'
+# THIS CASE ASSERTED THE OPPOSITE UNTIL 2026-09-09, AND IT WAS GREEN AND WRONG. Read this before changing it
+# back.
 #
-# A fix that only unblocked NEW workshops would have shipped while leaving every already-advanced project
-# exactly as stuck. This is why the resumed project is better evidence than a fresh walk: the fixture I
-# wrote for case 7 could not have invented this state, because I did not know it was reachable.
+# It was written from a real deadlocked project (C:\Temp\ConsoleFractal, 2026-08-30) and the recovery it
+# pinned was field-proved on 2026-09-01 against that ORIGINAL specimen, on four separate checks. None of the
+# four asked the READER what the recovery left behind. Measured 2026-09-09 by reconstructing this fixture's
+# post-recovery controller and reading it: `product-domain` sits in the `workshop` map of a controller whose
+# `selected` does not contain it, and beta3's own accessor reads that as `workshop-record-not-selected` -
+# INVALID, every lens stopped. That is the state the router-skill project was found in after a crew
+# "restored" the cleared entry (B4F-035). The sanctioned recovery and the corrupting repair are the same
+# operation; only their reputations differed.
+#
+# AND THE STATE IT WAS WRITTEN FOR IS NOT DISTINGUISHABLE FROM THE HEALTHY ONE. This fixture is itself the
+# proof: agenda confirmed, `workshop` map empty, product-domain records on disk, intake receipt minted - and
+# that is also exactly what a HEALTHY post-agenda project looks like, because confirming an agenda CLEARS
+# the map by design. Neither the records nor the receipt separates them; both were proposed as
+# discriminators and both are present in both states. So the fix is not a smarter test at the writer. It is
+# a refusal here, plus a reader that tolerates the key already written into projects in the field - which is
+# what actually un-deadlocks the stranded ones, without a repair run and without this write.
 $f7c = New-WorkshopFixture -Selected @('architecture-core', 'ui-ux')   # agenda CONFIRMED, workshop empty
 $null = Write-LensReceipt -Root $f7c.Root -Lens 'product-domain' -Phase 'product-domain'
 Set-Content -LiteralPath (Join-Path $f7c.Feature (Join-Path 'workshop' 'product-domain.md')) -Value "# product-domain`n`nWhat we agreed." -Encoding UTF8
 $validRecord7c = "depth: standard`ndepth_reason: a first feature on a new stack`ncontext_scope: feature_standalone`nconfirmation: human-confirmed`nconfirmation_scope: lens-question`nstatements:`n  - text: One person tracks their own reading.`n    evidence: known`n"
 [System.IO.File]::WriteAllText((Join-Path $f7c.Feature (Join-Path 'workshop' 'product-domain.yml')), $validRecord7c, [System.Text.UTF8Encoding]::new($false))
+$before7c = (Get-FileHash $f7c.Controller -Algorithm SHA256).Hash
 $r7c = Invoke-Writer -Root $f7c.Root -Lens 'product-domain' -Depth 'standard'
-Assert-True $r7c.Ok ('the intake lens closes from a CONFIRMED agenda, recovering a stranded project: ' + $r7c.Text)
+Assert-True (-not $r7c.Ok) 'the intake lens can NOT be reopened once the agenda is confirmed'
+Assert-True ($r7c.Text -match 'already complete') 'and the refusal says the topic is already complete rather than implying work was lost'
+Assert-True ($r7c.Text -match 'product-domain\.md') 'it names the durable record the answers are kept in'
 $entry7c = (Read-Controller -Path $f7c.Controller).workshop.PSObject.Properties['product-domain']
-Assert-True ($null -ne $entry7c -and [bool]$entry7c.Value.moved_on) 'and the intake entry is written, so the workshop is no longer deadlocked'
-$after7c = Read-Controller -Path $f7c.Controller
-Assert-True (@($after7c.selected) -ccontains 'architecture-core' -and -not (@($after7c.selected) -ccontains 'product-domain')) 'recovery does not smuggle the intake lens into `selected` - the agenda it produced is left exactly as the human confirmed it'
+Assert-True ($null -eq $entry7c) 'the entry that made the controller unreadable is NOT written'
+Assert-True ($before7c -eq (Get-FileHash $f7c.Controller -Algorithm SHA256).Hash) 'and the controller is byte-unchanged'
 
 Write-Host 'Case 6: a lens outside the agreed agenda cannot be closed'
 $f6 = New-WorkshopFixture

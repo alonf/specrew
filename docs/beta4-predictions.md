@@ -384,3 +384,43 @@ receipt **and both** `workshop/product-domain.md` / `.yml` are on disk. **So eve
 
 **Fixed in advance**: if (1) fails, the trigger removal is in the wrong place and the guard must not ship
 alone. If (4) survives, the guard is untested regardless of what (2) reports.
+
+### THE VERDICT ON PRED-BETA4-010, and two of its four parts were wrong
+
+**Part 1 - REVISED BY THE MAINTAINER BEFORE THE CODE, then PASSED as revised.** I predicted `completed`
+would become non-empty. The maintainer ruled instead: surface intake completion as `intake_completed`,
+leave `completed` and `remaining` alone. **That ruling was right and mine would have broken things** -
+`tests/bootstrap/ProjectMetadataAccessor.Tests.ps1` pins `completed` by exact count in two places
+(`-eq 1`, `-eq 2`), and no production script reads `.completed` at all (checked: every `.completed` hit
+outside tests is `completed_at` in `task-progress.ps1`). As revised: `intake_completed = True`,
+`intake_evidence` naming both records, `completed` still `[]`, **and it names its path** - Case 1 asserts
+the controller's `workshop` map is empty in the same breath, so the map cannot have supplied the value.
+
+**Part 2 - PASSED.** The writer refuses, the message says the topic is already complete, names
+`workshop/product-domain.md`, states that the empty list is the normal post-agenda state, and names the
+next agreed topic as the legal move.
+
+**Part 3 - THE PREMISE WAS WRONG, AND SO WAS THE ONE UNDER IT.** I argued the blanket refusal was safe
+because "every project whose `agenda_status` is `confirmed` necessarily carries the product-domain records".
+Two errors:
+
+- The **script** writer guarantees them; the **skill** does not. `squad-templates/skills/design-workshop.md`
+  still instructs the agent to hand-write `agenda_status: confirmed` (lines 379, 394). A second writer with
+  no record guarantee, and it is the one an agent actually uses.
+- More importantly, **the records were never a discriminator**. `workshop-lens-checkpoint.tests.ps1`
+  Case 7c's own comment says the stranded state is reachable *precisely because* the agenda writer requires
+  the records on disk rather than the controller entry - so the stranded project **has the records too**.
+  So does the receipt I had proposed as the discriminator in B4F-041. **Both candidate discriminators are
+  present in both states.**
+
+**Part 4 - the mutation could not have said what I said it would, and the maintainer saw that first.** With
+reader tolerance in place the corrupted controller no longer reads `workshop-record-not-selected`; the
+maintainer pre-empted this ("your mutation output is the corrupted fixture, and it must read valid under
+tolerance"). Reproduced exactly: guard removed, both receipts present, the writer runs to completion,
+`workshop_keys_after = [product-domain]`, and that file reads `active` / `valid` under the tolerance.
+
+**Four mutations, disjoint failure sets, target green before each**: M1 guard removed -> Cases 5+6 only;
+M2 tolerance removed -> Case 3 only; M3 completion hard-wired -> Case 2 only; M4 the agenda sentence dropped
+-> Case 8 only. All restored byte-identical, mirror synced, post-restore green.
+
+**M1 also killed an assertion of mine that was green for the wrong reason** - see B4F-042.
