@@ -648,14 +648,42 @@ function Get-SpecrewVerdictCaptureDisclosure {
     if (-not (Get-Command Test-SpecrewHumanVerdictToken -ErrorAction SilentlyContinue)) { return $null }
     $pending = $null
     try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { return $null }
-    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { return $null }
+    if ($null -eq $pending) { return $null }
+    $text = [string]$HumanText
+    # B4F-043, THIRD CONSUMER INSTANCE (PRED-BETA4-026): a verdict-shaped reply with NO crossing pending, or
+    # naming a boundary OTHER than the pending crossing's, used to vanish here - `return $null` on both. The
+    # audible standard one file over (the partial-signoff override: "a phrase that matched and was then
+    # rejected is a human trying to authorize something, and their attempt must never vanish") applies to
+    # the boundary family exactly as it reads. One line back: what is pending, or that nothing is.
+    if (-not [bool]$pending.HasPendingVerdict) {
+        $shape = $null
+        try { $shape = Test-SpecrewHumanVerdictToken -Text $text } catch { $shape = $null }
+        if ($null -eq $shape -or -not [bool]$shape.IsApproval) { return $null }
+        $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        if ($named.Count -eq 0) { return $null }
+        $lastAuth = [string]$pending.LastAuthorizedBoundary
+        $lastAuthText = if ([string]::IsNullOrWhiteSpace($lastAuth)) { 'no boundary has been authorized yet' } else { ("the last authorized boundary is '{0}'" -f $lastAuth) }
+        $message = ("Specrew: your reply reads as a verdict for '{0}', but NO crossing is pending right now, so nothing was recorded - {1}, and the crossing to '{0}' has not been reached (it is recorded when the crew runs that boundary's sync and presents the packet). Nothing you wrote is lost and no approval was changed. When the '{0}' crossing is presented, send the phrase again: approved for {0}" -f [string]$named[0], $lastAuthText)
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'no-pending-crossing' -From $lastAuth -To ([string]$named[0]) -LeadingText '' -NowUtc $NowUtc -Source $Source
+        return $message
+    }
     $to = [string]$pending.PendingToMarkerBoundary
     $from = [string]$pending.PendingFromMarkerBoundary
     if ([string]::IsNullOrWhiteSpace($to)) { return $null }
     $phrase = ('approved for {0}' -f $to)
-    $text = [string]$HumanText
     $idx = $text.IndexOf($phrase, [StringComparison]::OrdinalIgnoreCase)
-    if ($idx -lt 0) { return $null }
+    if ($idx -lt 0) {
+        # The pending crossing's phrase is absent. If the reply is still a verdict naming SOME boundary, it
+        # is a verdict for the wrong crossing - said, not swallowed.
+        $shape = $null
+        try { $shape = Test-SpecrewHumanVerdictToken -Text $text } catch { $shape = $null }
+        if ($null -eq $shape -or -not [bool]$shape.IsApproval) { return $null }
+        $named = @($shape.NamedBoundaries | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) -and [string]$_ -cne $to })
+        if ($named.Count -eq 0) { return $null }
+        $message = ("Specrew: your reply reads as a verdict for '{0}', but the crossing pending right now is '{1} -> {2}', so nothing was recorded. Nothing you wrote is lost and no approval was changed. To authorize the pending crossing, send: {3}" -f [string]$named[0], $from, $to, $phrase)
+        Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action 'other-boundary-named' -From $from -To $to -LeadingText ([string]$named[0]) -NowUtc $NowUtc -Source $Source
+        return $message
+    }
     $verdict = $null
     try { $verdict = Test-SpecrewHumanVerdictToken -Text $text } catch { return $null }
     if ($null -eq $verdict -or [bool]$verdict.IsApproval) { return $null }
@@ -674,15 +702,29 @@ function Get-SpecrewVerdictCaptureDisclosure {
     else {
         ("Specrew: your reply was received but NOT recorded as a verdict for '{0} -> {1}'. It reads as '{2}' because {3}, and the classification is decided by what comes FIRST in the message - not by the first of the verdict lines. Nothing you wrote is lost and no approval was changed. To authorize this crossing, send a message whose FIRST characters are: {4}" -f $from, $to, [string]$verdict.Action, $because, $phrase)
     }
+    Write-SpecrewVerdictDisclosureJournal -ProjectRoot $ProjectRoot -Action ([string]$verdict.Action) -From $from -To $to -LeadingText $leadShown -NowUtc $NowUtc -Source $Source
+    return $message
+}
+
+function Write-SpecrewVerdictDisclosureJournal {
+    # One row per disclosure, whichever branch produced it; fail-silent bookkeeping.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [AllowNull()][string]$Action,
+        [AllowNull()][string]$From,
+        [AllowNull()][string]$To,
+        [AllowNull()][string]$LeadingText,
+        [AllowNull()][string]$NowUtc,
+        [AllowNull()][string]$Source
+    )
     try {
         $journal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
         $dir = Split-Path -Parent $journal
         if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         $when = if ([string]::IsNullOrWhiteSpace($NowUtc)) { (Get-Date).ToUniversalTime().ToString('o') } else { $NowUtc }
-        (([pscustomobject]@{ event = 'verdict-not-captured-disclosed'; recorded_at = $when; from = $from; to = $to; action = [string]$verdict.Action; leading_text = $leadShown; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
+        (([pscustomobject]@{ event = 'verdict-not-captured-disclosed'; recorded_at = $when; from = $From; to = $To; action = [string]$Action; leading_text = [string]$LeadingText; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journal -Encoding UTF8
     }
     catch { $null = $_ }
-    return $message
 }
 
 function Invoke-SpecrewBoundaryVerdictCapture {

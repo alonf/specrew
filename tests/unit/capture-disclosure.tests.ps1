@@ -29,6 +29,7 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
 function New-DisclosureFixture {
+    param([switch]$NoPendingCrossing)
     $root = [System.IO.Path]::GetFullPath((Join-Path ([System.IO.Path]::GetTempPath()) ("disclose-{0}" -f [guid]::NewGuid().ToString('N').Substring(0, 10))))
     $feature = [System.IO.Path]::GetFullPath((Join-Path $root (Join-Path 'specs' '001-feat')))
     $iter = [System.IO.Path]::GetFullPath((Join-Path $feature (Join-Path 'iterations' '001')))
@@ -48,11 +49,15 @@ function New-DisclosureFixture {
     $ctx = [ordered]@{
         schema = 'v2'
         feature_path = $feature
-        session_state = [ordered]@{ active = $true; boundary_type = 'before-implement'; feature_ref = '001-feat'; host = 'claude'; iteration_number = '001'; auth_commit_hash = $head; recorded_at = '2026-08-29T00:00:00Z' }
+        # -NoPendingCrossing is the router-skill shape: the cursor still AT the last authorized boundary, the
+        # next boundary's sync not yet run - so no crossing is derivable, scoped or legacy.
+        session_state = [ordered]@{ active = $true; boundary_type = $(if ($NoPendingCrossing) { 'tasks' } else { 'before-implement' }); feature_ref = '001-feat'; host = 'claude'; iteration_number = '001'; auth_commit_hash = $head; recorded_at = '2026-08-29T00:00:00Z' }
         boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = 'tasks'; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
     }
     [System.IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
-    $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $root -WorkingBoundary 'before-implement' -BoundaryCommitHash $head -RecordedAt '2026-08-29T00:00:01Z'
+    if (-not $NoPendingCrossing) {
+        $null = Set-SpecrewPendingBoundaryCrossingScope -ProjectRoot $root -WorkingBoundary 'before-implement' -BoundaryCommitHash $head -RecordedAt '2026-08-29T00:00:01Z'
+    }
     return [pscustomobject]@{ Root = $root; Head = $head }
 }
 function Read-Enforcement { param([string]$Root) return (Get-Content -LiteralPath (Join-Path $Root '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12).boundary_enforcement }
@@ -135,6 +140,31 @@ Assert-True ($out7 -match 'NOT recorded as a review-round-approval' -and $out7 -
 Assert-True (-not (Test-Path -LiteralPath (Join-Path $f7.Root '.specrew/review/round-approval/pending-round-approval.json'))) 'no pending round approval was minted from the paste'
 Assert-True ((Test-Path -LiteralPath (Join-Path $f7.Root '.specrew/runtime/authority-capture-drops.jsonl')) -and ((Get-Content -LiteralPath (Join-Path $f7.Root '.specrew/runtime/authority-capture-drops.jsonl') -Raw) -match '"reason":"multi-line"')) 'the drop is journaled where the partial-signoff drops already live'
 
-foreach ($f in @($f1, $f2, $f3, $f4, $f5, $f6, $f7)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
+Write-Host 'Case 8 (PRED-BETA4-026, B4F-043 third instance): a verdict typed with NO crossing pending gets one line back naming that nothing is pending'
+$f8 = New-DisclosureFixture -NoPendingCrossing
+$d8 = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f8.Root -HumanText 'approved for before-implement' -NowUtc '2026-09-11T00:00:00Z' -Source 'UserPromptSubmit'
+Assert-True (-not [string]::IsNullOrWhiteSpace($d8)) 'a verdict with no crossing pending produces a disclosure instead of silence (the router-skill''s three retypes)'
+Assert-True ($d8 -match 'NO crossing is pending' -and $d8 -match "last authorized boundary is 'tasks'") 'it says nothing is pending and names the last authorized boundary'
+Assert-True ($d8 -match 'send the phrase again: approved for before-implement') 'and names the one move: send it again when the crossing is presented'
+$j8 = @(Read-Journal -Root $f8.Root -Event 'verdict-not-captured-disclosed')
+Assert-True ($j8.Count -eq 1 -and [string]$j8[0].action -eq 'no-pending-crossing' -and [string]$j8[0].to -eq 'before-implement') 'journaled with its reason'
+Assert-True ([string](Read-Enforcement -Root $f8.Root).last_authorized_boundary -eq 'tasks') 'and the ledger is unchanged'
+$out8 = ((& pwsh -NoProfile -File $provider --project-root $f8.Root --host-kind claude --source-event UserPromptSubmit --last-user-message 'approved for before-implement' 2>&1) -join "`n")
+Assert-True ($out8 -match 'NO crossing is pending') 'the provider puts it in the turn'
+$d8b = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f8.Root -HumanText 'What is the status of the tests directory?' -NowUtc '2026-09-11T00:00:01Z' -Source 'UserPromptSubmit'
+Assert-True ([string]::IsNullOrWhiteSpace($d8b)) 'ordinary conversation with nothing pending still discloses nothing'
+$d8c = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f8.Root -HumanText 'changes needed: rework the plan table' -NowUtc '2026-09-11T00:00:02Z' -Source 'UserPromptSubmit'
+Assert-True ([string]::IsNullOrWhiteSpace($d8c)) 'a send-back with nothing pending discloses nothing - it is not a lost approval'
+
+Write-Host 'Case 9 (PRED-BETA4-026): a verdict naming ANOTHER boundary than the pending crossing gets one line back naming the pending one'
+$f9 = New-DisclosureFixture
+$d9 = Get-SpecrewVerdictCaptureDisclosure -ProjectRoot $f9.Root -HumanText 'approved for plan' -NowUtc '2026-09-11T00:00:03Z' -Source 'UserPromptSubmit'
+Assert-True (-not [string]::IsNullOrWhiteSpace($d9)) 'a verdict for the wrong boundary produces a disclosure'
+Assert-True ($d9 -match "verdict for 'plan'" -and $d9 -match "pending right now is 'tasks -> before-implement'" -and $d9 -match 'send: approved for before-implement') 'it names the boundary typed, the crossing pending, and the phrase that authorizes it'
+$j9 = @(Read-Journal -Root $f9.Root -Event 'verdict-not-captured-disclosed')
+Assert-True ($j9.Count -eq 1 -and [string]$j9[0].action -eq 'other-boundary-named') 'journaled with its reason'
+Assert-True ([string](Read-Enforcement -Root $f9.Root).last_authorized_boundary -eq 'tasks') 'and the ledger is unchanged'
+
+foreach ($f in @($f1, $f2, $f3, $f4, $f5, $f6, $f7, $f8, $f9)) { try { Remove-Item -LiteralPath $f.Root -Recurse -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
 if ($script:failCount -gt 0) { throw ("capture-disclosure: {0} assertion(s) failed" -f $script:failCount) }
 Write-Host 'capture-disclosure: all assertions passed' -ForegroundColor Green
