@@ -330,6 +330,7 @@ $record = [pscustomobject][ordered]@{
     summary        = $(if ([string]::IsNullOrWhiteSpace($Summary)) { '' } else { $Summary.Trim() })
     orientation    = $orientationOwed
     rendered_at    = [DateTimeOffset]::UtcNow.ToString('o')
+    rendered_ms    = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 }
 $written = Write-SpecrewTurnEndRecord -Path $paths.RecordPath -Record $record
 

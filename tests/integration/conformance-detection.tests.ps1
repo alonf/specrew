@@ -592,6 +592,22 @@ try {
     if ($r2c2.Blocked) { Fail "Case 2c: after running the command it was given, the next stop MUST NOT be refused - one refusal, not a loop. Out: $($r2c2.Out)" }
     Write-Pass "Case 2c: the BOUNDARY update transition costs exactly one refusal - it names declare-turn-end -Kind boundary, the script renders packet and marker, and the next stop is accepted"
 
+    # ---- Case 2d: AN IN-FLIGHT DECLARATION NEVER RELEASES A PENDING BOUNDARY - the confirmatory review's probe.
+    #
+    # The retired STOP-INTENT lane was entered only for a MATERIAL stop. The first version of its replacement
+    # was not, so `-Kind in-flight` at a pending crossing released the stop with no boundary declaration and
+    # no marker: background work suppressing the very packet the human's verdict depends on. In-flight
+    # releases a material stop and nothing else.
+    $p2d = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p2d
+    $null = Invoke-Conformance -Proj $p2d -Event UserPromptSubmit
+    $null = New-Declaration -Proj $p2d -Kind 'in-flight' -Pending 'verification job' -Summary 'still running'
+    $t2d = New-Transcript -Proj $p2d -Turns @(@{ role = 'assistant'; text = 'Verification is still running; nothing to review yet.' })
+    $r2d = Invoke-Conformance -Proj $p2d -TranscriptPath $t2d
+    if (-not $r2d.Blocked) { Fail "Case 2d: an in-flight declaration at a PENDING BOUNDARY must not release the stop - the verdict packet is still owed. Out: $($r2d.Out)" }
+    if ($r2d.Out -notmatch 'declare-turn-end' + [char]92 + '.ps1 -Kind boundary') { Fail "Case 2d: and the refusal must demand the boundary declaration. Out: $($r2d.Out)" }
+    Write-Pass "Case 2d: an in-flight declaration releases a material stop only - at a pending boundary the verdict packet is still demanded"
+
     # ---- Case 3: cursor caught up. working == authorized, no spec, short msg -> not pending, not substantial -> no block.
     $p3 = New-Fixture -Working 'plan' -LastAuth 'plan'
     $t3 = New-Transcript -Proj $p3 -Turns @(@{ role = 'assistant'; text = 'Plan approved; proceeding.' })

@@ -1639,7 +1639,14 @@ try {
     #
     # `workshop-intermediate` above is unaffected: it is derived from the workshop controller on disk, not
     # from anything the agent wrote in a message.
-    if ($turnEndKind -eq 'in-flight' -and -not $turnEndInFlightExhausted) {
+    #
+    # SCOPED TO A MATERIAL STOP, exactly as the lane it replaced was. The first version of this replacement
+    # dropped that guard, and the confirmatory review reproduced the consequence: an in-flight declaration at
+    # a PENDING BOUNDARY released the stop with no boundary declaration and no marker - background work could
+    # suppress the packet the human's verdict depends on. Retiring the prose parser was complete; the
+    # replacement had widened the exemption beyond the retired lane's scope. In-flight can release a material
+    # stop, never a boundary, never a workshop refusal, never a coverage decision.
+    if ($blockKind -eq 'material' -and $turnEndKind -eq 'in-flight' -and -not $turnEndInFlightExhausted) {
         $stopIntentOutcome = 'intermediate'
         $stopIntentReason = 'turn-end-declared-in-flight'
     }

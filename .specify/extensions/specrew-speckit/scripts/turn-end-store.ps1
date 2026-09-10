@@ -392,7 +392,18 @@ function Get-SpecrewTurnEndRenderDecision {
     # never suppresses a boundary packet, which is the case that must never be rate-limited away.
     if ([string]$PreviousRecord.kind -ceq $Kind) {
         try {
-            $previousAt = [datetimeoffset]::Parse([string]$PreviousRecord.rendered_at, [System.Globalization.CultureInfo]::InvariantCulture).UtcDateTime
+            # THE THIRD INSTANCE OF ONE ROOT, and the same fix as the other two. ConvertFrom-Json coerces the
+            # ISO `rendered_at` into a [datetime]; casting that back to a string drops the UTC designator and
+            # the fraction, and re-parsing it reads LOCAL time. The confirmatory review measured it on this
+            # machine: a render 0.5 s old looked ~3 hours old, and the 45-second in-flight cooldown was bypassed.
+            # So the cooldown reads `rendered_ms`, a number that survives JSON, with the coerced value as the
+            # fallback for a record written before the field existed - and that fallback uses the [datetime]
+            # DIRECTLY rather than through a string.
+            $previousAt = if ($PreviousRecord.PSObject.Properties['rendered_ms'] -and $null -ne $PreviousRecord.rendered_ms) {
+                [DateTimeOffset]::FromUnixTimeMilliseconds([long]$PreviousRecord.rendered_ms).UtcDateTime
+            }
+            elseif ($PreviousRecord.rendered_at -is [datetime]) { ([datetime]$PreviousRecord.rendered_at).ToUniversalTime() }
+            else { [datetimeoffset]::Parse([string]$PreviousRecord.rendered_at, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).UtcDateTime }
             $elapsed = ($now - $previousAt).TotalSeconds
             if ($elapsed -ge 0 -and $elapsed -lt $MinimumSecondsBetweenRenders -and $Kind -eq 'in-flight') {
                 return [pscustomobject]@{ render = $false; reason = 'in-flight-line-already-shown-moments-ago' }

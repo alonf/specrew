@@ -3050,3 +3050,65 @@ proposal:
 
 The two stale commit citations (`181d4b57` -> B4F-048, `b8936d67` -> B4F-051) stay as written, with the
 cross-references in the entries they point at.
+
+---
+
+## B4F-052 - THE CONFIRMATORY PASS: the repairs confirmed, and three more, one of them mine
+
+**Scoped as ruled**: identity, the retirements as completed, the converted cases, and explicitly the
+session-token mismatch the second pass withheld. `candidate-result.json` written, verdict `findings`,
+21 paths examined, 3 findings all `certain`. Provenance as before and still disputed: the run log says
+`gpt-6-astra`, the result field says `gpt-6`, neither verified against the serving side.
+
+### CONFIRMED - what it set out to check
+
+- **The withheld mismatch is repaired.** The reviewer confirmed the runtime-root token is now found on a
+  host that passes no session id, that the losing session recovers when its next turn starts last, and
+  that a fresh token rejects a pre-crash declaration.
+- **The owner-attribution retirement is complete**, tree-wide including the mirrors, and **the retained
+  `continue` directive is unreachable** - leaving it one release was safe.
+- **All 87 detection checks pass and the converted cases have meaningful subjects**, restored Case 19
+  included. The crew's prose-scoring mutation redding exactly Cases 2 and 2c is *"the expected set for an
+  additive prose-acceptance mutation"* - the reviewer's words.
+
+### THREE FINDINGS, CLASSIFIED
+
+| # | area | severity | finding | class |
+| --- | --- | --- | --- | --- |
+| 2 | retirements | medium | **an in-flight declaration released a PENDING-BOUNDARY stop** | **FIX** - done |
+| 3 | identity | low | the render cooldown re-parsed a JSON-coerced timestamp as local time | **FIX** - done |
+| 1 | identity | medium | with two sessions, the newest-token semantics can credit B for A's declaration | **FIX** - needs a ruling |
+
+**Finding 2 is a bypass I introduced, and it is the important one.** The retired STOP-INTENT lane was
+entered only for a MATERIAL stop; the replacement I wrote assigned `intermediate` for *any* unexhausted
+in-flight declaration, and the shared `$blockWarranted` then suppressed *every* refusal - including a
+pending boundary. Reproduced by the reviewer: `-Kind in-flight -Pending 'verification job'` at a pending
+`clarify -> plan`, provider exits 0 with empty output. **Background work could suppress the packet the
+human's verdict depends on.** Retiring the parser was complete; the replacement had widened the exemption
+past the lane's scope. Fixed by restoring the `material`-only guard; Case 2d is the reviewer's probe and
+goes red under the guard's removal and under nothing else.
+
+**Finding 3 is the THIRD instance of one root** - `ConvertFrom-Json` coercing an ISO timestamp - after the
+design-decision read-back and the token ordering. Casting the coerced `[datetime]` back to a string drops
+the UTC designator and the fraction; re-parsing it reads local time. Measured on this machine's zone: a
+render 0.5 s old looked ~3 hours old, and the 45-second in-flight cooldown was bypassed. Same durable fix as
+the other two: the cooldown reads a number, `rendered_ms`.
+
+**Finding 1 is real and the ruling's own collision semantics leave it open.** With two sessions, the script
+resolves to the NEWEST token, so A's declaration lands under B when B started last. A's Stop finds no record
+and refuses with the *generic* message - the mismatch predicate needs a record to compare, and A has none, so
+the collision is not named for A. **B's Stop finds a record carrying B's own token and credits it**, though B
+never declared. "Credits neither" is therefore not achieved: B is credited. A's recovery on its next turn is
+confirmed but does not undo B's credit.
+
+The script cannot know which session invoked it; that is the limit the ruling accepted. Three ways to close
+the gap, each with a cost the maintainer should weigh rather than the crew:
+
+1. **The hook hands the token to the agent at turn start** (in its turn-start output) and the script takes
+   `-Token`. Unambiguous - the party that knows tells the party that acts - but it depends on the agent
+   passing a value, and the newest-token discovery remains as the fallback when it does not.
+2. **The script refuses to declare when more than one live token exists**, naming the collision. Fails
+   closed at the writer and credits neither, but two long-running sessions could block each other until one
+   turn ends, since a token stays live until its session's next turn start.
+3. **Accept newest-wins**, as now, and document that a second session can be credited for the first's
+   declaration. Rejected by the ruling as written, so listed only for completeness.
