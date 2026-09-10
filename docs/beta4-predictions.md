@@ -1547,3 +1547,24 @@ verdict-line rule to the source. Found locally on the same day by the R1 consume
 synced in `35d5e86e`, which is in `ef80591d`; `boundary-commit-discipline` re-run here: green. Read, not
 re-run; census 5 on `ef80591d` is the one that counts. Everything else on the runner - 409 files - was green,
 including `timestamp-read` after the census-3 repair.
+
+## PRED-BETA4-031 - R2 follow-up: readiness reads EFFECTIVE scoped authority, never raw history. Stated before the code.
+
+**From the follow-up review** (`~/AppData/Local/Temp/specrew-beta4-followup-d8be7878.md`): the cycle loop I
+wrote for R2 iterates `$state.State['verdict_history']` - the raw ledger, which deliberately retains
+approvals a scoped correction invalidated - while `last_authorized_boundary` came from `EffectiveState`.
+Reproduced through the real correction API: effective authority `tasks`, effective approvals none,
+readiness READY. Fixture retained at `beta4-corrected-01be1aa7…`; replayed here before the fix: READY.
+
+**The fix, one line**: the cycle is derived from `$state.EffectiveState['verdict_history']` - the projection
+`Get-SpecrewEffectiveBoundaryEnforcementState` already computes for every other reader - so an invalidated
+approval is never recovered from immutable raw history.
+
+### THE PREDICTION
+
+1. The correction-API reproduction as a suite case (a historical `tasks -> before-implement` approval, the
+   current scoped crossing, a scoped invalidation through `Add-SpecrewBoundaryAuthorizationCorrection`
+   resulting in `tasks`): effective verdicts 0, readiness BLOCKED.
+2. The reviewer's retained fixture, replayed: BLOCKED.
+3. Every existing readiness case (seven) keeps its answer.
+4. Mutation - the raw ledger read restored: part 1 red, nothing else.
