@@ -139,6 +139,14 @@ Tell me if the plan is wrong.
     Write-Host '  --- step 1-2: the prose packet earns exactly one refusal, and it names the command ---'
     $first = Invoke-Stop
     Assert-True $first.Blocked 'the old-habit prose packet is refused - prose is not evidence'
+    if (-not $first.Blocked) {
+        # Census 34502784677 (windows-latest) redded this assertion while every local run - including one under
+        # the runner's CI environment variables - was green, and the suite printed nothing that could say why.
+        # The provider's own output is the diagnosis; it is printed on failure so the next census names the cause.
+        Write-Host ('  [diagnosis] provider output: ' + (($first.Out -replace '\s+', ' ')).Substring(0, [Math]::Min(1500, ($first.Out -replace '\s+', ' ').Length)))
+        Write-Host ('  [diagnosis] baseline: ' + $(if (Test-Path -LiteralPath (Join-Path $root '.specrew/runtime/conformance-sessions')) { (Get-ChildItem -LiteralPath (Join-Path $root '.specrew/runtime/conformance-sessions') -Recurse -File | ForEach-Object { $_.Name + '=' + $_.Length }) -join ',' } else { 'no session dir' }))
+        Write-Host ('  [diagnosis] git status: ' + ((@(& git -C $root status --porcelain=v1 --untracked-files=all 2>&1)) -join ' | '))
+    }
     Assert-True ($first.Out -match 'declare-turn-end\.ps1') 'the refusal NAMES the command'
     Assert-True ($first.Out -match '-Kind <boundary\|in-flight\|conversational>') 'and names its parameters'
     Assert-True ($first.Out -match '-Summary') 'including the one that carries what the turn did'

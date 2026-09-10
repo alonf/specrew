@@ -155,6 +155,17 @@ function New-Workspace {
     if (Test-Path -LiteralPath $copiedAuthorityStore) {
         Remove-Item -LiteralPath $copiedAuthorityStore -Recurse -Force
     }
+    # `.specrew/runtime` is ephemeral, gitignored, and NOT part of the tracked tree this fixture mirrors - a clean
+    # checkout never has it. On a developer machine it holds whatever every session left behind, including deep
+    # authority-snapshot trees whose paths exceed Windows' 260 characters once nested under .scratch/<workspace>/,
+    # and `git add -A` in the seed step then fails with "Filename too long" - silently, because every git call
+    # below discarded its output. With no seed commit there is no `main`, no `origin/main`, and every scoped case
+    # reports `base-undetectable` for a reason that has nothing to do with scoping (census 34502784677, and the
+    # same three cases locally). The seed step now proves it produced a commit, too.
+    $copiedRuntime = Join-Path $workspaceRoot '.specrew\runtime'
+    if (Test-Path -LiteralPath $copiedRuntime) {
+        Remove-Item -LiteralPath $copiedRuntime -Recurse -Force
+    }
 
     # Keep iteration 001 in the copied closed-index so the unscoped cases also prove the newer default closed
     # filter. Iteration 002 is this suite's deliberately invalid untouched target; remove only that historical
@@ -184,8 +195,14 @@ function Initialize-GitWorkspace {
     $null = & git -C $WorkspaceRoot init --quiet 2>&1
     $null = & git -C $WorkspaceRoot config user.email 'test@specrew.local' 2>&1
     $null = & git -C $WorkspaceRoot config user.name 'Test User' 2>&1
-    $null = & git -C $WorkspaceRoot add -A 2>&1
-    $null = & git -C $WorkspaceRoot commit -m 'Seed validator fixture' --quiet 2>&1
+    $null = & git -C $WorkspaceRoot config core.longpaths true 2>&1
+    $addOutput = @(& git -C $WorkspaceRoot add -A 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw ("fixture seed: git add -A failed in {0}: {1}" -f $WorkspaceRoot, (($addOutput | Where-Object { $_ -notmatch 'LF will be replaced' }) -join ' | ')) }
+    $commitOutput = @(& git -C $WorkspaceRoot commit -m 'Seed validator fixture' --quiet 2>&1)
+    $null = & git -C $WorkspaceRoot rev-parse --verify HEAD 2>&1
+    # A fixture step that fails silently makes every case below measure the wrong thing (B4F-018's class): the
+    # seed commit is the base every scoped case diffs against, so its absence is a fixture failure, named here.
+    if ($LASTEXITCODE -ne 0) { throw ("fixture seed: no commit was produced in {0}: {1}" -f $WorkspaceRoot, ($commitOutput -join ' | ')) }
     $null = & git -C $WorkspaceRoot branch -M main 2>&1
     Add-Content -LiteralPath (Join-Path $WorkspaceRoot '.git\info\exclude') -Value ([Environment]::NewLine + '.git-remote/' + [Environment]::NewLine)
     $null = New-Item -ItemType Directory -Path $remoteRoot -Force

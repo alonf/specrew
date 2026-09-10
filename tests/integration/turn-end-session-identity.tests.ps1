@@ -224,6 +224,12 @@ try {
     try { $blocked = (& pwsh -NoProfile -File $provider --host-kind claude --source-event Stop --session-id S3b --transcript-path $transcript 2>&1 | Out-String) }
     finally { Pop-Location }
     Assert-True ($blocked -match '<<<SPECREW-STOP-BLOCK>>>') '3b: the Stop BLOCKS'
+    if ($blocked -notmatch '<<<SPECREW-STOP-BLOCK>>>') {
+        # Census 34502784677 redded this on windows-latest with no local reproduction; the provider's own output is
+        # printed on failure so the next census names the cause instead of the symptom.
+        Write-Host ('  [diagnosis] provider output: ' + (($blocked -replace '\s+', ' ')).Substring(0, [Math]::Min(1500, ($blocked -replace '\s+', ' ').Length)))
+        Write-Host ('  [diagnosis] git status: ' + ((@(& git -C $root3b status --porcelain=v1 --untracked-files=all 2>&1)) -join ' | '))
+    }
     Assert-True ((Read-SpecrewTurnToken -StateRoot $s3b.StateRoot) -ceq $tok3b) '3b: and the block KEPT the token - the turn has not ended'
 
 
