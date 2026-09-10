@@ -3265,3 +3265,140 @@ machine states the facts, the human decides.
 **Beta5, review-machinery family, with B4F-054 and B4F-055.** The three are one item seen from three
 sides: the review cannot stop (054), it grades the wrong thing on the way (055), and its stopping ceremony
 puts the composition on the human (056). A design that fixes the first may dissolve the third.
+
+## B4F-057 - THE STOP LANE WAS KILLED BEFORE THE COUNTER ON EVERY MATERIAL STOP HERE: the review digest cost 18-37 s of a 20 s budget
+
+**The reviewer's live measurement, explained.** Four unconsumed `turn-token.json` files, no
+`turn-counter.json`, the same token re-injected turn after turn, every declaration overwriting `turn-1.json`.
+The maintainer asked which it was: consumption not deployed, or the Stop path not reached. **Measured: the
+code is deployed (`Remove-SpecrewTurnToken` in the `.specify` copy) and the path is not reached.** Through
+the deployed dispatcher, on an idle machine, `Stop` for a session with an orientation receipt:
+`PROVIDER_FAILED provider 'conformance' timed out; skipped` at the 20 s budget, after `last-fire.json` (1.7 s)
+and before the counter step, the token consumption, the journal row; the navigator then
+`PROVIDER_BUDGET ... skipped`. Direct, the same Stop took 28.0 s.
+
+**Where the time went, marker by marker**: 21.3 s between the orientation lane's guard and `$blockKind`,
+of which `Get-SpecrewReviewCoverageState` 20.4 s, of which `Get-ContinuousCoReviewReviewedStateDigest`
+19.1 s: `git add -A` on the seeded temp index 135 ms; `Get-ContinuousCoReviewMachineryPaths` 4.3-9.3 s (a
+recursive marker walk that descended into `.scratch` - 37,899 files - and discarded every hit there
+afterwards); **the per-path denial loop 14.0 s** over 5,792 tracked paths, `Test-ContinuousCoReviewDigestPathDenied`
+once per path at ~2.4 ms a call. The coverage state - and so the digest - runs at every MATERIAL stop in
+any project with a delivered review campaign AND the self-host engine beside it. Consumers do not carry
+`scripts/internal/continuous-co-review/`, so their coverage state has no digest and their Stop lane is
+cheap: this is the dogfood repo's cost, on the repo where every fix is proven.
+
+**Three changes, each identity-preserving, each proved on the same tree** (PRED-BETA4-018):
+
+1. The denial loop hands a path to the predicate only when its first segment can match a literal
+   machinery path or a `<prefix>/**` pattern; any other wildcard pattern forces the full scan. Same
+   predicate, same result - the tree id is byte-identical - 14 s to ~1 s.
+2. The marker walk prunes the volatile roots at the top level instead of discarding afterwards; the
+   machinery set is identical (`Compare-Object` empty), 9.3 s to 1.2 s.
+3. The digest is cached by worktree CONTENT state - HEAD, the porcelain listing, and each listed file's
+   size and mtime - under `.specrew/runtime`, which the identity already excludes and `.gitignore` already
+   hides. Miss 9.5 s, hit 212 ms, `-NoCache` identical; a modified tracked file, an added untracked file each
+   change the id; a write into the runtime dir does not. Nothing here can make the digest wrong, only slower.
+
+**After the three**: through the dispatcher the conformance provider completes (counter 7 -> 8, token
+consumed) and it is now the NAVIGATOR that times out at the remaining budget - it takes 9-18 s of its own
+on this repo (engine load, registry, checkpoint diff), the same class one provider later. Handover 5 s,
+conformance ~4 s, navigator ~9 s: 18 s against a 20 s budget shared by all three, and under any load the
+last one dies. The 20 s was chosen for Codex's 30 s ceiling and is not raised here. **Named for the
+maintainer, with the navigator's own 9 s as the next measurement.**
+
+**What this changes about the record**: every Stop-lane assertion in this repo since the census at
+`d4a89ab7` ran against a provider that was being killed mid-lane in production while passing its tests -
+the tests drive the provider directly with no budget. The class is B4F-047's again: a control that cannot
+fail where the product does. The identity suite's Case 5 goes through the dispatcher for the turn-START
+lane; nothing yet goes through it for Stop under the real budget. Beta5: a dispatcher-path Stop test with
+the production budget on a tree of this size.
+
+## B4F-058 - THE SIGN-OFF'S OWN RECORDS INVALIDATE ITS COVERAGE, so the human accepts twice (beta5)
+
+**From the router-skill review-signoff at `d4a89ab7`**: committing `review.md` and `quality-evidence.md`
+moved the tree past the partial-signoff binding, and the human had to accept the same partial sign-off
+twice. The mechanism is B4F-054's digest over every non-machinery path, applied to the records the
+sign-off itself writes. **Coverage must bind to the SOURCE surface, excluding the records the sign-off
+writes** - the same surface split B4F-054 asks for, applied at the binding rather than at the advisory. One
+fix serves both; recorded separately because the symptom is a human cost at the boundary, not an advisory
+loop. Beta5, review-machinery family.
+
+## B4F-059 - TWO GATES DISAGREE ON TASK-STATE VOCABULARY (beta5, decided: one vocabulary)
+
+**From the router-skill review-signoff**: the boundary sync accepts only `pending | in-progress | done` in
+`tasks-progress.yml`, while the state's Task Outcomes table uses `blocked`. A task that is blocked is a
+real state a human needs to see, and a vocabulary the sync refuses is a state the ledger cannot carry.
+**One vocabulary, decided**: the sync's enum is the authority, and `blocked` joins it - with a required
+reason - rather than the state table dropping it, because "blocked, and why" is exactly the fact a
+re-entry packet exists to surface. The template, the validator and the sync change together. Beta5.
+
+## B4F-060 - `run-mechanical-checks.ps1` FAILS WHEN THERE IS NOTHING TO SCAN (beta5, the refusal standard again)
+
+**From the router-skill review-signoff**: on a stack with no discoverable PowerShell sources the script
+exits 1. "Nothing to scan" is a NOT-APPLICABLE result with a reason, not a failure - the refusal standard:
+say what was looked for, where, and that none was found, and exit 0 with the not-applicable recorded in
+the evidence, so a sign-off over a non-PowerShell stack does not carry a red it has to explain away. Beta5.
+
+## B4F-061 - SIX TYPED AUTHORIZATIONS FOR ONE BOUNDARY: campaign decisions are gated like crossings (beta5, measured on the re-walk)
+
+**From the router-skill review-signoff**: `approved for review round`, `run another round`, `stop the
+review here` (refused), `partial signoff`, `partial signoff` again after the sign-off's own records moved
+the tree (B4F-058), `approved for review-signoff`. Three were decisions; three were mechanism. Campaign
+decisions - round approvals, pause choices, partial acceptances - are gated like crossings, under a
+boundary that is itself a crossing, so one boundary costs one verdict plus N.
+
+**Options to evaluate, as the maintainer put them, with the crew's first read:**
+
+1. **Campaign decisions internal to the review stage, one verdict at its end**, the packet enumerating
+   rounds run, findings fixed, and the uncovered delta. Cleanest count; it moves the per-round decision
+   from a typed authorization to a stage-internal choice, which is right only if a round's cost (budget,
+   time) is something the human agreed to once at the stage's start.
+2. **`run another round` and `approved for review round` as one phrase.** Removes one mechanism
+   authorization per round with no design change; cheap and should ride regardless of (1).
+3. **Partial acceptance bound to the source-surface digest** so the sign-off's own records cannot
+   invalidate it - B4F-058, and it removes one of the six outright.
+4. **`stop` after a round with findings presents the partial acceptance directly, delta enumerated, one
+   typed reply**, instead of refuse-then-ask - B4F-056's packet, arriving at the moment the human asked
+   to stop rather than after a refusal.
+
+**The measure is fixed now**: typed authorizations per boundary, counted on the re-walk. Six is the
+baseline; (2)+(3)+(4) alone read as three; (1) as one plus whatever the stage asks at its start. Beta5,
+review-machinery family - with B4F-054, -055, -056, -058 this is one design item seen from five sides.
+
+## B4F-018, adopted downstream: a consumer promoted "proven without exercising its subject" to a standing reviewer focus
+
+**From the router-skill retro on `d4a89ab7`, for the release notes and the talk's evidence**: iteration 001
+estimated 22 SP, actual 29 (+32%), and every point of the variance sits in three validation tasks, each added
+by a review round that found a check passing without exercising its subject. The retro made that phrase a
+standing reviewer focus for the project. B4F-018's rule, taken up by a consumer on its own numbers rather
+than handed down - which is the strongest evidence a methodology finding can have. The five governed-script
+surprises the retro files are all already in this record; `0be4a6e6` (the reviewer scaffold on an empty
+changed file, PRED-BETA4-017) closes one; B4F-058, -059, -060 and the sign-off count in B4F-061 are the
+rest, beta5.
+
+## B4F-002, field-confirmed on a consumer, with two things it did not say yet
+
+**Router-skill project, `d4a89ab7`, iteration 001 at RETRO**: a resumed session's hook rewrote `state.md`
+and `tasks-progress.yml` - `Iteration Status` set to `ready-for-review`, a value outside the canonical enum
+and wrong for the stage. The crew restored both with `git checkout` per the maintainer's standing
+instruction and re-mirrored the phase by hand. The writer is the chain B4F-002 read end to end
+(`coordinator-resume.ps1` -> `Get-TaskProgressSummary` -> `Sync-IterationTaskProgress` ->
+`Update-IterationStateFromTaskProgress`), and the consumer's specimen adds two facts to it:
+
+1. **The writer derives a status the validator's own enum rejects.** `ready-for-review` is not a canonical
+   iteration status; the state writer and the state validator disagree on the vocabulary, which is
+   B4F-059's shape one file over. A writer that can emit a value its reader refuses will be refused at the
+   next gate for a value the human never chose.
+2. **It fires on an OPEN iteration at a stage past review, not only on a sealed one.** B4F-002's specimen
+   was a closed, sealed iteration; the consumer's was open and at retro. The seal was never the boundary of
+   the defect - the GET-verb write is - so the fix is the writer, not the seal, and the beta5 item reads that
+   way: a resume derives nothing into an iteration's records past the stage the records belong to.
+
+## B4F-062 - THE VELOCITY DASHBOARD REPORTS PLANNED POINTS AS DELIVERED (beta5)
+
+**From the same retro**: the velocity dashboard reports 22 SP delivered for iteration 001, while the
+retro's calibrated actual is 29. The dashboard's number is scope closed - the planned points of the tasks
+marked done - not effort spent; it is not calibration data and is labelled as if it were. Either the
+dashboard reads the retro's calibrated actual once it exists, or its column is named for what it counts.
+Beta5, beside B4F-018's field adoption: the +32% that the consumer found is invisible on the surface that
+claims to show it.

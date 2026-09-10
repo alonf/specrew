@@ -227,15 +227,101 @@ function Invoke-ContinuousCoReviewGitPathBatch {
     }
 }
 
+function Get-ContinuousCoReviewDigestWorktreeKey {
+    # THE CACHE KEY IS THE WORKTREE'S CONTENT STATE, read the way git reads it: HEAD, the porcelain listing
+    # (every staged, modified, and untracked-non-ignored path with its status), and the size and mtime of
+    # each listed file - git's own stat cache trusts exactly this. Two worktrees with the same key have the
+    # same reviewable content, so they have the same tree id. Anything that changes content changes the
+    # listing or a listed file's stat, and the key with it. Returns '' when it cannot be built, and '' never
+    # matches a stored key.
+    param([Parameter(Mandatory)][string] $RepoRoot, [string[]] $ExcludedPathPatterns = @())
+    try {
+        Push-Location -LiteralPath $RepoRoot
+        try {
+            $head = ([string](& git rev-parse HEAD 2>$null)).Trim()
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($head)) { return '' }
+            $rawStatus = & git status --porcelain=v1 -z --untracked-files=all 2>$null
+            if ($LASTEXITCODE -ne 0) { return '' }
+            $parts = [System.Collections.Generic.List[string]]::new()
+            $parts.Add('head=' + $head)
+            $parts.Add('exclusions=' + (@($ExcludedPathPatterns) -join '|'))
+            foreach ($entry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStatus)) {
+                if ([string]::IsNullOrWhiteSpace($entry) -or $entry.Length -lt 4) { continue }
+                $status = $entry.Substring(0, 2)
+                $relative = $entry.Substring(3)
+                $stat = ''
+                $full = Join-Path $RepoRoot $relative
+                if ([IO.File]::Exists($full)) {
+                    $info = [IO.FileInfo]::new($full)
+                    $stat = '{0}:{1}' -f $info.Length, $info.LastWriteTimeUtc.Ticks
+                }
+                $parts.Add(('{0} {1} {2}' -f $status, $relative, $stat))
+            }
+            $bytes = [Text.Encoding]::UTF8.GetBytes(($parts -join "`n"))
+            return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
+        }
+        finally { Pop-Location }
+    }
+    catch { return '' }
+}
+
+function Get-ContinuousCoReviewDigestCachePath {
+    # THE CACHE LIVES IN THE GIT DIRECTORY, not in the worktree. The first version wrote it under
+    # `.specrew/runtime`, and on a repository that does not ignore that directory the cache file appeared in
+    # `git status` - which is (a) a worktree mutation the verification runner rightly refuses, and (b) a
+    # change to the very porcelain listing the cache key is built from, so every write would have
+    # invalidated the entry it just stored. A git-derived identity belongs where git keeps its own derived
+    # state; `--git-path` resolves per worktree, and nothing under the git dir is ever in a listing or a tree.
+    param([Parameter(Mandatory)][string] $RepoRoot)
+    try {
+        Push-Location -LiteralPath $RepoRoot
+        try {
+            $gitPath = ([string](& git rev-parse --git-path 'specrew-reviewed-state-digest-cache.json' 2>$null)).Trim()
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gitPath)) { return '' }
+            if (-not [IO.Path]::IsPathRooted($gitPath)) { $gitPath = [IO.Path]::GetFullPath((Join-Path $RepoRoot $gitPath)) }
+            return $gitPath
+        }
+        finally { Pop-Location }
+    }
+    catch { return '' }
+}
+
 function Get-ContinuousCoReviewReviewedStateDigest {
     param(
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [string[]] $ExcludedPathPatterns = @()
+        [string[]] $ExcludedPathPatterns = @(),
+
+        # For tests and for callers that must observe the tree directly: skip the cache read.
+        [switch] $NoCache
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+
+    # THE DIGEST IS CACHED BY WORKTREE STATE (PRED-BETA4-018). Measured on the self-host repo: 18-37 s per
+    # computation, inside a Stop hook whose whole budget is 20 s shared by three providers - the conformance
+    # provider was killed before the turn counter and the token consumption on every material stop, and the
+    # navigator was never reached. A stop that changed nothing since the last digest gets the last answer,
+    # keyed by content state, not by time: any change to HEAD, to the porcelain listing, or to a listed
+    # file's size or mtime is a different key. The cache lives in the GIT DIRECTORY (see
+    # Get-ContinuousCoReviewDigestCachePath), which is never in a listing or a tree, so writing it does not
+    # move the key it protects. A miss, a corrupt file, or an unwritable directory all fall through to the
+    # full computation; nothing here can make the digest wrong, only slower.
+    $worktreeKey = if ($NoCache) { '' } else { Get-ContinuousCoReviewDigestWorktreeKey -RepoRoot $resolvedRepoRoot -ExcludedPathPatterns $ExcludedPathPatterns }
+    $cachePath = Get-ContinuousCoReviewDigestCachePath -RepoRoot $resolvedRepoRoot
+    if ([string]::IsNullOrWhiteSpace($cachePath)) { $worktreeKey = '' }
+    if (-not [string]::IsNullOrWhiteSpace($worktreeKey) -and (Test-Path -LiteralPath $cachePath -PathType Leaf)) {
+        try {
+            $cached = Get-Content -LiteralPath $cachePath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            if ($null -ne $cached -and [string]$cached.schema_version -ceq '1.0' -and [string]$cached.worktree_key -ceq $worktreeKey -and
+                [string]$cached.tree_id -match '^[0-9a-f]{40}$') {
+                return New-ContinuousCoReviewDigestResult -Ok $true -TreeId ([string]$cached.tree_id) -IncludedIgnoredCount ([int]$cached.included_ignored_count) `
+                    -MachineryPaths @($cached.machinery_paths | ForEach-Object { [string]$_ }) -ExcludedPathPatterns @($cached.excluded_path_patterns | ForEach-Object { [string]$_ })
+            }
+        }
+        catch { $null = $_ }
+    }
     # T017 (FR-012): the METHODOLOGY MACHINERY excluded from the digest identity is the SAME single source the
     # WORKTREE strip uses - Get-ContinuousCoReviewMachineryPaths (core tool dirs + marker-detected + host-mirror
     # subdirs, context-aware). By construction the digest and worktree strip the SAME machinery, so they cannot
@@ -364,8 +450,40 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         if ($LASTEXITCODE -eq 0) {
             # Collect the genuinely-non-source staged paths, then drop them from the index in BATCHED
             # git calls (NOT one `git rm --cached` per path - the ~24s O(files) fan-out on .specify).
+            #
+            # THE PREDICATE IS NOT CALLED FOR EVERY PATH, and the reason is measured (PRED-BETA4-018): on
+            # the self-host repo, 5,792 tracked paths x ~2.4 ms a call = 14 s, inside a Stop hook whose
+            # whole budget is 20 s - the conformance provider was killed before the turn counter and the
+            # token consumption on every material stop. A path can only be denied by a LITERAL machinery
+            # path or a `<prefix>/**` pattern if its FIRST segment equals the first segment of that
+            # prefix, so those first segments are collected once and paths outside them skip the call.
+            # The predicate itself is unchanged, and the tree id it produces is byte-identical. The one
+            # case that defeats a prefix test - a pattern that is not `<prefix>/**`, such as `*.tmp` - forces
+            # the full scan for every path, which is the pre-existing cost and the pre-existing result.
+            $pathComparer = Get-ContinuousCoReviewPathComparer -Path $resolvedRepoRoot -WhenUndetermined 'distinct'
+            $deniableFirstSegments = [Collections.Generic.HashSet[string]]::new($pathComparer)
+            $everyPathNeedsThePredicate = $false
+            foreach ($literal in @($machineryPaths)) {
+                $normalizedLiteral = ([string]$literal -replace '\\', '/').Trim('/')
+                if ([string]::IsNullOrWhiteSpace($normalizedLiteral)) { continue }
+                $null = $deniableFirstSegments.Add($normalizedLiteral.Split('/')[0])
+            }
+            foreach ($pattern in @($stripList)) {
+                if ([string]::IsNullOrWhiteSpace($pattern)) { continue }
+                $normalizedPattern = ([string]$pattern -replace '\\', '/')
+                if ($normalizedPattern.EndsWith('/**')) {
+                    $prefix = $normalizedPattern.Substring(0, $normalizedPattern.Length - 3).Trim('/')
+                    if ([string]::IsNullOrWhiteSpace($prefix)) { $everyPathNeedsThePredicate = $true; break }
+                    $null = $deniableFirstSegments.Add($prefix.Split('/')[0])
+                }
+                else { $everyPathNeedsThePredicate = $true; break }
+            }
             $toStrip = @()
             foreach ($staged in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStaged)) {
+                if (-not $everyPathNeedsThePredicate -and -not [string]::IsNullOrWhiteSpace($staged)) {
+                    $firstSegment = (($staged -replace '\\', '/').TrimStart('/')).Split('/')[0]
+                    if (-not $deniableFirstSegments.Contains($firstSegment)) { continue }
+                }
                 if (Test-ContinuousCoReviewDigestPathDenied -Path $staged -Denylist $stripList -LiteralPath $machineryPaths -CaseRoot $resolvedRepoRoot) {
                     $toStrip += $staged
                 }
@@ -382,7 +500,23 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-malformed' -ExcludedPathPatterns $canonicalExclusions
         }
 
-        return New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included -MachineryPaths $machineryPaths -ExcludedPathPatterns $canonicalExclusions
+        $digestResult = New-ContinuousCoReviewDigestResult -Ok $true -TreeId $treeId -IncludedIgnoredCount $included -MachineryPaths $machineryPaths -ExcludedPathPatterns $canonicalExclusions
+        if (-not [string]::IsNullOrWhiteSpace($worktreeKey)) {
+            try {
+                $cacheDir = Split-Path -Parent $cachePath
+                if (-not (Test-Path -LiteralPath $cacheDir -PathType Container)) { New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null }
+                $cacheRecord = [ordered]@{
+                    schema_version = '1.0'; worktree_key = $worktreeKey; tree_id = $treeId; included_ignored_count = $included
+                    machinery_paths = @($machineryPaths); excluded_path_patterns = @($canonicalExclusions)
+                    computed_at = [DateTimeOffset]::UtcNow.ToString('o')
+                }
+                $cacheTemp = $cachePath + '.tmp-' + [guid]::NewGuid().ToString('N')
+                [IO.File]::WriteAllText($cacheTemp, ($cacheRecord | ConvertTo-Json -Depth 6 -Compress), [Text.UTF8Encoding]::new($false))
+                [IO.File]::Move($cacheTemp, $cachePath, $true)
+            }
+            catch { $null = $_ }
+        }
+        return $digestResult
     }
     catch {
         return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'digest-exception'

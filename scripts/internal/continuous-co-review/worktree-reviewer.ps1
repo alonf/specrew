@@ -138,8 +138,27 @@ function Get-ContinuousCoReviewMachineryPaths {
     # (No rootless early return here any more - the refusal at the top of the function makes an empty
     # root unreachable, and the branch above has already consumed the root to decide source-vs-deployed.)
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
-    $marked = @(Get-ChildItem -LiteralPath $resolved -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |
-        ForEach-Object { [System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $_.FullName)).Replace('\', '/') })
+    $prunedRoots = @(
+        '.scratch', 'node_modules', '.venv', 'venv', '__pycache__', '.tox', '.gradle', '.next',
+        'dist', 'build', 'out', 'target', 'bin', 'obj'
+    )
+    # THE WALK PRUNES AT THE TOP LEVEL INSTEAD OF DISCARDING AFTERWARDS. Measured (PRED-BETA4-018): the
+    # recursive marker search descended into `.scratch` - 37,899 files on the self-host repo - and then
+    # threw every hit under a pruned root away, 4-7 s of a Stop hook's 20 s budget spent on results that
+    # were never used. Pass (1) below only ever matched the FIRST path segment, so skipping exactly those
+    # top-level directories during the walk yields the identical marker set; a pruned name nested deeper
+    # was never pruned before and is not pruned now.
+    $marked = @()
+    foreach ($topLevel in @(Get-ChildItem -LiteralPath $resolved -Force -ErrorAction SilentlyContinue)) {
+        if ($topLevel.PSIsContainer) {
+            if ($prunedRoots -contains $topLevel.Name) { continue }
+            $marked += @(Get-ChildItem -LiteralPath $topLevel.FullName -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |
+                ForEach-Object { [System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $_.FullName)).Replace('\', '/') })
+        }
+        elseif ($topLevel.Name -ceq '.specrew-managed') {
+            $marked += @([System.IO.Path]::GetRelativePath($resolved, (Split-Path -Parent $topLevel.FullName)).Replace('\', '/'))
+        }
+    }
     # Volatile build/scratch roots hold whole project COPIES, so the marker scan found hundreds of
     # deployed dirs inside them and overflowed the RecoveryFact cap (too-many:machinery_paths:512),
     # killing the run before any provider invocation. Their contents are already outside the
@@ -153,10 +172,6 @@ function Get-ContinuousCoReviewMachineryPaths {
     # truncates per-job output, and the truncated tail was mistaken for silence - the job actually
     # ran to completion and failed on a real assertion (DRIFT-198-I009-018). Deleting this pass
     # silently reverted DRIFT-198-I009-009 and -010, so it is restored here.
-    $prunedRoots = @(
-        '.scratch', 'node_modules', '.venv', 'venv', '__pycache__', '.tox', '.gradle', '.next',
-        'dist', 'build', 'out', 'target', 'bin', 'obj'
-    )
     $marked = @($marked | Where-Object { $prunedRoots -notcontains (([string]$_ -split '/')[0]) })
     $marked = @(Remove-ContinuousCoReviewGitIgnoredPath -RepoRoot $resolved -RelativePath $marked)
     # (c) Agent-framework MIRROR subdirs under the AI-host dirs. Specrew/Spec-Kit/host frameworks deploy

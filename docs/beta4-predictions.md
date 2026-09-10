@@ -784,3 +784,54 @@ would-create actions - the reviewer artifact set can be scaffolded there. (3) Th
 B4F-057. `feature-017-dashboard-core` is red locally before and after this change (`specrew where` on the
 fixture) and is unchanged since the green census; classified with the other worktree/environment-bound reds
 at dispatch.
+
+## PRED-BETA4-018 - why the Stop lane never reaches the counter here. Stated before the code.
+
+**Measured, idle machine, this project, the deployed provider**: `Stop` for a session whose orientation
+receipt exists takes **28.0 s** direct; through the dispatcher it is killed at the 20 s provider budget -
+`WARN PROVIDER_FAILED provider 'conformance' timed out; skipped` - after `last-fire.json` (written at ~1.7 s)
+and before the counter step, the token consumption, the journal row, and the navigator (`PROVIDER_BUDGET
+... skipped`). That is the reviewer's live measurement explained: consumption and the counter ARE deployed
+(`Remove-SpecrewTurnToken` is in the `.specify` copy); the Stop path that steps them is not reached.
+
+**The 20 s, split with markers**: 1.7 s to the block decision; then **21.3 s** between the orientation
+lane's guard and `$blockKind`, of which `Get-SpecrewReviewCoverageState` is **20.4 s**, of which
+`Get-ContinuousCoReviewReviewedStateDigest` is **19.1 s**: `git add -A` on the seeded temp index is 135 ms,
+`Get-ContinuousCoReviewMachineryPaths` 4.3 s, and **the per-path denial loop 14.0 s over 5,792 tracked
+paths** - `Test-ContinuousCoReviewDigestPathDenied` called once per path, each call re-resolving the path
+comparison and scanning 78 literal machinery paths plus 12 patterns in PowerShell, ~2.4 ms a call. The
+digest runs at every MATERIAL stop in any project that has a delivered review campaign and the self-host
+engine beside it; consumers do not carry `scripts/internal/continuous-co-review/`, so the coverage state
+has no digest there and the lane is cheap - this is the dogfood repo's cost, and it is the repo where every
+fix is proven.
+
+### THE PREDICTION, three parts
+
+1. A first-segment PREFILTER in the digest loop - a path is handed to the predicate only when its first
+   segment matches the first segment of a literal machinery path or of a `/**` pattern, and every path is
+   handed over when any non-`/**` wildcard pattern exists - produces the **identical tree id**
+   `5b0513f67acd6336b194584615ad91b81fb80f01` on this repo's current state, and identical ids on the
+   engine's own digest fixtures (the `path-identity` and reviewed-state suites stay green unchanged).
+2. The digest drops from ~19 s to under 6 s here (the machinery resolver's 4.3 s remains and is named,
+   not fixed); the deployed conformance Stop completes under the 20 s budget through the dispatcher, the
+   counter steps, the token is consumed, the navigator is no longer budget-skipped.
+3. Mutation: with the prefilter's fallback removed (a non-`/**` pattern no longer forces the full scan), a
+   fixture with a wildcard denylist pattern such as `*.tmp` reds - the prefilter is only safe because the
+   fallback exists.
+
+**PRED-BETA4-018 VERDICT: (1) held; (2) held after a second cut and a cache; (3) held.** (1) The prefilter
+produced the identical tree id on the same worktree state, three runs (`eda24cdb...`, `9894770f...`,
+`28559f26...` as the tree moved under the session), and the machinery set from the pruned walk is
+`Compare-Object`-identical (78 paths). (2) The loop fell from 14.0 s to ~1 s and the marker walk from
+4.3-9.3 s to 1.2 s, but the digest still ran 6-12 s and the dispatcher's Stop still timed out - the budget is
+20 s for THREE providers, and the handover alone is 5 s on an 18 MB transcript. So a third cut: the digest
+is cached by worktree content state - miss 9.5 s, hit 212 ms, `-NoCache` identical. The cache's first home
+(`.specrew/runtime`) was wrong and three engine suites said so: on a repository that does not ignore that
+directory the cache file appeared in `git status`, a worktree mutation the verification runner refuses and a
+change to the very listing the key is built from. It lives in the git directory now (`--git-path`), which is
+never in a listing or a tree; the three suites and the new one are green. End to end through the deployed
+dispatcher under the 20 s budget: a material Stop with no declaration BLOCKS in 9.9 s with the material
+refusal (before this fix, it was killed before deciding anything); after `declare-turn-end -Token`, the Stop
+credits it in 8.1 s, the counter steps 8 -> 9 and the token is consumed. What still blocks at that point is
+the NAVIGATOR's review gate for the probe session - this repo's own gate, now reachable. (3) The mutation
+that drops the wildcard fallback reds exactly the wildcard case and nothing else.

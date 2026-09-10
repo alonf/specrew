@@ -150,6 +150,20 @@ PowerShell startup and a git snapshot. That is the price of the token and of the
 turned out, had never been captured at prompt in production before this release. Making it lighter is a
 beta5 item.
 
+## Field evidence: a consumer project adopted the beta4 rule on its own numbers
+
+The first consumer feature run end to end on this release (an agentic-architecture skill router, one
+iteration) estimated **22 story points and delivered 29 - +32%** - and its retro traced every point of
+the variance to **three validation tasks, each added by a review round that found a check passing without
+exercising its subject**. The retro then promoted *"proven without exercising its subject"* to a standing
+reviewer focus for that project.
+
+That is this release's own finding (B4F-018: a control that cannot fail where the product does) adopted as
+a rule by a consumer, from the consumer's evidence, before the maintainers wrote it into the product. The
+five governed-script surprises the same retro filed were all already in beta4's record; one of them - the
+reviewer-artifact scaffold failing on an empty changed file - is fixed in this release, and the other four
+are beta5 items with their numbers.
+
 ## Verification
 
 - Regression test: `tests/integration/workshop-resolve-prefers-open-feature.tests.ps1`, in the
