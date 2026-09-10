@@ -1534,3 +1534,7 @@ ONCE, to this build - that update is the turn-end contract's field test.
 A red on any changed file is fixed first and the tree is not final. The single sanctioned re-dispatch is
 reserved for a runner-bound red on a file unchanged since `d4a89ab7`. The tag SHA is the SHA the green
 dispatch ran on.
+
+**PRED-BETA4-030, part 3 held before the census landed**: `install-local-build.ps1` from `ef80591d` packaged
+423 files, byte-verified, stamp `ef80591d` / `c8f4f3de…` in `…\Modules\Specrew .40.0` (was `6f1bdaa7`).
+The router-skill project's one `specrew update` to this build is the turn-end contract's field test.
