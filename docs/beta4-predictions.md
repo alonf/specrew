@@ -1584,3 +1584,12 @@ the correction case and nothing else.
 (green on re-run), and `pr-review-integration`, which runs the validator on THIS repository and now meets
 `closed-iteration-edited` on the maintainer's uncommitted `specs/199…/003` edits before it reaches the soft
 warning it looks for - an environment fact of this worktree, green on every census's clean checkout.
+
+## PRED-BETA4-032 - PRED-015 stated for the final SHA, sixth dispatch, after the R2 follow-up. Stated before the dispatch.
+
+The tree is final at the branch head after this record's commit: `ef80591d` plus the R2 follow-up
+(`a1696673`, one product line and its case). Census 5 (`34542233608`, on `ef80591d`) is superseded and read
+when it lands. The prediction is PRED-030's with part 1 unchanged in substance: `full-test-census` green,
+every named file, 0 failures; `readiness-verdict-line` at 25; `prepublish-validation` and the dry-run publish
+green; the artifact carries the sentinel only. The module is reinstalled from this SHA, byte-verified, and
+the router-skill project updates once, to this build.
