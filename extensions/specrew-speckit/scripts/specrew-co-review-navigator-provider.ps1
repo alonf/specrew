@@ -94,6 +94,7 @@ function Write-CoReviewNavigatorTrace {
 $sourceEventArg = $null
 $hostKindArg = $null
 $transcriptPathArg = $null
+$sessionIdArg = $null
 for ($i = 0; $i -lt $args.Count; $i++) {
     if ($args[$i] -eq '--source-event' -and ($i + 1) -lt $args.Count) { $sourceEventArg = [string]$args[$i + 1] }
     # M1 fix (145 iter-006): --host-kind IS the code-writer host - thread it to the navigator so reviewer
@@ -102,6 +103,9 @@ for ($i = 0; $i -lt $args.Count; $i++) {
     # the reap (T106/N4) so the escalation-latch can read REAL user turns for human closure.
     elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKindArg = [string]$args[$i + 1] }
     elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
+    # fix 2 item (c): the dispatcher passes the host's session id to every provider; this one now reads it,
+    # so the review advisory can be scoped to the session that actually wrote something.
+    elseif ($args[$i] -eq '--session-id' -and ($i + 1) -lt $args.Count) { $sessionIdArg = [string]$args[$i + 1] }
 }
 
 try {
@@ -175,6 +179,31 @@ try {
         exit 0
     }
     if ($null -eq $decision) { Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'no-op' -Reason 'null-decision'; exit 0 }
+    # THE REVIEW ADVISORY IS SCOPED TO THE DECLARING SESSION (fix 2 item (c), PRED-BETA4-024). The campaign
+    # block says "these files have not been reviewed yet" to whoever stops in the project; a read-only
+    # reviewer session received it seventeen consecutive times after declaring conversational each turn.
+    # The conformance provider, which runs BEFORE this one, judged that session's declaration and left the
+    # judgment in the session's own state root; it is read here through the same resolver both scripts use.
+    # Quiet for a session that declared conversational, or declared nothing and was judged not material;
+    # today's block for everything else, including no judgment at all, a judgment that is not this Stop's,
+    # and a pause the human owes an answer to.
+    if ($isStop -and -not [string]::IsNullOrWhiteSpace([string]$decision.stop_block) -and
+        -not ($decision.PSObject.Properties['route'] -and [string]$decision.route -ceq 'pause-pending')) {
+        $sessionQuiet = $null
+        try {
+            $turnEndStorePath = Join-Path $PSScriptRoot 'turn-end-store.ps1'
+            if (-not (Get-Command Test-SpecrewTurnMaterialVerdictQuiet -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $turnEndStorePath -PathType Leaf)) { . $turnEndStorePath }
+            if (Get-Command Test-SpecrewTurnMaterialVerdictQuiet -ErrorAction SilentlyContinue) {
+                $sessionPaths = Get-SpecrewTurnEndPaths -ProjectRoot $projectRoot -HostKind $hostKindArg -SessionId $sessionIdArg
+                $sessionQuiet = Test-SpecrewTurnMaterialVerdictQuiet -StateRoot ([string]$sessionPaths.StateRoot)
+            }
+        }
+        catch { $sessionQuiet = $null }
+        if ($null -ne $sessionQuiet -and [bool]$sessionQuiet.Quiet) {
+            Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'quiet' -Reason ('review advisory withheld from this session: ' + [string]$sessionQuiet.Reason + ' (' + [string]$decision.reason + ')')
+            exit 0
+        }
+    }
     # Durable trace of the REAL outcome (fired | deduped | not-implement-stage | identity-unresolved | cross-session-sweep).
     Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action ([string]$decision.action) -Reason ([string]$decision.reason)
 

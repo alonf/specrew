@@ -400,11 +400,11 @@
     },
     {
       "path": "scripts/specrew-co-review-navigator-provider.ps1",
-      "sha256": "a12ff8d202067dea26fc3cbfafcc00ed364cf99d8e8c6930af7416c54057152c"
+      "sha256": "20356e053ebbb4c702fdac5cde1be8375d7997d8eb036d40fe85681451ecc49a"
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "216f311363cfff883b9e48d106a3fe16beb1666776789c46cbeb3eeef769cf8d"
+      "sha256": "31f9d50759a050d84de29b89082a3eede59515744886d2cc746f34553af6fbfd"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",

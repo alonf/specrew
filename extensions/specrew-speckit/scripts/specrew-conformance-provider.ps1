@@ -2213,6 +2213,16 @@ try {
     #
     # A duplicate hook delivery never reaches this line - the dedupe above returns first - so a re-fire for
     # one message cannot move the turn underneath a declaration that is still current.
+    # THE JUDGMENT IS LEFT FOR WHOEVER RUNS AFTER (fix 2 item (c), PRED-BETA4-024): written BEFORE the
+    # counter steps so it names the turn judged, and on a block too - a blocked turn is still judged.
+    # The co-review navigator (order 50) reads it to keep the review advisory off a session that
+    # declared conversational or did nothing material. Fail-open: a write that fails leaves no judgment,
+    # and no judgment means today's behavior downstream.
+    if ($null -ne $turnEndPaths -and (Get-Command Write-SpecrewTurnMaterialVerdict -ErrorAction SilentlyContinue)) {
+        $judgedMaterial = $false
+        try { $judgedMaterial = ($null -ne $materialSignal -and [bool]$materialSignal.material) } catch { $judgedMaterial = $false }
+        try { $null = Write-SpecrewTurnMaterialVerdict -StateRoot ([string]$turnEndPaths.StateRoot) -TurnId ([string]$turnEndPaths.TurnId) -DeclarationKind $turnEndKind -Material $judgedMaterial } catch { $null = $_ }
+    }
     if ([string]::IsNullOrWhiteSpace($blockReason) -and $null -ne $turnEndPaths -and
         (Get-Command Step-SpecrewTurnCounter -ErrorAction SilentlyContinue)) {
         # A FAILED STEP IS SAID OUT LOUD. Found by the independent review, which made the counter

@@ -169,6 +169,20 @@ defect in the message only; the refusal itself is behaving as described above.
 
 Both are fixed in beta5.
 
+## Fixed: the review advisory was said to every session in the project, including one that wrote nothing
+
+**What happened.** With two sessions open on one project - one working, one reading - every Stop of the
+reading session was interrupted with "Specrew review - these files have not been reviewed yet", asking it to
+approve a review round for files it had never touched. Measured at seventeen consecutive interruptions of a
+reviewer session, each after it had declared its turn conversational. The co-review navigator knew the tree
+was unreviewed and nothing about who was stopping.
+
+**What changed.** The hook that judges your turn's declaration now leaves that judgment where the review
+navigator can read it, and the navigator says the advisory only to a session that wrote something this turn:
+declared in-flight or boundary, or declared nothing and was seen changing files. A session that declared
+conversational, or did nothing, hears nothing. A review round that is waiting for your decision still stops
+every session - that is your decision owed, not a file attribution.
+
 ## Fixed: the second iteration's plan sync asked for the third iteration's plan
 
 **What happened.** After you closed iteration 001 and the crew ran the plan sync for iteration 002, the sync

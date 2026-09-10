@@ -1307,3 +1307,29 @@ not a file attribution); a judgment that is not THIS Stop's (turn id not current
 the test proves nothing about the reviewer session's seventeen. If the field test - the reviewer session's
 next Stop on the module built from this SHA, after an accepted conversational declaration - fires an
 eighteenth time, the fixture contradicts the field and the tree is not final.
+
+### PRED-BETA4-024 VERDICT - held; one under-count in part 5, recorded
+
+**Part 1 held**: Case 3 reads `{turn_id: turn-1, declaration_kind: conversational, material: false}` and the
+counter reads turn-2 afterwards; Case 3b reads `absent` for the turn the counter still names. **Part 2
+held**: through the real conformance provider and the navigator provider copy over the stub, the reviewer
+session (declared conversational) gets nothing and the journal says `quiet ... session declared
+conversational`; the working session (declared in-flight) gets the block; the reviewer still gets nothing
+afterwards. **Part 3 held**, every path: no judgment, absent-with-material, boundary, pause-pending against
+the conversational session, a wrong turn id, a ten-minute-old judgment, no session id - all block; and
+absent-and-not-material is quiet (a read-only session on a host without declarations). **Part 4 held**:
+`conformance-detection` (228 s, PH-ms included), `turn-end-update-transition`, `turn-end-session-identity`
+(52), `continuous-co-review-navigator` (36), `campaign-stop-authority` (22), `advisory-names-the-humans-act`
+(17), `deployed-mirror-parity`, `ProviderMirrorParity`, `hook-event-coverage`, `package-filelist-completeness`,
+`every-suite-is-named-by-a-lane` - green.
+
+**Part 5, under-counted**: the mutation reds 5, not 3 - the reviewer session's three AND the two quiet
+positive controls in part 3 ("declared nothing, judged not material: quiet"; "the same conversational
+judgment is quiet again once the pause is gone"). They are the same gate, and the statement should have
+counted them. Nothing outside the gate moved.
+
+**Found on the way**: `ConvertFrom-Json` hands an ISO timestamp back as a local-kind `[datetime]`; the
+freshness read now converts that to a UTC instant rather than round-tripping it through a culture string.
+
+**Field test owed**: the reviewer session's next Stop on the module built from this SHA, after an accepted
+conversational declaration. That, not this suite, is what settles (c).

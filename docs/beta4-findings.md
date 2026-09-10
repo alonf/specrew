@@ -3661,3 +3661,57 @@ asserted on both shapes (refuses naming 002 with plan.md absent; mints with it p
 copy of the module tree that this process and the sync wrapper both resolve through): 13 red - both
 fixtures on 003, and the rebind too, because the constructor's derivation and the restored one compound to
 003 at authorization; that compounding is the proof that the derivation now lives in one place.
+
+## B4F-068 - FIX 2 ITEM (c) WAS BUILT FOR ONE PROVIDER AND CLAIMED FOR TWO: the review advisory had no session in it (fixed in beta4)
+
+**Read from the record before answering the question**: B4F-047 (3) scoped item (c) as "attribution becomes
+the declaring session, and a read-only second session in the same project receives no advisory. Its test
+is in the fix-2 tail." What was built under that heading is `conformance-detection` Case PH-ms: the
+CONFORMANCE provider (order 40) no longer bills a session that declared conversational for another
+session's surface. The advisory the reviewer session then received seventeen consecutive times - `Specrew
+review - these files have not been reviewed yet` - is the CO-REVIEW NAVIGATOR's campaign stop block (order
+50): `Build-ReviewCampaignNavigatorStopBlock` on every route but review-current, review-running and
+pause-pending, fired on every Stop in the project while the tree's digest was unreviewed. Its provider took
+`--host-kind` and `--transcript-path` and never `--session-id`. **The field was right. No fixture
+contradicted it, because none existed for this provider.** The claim in B4F-047 ("(3) is beta4, through fix
+2 item (c) as already scoped") was true of the half that was built and silent about the half that was not.
+
+**The handshake, no inference**: the conformance provider judges this session's declaration at Stop and
+steps its counter afterwards; it now leaves the judgment beside the counter first - `turn-material.json`
+in the session's own state root: `{ turn_id, declaration_kind (conversational|in-flight|boundary|absent),
+material, judged_at }`, written on a block too. The navigator provider receives the `--session-id` the
+dispatcher already passes to every provider, resolves the same state root through the same
+`Get-SpecrewTurnEndPaths`, and asks one question (`Test-SpecrewTurnMaterialVerdictQuiet`): quiet for a
+session that declared conversational, or declared nothing and was judged not material; today's block for
+in-flight, boundary, absent-with-material, no judgment at all, a judgment that is not this Stop's (turn id
+neither current nor current-1, or older than 120 s - the one clock in it, failing toward the advisory),
+and a `pause-pending` route (an unanswered pause is the human's decision owed, not a file attribution; the
+decision now carries its `route` so the provider can tell). The journal row says why:
+`quiet: review advisory withheld from this session: session declared conversational`.
+
+**Tests**: `tests/integration/review-advisory-session-scope.tests.ps1` (class-guard lane, 24 assertions) -
+the field shape end to end through the REAL conformance provider and a provider copy resolving a STUB
+navigator that always returns the review-required block: the reviewer session declares conversational and
+receives nothing; the working session declares in-flight and receives the block; the reviewer still
+receives nothing afterwards, same project, same tree. Then every path that must still block: no judgment,
+absent-with-material, boundary, pause-pending (even for the conversational session), a wrong turn id, a
+ten-minute-old judgment, no session id. `turn-end-session-identity` Cases 3 and 3b assert the judgment
+itself. `-MutateUnscoped` (the provider's gate replaced by `if ($false)`): 5 red - the reviewer session's
+three, and the two quiet controls in the block-still-fires part, which are the same gate.
+
+**Field test owed**: the reviewer session's next Stop on the module built from this SHA, after an accepted
+conversational declaration. Eighteen would mean the fixture contradicts the field and the tree is not final.
+
+## B4F-069 - `specrew start --no-launch` HUNG FOR TWELVE MINUTES IN A FIXTURE PROJECT (open, consumer-facing)
+
+`tests/integration/project-path-resolution-regression.ps1`, run locally as part of a consumer sweep on
+2026-09-10: its first entry point - `scripts/specrew-start.ps1 -NoLaunch`, invoked with `.NET CurrentDirectory`
+deliberately pointed away from the PowerShell location, in the fixture project the script builds under
+`.scratch/project-path-resolution-regression/fixture-project` - produced no output for 761 s and was killed
+(processes 21732/94532; no child processes; the entry point's stdout empty). The same file is green on
+both censuses (`34502784677`, `34518281283`) on windows-latest, so the hang is environment-conditioned,
+and this machine's environment is the one a consumer has: an installed Specrew module, OneDrive-redirected
+Documents, a governed project elsewhere on disk. A `start` that can wait twelve minutes with nothing on
+screen is a consumer-facing defect whatever triggers it. Not chased in this session: it is recorded as
+open, with the fixture and the process shape, not as noise. Reproduce with the file above; if it hangs,
+attach a debugger to the `specrew-start.ps1` child and read what it is waiting on.

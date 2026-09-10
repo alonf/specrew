@@ -185,6 +185,9 @@ try {
     Assert-True ($r.Code -eq 0) '3: the agent declares with the token it was handed'
     $stop = Invoke-Provider -ProjectRoot $root3 -Event 'Stop' -SessionId 'S3'
     Assert-True ($stop.Code -eq 0 -and $stop.Out -notmatch 'SPECREW-STOP-BLOCK') '3: the Stop judges the declaration and does not block'
+    # fix 2 item (c) (PRED-BETA4-024): the judgment is left beside the counter for the providers that run after.
+    $judged3 = Read-SpecrewTurnMaterialVerdict -StateRoot $s3.StateRoot
+    Assert-True ($null -ne $judged3 -and [string]$judged3.declaration_kind -ceq 'conversational' -and [string]$judged3.turn_id -ceq 'turn-1' -and -not [bool]$judged3.material) ('3: and left its judgment for whoever runs after - conversational, turn-1, not material ({0})' -f $(if ($null -ne $judged3) { $judged3 | ConvertTo-Json -Compress } else { '(none)' }))
     Assert-True ([string]::IsNullOrWhiteSpace((Read-SpecrewTurnToken -StateRoot $s3.StateRoot))) '3: and CONSUMED the token - live means unconsumed'
     Assert-True (@(Get-SpecrewLiveTurnTokens -ProjectRoot $root3).Count -eq 0) '3: so the project now has no live token'
     $next = Invoke-Provider -ProjectRoot $root3 -Event 'UserPromptSubmit' -SessionId 'S3'
@@ -239,6 +242,8 @@ try {
         Write-Host ('  [diagnosis] git status: ' + ((@(& git -C $root3b status --porcelain=v1 --untracked-files=all 2>&1)) -join ' | '))
     }
     Assert-True ((Read-SpecrewTurnToken -StateRoot $s3b.StateRoot) -ceq $tok3b) '3b: and the block KEPT the token - the turn has not ended'
+    $judged3b = Read-SpecrewTurnMaterialVerdict -StateRoot $s3b.StateRoot
+    Assert-True ($null -ne $judged3b -and [string]$judged3b.declaration_kind -ceq 'absent' -and [string]$judged3b.turn_id -ceq (Get-SpecrewTurnId -StateRoot $s3b.StateRoot)) '3b: a blocked turn is still judged - absent, for the turn the counter still names'
 
 
     # ============ Case 4: absence is not mismatch ===================================================

@@ -366,6 +366,9 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
             return $decision
         }
         $decision.reason = [string]$packet.reason
+        # The route travels on the decision so the provider can tell a pause the human owes from a file
+        # attribution it may quiet for a session that wrote nothing (fix 2 item (c)).
+        $decision | Add-Member -NotePropertyName route -NotePropertyValue ([string]$packet.route) -Force
         if ([bool]$packet.render_boundary_packet) {
             $decision.inject_notes = @(("[co-review] Review {0} covers your files exactly as they are now." -f $packet.run_id))
         }

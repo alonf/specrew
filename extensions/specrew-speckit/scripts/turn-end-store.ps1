@@ -349,6 +349,113 @@ function Step-SpecrewTurnCounter {
     }
 }
 
+
+# THE JUDGMENT, LEFT BESIDE THE COUNTER (fix 2 item (c), PRED-BETA4-024). The conformance provider judges
+# this session's declaration at Stop and steps the counter afterwards. Everything that runs AFTER it in the
+# same Stop - the co-review navigator, by the dispatcher's order - used to know nothing about the session
+# and blocked every Stop in the project while the tree was unreviewed: a read-only reviewer session was told
+# seventeen times in a row that "its files" had not been reviewed. The judgment is written here once, by
+# the one provider that made it, and read by whoever comes after. Nothing infers it a second time.
+
+function Get-SpecrewTurnMaterialVerdictPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    return (Join-Path $StateRoot 'turn-material.json')
+}
+
+function Write-SpecrewTurnMaterialVerdict {
+    # Written BEFORE the counter steps, so `turn_id` names the turn that was judged. Fail-open: a missing
+    # judgment reads as "no judgment", and the reader keeps today's behavior.
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][string] $StateRoot,
+        [Parameter(Mandatory)][string] $TurnId,
+        [Parameter()][AllowNull()][AllowEmptyString()][string] $DeclarationKind,
+        [Parameter()][bool] $Material = $false
+    )
+    $temp = $null
+    try {
+        $kind = if ([string]::IsNullOrWhiteSpace($DeclarationKind)) { 'absent' } else { [string]$DeclarationKind }
+        if (-not (Test-Path -LiteralPath $StateRoot -PathType Container)) { New-Item -ItemType Directory -Path $StateRoot -Force | Out-Null }
+        $path = Get-SpecrewTurnMaterialVerdictPath -StateRoot $StateRoot
+        $temp = $path + '.tmp-' + [guid]::NewGuid().ToString('N')
+        $record = [ordered]@{
+            schema_version   = '1.0'
+            turn_id          = [string]$TurnId
+            declaration_kind = $kind
+            material         = [bool]$Material
+            judged_at        = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        [System.IO.File]::WriteAllText($temp, ($record | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::Move($temp, $path, $true)
+        return $true
+    }
+    catch { return $false }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($temp) -and (Test-Path -LiteralPath $temp -PathType Leaf)) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Read-SpecrewTurnMaterialVerdict {
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $StateRoot)
+    try {
+        $path = Get-SpecrewTurnMaterialVerdictPath -StateRoot $StateRoot
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+        $record = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $record -or [string]$record.schema_version -cne '1.0') { return $null }
+        return $record
+    }
+    catch { return $null }
+}
+
+function Test-SpecrewTurnMaterialVerdictQuiet {
+    # THE ONE QUESTION A LATER PROVIDER ASKS: did the provider that judged this session's turn find it
+    # material? Quiet when the session DECLARED conversational, or declared nothing and was judged not
+    # material. Not quiet - today's behavior - for in-flight, boundary, absent-with-material, no judgment
+    # at all, or a judgment that cannot be THIS Stop's: its turn id is neither the current one (a block
+    # left the counter alone) nor the one just stepped past, or it is older than -MaxAgeSeconds. Freshness
+    # is the one clock in this, and it fails toward the advisory, never toward silence.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $StateRoot,
+        [int] $MaxAgeSeconds = 120
+    )
+    $r = [pscustomobject]@{ Quiet = $false; Reason = 'no-judgment'; DeclarationKind = ''; TurnId = '' }
+    $verdict = Read-SpecrewTurnMaterialVerdict -StateRoot $StateRoot
+    if ($null -eq $verdict) { return $r }
+    $r.DeclarationKind = [string]$verdict.declaration_kind
+    $r.TurnId = [string]$verdict.turn_id
+    $current = Get-SpecrewTurnId -StateRoot $StateRoot
+    $currentNumber = 0; $verdictNumber = 0
+    if ($current -match '^turn-(\d+)$') { $currentNumber = [int]$Matches[1] }
+    if ([string]$verdict.turn_id -match '^turn-(\d+)$') { $verdictNumber = [int]$Matches[1] }
+    if ($verdictNumber -lt 1 -or ($verdictNumber -ne $currentNumber -and $verdictNumber -ne ($currentNumber - 1))) { $r.Reason = 'judgment-not-this-turn'; return $r }
+    $age = [double]::MaxValue
+    try {
+        # ConvertFrom-Json hands an ISO timestamp back as a [datetime] (local kind); a raw string is parsed
+        # invariantly. Both become one UTC instant, never a culture-formatted round trip.
+        $rawJudged = $verdict.judged_at
+        $judged = if ($rawJudged -is [datetime]) { [DateTimeOffset]::new(([datetime]$rawJudged).ToUniversalTime(), [TimeSpan]::Zero) } else { [DateTimeOffset]::Parse([string]$rawJudged, [Globalization.CultureInfo]::InvariantCulture) }
+        $age = ([DateTimeOffset]::UtcNow - $judged).TotalSeconds
+    }
+    catch { $age = [double]::MaxValue }
+    if ($age -lt 0 -or $age -gt $MaxAgeSeconds) { $r.Reason = 'judgment-stale'; return $r }
+    $material = $false
+    try { $material = [bool]$verdict.material } catch { $material = $true }
+    switch ([string]$verdict.declaration_kind) {
+        'conversational' { $r.Quiet = $true; $r.Reason = 'session declared conversational'; return $r }
+        'absent' {
+            if (-not $material) { $r.Quiet = $true; $r.Reason = 'session declared nothing and was judged not material'; return $r }
+            $r.Reason = 'absent-with-material'; return $r
+        }
+        default { $r.Reason = ('declared ' + [string]$verdict.declaration_kind); return $r }
+    }
+    return $r
+}
+
 function Get-SpecrewTurnEndPaths {
     # THE ONE RESOLVER. Everything that reads or writes a turn-end record comes through here.
     [OutputType([pscustomobject])]
