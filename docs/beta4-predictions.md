@@ -1247,3 +1247,9 @@ fixed alongside, the fixture's spec is the test.
 
 **Next**: the module build from the fixed SHA for the router-skill machine (install only, no `specrew
 update` there); the census that counts is the one after this.
+
+**PRED-BETA4-023 FIELD WITNESS** (router-skill project, maintainer's relay, 2026-09-11): through the module path
+alone - the project's deployed extension still at `d4a89ab7`, the installed module at `6f1bdaa7` - the identical
+plan sync that had targeted 003 minted the `iteration-closeout -> plan` crossing for 002 on the first re-run
+after the install. The fix reaches a consumer without `specrew update`, which is the deployment shape the
+timeline requires.
