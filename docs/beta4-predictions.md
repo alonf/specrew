@@ -1364,3 +1364,32 @@ tree is not final. **Separately owed and not settled by this census**: the revie
 after an accepted conversational declaration, in a checkout whose deployed extension carries `d0312a4a`
 (the gate lives in the deployed providers, not in the module) - an eighteenth advisory means the tree is
 not final regardless of the census.
+
+## PRED-BETA4-026 - B4F-043's third consumer instance: a verdict typed with no crossing pending gets one line back. Stated before the code.
+
+**Read from the code**: `Get-SpecrewVerdictCaptureDisclosure` (HandoverStore.ps1) returns `$null` the moment
+`HasPendingVerdict` is false, and returns `$null` when the pending crossing's phrase is not in the text - so
+`approved for before-implement` typed before the tasks -> before-implement crossing was minted was silent
+(the router-skill project, three retypes in one day), and `approved for plan` typed while tasks ->
+before-implement is pending is silent too. The audible standard already exists one file over: "a phrase
+that matched and was then rejected is a human trying to authorize something, and their attempt must never
+vanish" (the partial-signoff override, DRIFT-199-I002-034). It is extended to the boundary family in that
+one function: a verdict-shaped reply (`Test-SpecrewHumanVerdictToken` says approval and names a boundary)
+with no pending crossing gets one line back naming what is pending, or that nothing is, and the last
+authorized boundary; a verdict-shaped reply naming a boundary OTHER than the pending crossing's gets one
+line back naming the pending crossing. Both journal `verdict-not-captured-disclosed` with `action`
+`no-pending-crossing` / `other-boundary-named`. Ordinary conversation still produces nothing.
+
+### THE PREDICTION, four parts
+
+1. No pending crossing, last authorized `tasks`, human types `approved for before-implement` at prompt entry:
+   the disclosure reads "NOT recorded ... no crossing is pending ... the last authorized boundary is 'tasks'
+   ... send it again when the crossing is presented"; journaled with `action: no-pending-crossing`; the
+   ledger is unchanged. Through the provider, the same sentence reaches the inject stdout.
+2. Pending `tasks -> before-implement`, human types `approved for plan`: the disclosure names the pending
+   crossing (`tasks -> before-implement`) and the phrase that would authorize it; `action:
+   other-boundary-named`; the ledger is unchanged.
+3. Silence where silence is right: no pending crossing and ordinary prose (`What is the status?`) -> nothing;
+   no pending crossing and a send-back (`changes needed: ...`) -> nothing. Cases 1-7 of `capture-disclosure`
+   stay green.
+4. Mutation (the two new branches removed): parts 1 and 2 go red, nothing else.
