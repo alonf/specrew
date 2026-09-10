@@ -30,6 +30,14 @@ function Assert-True {
 }
 
 $repoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+# THE RUNNER'S RED, READ FROM ITS OWN DIAGNOSTICS (census 34518281283, and 34502784677 before it):
+# `WARN ASSESSMENT_UNAVAILABLE the conversation accessor could not be loaded; enforcement for this stop was
+# skipped (fail-open)`. The provider resolves scripts/internal/bootstrap from the project tree, then
+# SPECREW_MODULE_PATH, then an installed Specrew module. A fixture project has no bootstrap dir; the runner
+# has no installed module; this machine has one, which is why the suite was green here and red there. The
+# repo root IS the module tree, and conformance-detection.tests.ps1 has always said so - this suite now does too.
+$priorModulePath = $env:SPECREW_MODULE_PATH
+$env:SPECREW_MODULE_PATH = $repoRoot
 $store = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/turn-end-store.ps1'
 $declarer = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/declare-turn-end.ps1'
 $provider = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1'
@@ -272,6 +280,7 @@ try {
 }
 finally {
     foreach ($r in $roots) { if (Test-Path -LiteralPath $r) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction SilentlyContinue } }
+    if ($null -eq $priorModulePath) { Remove-Item Env:\SPECREW_MODULE_PATH -ErrorAction SilentlyContinue } else { $env:SPECREW_MODULE_PATH = $priorModulePath }
 }
 
 if ($script:Failures -gt 0) {

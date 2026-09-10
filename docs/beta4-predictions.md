@@ -1135,3 +1135,27 @@ two only. The recorded specimen was refused anyway (line two is `Thought for 1s`
 would have "held"; W56's reversed blank-line case (phrase, blank line, block) went red and named it. A
 prediction that held on the specimen alone would have shipped a guard that any paste with a blank line
 after the phrase walks through.
+
+### PRED-BETA4-021 VERDICT - census 34518281283 on `25f3dfaa`: RED, 3 files, all mine, each read from its own output; superseded by ruling
+
+`prepublish-validation` green; `full-test-census` red on 3 of 409; `publish-module` skipped. **Part 1 did not
+hold. Part 2 held in the way that mattered**: the two turn-end suites redded again and their new diagnostics
+named the cause - `WARN ASSESSMENT_UNAVAILABLE the conversation accessor could not be loaded; enforcement for
+this stop was skipped (fail-open)`. The provider resolves `scripts/internal/bootstrap` from the project tree,
+then `SPECREW_MODULE_PATH`, then an installed Specrew module; a fixture has no bootstrap dir, the runner has
+no installed module, this machine has one. That is why the suites were green here on both censuses and red
+there on both: an environmental resolver, not a timing signature. `conformance-detection.tests.ps1` - green
+on the runner - has always pinned `SPECREW_MODULE_PATH` to the repo root for exactly this reason; the two
+suites now do the same. **Part 3 held** (`validate-governance-changed-only` green). **Part 4**: the artifact
+carried the three, not the sentinel alone.
+
+The third red, `sealed-iteration-writers` Case 3: `drifted=retro.md,dashboard.md,state.md` on the runner
+against an assertion written for `state.md,retro.md,...` - the seal manifest's enumeration order is the
+filesystem's. The assertion compares the set now.
+
+**What was NOT proven locally, said plainly**: a runner simulation that hid the installed module by editing
+`PSModulePath` was INERT - a child `pwsh` re-adds the user module path at startup - so the committed suites
+passed under it and it discriminated nothing. What is proven in-process: the resolver, extracted from the
+provider's AST and called with the module hidden and the variable unset, returns nothing; with the pin it
+returns the repo's bootstrap dir. The runner is the discriminator for the green, and by ruling this census
+is superseded: the next one, after fix 6, is the one that counts.

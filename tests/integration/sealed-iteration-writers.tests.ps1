@@ -225,8 +225,13 @@ try {
     $resealOut = (& pwsh -NoProfile -File $front reseal --project-path $root3 --feature 001-fixture --iteration 001 2>&1 | Out-String)
     $resealCode = $LASTEXITCODE
     Assert-True ($resealCode -eq 0) ('specrew reseal exits 0 (out: {0})' -f ($resealOut -replace '\s+', ' ').Substring(0, [Math]::Min(300, ($resealOut -replace '\s+', ' ').Length)))
-    Assert-True ($resealOut -match 'precondition .*drifted=state\.md,retro\.md|precondition .*drifted=retro\.md,state\.md') 'it prints the PRECONDITION: which sealed paths drifted'
-    Assert-True ($resealOut -match 'drifted=[^ ]*dashboard\.md') 'including the dashboard re-rendered after the seal'
+    # The drifted list is printed in the seal manifest's enumeration order, which is the filesystem's: the
+    # runner listed `retro.md,dashboard.md,state.md`, this machine `state.md,retro.md,dashboard.md`. A set
+    # comparison, not an order (census 34518281283 - the only red on this file).
+    $driftedSet = @()
+    if ($resealOut -match 'precondition [^\r\n]*?drifted=(?<list>[^\s]*)') { $driftedSet = @($Matches['list'] -split ',' | Where-Object { $_ }) }
+    Assert-True (($driftedSet -contains 'state.md') -and ($driftedSet -contains 'retro.md')) ('it prints the PRECONDITION: which sealed paths drifted (drifted={0})' -f ($driftedSet -join ','))
+    Assert-True ($driftedSet -contains 'dashboard.md') 'including the dashboard re-rendered after the seal'
     Assert-True ($resealOut -match 'postcondition .*touched=0') 'and the POSTCONDITION: nothing touched after the re-seal'
     $errorsAfter = [System.Collections.Generic.List[string]]::new()
     Test-ClosedIterationSeals -ProjectRoot $root3 -Errors $errorsAfter
