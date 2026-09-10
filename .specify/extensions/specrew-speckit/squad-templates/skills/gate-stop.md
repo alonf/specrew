@@ -24,11 +24,24 @@ stop as a Markdown message. The design workshop is governed by its own skill, wh
 removes the same unsafe picker on Claude and uses typed prose choices. Clarify questions are not
 boundary stops and keep the picker. Only boundary **verdict** stops route through this skill.
 
-## What to render — one Markdown message, then STOP
+## What to render — one command, its output verbatim, then STOP
 
-Render the **full Rule 46 six-section re-entry packet** as Markdown — all six headers, each with real
-content built from the lifecycle state (the current phase, `tasks-progress.yml`, the decisions ledger,
-and what the lifecycle does next), never a placeholder and never a terse one-liner:
+**You do not compose the stop. The turn-end script renders it, and you output what it returns:**
+
+```powershell
+pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
+    -Kind boundary -Summary '<what this turn did>' `
+    -Token <the token from the latest [specrew-turn] line>
+```
+
+Add `-Owed '<artifact>'` when the stage owes something it has not produced. The script takes the boundary,
+the approval phrase and the marker from `.specrew/runtime/pending-verdict-stop.md` — never from the phase
+you intend to enter next — and the Stop hook credits the record it writes. A packet you compose by hand is
+not credited, however complete it looks: the hook verifies artifacts the script wrote, never prose.
+
+**What it renders**, so you can recognise a correct stop and so this contract and the script never
+disagree: the **full Rule 46 six-section re-entry packet** — all six headers, each with real content built
+from the lifecycle state, never a placeholder and never a terse one-liner:
 
 1. `## What I Just Did`
 2. `## Why I Stopped`
@@ -41,10 +54,10 @@ Every artifact / file / directory reference in every section MUST be a **visible
 (Rule 52) — not a repo-relative path (`specs/...`, `.specrew/...`), and not a markdown link, because
 terminal hosts hide the clickable target otherwise.
 
-**FIRST, decide whether a verdict may be offered at all** (FR-024). Read the pending-verdict artifact:
-when it is absent, or when it says the stage owes artifacts it has not produced, this stop offers NO
-verdict options and emits NO marker. Say so plainly instead — name what the stage owes and the one step
-that produces it:
+**FIRST, whether a verdict may be offered at all** (FR-024) is decided from the pending-verdict artifact
+and from `-Owed`: when the artifact is absent, or the stage owes artifacts it has not produced, the script
+offers NO verdict options and emits NO marker. It says so plainly instead — naming what the stage owes and
+the one step that produces it:
 
 ```text
 I am not offering a verdict here: '<from>' owes <artifact> and it does not exist yet, so there is
@@ -58,8 +71,8 @@ That is the whole stop in that case: the six sections, this paragraph, no option
 machinery says the same thing on its own surface when it withholds the artifact, so the two never
 disagree.
 
-**OTHERWISE — the stage has something to approve — render the four responses** as **lines the human can
-literally send**, exactly, substituting the real boundary name for `<to>` and a real prompt number:
+**OTHERWISE — the stage has something to approve — the script renders the four responses** as **lines the
+human can literally send**, exactly, with the real boundary name in place of `<to>`:
 
 ```text
 What would you like to do? Type one of these:
@@ -88,26 +101,26 @@ withdrawing approval of the rest. Do not add a line warning that clicking or num
 authorize: it defends against an affordance that is no longer offered, plants the idea, and speaks in the
 machinery's voice. If someone types `1` anyway, answer them helpfully then.
 
-Then, as the **VERY LAST line of your message**, emit the machine marker — an HTML comment, invisible when
-the message is rendered, but read by the Stop hook to capture the human's verdict and tie it to THIS exact
+Then, as the **VERY LAST line of the message**, the machine marker — an HTML comment, invisible when the
+message is rendered, but read by the Stop hook to capture the human's verdict and tie it to THIS exact
 boundary:
 
 ```text
 <!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> -->
 ```
 
-If `.specrew/runtime/pending-verdict-stop.md` exists, copy its `Marker last line exactly` value; that artifact
-wins over phase inference, especially after a multi-boundary over-advance. If the artifact does NOT exist,
-there is NO controller truth for this stop: state that plainly — "no pending-verdict artifact exists, so no
-boundary crossing has been recorded for this stop" — and STOP WITHOUT a marker. Do NOT infer or invent a
-`<from> -> <to>` from the phase you are in: an invented marker captures the human's verdict against a
-crossing the controller never recorded. The recovery is to run the boundary's own sync skill so
-the arrival is recorded and the artifact exists, then render this stop again FROM the artifact. The marker is
-how the hook records the human's ACTUAL typed verdict as the authorization (evidence-source
+The script copies it from `.specrew/runtime/pending-verdict-stop.md`'s `Marker last line exactly` value;
+that artifact wins over phase inference, especially after a multi-boundary over-advance. If the artifact
+does NOT exist, there is NO controller truth for this stop and the script renders no marker: say plainly
+that no pending-verdict artifact exists, so no boundary crossing has been recorded for this stop. Do NOT
+type a `<from> -> <to>` marker yourself: an invented marker captures the human's verdict against a
+crossing the controller never recorded. The recovery is to run the boundary's own sync skill so the
+arrival is recorded and the artifact exists, then run the turn-end script again. The marker is how the
+hook records the human's ACTUAL typed verdict as the authorization (evidence-source
 `hook-captured-from-transcript`); with no recorded crossing there is nothing a verdict could legitimately
 authorize. (The marker does not change what the human sees; it is a comment.)
 
-Then **STOP** — end your turn and wait for the human to type their choice (a number, or free text).
+Then **STOP** — end your turn and wait for the human to type their choice.
 
 - Do **NOT** call `AskUserQuestion` or any structured-question/menu tool for the verdict. It is disabled
   here, and it drops the packet on this host. The Markdown message above is the entire stop.

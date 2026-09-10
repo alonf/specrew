@@ -1,3 +1,11 @@
+---
+name: "specrew-turn-end"
+description: "End every turn by running the turn-end declaration script - it decides what is rendered from the artifacts; you supply the facts and the token the hook handed you. Triggers: turn end, stop, packet, in flight, boundary packet, declare-turn-end, record a design decision."
+domain: "lifecycle-governance"
+confidence: "high"
+source: "Specrew beta4 fix 2 - the turn-end declaration replaces prose scoring; every recovery text names this script."
+---
+
 # specrew-turn-end
 
 **Namespace**: `/specrew`

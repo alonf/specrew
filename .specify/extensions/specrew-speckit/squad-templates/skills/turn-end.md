@@ -1,3 +1,11 @@
+---
+name: "specrew-turn-end"
+description: "End every turn by running the turn-end declaration script - it decides what is rendered from the artifacts; you supply the facts and the token the hook handed you. Triggers: turn end, stop, packet, in flight, boundary packet, declare-turn-end, record a design decision."
+domain: "lifecycle-governance"
+confidence: "high"
+source: "Specrew beta4 fix 2 - the turn-end declaration replaces prose scoring; every recovery text names this script."
+---
+
 # specrew-turn-end
 
 **Namespace**: `/specrew`
@@ -6,11 +14,24 @@ End every turn by running the turn-end script. It decides what is rendered; you 
 
 ```powershell
 pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 `
-    -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>'
+    -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>' `
+    -Token <the token from the latest [specrew-turn] line>
 ```
 
 Output whatever it returns, verbatim. **It may return nothing, and nothing is a complete answer** — a turn
 that discussed something and changed nothing owes the human no ceremony.
+
+## The token
+
+At the start of each turn the hook hands you one line beginning **`[specrew-turn]`** carrying this turn's
+token. Pass the **most recent** one as `-Token`. It is how the declaration is placed under the session
+that is actually making it: the hook that issued the token is the hook that judges the record, and with
+two sessions working in one project nothing else can tell them apart. The hook consumes the token when the
+turn ends, so an earlier turn's token is no longer live and is refused by name.
+
+Without `-Token` the script accepts exactly one live token and refuses more than one, naming each session
+and the parameter. A token left behind by a session that crashed shows up in that refusal with its path and
+issue time; if you know that session is gone, its token file can be removed.
 
 ## Choosing the kind
 

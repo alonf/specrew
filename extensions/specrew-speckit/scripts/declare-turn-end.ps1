@@ -301,18 +301,33 @@ switch ($Kind) {
         else { $sections.Add('Your reply decides.') | Out-Null }
         $sections.Add('') | Out-Null
         $sections.Add('## Discussion Prompts') | Out-Null
-        $sections.Add('Anything above you want changed, questioned, or done differently.') | Out-Null
+        # Numbered, because `discuss prompt N` below names one of them; a prompt the human cannot point at
+        # is not a prompt.
+        $sections.Add('1. Anything above you want changed, questioned, or done differently.') | Out-Null
         $sections.Add('') | Out-Null
         $sections.Add('## What I Need From You') | Out-Null
+        $stageThatOwes = if ($stop.present -and $stop.boundary -match '^(.+?)\s*->') { $Matches[1].Trim() } elseif (-not [string]::IsNullOrWhiteSpace($stop.last_authorized)) { $stop.last_authorized } else { 'this stage' }
         if ($owedItems.Count -gt 0) {
-            # NO options and NO marker while the stage owes artifacts - naming what is owed instead. The
-            # rule existed in prose and nothing enforced it; a marker offered here is an approval phrase
-            # for an empty increment.
-            $sections.Add(('Nothing yet. What is missing is mine to produce: {0}.' -f ($owedItems -join ', '))) | Out-Null
+            # NO options and NO marker while the stage owes artifacts - naming what is owed instead, IN THE
+            # WORDS THE GATE-STOP SKILL AND THE MACHINERY'S OWN SURFACE USE (FR-024), so the three never
+            # disagree. The rule existed in prose and nothing enforced it; a marker offered here is an
+            # approval phrase for an empty increment.
+            $sections.Add(("I am not offering a verdict here: '{0}' owes {1} and it does not exist yet, so there is nothing this verdict would approve." -f $stageThatOwes, ($owedItems -join ', '))) | Out-Null
+            $sections.Add('A verdict recorded now would be indistinguishable in the ledger from an approval of real work.') | Out-Null
+            $sections.Add(("Your earlier approvals stand. Produce the owed artifact through the '{0}' stage's normal step, and the verdict options will be offered then." -f $stageThatOwes)) | Out-Null
         }
         elseif ($stop.present) {
-            $sections.Add(('Reply with the approval phrase to advance: `{0}`' -f $stop.approval_phrase)) | Out-Null
-            $sections.Add('Or tell me what to change instead - a correction is a complete answer.') | Out-Null
+            # THE FOUR RESPONSES AS LINES THE HUMAN CAN LITERALLY SEND (maintainer ruling 2026-08-12): no
+            # numbered list, no picker, no menu. Only a typed phrase is captured, so an interface that offers a
+            # selection offers a control that cannot do the thing it names. Approve-with-instructions is how a
+            # human approves without rubber-stamping; discuss-prompt is how they open one item without
+            # withdrawing approval of the rest. All four are kept, and the marker is the very last line.
+            $sections.Add('What would you like to do? Type one of these:') | Out-Null
+            $sections.Add('') | Out-Null
+            $sections.Add(('  {0}' -f $stop.approval_phrase)) | Out-Null
+            $sections.Add(('  {0} - <your instructions>' -f $stop.approval_phrase)) | Out-Null
+            $sections.Add('  changes needed: <what to change>') | Out-Null
+            $sections.Add('  discuss prompt 1') | Out-Null
             $sections.Add('') | Out-Null
             $sections.Add($stop.marker) | Out-Null
         }

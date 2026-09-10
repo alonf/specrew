@@ -718,3 +718,38 @@ is classified and either fixed or predicted.**
 **Fixed in advance**: the tag SHA is the SHA the green dispatch ran on, whatever the branch head has moved
 to with records since. Fix 5 is not in this tree and is not what the census measures; it waits on the
 maintainer's word.
+
+## PRED-BETA4-016 - the Claude gate-stop skill still teaches composition. Stated before the code.
+
+**Found by the local sweep** (`skill-templates.tests.ps1` red: `turn-end.md` had no YAML frontmatter) and by
+reading the template beside it: `gate-stop.md`, the Claude-host boundary-stop skill, still instructs the
+agent to COMPOSE the six-section packet, the four typed responses and the marker by hand. Fix 2 made the
+script the one renderer and every hook directive name it (B4F-051's loop was two contracts disagreeing);
+this skill is the last producer still teaching the old contract, and on Claude it runs at every boundary
+stop. The cost is one refusal per boundary stop, forever, on the host most used here.
+
+### THE PREDICTION, three parts
+
+1. `declare-turn-end.ps1 -Kind boundary` at a pending crossing renders the four sendable lines
+   (`approved for <to>`, `approved for <to> - <your instructions>`, `changes needed: <what to change>`,
+   `discuss prompt 1`) under `## What I Need From You`, above the marker; with `-Owed` it renders the
+   FR-024 withhold paragraph in the gate-stop skill's own words ("I am not offering a verdict here ...
+   indistinguishable in the ledger from an approval of real work") with NO lines and NO marker. Asserted by
+   new cases in `turn-end-update-transition.tests.ps1`.
+2. `gate-stop.md` routes the stop through the script - one command, output verbatim - and keeps its
+   descriptive contract (what the script renders, the no-selection-affordance ruling, the withhold rule),
+   so `gate-stop-skill.tests.ps1` stays green unchanged: its assertions pin the PROPERTIES of the surface,
+   and the surface is the same.
+3. `skill-templates.tests.ps1` green with `turn-end.md`'s frontmatter; `Get-LegacySpecrewSkillDefinitions`
+   still enumerates 17.
+
+**PRED-BETA4-016 VERDICT: all three parts held.** (1) the script renders the four sendable lines under
+`## What I Need From You` with the marker as the very last line, numbers the discussion prompts so
+`discuss prompt 1` names something, and with `-Owed` renders the withhold paragraph in the skill's words
+with no lines and no marker - eleven new assertions in `turn-end-update-transition.tests.ps1`; (2)
+`gate-stop.md` routes through the script and `gate-stop-skill.tests.ps1` stays green unchanged (its
+mirror-parity case caught the un-synced `.specify` copy first, which is that case doing its job); every
+gate-stop copy - template, `.specify` mirror, dogfood `.claude/skills` - is byte-identical and
+`withhold-discipline.tests.ps1` is green; (3) `skill-templates.tests.ps1` green, 17 definitions. One
+measurement detail: the script's lines end in `[Environment]::NewLine`, CRLF on Windows, so line-anchored
+assertions carry `\r?$`.

@@ -161,6 +161,34 @@ Tell me if the plan is wrong.
     $second = Invoke-Stop
     Assert-True (-not $second.Blocked) 'the very next stop is NOT refused - the transition costs one turn, not a loop'
     Assert-True ($second.Out -notmatch 'declare-turn-end\.ps1') 'and the command is not demanded again once it has been run'
+
+    # --- the boundary stop the Claude gate-stop skill used to compose by hand ---------------------------
+    # The skill now routes through the script (PRED-BETA4-016), so what the skill's own test pins as the
+    # surface's PROPERTIES must be what the script renders: the four responses as lines the human can
+    # literally send, no numbered option, the marker last - and, with -Owed, the FR-024 withhold paragraph in
+    # the skill's words with no lines and no marker.
+    Write-Host '  --- the boundary render: four sendable lines, then the marker; or the withhold paragraph ---'
+    $stopLines = @('# Specrew Pending Verdict Stop', '', 'Boundary to ask for: plan -> tasks', 'Human approval phrase: approved for tasks', 'Marker last line exactly:', '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->', '', 'Working boundary: tasks', 'Last authorized boundary: plan', 'Feature: 050-host-neutral-gate')
+    [IO.File]::WriteAllText((Join-Path $root '.specrew/runtime/pending-verdict-stop.md'), (($stopLines -join [Environment]::NewLine) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+    $boundaryOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned the feature' -ProjectRoot $root -AsJson 2>&1) -join "`n")
+    $boundary = $null
+    try { $boundary = ($boundaryOut | ConvertFrom-Json) } catch { $boundary = $null }
+    $text = if ($null -ne $boundary) { [string]$boundary.text } else { '' }
+    Assert-True ($text -match '(?m)^What would you like to do\? Type one of these:') 'the boundary render offers the responses as text to type'
+    Assert-True ($text -match '(?m)^  approved for tasks\r?$') 'line 1: the bare approval phrase, from the artifact'
+    Assert-True ($text -match '(?m)^  approved for tasks - <your instructions>\r?$') 'line 2: approve WITH instructions - how a human approves without rubber-stamping'
+    Assert-True ($text -match '(?m)^  changes needed: <what to change>\r?$') 'line 3: changes needed'
+    Assert-True ($text -match '(?m)^  discuss prompt 1\r?$') 'line 4: discuss one prompt without withdrawing the rest'
+    Assert-True ($text -match '(?m)^1\. Anything above') 'and the discussion prompts are numbered, so prompt 1 names something'
+    Assert-True ($text -notmatch '(?m)^\s*1\.\s*Approve') 'no numbered verdict option - a number is a control that cannot authorize'
+    Assert-True ($text.TrimEnd() -match '<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->$') 'the marker is the VERY LAST line'
+    $owedOut = (@(& pwsh -NoProfile -File $declarer -Kind 'boundary' -Summary 'planned, but tasks.md is not written' -Owed 'tasks.md' -ProjectRoot $root -AsJson 2>&1) -join "`n")
+    $owed = $null
+    try { $owed = ($owedOut | ConvertFrom-Json) } catch { $owed = $null }
+    $owedText = if ($null -ne $owed) { [string]$owed.text } else { '' }
+    Assert-True ($owedText -match "I am not offering a verdict here: 'plan' owes tasks.md and it does not exist yet") 'with -Owed the withhold paragraph names the stage that owes and what it owes, in the gate-stop skill''s words'
+    Assert-True ($owedText -match 'indistinguishable in the ledger from an approval of real work') 'and says WHY, in the words the machinery uses on its own surface'
+    Assert-True ($owedText -notmatch 'approved for tasks' -and $owedText -notmatch 'SPECREW-VERDICT-BOUNDARY') 'and offers NO responses and NO marker'
 }
 finally {
     if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
