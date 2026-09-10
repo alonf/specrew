@@ -1425,3 +1425,14 @@ for the three suites that ran unchanged: `plan-sync-target-iteration`, `round-ap
 `capture-disclosure` green on the runner; `review-advisory-session-scope` green too. **Part 4 held** (the
 artifact carried the one red and nothing else). `19ec5d0c` is not the tag SHA; four fix commits landed
 after it anyway (B4F-070/071/072). The next census runs on the head after this repair.
+
+## PRED-BETA4-027 - PRED-015 restated for the head after the census-3 repair, fourth dispatch. Stated before the dispatch.
+
+Since `19ec5d0c`: B4F-043's third instance (`eaf98a4f`), rule 1's sentence (`205ee340`), the ledger-printed
+readiness verdict line (`5901096e`), and the census-3 repair (`cd16e987`). The prediction is PRED-025's,
+with part 1 narrowed to what changed: **`full-test-census` green, 411 named files, 0 failures**;
+`timestamp-read` green on the runner (the store has no parse of its own again); the four suites added since
+census 2 and `readiness-verdict-line` green; `prepublish-validation` and the dry-run publish green; the
+diagnostics artifact carries the sentinel and nothing else. A red on any changed file is fixed first; the
+single sanctioned re-dispatch is reserved for a runner-bound red on a file unchanged since `d4a89ab7`. The
+tag SHA is the SHA the green dispatch ran on.
