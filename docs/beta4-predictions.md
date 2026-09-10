@@ -908,3 +908,54 @@ not follow. The command never reached the iteration binding B4F-047 (2) describe
 unmeasured, not refuted. `specrew update` was NOT run, per B4F-027. The typed approval is ONE authorization
 for B4F-061's count, and the block that asked for it is B4F-047's fourth witness: a gate that asks for a
 round the engine cannot run in this project.
+
+## PRED-BETA4-020 - fix 5, reversed: beta4 does not ship with the seal defect. Stated before the code.
+
+**Ruled on measured cost**: after closeout, the next session's resume rewrote the sealed iteration
+(`task-progress.ps1` wrote `ready-for-review` at 15:58Z; the capture's advance had written `complete` twenty
+minutes earlier) and the session oriented from its own rewrite and asked for a verdict the ledger shows
+captured. Three post-seal writers, one illness (B4F-063), on the feature named first-run-experience.
+
+**The rule, scoped for beta4**: an authorized writer touching a sealed iteration re-seals after its write;
+an unauthorized writer skips sealed iterations and journals the skip. Authorized: the verdict capture's
+advance (`Sync-SpecrewCrossingMirrors`, shared-governance.ps1) and the closeout dashboard render
+(sync-boundary-state.ps1) - both seal after writing. Unauthorized: `Update-IterationStateFromTaskProgress`
+and `Sync-IterationTaskProgress` (task-progress.ps1) - check the seal and skip. Plus `specrew reseal`,
+wrapping `Write-SpecrewIterationSeal` with the precondition and the postcondition printed, and the
+trust-hardening refusal naming it. Beta5 carries the deeper ordering: seal at authorization, not at arrival.
+
+**Read from disk first**: the closeout render already seals after itself (FR-031/T022, `sync-boundary-state.ps1`
+~2109) - the KeyContextAI drift `added=dashboard.md` is the deployed beta3 order, not this tree's. The
+verdict capture's advance does NOT re-seal: `Sync-SpecrewCrossingMirrors` writes state.md and plan.md and
+returns. The resume path is `coordinator-resume.ps1:165 -> Get-TaskProgressSummary -> Sync-IterationTaskProgress
+-> Update-IterationStateFromTaskProgress`, and neither function looks for a seal. KeyContextAI's iteration
+002 today: `checked=True drifted=state.md,retro.md added=dashboard.md`.
+
+### THE PREDICTION, five parts
+
+1. **Closeout -> verdict -> seal intact.** A fixture sealed at closeout, then advanced by
+   `Sync-SpecrewCrossingMirrors -AuthorizedBoundary iteration-closeout`: state.md and plan.md move to
+   `complete`, and `Test-SpecrewIterationSealIntegrity` reports nothing touched, because the advance
+   re-sealed; the seal's `source` names the authorization. Mutation - the advance does not re-seal -
+   reds exactly this case.
+2. **Resume on a sealed iteration leaves it untouched.** `Get-TaskProgressSummary` on a sealed iteration
+   returns the summary from the existing records, writes neither state.md nor tasks-progress.yml (hashes
+   identical before and after), and the handover journal carries `sealed-iteration-write-skipped` naming
+   the writer. Mutation - the skip removed - reds exactly this case, with state.md's status rewritten to
+   the derived value.
+3. **A KeyContextAI-shaped fixture** (sealed, then state.md and retro.md edited and dashboard.md added)
+   is refused by the validator's trust gate naming `specrew reseal`; `specrew reseal` prints the
+   precondition (the drifted, missing and added paths), re-seals, prints the postcondition (nothing
+   touched), and the gate then passes.
+4. **`specrew reseal` refuses to seal an iteration that has no seal** - it re-seals, it does not seal for
+   the first time; closeout does that - and refuses an iteration that is not closed in
+   `closed-iterations.yml` or its own state.md; both refusals name what was looked for.
+5. **Field proof**: `specrew reseal` on `C:\Dev\SpecrewProjects\KeyContextAI` (`001-layout-autocorrect`,
+   iteration 002) prints `drifted=state.md,retro.md added=dashboard.md` as the precondition and
+   `touched=0` as the postcondition, and the repo validator's trust gate on that project reports no
+   `closed-iteration-edited`.
+
+**Fixed in advance**: if (2) cannot skip without breaking the summary the resume orients from, the summary
+is read from the existing files instead of synced - a resume orients from the ledger, it does not write
+it. If a project has no `closed-iterations.yml` entry for a sealed iteration, the seal file itself is the
+closed marker for (4).
