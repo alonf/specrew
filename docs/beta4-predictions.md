@@ -861,3 +861,14 @@ now 19 and include `reviewer-artifacts.ps1` (a staged empty file in its changed 
 and 6->7), `turn-end-update-transition` (eleven boundary-render assertions), and the new
 `reviewed-state-digest-cost.Tests.ps1` (three cases; the cache lives in the git directory so the runner's
 clean checkout sees no status change). **A red on any of these is branch-introduced and gets no re-run.**
+
+**Before the dispatch, the two re-runs**: `validate-governance-changed-only` alone, idle: exit 1 in 741 s -
+the explicit `-ChangedOnly -BaseBranch main` case reports `full-repo (base-undetectable)`, so the fixture's
+`main` did not resolve in its workspace under this repo's `.scratch`. The subject files - the test, the
+validator, `shared-governance.ps1`'s base resolution - are byte-unchanged since the green census, and the
+fixture's own git recipe resolves `origin/main` in a clean temp directory here. Classified
+ENVIRONMENT-BOUND with the cause not established, and predicted GREEN on the runner's clean checkout; if
+it reds there, it is an unchanged file that was green at `d4a89ab7` and gets the single re-dispatch with
+its meaning fixed - green confirms environment-bound, red again is a real blocker. `lifecycle-boundary-sync`
+alone was still running past fifteen minutes at dispatch (1 PASS so far, no FAIL); unchanged since the green
+census, same classification.
