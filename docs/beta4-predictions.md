@@ -835,3 +835,29 @@ refusal (before this fix, it was killed before deciding anything); after `declar
 credits it in 8.1 s, the counter steps 8 -> 9 and the token is consumed. What still blocks at that point is
 the NAVIGATOR's review gate for the probe session - this repo's own gate, now reachable. (3) The mutation
 that drops the wildcard fallback reds exactly the wildcard case and nothing else.
+
+### PRED-BETA4-015, RESTATED FOR THE FINAL SHA
+
+**The SHA**: the branch head after this record's commit - code last moved at `4b247894`. Since
+`c166125c` the tree gained: the gate-stop reconciliation and the script's four sendable lines
+(`b24e4336`), the reviewer scaffold's empty-file fix (`0be4a6e6`), the self-leak allowlist (`d9e00b95`),
+and the review-digest cost fix (`4b247894`). Since the last green census (`d4a89ab7`): 37 non-docs files
+and 19 test files.
+
+**The local sweep, done**: 407 files, 16 not passed - 12 TIMEOUTS at 420 s under a four-wide local run
+that also had this session's probes on the same machine (every one of them green at `d4a89ab7` on the
+runner and unchanged since, except `launch-contract-characterization` which was green alone in this
+session), and 4 FAILED: `skill-templates` (fixed, `b24e4336`), `self-leak-lint` (fixed, `d9e00b95`),
+`pr-review-integration` (WORKTREE-BOUND: its validator run flags this worktree's uncommitted edits to a
+sealed iteration's records - the maintainer's own, present since session start - as
+`closed-iteration-edited`; the committed content is unchanged since the green census, so a clean checkout
+does not see it), and `validate-governance-changed-only` (FAILED at 1,157 s under load; re-run alone before
+the dispatch - its verdict is recorded below before the run id). `feature-017-dashboard-core` is red locally
+before and after every change here (`specrew where` on its fixture) and is unchanged since the green census:
+environment-bound, classified with `pr-review-integration`.
+
+**The prediction stands as written, parts 1-4, with one amendment to part 2**: the changed test files are
+now 19 and include `reviewer-artifacts.ps1` (a staged empty file in its changed set, digests moved 4->5
+and 6->7), `turn-end-update-transition` (eleven boundary-render assertions), and the new
+`reviewed-state-digest-cost.Tests.ps1` (three cases; the cache lives in the git directory so the runner's
+clean checkout sees no status change). **A red on any of these is branch-introduced and gets no re-run.**
