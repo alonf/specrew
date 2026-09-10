@@ -1538,3 +1538,12 @@ dispatch ran on.
 **PRED-BETA4-030, part 3 held before the census landed**: `install-local-build.ps1` from `ef80591d` packaged
 423 files, byte-verified, stamp `ef80591d` / `c8f4f3de…` in `…\Modules\Specrew .40.0` (was `6f1bdaa7`).
 The router-skill project's one `specrew update` to this build is the turn-end contract's field test.
+
+### PRED-BETA4-027 VERDICT - census 34538115842 on `ebb7597f` (superseded): RED, 2 files, one cause, already fixed in the final SHA
+
+`boundary-commit-discipline` and `release-model` both red on the same fact: the coordinator template's
+deployed mirror (`squad-templates/coordinator/specrew-governance.md`) was not synced when `5901096e` added the
+verdict-line rule to the source. Found locally on the same day by the R1 consumer run (`release-model`),
+synced in `35d5e86e`, which is in `ef80591d`; `boundary-commit-discipline` re-run here: green. Read, not
+re-run; census 5 on `ef80591d` is the one that counts. Everything else on the runner - 409 files - was green,
+including `timestamp-read` after the census-3 repair.
