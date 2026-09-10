@@ -1333,3 +1333,34 @@ freshness read now converts that to a UTC instant rather than round-tripping it 
 
 **Field test owed**: the reviewer session's next Stop on the module built from this SHA, after an accepted
 conversational declaration. That, not this suite, is what settles (c).
+
+## PRED-BETA4-025 - PRED-BETA4-015 restated for the final SHA, third dispatch. Stated before the dispatch.
+
+**The tree is called final** at the branch head after this record's commit. Since `25f3dfaa` (census 2,
+superseded by ruling): the one-line verdict rule (`5017d004`, B4F-065), the census-2 answers (`ccef2492`:
+the turn-end suites pin `SPECREW_MODULE_PATH`, the reseal precondition compares a set), fix 6 (`6f1bdaa7`,
+B4F-066/067, field-witnessed on the router-skill project through the module path alone), and fix 2 item (c)
+for the review advisory (`d0312a4a`, B4F-068), each with its prediction stated first and its verdict
+recorded. The tag SHA is the SHA the green dispatch ran on.
+
+### THE PREDICTION, four parts
+
+1. **`full-test-census` green**: every named file, 0 failures; `prepublish-validation` and `publish-module`
+   (dry-run) green. The three reds of `34518281283` are each answered from their own output (PRED-021
+   verdict): the two turn-end suites now resolve the bootstrap dir through the pin, the seal suite's Case 3
+   compares a set.
+2. **The two turn-end suites green on the runner** - this is the part no local run could discriminate (the
+   runner simulation was inert; the in-process resolver probe is what stands). If either reds again, its
+   diagnostics name the cause and it is fixed from that output; no re-run.
+3. **The four suites added since census 2 green on the runner**: `plan-sync-target-iteration` (the real sync
+   wrapper through `SPECREW_MODULE_PATH`), `review-advisory-session-scope` (the real conformance provider
+   over a stub navigator), the extended `round-approval-typed-authority` and `capture-disclosure`. Each ran
+   green here; each pins the module path the runner lacks.
+4. **The diagnostics artifact carries the one known entry** (`direct-exit.tests.ps1`'s sentinel) and no other.
+
+**Fixed in advance**: a red on a file unchanged since `d4a89ab7` with the runner-bound timing signature gets
+the single sanctioned re-dispatch with its meaning fixed; a red on any changed file is fixed first and the
+tree is not final. **Separately owed and not settled by this census**: the reviewer session's next Stop
+after an accepted conversational declaration, in a checkout whose deployed extension carries `d0312a4a`
+(the gate lives in the deployed providers, not in the module) - an eighteenth advisory means the tree is
+not final regardless of the census.
