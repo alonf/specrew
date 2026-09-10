@@ -359,7 +359,8 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
             $decision.reason = [string]$scope.reason
             return $decision
         }
-        try { $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolved }
+        # R1: the Stop-hook advisory read may use the digest cache; the signoff gate's read of the same function never does.
+        try { $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolved -AllowCache }
         catch {
             $decision.reason = 'campaign-packet-gate-failed'
             $decision.stop_block = "Campaign review authority could not be read safely: $($_.Exception.Message)`n(Campaign review block, not a lifecycle verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)"

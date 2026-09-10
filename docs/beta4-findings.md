@@ -3799,3 +3799,47 @@ boundary is guarded by agent discipline alone.
 
 **Field note, fix 6**: held at three consecutive boundaries on the router-skill project - plan, tasks,
 before-implement - each sync minting its crossing with the deployed extension still at `d4a89ab7`.
+
+## B4F-073 - THE INDEPENDENT REVIEW OF `ebb7597f`: two defects behind green suites, in beta4's own additions (both fixed in beta4)
+
+**The review** (`~/AppData/Local/Temp/specrew-beta4-review-ebb7597f.md`, GPT-6 Astra, out of engine, the
+maintainer's, against `v0.40.0-beta3..ebb7597f`). Its verdict line, cited here as B4F-018's independent
+statement: *"Two new reproducible correctness findings require disposition. Most examined repairs have sound
+mechanisms and passing targeted checks. These findings concern beta4 additions, rather than a request to
+reopen the beta5 backlog."* The method - adversarial probes that reproduce a defect behind a green suite,
+fixture retained, ids quoted - is the one this record keeps arriving at (B4F-018, B4F-048, B4F-051, B4F-052,
+PRED-BETA4-011 part 5), and it found what eleven green targeted suites did not.
+
+**R1, critical (fixed, PRED-BETA4-028).** The digest cache I added for B4F-057 keyed on HEAD, the exclusions,
+the porcelain listing and each listed file's length and mtime, and `Get-ContinuousCoReviewSignoffGateDecision`
+consumed it. Repro A: `core.filemode=false`, a staged file, `git update-index --chmod=+x` - porcelain, bytes,
+size and mtime unchanged, index mode changed, tree changed; cached `f9f936d2`, direct `6cb24561`. Repro B:
+same-length content with the mtime restored; cached `96698855`, direct `67bdaa92`. **Class: a metadata key is
+not tree equality; an authority check never trusts a cache.** Measured before deciding: the pruned walk did
+most of B4F-057's work - the direct computation is 2.2-2.8 s on the self-host repo now, the cache saves ~2 s.
+So: the digest is DIRECT by default; `-AllowCache` opts in and only the advisory Stop-hook path passes it (the
+navigator's packet decision and older-tree note, the checkpoint identity, the conformance provider's
+coverage line); the signoff gate, the campaign orchestrator, the evidence recorder, the verification-plan
+runner, the review CLI, the validator and every other reader compute the identity. The index mode of every
+listed entry is in the key regardless (`git ls-files -s` over the listed paths), so Repro A cannot fool the
+advisory path either; Repro B is what a metadata key cannot see, stated in the suite as the limit and the
+reason no authority reads it. The reviewer's two fixtures, replayed against the fix: direct and advisory
+agree, `6cb24561` and `67bdaa92`. Tests: `reviewed-state-digest-cost.Tests.ps1` gains Repro A, Repro B and a
+class guard that enumerates the advisory sites and reds on any other `-AllowCache`; mutations: `-AllowCache`
+restored at the gate reds the guard, the mode dropped from the key reds Repro A.
+
+**R2, moderate (fixed, PRED-BETA4-029).** `readiness-verdict.ps1` compared ordinal lifecycle positions, so
+iteration 001's `iteration-closeout` read as 002's implementation approval - "READY" with the last
+authorization `iteration-closeout` and `iteration-closeout -> plan` pending. Fix 6's class, no cycle
+identity, in a script I wrote after fix 6. Readiness now derives from the verdicts of the current
+iteration's cycle - the ledger's rows after the last `iteration-closeout` - so a closed previous iteration
+authorizes nothing for the next, and the line says "the last authorization is the previous iteration's
+closeout; this iteration has no authorization yet". The reviewer's fixture (`psti-f21f6adb4b`) replayed:
+BLOCKED naming exactly that. Tests: the product-order probe on `plan-sync-target-iteration` fixture (a)
+(closeout 001 -> scaffold 002 -> plan sync 002 -> readiness: BLOCKED) and three cycle cases in
+`readiness-verdict-line` (a closed cycle then nothing: BLOCKED; a second cycle through before-implement:
+READY; a second cycle at tasks: BLOCKED naming it); the ordinal comparison restored reds the cycle cases in
+both suites and nothing else.
+
+**Record consistency, as the review noted**: the release notes filed the clarify exemption and the `{0}`
+format as beta5's; they are fix 3 (PRED-BETA4-012) at `sync-boundary-state.ps1`; the notes now say so.

@@ -7509,7 +7509,11 @@ function Get-SpecrewReviewCoverageState {
     # everywhere - a project with no campaigns, no digest, or no loadable engine answers
     # available=$false and nothing downstream fires.
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$ProjectRoot)
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        # R1: the conformance provider's Stop-hook coverage line is advisory and passes this; nothing else does.
+        [switch]$AllowCache
+    )
 
     $state = [pscustomobject]@{
         available = $false
@@ -7572,7 +7576,7 @@ function Get-SpecrewReviewCoverageState {
     }
     if (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue) {
         try {
-            $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot
+            $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $ProjectRoot -AllowCache:$AllowCache
             if ($null -ne $digest -and [bool]$digest.ok) { $state.current_tree = [string]$digest.tree_id }
             if ($null -ne $digest -and [bool]$digest.ok -and -not [string]::IsNullOrWhiteSpace([string]$state.covered_tree)) {
                 $drift = Get-SpecrewReviewedTreeSourceDrift -ProjectRoot $ProjectRoot -CitedTreeId $state.covered_tree -CurrentTreeId ([string]$digest.tree_id)

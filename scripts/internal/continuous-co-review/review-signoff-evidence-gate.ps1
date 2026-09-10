@@ -1010,7 +1010,9 @@ function Get-ReviewCampaignVerdictPacketDecision {
         [string]$StoreRoot,
         [string]$FeatureId,
         [string]$IterationNumber,
-        [string[]]$ExcludedPathPatterns = @()
+        [string[]]$ExcludedPathPatterns = @(),
+        # R1: only the navigator's Stop-hook call passes this; the signoff gate never does.
+        [switch]$AllowCache
     )
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
     $identity = $null
@@ -1028,7 +1030,7 @@ function Get-ReviewCampaignVerdictPacketDecision {
             -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
     }
     if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
-    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns
+    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns -AllowCache:$AllowCache
     if ($null -eq $digest -or -not $digest.ok -or [string]::IsNullOrWhiteSpace([string]$digest.tree_id)) {
         return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'digest-unresolvable' -Message 'Specrew could not read the current state of your files, so it cannot ask you for a decision yet.' -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
     }

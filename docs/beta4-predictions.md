@@ -1493,3 +1493,22 @@ is still READY for it).
 2. The four existing cases keep their answers (tasks -> BLOCKED; before-implement -> READY; review-signoff
    -> READY; plan -> BLOCKED).
 3. Mutation: the ordinal comparison restored - part 1 goes red, parts 2 stay green.
+
+### PRED-BETA4-028 VERDICT - held
+
+Parts 1-2 held on the reviewer's shapes as suite cases (Repro A: direct and advisory agree on the post-chmod
+tree, different from before; Repro B: the advisory read is stale, the default read is not - the limit,
+stated). Part 3 held in the form the record can hold cheaply: the class guard enumerates the advisory sites
+and reds on any other `-AllowCache`, and the gate file's two authority reads are asserted direct. Part 4
+held: `-AllowCache` restored on the gate's digest call reds the guard (1 of 6); the mode dropped from the key
+reds Repro A (1 of 6); the three prior cases and the other new ones stay green. The reviewer's own fixtures,
+replayed against the fix, agree between direct and advisory on the ids the review quoted as direct.
+
+### PRED-BETA4-029 VERDICT - held
+
+Part 1 held on the reviewer's exact steps, run on `plan-sync-target-iteration` fixture (a) and on the
+reviewer's retained fixture: BLOCKED, "the last authorization is the previous iteration's closeout; this
+iteration has no authorization yet; the pending crossing is 'iteration-closeout -> plan'". Part 2 held: the
+four existing cases keep their answers (Case 1's wording assertion now accepts "authorized through 'tasks'"
+for the cursor-only legacy ledger). Part 3 held: the ordinal comparison restored reds the cycle case in the
+line suite and the product-order case in the plan-sync suite, nothing else.

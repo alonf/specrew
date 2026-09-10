@@ -149,6 +149,12 @@ try {
     $crossingA = (Read-Enforcement -Root $rootA).pending_crossing
     Assert-True ($null -ne $crossingA -and [string]$crossingA.from_boundary -eq 'iteration-closeout' -and [string]$crossingA.to_boundary -eq 'plan') '(a) the crossing for 002 is MINTED: iteration-closeout -> plan'
     Assert-True ($null -ne $crossingA -and [string]$crossingA.working_boundary -eq 'plan') '(a) with the working boundary at plan'
+    # R2 (PRED-BETA4-029), the reviewer's product-order probe on this very fixture: closeout 001 -> scaffold 002
+    # -> plan sync 002 -> readiness. The ledger's last authorization is 001's iteration-closeout, which sorts
+    # after before-implement; readiness for 002 must not borrow it.
+    $readinessA = (& pwsh -NoProfile -File (Join-Path $moduleTree 'extensions/specrew-speckit/scripts/readiness-verdict.ps1') -ProjectPath $rootA -AsJson 2>&1 | ForEach-Object { [string]$_ }) -join "`n"
+    $readinessObj = $null; try { $readinessObj = $readinessA | ConvertFrom-Json } catch { $readinessObj = $null }
+    Assert-True ($null -ne $readinessObj -and -not [bool]$readinessObj.authorized -and [string]$readinessObj.last_authorized_boundary -eq 'iteration-closeout') ('(a) R2: readiness after the next iteration''s plan sync is BLOCKED - 001''s closeout is not 002''s implementation approval (got: {0})' -f ($readinessA -replace '\s+', ' ').Substring(0, [Math]::Min(160, ($readinessA -replace '\s+', ' ').Length)))
 
     # ============ (b) the router-skill shape: scaffold, verdict, plan sync ============================
     Write-Host '  --- (b) the router-skill shape: 002 scaffolded BEFORE the closeout verdict, then the plan sync for 002 ---'

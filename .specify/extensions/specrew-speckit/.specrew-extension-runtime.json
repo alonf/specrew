@@ -392,7 +392,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "c6cb8363c06f1bf0f726eb92dfb1c642dd3989b43fe1c312bb62e9dd39ca96a1"
+      "sha256": "ef1ce794829d541084982f93fd4d663b1338904bbbc8a1749d58fe81844b9be5"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -404,7 +404,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "31f9d50759a050d84de29b89082a3eede59515744886d2cc746f34553af6fbfd"
+      "sha256": "a64f19b33e57165ea78eee5d54c94a16ef51b7de50da5eeb881f5074b98dd8cc"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -488,7 +488,7 @@
     },
     {
       "path": "squad-templates/coordinator/specrew-governance.md",
-      "sha256": "c400cb9ac8f2e11d169dfc593a9186617f0215a7489c47672fed2c5018a417b6"
+      "sha256": "4f876160d680dc5d7ee8d98933949d90b44b8bd742cab90432b4bcd5ec22b679"
     },
     {
       "path": "squad-templates/directives/drift-reporting.md",

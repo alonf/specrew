@@ -1530,7 +1530,7 @@ try {
         $null -ne $unauthorizedSourceDrift -and [string]$unauthorizedSourceDrift.reason -ceq 'implementation-authorized' -and
         (Get-Command Get-SpecrewReviewCoverageState -ErrorAction SilentlyContinue)) {
         try {
-            $coverageDecisionState = Get-SpecrewReviewCoverageState -ProjectRoot $projectRoot
+            $coverageDecisionState = Get-SpecrewReviewCoverageState -ProjectRoot $projectRoot -AllowCache   # advisory Stop-hook line (R1)
             if ($null -ne $coverageDecisionState -and [bool]$coverageDecisionState.available -and
                 [bool]$coverageDecisionState.exhausted -and [int]$coverageDecisionState.source_drift_count -gt 0) {
                 $coverageDeferral = $null

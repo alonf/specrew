@@ -245,8 +245,26 @@ function Get-ContinuousCoReviewDigestWorktreeKey {
             $parts = [System.Collections.Generic.List[string]]::new()
             $parts.Add('head=' + $head)
             $parts.Add('exclusions=' + (@($ExcludedPathPatterns) -join '|'))
-            foreach ($entry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStatus)) {
-                if ([string]::IsNullOrWhiteSpace($entry) -or $entry.Length -lt 4) { continue }
+            $entries = @(ConvertFrom-ContinuousCoReviewNulList -Raw $rawStatus | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_.Length -ge 4 })
+            # THE INDEX MODE IS PART OF THE KEY (R1, the independent review of ebb7597f). `git update-index
+            # --chmod=+x` on a staged file under core.filemode=false changes the tree identity and nothing this key
+            # used to read: not the porcelain letters, not the bytes, not the size, not the mtime. One `ls-files
+            # -s` over the listed paths carries the mode the tree will carry.
+            $indexModes = @{}
+            $listedPaths = @($entries | ForEach-Object { $_.Substring(3) } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if ($listedPaths.Count -gt 0) {
+                $rawStage = & git ls-files -s -z -- @listedPaths 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    foreach ($stageEntry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStage)) {
+                        # "<mode> <sha> <stage>\t<path>"
+                        $tab = $stageEntry.IndexOf([char]9)
+                        if ($tab -lt 0) { continue }
+                        $meta = $stageEntry.Substring(0, $tab).Split(' ')
+                        if ($meta.Count -ge 1) { $indexModes[$stageEntry.Substring($tab + 1)] = [string]$meta[0] }
+                    }
+                }
+            }
+            foreach ($entry in $entries) {
                 $status = $entry.Substring(0, 2)
                 $relative = $entry.Substring(3)
                 $stat = ''
@@ -255,7 +273,8 @@ function Get-ContinuousCoReviewDigestWorktreeKey {
                     $info = [IO.FileInfo]::new($full)
                     $stat = '{0}:{1}' -f $info.Length, $info.LastWriteTimeUtc.Ticks
                 }
-                $parts.Add(('{0} {1} {2}' -f $status, $relative, $stat))
+                $mode = if ($indexModes.ContainsKey($relative)) { [string]$indexModes[$relative] } else { '' }
+                $parts.Add(('{0} {1} {2} {3}' -f $status, $relative, $stat, $mode))
             }
             $bytes = [Text.Encoding]::UTF8.GetBytes(($parts -join "`n"))
             return ([Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))).ToLowerInvariant()
@@ -293,7 +312,16 @@ function Get-ContinuousCoReviewReviewedStateDigest {
 
         [string[]] $ExcludedPathPatterns = @(),
 
-        # For tests and for callers that must observe the tree directly: skip the cache read.
+        # AN AUTHORITY CHECK NEVER TRUSTS A CACHE (R1, the independent review of ebb7597f). The digest is
+        # DIRECT by default. Only the advisory Stop-hook path - the navigator's packet decision and older-tree
+        # note, the checkpoint identity, the conformance provider's coverage line - passes -AllowCache, because a
+        # key made of metadata is not tree equality: a same-length edit with its mtime put back reads as
+        # unchanged, and the gate that decides sign-off must never read that. Measured after the pruned walk,
+        # the direct computation is 2-3 s on the self-host repo; the cache saves ~2 s on a path that can afford
+        # to be advisory and nothing on a path that cannot.
+        [switch] $AllowCache,
+
+        # Retained for callers that spell the default out: never read the cache (the default now).
         [switch] $NoCache
     )
 
@@ -308,7 +336,7 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     # Get-ContinuousCoReviewDigestCachePath), which is never in a listing or a tree, so writing it does not
     # move the key it protects. A miss, a corrupt file, or an unwritable directory all fall through to the
     # full computation; nothing here can make the digest wrong, only slower.
-    $worktreeKey = if ($NoCache) { '' } else { Get-ContinuousCoReviewDigestWorktreeKey -RepoRoot $resolvedRepoRoot -ExcludedPathPatterns $ExcludedPathPatterns }
+    $worktreeKey = if ($AllowCache -and -not $NoCache) { Get-ContinuousCoReviewDigestWorktreeKey -RepoRoot $resolvedRepoRoot -ExcludedPathPatterns $ExcludedPathPatterns } else { '' }
     $cachePath = Get-ContinuousCoReviewDigestCachePath -RepoRoot $resolvedRepoRoot
     if ([string]::IsNullOrWhiteSpace($cachePath)) { $worktreeKey = '' }
     if (-not [string]::IsNullOrWhiteSpace($worktreeKey) -and (Test-Path -LiteralPath $cachePath -PathType Leaf)) {

@@ -148,26 +148,41 @@ Specrew project you work in. Changing the file is enough — nothing needs to be
 
 Editing the file directly still works and needs no re-run.
 
-## Known issue: clarify refuses on a brand-new feature
+## Fixed: clarify refused on a brand-new feature
 
-**On a feature that has not reached the plan boundary yet, the clarify sync refuses:**
+**What happened.** On a feature that had not reached the plan boundary yet, the clarify sync refused:
 
 > Specrew cannot record this boundary because it does not know which iteration it belongs to.
 
-**Workaround — pass the iteration explicitly:**
+Clarify runs *before* the plan boundary creates `iterations/001/`, but the sync still expected an iteration
+for it - and the refusal told you to create the iteration first, which only a later boundary does. The
+message could also print a literal `{0}` where a folder path belonged.
 
-```
-… sync-boundary-state.ps1 -BoundaryType clarify -IterationNumber 001 …
-```
+**What changed.** The clarify sync records its crossing on a feature with no iterations directory and no
+`-IterationNumber` (fix 3, PRED-BETA4-012); the `plan` refusal names the actual iterations directory and
+carries no `{0}`. The workaround of passing `-IterationNumber 001` is no longer needed. (Earlier drafts of
+these notes filed both as beta5; the independent review of `ebb7597f` caught the label - they shipped in
+beta4 at `sync-boundary-state.ps1`.)
 
-**Why**: clarify runs *before* the plan boundary creates `iterations/001/`, but the sync still expects an
-iteration for it. The refusal even says so itself — it tells you to create the iteration first, which only a
-*later* boundary does. Passing `-IterationNumber 001` satisfies it and nothing is lost.
+## Fixed: two defects in beta4's own additions, found by an independent review of the beta
 
-**You may also see a literal `{0}` in that message** where a folder path should be. That is a formatting
-defect in the message only; the refusal itself is behaving as described above.
+An out-of-engine review of `v0.40.0-beta3..ebb7597f` (GPT-6 Astra, the maintainer's) reproduced two defects
+behind green suites. Both are fixed here; the reviewer's reproductions are the regression tests.
 
-Both are fixed in beta5.
+**The reviewed-state digest cache could conceal an unreviewed change.** Beta4 cached the reviewed-tree
+identity to keep the Stop hook inside its budget; the cache was keyed on metadata (HEAD, the status listing,
+file sizes and times) and the sign-off gate read it. A staged file's executable bit changed under
+`core.filemode=false`, or a same-length edit with its timestamp put back, left the key unchanged and the tree
+changed. Now every authority check - sign-off, the campaign orchestrator, evidence recording, the verification
+runner, the review CLI - computes the identity directly (2-3 s after the pruned walk, which was most of the
+saving); only the advisory Stop-hook path may read the cache, and the index mode is part of its key. A
+metadata key is not tree equality, and an authority check never trusts a cache.
+
+**Readiness borrowed the previous iteration's closeout.** The new readiness line compared lifecycle
+positions, and `iteration-closeout` sorts after `before-implement` - so after closing iteration 001 and
+opening 002's plan, readiness said READY for 002. It now derives from the authorizations of the current
+iteration's cycle: the previous iteration's closeout is the previous iteration's, and a new cycle with no
+authorization is BLOCKED, saying so.
 
 ## Fixed: an approval typed before its crossing existed vanished without a word
 

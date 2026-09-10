@@ -751,7 +751,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                                 # T019 step 6 FIX (DRIFT-002 root): was reviewed_tree_id ONLY (never written -> $runTreeId empty -> the digest-match-before-blocking was SKIPPED, so stale blocks recurred); now the entry's shared resolved identity (the digest spelling the fire path writes).
                                 $runTreeId = if ([string]::IsNullOrWhiteSpace([string]$treeId)) { '' } else { [string]$treeId }
                                 if (-not [string]::IsNullOrWhiteSpace($runTreeId) -and (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
-                                    $currentDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot
+                                    $currentDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot -AllowCache   # advisory note at Stop (R1)
                                     if ($null -ne $currentDigest -and [bool]$currentDigest.ok -and -not [string]::IsNullOrWhiteSpace([string]$currentDigest.tree_id) -and ([string]$currentDigest.tree_id -ne $runTreeId)) {
                                         $result.inject_notes.Add(("[co-review] run {0} reviewed an OLDER tree than the current one (the tree moved while the review ran). Its {1} blocking finding(s) surface as ADVISORY, not a stop-block: re-check each against the current tree - it may already be fixed; the next fresh round confirms." -f $runId, @($blockingF).Count)) | Out-Null
                                         $latchHandled = $true

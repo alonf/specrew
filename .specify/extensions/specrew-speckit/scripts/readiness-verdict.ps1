@@ -36,6 +36,8 @@ $targetIdx = [Array]::IndexOf($order, $canonical)
 $lastAuthorized = ''
 $pendingText = 'no crossing is pending'
 $ledgerReadable = $true
+$cycleLast = ''          # the furthest boundary authorized IN THIS ITERATION'S CYCLE
+$previousCycleClosed = $false
 try {
     $state = Get-SpecrewBoundaryEnforcementState -ProjectRoot $root
     if ($null -eq $state -or $null -eq $state.EffectiveState) { $ledgerReadable = $false }
@@ -45,13 +47,37 @@ try {
             $scope = ConvertTo-SpecrewBoundaryMap -Value $state.State['pending_crossing']
             if ($null -ne $scope) { $pendingText = ("the pending crossing is '{0} -> {1}'" -f [string]$scope['from_boundary'], [string]$scope['to_boundary']) }
         }
+        # THE CYCLE, NOT THE ORDINAL (R2, the independent review of ebb7597f - fix 6's class in a script written
+        # after fix 6). The ledger's verdicts are one sequence for the feature; iteration-closeout ends a cycle
+        # and the next verdict opens the next iteration's. Readiness for a per-iteration boundary is answered
+        # from the verdicts AFTER the last closeout - the current iteration's own - never from the previous
+        # iteration's closeout, which sorts after before-implement in the lifecycle list and read as
+        # implementation approval for an iteration that had none.
+        $cycle = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in @($state.State['verdict_history'])) {
+            $map = ConvertTo-SpecrewBoundaryMap -Value $entry
+            if ($null -eq $map) { continue }
+            $to = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$map['to_boundary'])
+            if ([string]::IsNullOrWhiteSpace($to)) { continue }
+            if ($to -eq 'iteration-closeout') { $cycle.Clear(); $previousCycleClosed = $true; continue }
+            $cycle.Add($to) | Out-Null
+        }
+        $cycleIdx = -1
+        foreach ($to in $cycle) { $i = [Array]::IndexOf($order, $to); if ($i -gt $cycleIdx) { $cycleIdx = $i; $cycleLast = $to } }
+        if ($cycle.Count -eq 0 -and -not $previousCycleClosed -and -not [string]::IsNullOrWhiteSpace($lastAuthorized) -and $lastAuthorized -ne 'iteration-closeout') {
+            # A ledger with a cursor and no verdict rows (legacy shape): the cursor is the only evidence there is.
+            $cycleLast = Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthorized
+        }
     }
 }
 catch { $ledgerReadable = $false }
 
-$lastIdx = if ([string]::IsNullOrWhiteSpace($lastAuthorized)) { -1 } else { [Array]::IndexOf($order, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthorized)) }
-$authorized = ($ledgerReadable -and $targetIdx -ge 0 -and $lastIdx -ge $targetIdx)
-$lastText = if ([string]::IsNullOrWhiteSpace($lastAuthorized)) { 'no boundary is authorized yet' } else { ("the ledger's last authorized boundary is '{0}'" -f $lastAuthorized) }
+$cycleIdx = if ([string]::IsNullOrWhiteSpace($cycleLast)) { -1 } else { [Array]::IndexOf($order, $cycleLast) }
+$authorized = ($ledgerReadable -and $targetIdx -ge 0 -and $cycleIdx -ge $targetIdx)
+$lastText = if ([string]::IsNullOrWhiteSpace($lastAuthorized)) { 'no boundary is authorized yet' }
+elseif ($lastAuthorized -eq 'iteration-closeout' -and [string]::IsNullOrWhiteSpace($cycleLast)) { "the last authorization is the previous iteration's closeout ('iteration-closeout'); this iteration has no authorization yet" }
+elseif ([string]::IsNullOrWhiteSpace($cycleLast)) { ("the ledger's last authorized boundary is '{0}' and this iteration's cycle has no authorization yet" -f $lastAuthorized) }
+else { ("this iteration's cycle is authorized through '{0}'" -f $cycleLast) }
 $line = if (-not $ledgerReadable) {
     ("Overall verdict: BLOCKED for implementation - the boundary ledger (.specrew/start-context.json) could not be read, so '{0}' cannot be shown as authorized." -f $canonical)
 }

@@ -16,7 +16,7 @@ $script_ = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/readiness-ver
 . (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
 
 function New-LedgerRoot {
-    param([string]$LastAuthorized, [string]$Working, [switch]$WithPendingCrossing)
+    param([string]$LastAuthorized, [string]$Working, [switch]$WithPendingCrossing, [string[]]$VerdictChain = @())
     $root = Join-Path ([IO.Path]::GetTempPath()) ('rvl-' + [guid]::NewGuid().ToString('N').Substring(0, 10))
     New-Item -ItemType Directory -Path (Join-Path $root '.specrew/runtime') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $root 'specs/001-fixture/iterations/001') -Force | Out-Null
@@ -27,6 +27,13 @@ function New-LedgerRoot {
         session_state = [ordered]@{ active = $true; boundary_type = $Working; feature_ref = '001-fixture'; iteration_number = '001'; recorded_at = '2026-09-10T12:00:00Z' }
         boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = $LastAuthorized; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
     }
+    # -VerdictChain writes the ledger's verdict rows in order, e.g. 'plan','tasks','iteration-closeout','plan'.
+    $rows = [System.Collections.Generic.List[object]]::new(); $from = 'specify'
+    foreach ($to in $VerdictChain) {
+        $rows.Add([ordered]@{ from_boundary = $from; to_boundary = $to; verdict_text = ('approved for ' + $to); authorizing_human = 'Fixture Human'; recorded_at = '2026-09-10T12:00:00Z'; auth_commit_hash = 'abc1234' }) | Out-Null
+        $from = $to
+    }
+    $ctx.boundary_enforcement.verdict_history = @($rows.ToArray())
     [IO.File]::WriteAllText((Join-Path $root '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
     if ($WithPendingCrossing) {
         # a real commit, because the scoped crossing binds to a git tree
@@ -50,7 +57,7 @@ try {
     $l1 = Invoke-Line -Root $r1
     Assert-True ($l1.Code -eq 0) 'the script exits 0 - the line is evidence, not a gate'
     Assert-True ($l1.Out -match '^Overall verdict: BLOCKED for implementation') ('the line says BLOCKED (got: ' + $l1.Out.Substring(0, [Math]::Min(80, $l1.Out.Length)) + ')')
-    Assert-True ($l1.Out -match "last authorized boundary is 'tasks'") 'and names the ledger''s last authorized boundary'
+    Assert-True ($l1.Out -match "authorized through 'tasks'|last authorized boundary is 'tasks'") 'and names how far the ledger authorizes: tasks'
     Assert-True ($l1.Out -match "pending crossing is 'tasks -> before-implement'") 'and the pending crossing'
     Assert-True ($l1.Out -match "approved for before-implement") 'and the one move that clears it'
     Assert-True (@($l1.Out -split "`n").Count -eq 1) 'it is ONE line'
@@ -66,6 +73,17 @@ try {
     $r4 = New-LedgerRoot -LastAuthorized 'plan' -Working 'plan'; $roots.Add($r4) | Out-Null
     $l4 = Invoke-Line -Root $r4
     Assert-True ($l4.Out -match '^Overall verdict: BLOCKED' -and $l4.Out -match 'no crossing is pending') 'BLOCKED, and says no crossing is pending'
+
+    Write-Host '  --- R2 (PRED-BETA4-029): a previous iteration''s closeout is not this iteration''s implementation approval ---'
+    $r5 = New-LedgerRoot -LastAuthorized 'iteration-closeout' -Working 'plan' -VerdictChain @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout'); $roots.Add($r5) | Out-Null
+    $l5 = Invoke-Line -Root $r5
+    Assert-True ($l5.Out -match '^Overall verdict: BLOCKED') 'last authorized iteration-closeout (001 closed), a new cycle with nothing authorized: BLOCKED - the ordinal would have said READY'
+    Assert-True ($l5.Out -match "previous iteration's closeout") 'and it says why: the last authorization is the previous iteration''s closeout'
+    $r6 = New-LedgerRoot -LastAuthorized 'before-implement' -Working 'before-implement' -VerdictChain @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'plan', 'tasks', 'before-implement'); $roots.Add($r6) | Out-Null
+    Assert-True ((Invoke-Line -Root $r6).Out -match '^Overall verdict: READY') 'the second cycle authorized through before-implement: READY - the cycle, not the whole history, decides'
+    $r7 = New-LedgerRoot -LastAuthorized 'tasks' -Working 'tasks' -VerdictChain @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'review-signoff', 'retro', 'iteration-closeout', 'plan', 'tasks'); $roots.Add($r7) | Out-Null
+    $l7 = Invoke-Line -Root $r7
+    Assert-True ($l7.Out -match '^Overall verdict: BLOCKED' -and $l7.Out -match "cycle is authorized through 'tasks'") 'the second cycle at tasks: BLOCKED, naming how far this cycle is authorized'
 
     Write-Host '  --- the surfaces that carry the line ---'
     foreach ($rel in @('extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md', '.specify/extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md')) {
