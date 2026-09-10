@@ -1334,6 +1334,26 @@ try {
     # fail-open; never block a correctly-rendered packet we simply could not see, and never go fail-CLOSED on a missing
     # component). This is the same failure-class -> same direction (allow) as the boundary-trigger load failure above.
     $canAssess = -not [string]::IsNullOrWhiteSpace($lastAssistantText)
+    # ASSESSMENT UNAVAILABLE IS SAID OUT LOUD, and the block below is still NOT taken. Second-pass finding 1:
+    # when the transcript is missing, unreadable, or in a shape the accessor does not parse, $canAssess is
+    # false, no block fires, and nothing was written anywhere - so a boundary that should have been enforced
+    # and a boundary that was enforced correctly left identical traces, which is none. That is the same
+    # mechanism that let the first version of the update-transition test pass while measuring nothing: an
+    # invented transcript shape, an empty $lastAssistantText, and every assertion green.
+    #
+    # Failing open stays: blocking a host whose transcript cannot be read would be worse than under-enforcing
+    # (a hung session with no diagnostic is the worst outcome this provider can produce). What changes is the
+    # invisibility. When there was something to enforce - a pending crossing or observed material work - and
+    # the assessment could not run, that fact is journaled as its own event and warned on stderr, so the two
+    # cases stop looking the same from outside.
+    $assessmentUnavailable = (-not $canAssess) -and ($hasPending -or ($null -ne $materialSignal -and [bool]$materialSignal.material))
+    if ($assessmentUnavailable) {
+        $whyUnavailable = if ([string]::IsNullOrWhiteSpace($transcriptPathArg)) { 'no transcript path was supplied' }
+                          elseif (-not (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)) { 'the transcript path does not exist' }
+                          elseif (-not $ccLoaded) { 'the conversation accessor could not be loaded' }
+                          else { 'no assistant text could be read from the transcript' }
+        [Console]::Error.WriteLine(("[specrew-conformance] WARN ASSESSMENT_UNAVAILABLE {0}; enforcement for this stop was skipped (fail-open), not satisfied. pending={1} material={2}" -f $whyUnavailable, [int][bool]$hasPending, [int]($null -ne $materialSignal -and [bool]$materialSignal.material)))
+    }
     # BOUNDARY stop: owes the verdict MARKER (not just the six headers) - the marker is what captures the verdict;
     #   headers WITHOUT it leave the gate un-authorized (the Antigravity dogfood: a packet rendered, no marker,
     #   last_authorized stayed `none`). $markerForPendingCrossing also subsumes the old false-positive guard (a
@@ -2116,14 +2136,14 @@ try {
     # --- forensic journal (diagnostics only - never gate state) ---
     # Also record EVERY material stop (not only blocks) so a spurious material block is diagnosable against the
     # passing case (D-197-I009 conformance false-negative: a valid packet on disk still evaluated packetPresent=false).
-    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop) {
+    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop -or $assessmentUnavailable) {
         try {
             $jdir = Split-Path -Parent $journalPath
             if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
             # FR-045a: a continuation directive is NOT a packet-render block - label it distinctly so the flush-race
             # forensic (which keys off 'stop-block' + a low dx_lat_hits to catch mid-flush truncation) does not treat a
             # by-design non-packet continue message as a partial-read suspect.
-            $evt = if ($workshopQuestionWins) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } elseif ($stopIntentContinue) { 'stop-continue' } elseif ($capAnnounced) { 'stop-block-cap-announce' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
+            $evt = if ($assessmentUnavailable) { 'assessment-unavailable' } elseif ($workshopQuestionWins) { 'workshop-intermediate' } elseif ($workshopConflict) { 'workshop-conflict' } elseif ($workshopRepair) { 'workshop-repair' } elseif ($stopIntentContinue) { 'stop-continue' } elseif ($capAnnounced) { 'stop-block-cap-announce' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
             # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.

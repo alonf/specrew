@@ -514,6 +514,28 @@ try {
     if ($r1.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 1: the block directive must carry the contiguous clarify -> plan marker. Out: $($r1.Out)" }
     Write-Pass "Case 1: a boundary silent-advance emits the block sentinel + the six-section directive + the contiguous clarify -> plan marker (#2884 / SC-008 #2)"
 
+    # ---- Case 1b (second-pass finding 1): ASSESSMENT UNAVAILABLE IS SAID OUT LOUD, and still fails open.
+    #
+    # The reviewer's own probe: the same pending crossing, valid stage evidence, and NO transcript. Before
+    # this the provider returned empty output, did not block, and wrote no journal row - so a boundary it
+    # could not assess left exactly the trace of a boundary it had assessed and passed: none. That is the
+    # mechanism that let the first update-transition test pass while measuring nothing. Fail-open stays
+    # (blocking a host whose transcript cannot be read is worse); invisibility goes.
+    $p1b = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p1b
+    $cmd1b = "Set-Location -LiteralPath '$p1b'; & '$provider' --host-kind claude --source-event Stop"
+    $out1b = & pwsh -NoProfile -ExecutionPolicy Bypass -Command $cmd1b 2>&1
+    $stdout1b = (@($out1b | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n")
+    $stderr1b = (@($out1b | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | ForEach-Object { $_.ToString() }) -join "`n")
+    if ($stdout1b -match '<<<SPECREW-STOP-BLOCK>>>') { Fail "Case 1b: with no transcript the provider must still FAIL OPEN - no block. Out: $stdout1b" }
+    if ($stderr1b -notmatch 'ASSESSMENT_UNAVAILABLE') { Fail "Case 1b: the skipped assessment must be WARNED on stderr, naming the condition. Stderr: $stderr1b" }
+    if ($stderr1b -notmatch 'no transcript path was supplied') { Fail "Case 1b: and the warning must say WHY it could not assess. Stderr: $stderr1b" }
+    $journal1b = Join-Path $p1b '.specrew\runtime\conformance-journal.jsonl'
+    if (-not (Test-Path -LiteralPath $journal1b -PathType Leaf)) { Fail "Case 1b: a skipped assessment at a pending boundary must leave a journal row - before this it left nothing." }
+    $rows1b = @(Get-Content -LiteralPath $journal1b -Encoding UTF8 | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    if (@($rows1b | Where-Object { [string]$_.event -eq 'assessment-unavailable' }).Count -ne 1) { Fail "Case 1b: the journal must carry exactly one 'assessment-unavailable' event, so it can never be mistaken for 'observe'. Rows: $($rows1b | ConvertTo-Json -Compress)" }
+    Write-Pass "Case 1b: a boundary the provider cannot assess still fails open, and now says so - WARN on stderr naming why, and its own journal event"
+
     # ---- Case 2 (NEGATIVE CONTROL, FLIPPED 2026-09-09): PROSE IS NOT EVIDENCE.
     #
     # This case asserted the opposite until fix 2, and it was right for the design it was written against: a
