@@ -23,6 +23,17 @@
 $script:SpecrewTurnEndSchemaVersion = '1.0'
 $script:SpecrewTurnEndKinds = @('boundary', 'in-flight', 'conversational')
 
+# EVERY TIMESTAMP IS READ THROUGH ONE FUNCTION. Three sites in this batch were bitten by ConvertFrom-Json
+# coercing an ISO string into a [datetime] - the design-decision read-back, the token ordering, and the
+# render cooldown - each wrong in a different way. The reader lives beside this file and is loaded here, so
+# the writer and the reader of every record below agree on what a timestamp is the same way they agree on
+# where a record lives: by sharing the code rather than re-deriving it.
+$script:SpecrewTimestampReadPath = Join-Path $PSScriptRoot 'timestamp-read.ps1'
+if (-not (Get-Command ConvertTo-SpecrewUtcTimestamp -ErrorAction SilentlyContinue) -and
+    (Test-Path -LiteralPath $script:SpecrewTimestampReadPath -PathType Leaf)) {
+    . $script:SpecrewTimestampReadPath
+}
+
 # IN-FLIGHT IS THE ONE KIND THE HOOK CANNOT VERIFY, so it is the one that needs a bound.
 #
 # A boundary declaration is checked against the pending crossing; a conversational one claims nothing. But
@@ -96,7 +107,7 @@ function Write-SpecrewTurnToken {
         # Measured: session B won over a token issued 30 ms later, and the losing session could not recover.
         # This is the second time in this batch that date coercion has broken a round-trip; a number cannot
         # be coerced into something else, so the ordering no longer depends on a type surviving JSON.
-        $record = [ordered]@{ schema_version = '1.0'; token = $token; turn_id = [string]$TurnId; issued_at = [DateTimeOffset]::UtcNow.ToString('o'); issued_ms = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+        $record = [ordered]@{ schema_version = '1.0'; token = $token; turn_id = [string]$TurnId; issued_at = [DateTimeOffset]::UtcNow.ToString('o'); issued_ms = (Get-SpecrewUtcNowMilliseconds) }
         [System.IO.File]::WriteAllText($temp, ($record | ConvertTo-Json -Compress), [System.Text.UTF8Encoding]::new($false))
         [System.IO.File]::Move($temp, $path, $true)
         return $token
@@ -159,10 +170,14 @@ function Find-SpecrewCurrentTurnToken {
             try {
                 $record = Get-Content -LiteralPath $tokenPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
                 if ($null -eq $record -or [string]::IsNullOrWhiteSpace([string]$record.token)) { continue }
-                # Ordered by the NUMBER, with the file's own write time as the fallback for a token written
-                # before this field existed. Never by re-parsing the ISO string: that is what made two tokens
-                # from the same second indistinguishable.
-                $issued = if ($record.PSObject.Properties['issued_ms']) { [long]$record.issued_ms }
+                # Ordered by the instant, READ THROUGH THE ONE HELPER whichever shape the field survived JSON
+                # in - the number first, the ISO string for a token written before the number existed. Never
+                # by re-parsing a coerced value through a string: that is what made two tokens from the same
+                # second indistinguishable.
+                $issuedAt = $null
+                if ($record.PSObject.Properties['issued_ms'] -and $null -ne $record.issued_ms) { $issuedAt = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_ms }
+                if ($null -eq $issuedAt -and $record.PSObject.Properties['issued_at']) { $issuedAt = ConvertTo-SpecrewUtcTimestamp -Value $record.issued_at }
+                $issued = if ($null -ne $issuedAt) { ([DateTimeOffset]$issuedAt).ToUnixTimeMilliseconds() }
                           else { [DateTimeOffset]::new((Get-Item -LiteralPath $tokenPath).LastWriteTimeUtc, [TimeSpan]::Zero).ToUnixTimeMilliseconds() }
                 $candidates += [pscustomobject]@{ token = [string]$record.token; state_root = $rootEntry.path; owner_hash = $rootEntry.owner; issued = $issued }
             }
@@ -392,21 +407,21 @@ function Get-SpecrewTurnEndRenderDecision {
     # never suppresses a boundary packet, which is the case that must never be rate-limited away.
     if ([string]$PreviousRecord.kind -ceq $Kind) {
         try {
-            # THE THIRD INSTANCE OF ONE ROOT, and the same fix as the other two. ConvertFrom-Json coerces the
-            # ISO `rendered_at` into a [datetime]; casting that back to a string drops the UTC designator and
-            # the fraction, and re-parsing it reads LOCAL time. The confirmatory review measured it on this
-            # machine: a render 0.5 s old looked ~3 hours old, and the 45-second in-flight cooldown was bypassed.
-            # So the cooldown reads `rendered_ms`, a number that survives JSON, with the coerced value as the
-            # fallback for a record written before the field existed - and that fallback uses the [datetime]
-            # DIRECTLY rather than through a string.
-            $previousAt = if ($PreviousRecord.PSObject.Properties['rendered_ms'] -and $null -ne $PreviousRecord.rendered_ms) {
-                [DateTimeOffset]::FromUnixTimeMilliseconds([long]$PreviousRecord.rendered_ms).UtcDateTime
-            }
-            elseif ($PreviousRecord.rendered_at -is [datetime]) { ([datetime]$PreviousRecord.rendered_at).ToUniversalTime() }
-            else { [datetimeoffset]::Parse([string]$PreviousRecord.rendered_at, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal).UtcDateTime }
-            $elapsed = ($now - $previousAt).TotalSeconds
-            if ($elapsed -ge 0 -and $elapsed -lt $MinimumSecondsBetweenRenders -and $Kind -eq 'in-flight') {
-                return [pscustomobject]@{ render = $false; reason = 'in-flight-line-already-shown-moments-ago' }
+            # THE THIRD INSTANCE OF ONE ROOT. ConvertFrom-Json coerces the ISO `rendered_at` into a
+            # [datetime]; the first version cast that back to a string, which dropped the UTC designator and
+            # the fraction, and re-parsed it as LOCAL time. The confirmatory review measured it on this
+            # machine: a render 0.5 s old looked ~3 hours old, and the 45-second in-flight cooldown was
+            # bypassed. Three instances made it a pattern, and the pattern's fix is one reader: `rendered_ms`
+            # first (a number survives JSON), the coerced `rendered_at` as the fallback for an older record,
+            # both through ConvertTo-SpecrewUtcTimestamp, which never goes through a string it was not given.
+            $previousAt = $null
+            if ($PreviousRecord.PSObject.Properties['rendered_ms'] -and $null -ne $PreviousRecord.rendered_ms) { $previousAt = ConvertTo-SpecrewUtcTimestamp -Value $PreviousRecord.rendered_ms }
+            if ($null -eq $previousAt -and $PreviousRecord.PSObject.Properties['rendered_at']) { $previousAt = ConvertTo-SpecrewUtcTimestamp -Value $PreviousRecord.rendered_at }
+            if ($null -ne $previousAt) {
+                $elapsed = ([DateTimeOffset]::new($now, [TimeSpan]::Zero) - [DateTimeOffset]$previousAt).TotalSeconds
+                if ($elapsed -ge 0 -and $elapsed -lt $MinimumSecondsBetweenRenders -and $Kind -eq 'in-flight') {
+                    return [pscustomobject]@{ render = $false; reason = 'in-flight-line-already-shown-moments-ago' }
+                }
             }
         }
         catch { $null = $_ }

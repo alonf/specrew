@@ -160,6 +160,7 @@
         'extensions/specrew-speckit/scripts/test-consumer-assumptions.ps1',
         'extensions/specrew-speckit/scripts/Test-CopilotInstructionsChangeType.ps1',
         'extensions/specrew-speckit/scripts/turn-end-store.ps1',
+        'extensions/specrew-speckit/scripts/timestamp-read.ps1',
         'extensions/specrew-speckit/scripts/validate-governance.ps1',
         'extensions/specrew-speckit/scripts/validate-versions.ps1',
         'extensions/specrew-speckit/scripts/work-kind-common.ps1',

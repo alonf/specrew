@@ -24,6 +24,14 @@
 
 $script:SpecrewDesignDecisionSchemaVersion = '1.0'
 
+# Timestamps are read through the one helper beside this file - see timestamp-read.ps1 for the three sites
+# that were each wrong in their own way about a value ConvertFrom-Json had coerced.
+$script:SpecrewDesignDecisionTimestampReadPath = Join-Path $PSScriptRoot 'timestamp-read.ps1'
+if (-not (Get-Command ConvertTo-SpecrewUtcTimestamp -ErrorAction SilentlyContinue) -and
+    (Test-Path -LiteralPath $script:SpecrewDesignDecisionTimestampReadPath -PathType Leaf)) {
+    . $script:SpecrewDesignDecisionTimestampReadPath
+}
+
 # THE CONFIRMATION VALUE NAMES WHAT IT ACTUALLY IS, AND IT IS NOT `human-confirmed`.
 #
 # No hook captures a receipt for a design decision yet. What this record carries is the CREW'S DECLARATION
@@ -73,15 +81,21 @@ function Test-SpecrewDesignDecisionRecord {
             return (New-Result -Valid $false -Reason ("design-decision-{0}-missing" -f ($required -replace '_', '-')))
         }
     }
-    # `recorded_at` is checked for PRESENCE, not for being a [string], and the difference is not pedantry:
-    # ConvertFrom-Json silently converts an ISO-8601 timestamp into a [datetime], so a record this very
-    # script had just written failed its own read-back with `recorded-at-missing`. The writer's verify step
-    # caught it before anything shipped, which is the argument for having a verify step - but a type check
-    # that a correct round-trip cannot survive is the check being wrong, not the data.
+    # `recorded_at` is checked as a READABLE TIMESTAMP, not as a [string], and the difference is not
+    # pedantry: ConvertFrom-Json silently converts an ISO-8601 timestamp into a [datetime], so a record this
+    # very script had just written failed its own read-back with `recorded-at-missing`. The writer's verify
+    # step caught it before anything shipped, which is the argument for having a verify step - but a type
+    # check that a correct round-trip cannot survive is the check being wrong, not the data. It was the first
+    # of three such sites in one batch; all three now read through ConvertTo-SpecrewUtcTimestamp, which
+    # accepts whatever shape survived JSON and answers the only question that matters: when.
     $recordedAtProperty = $Record.PSObject.Properties['recorded_at']
     if (-not $recordedAtProperty -or $null -eq $recordedAtProperty.Value -or
         [string]::IsNullOrWhiteSpace([string]$recordedAtProperty.Value)) {
         return (New-Result -Valid $false -Reason 'design-decision-recorded-at-missing')
+    }
+    if ((Get-Command ConvertTo-SpecrewUtcTimestamp -ErrorAction SilentlyContinue) -and
+        $null -eq (ConvertTo-SpecrewUtcTimestamp -Value $recordedAtProperty.Value)) {
+        return (New-Result -Valid $false -Reason 'design-decision-recorded-at-unreadable')
     }
     if ([string]$Record.confirmation -cne $script:SpecrewDesignDecisionConfirmation) {
         return (New-Result -Valid $false -Reason 'design-decision-confirmation-invalid')

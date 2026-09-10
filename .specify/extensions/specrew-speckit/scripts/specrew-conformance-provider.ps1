@@ -174,6 +174,19 @@ function Get-SpecrewRecentMaterialRetryKey {
     return $null
 }
 
+function ConvertTo-SpecrewProviderUtcTimestamp {
+    # The provider's route to the ONE timestamp reader in timestamp-read.ps1, loaded beside this file.
+    # Fail-open: if the helper file is missing the previous parse stands, so a partial deploy degrades to the
+    # old behaviour rather than disabling the material lane.
+    param([AllowNull()]$Value)
+    if (-not (Get-Command ConvertTo-SpecrewUtcTimestamp -ErrorAction SilentlyContinue)) {
+        $helperPath = Join-Path $PSScriptRoot 'timestamp-read.ps1'
+        if (Test-Path -LiteralPath $helperPath -PathType Leaf) { try { . $helperPath } catch { $null = $_ } }
+    }
+    if (Get-Command ConvertTo-SpecrewUtcTimestamp -ErrorAction SilentlyContinue) { return (ConvertTo-SpecrewUtcTimestamp -Value $Value) }
+    try { return [DateTimeOffset]::new([datetime]::Parse([string]$Value).ToUniversalTime()) } catch { return $null }
+}
+
 function Get-SpecrewMaterialSatisfiedKey {
     param([string]$Path)
     try {
@@ -241,7 +254,11 @@ function Get-SpecrewCurrentStopMaterialSignal {
 
             $recordedRaw = [string]$handover.recorded_at
             if ([string]::IsNullOrWhiteSpace($recordedRaw)) { $result.reason = 'missing-recorded-at'; return $result }
-            $recordedAt = [datetime]::Parse($recordedRaw).ToUniversalTime()
+            # Read through the one timestamp helper (invariant culture, UTC assumed for a bare stamp); the
+            # current-culture [datetime]::Parse it replaces read a designator-less stamp as LOCAL time.
+            $recordedParsed = ConvertTo-SpecrewProviderUtcTimestamp -Value $recordedRaw
+            if ($null -eq $recordedParsed) { $result.reason = 'unreadable-recorded-at'; return $result }
+            $recordedAt = ([DateTimeOffset]$recordedParsed).UtcDateTime
             $age = ([datetime]::UtcNow - $recordedAt).TotalSeconds
             if ($age -lt -30 -or $age -gt $script:SpecrewMaterialHandoverMaxAgeSec) {
                 $result.reason = 'stale-handover'; return $result
@@ -261,7 +278,9 @@ function Get-SpecrewCurrentStopMaterialSignal {
         if (-not $AnySnapshot) {
             if (($m.Groups['source'].Value).ToLowerInvariant() -notin @($AllowedSources | ForEach-Object { $_.ToLowerInvariant() })) { $result.reason = 'activity-not-stop'; return $result }
 
-            $activityAt = [datetime]::Parse($m.Groups['stamp'].Value).ToUniversalTime()
+            $activityParsed = ConvertTo-SpecrewProviderUtcTimestamp -Value $m.Groups['stamp'].Value
+            if ($null -eq $activityParsed) { $result.reason = 'activity-unrecognized'; return $result }
+            $activityAt = ([DateTimeOffset]$activityParsed).UtcDateTime
             if ([math]::Abs(($recordedAt - $activityAt).TotalSeconds) -gt 5) {
                 $result.reason = 'activity-not-current-stop'; return $result
             }
