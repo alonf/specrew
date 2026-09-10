@@ -3402,3 +3402,29 @@ marked done - not effort spent; it is not calibration data and is labelled as if
 dashboard reads the retro's calibrated actual once it exists, or its column is named for what it counts.
 Beta5, beside B4F-018's field adoption: the +32% that the consumer found is invisible on the surface that
 claims to show it.
+
+## B4F-063 - THE SEAL IS NOT THE LAST WRITE OF CLOSEOUT: one ordering defect, three witnesses (beta5)
+
+**Third witness, router-skill project at iteration-closeout**: the verdict capture advanced iteration 001's
+`plan.md` and `state.md` to `complete` AFTER the closeout seal had pinned their hashes; the validator
+flagged the closed iteration as edited; the crew restored both with `git checkout` to the sealed content.
+
+**One item, three witnesses, as ruled** - not three items:
+
+| witness | writer | recorded at |
+| --- | --- | --- |
+| the dashboard render | `closeout-dashboard` re-render after the seal | B4F-023 |
+| the resume writer | `coordinator-resume.ps1` -> `Sync-IterationTaskProgress` (a GET verb that writes) | B4F-002, field-confirmed above |
+| the verdict capture's advance | the closeout verdict's capture advancing plan/state to `complete` | this entry |
+
+The defect is the ORDER: closeout seals, then three different producers write into the sealed records, and
+the validator - correctly - refuses the tree the product itself produced. Every witness costs the human a
+`git checkout` to the sealed content and a hand re-mirror of the phase.
+
+**Beta5's fix is one of two, decided there**: seal AFTER the advance (the seal is the last write of
+closeout, by construction - every producer that closeout runs writes first, the seal pins what they wrote),
+or exempt the advance (the seal pins content the verdict capture is allowed to move, with the exemption
+named in the seal). The first is the simpler invariant and the one the validator already assumes; the
+second keeps a write after the seal, which is the shape that produced three witnesses. The maintainer's
+standing instruction - restore the sealed content with `git checkout` - remains the field recovery until
+then.
