@@ -44,7 +44,11 @@ function Invoke-FixtureGit {
 function New-TestProject {
     param(
         [Parameter(Mandatory = $true)][string]$Name,
-        [AllowNull()][string]$LastAuthorizedBoundary
+        [AllowNull()][string]$LastAuthorizedBoundary,
+        # A feature that has not reached the plan boundary has NO iterations/ directory. Every fixture here
+        # seeded iterations/001 unconditionally, which is why the clarify refusal shipped since aa25909b
+        # through a green suite: the state the refusal fires in was never built (B4F-039).
+        [switch]$NoIteration
     )
 
     $projectRoot = Join-Path $scratchRoot $Name
@@ -69,15 +73,17 @@ function New-TestProject {
     # ...and the iteration-scoped evidence for the same reason. These fixtures cross plan, tasks,
     # before-implement, review-signoff and iteration-closeout; each owes an artifact under
     # iterations/001/, so seed the full set once rather than case by case.
-    $iterDir = Join-Path $projectRoot 'specs\001-test-feature\iterations\001'
-    New-Item -ItemType Directory -Path (Join-Path $iterDir 'quality') -Force | Out-Null
-    foreach ($pair in @(
-            @{ Rel = 'plan.md'; Body = "# Iteration Plan: 001`n" },
-            @{ Rel = 'state.md'; Body = "# Iteration State: 001`n" },
-            @{ Rel = 'review.md'; Body = "# Iteration Review: 001`n" },
-            @{ Rel = 'retro.md'; Body = "# Iteration Retro: 001`n" },
-            @{ Rel = 'quality\hardening-gate.md'; Body = "# Hardening Gate: 001`n" })) {
-        [System.IO.File]::WriteAllText((Join-Path $iterDir $pair.Rel), $pair.Body, [System.Text.UTF8Encoding]::new($false))
+    if (-not $NoIteration) {
+        $iterDir = Join-Path $projectRoot 'specs\001-test-feature\iterations\001'
+        New-Item -ItemType Directory -Path (Join-Path $iterDir 'quality') -Force | Out-Null
+        foreach ($pair in @(
+                @{ Rel = 'plan.md'; Body = "# Iteration Plan: 001`n" },
+                @{ Rel = 'state.md'; Body = "# Iteration State: 001`n" },
+                @{ Rel = 'review.md'; Body = "# Iteration Review: 001`n" },
+                @{ Rel = 'retro.md'; Body = "# Iteration Retro: 001`n" },
+                @{ Rel = 'quality\hardening-gate.md'; Body = "# Hardening Gate: 001`n" })) {
+            [System.IO.File]::WriteAllText((Join-Path $iterDir $pair.Rel), $pair.Body, [System.Text.UTF8Encoding]::new($false))
+        }
     }
 
     $context = [ordered]@{
@@ -128,17 +134,22 @@ function New-TestProject {
 function Invoke-BoundarySync {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [Parameter(Mandatory = $true)][string]$BoundaryType
+        [Parameter(Mandatory = $true)][string]$BoundaryType,
+        # The governed sync-clarify wrapper passes NO -IterationNumber. This harness always did, which is
+        # the second half of why the refusal was never seen here.
+        [switch]$OmitIterationNumber,
+        [switch]$ExpectRefusal
     )
 
-    $result = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
-        '-ProjectPath', $ProjectRoot,
-        '-BoundaryType', $BoundaryType,
-        '-FeatureRef', '001-test-feature',
-        '-IterationNumber', '001',
-        '-AuthCommitHash', 'HEAD'
-    )
+    $argumentList = @('-ProjectPath', $ProjectRoot, '-BoundaryType', $BoundaryType, '-FeatureRef', '001-test-feature')
+    if (-not $OmitIterationNumber) { $argumentList += @('-IterationNumber', '001') }
+    $argumentList += @('-AuthCommitHash', 'HEAD')
+    $result = Invoke-TestScript -ScriptPath $syncScript -ArgumentList $argumentList
 
+    if ($ExpectRefusal) {
+        if ($result.ExitCode -eq 0) { Fail ("Boundary sync '{0}' was expected to refuse and did not:`n{1}" -f $BoundaryType, ($result.Output -join [Environment]::NewLine)) }
+        return ($result.Output -join [Environment]::NewLine)
+    }
     if ($result.ExitCode -ne 0) {
         Fail ("Boundary sync '{0}' failed:`n{1}" -f $BoundaryType, ($result.Output -join [Environment]::NewLine))
     }
@@ -242,6 +253,29 @@ try {
         -ForbiddenText 'approved for specify' `
         -SyncOutput $clarifyOutput
     Write-Pass 'sync-clarify after specify authorization surfaces specify -> clarify'
+
+    # ---- B4F-039 / fix 3: the PRE-PLAN clarify. No iterations/ directory, no -IterationNumber - the state a
+    # brand-new consumer feature is actually in when clarify runs, and the state no fixture here ever built.
+    # Before fix 3 this THREW at sync-boundary-state.ps1:405 and told the crew to create an iteration that
+    # only a later boundary creates.
+    $preplanProject = New-TestProject -Name 'clarify-before-any-iteration' -LastAuthorizedBoundary 'specify' -NoIteration
+    if (Test-Path -LiteralPath (Join-Path $preplanProject 'specs\001-test-feature\iterations')) { Fail 'fixture INVALID: the pre-plan project must have NO iterations/ directory, or the case measures nothing' }
+    $preplanOutput = Invoke-BoundarySync -ProjectRoot $preplanProject -BoundaryType 'clarify' -OmitIterationNumber
+    Assert-ArtifactContains `
+        -ProjectRoot $preplanProject `
+        -ExpectedBoundary 'specify -> clarify' `
+        -ExpectedApproval 'approved for clarify' `
+        -ExpectedMarker '<!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify -->' `
+        -ForbiddenText 'approved for specify' `
+        -SyncOutput $preplanOutput
+    Write-Pass 'fix 3: a clarify sync with NO iterations/ and NO -IterationNumber records specify -> clarify - the pre-plan state the consumer was in'
+
+    # ...and the refusal, where it still applies, now NAMES THE PATH instead of printing "{0}".
+    $preplanPlanProject = New-TestProject -Name 'plan-before-any-iteration' -LastAuthorizedBoundary 'clarify' -NoIteration
+    $refusal = Invoke-BoundarySync -ProjectRoot $preplanPlanProject -BoundaryType 'plan' -OmitIterationNumber -ExpectRefusal
+    if ($refusal -match '\{0\}') { Fail "fix 3: the iteration refusal still prints a literal {0}: $refusal" }
+    if ($refusal -notmatch [regex]::Escape((Join-Path $preplanPlanProject 'specs\001-test-feature\iterations'))) { Fail "fix 3: the iteration refusal must name the directory it looked in. Output: $refusal" }
+    Write-Pass 'fix 3: the iteration refusal names the iterations directory it looked in, with no literal {0}'
 
     $completedTasksProject = New-TestProject -Name 'completed-tasks-opens-next-crossing' -LastAuthorizedBoundary 'tasks'
     $stalePath = Join-Path $completedTasksProject '.specrew\runtime\pending-verdict-stop.md'

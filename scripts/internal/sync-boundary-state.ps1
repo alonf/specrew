@@ -401,10 +401,20 @@ function New-SpecrewSessionState {
         $derived = Resolve-SpecrewIterationStateTruthDirectory -FeaturePath $featurePath -IterationNumber $null
         if ($null -ne $derived) { $effectiveIteration = Normalize-SpecrewIterationNumber -IterationNumber $derived.Name }
     }
-    if ([string]::IsNullOrWhiteSpace($effectiveIteration) -and $BoundaryType -notin @('before-specify', 'specify', 'feature-closeout')) {
-        throw ("Specrew cannot record this boundary because it does not know which iteration it belongs to. " +
+    # CLARIFY IS EXEMPT, because it runs BEFORE the plan boundary creates iterations/001/ - the same reason
+    # specify is. Measured on a consumer project (B4F-039): a brand-new feature's clarify sync refused with a
+    # message telling the crew to create the iteration first, which only a LATER boundary does. The refusal's
+    # own remedy could not clear its own condition: remedy-wrong-for-state, the B4F-030 family. It shipped
+    # since aa25909b because the suite covering this script both passes -IterationNumber and seeds
+    # iterations/001, so the pre-plan state was never exercised here until the fixture below was added.
+    if ([string]::IsNullOrWhiteSpace($effectiveIteration) -and $BoundaryType -notin @('before-specify', 'specify', 'clarify', 'feature-closeout')) {
+        # The -f is bound to the WHOLE message. It used to bind to the last string of the `+` chain only, so
+        # `{0}` rendered verbatim and the one concrete thing the message had to offer - where it looked - was
+        # the one thing it did not say.
+        $iterationsRoot = Join-Path $featurePath 'iterations'
+        throw (("Specrew cannot record this boundary because it does not know which iteration it belongs to. " +
             "No iteration was given and none was found under {0}. " +
-            "Create the iteration first (the plan boundary scaffolds `iterations/001/`), or pass -IterationNumber with the one you mean." -f (Join-Path $featurePath 'iterations'))
+            "Create the iteration first (the plan boundary scaffolds `iterations/001/`), or pass -IterationNumber with the one you mean.") -f $iterationsRoot)
     }
 
     return [pscustomobject]@{

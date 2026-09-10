@@ -500,3 +500,31 @@ not suspend a claim already written down.
 
 **Consequence for the order of work**: the retirements move to the FRONT of the tail, ahead of every test
 conversion. A converted test proves nothing about a contract that can be skipped.
+
+---
+
+## PRED-BETA4-012 - fix 3, the clarify refusal. Stated before the code.
+
+**Read from disk first**: `sync-boundary-state.ps1:404` exempts exactly `before-specify`, `specify`,
+`feature-closeout`; the `-f` at 407 binds only to the last string of a `+` chain, so `{0}` renders verbatim;
+and `pending-verdict-stop-artifact.tests.ps1` both passes `-IterationNumber '001'` AND seeds `iterations/001`
+in `New-TestProject`, so the pre-plan state the router-skill crew hit was never exercised by the suite that
+covers this script.
+
+### THE PREDICTION, three parts
+
+1. **A clarify sync on a feature with NO `iterations/` directory and NO `-IterationNumber` records the
+   crossing.** Falsifiable by a new fixture built without the iteration seed: `pending-verdict-stop.md` is
+   written with `specify -> clarify`. Today that fixture THROWS at line 405.
+2. **The refusal message renders the path.** For a non-exempt boundary (`plan`) with no iteration, the
+   message names the actual `iterations` directory and contains no literal `{0}`. Today it contains `{0}`.
+3. **MUTATION**: with `clarify` removed from the exemption again, part 1's fixture goes red and only it.
+
+**Fixed in advance**: if part 1 fails after the change, the exemption is not where the refusal comes from
+and I have the wrong line. If part 3 survives, the new fixture is not the pre-plan state I think it is.
+
+**PRED-BETA4-012 VERDICT: all three parts held.** (1) the pre-plan clarify sync records `specify -> clarify`
+with no `iterations/` and no `-IterationNumber`; (2) the `plan` refusal names the actual iterations directory
+and contains no `{0}`; (3) with `clarify` removed from the exemption, the pre-plan fixture fails and the
+older clarify case - iteration seeded, number passed - stays green, which is precisely how the defect shipped
+through a green suite since `aa25909b`.
