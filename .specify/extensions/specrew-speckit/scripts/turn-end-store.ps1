@@ -435,11 +435,11 @@ function Test-SpecrewTurnMaterialVerdictQuiet {
     if ($verdictNumber -lt 1 -or ($verdictNumber -ne $currentNumber -and $verdictNumber -ne ($currentNumber - 1))) { $r.Reason = 'judgment-not-this-turn'; return $r }
     $age = [double]::MaxValue
     try {
-        # ConvertFrom-Json hands an ISO timestamp back as a [datetime] (local kind); a raw string is parsed
-        # invariantly. Both become one UTC instant, never a culture-formatted round trip.
-        $rawJudged = $verdict.judged_at
-        $judged = if ($rawJudged -is [datetime]) { [DateTimeOffset]::new(([datetime]$rawJudged).ToUniversalTime(), [TimeSpan]::Zero) } else { [DateTimeOffset]::Parse([string]$rawJudged, [Globalization.CultureInfo]::InvariantCulture) }
-        $age = ([DateTimeOffset]::UtcNow - $judged).TotalSeconds
+        # THE ONE TIMESTAMP READER (timestamp-read.ps1): a [datetime] ConvertFrom-Json coerced, a string, or a
+        # number all become one UTC instant there, never here - census 34533964445 caught a parse of this
+        # store's own, which is exactly what the helper's class guard exists to catch.
+        $judged = ConvertTo-SpecrewUtcTimestamp -Value $verdict.judged_at
+        $age = if ($null -eq $judged) { [double]::MaxValue } else { ([DateTimeOffset]::UtcNow - $judged).TotalSeconds }
     }
     catch { $age = [double]::MaxValue }
     if ($age -lt 0 -or $age -gt $MaxAgeSeconds) { $r.Reason = 'judgment-stale'; return $r }

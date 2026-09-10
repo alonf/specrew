@@ -1408,3 +1408,20 @@ ledger checks stay green, as they should).
 
 **PRED-BETA4-023, field note**: fix 6 held at plan, tasks and before-implement on the router-skill project,
 each sync minting its crossing, extension still at `d4a89ab7`.
+
+### PRED-BETA4-025 VERDICT - census 34533964445 on `19ec5d0c`: RED, one file, mine, branch-introduced, fixed from its own output
+
+`prepublish-validation` green; `full-test-census` red on **1 of 410**: `timestamp-read` Case 5, "the turn-end
+store contains no timestamp parse of its own" - the class guard for the timestamp helper caught a
+`[DateTimeOffset]::Parse` I put into `Test-SpecrewTurnMaterialVerdictQuiet` (fix 2 item (c)) reading
+`judged_at`. Branch-introduced on a changed file: fixed first, no re-run - the read now goes through
+`ConvertTo-SpecrewUtcTimestamp` like every other read in that store (timestamp-read 21, session-scope 24,
+identity 52 green; the (c) mutation still 5 red). It did not show locally because that suite was not in
+the consumer list I ran for (c); the runner ran everything, which is what a census is for.
+
+**Part 1 did not hold** (one red). **Part 2 HELD**: both turn-end suites green on the runner for the first
+time since `16febe88` - the `SPECREW_MODULE_PATH` pin was the cause, as the diagnostics said. **Part 3 held**
+for the three suites that ran unchanged: `plan-sync-target-iteration`, `round-approval-typed-authority`,
+`capture-disclosure` green on the runner; `review-advisory-session-scope` green too. **Part 4 held** (the
+artifact carried the one red and nothing else). `19ec5d0c` is not the tag SHA; four fix commits landed
+after it anyway (B4F-070/071/072). The next census runs on the head after this repair.
