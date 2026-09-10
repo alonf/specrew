@@ -1436,3 +1436,60 @@ census 2 and `readiness-verdict-line` green; `prepublish-validation` and the dry
 diagnostics artifact carries the sentinel and nothing else. A red on any changed file is fixed first; the
 single sanctioned re-dispatch is reserved for a runner-bound red on a file unchanged since `d4a89ab7`. The
 tag SHA is the SHA the green dispatch ran on.
+
+## PRED-BETA4-028 - R1: an authority check never trusts a cache; a metadata key is not tree equality. Stated before the code.
+
+**From the independent review** (`~/AppData/Local/Temp/specrew-beta4-review-ebb7597f.md`, GPT-6 Astra, out
+of engine, against `v0.40.0-beta3..ebb7597f`): the digest cache I added for B4F-057 keys on HEAD, the
+exclusions, the porcelain listing and each listed file's length and mtime. Repro A: `core.filemode=false`, a
+staged file, `git update-index --chmod=+x` - porcelain, bytes, size and mtime unchanged, index mode changed,
+tree identity changed, cache returns the old id. Repro B: same-length content with the mtime put back - the
+key cannot see it. And `Get-ContinuousCoReviewSignoffGateDecision` (the authority) consumed the cached read.
+
+**Measured before deciding**: the pruned walk did most of B4F-057's work - the direct computation on the
+self-host repo is now 2.2-2.8 s (was 18-37 s); the cache saves ~2 s per read. So the cache can leave every
+authority path without re-breaking the Stop budget.
+
+**The fix, as ruled**: the digest is DIRECT by default. A new `-AllowCache` switch opts in, and only the
+advisory Stop-hook path passes it: the navigator's campaign packet decision at Stop, the navigator's
+older-tree note, the checkpoint identity, and the conformance provider's coverage line. The signoff gate,
+the campaign orchestrator, the evidence recorder, the verification-plan runner, the review CLI, the
+validator and every other reader compute the identity. The key gains the index mode of every listed entry
+regardless (`git ls-files -s` on the listed paths), so Repro A cannot fool the advisory path either; Repro B
+remains what a metadata key cannot see, which is why no authority reads it.
+
+### THE PREDICTION, four parts
+
+1. **Repro A**: after `--chmod=+x` on a staged file under `core.filemode=false`, the default read and the
+   `-AllowCache` read both return the new id (index mode is in the key), equal to each other and different
+   from the id before the chmod.
+2. **Repro B**: same-length content, mtime restored: the default read returns the new id; the `-AllowCache`
+   read returns the STALE id - stated, journaled nowhere, tolerated only because nothing authoritative reads
+   it.
+3. **The gate**: `Get-ContinuousCoReviewSignoffGateDecision` (or the packet decision with the cache off) reads
+   the tree directly - a Repro-B change after a cache fill produces a decision whose `current_tree_id` is the
+   direct id.
+4. **Mutation**: `-AllowCache` restored on the gate's digest call - part 3 goes red; the three existing
+   cost-suite cases and parts 1-2 stay green.
+
+## PRED-BETA4-029 - R2: readiness has a cycle, not an ordinal. Stated before the code.
+
+**From the review**: `readiness-verdict.ps1` compared ordinal lifecycle positions, so iteration 001's
+`iteration-closeout` (later in the list than `before-implement`) read as authorization for iteration 002's
+implementation: "READY for implementation" with the last authorized boundary `iteration-closeout` and
+`iteration-closeout -> plan` pending. Fix 6's class - no cycle identity - in a script written after fix 6.
+
+**The fix**: readiness derives from authorization for the CURRENT feature and iteration. `iteration-closeout`
+as the last authorized boundary never satisfies a readiness question for a later iteration: when the ledger's
+last authorization is `iteration-closeout`, the current cycle has no authorizations yet, and readiness is
+BLOCKED naming that. Within a cycle the ordinal comparison stands (`review-signoff` after `before-implement`
+is still READY for it).
+
+### THE PREDICTION, three parts
+
+1. The reviewer's product-order fixture (closeout 001 through `Add-SpecrewBoundaryAuthorization` -> scaffold
+   002 through the scaffolder -> the real plan sync for 002 -> readiness): BLOCKED, naming that the last
+   authorization is the previous iteration's closeout and that `iteration-closeout -> plan` is pending.
+2. The four existing cases keep their answers (tasks -> BLOCKED; before-implement -> READY; review-signoff
+   -> READY; plan -> BLOCKED).
+3. Mutation: the ordinal comparison restored - part 1 goes red, parts 2 stay green.
