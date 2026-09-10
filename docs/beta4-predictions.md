@@ -1023,3 +1023,28 @@ witness. Parts 1-5 as previously recorded hold under the corrected scope with Ca
 `Add-SpecrewBoundaryAuthorization` (33 assertions green). `delivery-durability-seal` Case 6, which pinned
 T022's arrival-side order, now pins the corrected one: no seal in the sync, the seal after the advance in
 the authorization.
+
+## PRED-BETA4-021 - the census at the final SHA, second dispatch. Stated before the dispatch.
+
+**The SHA**: the branch head after this record's commit - code last moved at `ea98457a` (fix 5 at
+`0ed113d2` beneath it). Since the red census on `16febe88`: fix 5 (seal at authorization, the resume
+writers' skip, `specrew reseal`, the refusal naming it), the deployed marker re-stamped over every mirror
+synced since `1c519b22`, the changed-only fixture repaired and its seed step made to prove itself, the
+digest suite named by a lane, and diagnostics in the two turn-end suites.
+
+### THE PREDICTION, four parts
+
+1. **`full-test-census` green**: 409 named files, 0 failures; `prepublish-validation` and `publish-module`
+   (dry-run) green. The four reds of `34502784677` are each answered above.
+2. **The two turn-end suites**: green on the runner. If either reds again, the diagnostics it now prints -
+   the provider's own output, the baseline files, `git status` - name the cause in the diagnostics
+   artifact, and it is fixed from that output, not guessed at. It is branch-introduced either way and gets
+   no re-run.
+3. **`validate-governance-changed-only`**: green - the workspace mirrors the tracked tree and the marker
+   matches the mirrors, which is the state the runner's clean checkout has.
+4. **The diagnostics artifact** carries the one known entry (`direct-exit.tests.ps1`'s sentinel) and no
+   other.
+
+**Fixed in advance**: any red on a file unchanged since `d4a89ab7` with the runner-bound timing signature
+gets the single sanctioned re-dispatch with its meaning fixed; a red on any changed file is fixed first.
+The tag SHA is the SHA the green dispatch ran on.
