@@ -1219,3 +1219,31 @@ nothing of its own; the value it recorded is the value the check reads.
 **Then**: a module build from the fixed SHA for the router-skill machine - install only, no `specrew update`
 there; the sync wrapper resolves through the module. The census on `25f3dfaa` is superseded; the next one is
 the one that counts. PRED-BETA4-009's closeout-to-second-iteration extension has its second witness.
+
+### PRED-BETA4-023 VERDICT - held; the fixture question answered by the run: universal
+
+**RED-FIRST, on the unfixed tree** (`8dcedca8` + the scaffolder repair only): 10 red. Fixture (a) - the
+product's own order - `refusals: 002,003`: the rebind named 002 (correct), the plan sync named 003, no
+crossing minted. **So the answer to the question stated before the run is YES: the check targets 003 in
+(a) too; the defect is universal to every second-and-later iteration's plan sync, not a consequence of the
+instructed pre-scaffold.** Fixture (b) - the router-skill shape - the rebind minted closeout -> plan
+(`working_boundary: iteration-closeout`), the plan sync named 003 and nulled it.
+
+**Parts 1-3 held after the fix** (25 green): (a) exits 0, records 002, asks for nothing, mints
+`iteration-closeout -> plan` with `working_boundary: plan`; (b) the verdict's crossing survives the sync
+with the working boundary moved to plan; the rebind still refuses naming 002 with plan.md absent and mints
+with it present. The journal event is `crossing-not-minted-owed-artifacts-absent` (the statement wrote
+`crossing-mint-refused`; a naming slip, the assertion reads the real one).
+
+**Part 4, one deviation**: the mutation reds (a) and (b) on 003 as predicted - 13 red - and ALSO the
+rebind's "names 002" assertions, which the statement said would stay green. They cannot: with the +1
+restored in the check and the constructor's derivation in place, the authorization's rebind derives twice
+(001 -> 002 -> 003). The statement reasoned from the old code, where the check's +1 was the only one. The
+compounding is the measurement that the derivation now has exactly one home; a mutation that left the
+rebind green would mean it had two.
+
+**Found on the way** (B4F-067): the scaffolder failed on a one-FR spec before either fixture could run;
+fixed alongside, the fixture's spec is the test.
+
+**Next**: the module build from the fixed SHA for the router-skill machine (install only, no `specrew
+update` there); the census that counts is the one after this.

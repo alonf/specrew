@@ -169,6 +169,21 @@ defect in the message only; the refusal itself is behaving as described above.
 
 Both are fixed in beta5.
 
+## Fixed: the second iteration's plan sync asked for the third iteration's plan
+
+**What happened.** After you closed iteration 001 and the crew ran the plan sync for iteration 002, the sync
+recorded 002 and, in the same run, refused to open the plan crossing because "plan owes plan.md for
+iteration 003". Your `approved for plan` then had nothing to bind to. Two parts of one invocation derived
+the target iteration differently: the record used the number you gave it; the owed-artifact check added one,
+a rule that is right at closeout authorization (where the cursor still names the closed iteration) and wrong
+at the plan sync (where it already names the new one). Measured on a consumer project at its second
+iteration; reproduced in the product's own order, so it was universal, not something the consumer did.
+
+**What changed.** The target iteration is derived once, from the crossing's working boundary, and the value
+the sync records is the value the check reads. Both shapes - scaffold then sync, and scaffold before the
+closeout verdict - open the crossing for 002. A related fix: the iteration scaffolder could not open a second
+iteration for a feature whose spec has exactly one requirement; it can now.
+
 ## Fixed: a pasted transcript with an approval phrase at its top was recorded as the approval
 
 **What happened.** A verdict is typed as one line - `approved for review round`, or `approved for plan -

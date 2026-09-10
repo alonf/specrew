@@ -376,7 +376,7 @@
     },
     {
       "path": "scripts/scaffold-iteration-plan.ps1",
-      "sha256": "225db6e470fe789ae20a9928da69f191b09a331d7ecba14f72cc6241ca604ebb"
+      "sha256": "bff22f38dbcd353b850f0e2f1b9525ee8e13b8475dadb621020fc5350365ad8d"
     },
     {
       "path": "scripts/scaffold-retro-artifact.ps1",
@@ -392,7 +392,7 @@
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "ceaf5244a9e8dff767bfe6f3dfa1e5dbc04c9e1a5145bc40d85f361606bcea4e"
+      "sha256": "c6cb8363c06f1bf0f726eb92dfb1c642dd3989b43fe1c312bb62e9dd39ca96a1"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",

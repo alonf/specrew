@@ -3608,3 +3608,56 @@ and a clean turn writes no drop row; and a MUTATION CONTROL that runs the same s
 the store with the guard removed and asserts it MINTS a 136-line `verdict_text` - the record, reproduced
 on demand); W56 and W75 retargeted; `tests/unit/capture-disclosure.tests.ps1` Cases 6-7 (the boundary
 path's disclosure, and the typed-authority disclosure beside it, both through the provider).
+
+## B4F-066 - ONE INVOCATION, TWO DERIVATIONS OF THE TARGET ITERATION: the plan sync recorded 002 and asked for 003 (fix 6, fixed in beta4)
+
+**Verbatim from the router-skill project**: `sync-boundary-state.ps1 -BoundaryType plan -IterationNumber 002`
+reported `boundary_record_status: established` for 002 and, in the same invocation, WARNed
+`CROSSING_NOT_MINTED_OWED_ARTIFACTS_ABSENT - 'plan' owes plan.md for iteration 003 (expected under
+...iterations\003) and it does not exist`. The crossing for 002 was never opened, so the human's
+`approved for plan` had nothing to bind to. PRED-BETA4-009's closeout-to-second-iteration extension has its
+second witness here (B4F-063 was the first).
+
+**Where the second derivation lived**: the sync writes the session cursor at its `$effectiveIterationNumber`
+(002) and then calls `Set-SpecrewPendingBoundaryCrossingScope`, which reads the cursor back and hands it to
+the gated constructor `New-SpecrewPendingCrossingScope` -> `Test-SpecrewBoundaryOwedArtifactsOnDisk`. That
+check carried its own rule - "iteration-closeout -> plan opens the NEXT iteration", `+1` - written for the
+closeout AUTHORIZATION's rebind, where the cursor still names the closed iteration (001) and the crossing
+it opens is for 002. Two callers handed the check "the cursor"; it could not tell which; it guessed, and
+guessed right for one of them.
+
+**Universal, not the pre-scaffold**: fixture (a) - 001 closed by its verdict, 002 scaffolded through
+`scaffold-iteration-plan.ps1` in the product's own order, then the plan sync for 002 - asked for 003 before
+the fix, exactly as the router-skill project did. Nothing about who scaffolded 002 or when enters the
+arithmetic. Fixture (b) - the router-skill shape, 002 scaffolded BEFORE the closeout verdict - showed a
+second consequence: the authorization's rebind had MINTED the closeout -> plan crossing (002/plan.md
+existed), and the plan sync's refusal on 003 returned `$null` from the constructor and OVERWROTE
+`pending_crossing` with it. The sync destroyed the crossing the verdict had opened.
+
+**The fix**: `Test-SpecrewBoundaryOwedArtifactsOnDisk` derives nothing - the iteration handed in is the
+iteration the entered stage owes. `New-SpecrewPendingCrossingScope`, the one constructor every minting
+path goes through, resolves the target ONCE from a fact the record carries: for iteration-closeout -> plan
+the target is cursor + 1 only while the crossing's WORKING boundary is still iteration-closeout (the
+rebind at authorization; a closeout re-sync); once the plan sync has moved the cursor - working boundary
+plan - the cursor is the target. The sync derives nothing of its own; the value it recorded is the value
+the check reads.
+
+**The first cut was wrong, and a standing suite said so**: it keyed the +1 on the CROSSING's working boundary,
+which `-OpenNextCrossingWhenBoundaryAuthorized` rewrites to plan on a closeout sync's successor auto-open -
+where the cursor is still the closed iteration. `crossing-mint-gate` Case 1 (the FR-024 gate's own suite) went
+red: the ladder minted against 001/plan.md. The rule keys on the CALLER's working boundary; 21/21 there after.
+
+**Found on the way, fixed alongside (B4F-067)**: `scaffold-iteration-plan.ps1` could not scaffold the second
+iteration of a feature whose spec carries exactly ONE canonical FR - `$scopeList = if (...) { @(...) }`
+unrolls a one-element array on the way out of the if-expression, and `.Count` on the bare string threw
+under StrictMode. Fixture (a) hit it first ("The property 'Count' cannot be found on this object"). The
+wrap now sits outside the expression; the fixture's one-FR spec is the test.
+
+**Tests**: `tests/integration/plan-sync-target-iteration.tests.ps1` (class-guard lane; 25 assertions): both
+fixtures through the REAL sync wrapper resolving through `SPECREW_MODULE_PATH`; the rebind's own path
+asserted on both shapes (refuses naming 002 with plan.md absent; mints with it present); the check handed
+002 looks at 002 and handed 003 looks at 003. RED-FIRST on the unfixed tree: 10 red, both fixtures on 003,
+(b) with the crossing nulled. `-MutateIndependentDerivation` (the +1 restored inside the check, in a temp
+copy of the module tree that this process and the sync wrapper both resolve through): 13 red - both
+fixtures on 003, and the rebind too, because the constructor's derivation and the restored one compound to
+003 at authorization; that compounding is the proof that the derivation now lives in one place.

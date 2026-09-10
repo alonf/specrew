@@ -2816,11 +2816,13 @@ function Test-SpecrewBoundaryOwedArtifactsOnDisk {
     $featurePath = Join-Path $root ('specs/' + (Split-Path -Leaf $feature))
     $base = $featurePath
     if ($result.Kind -eq 'iteration-file') {
-        # iteration-closeout -> plan opens the NEXT iteration: its directory is what the plan stage owes.
-        $fromCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $FromBoundary
-        if ($canonical -eq 'plan' -and $fromCanonical -eq 'iteration-closeout' -and $iteration -match '^\d+$') {
-            $iteration = ('{0:000}' -f ([int]$iteration + 1))
-        }
+        # THE ITERATION HANDED IN IS THE ITERATION THE ENTERED STAGE OWES. This check used to add one for
+        # iteration-closeout -> plan ("the next iteration's directory is what plan owes"), which was right for
+        # the closeout authorization's rebind - the cursor still on the closed iteration - and wrong for the
+        # plan sync, whose cursor already names the target: the sync recorded 002 and this check asked for
+        # 003, in one invocation (fix 6, B4F-066, verbatim from the router-skill project). Two callers hand in
+        # "the cursor"; this function cannot tell which; so it no longer guesses. The ONE place that resolves
+        # the target is New-SpecrewPendingCrossingScope, from the crossing's working boundary.
         if ([string]::IsNullOrWhiteSpace($iteration)) { $result.Unverifiable = $true; $result.Reason = 'no-iteration-identity'; return $result }
         $result.Iteration = $iteration
         $base = Join-Path $featurePath ('iterations/' + $iteration)
@@ -2935,9 +2937,23 @@ function New-SpecrewPendingCrossingScope {
     # A positive ABSENT reading refuses (loudly, journaled); UNVERIFIABLE (no feature identity) keeps
     # today's behavior, the fail-open-on-diagnosis direction of method rule 12.
     if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        # ONE DERIVATION OF THE TARGET ITERATION (fix 6, B4F-066). iteration-closeout -> plan opens the NEXT
+        # iteration, and the cursor names the closed one only while the CALLER'S working boundary is still
+        # iteration-closeout (the authorization's rebind; the successor auto-open on a closeout sync). Once
+        # the plan sync has moved the cursor - working boundary plan - the cursor IS the target, and adding
+        # one asks for an iteration nobody is opening. The value the sync recorded is the value the check
+        # reads. The CALLER'S $WorkingBoundary, not the crossing's: -OpenNextCrossingWhenBoundaryAuthorized
+        # rewrites the latter to plan on the successor auto-open, where the cursor is still the closed one
+        # (crossing-mint-gate Case 1 measured that on the first cut of this rule).
+        $owedIteration = $IterationNumber
+        $workingCanonicalForOwed = Normalize-SpecrewCanonicalBoundaryType -Boundary $WorkingBoundary
+        if ([string]$crossing.PendingToMarkerBoundary -eq 'plan' -and [string]$crossing.PendingFromMarkerBoundary -eq 'iteration-closeout' -and
+            $workingCanonicalForOwed -eq 'iteration-closeout' -and $owedIteration -match '^\d+$') {
+            $owedIteration = ('{0:000}' -f ([int]$owedIteration + 1))
+        }
         $owed = Test-SpecrewBoundaryOwedArtifactsOnDisk -ProjectRoot $ProjectRoot `
             -Boundary ([string]$crossing.PendingToMarkerBoundary) -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) `
-            -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+            -FeatureRef $FeatureRef -IterationNumber $owedIteration
         if ([bool]$owed.Absent) {
             $null = Write-SpecrewCrossingMintRefusal -ProjectRoot $ProjectRoot `
                 -FromBoundary ([string]$crossing.PendingFromMarkerBoundary) -ToBoundary ([string]$crossing.PendingToMarkerBoundary) `
