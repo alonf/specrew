@@ -389,6 +389,7 @@
         'scripts/specrew-team.ps1',
         'scripts/specrew-update.ps1',
         'scripts/specrew-version.ps1',
+        'scripts/specrew-reseal.ps1',
         'scripts/specrew-where.ps1',
         'scripts/specrew.ps1',
         'scripts/t060-local-macos-smoke.ps1',

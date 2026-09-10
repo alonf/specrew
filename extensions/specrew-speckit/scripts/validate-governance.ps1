@@ -943,7 +943,12 @@ function Test-ClosedIterationSeals {
         $shown = @($touched | Select-Object -First 4) -join ', '
         if ($touched.Count -gt 4) { $shown = "$shown (+$($touched.Count - 4) more)" }
         $relativeIteration = try { ([IO.Path]::GetRelativePath($ProjectRoot, $iterationDir)).Replace([char]92, [char]47) } catch { $iterationDir }
-        $Errors.Add(("Closed iteration {0} was edited after its closeout seal: {1}. A closed iteration's records are preserved history - the state the human's verdict accepted - and a later edit silently rewrites what was approved. Revert the edit (git checkout -- <file>), or record what needs to change as a drift entry in the ACTIVE iteration's drift-log.md, where new facts belong. Deliberately superseding closed history is the human's act, not a session's: until the governed supersede mechanism ships, their explicit instruction recorded in the active drift log is the path." -f $relativeIteration, $shown)) | Out-Null
+        # THE REFUSAL NAMES ITS REMEDY (B4F-023 put this gate in B4F-017's family: a correct, specific refusal
+        # with nowhere to go). Two remedies, by who made the edit: a session's stray write is reverted; the
+        # product's own authorized write - the closeout verdict's advance, a closeout re-render - is re-sealed
+        # with `specrew reseal`, which prints what drifted before and proves nothing is touched after. The
+        # handover journal's `sealed-iteration-resealed` / `sealed-iteration-write-skipped` rows say which it was.
+        $Errors.Add(("Closed iteration {0} was edited after its closeout seal: {1}. A closed iteration's records are preserved history - the state the human's verdict accepted - and a later edit silently rewrites what was approved. If a session made the edit, revert it (git checkout -- <file>) or record what needs to change as a drift entry in the ACTIVE iteration's drift-log.md, where new facts belong. If the product's own closeout machinery made it (.specrew/runtime/handover-journal.jsonl names the writer), re-seal it: specrew reseal --feature {2} --iteration {3}. Deliberately superseding closed history is the human's act, not a session's: until the governed supersede mechanism ships, their explicit instruction recorded in the active drift log is the path." -f $relativeIteration, $shown, $(if ($relativeIteration -match '^specs/([^/]+)/iterations/([^/]+)$') { $Matches[1] } else { '<feature>' }), $(if ($relativeIteration -match '^specs/([^/]+)/iterations/([^/]+)$') { $Matches[2] } else { '<NNN>' }))) | Out-Null
     }
 }
 

@@ -64,6 +64,7 @@ Usage:
   specrew hooks <command> [args]   Inspect / install / repair Specrew host hooks
   specrew handover <command> [args] Author the cross-session handover body (agent-callable)
   specrew version [options]        Show version and slash-command compatibility state
+  specrew reseal --feature <f> --iteration <NNN>  Re-seal a closed iteration the closeout machinery moved
 
 Commands:
   init     Initialize Specrew (Spec Kit + Squad + governance)
@@ -76,6 +77,7 @@ Commands:
   hooks    Inspect/install/repair host hooks (status, install [--host], remove [--host], doctor)
   handover Author the rolling cross-session handover body (author [--from <file>])
   version  Show the installed Specrew version and slash-command compatibility
+  reseal   Re-seal a closed iteration whose records the product's own closeout machinery moved after the seal
   install-shell-wrappers  Install/refresh the Unix shell wrappers (macOS/Linux)
   help     Show this help message
 
@@ -87,6 +89,7 @@ Examples:
   specrew review --live --baseline-ref origin/main --host claude --approve-round
   specrew where
   specrew status --compact
+  specrew reseal --feature 001-layout-autocorrect --iteration 002
   specrew update
   specrew update --info
   specrew update --all
@@ -374,6 +377,9 @@ function Assert-WhitelistedArguments {
         'version' {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h') -ValueOptions @('--project-path')
         }
+        'reseal' {
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h', '--json') -ValueOptions @('--project-path', '--feature', '--iteration')
+        }
         'team' {
             Assert-TeamArguments -ArgumentList $ArgumentList
         }
@@ -648,6 +654,21 @@ switch ($Command) {
         }
 
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $versionScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'reseal' {
+        # Fix 5 (B4F-063): the trust-hardening gate's named remedy for a closed iteration the product's own
+        # closeout machinery moved after its seal. One iteration, named; precondition and postcondition printed.
+        Assert-WhitelistedArguments -CommandName 'reseal' -ArgumentList $Arguments
+
+        $resealScript = Join-Path $scriptRoot 'specrew-reseal.ps1'
+        if (-not (Test-Path -LiteralPath $resealScript)) {
+            Write-Host "ERROR: specrew-reseal.ps1 not found at $resealScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & $resealScript -CliArgs $Arguments
         exit $LASTEXITCODE
     }
 

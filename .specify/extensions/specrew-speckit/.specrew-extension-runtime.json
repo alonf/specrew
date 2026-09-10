@@ -188,7 +188,7 @@
     },
     {
       "path": "refocus-scopes.json",
-      "sha256": "38f939b638d724948634b69d056f27f03597d4e28de7fbf545b18c72b3db028f"
+      "sha256": "880afde1344fd265fe5c2d291f2ee5a2ba096b95561a88a8d523ec57f1a91171"
     },
     {
       "path": "refocus/before-implement.md",
@@ -252,11 +252,11 @@
     },
     {
       "path": "scripts/confirm-workshop-lens.ps1",
-      "sha256": "484772d01ef929244f33e6037e9b81537aee3f4b3f4b7f6c31201f13a6cc223f"
+      "sha256": "daa65da216cd9f0d9bc9e05a661462f345b2361705bab8ab1223e5cef5bd6639"
     },
     {
       "path": "scripts/conformance-turn-delta.ps1",
-      "sha256": "4632c140ff0125766a890e7a602fdbb6976d0baae65e803e162b57c0592fe364"
+      "sha256": "fbc786561ece0518e8c12b446453af42a42eb19df1b3e9efb5f06d8b5dd36e79"
     },
     {
       "path": "scripts/create-governed-feature.ps1",
@@ -388,11 +388,11 @@
     },
     {
       "path": "scripts/scaffold-reviewer-artifacts.ps1",
-      "sha256": "35eeba762c020043ebe91db9dfeab7b2b848b884f7b27676b2ff7a9095d23dd3"
+      "sha256": "b5878dd773578b4bec358ecb429ae6eaa5e2e3f9a8780a46634a026cc45f6ac2"
     },
     {
       "path": "scripts/shared-governance.ps1",
-      "sha256": "fb7a6413ff00e4953275e65abc548bf3b40fb059f1aeef9bbf3b4ff675e5375a"
+      "sha256": "54cc58ff15c466ebac2a6a02f79f332fb1a578b4a6bef3cd9cde1317e50bed61"
     },
     {
       "path": "scripts/specrew-bootstrap-provider.ps1",
@@ -404,7 +404,7 @@
     },
     {
       "path": "scripts/specrew-conformance-provider.ps1",
-      "sha256": "664165f55f5d08a4ec5113e8045199b848a3e63be9449ba6720bce303021466a"
+      "sha256": "216f311363cfff883b9e48d106a3fe16beb1666776789c46cbeb3eeef769cf8d"
     },
     {
       "path": "scripts/specrew-handover-provider.ps1",
@@ -432,7 +432,7 @@
     },
     {
       "path": "scripts/validate-governance.ps1",
-      "sha256": "891d8ca1342a4218692ecdfa9272ac5091eda0425d66c1f0d1e8fdec9c032dbd"
+      "sha256": "3a579c631077935ba260f8ac291f6dccacebb6ea1f1bc368993732b193f77420"
     },
     {
       "path": "scripts/validate-versions.ps1",
@@ -448,7 +448,7 @@
     },
     {
       "path": "scripts/workshop-authority-store.ps1",
-      "sha256": "280bfd90b15b338fff988924b42893f83d05532a030dad25804988bf6e553df4"
+      "sha256": "cea3397ab93ca3679504df747acc10a0fe3f83be6d628d54ff3645601c40596a"
     },
     {
       "path": "squad-templates/agents/implementer/charter.md",
@@ -532,7 +532,7 @@
     },
     {
       "path": "squad-templates/skills/gate-stop.md",
-      "sha256": "c5de3ea73208850eab85b2d754df927f7ab35e364d11e017719e161a2a1d5cd7"
+      "sha256": "e7950516a8a700cbcbfbf70884de8261cc0f02b596e686f5c3e9717a554c5194"
     },
     {
       "path": "squad-templates/skills/iteration-resume.md",

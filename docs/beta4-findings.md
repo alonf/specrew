@@ -3446,3 +3446,90 @@ against no pending crossing (B4F-043's silence) or against a crossing the writer
 notes**, with the two-file `git checkout` as the recovery; and it is **the first item for beta4.1, with
 (C)**. The writer is B4F-002's chain and B4F-063's second witness; the fix is the writer, and the
 resumed session must orient from the ledger, never from a status a GET verb derived.
+
+## B4F-063, FIXED IN BETA4 - fix 5 reversed on measured cost
+
+**The ruling**: beta4 does not ship with the seal defect. The measured cost that reversed it: after
+closeout, the next session's resume rewrote the sealed iteration (`task-progress.ps1` wrote
+`ready-for-review` at 15:58Z; the capture's advance had written `complete` twenty minutes earlier) and the
+session oriented from its own rewrite and asked for a verdict the ledger shows captured. Three post-seal
+writers, one illness, on the feature named first-run-experience.
+
+**The scope, corrected on what was MEASURED** (router-skill): the seal was written at closeout ARRIVAL
+(`sync-boundary-state.ps1:2110`) and froze `Iteration Status: retro` into iteration 001 while the human's
+verdict then established `complete`; the capture's advance wrote `complete` after the seal; the resume
+writer wrote `ready-for-review` after the seal. A seal that freezes a pre-verdict value is wrong regardless
+of what happens next, so the root is the ordering: **seal at AUTHORIZATION, as the verdict capture's last
+act after its own advance, and never at arrival.** (An earlier relay said the second iteration could not
+start without touching sealed history; that was the crew's inference, not a measurement - the plan sync
+run with `-IterationNumber 002` explicit touched nothing in 001 - and the sentence is struck.)
+
+**The fix, scoped for beta4** (PRED-BETA4-020):
+
+| writer | what it does now |
+| --- | --- |
+| the closeout sync (`sync-boundary-state.ps1`, arrival) | renders the dashboard and the closed-index entry; **seals nothing** |
+| the closeout verdict capture (`Add-SpecrewBoundaryAuthorization`, authorization) | advances state.md and plan.md to `complete` through `Sync-SpecrewCrossingMirrors`, then `Invoke-SpecrewCloseoutSeal` as its LAST act; the seal's `source` = `iteration-closeout-authorization`; journal `iteration-sealed-at-authorization`; if the seal cannot be written the verdict stands and a WARN names `specrew reseal` |
+| `Sync-IterationTaskProgress` (the resume path) | returns the existing records unchanged on a sealed iteration; journal `sealed-iteration-write-skipped` |
+| `Update-IterationStateFromTaskProgress` | returns without writing on a sealed iteration; journal `sealed-iteration-write-skipped` |
+
+Plus `specrew reseal --feature <f> --iteration <NNN>`: precondition printed (drifted / missing / added
+since the seal, who sealed and when), one write through `Write-SpecrewIterationSeal` with `source =
+specrew-reseal`, postcondition printed and enforced (`touched=0` or exit 1); refuses an unsealed iteration
+(closeout seals for the first time) and an open one, naming what it looked for. The trust-hardening
+refusal names it, with the feature and iteration filled in, beside the `git checkout` for a session's stray
+edit.
+
+**Tests** (`tests/integration/sealed-iteration-writers.tests.ps1`, class-guard lane, 33 assertions):
+closeout arrival (no seal) -> the verdict through the real `Add-SpecrewBoundaryAuthorization` -> `complete`
+written, THEN sealed, intact, journaled (Case 1); -> the next iteration's plan sync (the mirrors capped at
+`plan` for 001 and for 002, and the resume's `Get-TaskProgressSummary` with the start-context iteration still
+001, as on the consumer) -> 001's seal intact, 002 at plan (Case 1b - the re-walk's next step); resume on a sealed
+iteration writes nothing, state.md keeps the verdict's `complete`, the skip journaled (Case 2); a
+beta3-shaped drift (sealed at arrival, then state.md/retro.md moved and dashboard.md re-rendered) refused
+naming `specrew reseal`, cleared by it, the gate passing after (Case 3); the verb's refusals (Case 4); the
+order asserted on both producers' text (Case 5). **Mutations, as measured**: `-MutateSealAtArrival` (the
+old ordering: sealed at arrival, nothing at authorization) reds Case 1's seal assertions and Case 1b - the
+verdict's own `complete` flagged as tampering at the next iteration's plan sync; `-MutateNoSkip` (a
+site mutation of task-progress.ps1's two guards) reds Case 1b through the resume path, Case 2's four, and
+one Case 3 precondition string - state.md and tasks-progress.yml rewritten exactly as the consumer saw.
+
+**Field proof**: `specrew reseal` on `C:\Dev\SpecrewProjects\KeyContextAI` `001-layout-autocorrect`
+iteration 002 - the trust gate refused `retro.md, state.md, dashboard.md` before; precondition
+`sealed 2026-08-27 21:17:16 UTC by 'iteration-closeout'; drifted=state.md,retro.md added=dashboard.md`;
+postcondition `touched=0`; the gate reports 0 errors after and the full validator prints no
+`closed-iteration-edited`.
+
+**Residual, named**: a block from one Stop provider (the navigator) does not stop another (conformance)
+from consuming the token and stepping the counter in the same Stop - each provider sees only its own
+block; observed live in this session. `Set-TaskStatus` (a deliberate action, not a resume) still writes a
+sealed iteration's tasks-progress.yml; it is not one of the three witnesses and is left to the gate. And a
+closeout verdict recorded through a path with no iteration identity (`Sync-SpecrewCrossingMirrors` not
+attempted) seals nothing, which is the same as before.
+
+**PRED-BETA4-009, extended by the ruling**: the re-walk closes feature 1's iteration, resumes a fresh
+session, and starts iteration 002 through its plan sync, with ZERO seal flags and ZERO verdict re-asks. No
+walk has ever taken that step, and two of the three writers fire on it.
+
+## B4F-064 - THE CLOSING ENTRY FOR THE REOPEN: a correct refusal with no forward move is a defect of the same weight as a false pass
+
+**The principle, recorded as ruled**: a correct refusal that offers no forward move the user can take
+without understanding the internals is a defect of the same weight as a false pass. Every refusal in this
+arc that cost the maintainer an hour was one of these.
+
+The witnesses, from this record alone: the seal gate that refused every validator run in a project and
+named no remedy because the product treated the condition as impossible (B4F-023, B4F-063 - three of the
+product's own writers produced it); `review-engine-project-runtime-drifted` whose only named remedy
+destroys the tree it runs in (B4F-017, B4F-027, and the approved round in PRED-BETA4-019 that could not be
+spent); the clarify refusal that told the crew to create an iteration only a later boundary produces
+(B4F-039); the workshop refusal that sent three crews to the repair that corrupted their controller
+(B4F-035, B4F-041, B4F-042); the trust gate refusing the verdict's own `complete` (B4F-063's root); and
+the stale-review advisory that could not stop asking (B4F-054). Each was RIGHT about the condition. Each
+left a human with a specific, actionable-sounding message and nowhere to go, and the hour went into
+reading the internals the message assumed.
+
+**What it changes for beta5**: a refusal is not done when its condition is named. It is done when it names
+the one move that clears it in the vocabulary of the surface it appears on - `specrew reseal`, `git
+checkout -- <file>`, "approved for clarify" - or says plainly that no such move exists and whose act it
+is. The class guard for it is the refusal standard (B4F-009 family) applied to every refusal the product
+can print, not to the ones someone remembered.

@@ -149,11 +149,19 @@ $r5b = Invoke-SpecrewGatePreflight -ProjectRoot $f5b.Root -BoundaryType iteratio
 Assert-True ([string](Get-Check -Result $r5b -Name 'pushed-head').status -eq 'not-applicable' -and [string](Get-Check -Result $r5b -Name 'pushed-head').message -match 'local-only') 'local-only keeps its own not-applicable message at a delivery boundary'
 
 # ---------------------------------------------------------------------------------------------------
-Write-Host 'Case 6 (T022): the closeout sync writes the seal AFTER the dashboard it seals'
+Write-Host 'Case 6 (T022, then fix 5): the seal is the LAST write of closeout - after the dashboard, and after the verdict'
+# T022 moved the seal after the dashboard render inside the arrival sync. Fix 5 (B4F-063) found that arrival
+# itself was too early: the verdict's advance writes `complete` AFTER arrival, and an arrival-time seal flagged
+# the verdict's own write, measured on a consumer project. So the arrival sync seals nothing
+# now, and the seal is the closeout authorization's last act, after its advance. Both orderings are asserted:
+# no seal in the sync, and in the authorization the seal follows the mirror advance.
 $syncSource = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1') -Raw -Encoding UTF8
 $dashIdx = $syncSource.IndexOf('Invoke-SpecrewAutoRenderDashboard -ProjectRoot $paths.ProjectRoot -OutputPath $iterationDashboardPath')
-$sealIdx = $syncSource.IndexOf('Write-SpecrewIterationSeal -IterationDirectory $sealIterationDir')
-Assert-True ($dashIdx -gt 0 -and $sealIdx -gt 0 -and $sealIdx -gt $dashIdx) 'the seal write comes after the dashboard render in the closeout path'
+Assert-True ($dashIdx -gt 0 -and $syncSource.IndexOf('Write-SpecrewIterationSeal -IterationDirectory') -lt 0) 'the closeout sync still renders the dashboard and no longer seals at arrival'
+$govSource = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1') -Raw -Encoding UTF8
+$advanceIdx = $govSource.IndexOf('Sync-SpecrewCrossingMirrors -ProjectRoot $ProjectRoot -AuthorizedBoundary $authorizedCanonical')
+$sealIdx = $govSource.IndexOf('Invoke-SpecrewCloseoutSeal -ProjectRoot $ProjectRoot -IterationDirectory')
+Assert-True ($advanceIdx -gt 0 -and $sealIdx -gt $advanceIdx) 'the seal write comes after the verdict advance in the closeout authorization - the last write of closeout'
 
 Write-Host 'Case 6b: and the seal it writes actually matches the rendered dashboard on disk'
 $f6 = New-PostureFixture -Governance $localOnly

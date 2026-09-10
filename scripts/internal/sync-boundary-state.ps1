@@ -2107,22 +2107,15 @@ function Invoke-SpecrewBoundaryStateSync {
             Write-Warning ("Boundary sync 'iteration-closeout' could not auto-render iteration dashboard: {0}" -f $_.Exception.Message)
         }
 
-        # FR-031 (iteration 002, T022): the seal is the LAST write of this sync - after the dashboard render.
-        # It used to run BEFORE that render, against its own "written LAST" contract, and dashboard.md carries
-        # a `Captured At` timestamp, so the re-render always changed bytes and the seal never matched: the
-        # validator refused the closeout it had just produced (`closed-iteration-edited: dashboard.md`,
-        # DRIFT-199-I002-003), and the full-repo run printed that one finding once per validated iteration.
-        # Guaranteed, not conditional - every project's first closeout hit it. W77's class: a gate refusing a
-        # delta its own machinery created.
-        try {
-            $sealIterationDir = Join-Path (Join-Path (Join-Path $paths.ProjectRoot 'specs') $effectiveFeatureRef) (Join-Path 'iterations' $effectiveIterationNumber)
-            if ((Get-Command -Name 'Write-SpecrewIterationSeal' -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $sealIterationDir -PathType Container)) {
-                $null = Write-SpecrewIterationSeal -IterationDirectory $sealIterationDir -Feature $effectiveFeatureRef -Iteration $effectiveIterationNumber
-            }
-        }
-        catch {
-            Write-Warning ("Boundary sync 'iteration-closeout' could not seal the iteration records: {0}" -f $_.Exception.Message)
-        }
+        # THE SEAL IS NOT WRITTEN HERE ANY MORE (fix 5, B4F-063). This sync runs at the boundary's ARRIVAL - the
+        # crew asking for the closeout verdict - and a seal written now froze `Iteration Status: retro` into
+        # the iteration; the human's verdict then established `complete`, the capture's advance wrote it, and
+        # the arrival-time seal flagged the verdict's own write as tampering, and a later session's resume
+        # tripped it again - both measured on a consumer project. FR-031/T022
+        # had already moved the seal after the dashboard render for the same class of reason - the seal must
+        # be the LAST write - and the last write of closeout is the verdict's advance, which lives in
+        # Add-SpecrewBoundaryAuthorization. The seal is written there, as that capture's last act, and never
+        # at arrival. The dashboard render above stays where it is: it precedes the verdict.
     }
 
     if ($BoundaryType -eq 'feature-closeout') {

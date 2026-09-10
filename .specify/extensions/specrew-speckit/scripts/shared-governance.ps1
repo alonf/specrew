@@ -3872,6 +3872,10 @@ function Sync-SpecrewCrossingMirrors {
     }
     $result.Wrote = $wrote.ToArray()
     $result.Left = $left.ToArray()
+    # The iteration directory these copies live in, returned so the closeout authorization can seal it as
+    # its last act - AFTER this advance, never before it (B4F-063: sealing at arrival froze `retro` in and
+    # flagged the verdict's own `complete` as tampering).
+    $result | Add-Member -NotePropertyName 'IterationDir' -NotePropertyValue ([string]$paths.IterationDir) -Force
     if ($wrote.Count -gt 0) {
         try {
             $journal = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/handover-journal.jsonl'
@@ -4209,6 +4213,20 @@ function Add-SpecrewBoundaryAuthorization {
     try {
         $mirrorResult = Sync-SpecrewCrossingMirrors -ProjectRoot $ProjectRoot -AuthorizedBoundary $authorizedCanonical `
             -FeatureRef $rebindFeature -IterationNumber $rebindIteration -Reason 'authorization' -NowUtc $effectiveRecordedAt
+        # THE SEAL IS THIS CAPTURE'S LAST ACT at iteration-closeout (fix 5, B4F-063). The advance above has
+        # written `complete` into the copies; what is on disk now is what the human's verdict accepted, and
+        # that is what the seal pins. Written here, after the mirrors, and never at the boundary's arrival.
+        if ($authorizedCanonical -ceq 'iteration-closeout' -and $null -ne $mirrorResult -and [bool]$mirrorResult.Attempted -and
+            $mirrorResult.PSObject.Properties['IterationDir'] -and -not [string]::IsNullOrWhiteSpace([string]$mirrorResult.IterationDir) -and
+            (Get-Command -Name 'Invoke-SpecrewCloseoutSeal' -ErrorAction SilentlyContinue)) {
+            try {
+                $sealPath = Invoke-SpecrewCloseoutSeal -ProjectRoot $ProjectRoot -IterationDirectory ([string]$mirrorResult.IterationDir) -Feature $rebindFeature -Iteration $rebindIteration
+                if (-not [string]::IsNullOrWhiteSpace([string]$sealPath)) { $mirrorResult | Add-Member -NotePropertyName 'SealPath' -NotePropertyValue ([string]$sealPath) -Force }
+            }
+            catch {
+                try { [Console]::Error.WriteLine(('[specrew-governance] WARN ITERATION_NOT_SEALED the closeout verdict for {0}/{1} is recorded but the iteration could not be sealed: {2}. Run: specrew reseal --feature {0} --iteration {1}' -f $rebindFeature, $rebindIteration, $_.Exception.Message)) } catch { $null = $_ }
+            }
+        }
     }
     catch {
         try { [Console]::Error.WriteLine(('[specrew-governance] WARN CROSSING_MIRRORS_NOT_WRITTEN the verdict for {0} is recorded but its copies in state.md/plan.md could not be written: {1}. Re-run the boundary sync to re-mirror.' -f $authorizedCanonical, $_.Exception.Message)) } catch { $null = $_ }
@@ -7802,10 +7820,19 @@ function Get-SpecrewIterationSealManifest {
 function Write-SpecrewIterationSeal {
     # Written LAST at iteration-closeout, after every record has landed, so the seal describes what is
     # actually on disk - the closed truth the human's verdict accepted.
+    #
+    # THE RULE AROUND THE SEAL (fix 5, reversed onto beta4 on measured cost - B4F-063, three post-seal
+    # writers, one illness): the seal is written at AUTHORIZATION, as the closeout verdict capture's last act
+    # after its own advance, and never at arrival; an UNAUTHORIZED writer skips sealed iterations and
+    # journals the skip; a human re-seals with `specrew reseal`. Sealing at arrival froze the iteration one
+    # boundary early - `retro` sealed in, the verdict's `complete` then flagged as tampering, and the next
+    # session's resume flagged again. The seal records WHO sealed it
+    # (`source`), so the capture's seal is distinguishable from a human's re-seal.
     param(
         [Parameter(Mandatory)][string]$IterationDirectory,
         [AllowNull()][string]$Feature,
-        [AllowNull()][string]$Iteration
+        [AllowNull()][string]$Iteration,
+        [AllowNull()][string]$Source = 'iteration-closeout'
     )
     if (-not (Test-Path -LiteralPath $IterationDirectory -PathType Container)) { return $null }
     $manifest = @(Get-SpecrewIterationSealManifest -IterationDirectory $IterationDirectory)
@@ -7815,10 +7842,62 @@ function Write-SpecrewIterationSeal {
         iteration = [string]$Iteration
         sealed_at = ([DateTimeOffset]::UtcNow.ToString('o'))
         sealed_files = @($manifest)
-        source = 'iteration-closeout'
+        source = $(if ([string]::IsNullOrWhiteSpace($Source)) { 'iteration-closeout' } else { $Source })
     } | ConvertTo-Json -Depth 12
     $sealPath = Get-SpecrewIterationSealPath -IterationDirectory $IterationDirectory
     [IO.File]::WriteAllText($sealPath, ($payload + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
+    return $sealPath
+}
+
+function Test-SpecrewIterationSealed {
+    # Whether an iteration directory carries a seal at all. This is the question every writer asks before
+    # touching records: sealed means the human's verdict accepted what is there, and the writer is either
+    # authorized to move it (and re-seals) or is not (and skips).
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$IterationDirectory)
+    if ([string]::IsNullOrWhiteSpace($IterationDirectory)) { return $false }
+    return (Test-Path -LiteralPath (Get-SpecrewIterationSealPath -IterationDirectory $IterationDirectory) -PathType Leaf)
+}
+
+function Add-SpecrewSealJournalEvent {
+    # One row in the handover journal for every seal event a writer produces - a re-seal by an authorized
+    # writer, or a skip by an unauthorized one - so "who moved a sealed iteration, and who declined to" is
+    # a fact on disk rather than a reconstruction from timestamps (which is how B4F-063's three witnesses
+    # had to be told apart).
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$Event,
+        [Parameter(Mandatory)][string]$Writer,
+        [AllowNull()][string]$IterationDirectory,
+        [AllowNull()][string]$Detail
+    )
+    try {
+        $journal = Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew/runtime/handover-journal.jsonl'
+        $dir = Split-Path -Parent $journal
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $relative = $IterationDirectory
+        try { $relative = ([IO.Path]::GetRelativePath((Resolve-ProjectPath -Path $ProjectRoot), $IterationDirectory)).Replace([char]92, [char]47) } catch { $null = $_ }
+        (([pscustomobject]@{ event = $Event; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); writer = $Writer; iteration_directory = [string]$relative; detail = [string]$Detail } | ConvertTo-Json -Compress)) |
+            Add-Content -LiteralPath $journal -Encoding UTF8
+    }
+    catch { $null = $_ }
+}
+
+function Invoke-SpecrewCloseoutSeal {
+    # THE SEAL, AT AUTHORIZATION - the closeout verdict capture's LAST act, after its own advance has
+    # written `complete` into state.md and plan.md. Written here and nowhere else in the lifecycle: the
+    # arrival-time seal in the boundary sync is gone. What it seals is what the human's verdict accepted,
+    # as it stands the moment the verdict is recorded; nothing the lifecycle itself does afterwards touches
+    # it, and the next iteration's plan sync finds it intact.
+    param(
+        [Parameter(Mandatory)][string]$ProjectRoot,
+        [Parameter(Mandatory)][string]$IterationDirectory,
+        [AllowNull()][string]$Feature,
+        [AllowNull()][string]$Iteration
+    )
+    if (-not (Test-Path -LiteralPath $IterationDirectory -PathType Container)) { return $null }
+    $sealPath = Write-SpecrewIterationSeal -IterationDirectory $IterationDirectory -Feature $Feature -Iteration $Iteration -Source 'iteration-closeout-authorization'
+    Add-SpecrewSealJournalEvent -ProjectRoot $ProjectRoot -Event 'iteration-sealed-at-authorization' -Writer 'boundary-authorization:iteration-closeout' -IterationDirectory $IterationDirectory -Detail 'sealed as the closeout verdict capture''s last act, after its advance'
     return $sealPath
 }
 

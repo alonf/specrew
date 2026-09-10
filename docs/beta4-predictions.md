@@ -959,3 +959,67 @@ returns. The resume path is `coordinator-resume.ps1:165 -> Get-TaskProgressSumma
 is read from the existing files instead of synced - a resume orients from the ledger, it does not write
 it. If a project has no `closed-iterations.yml` entry for a sealed iteration, the seal file itself is the
 closed marker for (4).
+
+**PRED-BETA4-020 VERDICT: all five parts held, with one shape the test taught.** (1) The advance moves
+state.md and plan.md to `complete` and the seal is intact after, `source =
+authorized-reseal:crossing-mirrors:iteration-closeout`, journaled; `-MutateNoReseal` reds exactly Case 1's
+three assertions. (2) `Get-TaskProgressSummary` on a sealed iteration returns a summary, changes no record
+(SHA-256 of every file identical), state.md still `retro`, the skip journaled naming
+`task-progress:Sync-IterationTaskProgress`; `-MutateNoSkip` - a SITE mutation, task-progress.ps1's two
+guards replaced by `if ($false)` in a temp copy - reds exactly Case 2's four, with state.md and
+tasks-progress.yml rewritten, which is the consumer's exact shape. The first draft of that mutation
+redefined the shared `Test-SpecrewIterationSealed` helper instead, which also disabled the authorized
+re-seal and redded Case 1 - a mutation that hits two sites discriminates nothing; that is why it is a site
+mutation now. (3) The KeyContextAI-shaped fixture is refused naming `specrew reseal --feature 001-fixture
+--iteration 001`, the verb prints `drifted=state.md,retro.md ... added=dashboard.md` then `touched=0`, the
+gate passes after. (4) Both refusals name what they looked for; a call without `--iteration` names the
+parameter. (5) Field proof on KeyContextAI, verbatim: gate errors 1 before (`retro.md, state.md,
+dashboard.md`); `precondition ... sealed 2026-08-27 21:17:16 UTC by 'iteration-closeout'; drifted=state.md,retro.md
+missing= added=dashboard.md`; `postcondition ... touched=0`; gate errors 0 after; the full validator prints
+no `closed-iteration-edited` (`iterations_validated=2`). The seal's `sealed_at` is read through the
+timestamp helper - the fourth site of PRED-BETA4-014's pattern, caught in the verb's first output, which
+printed the coerced [datetime] in the machine's culture.
+
+### PRED-BETA4-015 VERDICT on run `34502784677` (`16febe88`): RED - four files, all four branch-introduced, none runner-bound
+
+`prepublish-validation` success; `full-test-census` failure (408 files, failed=4, `caller_contaminated=False`);
+`publish-module` skipped. Part 1 falsified; part 3's runner-bound clause is not reached - no red was on an
+unchanged file. Read from the run's own diagnostics artifact, each red classified:
+
+| file | cause, from the record | class |
+| --- | --- | --- |
+| `every-suite-is-named-by-a-lane` | `reviewed-state-digest-cost.Tests.ps1` was committed with no lane naming it | mine; named in the class-guard lane's Pester list |
+| `validate-governance-changed-only` (3 cases) | the fixture's seed commit fails silently and every scoped case reads `base-undetectable`; locally the cause is `.specrew/runtime` copied under `.scratch/` with paths past 260 chars (`git add -A` exit 128, "Filename too long"). With the runtime dir excluded and the seed step proving its commit, the same three cases STILL red - now on the deployed-extension integrity check: the fixture copies this repo's `.specify/extensions/specrew-speckit`, whose marker records hashes for 164 managed files, and nine deployed copies had been synced from source since `1c519b22` without a re-stamp (`refocus-scopes.json`, `confirm-workshop-lens`, `conformance-turn-delta`, `scaffold-reviewer-artifacts`, `shared-governance`, `specrew-conformance-provider`, `validate-governance`, `workshop-authority-store`, `gate-stop.md`). On the runner the committed tree carries the same inconsistency, which is why it redded there too. | mine, twice: a fixture that fails silently, and a marker drift committed nine times |
+| `turn-end-update-transition` (7) | the material Stop did not block on the runner; green here in every run, including under the runner's CI environment variables; the suite printed nothing that could say why | mine; unexplained - diagnostics added (the provider's own output, the baseline files, `git status`) so the next run names the cause |
+| `turn-end-session-identity` Case 3b (2) | the evidence-gate Stop did not block on the runner; same shape, same disposition | mine; unexplained - diagnostics added |
+
+**Dispositions**: the marker is re-stamped, bounded - 164 entries, 9 hashes changed, nothing else in the
+diff, `drifted=0 missing=0`, `specrew_version 0.40.0` intact - the same bounded re-stamp as `1c519b22`, and
+the lesson it teaches is recorded: **every sync of a deployed copy must re-stamp**, and a class guard that
+checks it is beta5's (the census caught it four commits late). The fixture is repaired. The two turn-end
+reds are the honest gap: they were not reproducible here, so the next census is the instrument, and they
+carry their diagnosis into it.
+
+**No re-dispatch of `16febe88`**: the tree moves anyway - fix 5 reversed (PRED-BETA4-020) lands before the
+next dispatch - so the next census is a NEW prediction on a new SHA, not the sanctioned re-run of this one.
+
+### PRED-BETA4-020, SCOPE CORRECTED MID-BUILD, and the verdict re-run against the corrected scope
+
+**The correction, on what was measured**: the seal at closeout ARRIVAL froze `retro` in; the verdict's
+advance wrote `complete` after it; the resume writer wrote `ready-for-review` after it. A seal that freezes
+a pre-verdict value is wrong regardless of what follows (the relayed "second iteration cannot start" was an
+inference, struck: a plan sync with `-IterationNumber 002` explicit touched nothing in 001). So the rule is
+not "authorized writers re-seal" - it is **seal at authorization, as the verdict capture's last act, never
+at arrival**; the resume writers skip; `specrew reseal` for the rest. The `Invoke-SpecrewAuthorizedReseal`
+half of the first build is gone; `Invoke-SpecrewCloseoutSeal` runs after the advance in
+`Add-SpecrewBoundaryAuthorization`, and the arrival sync seals nothing.
+
+**Added prediction (the re-walk's next step)**: closeout arrival -> verdict -> plan sync for the next iteration
+-> 001's seal intact; red under seal-at-arrival. **Held**: Case 1b passes; under `-MutateSealAtArrival` it
+reds with `touched: plan.md,state.md` - the verdict's own write - which is the consumer's flag, and under
+`-MutateNoSkip` it reds with `touched: state.md,tasks-progress.yml` - the resume writer through the plan
+sync's `Get-TaskProgressSummary` with the start-context iteration still 001 - which is the consumer's second
+witness. Parts 1-5 as previously recorded hold under the corrected scope with Case 1 driven through the real
+`Add-SpecrewBoundaryAuthorization` (33 assertions green). `delivery-durability-seal` Case 6, which pinned
+T022's arrival-side order, now pins the corrected one: no seal in the sync, the seal after the advance in
+the authorization.

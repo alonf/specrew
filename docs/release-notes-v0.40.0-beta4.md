@@ -20,28 +20,45 @@ The resolve now selects the feature whose intake controller is actually open, an
 `workshop-resolve-ambiguous` when two workshops are open on different features rather than guessing which
 one a human is answering.
 
-## Known issue: resuming a session can rewrite a closed iteration's state and ask for a verdict you already gave
+## Fixed: a session resume could rewrite a closed iteration's records and ask for a verdict you already gave
 
-**What happens.** After an iteration is closed out and sealed, a session that RESUMES in the project can
-rewrite that iteration's `state.md` and `tasks-progress.yml` - the resume path derives a task-progress
-summary and writes it, setting the iteration status to a value that is neither canonical nor right for the
-stage (`ready-for-review` on an iteration at retro). Two things follow: the validator correctly flags the
-closed iteration as edited, and - worse - **the resumed session orients from its own rewrite and asks you
-for the iteration-closeout verdict a second time**, although the ledger already holds it. Confirmed end to
-end on a consumer project on Copilot CLI; the same writer is behind the validator red first seen on the
-self-host repo.
+**What happened.** After an iteration was closed out and sealed, a session that RESUMED in the project
+could rewrite that iteration's `state.md` and `tasks-progress.yml` - the resume path derives a task-progress
+summary and wrote it, setting the iteration status to a value that is neither canonical nor right for the
+stage (`ready-for-review` on an iteration at retro). The validator then flagged the closed iteration as
+edited, and - worse - **the resumed session oriented from its own rewrite and asked you for the
+iteration-closeout verdict a second time**, although the ledger already held it. Confirmed end to end on
+a consumer project on Copilot CLI. Three of Specrew's own writers could move a sealed iteration: the
+closeout verdict's advance, a closeout re-render, and the resume's task-progress sync.
 
-**What to do.** Do not type the verdict again. Restore the two files to their sealed content and continue:
+**The root.** The seal was written when the closeout boundary was *reached* - the crew asking for the
+verdict - which froze `Iteration Status: retro` into the iteration. Your verdict then established
+`complete`, the capture wrote it, and the arrival-time seal flagged the verdict's own write as tampering.
+Measured on a consumer project: the capture's advance and a later session's resume both wrote into the
+sealed iteration, and the validator flagged the verdict's own value as an edit.
+
+**What changed.** The seal is written at *authorization* - as the closeout verdict capture's last act,
+after its own advance - and never at arrival; what it pins is exactly what your verdict accepted. The
+resume's task-progress writers skip a sealed iteration and journal the skip
+(`.specrew/runtime/handover-journal.jsonl`, `sealed-iteration-write-skipped`), so a resume orients from the
+records the verdict accepted, never from a status it derived itself.
+
+**If you closed an iteration on beta3, it is already drifted** - every consumer that closed an iteration
+before this rule carries a seal older than its records, and the validator refuses it. The refusal now
+names the remedy:
 
 ```text
-git checkout -- specs/<feature>/iterations/<NNN>/state.md specs/<feature>/iterations/<NNN>/tasks-progress.yml
+specrew reseal --feature <feature> --iteration <NNN>
 ```
 
-Your earlier verdict stands; nothing in the ledger moved. If the session's opening packet asks for a
-verdict at a boundary you know you crossed, check the ledger before answering - the packet is describing
-the rewrite, not the project.
+It prints what drifted since the seal (the precondition), re-seals over what is on disk, and proves
+nothing is touched afterwards (the postcondition). Read the journal first if you want to know which
+writer moved the records; use `git checkout -- <file>` instead when a session's stray edit is what moved
+them. Field-proved on a consumer project: `drifted=state.md,retro.md added=dashboard.md` before,
+`touched=0` after, and the validator's trust gate passes.
 
-**Status.** Known in this release; the writer is the first item for beta4.1.
+**Who sealed what** is in the seal itself (`source`): `iteration-closeout-authorization` for the verdict's
+own seal, `specrew-reseal` for yours, and `iteration-closeout` for a seal written by beta3 at arrival.
 
 ## Known issue: lens confirmations bind the next typed reply regardless of its content
 

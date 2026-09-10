@@ -511,6 +511,19 @@ function Update-IterationStateFromTaskProgress {
     if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
         return $null
     }
+    # AN UNAUTHORIZED WRITER SKIPS A SEALED ITERATION AND JOURNALS THE SKIP (fix 5, B4F-063). This derives
+    # an iteration status from task progress - a value the validator's own enum does not even carry
+    # (`ready-for-review`) - and a session RESUME reached it through a GET verb, twenty minutes after the
+    # closeout verdict had sealed the iteration. The resumed session then oriented from its own rewrite
+    # and asked the human for a verdict the ledger already held (PRED-BETA4-007, confirmed on a consumer).
+    # Task progress is evidence, not authority; a sealed iteration's records are the verdict's, and this
+    # writer is not the verdict.
+    if ((Get-Command -Name 'Test-SpecrewIterationSealed' -ErrorAction SilentlyContinue) -and (Test-SpecrewIterationSealed -IterationDirectory (Split-Path -Parent $statePath))) {
+        if (Get-Command -Name 'Add-SpecrewSealJournalEvent' -ErrorAction SilentlyContinue) {
+            Add-SpecrewSealJournalEvent -ProjectRoot $ProjectRoot -Event 'sealed-iteration-write-skipped' -Writer 'task-progress:Update-IterationStateFromTaskProgress' -IterationDirectory (Split-Path -Parent $statePath) -Detail 'state.md is sealed; the derived iteration status was not written'
+        }
+        return $null
+    }
 
     $completeTasks = [System.Collections.Generic.List[object]]::new()
     $inProgressTasks = [System.Collections.Generic.List[object]]::new()
@@ -641,9 +654,27 @@ function Sync-IterationTaskProgress {
     )
 
     $effectiveFeatureRef = Resolve-TaskProgressFeatureRef -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -ResolvedFeaturePath $ResolvedFeaturePath
-    $catalog = @(Get-IterationTaskCatalog -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath)
     $path = Get-IterationTaskProgressPath -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
     $existing = Get-TaskProgressState -Path $path
+    # AN UNAUTHORIZED WRITER SKIPS A SEALED ITERATION AND JOURNALS THE SKIP (fix 5, B4F-063). The sync is
+    # what a session resume reaches through Get-TaskProgressSummary - a GET verb - and it rewrote a sealed
+    # iteration's tasks-progress.yml and, through the state writer below, its state.md. On a sealed
+    # iteration the existing records ARE the summary: they are returned as they stand, nothing is derived
+    # and nothing is written. The skip is journaled so the next reader can tell "declined to write" from
+    # "never ran".
+    if ((Get-Command -Name 'Test-SpecrewIterationSealed' -ErrorAction SilentlyContinue) -and (Test-SpecrewIterationSealed -IterationDirectory (Split-Path -Parent $path))) {
+        if (Get-Command -Name 'Add-SpecrewSealJournalEvent' -ErrorAction SilentlyContinue) {
+            Add-SpecrewSealJournalEvent -ProjectRoot $ProjectRoot -Event 'sealed-iteration-write-skipped' -Writer 'task-progress:Sync-IterationTaskProgress' -IterationDirectory (Split-Path -Parent $path) -Detail 'tasks-progress.yml and state.md are sealed; the existing records were returned unchanged'
+        }
+        return [pscustomobject]@{
+            Path       = $path
+            FeatureRef = $effectiveFeatureRef
+            Iteration  = $IterationNumber
+            Tasks      = $existing.Tasks
+            Sealed     = $true
+        }
+    }
+    $catalog = @(Get-IterationTaskCatalog -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath)
     $derivedHints = Get-TaskProgressDerivedStatusHints -ProjectRoot $ProjectRoot -FeatureRef $effectiveFeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
     foreach ($divergence in @($derivedHints.Divergences)) {
         Write-Warning ("[task-progress-reconciliation] {0}" -f $divergence)
