@@ -1048,3 +1048,47 @@ digest suite named by a lane, and diagnostics in the two turn-end suites.
 **Fixed in advance**: any red on a file unchanged since `d4a89ab7` with the runner-bound timing signature
 gets the single sanctioned re-dispatch with its meaning fixed; a red on any changed file is fixed first.
 The tag SHA is the SHA the green dispatch ran on.
+
+## PRED-BETA4-022 - a verdict is one line: the capture predicate refuses a message that continues. Stated before the code.
+
+**Read from this repository's own record first**: `.specrew/review/round-approval/pending-round-approval.json`
+is a live (`spent_at: null`) review-round approval whose `verdict_text` is 136 lines - a Copilot shell
+transcript from the router-skill project, pasted into the reviewer session here with the typed phrase
+still at its top. `captures.jsonl` holds it twice: at 18:28:54Z from `UserPromptSubmit` with `IΓ\xc7\xd6ll`
+(the UTF-8 bytes of a right single quote read as a code page) and at 18:31:32Z from `Stop` with `I’ll`;
+different `response_hash`, so the cross-channel dedupe that exists for exactly this did not fire. The
+maintainer's approval for another project, minted in this one. **It is not spent** - the statement in
+this session that the approval had been spent was wrong; the approved round refused on B4F-027's marker
+before spending anything, and the pending fact is untouched.
+
+**The mechanism**: W56 (DRIFT-199-I001-125) made every authority recognizer decide on the phrase's own
+LINE so that "approved for review round" followed by an instruction block would not be refused; the
+boundary-verdict recognizer's leading-clause doctrine is the same shape. Both therefore accept a message
+whose first line is the phrase and whose remaining 135 lines are anything at all.
+
+**The rule, ruled**: a verdict is the phrase plus at most the documented same-line instruction form; a
+message that continues into multi-line content is REFUSED, not minted - and the refusal is disclosed, so
+the human retypes one line rather than wondering why nothing happened.
+
+### THE PREDICTION, five parts
+
+1. `Test-SpecrewReviewRoundApprovalPhrase` on the recorded 136-line text returns not-matched with
+   `Reason = multi-line-refused`; on `approved for review round` alone, and on `approved for review round -
+   run it against 002` (same line), matched as before. The three sibling typed-authority recognizers that
+   share the approval-line helper (pause decision, withdrawal, allowance reset) refuse the same way.
+2. `Test-SpecrewHumanVerdictToken` on `approved for plan` followed by a line break and any non-empty
+   content returns `Action = refused-multi-line`, not an approval; the same phrase with a same-line
+   instruction (`approved for plan - keep the API`) is still an approval.
+3. The round-approval writer, handed a multi-line message, writes NOTHING - no capture row, no pending
+   fact - and appends `authority-refused-multi-line` to the handover journal naming the phrase kind and
+   the line count; the boundary capture discloses the same way through the existing not-captured
+   disclosure, whose message says to retype the phrase on one line.
+4. The recorded specimen, replayed through the writer in a scratch project, is refused - the cross-project
+   verdict cannot be minted again.
+5. Mutation: the multi-line guard removed from the round-approval recognizer - the specimen mints, the
+   suite's Case 1 goes red and nothing else does.
+
+**Fixed in advance**: the pending fact in THIS repository is left as it is - unspent, recorded - because
+the product's only void path is the human's own typed withdrawal (`Write-SpecrewApprovalWithdrawal`), and
+the maintainer's ruling is never to hand-edit it. The line the product recognizes as a withdrawal is
+reported to the maintainer.
