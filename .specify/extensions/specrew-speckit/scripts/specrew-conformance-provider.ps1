@@ -907,7 +907,7 @@ try {
             else {
                 'CURRENTLY DIRTY IN THE WORKTREE ({0} user file(s)); exact per-turn attribution is unavailable.' -f [int]$sig.current_dirty_user_file_count
             }
-            Write-Output ('[specrew-conformance] {0} When you finish, END your final message with the five-heading non-boundary context packet - ## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You, every artifact reference a bare file:/// URL. Rendering it IN this response is the contract; a packet-less stop after material work gets force-continued into a duplicate turn.' -f $activityLabel)
+            Write-Output ("[specrew-conformance] {0} When you finish, run the turn-end script as your LAST action and output what it returns: pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what was done>'. Running it before you stop is the contract; a stop after material work with no declaration gets force-continued." -f $activityLabel)
         }
         catch { $null = $_ }
         return
@@ -1746,9 +1746,16 @@ try {
                     $blockReasonOwnerScoped = $true
                 }
                 else {
-                [void]$sb.AppendLine('Specrew: boundary state is pending, but your last message did not expose the verdict marker for the pending boundary crossing. Render the full six-section re-entry packet NOW as your message, then stop again:')
-                [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## Discussion Prompts / ## What I Need From You')
-                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
+                # THE BOUNDARY DIRECTIVE NAMES THE SCRIPT, NOT A SHAPE. The independent review found this producer
+                # still teaching prose after fix 2: it asked for six headings and a marker, the hook credited only
+                # a declaration, and an agent that followed the instruction exactly was blocked again with the
+                # demanded packet on screen - a loop built from two contracts disagreeing. The packet and the
+                # marker are still what verdict capture reads, so they still have to land in the message; the
+                # change is WHO renders them. declare-turn-end -Kind boundary renders both from
+                # pending-verdict-stop.md, and the hook then credits the record it wrote.
+                [void]$sb.AppendLine('Specrew: boundary state is pending and no turn-end declaration for this turn recorded the pending crossing. Run the turn-end script NOW as your last action and output what it returns, verbatim - it renders the six-section packet and the exact verdict marker from the pending-stop artifact:')
+                [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind boundary -Summary '<what this turn did>'")
+                [void]$sb.AppendLine('Do not compose the packet or the marker yourself; the script takes both from .specrew/runtime/pending-verdict-stop.md, never from the phase you intend to enter next.')
                 $fromBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingFromMarkerBoundary } else { $null }
                 $toBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingToMarkerBoundary } else { [string]$pending.WorkingBoundary }
                 [void]$sb.AppendLine('')
@@ -1966,7 +1973,11 @@ try {
                     [void]$sb.AppendLine('Nothing is wrong with your work. Run the turn-end script again as your last action and this turn will be recorded against this session:')
                 }
                 else {
-                    [void]$sb.AppendLine('Specrew: this Stop followed material work and no turn-end declaration was recorded for this turn. Run the turn-end script NOW as your last action, then stop again:')
+                    # It says CHANGES WERE OBSERVED, not that this session made them: with attribution retired, the hook
+                    # cannot know whose edits these are, and a read-only session sharing the project would be told it
+                    # had done work it never did. What it can honestly say is that no declaration was recorded, and
+                    # that a session which changed nothing declares -Kind conversational and is done.
+                    [void]$sb.AppendLine('Specrew: changes were observed in the worktree since this turn began and no turn-end declaration was recorded for it. Run the turn-end script NOW as your last action, then stop again:')
                 }
                 [void]$sb.AppendLine("  pwsh -File .specify/extensions/specrew-speckit/scripts/declare-turn-end.ps1 -Kind <boundary|in-flight|conversational> -Summary '<what this turn did>'")
                 [void]$sb.AppendLine("Pick the kind by what this turn actually was. -Kind boundary when the human's judgment decides what happens next, adding -Owed '<artifact>' if the stage owes something it has not produced. -Kind in-flight with -Pending '<the work>' while background work is still running. -Kind conversational when nothing material changed.")
@@ -2071,7 +2082,7 @@ try {
                 $corrections.Add('[specrew-conformance] WORKSHOP RECORD still invalid or incomplete - repair the named binding or implementation-rules.yml requirement before moving to another lens. Do not render the generic five-part packet.') | Out-Null
             }
             else {
-                $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
+                $corrections.Add("[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong - run declare-turn-end.ps1 -Kind boundary and output what it returns; it renders the packet and the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.") | Out-Null
             }
         }
         if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }

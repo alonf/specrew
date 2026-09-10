@@ -509,7 +509,8 @@ try {
     $r1 = Invoke-Conformance -Proj $p1 -TranscriptPath $t1
     if ($r1.Code -ne 0) { Fail "Case 1: provider must exit 0 (got $($r1.Code)); out: $($r1.Out)" }
     if (-not $r1.Blocked) { Fail "Case 1: a boundary stop (working 'plan' > authorized 'clarify') with no packet MUST emit the block sentinel. Out: $($r1.Out)" }
-    if ($r1.Out -notmatch 'What I Just Did') { Fail "Case 1: the block directive must instruct the six-section packet. Out: $($r1.Out)" }
+    # The directive names the COMMAND now, not the headings - the script renders the packet and the marker.
+    if ($r1.Out -notmatch 'declare-turn-end' + [char]92 + '.ps1 -Kind boundary') { Fail "Case 1: the boundary block directive must name the turn-end command with -Kind boundary. Out: $($r1.Out)" }
     if ($r1.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 1: the block directive must carry the contiguous clarify -> plan marker. Out: $($r1.Out)" }
     Write-Pass "Case 1: a boundary silent-advance emits the block sentinel + the six-section directive + the contiguous clarify -> plan marker (#2884 / SC-008 #2)"
 
@@ -545,6 +546,29 @@ try {
     $r2b = Invoke-Conformance -Proj $p2b -TranscriptPath $t2b
     if ($r2b.Blocked) { Fail "Case 2b: a DECLARED boundary matching the pending crossing MUST suppress, whatever the message says. Out: $($r2b.Out)" }
     Write-Pass "Case 2b (positive control): a declared boundary suppresses the block, and the record is at the path the shared store resolves"
+
+    # ---- Case 2c (the BOUNDARY update transition): a project on the OLD habit at a pending crossing.
+    #
+    # The material transition is proved in turn-end-update-transition.tests.ps1. The independent review found
+    # the BOUNDARY directive still teaching prose after fix 2 - six headings plus a marker - while the hook
+    # credited only a declaration. An agent following that directive exactly rendered the packet, stopped, and
+    # was blocked again with the demanded packet on screen: a loop built from two contracts disagreeing.
+    # This case is that sequence, and "exactly one refusal" is the assertion.
+    $p2c = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-BoundaryStageEvidence -Proj $p2c
+    $t2c = New-Transcript -Proj $p2c -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $realPacket })
+    $r2c1 = Invoke-Conformance -Proj $p2c -TranscriptPath $t2c
+    if (-not $r2c1.Blocked) { Fail "Case 2c: the old-habit prose packet at a pending crossing MUST be refused. Out: $($r2c1.Out)" }
+    if ($r2c1.Out -notmatch 'declare-turn-end\.ps1 -Kind boundary') { Fail "Case 2c: the boundary refusal must name the command WITH -Kind boundary, not a set of headings. Out: $($r2c1.Out)" }
+    if ($r2c1.Out -match 'Render the full six-section') { Fail "Case 2c: the boundary refusal must not teach the prose packet any more. Out: $($r2c1.Out)" }
+    # the crew does what it was told: runs the command it was given, for the crossing that is pending
+    $d2c = New-Declaration -Proj $p2c -Kind 'boundary' -From 'clarify' -To 'plan'
+    if (-not $d2c.record_written) { Fail "Case 2c: the declaration was not written. $($d2c | ConvertTo-Json -Compress)" }
+    if ([string]$d2c.text -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 2c: the script's rendered text must carry the exact pending-crossing marker, because verdict capture reads it from the message. Text: $($d2c.text)" }
+    $t2c2 = New-Transcript -Proj $p2c -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d2c.text })
+    $r2c2 = Invoke-Conformance -Proj $p2c -TranscriptPath $t2c2
+    if ($r2c2.Blocked) { Fail "Case 2c: after running the command it was given, the next stop MUST NOT be refused - one refusal, not a loop. Out: $($r2c2.Out)" }
+    Write-Pass "Case 2c: the BOUNDARY update transition costs exactly one refusal - it names declare-turn-end -Kind boundary, the script renders packet and marker, and the next stop is accepted"
 
     # ---- Case 3: cursor caught up. working == authorized, no spec, short msg -> not pending, not substantial -> no block.
     $p3 = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -752,21 +776,35 @@ try {
     $baselineB = Get-TestSessionStatePath -Proj $phms -SessionId $sessionB
     if (-not (Test-Path -LiteralPath $baselineA -PathType Leaf) -or -not (Test-Path -LiteralPath $baselineB -PathType Leaf) -or $baselineA -eq $baselineB) { Fail 'Case PH-ms: concurrent sessions did not receive distinct owner-scoped baseline files.' }
     if (Test-Path -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-turn-baseline.json') -PathType Leaf) { Fail 'Case PH-ms: production session dispatch must not write the legacy shared turn baseline.' }
-    $null = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionA
+    # B's turn starts first and A's LAST, on purpose. declare-turn-end resolves to the newest token in the
+    # project - the honest answer to "whose turn is happening now" from where the script stands - so for
+    # A's declaration below to land under A, A's turn must be the most recently started. Two live sessions
+    # in one project is the collision the identity handshake fails CLOSED on; this case sets the order up
+    # rather than depending on it by accident.
     $null = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionB
+    Start-Sleep -Milliseconds 20
+    $null = Invoke-Conformance -Proj $phms -Event UserPromptSubmit -SessionId $sessionA
 
     $ownedFiles = 'src/preexisting.ps1, tests/preexisting.tests.ps1, src/session-b.ps1, tests/session-b.tests.ps1'
     New-HandoverSnapshot -Proj $phms -ChangedUserFiles 4 -FileList $ownedFiles -Source 'PostToolUse'
     $postB = Invoke-Conformance -Proj $phms -Event PostToolUse -SessionId $sessionB
     if ($postB.Code -ne 0) { Fail "Case PH-ms: session B PostToolUse attribution failed. Out: $($postB.Out)" }
     if ($postB.Out -notmatch 'MATERIAL WORK IN PROGRESS this turn') { Fail "Case PH-ms: exact owner PostToolUse did not render the exact-turn message. Out: $($postB.Out)" }
-    $ownerRecord = Get-Content -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-material-owner.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ([string]$ownerRecord.owner -ne "claude|$sessionB") { Fail "Case PH-ms: exact material surface was not attributed to session B (owner='$($ownerRecord.owner)')." }
+    # THE ATTRIBUTION RECORD IS RETIRED (B4F-049's first member). It credited whichever session's hook
+    # observed a change first, and the independent review showed a read-only session being recorded as the
+    # owner of another session's edit. Attribution is the DECLARING session now, so the assertion is that
+    # the record is never written - not that it names the right owner.
+    if (Test-Path -LiteralPath (Join-Path $phms '.specrew/runtime/conformance-material-owner.json') -PathType Leaf) { Fail 'Case PH-ms: the retired material-owner record was written.' }
 
     New-HandoverSnapshot -Proj $phms -ChangedUserFiles 4 -FileList $ownedFiles -Source 'Stop'
     $statusA = New-Transcript -Proj $phms -Turns @(@{ role = 'user'; text = 'status' }, @{ role = 'assistant'; text = 'The other session is still working; I made no changes in this discussion.' })
+    # Session A did nothing material. Under the old design an inference record kept it from being billed for
+    # B's files; under the ruling, A says so itself - it DECLARES conversational, and the declaration is what
+    # attribution now rests on. A read-only session that declares is never blocked.
+    $declA = New-Declaration -Proj $phms -Kind 'conversational' -Summary 'status only; no changes by this session'
+    if (-not $declA.record_written) { Fail "Case PH-ms: session A's conversational declaration was not written. $($declA | ConvertTo-Json -Compress)" }
     $stopA = Invoke-Conformance -Proj $phms -TranscriptPath $statusA -SessionId $sessionA
-    if ($stopA.Blocked) { Fail "Case PH-ms: session A was billed for session B's exact material surface. Out: $($stopA.Out)" }
+    if ($stopA.Blocked) { Fail "Case PH-ms: session A DECLARED conversational and must not be billed for session B's surface. Out: $($stopA.Out)" }
     $workB = New-Transcript -Proj $phms -Turns @(@{ role = 'user'; text = 'finish the repair' }, @{ role = 'assistant'; text = 'I implemented the session B repair and its tests.' })
     $stopB = Invoke-Conformance -Proj $phms -TranscriptPath $workB -SessionId $sessionB
     if (-not $stopB.Blocked) { Fail "Case PH-ms: the owning session's genuine material Stop did not request its packet. Out: $($stopB.Out)" }
