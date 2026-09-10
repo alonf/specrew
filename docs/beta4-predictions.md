@@ -896,3 +896,15 @@ not the installed alias, because the engine under test is this tree's.
 
 **Fixed in advance**: whichever branch runs, the typed approval is counted as ONE typed authorization
 toward B4F-061's measure, and the navigator's block that asked for it is B4F-047's fourth witness either way.
+
+**PRED-BETA4-019 VERDICT: part 1 held in outcome, missed in mechanism.** No campaign was created and no
+round was spent: exit 1 in 3 s. But the refusal was not the iteration binding - it was
+`review-engine-project-runtime-drifted: marker=b56b0f25...; actual=aa1fa054...; run 'specrew update'`, which
+is **B4F-027**, still standing: the review engine reads a runtime marker the extension re-stamp does not
+write, and its only named remedy is the update that destroys beta4's deployed tree. B4F-027's `actual=`
+was `b56b0f25...` when it was recorded; that value is now the `marker=` side and `aa1fa054...` the actual -
+the marker moved once (the deployed extension was re-stamped in this arc) and the engine's expectation did
+not follow. The command never reached the iteration binding B4F-047 (2) describes, so that part is
+unmeasured, not refuted. `specrew update` was NOT run, per B4F-027. The typed approval is ONE authorization
+for B4F-061's count, and the block that asked for it is B4F-047's fourth witness: a gate that asks for a
+round the engine cannot run in this project.

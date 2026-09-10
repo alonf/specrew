@@ -3428,3 +3428,21 @@ named in the seal). The first is the simpler invariant and the one the validator
 second keeps a write after the seal, which is the shape that produced three witnesses. The maintainer's
 standing instruction - restore the sealed content with `git checkout` - remains the field recovery until
 then.
+
+## PRED-BETA4-007, CONFIRMED END TO END ON A CONSUMER - AND WORSE THAN STATED: the resume writer produces a packet for a boundary already crossed
+
+**Router-skill project, Copilot CLI.** After iteration-closeout sealed 001 and the verdict was captured
+(ledger: 15:46:11, no pending crossing), a fresh session resumed; its hook rewrote the sealed iteration's
+`state.md` (Iteration Status `retro` -> `ready-for-review`) and `tasks-progress.yml`; **the session then
+oriented from its own rewrite and asked for the iteration-closeout verdict a second time.**
+
+PRED-BETA4-007 predicted a red validator on files the product rewrote. What the consumer shows is the
+other half: the resume writer does not only redden the validator, **it corrupts the human-facing state the
+next session orients from**, and the session's opening packet asks the human for a verdict the ledger
+already holds. The human is asked to decide something they decided; a second typed verdict would land
+against no pending crossing (B4F-043's silence) or against a crossing the writer invented.
+
+**Disposition, ruled by the maintainer**: this is **beta4's known issue, stated plainly in the release
+notes**, with the two-file `git checkout` as the recovery; and it is **the first item for beta4.1, with
+(C)**. The writer is B4F-002's chain and B4F-063's second witness; the fix is the writer, and the
+resumed session must orient from the ledger, never from a status a GET verb derived.

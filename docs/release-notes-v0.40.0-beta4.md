@@ -20,6 +20,29 @@ The resolve now selects the feature whose intake controller is actually open, an
 `workshop-resolve-ambiguous` when two workshops are open on different features rather than guessing which
 one a human is answering.
 
+## Known issue: resuming a session can rewrite a closed iteration's state and ask for a verdict you already gave
+
+**What happens.** After an iteration is closed out and sealed, a session that RESUMES in the project can
+rewrite that iteration's `state.md` and `tasks-progress.yml` - the resume path derives a task-progress
+summary and writes it, setting the iteration status to a value that is neither canonical nor right for the
+stage (`ready-for-review` on an iteration at retro). Two things follow: the validator correctly flags the
+closed iteration as edited, and - worse - **the resumed session orients from its own rewrite and asks you
+for the iteration-closeout verdict a second time**, although the ledger already holds it. Confirmed end to
+end on a consumer project on Copilot CLI; the same writer is behind the validator red first seen on the
+self-host repo.
+
+**What to do.** Do not type the verdict again. Restore the two files to their sealed content and continue:
+
+```text
+git checkout -- specs/<feature>/iterations/<NNN>/state.md specs/<feature>/iterations/<NNN>/tasks-progress.yml
+```
+
+Your earlier verdict stands; nothing in the ledger moved. If the session's opening packet asks for a
+verdict at a boundary you know you crossed, check the ledger before answering - the packet is describing
+the rewrite, not the project.
+
+**Status.** Known in this release; the writer is the first item for beta4.1.
+
 ## Known issue: lens confirmations bind the next typed reply regardless of its content
 
 **Read this before running a workshop on beta4.**
