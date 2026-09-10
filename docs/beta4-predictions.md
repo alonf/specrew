@@ -872,3 +872,27 @@ it reds there, it is an unchanged file that was green at `d4a89ab7` and gets the
 its meaning fixed - green confirms environment-bound, red again is a real blocker. `lifecycle-boundary-sync`
 alone was still running past fifteen minutes at dispatch (1 PASS so far, no FAIL); unchanged since the green
 census, same classification.
+
+## PRED-BETA4-019 - the review round the Stop gate asked for, and the maintainer approved. Stated before the run.
+
+**The gate fired live**: after the digest fix put the Stop lane under budget, the navigator reached its
+decision on this session for the first time and asked for a review round - B4F-047's gate, on the repo
+where B4F-047 says it is unsatisfiable. The maintainer typed `approved for review round`. The run is the
+REPO entry (`scripts/specrew.ps1 review --live --baseline-ref origin/main --host claude --approve-round`),
+not the installed alias, because the engine under test is this tree's.
+
+### THE PREDICTION
+
+1. **No campaign is created and no round is spent.** The engine resolves the feature from the lifecycle
+   position - `199-beta3-stabilization` at `feature-closeout`, iteration 003, closed - or from the branch's
+   own feature `201-first-run-experience`, which has no `iterations/`; either way the campaign's iteration
+   binding fails and the command refuses, naming the missing or closed iteration, non-zero exit. This is
+   B4F-047 (2) measured on its own subject.
+2. **If it does launch**: a live round over the diff `origin/main...HEAD` (30 commits), the reviewer is
+   whichever provider the engine resolves on this host, the round is recorded under
+   `.specrew/review/authority/campaigns/`, and the findings file is harvested from the file, not stdout
+   (the codex-reviewer convention). That outcome falsifies part 1 and is the better one for the release; it
+   is recorded as found.
+
+**Fixed in advance**: whichever branch runs, the typed approval is counted as ONE typed authorization
+toward B4F-061's measure, and the navigator's block that asked for it is B4F-047's fourth witness either way.
