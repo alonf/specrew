@@ -1119,7 +1119,15 @@ provider's inject stdout (Cases 4b, 6, 7).
 written before the cases were designed, and the guard is read by more than one. With
 `Test-SpecrewAuthorityMessageContinues` answering "no" to everything (the pre-fix build), the in-suite
 control (Case 6) mints the specimen into a 136-line `verdict_text` in a child process - the record,
-reproduced. The whole-suite run under that mutation is recorded below the commit.
+reproduced. **The whole-suite run under that mutation, on the committed tree (`5017d004`)**: 7 red -
+Case 1, Case 2 (the two store siblings; the shared-governance deferral copy stays refused), Case 4, Case 4b,
+Case 6 (its anchor is gone), the reversed W56 case, the UNCONDITIONAL control; Case 3, W75 and Case 5
+green - exactly the cases that read the guard, as predicted before the run. **The boundary-path guard
+removed** (`Test-SpecrewHumanVerdictToken`): 2 red in the suite (Case 3, the reversed W75 case) and
+`capture-disclosure` Case 6's six disclosure assertions red; its "crossing stays un-authorized" assertion
+stays GREEN, because `Add-SpecrewBoundaryAuthorization` already refused the multi-line text with
+`VERDICT_CAPTURE_FAILED ... did not parse into an authorized boundary verdict` - on the boundary path the
+pre-fix defect was silence, not a mint (B4F-065 records it).
 
 **What the test caught that the build did not**: the first guard called the static
 `[regex]::Split(text, pattern, 2)` - the `2` is a `RegexOptions` there, not a count - so it examined line

@@ -3587,6 +3587,15 @@ follows". The recorded specimen was refused (its line two is `Thought for 1s`); 
 reversed, was the discriminator that caught it. The instance `Split($text, 2)` takes the count. The
 pre-existing W56 code has the same call and is unaffected only because it reads element zero.
 
+**Measured under the mutation, for the record**: with the round-approval guard removed the recorded shape
+mints a 136-line `verdict_text` (the record, reproduced). With the BOUNDARY-path guard removed the same
+shape with `approved for before-implement` at its top classifies as an approval but does NOT authorize:
+`Add-SpecrewBoundaryAuthorization` refuses it with `VERDICT_CAPTURE_FAILED ... did not parse into an
+authorized boundary verdict` - a downstream parser that was already there. So on the boundary path the
+defect before this fix was silence (a WARN on stderr, no disclosure, because the disclosure fires only when
+the classifier refused), not a mint; on the typed-authority path it was the mint. The fix makes both
+refuse by reason and say so.
+
 **The pending fact in THIS repository is left as it is** - unspent, recorded. The product's only void path
 is the human's own typed withdrawal (`Write-SpecrewApprovalWithdrawal` recognizes `withdraw the review
 round approval` and its verbs), and the ruling is never to hand-edit it.
