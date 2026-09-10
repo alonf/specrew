@@ -1344,7 +1344,12 @@ function Get-SensitiveTouchpoints {
         $contentText = ''
         $absolutePath = Join-Path $ProjectRoot $file.Path
         if (Test-Path -LiteralPath $absolutePath -PathType Leaf) {
-            $contentText = (Get-Content -LiteralPath $absolutePath -Raw -Encoding UTF8).ToLowerInvariant()
+            # `Get-Content -Raw` returns $null for an EMPTY file, and a `.gitkeep` in the changed set is an
+            # ordinary shape - the router-skill consumer had three. The method call on that null took the whole
+            # scaffold down on every invocation form, -DryRun included (PRED-BETA4-017). An empty file has no
+            # content to match; it contributes nothing and is not an error.
+            $rawContent = Get-Content -LiteralPath $absolutePath -Raw -Encoding UTF8
+            $contentText = if ($null -eq $rawContent) { '' } else { ([string]$rawContent).ToLowerInvariant() }
         }
 
         foreach ($pattern in $Patterns) {

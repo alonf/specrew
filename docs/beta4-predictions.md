@@ -753,3 +753,34 @@ gate-stop copy - template, `.specify` mirror, dogfood `.claude/skills` - is byte
 `withhold-discipline.tests.ps1` is green; (3) `skill-templates.tests.ps1` green, 17 definitions. One
 measurement detail: the script's lines end in `[Environment]::NewLine`, CRLF on Windows, so line-anchored
 assertions carry `\r?$`.
+
+## PRED-BETA4-017 - the reviewer scaffold's null method call. Stated before the code.
+
+**Reproduced from the consumer** (router-skill, `specs/001-agentic-architecture-skills/iterations/001`,
+`-DryRun`): `scaffold-reviewer-artifacts.ps1: You cannot call a method on a null-valued expression`, at line
+1347 in `Get-SensitiveTouchpoints` - `(Get-Content -LiteralPath $absolutePath -Raw -Encoding UTF8).ToLowerInvariant()`.
+`Get-Content -Raw` on an EMPTY file returns `$null`, and the consumer's changed set contains three
+`.gitkeep` files. Every invocation form fails because the sensitive-touchpoint scan runs on every form,
+`-DryRun` included, and a `.gitkeep` under a skill's `assets/` is an ordinary shape.
+
+### THE PREDICTION, three parts
+
+1. `reviewer-artifacts.ps1` with an empty file added to the changed set FAILS before the fix with that exact
+   message and PASSES after, with the empty file simply contributing no touchpoint.
+2. The consumer's iteration, `-DryRun`, gets PAST line 1347 after the fix; whether it completes depends on
+   the rest of its shape and is reported as found, not predicted.
+3. Four sibling sites of the same class (`deploy-squad-runtime.ps1:1006`, `refocus.ps1:329` and its
+   `scripts/internal` mirror, `instruction-file-merge.ps1:42` - all `(Get-Content -Raw).Trim()`) are
+   recorded, not fixed here: they read files the product itself writes, none reproduced, and a fix without
+   a measurement is the class this record refuses.
+
+**PRED-BETA4-017 VERDICT: (1) held after one fixture correction, (2) held, (3) as stated.** (1) The first
+fixture placed the empty file untracked, and the mutation (fix reverted) stayed GREEN - the changed set is
+`git diff <baseline>` over tracked paths, so an untracked file never reached the scan and the fixture
+measured nothing. Staged, the mutation reds with the consumer's exact message and the fixed code is green;
+the digest's `files=` counts moved 4->5 and 6->7 because the fixture has one more changed file, which is what
+the digest counts. (2) The consumer's iteration `-DryRun` now completes past line 1347 and lists its
+would-create actions - the reviewer artifact set can be scaffolded there. (3) The four sibling sites are in
+B4F-057. `feature-017-dashboard-core` is red locally before and after this change (`specrew where` on the
+fixture) and is unchanged since the green census; classified with the other worktree/environment-bound reds
+at dispatch.
