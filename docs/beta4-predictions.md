@@ -1253,3 +1253,57 @@ alone - the project's deployed extension still at `d4a89ab7`, the installed modu
 plan sync that had targeted 003 minted the `iteration-closeout -> plan` crossing for 002 on the first re-run
 after the install. The fix reaches a consumer without `specrew update`, which is the deployment shape the
 timeline requires.
+
+## PRED-BETA4-024 - fix 2 item (c): the review advisory is scoped to the declaring session's material. Stated before the code.
+
+**Read from the record and the code, not from memory.** Item (c) was scoped in B4F-047 (3): "attribution
+becomes the declaring session, and a read-only second session in the same project receives no advisory.
+Its test is in the fix-2 tail." What was BUILT under that heading is the conformance half only:
+`conformance-detection` Case PH-ms - a read-only session that declares conversational is not billed for the
+other session's surface by the CONFORMANCE provider (order 40). The review advisory the reviewer session has
+now received seventeen consecutive times - `Specrew review - these files have not been reviewed yet` - is
+the CO-REVIEW NAVIGATOR's campaign stop block (order 50, `worktree-navigator.ps1`: `Build-ReviewCampaignNavigatorStopBlock`
+on every route but review-current/review-running/pause-pending), and it has no session in it anywhere: the
+provider takes `--host-kind` and `--transcript-path`, never `--session-id`, and blocks every Stop in the
+project while the tree's digest is unreviewed. **(c) was never built for the review advisory. The field is
+right; no fixture contradicts it because none exists.**
+
+**The design, one handshake, no inference**: the conformance provider already judges THIS session's
+declaration at Stop and steps its turn counter afterwards. It now leaves that judgment beside the counter,
+in the session's own state root - `turn-material.json`: `{ turn_id, declaration_kind
+(conversational|in-flight|boundary|absent), material, judged_at }` - before the counter steps. The navigator
+provider (which runs AFTER it, by the dispatcher's order) receives the same `--session-id` the dispatcher
+already passes to every provider, resolves the same state root through the same `Get-SpecrewTurnEndPaths`,
+and reads the judgment: a session that declared **conversational**, or declared nothing and was judged
+**not material**, gets NO campaign stop block this Stop; in-flight, boundary, or absent-with-material gets
+it as today; a `pause-pending` route is never quieted (an unanswered pause is the human's decision owed,
+not a file attribution); a judgment that is not THIS Stop's (turn id not current or current-1, or older than
+120 s) is ignored and today's behavior stands. The decision carries its `route` so the provider can tell.
+
+### THE PREDICTION, five parts
+
+1. **The conformance provider writes the judgment.** `turn-end-session-identity` Case 3: after the Stop that
+   accepted a conversational declaration, `turn-material.json` under S3's state root reads
+   `declaration_kind: conversational`, `turn_id: turn-1`, `material: false`; Case 3b (a blocking Stop, no
+   declaration): `declaration_kind: absent`.
+2. **The read-only second session receives no advisory**, through the REAL conformance provider and the
+   navigator provider in the dispatcher's order: session A declares conversational, its Stop runs
+   conformance then the navigator (a stub navigator that always returns the `review-required` block, in a
+   temp module tree the provider resolves through) -> no `<<<SPECREW-STOP-BLOCK>>>` on stdout, and the
+   navigator journal says `quiet (session declared conversational)`. Session B, same project, declares
+   in-flight -> the block. That is the field shape: seventeen advisories after seventeen accepted
+   conversational declarations become zero.
+3. **The block still fires where it should**: no judgment on disk (a host that never ran conformance) ->
+   block; judgment absent-with-material -> block; boundary -> block; `pause-pending` -> block even for the
+   conversational session; a stale judgment (turn id two behind, or `judged_at` 10 minutes old) -> block.
+4. **Nothing else in the navigator changes**: `continuous-co-review-navigator.Tests.ps1`,
+   `campaign-stop-authority`, `advisory-names-the-humans-act`, `deployed-mirror-parity`,
+   `conformance-detection` (PH-ms included) and `turn-end-session-identity` stay green.
+5. **Mutation** (`-MutateUnscoped`: the provider's gate replaced by `if ($false)` in the temp copy): part 2's
+   session-A assertions go red - A receives the block - and nothing else does. Part 3's cases are the
+   positive controls naming their paths.
+
+**Fixed in advance**: if part 2 stays green under the mutation, the stub is not the path the field takes and
+the test proves nothing about the reviewer session's seventeen. If the field test - the reviewer session's
+next Stop on the module built from this SHA, after an accepted conversational declaration - fires an
+eighteenth time, the fixture contradicts the field and the tree is not final.
