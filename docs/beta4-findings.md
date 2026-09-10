@@ -3172,3 +3172,76 @@ at the Stop that ends the turn and keeps it across a block. Every directive that
 `turn-end-session-identity.tests.ps1`; the end-to-end token-across-a-block shape on the real boundary
 fixture is `conformance-detection.tests.ps1` Case 2e. PRED-BETA4-014 holds the verdicts, including the two
 clauses that missed.
+
+## B4F-054 - A CAMPAIGN FED BY ITS OWN FIXES: the stale-review advisory cannot tell a product change from a verification edit (beta5)
+
+**Reported by the maintainer from the router-skill campaign `cmp-001-agentic-architecture-skills-i001`**:
+three rounds, 7 findings then 5, each round reviewing the previous round's fixes, each fix adding
+verification surface - a test, a fixture, an evidence file. The stale-review advisory re-armed on every moved
+tree with no distinction between a product change and a fixture edit, so the campaign was fed by its own
+fixes until the human stopped it.
+
+**The mechanism, read from the engine**: staleness is a digest comparison.
+`Get-ContinuousCoReviewReviewedStateDigest` (reviewed-state-digest.ps1) hashes every non-machinery path in
+the tree - machinery is stripped by the one resolver the worktree strip also uses, and *everything else is
+in*, `tests/` and fixtures included. The navigator's `review-stale` route ("your last review no longer covers
+these files") fires when the working-tree digest no longer matches the reviewed one. A round's fixes are
+answered by tests and fixtures; those move the digest exactly as a product edit does; the next Stop reads the
+moved tree as unreviewed; a new round opens on the tree the previous round's fixes produced. The loop has no
+terminating case as long as every round's response includes verification surface - which a good response
+always does.
+
+**What it should distinguish**: the *product surface* (what the reviewer's findings are about) from the
+*verification surface* (what closes a finding). A round whose only movement since the reviewed digest is
+verification surface - tests, fixtures, evidence, records - answering that round's findings should be able
+to CLOSE the round, not re-arm it. This is B4F-047's neighbour: that finding says the review gate is vacuous
+where it could help and unsatisfiable where it fires; this one says that once it does fire, it cannot stop.
+Candidate shapes, not decided here: a second digest over the product surface only, with staleness judged on
+that one and the verification surface recorded as covered by the round it answers; or a per-round "response
+set" the navigator subtracts before comparing. Either way the rule is the same: **a fix's verification is
+part of the fix, not a new subject for review.**
+
+**Beta5, review-machinery family, beside B4F-047 and B4F-046.**
+
+## B4F-055 - THE DEMOTION RULE OVERRULED THE REVIEWER ON FORM: two findings rated major, demoted for lacking a literal clause, judged the substantive ones (beta5)
+
+**Reported by the maintainer from the same campaign**: the severity classifier demoted two findings codex
+rated `major` to `minor` for lacking a concrete failure scenario, and the crew judged those two the
+substantive ones of the round.
+
+**What the rule is, read from the engine**: `Resolve-ReviewFindingGatingEligibility`
+(review-result-ingestor.ps1, T005 / FR-006, maintainer ruling 2026-08-10 "demote, never discard"). A
+`blocking` or `major` finding whose description does not satisfy `Test-ReviewFindingStatesFailureScenario`
+lands below the gating floor as `minor`, with the original severity kept in `demoted_from` and a note
+prepended to the description. The test is **deliberately the literal clause**: a `Failure scenario:` header
+followed by at least twelve characters - "not a heuristic read of the prose", by its own comment, because "a
+contract is explicit by construction; the generosity lives in the CONSEQUENCE".
+
+**What it protects**: the human's rounds. An observation with no failure scenario can be reported but
+cannot cost the human a round - the gold-plating economics, attacked where they bite. And it makes the
+reviewer-prompt contract bind rather than decorate: a prompt is a request; the rejection is what makes it a
+contract. Both are right, and the fail direction ("demote, never discard") is the right one for a rule that
+will misfire.
+
+**What it cost here**: the rule tests for a HEADER, and a reviewer that argued the failure in prose without
+writing the header was overruled on form. The two findings the crew judged substantive were demoted below
+the floor by a string match; the five that passed the match gated the round. That inverts the rule's
+purpose in the one case it was written to serve - the reviewer that found something real - and it is not a
+misfire the human can see at the moment it matters, because the demoted findings are carried as ordinary
+minors in the follow-up list.
+
+**Should the classifier overrule the reviewer?** Not on form alone. Three shapes, for the maintainer:
+
+1. **A demotion is a question back to the reviewer, not a verdict.** A gating finding without the clause is
+   returned to the reviewer once - "state the failure scenario or accept minor" - before it is graded. The
+   contract stays literal and binding; the reviewer, who knows whether there is a scenario, answers. One
+   extra exchange per unclaused finding, bounded.
+2. **A demotion is visible at the gate, not only in the follow-up list.** The round's human-facing surface
+   names every demoted finding with its reviewer severity beside the gating ones, so the human can promote
+   one with a typed reply. Cheapest; keeps the rule; moves the judgement to the human who pays for rounds.
+3. **Widen the detector.** Accept a scenario expressed as `when ... then ...` or `->` prose. The rule's own
+   comment rejects this, and rightly: a heuristic read of prose is a detector guessing at intent, which is
+   the class fix 2 just retired on the conformance side.
+
+The crew's reading: (1) keeps every property the rule was written for and fixes the one it lacks; (2) is
+the floor if (1) is too costly; (3) is not taken. **Beta5, review-machinery family, with B4F-054.**
