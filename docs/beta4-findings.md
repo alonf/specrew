@@ -2954,13 +2954,14 @@ than resolved by picking one:
 | --- | --- |
 | the run log (`codex-stdout-run5.log`, and run4 before it) | **`gpt-6-astra`** |
 | the result file's own `model` field | **`gpt-6`** |
-| the maintainer's reading | **`gpt-5.1-codex-max`** |
 
-**Searched for directly**: `gpt-5` appears **zero times** in the result file and zero times in either run
-log; the only model tokens present anywhere in those artifacts are `gpt-6` and `gpt-6-astra`. The
-maintainer's value therefore comes from a source not in this export - a client configuration, or a different
-session - and is recorded as a third claim rather than substituted for what the artifacts say. **Three
-claims, none verified against the serving side, and a release note that leans on this must say so.**
+**Two claims that disagree, and neither was verified against the serving side.** A release note that leans
+on this must say so.
+
+A third value, `gpt-5.1-codex-max`, was briefly recorded here and is **struck**: it was the maintainer's, it
+has no source in the export - `gpt-5` appears zero times in the result file and in either run log - and the
+maintainer has said plainly that it was produced rather than read. It is kept in this sentence only so the
+strike is visible; it is not a claim.
 
 ### THE SEVEN FINDINGS, ALL CLASSIFIED FIX
 
@@ -3034,9 +3035,18 @@ not check anything.
 larger change, it multiplies the number of places a work kind can be misread, and each new gate would then
 have to learn two contracts instead of one.
 
-### A NUMBERING FIX, because this has now collided twice
+### NUMBERING, RULED - and the dual-prefix proposal is struck
 
-B4F-047/048 and B4F-050/051 both collided, because two parties allocate from one sequence. **Proposal: the
-maintainer's findings take the next free number and mine take `B4F-Cnnn`** (crew), so the two streams cannot
-overlap and no commit citation goes stale again. Adopted only on the maintainer's word - until then I will
-ask before allocating.
+B4F-047/048 and B4F-050/051 both collided. The proposal that followed - a separate `B4F-Cnnn` stream for
+crew findings - is **withdrawn on the maintainer's ruling**, for two reasons that are both better than the
+proposal:
+
+- **The one who holds the document allocates.** The maintainer describes a finding; the crew gives it its
+  number; the maintainer cites numbers back and never assigns one. A number the maintainer proposed was an
+  inference of the next value from a stale read of shared state - **B4F-049's corollary applied to
+  identifiers**, and the same mistake as the three it names.
+- **A second scheme would encode who found a thing into an identifier not meant to carry it.** Provenance
+  belongs in the entry, not in its name.
+
+The two stale commit citations (`181d4b57` -> B4F-048, `b8936d67` -> B4F-051) stay as written, with the
+cross-references in the entries they point at.
