@@ -137,11 +137,24 @@ function Find-SpecrewCurrentTurnToken {
 
     $result = [pscustomobject]@{ token = ''; state_root = ''; owner_hash = ''; competitors = 0 }
     try {
-        $sessionsRoot = Join-Path $ProjectRoot '.specrew/runtime/conformance-sessions'
-        if (-not (Test-Path -LiteralPath $sessionsRoot -PathType Container)) { return $result }
+        $runtimeRoot = Join-Path $ProjectRoot '.specrew/runtime'
+        # THE LEGACY ROOT IS A CANDIDATE TOO. A host that passes no session id keeps its state at the runtime
+        # root itself, and the hook writes its token THERE. The first version of this scanned only the
+        # per-session directories, so on such a host the hook held a token, the script found none, the record
+        # carried none - and "absence is not mismatch" became a mismatch after all, failing closed on every
+        # declaration. The independent review saw exactly that and withheld it as out of scope; the fix-2
+        # tail hit it as PH-e. Absence means neither side has a token, not that the script did not look.
+        $roots = @()
+        $roots += [pscustomobject]@{ path = $runtimeRoot; owner = '' }
+        $sessionsRoot = Join-Path $runtimeRoot 'conformance-sessions'
+        if (Test-Path -LiteralPath $sessionsRoot -PathType Container) {
+            foreach ($dir in @(Get-ChildItem -LiteralPath $sessionsRoot -Directory -ErrorAction Stop)) {
+                $roots += [pscustomobject]@{ path = $dir.FullName; owner = $dir.Name }
+            }
+        }
         $candidates = @()
-        foreach ($dir in @(Get-ChildItem -LiteralPath $sessionsRoot -Directory -ErrorAction Stop)) {
-            $tokenPath = Get-SpecrewTurnTokenPath -StateRoot $dir.FullName
+        foreach ($rootEntry in $roots) {
+            $tokenPath = Get-SpecrewTurnTokenPath -StateRoot $rootEntry.path
             if (-not (Test-Path -LiteralPath $tokenPath -PathType Leaf)) { continue }
             try {
                 $record = Get-Content -LiteralPath $tokenPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
@@ -151,7 +164,7 @@ function Find-SpecrewCurrentTurnToken {
                 # from the same second indistinguishable.
                 $issued = if ($record.PSObject.Properties['issued_ms']) { [long]$record.issued_ms }
                           else { [DateTimeOffset]::new((Get-Item -LiteralPath $tokenPath).LastWriteTimeUtc, [TimeSpan]::Zero).ToUnixTimeMilliseconds() }
-                $candidates += [pscustomobject]@{ token = [string]$record.token; state_root = $dir.FullName; owner_hash = $dir.Name; issued = $issued }
+                $candidates += [pscustomobject]@{ token = [string]$record.token; state_root = $rootEntry.path; owner_hash = $rootEntry.owner; issued = $issued }
             }
             catch { continue }
         }

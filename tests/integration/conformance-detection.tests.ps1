@@ -994,7 +994,9 @@ try {
     $thf = New-Transcript -Proj $phf -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'plan.md is written; moving on.' })
     $rhf = Invoke-Conformance -Proj $phf -TranscriptPath $thf
     if (-not $rhf.Blocked) { Fail "Case PH-f: a pending-verdict boundary stop MUST still block regardless of the material baseline. Out: $($rhf.Out)" }
-    if ($rhf.Out -notmatch 'Discussion Prompts') { Fail "Case PH-f: the boundary demand is the SIX-section packet (Discussion Prompts included). Out: $($rhf.Out)" }
+    # The boundary demand names the command now; the six sections are what the SCRIPT renders, not what the
+    # directive dictates. The distinction from the material demand survives in the -Kind it names.
+    if ($rhf.Out -notmatch 'declare-turn-end' + [char]92 + '.ps1 -Kind boundary') { Fail "Case PH-f: the boundary demand must name the turn-end command with -Kind boundary. Out: $($rhf.Out)" }
     if ($rhf.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case PH-f: the boundary demand carries the exact contiguous verdict marker. Out: $($rhf.Out)" }
     Write-Pass "Case PH-f: the six-section boundary contract is untouched by the packet-hardening lanes (maintainer fixture f)"
 
@@ -1017,10 +1019,13 @@ try {
     $p5b = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p5b
     New-HandoverSnapshot -Proj $p5b -ChangedUserFiles 2
-    $packetWithIntake = $materialPacket + "`n`nBefore I continue: what would you like to build next?"
-    $t5b = New-Transcript -Proj $p5b -Turns @(@{ role = 'assistant'; text = $packetWithIntake })
+    # Converted (second-pass finding 7): compliance is now a DECLARATION, not a rendered packet. The subject
+    # of this case - that the intake-question redirect still fires as a standalone nudge on a compliant
+    # material stop - is unchanged; what discharges the stop is not.
+    $null = New-Declaration -Proj $p5b -Kind 'conversational' -Summary 'material work, declared'
+    $t5b = New-Transcript -Proj $p5b -Turns @(@{ role = 'assistant'; text = "Done with that.`n`nBefore I continue: what would you like to build next?" })
     $r5b = Invoke-Conformance -Proj $p5b -TranscriptPath $t5b
-    if ($r5b.Blocked) { Fail "Case 5b: the packet is rendered, so no block. Out: $($r5b.Out)" }
+    if ($r5b.Blocked) { Fail "Case 5b: the stop is declared, so no block - the intake nudge must arrive as a correction, not folded into a refusal. Out: $($r5b.Out)" }
     if ($r5b.Out -notmatch 'INTAKE QUESTION') { Fail "Case 5b: an intake question on a parsed (material) stop MUST fire the #1 redirect nudge. Out: $($r5b.Out)" }
     Write-Pass "Case 5b: the intake redirect nudge still fires on a stop that warranted the parse (SC-008 #1, post-T099 shape)"
 
@@ -1670,11 +1675,29 @@ Write-Pass "Case 16e3: cross-lens binding drift stops at targeted reconciliation
     if ($packetNoMarker -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 19 fixture INVALID: the verdict marker was NOT stripped (the case would not test the headers-without-marker path)" }
     $p19 = New-Fixture -Working 'plan' -LastAuth 'clarify'
     New-BoundaryStageEvidence -Proj $p19
+    # RESTORED THROUGH THE REAL PRODUCER (second-pass finding 6). The prose fixture above still proves its
+    # own shape, but the hook no longer reads prose, so headers-without-marker in a MESSAGE blocked for the
+    # missing declaration whatever the marker did - the case was inert. Its subject is real and now
+    # reachable the honest way: the declaration script rendering a boundary from a pending-stop artifact that
+    # carries NO marker line. That declaration names the right crossing and renders no marker, so verdict
+    # capture would have nothing to read - and it must be refused, not credited.
     $t19 = New-Transcript -Proj $p19 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetNoMarker })
     $r19 = Invoke-Conformance -Proj $p19 -TranscriptPath $t19
-    if (-not $r19.Blocked) { Fail "Case 19: a boundary stop with the six section HEADERS but NO verdict marker MUST block (headers don't authorize the crossing; the verdict was never captured). Out: $($r19.Out)" }
-    if ($r19.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 19: the block must demand the contiguous verdict marker. Out: $($r19.Out)" }
-    Write-Pass "Case 19: a boundary packet with HEADERS but NO marker still BLOCKS - the marker (not the headers) authorizes the boundary (Antigravity dogfood gap); fixture properties asserted (145 TI-1)"
+    if (-not $r19.Blocked) { Fail "Case 19: prose headers with no declaration MUST block. Out: $($r19.Out)" }
+    # the real subject: a DECLARED boundary whose artifact had no marker line
+    New-PendingVerdictStop -Proj $p19 -From 'clarify' -To 'plan'
+    $stop19 = Join-Path $p19 '.specrew\runtime\pending-verdict-stop.md'
+    $stop19Text = Get-Content -LiteralPath $stop19 -Raw -Encoding UTF8
+    $stop19Text = ($stop19Text -split "`r?`n" | Where-Object { $_ -notmatch 'SPECREW-VERDICT-BOUNDARY' -and $_ -notmatch 'Marker last line exactly' }) -join [Environment]::NewLine
+    [IO.File]::WriteAllText($stop19, $stop19Text, [Text.UTF8Encoding]::new($false))
+    $d19 = New-Declaration -Proj $p19 -Kind 'boundary' -Summary 'declared without a marker'
+    if (-not $d19.record_written) { Fail "Case 19: the marker-less boundary declaration was not written. $($d19 | ConvertTo-Json -Compress)" }
+    if ([string]$d19.text -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 19 fixture INVALID: the rendered text carries a marker, so the case would not test the missing-marker path. Text: $($d19.text)" }
+    $t19b = New-Transcript -Proj $p19 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = [string]$d19.text })
+    $r19b = Invoke-Conformance -Proj $p19 -TranscriptPath $t19b
+    if (-not $r19b.Blocked) { Fail "Case 19: a DECLARED boundary that rendered NO marker MUST still block - the declaration names the crossing but verdict capture would have nothing to read. Out: $($r19b.Out)" }
+    if ($r19b.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 19: the block must demand the contiguous verdict marker. Out: $($r19b.Out)" }
+    Write-Pass "Case 19 (restored): a declared boundary with NO marker still BLOCKS - the marker, not the declaration's crossing name, is what verdict capture reads; reached through the real producer, not a prose fixture"
 
     # ---- Case 20 (145 OB-1): workshop validation must scope to the ACTIVE feature. A DIFFERENT abandoned feature
     #      whose lens workshop still has lenses remaining MUST NOT affect the ACTIVE feature's boundary block.

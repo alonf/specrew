@@ -1214,7 +1214,14 @@ try {
                 $declaredTo = Normalize-SpecrewCanonicalBoundaryType -Boundary $Matches[2]
                 $expectedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
                 $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
-                if (-not [string]::IsNullOrWhiteSpace($declaredTo) -and $declaredFrom -eq $expectedFrom -and $declaredTo -eq $expectedTo) {
+                # THE MARKER MUST BE IN THE RECORD TOO, not only the boundary name. Verdict capture reads the
+                # marker out of the rendered message; a declaration that named the right crossing but rendered
+                # no marker - because pending-verdict-stop.md had no marker line - would be credited here while
+                # the human's reply had nothing to bind to. That is Case 19's original subject (headers without
+                # a marker), which the declaration design had made unreachable rather than fixed.
+                $declaredMarker = if ($turnEndRecord.PSObject.Properties['marker']) { [string]$turnEndRecord.marker } else { '' }
+                if (-not [string]::IsNullOrWhiteSpace($declaredTo) -and $declaredFrom -eq $expectedFrom -and $declaredTo -eq $expectedTo -and
+                    -not [string]::IsNullOrWhiteSpace($declaredMarker) -and $declaredMarker -match 'SPECREW-VERDICT-BOUNDARY') {
                     $markerForPendingCrossing = $true
                 }
             }
