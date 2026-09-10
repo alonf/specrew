@@ -3245,3 +3245,23 @@ minors in the follow-up list.
 
 The crew's reading: (1) keeps every property the rule was written for and fixes the one it lacks; (2) is
 the floor if (1) is too costly; (3) is not taken. **Beta5, review-machinery family, with B4F-054.**
+
+## B4F-056 - PARTIAL SIGN-OFF IS THE DESIGNED CLOSE, not the exception, and its packet should say what it covers (beta5)
+
+**Reported by the maintainer from the router-skill campaign**: the sign-off rule - the latest review must
+have seen the tree - combined with every finding producing a fix means a campaign terminates only on a
+zero-finding round or a partial sign-off. Given B4F-054 (every fix moves the tree the rule compares against),
+a zero-finding round on the CURRENT tree is the rare case; the ordinary end of a campaign that was answered
+well is a partial sign-off over a delta the latest round did not see.
+
+**So partial sign-off is the designed close.** Its packet today asks the human to compose the reason - to
+say, in their own words, why signing off over an unreviewed delta is acceptable. That is the wrong party
+composing: the engine knows the delta (the paths that moved since the reviewed digest) and knows what
+covers it (the tests and fixtures added in answer to the round's findings, the runs that executed them). The
+packet should ENUMERATE the uncovered delta and the verification covering each part of it, and ask the
+human to confirm or contest that coverage - the same shape as every other packet in this product: the
+machine states the facts, the human decides.
+
+**Beta5, review-machinery family, with B4F-054 and B4F-055.** The three are one item seen from three
+sides: the review cannot stop (054), it grades the wrong thing on the way (055), and its stopping ceremony
+puts the composition on the human (056). A design that fixes the first may dissolve the third.
