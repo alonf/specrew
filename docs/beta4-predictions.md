@@ -1512,3 +1512,25 @@ iteration has no authorization yet; the pending crossing is 'iteration-closeout 
 four existing cases keep their answers (Case 1's wording assertion now accepts "authorized through 'tasks'"
 for the cursor-only legacy ledger). Part 3 held: the ordinal comparison restored reds the cycle case in the
 line suite and the product-order case in the plan-sync suite, nothing else.
+
+## PRED-BETA4-030 - PRED-015 stated for the FINAL SHA, fifth dispatch, by ruling. Stated before the dispatch.
+
+The tree is final at the branch head after this record's commit: `ebb7597f` plus the independent review's
+R1 and R2 (`35d5e86e`, B4F-073) and the coordinator-template mirror sync that the release-model mirror check
+demanded. Census 4 (`34538115842`, on `ebb7597f`) is superseded by this one and is read when it lands, not
+re-run. The module installed on this machine is built from this SHA, and the router-skill project updates
+ONCE, to this build - that update is the turn-end contract's field test.
+
+### THE PREDICTION
+
+1. **`full-test-census` green**: every named file (411), 0 failures; `prepublish-validation` and the dry-run
+   publish green. Since `ebb7597f`: the digest is direct by default with the index mode in its key (31
+   targeted suites green here, `conformance-detection` 279 s included), readiness has a cycle, the
+   coordinator mirror is synced (`release-model` green here; it was red at `5901096e`-`ebb7597f` and census 4
+   will show it).
+2. **The diagnostics artifact carries the sentinel and nothing else.**
+3. **The install**: `install-local-build.ps1` from this SHA stamps the module with this commit, byte-verified.
+
+A red on any changed file is fixed first and the tree is not final. The single sanctioned re-dispatch is
+reserved for a runner-bound red on a file unchanged since `d4a89ab7`. The tag SHA is the SHA the green
+dispatch ran on.
